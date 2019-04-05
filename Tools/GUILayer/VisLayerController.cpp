@@ -171,6 +171,17 @@ namespace GUILayer
 		}
 	}
 
+	void VisLayerController::SetMaterialDelegate(MaterialDelegateWrapper^ materialDelegate)
+	{
+		SetMaterialOverrides(nullptr);
+		if (materialDelegate) {
+			_pimpl->_modelLayer->SetOverrides(materialDelegate->_materialDelegate.GetNativePtr());
+		}
+		else {
+			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
+		}
+	}
+
 	void VisLayerController::ResetCamera()
 	{
 		_pimpl->_modelLayer->ResetCamera();

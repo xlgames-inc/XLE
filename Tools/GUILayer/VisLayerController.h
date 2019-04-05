@@ -18,6 +18,7 @@ namespace GUILayer
 	ref class VisAnimationState;
 	ref class RawMaterial;
 	ref class TechniqueDelegateWrapper;
+	ref class MaterialDelegateWrapper;
 
 	public ref class VisLayerController : public IOnEngineShutdown
     {
@@ -37,6 +38,7 @@ namespace GUILayer
 		void SetMaterialOverrides(
 			System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides);
 		void SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate);
+		void SetMaterialDelegate(MaterialDelegateWrapper^ materialDelegate);
 
 		void ResetCamera();
 

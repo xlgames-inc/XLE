@@ -7,6 +7,7 @@
 #include "../RenderCore/Techniques/DrawableDelegates.h"
 
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class RawMaterial; } }
+namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
 
 namespace ToolsRig
 {
@@ -18,6 +19,8 @@ namespace ToolsRig
 	/// material settings from the material basic delegate with overrides from a
 	/// fixed material object
 	std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>
-		MakeMaterialMergeDelegate(const std::shared_ptr<RenderCore::Assets::RawMaterial>& material);
+		MakeMaterialMergeDelegate(
+			const std::shared_ptr<RenderCore::Assets::RawMaterial>& material,
+			const std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout>& materialCBLayout);
 
 }

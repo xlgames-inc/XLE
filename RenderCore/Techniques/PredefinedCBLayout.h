@@ -32,6 +32,9 @@ namespace RenderCore { namespace Techniques
         std::vector<Element> _elements;
         ParameterBox _defaults;
 
+		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 1; };
+		void AppendElements(IteratorRange<const NameAndType*> elements);
+
         std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters) const;
         SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
         uint64_t CalculateHash() const;

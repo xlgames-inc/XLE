@@ -7,6 +7,7 @@
 #include "ParsingContext.h"
 #include "TechniqueMaterial.h"
 #include "DeferredShaderResource.h"
+#include "PredefinedCBLayout.h"
 #include "../Metal/InputLayout.h"
 #include "../BufferView.h"
 #include "../../Assets/Assets.h"
@@ -46,12 +47,28 @@ namespace RenderCore { namespace Techniques
 		return &dummy;
 	}
 
-    void MaterialDelegate_Basic::ApplyUniforms(
-        ParsingContext& context,
-        RenderCore::Metal::DeviceContext& devContext,
-        const RenderCore::Metal::BoundUniforms& boundUniforms,
-        unsigned streamIdx,
-        const void* objectContext) const
+	void MaterialDelegate_Basic::ApplyUniforms(
+		ParsingContext& context,
+		RenderCore::Metal::DeviceContext& devContext,
+		const RenderCore::Metal::BoundUniforms& boundUniforms,
+		unsigned streamIdx,
+		const void* objectContext) const
+	{
+		Material& mat = *(Material*)objectContext;
+		auto techniqueFuture = ::Assets::MakeAsset<Technique>(mat._techniqueConfig);
+		const auto& cbLayout = techniqueFuture->Actualize()->TechniqueCBLayout();
+		return ApplyUniforms(
+			context, devContext, boundUniforms,
+			streamIdx, objectContext, cbLayout);
+	}
+
+	void MaterialDelegate_Basic::ApplyUniforms(
+		ParsingContext& context,
+		RenderCore::Metal::DeviceContext& devContext,
+		const RenderCore::Metal::BoundUniforms& boundUniforms,
+		unsigned streamIdx,
+		const void* objectContext,
+		const PredefinedCBLayout& cbLayout) const
 	{
 		Material& mat = *(Material*)objectContext;
 		const RenderCore::Metal::ShaderResourceView* srvs[32];
@@ -65,8 +82,7 @@ namespace RenderCore { namespace Techniques
 				srvs[c++] = nullptr;
 			}
 		}
-		auto techniqueFuture = ::Assets::MakeAsset<Technique>(mat._techniqueConfig);
-		const auto& cbLayout = techniqueFuture->Actualize()->TechniqueCBLayout();
+		
 		ConstantBufferView cbvs[] = { cbLayout.BuildCBDataAsPkt(mat._constants) };
 		boundUniforms.Apply(
 			devContext, streamIdx, 
