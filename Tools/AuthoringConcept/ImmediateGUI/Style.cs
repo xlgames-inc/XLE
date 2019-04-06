@@ -83,12 +83,15 @@ namespace AuthoringConcept.ImmediateGUI
             foreach (var col in ColorTable)
             {
                 PackedColor packedCol =
-                      (((uint)(255.0f * col.Value.W) & 0xff) << 24)
+                      //(((uint)(255.0f * col.Value.W) & 0xff) << 24)
+                      0xff000000
                     | (((uint)(255.0f * col.Value.X) & 0xff) << 16)
                     | (((uint)(255.0f * col.Value.Y) & 0xff) << 8)
                     | (((uint)(255.0f * col.Value.Z) & 0xff) << 0);
                 PackedColorTable.Add(col.Key, packedCol);
             }
+
+            PackedColorTable[SystemColor.ImGuiCol_BorderShadow] = 0x3f000000;
         }
     };
 

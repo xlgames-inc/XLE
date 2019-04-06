@@ -102,23 +102,25 @@ namespace AuthoringConcept.ImmediateGUI
             Down = 3
         };
 
-        public static void RenderFrame(ImbuedGraphics graphics, PointF p_min, PointF p_max, PackedColor fill_col, bool border, float rounding)
+        public static void RenderFrame(ImbuedGraphics graphics, PointF p_min, PointF p_max, PackedColor fill_col, bool border, float rounding, bool shadow = false)
         {
             graphics.AddRectFilled(p_min, p_max, fill_col, rounding);
             float border_size = g_style.FrameBorderSize;
             if (border && border_size > 0.0f)
             {
-                graphics.AddRect(PointF.Add(p_min, new SizeF(1.0f, 1.0f)), PointF.Add(p_max, new SizeF(1.0f, 1.0f)), GetColorU32(SystemColor.ImGuiCol_BorderShadow), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
+                if (shadow)
+                    graphics.AddRect(PointF.Add(p_min, new SizeF(1.0f, 1.0f)), PointF.Add(p_max, new SizeF(1.0f, 1.0f)), GetColorU32(SystemColor.ImGuiCol_BorderShadow), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
                 graphics.AddRect(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Border), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
             }
         }
 
-        public static void RenderFrameBorder(ImbuedGraphics graphics, PointF p_min, PointF p_max, float rounding)
+        public static void RenderFrameBorder(ImbuedGraphics graphics, PointF p_min, PointF p_max, float rounding, bool shadow = false)
         {
             float border_size = g_style.FrameBorderSize;
             if (border_size > 0.0f)
             {
-                graphics.AddRect(PointF.Add(p_min, new SizeF(1.0f, 1.0f)), PointF.Add(p_max, new SizeF(1.0f, 1.0f)), GetColorU32(SystemColor.ImGuiCol_BorderShadow), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
+                if (shadow)
+                    graphics.AddRect(PointF.Add(p_min, new SizeF(1.0f, 1.0f)), PointF.Add(p_max, new SizeF(1.0f, 1.0f)), GetColorU32(SystemColor.ImGuiCol_BorderShadow), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
                 graphics.AddRect(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Border), rounding, (int)ImbuedGraphics.DrawCornerFlags.All, border_size);
             }
         }
@@ -216,6 +218,7 @@ namespace AuthoringConcept.ImmediateGUI
         public SimpleControl Checkbox(string label, GetDelegate<bool> getter, SetDelegate<bool> setter)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
+            node.Margin = 2;
             node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
             {
                 SizeF labelSize = Graphics.MeasureString(HideAfterHash(label), SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
@@ -318,7 +321,7 @@ namespace AuthoringConcept.ImmediateGUI
         {
             ImbuedNode outerNode = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid("##collapsingcontainer")));
             outerNode.Padding = 0;       // zero padding because the headerContainer and contentContainers have their own padding
-            outerNode.Margin = 0;
+            outerNode.Margin = 2;
             _workingStack.Peek().AddChild(outerNode);
 
             float headerHeight = SystemFonts.DefaultFont.Height * 1.5f;
@@ -348,7 +351,7 @@ namespace AuthoringConcept.ImmediateGUI
                     graphics,
                     GetMin(frame), GetMax(frame),
                     GetColorU32(SystemColor.ImGuiCol_FrameBg),
-                    true, g_style.FrameRounding);
+                    true, g_style.FrameRounding, true);
 
                 var headerFrameMax = GetMax(frame);
                 headerFrameMax.Y = frame.Y + headerHeight;
@@ -356,7 +359,7 @@ namespace AuthoringConcept.ImmediateGUI
                     GetMin(frame), headerFrameMax,
                     GetColorU32(SystemColor.ImGuiCol_Header),
                     g_style.FrameRounding,
-                    (int)ImbuedGraphics.DrawCornerFlags.Top);
+                    (int)(CollapsingContainer_IsOpen ? ImbuedGraphics.DrawCornerFlags.Top : ImbuedGraphics.DrawCornerFlags.All));
             };
 
             ImbuedNode contentContainer = new ImbuedNode(Config, GuidCombine(outerNode.Guid, MakeGuid("##contentcontainer")));
@@ -413,7 +416,7 @@ namespace AuthoringConcept.ImmediateGUI
                     graphics,
                     GetMin(frame), GetMax(frame),
                     GetColorU32(SystemColor.ImGuiCol_Button),
-                    true, 0.0f);
+                    false, 0.0f);
                 RenderArrow(graphics, content, Direction.Down, 1.0f);
             };
             node.AddChild(arrowBox);
@@ -695,7 +698,7 @@ namespace AuthoringConcept.ImmediateGUI
                 outerFrame.AddChild(arrowBox);
             }
 
-            Label(label + ": " + getter());
+            Label(label + ": " + getter()).Node.Margin = 2;
 
             {
                 ImbuedNode arrowBox = new ImbuedNode(Config, GuidCombine(outerFrame.Guid, MakeGuid("increase")));
@@ -747,10 +750,9 @@ namespace AuthoringConcept.ImmediateGUI
 
                 PointF p_min = GetMin(frame);
                 PointF p_max = GetMax(frame);
-                p_max.X -= g_style.FrameRounding;
 
                 p_max.X = p_min.X * (1.0f - fraction) + p_max.X * fraction;
-                graphics.AddRectFilled(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Header), g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
+                graphics.AddRectFilled(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
             };
 
             node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
@@ -760,7 +762,6 @@ namespace AuthoringConcept.ImmediateGUI
                 {
                     PointF p_min = GetMin(frame);
                     PointF p_max = GetMax(frame);
-                    p_max.X -= g_style.FrameRounding;
 
                     float fraction = (io.MousePosition.X - p_min.X) / (p_max.X - p_min.X);
                     fraction = Math.Min(Math.Max(fraction, 0.0f), 1.0f);
@@ -783,15 +784,15 @@ namespace AuthoringConcept.ImmediateGUI
 
             outerFrame.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), g_style.FrameRounding);
+                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), 2.0f * g_style.FrameRounding);
             };
 
             {
                 ImbuedNode labelBox = new ImbuedNode(Config, 0);
                 labelBox.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
-                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
-                    RenderText(graphics, GetMin(content), label + ": " + getter());
+                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
+                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2, 2)), label + ": " + getter());
                 };
                 labelBox.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
@@ -802,7 +803,7 @@ namespace AuthoringConcept.ImmediateGUI
                 labelBox.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
                 {
                     SizeF stringSize = Graphics.MeasureString(label + ": XXXX", SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
-                    return MeasureOutput.Make(stringSize.Width, stringSize.Height);
+                    return MeasureOutput.Make(stringSize.Width+4, stringSize.Height+4);
                 });
                 outerFrame.AddChild(labelBox);
 
@@ -827,10 +828,9 @@ namespace AuthoringConcept.ImmediateGUI
 
                 PointF p_min = GetMin(frame);
                 PointF p_max = GetMax(frame);
-                p_max.X -= g_style.FrameRounding;
 
                 p_max.X = p_min.X * (1.0f - fraction) + p_max.X * fraction;
-                graphics.AddRectFilled(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Header), g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
+                graphics.AddRectFilled(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
             };
 
             node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
@@ -840,7 +840,6 @@ namespace AuthoringConcept.ImmediateGUI
                 {
                     PointF p_min = GetMin(frame);
                     PointF p_max = GetMax(frame);
-                    p_max.X -= g_style.FrameRounding;
 
                     float fraction = (io.MousePosition.X - p_min.X) / (p_max.X - p_min.X);
                     fraction = Math.Min(Math.Max(fraction, 0.0f), 1.0f);
@@ -863,15 +862,15 @@ namespace AuthoringConcept.ImmediateGUI
 
             outerFrame.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), g_style.FrameRounding);
+                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), 2.0f * g_style.FrameRounding);
             };
 
             {
                 ImbuedNode labelBox = new ImbuedNode(Config, 0);
                 labelBox.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
-                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
-                    RenderText(graphics, GetMin(content), label + ": " + getter());
+                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
+                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2,2)), label + ": " + getter());
                 };
                 labelBox.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
@@ -882,7 +881,7 @@ namespace AuthoringConcept.ImmediateGUI
                 labelBox.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
                 {
                     SizeF stringSize = Graphics.MeasureString(label + ": XXXX", SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
-                    return MeasureOutput.Make(stringSize.Width, stringSize.Height);
+                    return MeasureOutput.Make(stringSize.Width + 4, stringSize.Height + 4);
                 });
                 outerFrame.AddChild(labelBox);
 
@@ -910,7 +909,7 @@ namespace AuthoringConcept.ImmediateGUI
 
             outerFrame.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), g_style.FrameRounding);
+                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), g_style.FrameRounding, true);
             };
 
             var l = Label(label);
@@ -962,7 +961,7 @@ namespace AuthoringConcept.ImmediateGUI
                 RenderFrame(
                     graphics, GetMin(frame), GetMax(frame),
                     GetColorU32(SystemColor.ImGuiCol_FrameBg),
-                    true, g_style.FrameRounding);
+                    true, g_style.FrameRounding, true);
             };
 
             return windowNode;
