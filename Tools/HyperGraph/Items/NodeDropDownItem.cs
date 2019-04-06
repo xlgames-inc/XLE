@@ -99,7 +99,7 @@ namespace HyperGraph.Items
             {
                 var basePts = new PointF[] { 
                     new PointF(Node.bounds.Left + GraphConstants.HorizontalSpacing, bounds.Top), 
-                    new PointF(Node.bounds.Right + GraphConstants.HorizontalSpacing - GraphConstants.NodeExtraWidth, bounds.Bottom) };
+                    new PointF(Node.bounds.Right - GraphConstants.HorizontalSpacing, bounds.Bottom) };
                 viewTransform.TransformPoints(basePts);
 
                 var dropDownCtrl = new ListBox();

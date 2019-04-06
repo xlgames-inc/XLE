@@ -38,7 +38,7 @@ namespace HyperGraph.Items
 			if (!string.IsNullOrWhiteSpace(this.Title))
 			{
 				var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
-				var texSize = graphics.MeasureString(this.Title, SystemFonts.CaptionFont, size, GraphConstants.TitleMeasureStringFormat);
+				var texSize = graphics.MeasureString(this.Title, GraphConstants.TitleFont, size, GraphConstants.TitleMeasureStringFormat);
 
                 texSize.Width   = Math.Max(size.Width, texSize.Width + (GraphConstants.CornerSize * 2));
                 texSize.Height	= Math.Max(size.Height, texSize.Height);
@@ -60,9 +60,9 @@ namespace HyperGraph.Items
             }
 
             if ((state & RenderState.Hover) == RenderState.Hover)
-				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, boundary, GraphConstants.TitleStringFormat);
+				graphics.DrawString(this.Title, GraphConstants.TitleFont, Brushes.White, boundary, GraphConstants.TitleStringFormat);
 			else
-                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.LightGray, boundary, GraphConstants.TitleStringFormat);
+                graphics.DrawString(this.Title, GraphConstants.TitleFont, Brushes.LightGray, boundary, GraphConstants.TitleStringFormat);
 		}
 	}
 }

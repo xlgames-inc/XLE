@@ -67,6 +67,10 @@ namespace MaterialTool.Controls
             graphAdapter.ConnectorDoubleClick += OnConnectorDoubleClick;
             graphAdapter.ShowElementMenu += OnShowElementMenu;
 
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(50)))));
+            graphAdapter.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(45)))), ((int)(((byte)(45)))));
+            graphAdapter.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(55)))));
+
             // calling Adapt will unbind previous adapters
             var hoverAdapter = new HoverAdapter();
             hoverAdapter.HoverStarted += (object sender, HoverEventArgs<object, object> args) =>

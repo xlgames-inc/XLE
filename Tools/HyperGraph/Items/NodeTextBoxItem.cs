@@ -102,7 +102,7 @@ namespace HyperGraph.Items
 
 					this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.LeftMeasureTextStringFormat);
 					
-					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width + 8);
+					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width + (GraphConstants.CornerSize * 2));
                     this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height);
 				}
 				return this.TextSize;
@@ -116,22 +116,24 @@ namespace HyperGraph.Items
 
         public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
+            // this is used for titles for nodes -- so, similar to the NodeTitleItem behaviour, only draw the backdrop for circular nodes
+            if (Node.Layout == Node.LayoutType.Circular)
+            {
+                var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
 
-            RectangleF textBoundary = boundary;
+                if ((state & RenderState.Hover) == RenderState.Hover)
+                {
+                    graphics.DrawPath(Pens.LightGray, path);
+                    graphics.FillPath(BackgroundBrush, path);
+                }
+                else
+                {
+                    // graphics.DrawPath(Pens.Black, path);
+                    graphics.FillPath(BackgroundBrush, path);
+                }
+            }
 
-			if ((state & RenderState.Hover) == RenderState.Hover)
-			{
-                graphics.DrawPath(Pens.LightGray, path);
-                graphics.FillPath(BackgroundBrush, path);
-                graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
-			}
-            else
-			{
-                // graphics.DrawPath(Pens.Black, path);
-                graphics.FillPath(BackgroundBrush, path);
-                graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
-			}
-		}
+            graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, boundary, GraphConstants.LeftTextStringFormat);
+        }
 	}
 }

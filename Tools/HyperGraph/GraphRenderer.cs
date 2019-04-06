@@ -112,7 +112,7 @@ namespace HyperGraph
             for (uint c = 0; c < 3; ++c)
                 size.Height = Math.Max(size.Height, sizes[c].Height);
 
-            size.Width += GraphConstants.NodeExtraWidth;
+            size.Width += GraphConstants.HorizontalSpacing * 2;
             size.Height += node.Collapsed ? GraphConstants.BottomHeightCollapsed : GraphConstants.BottomHeight;
 
             return new NodeSize { BaseSize = size, InputPartWidth = sizes[0].Width, OutputPartWidth = sizes[2].Width };
@@ -360,8 +360,11 @@ namespace HyperGraph
                 }
                 else
                 {
-                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
-                    float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - 4, size.OutputPartWidth };
+                    PointF[] positions = new PointF[] {
+                        new PointF(position.X - size.InputPartWidth, position.Y),
+                        new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y),
+                        new PointF(position.X + size.BaseSize.Width, position.Y) };
+                    float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - GraphConstants.HorizontalSpacing * 2, size.OutputPartWidth };
 
                     for (uint side = 0; side < 3; ++side)
                     {
@@ -528,7 +531,15 @@ namespace HyperGraph
             }
             else
             {
-                int titleHeight = (node.TitleItem != null) ? (int)(node.TitleItem.bounds.Height + GraphConstants.TopHeight) : 0;
+                int titleHeight = 0;
+                if (node.TitleItem != null)
+                {
+                    titleHeight = (int)(node.TitleItem.bounds.Height + GraphConstants.TopHeight);
+                }
+                else if (node.TopItems.Any())
+                {
+                    titleHeight = (int)(node.TopItems.FirstOrDefault().bounds.Height + GraphConstants.TopHeight);
+                }
                 titleHeight = Math.Min((int)rect.Height, titleHeight);
 
                 var titleRect = new Rectangle((int)rect.Left, (int)rect.Top, (int)rect.Width, titleHeight);
@@ -839,8 +850,10 @@ namespace HyperGraph
             {
                 return Color.LightSkyBlue;
             } else
-				return Color.LightGray;
-		}
+				// return Color.LightGray;
+                return Color.FromArgb(186, 243, 248);
+
+        }
 		
 		static PointF[] GetArrowPoints(float x, float y, float extra_thickness = 0)
 		{

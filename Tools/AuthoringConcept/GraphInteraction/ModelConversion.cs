@@ -123,7 +123,7 @@ namespace AuthoringConcept
             var node = new HyperGraph.Node();
             node.Tag = new NodeTag { Id = static_nextNodeId, DataBlockId = "Node_" + static_nextNodeId, DataBlockType = storage.TypeIdentifier };
             ++static_nextNodeId;
-            node.AddItem(new HyperGraph.Items.NodeTextBoxItem("Title"), HyperGraph.Node.Dock.Top);
+            node.AddItem(new HyperGraph.Items.NodeTitleItem { Title = "Title" }, HyperGraph.Node.Dock.Top);
 
             node.AddItem(new TestNodeConnector("Input0", "float"), HyperGraph.Node.Dock.Input);
             node.AddItem(new TestNodeConnector("Input1", "float"), HyperGraph.Node.Dock.Input);
