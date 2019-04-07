@@ -76,6 +76,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 		DescSet _descSet;
 
+		LegacyRegisterBinding _legacyRegisterBindings;
+
 		Pimpl(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _descSet(std::move(layout), globalPools) {}
     };
 
@@ -212,6 +214,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		return *_pimpl->_descSet._signature;
 	}
 
+	const LegacyRegisterBinding& NumericUniformsInterface::GetLegacyRegisterBindings() const
+	{
+		return _pimpl->_legacyRegisterBindings;
+	}
+
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
         GlobalPools& globalPools, 
@@ -224,6 +231,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl = std::make_unique<Pimpl>(std::move(layout), globalPools);
         _pimpl->_descriptorPool = &globalPools._mainDescriptorPool;
 		_pimpl->_descSet._signature = signature;
+		_pimpl->_legacyRegisterBindings = bindings;		// we store this only so we can return it from the GetLegacyRegisterBindings() query
         
         Reset();
 

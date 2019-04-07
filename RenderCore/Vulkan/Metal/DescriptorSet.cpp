@@ -349,7 +349,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		_sinceLastFlush = 0;
 
 		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			description._descriptorSetInfo = _verboseDescription._descriptorSetInfo;
 			if (description._bindingDescriptions.size() < _verboseDescription._bindingDescriptions.size())
 				description._bindingDescriptions.resize(_verboseDescription._bindingDescriptions.size());
 			for (unsigned b=0; b<_verboseDescription._bindingDescriptions.size(); ++b) {

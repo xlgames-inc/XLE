@@ -48,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
-	void EndSubpass(DeviceContext& context);
+	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
 	unsigned GetCurrentSubpassIndex(DeviceContext& context);
 

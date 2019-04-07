@@ -609,7 +609,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
     }
 
-	void EndSubpass(DeviceContext& context)
+	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer)
 	{
 	}
 

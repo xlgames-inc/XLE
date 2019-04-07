@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
 		Assets::RegisterAssetDependency(_validationCallback, globals._graphicsRootSignatureFile->GetDependencyValidation());
-		_pipelineLayoutConfig = std::make_shared<PipelineLayoutShaderConfig>(factory, *globals._graphicsRootSignatureFile, globals.s_mainSignature, PipelineType::Graphics);
+		_pipelineLayoutConfig = globals._mainGraphicsConfig;
     }
     
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
@@ -133,7 +133,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
 		Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
-		_pipelineLayoutConfig = std::make_shared<PipelineLayoutShaderConfig>(factory, *globals._computeRootSignatureFile, globals.s_mainSignature, PipelineType::Compute);
+		_pipelineLayoutConfig = globals._mainComputeConfig;
     }
 
     ComputeShader::ComputeShader() {}

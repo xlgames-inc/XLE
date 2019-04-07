@@ -184,6 +184,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
 		const DescriptorSetSignature& GetSignature() const;
+		const LegacyRegisterBinding& GetLegacyRegisterBindings() const;
 
         NumericUniformsInterface(
             const ObjectFactory& factory,

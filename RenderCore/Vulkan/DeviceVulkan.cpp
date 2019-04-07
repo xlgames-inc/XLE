@@ -613,6 +613,7 @@ namespace RenderCore { namespace ImplVulkan
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 
             _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
+			_pools._longTermDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
@@ -1206,6 +1207,7 @@ namespace RenderCore { namespace ImplVulkan
 		// Maybe we should reset our finished command buffers here?
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
+		_globalPools->_longTermDescriptorPool.FlushDestroys();
 		_renderingCommandPool.FlushDestroys();
 		_tempBufferSpace->FlushDestroys();
 

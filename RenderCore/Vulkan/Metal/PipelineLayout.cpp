@@ -68,6 +68,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		return nullptr;
 	}
 
+	static std::string s_dummyDescriptorSetName = "<DummyDescriptorSet>";
+
 	void BoundSignatureFile::RegisterSignatureFile(uint64_t hashName, const PipelineLayoutSignatureFile& signatureFile)
 	{
         // Each descriptor set layout is initialized from the root signature
@@ -87,7 +89,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			{
 				DescriptorSetBuilder builder(*_pimpl->_globalPools);
 				builder.BindDummyDescriptors(*s, (1ull<<uint64_t(s->_bindings.size()))-1ull);
-				ds._blankBindings = _pimpl->_globalPools->_mainDescriptorPool.Allocate(ds._layout.get());
+				ds._blankBindings = _pimpl->_globalPools->_longTermDescriptorPool.Allocate(ds._layout.get());
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds._blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
 				builder.FlushChanges(
 					_pimpl->_factory->GetDevice().get(),
 					ds._blankBindings.get(),

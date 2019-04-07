@@ -154,13 +154,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		static const unsigned s_mainSignature = 1;
 
-		// const std::shared_ptr<BoundSignatureFile>& GetBoundPipelineLayout(ObjectFactory& objectFactory, const PipelineLayoutSignatureFile&, VkShaderStageFlags stageFlags);
+		std::shared_ptr<PipelineLayoutShaderConfig> _mainGraphicsConfig;
+		std::shared_ptr<PipelineLayoutShaderConfig> _mainComputeConfig;
 
 		VulkanGlobalsTemp();
 		~VulkanGlobalsTemp();
-
-	private:
-		// std::unordered_map<const PipelineLayoutSignatureFile*, std::shared_ptr<BoundSignatureFile>> _boundFiles;
 	};
 
 }}

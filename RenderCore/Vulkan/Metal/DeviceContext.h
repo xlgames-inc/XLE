@@ -8,12 +8,12 @@
 
 #include "Forward.h"
 #include "State.h"
-#include "FrameBuffer.h"        // for AttachmentPool
 #include "InputLayout.h"		// for NumericUniformsInterface
 #include "PipelineLayout.h"		// for PipelineLayoutBuilder
-#include "DescriptorSet.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
+#include "../../ResourceDesc.h"
+#include "../../FrameBufferDesc.h"
 #include "../../IDevice_Forward.h"
 #include "../../Types_Forward.h"
 #include "../../IThreadContext_Forward.h"
@@ -321,9 +321,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
-		void LogGraphicsPipeline();
-		void LogComputePipeline();
-
+		void LogPipeline(PipelineType pipeline);
 		void RebindNumericDescriptorSet(PipelineType pipelineType);
 		void SetupPipelineBuilders();
     };
