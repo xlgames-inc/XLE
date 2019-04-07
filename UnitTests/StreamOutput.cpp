@@ -9,12 +9,15 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/MinimalShaderSource.h"
 #include "../RenderCore/ShaderService.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
@@ -45,6 +48,31 @@ namespace UnitTests
 	{
 		return (OutputType*)input.QueryInterface(typeid(OutputType).hash_code());
 	}
+
+	static const char vsText[] = R"(
+		float4 main(float4 input : INPUT) : SV_Position { return input; }
+	)";
+	static const char gsText[] = R"(
+		struct GSOutput
+		{
+			float4 gsOut : POINT0;
+		};
+		struct VSOutput
+		{
+			float4 vsOut : SV_Position;
+		};
+
+		[maxvertexcount(1)]
+			void main(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
+		{
+			GSOutput result;
+			result.gsOut.x = max(max(input[0].vsOut.x, input[1].vsOut.x), input[2].vsOut.x);
+			result.gsOut.y = max(max(input[0].vsOut.y, input[1].vsOut.y), input[2].vsOut.y);
+			result.gsOut.z = max(max(input[0].vsOut.z, input[1].vsOut.z), input[2].vsOut.z);
+			result.gsOut.w = max(max(input[0].vsOut.w, input[1].vsOut.w), input[2].vsOut.w);
+			outputStream.Append(result);
+		}
+	)";
 
     TEST_CLASS(StreamOutput)
 	{
@@ -97,6 +125,20 @@ namespace UnitTests
 			};
 		}
 
+		static std::string BuildSODefinesString(IteratorRange<const RenderCore::InputElementDesc*> desc)
+		{
+			std::stringstream str;
+			str << "SO_OFFSETS=";
+			unsigned rollingOffset = 0;
+			for (const auto&e:desc) {
+				assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
+				if (rollingOffset!=0) str << ",";
+				str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
+				rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
+			}
+			return str.str();
+		}
+
 		TEST_METHOD(SimpleStreamOutput)
 		{
 			using namespace RenderCore;
@@ -107,81 +149,68 @@ namespace UnitTests
 				CreateDesc(
 					BindFlag::StreamOutput | BindFlag::TransferSrc, 0, GPUAccess::Read | GPUAccess::Write,
 					LinearBufferDesc::Create(1024, 1024),
-					"ModelIntersectionBuffer"));
+					"soBuffer"));
 
 			auto cpuAccessBuffer = _device->CreateResource(
 				CreateDesc(
 					BindFlag::TransferDst, CPUAccess::Read, 0,
 					LinearBufferDesc::Create(1024, 1024),
-					"ModelIntersectionCopyBuffer"));
+					"cpuAccessBuffer"));
 
-			static const char vsText[] = R"(
-				float4 main(uint vIndex : SV_VertexID) : POSITION
-				{
-					float f = vIndex;
-					return float4(f / 0.1f, f / 0.7f, 0.0f, 1.0f);
-				}
-			)";
-			static const char gsText[] = R"(
-				struct GSOutput
-				{
-					float4 gsOut : POINT0;
-				};
-				struct VSOutput
-				{
-					float4 vsOut : POSITION;
-				};
-
-				[maxvertexcount(1)]
-					void main(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
-				{
-					GSOutput result;
-					result.gsOut.x = max(max(input[0].vsOut.x, input[1].vsOut.x), input[2].vsOut.x);
-					result.gsOut.y = max(max(input[0].vsOut.y, input[1].vsOut.y), input[2].vsOut.y);
-					result.gsOut.z = max(max(input[0].vsOut.z, input[1].vsOut.z), input[2].vsOut.z);
-					result.gsOut.w = max(max(input[0].vsOut.w, input[1].vsOut.w), input[2].vsOut.w);
-					outputStream.Append(result);
-				}
-			)";
-
-			const InputElementDesc soEles[] = {
-				InputElementDesc("POINT",               0, Format::R32G32B32A32_FLOAT)
-			};
+			const InputElementDesc soEles[] = { InputElementDesc("POINT", 0, Format::R32G32B32A32_FLOAT) };
 			const unsigned soStrides[] = { (unsigned)sizeof(Float4) };
-
-			std::stringstream str;
-			str << "SO_OFFSETS=";
-			unsigned rollingOffset = 0;
-			for (const auto&e:soEles) {
-				assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
-				if (rollingOffset!=0) str << ",";
-				str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
-				rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
-			}
-
+			
 			auto vs = MakeShader(vsText, "vs_5_0");
-			auto gs = MakeShader(gsText, "gs_5_0", str.str());
+			auto gs = MakeShader(gsText, "gs_5_0", BuildSODefinesString(MakeIteratorRange(soEles)));
 			Metal::ShaderProgram shaderProgram(
 				Metal::GetObjectFactory(), 
 				vs, gs, {},
 				StreamOutputInitializers { MakeIteratorRange(soEles), MakeIteratorRange(soStrides) });
 
+			Float4 inputVertices[] = {
+				Float4{ 1.0f, 2.0f, 3.0f, 4.0f },
+				Float4{ 5.0f, 6.0f, 7.0f, 8.0f },
+				Float4{ 11.0f, 12.0f, 13.0f, 14.0f },
+
+				Float4{ 15.0f, 16.0f, 17.0f, 18.0f },
+				Float4{ 21.0f, 22.0f, 23.0f, 24.0f },
+				Float4{ 25.0f, 26.0f, 27.0f, 28.0f },
+
+				Float4{ 31.0f, 32.0f, 33.0f, 34.0f },
+				Float4{ 35.0f, 36.0f, 37.0f, 38.0f },
+				Float4{ 41.0f, 42.0f, 43.0f, 44.0f }
+			};
+
+			auto vertexBuffer = _device->CreateResource(
+				CreateDesc(
+					BindFlag::VertexBuffer, 0, GPUAccess::Read,
+					LinearBufferDesc::Create(1024, 1024),
+					"vertexBuffer"),
+				[inputVertices](SubResourceId) -> SubResourceInitData { return MakeIteratorRange(inputVertices); });
+			InputElementDesc inputEle[] = { InputElementDesc{"INPUT", 0, Format::R32G32B32A32_FLOAT} };
+			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEle), shaderProgram);
+
 			#if GFXAPI_TARGET == GFXAPI_VULKAN
 				metalContext.BeginCommandList();
 			#endif
 
+			VertexBufferView vbv { vertexBuffer.get() };
+			inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+
 			SceneEngine::MetalStubs::BindSO(metalContext, *soBuffer);
 
 			Techniques::AttachmentPool dummyAttachmentPool;
+			dummyAttachmentPool.Bind(FrameBufferProperties{256, 256});
 			Techniques::FrameBufferPool frameBufferPool;
 			Techniques::RenderPassInstance rpi {
 				*threadContext,
 				FrameBufferDesc::s_empty,
 				frameBufferPool, dummyAttachmentPool };
 
+			metalContext.Bind(Metal::ViewportDesc{ 0.f, 0.f, 256.f, 256.f });
 			metalContext.Bind(shaderProgram);
 			metalContext.Bind(Topology::TriangleList);
-			metalContext.Draw(33);
+			metalContext.Draw(dimof(inputVertices));
 
 			rpi = {};
 
@@ -201,12 +230,14 @@ namespace UnitTests
 				Metal::Copy(metalContext, *QueryInterfaceCast<RenderCore::Metal::Resource>(*cpuAccessBuffer), *QueryInterfaceCast<RenderCore::Metal::Resource>(*soBuffer));
 			#endif
 
-			Metal::ResourceMap map { *_device, *QueryInterfaceCast<RenderCore::Metal::Resource>(*cpuAccessBuffer), {} };
-			float* data = (float*)map.GetData();
-			size_t dataSize = map.GetDataSize();
+			Metal::ResourceMap map { metalContext, *QueryInterfaceCast<RenderCore::Metal::Resource>(*cpuAccessBuffer), Metal::ResourceMap::Mode::Read };
+			auto* readbackData = (Float4*)map.GetData().begin();
+			size_t readbackDataSize = map.GetData().size();
 
-			(void)data;
-			(void)dataSize;
+			Assert::IsTrue(Equivalent(readbackData[0], Float4{11.f, 12.f, 13.f, 14.f}, 1e-6f));
+			Assert::IsTrue(Equivalent(readbackData[1], Float4{25.f, 26.f, 27.f, 28.f}, 1e-6f));
+			Assert::IsTrue(Equivalent(readbackData[2], Float4{41.f, 42.f, 43.f, 44.f}, 1e-6f));
+			Assert::IsTrue(1024 == readbackDataSize);
 		}
 
 	};
