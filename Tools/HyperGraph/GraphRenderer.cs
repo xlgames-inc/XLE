@@ -190,7 +190,7 @@ namespace HyperGraph
                 using (var path = MakePathForConnector(bounds, state, type, out statusRect, out clientRect))
                 {
                     graphics.FillPath(((state & RenderState.Hover)!=0) ? GraphConstants.HoverBrush : GraphConstants.NormalBrush, path);
-                    graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
+                    graphics.DrawPath(GraphConstants.ConnectorBorderPen, path);
                     graphics.FillEllipse(brush, statusRect);
 
                     if (connector!=null)
@@ -744,7 +744,6 @@ namespace HyperGraph
                             using (var brush = new SolidBrush(GetArrowLineColor(connection.state | RenderState.Connected)))
                             {
                                 graphics.FillPath(brush, path);
-                                graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
                             }
                             connection.bounds = path.GetBounds();
                         }
@@ -823,36 +822,41 @@ namespace HyperGraph
 		static Color GetArrowLineColor(RenderState state)
 		{
             if ((state & (RenderState.Hover | RenderState.Dragging)) != 0)
-			{
-				if ((state & RenderState.Incompatible) != 0)
-				{
-					return Color.Red;
-				} else
+            {
+                if ((state & RenderState.Incompatible) != 0)
+                {
+                    return Color.Red;
+                }
+                else
                 if ((state & RenderState.Conversion) != 0)
                 {
                     return Color.LemonChiffon;
-                } else 
+                }
+                else
                 if ((state & RenderState.Compatible) != 0)
-				{
-					return Color.LemonChiffon;
-				} else
+                {
                     return Color.LemonChiffon;
-			} else
-			if ((state & RenderState.Incompatible) != 0)
-			{
-				return Color.Gray;
-			} else
-			if ((state & RenderState.Compatible) != 0)
-			{
+                }
+                else
+                    return Color.LemonChiffon;
+            }
+            else
+            if ((state & RenderState.Incompatible) != 0)
+            {
+                return Color.Gray;
+            }
+            else
+            if ((state & RenderState.Compatible) != 0)
+            {
                 return Color.ForestGreen;
-			} else
+            }
+            else
             if ((state & RenderState.Conversion) != 0)
             {
                 return Color.LightSkyBlue;
-            } else
-				// return Color.LightGray;
-                return Color.FromArgb(186, 243, 248);
-
+            }
+            else
+                return Color.FromArgb(252, 210, 105);
         }
 		
 		static PointF[] GetArrowPoints(float x, float y, float extra_thickness = 0)
@@ -1048,7 +1052,6 @@ namespace HyperGraph
 				using (var brush = new SolidBrush(GetArrowLineColor(state)))
 				{
 					graphics.FillPath(brush, path);
-                    graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
 				}
 			}
 		}
