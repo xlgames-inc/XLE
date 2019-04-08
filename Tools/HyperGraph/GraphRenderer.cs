@@ -856,7 +856,7 @@ namespace HyperGraph
                 return Color.LightSkyBlue;
             }
             else
-                return Color.FromArgb(252, 210, 105);
+                return Color.FromArgb(86, 144, 145);
         }
 		
 		static PointF[] GetArrowPoints(float x, float y, float extra_thickness = 0)

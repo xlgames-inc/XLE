@@ -15,6 +15,12 @@ namespace AuthoringConcept.ImmediateGUI
         public float ThumbMinSize;
         public float ThumbRounding;
 
+        public static PackedColor ControlDark = 0xff1f1f1fu;
+        public static PackedColor ControlDarkText = 0xffdfdfdfu;
+        public static PackedColor ControlLight = 0xffdfdfdfu;
+        public static PackedColor ControlLightText = 0xff3f3f3fu;
+        public static PackedColor SliderFilled = 0xff9f9f9f;
+
         public static PackedColor GetColorU32(SystemColor colorName)
         {
             if (PackedColorTable == null)

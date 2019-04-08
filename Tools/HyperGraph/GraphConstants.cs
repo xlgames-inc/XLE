@@ -51,8 +51,8 @@ namespace HyperGraph
 
         public const float ConnectionWidth      = 1.5f;
 
-        internal static Pen BorderPen = new Pen(Color.FromArgb(136, 165, 241), 2.0f);
-        internal static Pen ConnectorBorderPen = new Pen(Color.FromArgb(136, 165, 241)) { Width = 0.5f };
+        internal static Pen BorderPen = new Pen(Color.FromArgb(255, 255, 255), 2.0f);
+        internal static Pen ConnectorBorderPen = new Pen(Color.FromArgb(192, 192, 192)) { Width = 0.5f };
         internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(32, 32, 32)) { Width = 0.5f };
 
         internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,

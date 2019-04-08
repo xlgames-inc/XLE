@@ -182,11 +182,11 @@ namespace AuthoringConcept.ImmediateGUI
             }
         }
 
-        public static void RenderText(ImbuedGraphics graphics, PointF pos, string text)
+        public static void RenderText(ImbuedGraphics graphics, PointF pos, string text, PackedColor color)
         {
             graphics.Underlying.DrawString(
                 text, SystemFonts.DefaultFont,
-                new SolidBrush(Color.FromArgb((int)GetColorU32(SystemColor.ImGuiCol_Text))),
+                new SolidBrush(Color.FromArgb((int)color)),
                 pos.X, pos.Y);
         }
 
@@ -241,7 +241,7 @@ namespace AuthoringConcept.ImmediateGUI
                     float pad = Math.Max(1.0f, (float)(int)(check_sz / 6.0f));
                     RenderCheckMark(graphics, PointF.Add(GetMin(check_bb), new SizeF(pad, pad)), GetColorU32(SystemColor.ImGuiCol_CheckMark), check_bb.Width - pad * 2.0f);
                 }
-                RenderText(graphics, PointF.Add(GetMin(content), new SizeF(check_sz + 2.0f, 0)), HideAfterHash(label));
+                RenderText(graphics, PointF.Add(GetMin(content), new SizeF(check_sz + 2.0f, 0)), HideAfterHash(label), GetColorU32(SystemColor.ImGuiCol_Text));
             };
             node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
@@ -292,7 +292,7 @@ namespace AuthoringConcept.ImmediateGUI
             });
             node.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderText(graphics, GetMin(content), label);
+                RenderText(graphics, GetMin(content), label, GetColorU32(SystemColor.ImGuiCol_Text));
             };
             _workingStack.Peek().AddChild(node);
             return new SimpleControl { Node = node };
@@ -308,7 +308,7 @@ namespace AuthoringConcept.ImmediateGUI
             });
             node.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderText(graphics, GetMin(content), label());
+                RenderText(graphics, GetMin(content), label(), GetColorU32(SystemColor.ImGuiCol_Text));
             };
             _workingStack.Peek().AddChild(node);
             return new SimpleControl { Node = node };
@@ -698,7 +698,7 @@ namespace AuthoringConcept.ImmediateGUI
                 outerFrame.AddChild(arrowBox);
             }
 
-            Label(label + ": " + getter()).Node.Margin = 2;
+            Label(label + ": " + getter().ToString("N2")).Node.Margin = 2;
 
             {
                 ImbuedNode arrowBox = new ImbuedNode(Config, GuidCombine(outerFrame.Guid, MakeGuid("increase")));
@@ -752,7 +752,7 @@ namespace AuthoringConcept.ImmediateGUI
                 PointF p_max = GetMax(frame);
 
                 p_max.X = p_min.X * (1.0f - fraction) + p_max.X * fraction;
-                graphics.AddRectFilled(p_min, p_max, GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
+                graphics.AddRectFilled(p_min, p_max, Style.SliderFilled, 1.5f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
             };
 
             node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
@@ -784,15 +784,15 @@ namespace AuthoringConcept.ImmediateGUI
 
             outerFrame.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
-                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), 2.0f * g_style.FrameRounding);
+                RenderFrameBorder(graphics, GetMin(frame), GetMax(frame), 1.5f * g_style.FrameRounding);
             };
 
             {
                 ImbuedNode labelBox = new ImbuedNode(Config, 0);
                 labelBox.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
-                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
-                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2, 2)), label + ": " + getter());
+                    graphics.AddRectFilled(GetMin(frame), GetMax(frame), Style.ControlDark, 1.5f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
+                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2, 2)), label + ": " + getter().ToString("N2"), Style.ControlDarkText);
                 };
                 labelBox.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
@@ -807,7 +807,10 @@ namespace AuthoringConcept.ImmediateGUI
                 });
                 outerFrame.AddChild(labelBox);
 
-                InnerBoundedFloat(min, max, getter, setter).Node.FlexGrow = 1;
+                var innerCtrl = InnerBoundedFloat(min, max, getter, setter);
+                innerCtrl.Node.FlexGrow = 1;
+                innerCtrl.Node.MarginTop = 2;
+                innerCtrl.Node.MarginBottom = 2;
             }
 
             _workingStack.Pop();
@@ -870,7 +873,7 @@ namespace AuthoringConcept.ImmediateGUI
                 labelBox.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
                     graphics.AddRectFilled(GetMin(frame), GetMax(frame), GetColorU32(SystemColor.ImGuiCol_Header), 2.0f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
-                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2,2)), label + ": " + getter());
+                    RenderText(graphics, PointF.Add(GetMin(content), new SizeF(2,2)), label + ": " + getter(), GetColorU32(SystemColor.ImGuiCol_Text));
                 };
                 labelBox.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
