@@ -1018,7 +1018,7 @@ namespace HyperGraph
             return connector.Node.InputConnectors.Contains(connector);
         }
 
-		public static void RenderConnection(Graphics graphics, NodeConnector connector, float x, float y, RenderState state)
+        public static void RenderDraggedConnection(Graphics graphics, NodeConnector connector, float x, float y, RenderState state)
 		{
 			if (graphics == null ||
                 connector == null)

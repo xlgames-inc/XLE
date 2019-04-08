@@ -668,7 +668,7 @@ namespace HyperGraph
 							case ElementType.Connector:
 								var connector = DragElement as NodeConnector;
                                 renderState |= (connector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
-                                GraphRenderer.RenderConnection(e.Graphics, connector, transformed_location.X, transformed_location.Y, renderState);
+                                GraphRenderer.RenderDraggedConnection(e.Graphics, connector, transformed_location.X, transformed_location.Y, renderState);
 								break;
 						}
 					}
