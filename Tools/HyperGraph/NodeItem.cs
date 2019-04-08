@@ -47,7 +47,7 @@ namespace HyperGraph
             return false; 
         }
 
-        public virtual bool OnDoubleClick(System.Windows.Forms.Control container)
+        public virtual bool OnDoubleClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
             return false; 
         }

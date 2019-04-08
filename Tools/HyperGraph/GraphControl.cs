@@ -57,7 +57,7 @@ namespace HyperGraph
             ctrl.MouseDown += OnMouseDown;
             ctrl.MouseMove += OnMouseMove;
             ctrl.MouseUp += OnMouseUp;
-            ctrl.DoubleClick += OnDoubleClick;
+            ctrl.MouseDoubleClick += OnMouseDoubleClick;
             ctrl.MouseClick += OnMouseClick;
             ctrl.KeyDown += OnKeyDown;
             ctrl.KeyUp += OnKeyUp;
@@ -75,7 +75,7 @@ namespace HyperGraph
             ctrl.MouseDown -= OnMouseDown;
             ctrl.MouseMove -= OnMouseMove;
             ctrl.MouseUp -= OnMouseUp;
-            ctrl.DoubleClick -= OnDoubleClick;
+            ctrl.MouseDoubleClick -= OnMouseDoubleClick;
             ctrl.MouseClick -= OnMouseClick;
             ctrl.KeyDown -= OnKeyDown;
             ctrl.KeyUp -= OnKeyUp;
@@ -1469,9 +1469,9 @@ namespace HyperGraph
 		}
 		#endregion
 
-		#region OnDoubleClick
+		#region OnMouseDoubleClick
 		bool ignoreDoubleClick = false;
-		private void OnDoubleClick(object sender, EventArgs e)
+		private void OnMouseDoubleClick(object sender, MouseEventArgs e)
 		{
 			if (mouseMoved || ignoreDoubleClick || 
 				Control.ModifierKeys != Keys.None)
@@ -1494,7 +1494,7 @@ namespace HyperGraph
 					break;
 				case ElementType.NodeItem:
 					var item = element as NodeItem;
-                    if (item.OnDoubleClick(ctrl))
+                    if (item.OnDoubleClick(ctrl, e, transformation))
 					{
                         ctrl.Invalidate();
 						return;

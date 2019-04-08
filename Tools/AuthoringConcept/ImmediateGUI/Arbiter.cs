@@ -16,7 +16,11 @@ namespace AuthoringConcept.ImmediateGUI
         public UInt64 CurrentMouseOver = 0;
         public bool LButtonDown = false;
         public bool LButtonTransition = false;
+        public bool LButtonDblClk = false;
         public PointF MousePosition;
+
+        public System.Windows.Forms.Control ParentControl;
+        public System.Drawing.Drawing2D.Matrix LocalToParentControl;
     };
 
     public class ImbuedNode : YogaNode
@@ -67,9 +71,6 @@ namespace AuthoringConcept.ImmediateGUI
 
     public class Arbiter
     {
-        public delegate T GetDelegate<T>();
-        public delegate void SetDelegate<T>(T newState);
-
         static Style g_style = new Style
         {
             FrameBorderSize = 1.0f,
@@ -215,7 +216,7 @@ namespace AuthoringConcept.ImmediateGUI
             public void Dispose() { }
         }
 
-        public SimpleControl Checkbox(string label, GetDelegate<bool> getter, SetDelegate<bool> setter)
+        public SimpleControl Checkbox(string label, Utils.GetDelegate<bool> getter, Utils.SetDelegate<bool> setter)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             node.Margin = 2;
@@ -256,7 +257,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = node };
         }
 
-        public SimpleControl ArrowCheckbox(GetDelegate<bool> getter, SetDelegate<bool> setter)
+        public SimpleControl ArrowCheckbox(Utils.GetDelegate<bool> getter, Utils.SetDelegate<bool> setter)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid("##arrow")));
             node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
@@ -298,7 +299,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = node };
         }
 
-        public SimpleControl Label(GetDelegate<string> label)
+        public SimpleControl Label(Utils.GetDelegate<string> label)
         {
             ImbuedNode node = new ImbuedNode(Config, 0);
             node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
@@ -377,7 +378,7 @@ namespace AuthoringConcept.ImmediateGUI
             _workingStack.Pop();
         }
 
-        public SimpleControl BaseComboControl(string label, GetDelegate<string> selectedContent)
+        public SimpleControl BaseComboControl(string label, Utils.GetDelegate<string> selectedContent)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             node.FlexDirection = YogaFlexDirection.Row;
@@ -431,7 +432,7 @@ namespace AuthoringConcept.ImmediateGUI
             public bool IsOpen;
         }
 
-        public OpenableControl BeginComboBox(string label, GetDelegate<string> selectedContent)
+        public OpenableControl BeginComboBox(string label, Utils.GetDelegate<string> selectedContent)
         {
             var baseNode = BaseComboControl(label, selectedContent);
 
@@ -454,7 +455,7 @@ namespace AuthoringConcept.ImmediateGUI
             _workingStack.Pop();
         }
 
-        public void MakeComboBoxItem(ImbuedNode node, int itemIndex, GetDelegate<int> getter, SetDelegate<int> setter)
+        public void MakeComboBoxItem(ImbuedNode node, int itemIndex, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter)
         {
             node.Padding = 4;
             var oldDraw = node.Draw;
@@ -484,7 +485,7 @@ namespace AuthoringConcept.ImmediateGUI
             };
         }
 
-        public OpenableControl ComboBox(string label, IEnumerable<string> selectableItems, GetDelegate<int> getter, SetDelegate<int> setter)
+        public OpenableControl ComboBox(string label, IEnumerable<string> selectableItems, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter)
         {
             var res = BeginComboBox(label, () => { return selectableItems.ElementAt(getter()); });
             if (res.IsOpen)
@@ -558,8 +559,8 @@ namespace AuthoringConcept.ImmediateGUI
             public virtual bool IsDecimal() { return false; }
             public virtual float Range() { return Max - Min; }
 
-            public GetDelegate<int> Getter { get; set; }
-            public SetDelegate<int> Setter { get; set; }
+            public Utils.GetDelegate<int> Getter { get; set; }
+            public Utils.SetDelegate<int> Setter { get; set; }
             public int Min { get; set; }
             public int Max { get; set; }
         }
@@ -623,7 +624,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = slider };
         }
 
-        public SimpleControl ScalarSlider(string label, GetDelegate<int> getter, SetDelegate<int> setter, int minValue, int maxValue)
+        public SimpleControl ScalarSlider(string label, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter, int minValue, int maxValue)
         {
             ImbuedNode outerNode = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             outerNode.FlexDirection = YogaFlexDirection.Row;
@@ -648,7 +649,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = outerNode };
         }
 
-        public SimpleControl Float(string label, GetDelegate<float> getter, SetDelegate<float> setter)
+        public SimpleControl Float(string label, Utils.GetDelegate<float> getter, Utils.SetDelegate<float> setter)
         {
             ImbuedNode outerFrame = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             outerFrame.FlexDirection = YogaFlexDirection.Row;
@@ -737,7 +738,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = outerFrame };
         }
 
-        public SimpleControl InnerBoundedFloat(float min, float max, GetDelegate<float> getter, SetDelegate<float> setter)
+        public SimpleControl InnerBoundedFloat(float min, float max, Utils.GetDelegate<float> getter, Utils.SetDelegate<float> setter)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid("boundedvalue")));
             node.Margin = 0;
@@ -752,7 +753,7 @@ namespace AuthoringConcept.ImmediateGUI
                 PointF p_max = GetMax(frame);
 
                 p_max.X = p_min.X * (1.0f - fraction) + p_max.X * fraction;
-                graphics.AddRectFilled(p_min, p_max, Style.SliderFilled, 1.5f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Right);
+                graphics.AddRectFilled(p_min, p_max, Style.SliderFilled);
             };
 
             node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
@@ -773,7 +774,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = node };
         }
 
-        public SimpleControl BoundedFloat(string label, float min, float max, GetDelegate<float> getter, SetDelegate<float> setter)
+        public SimpleControl BoundedFloat(string label, float min, float max, Utils.GetDelegate<float> getter, Utils.SetDelegate<float> setter)
         {
             ImbuedNode outerFrame = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             outerFrame.FlexDirection = YogaFlexDirection.Row;
@@ -788,7 +789,7 @@ namespace AuthoringConcept.ImmediateGUI
             };
 
             {
-                ImbuedNode labelBox = new ImbuedNode(Config, 0);
+                ImbuedNode labelBox = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid("label")));
                 labelBox.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
                     graphics.AddRectFilled(GetMin(frame), GetMax(frame), Style.ControlDark, 1.5f * g_style.FrameRounding, (int)ImbuedGraphics.DrawCornerFlags.Left);
@@ -796,9 +797,19 @@ namespace AuthoringConcept.ImmediateGUI
                 };
                 labelBox.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
                 {
-                    ButtonBehaviour(io, controlId, out bool held, out bool hovered);
-                    if (held)
-                        System.Diagnostics.Debug.Print("Increase");
+                    if (io.CurrentMouseOver == controlId && io.LButtonDblClk)
+                    {
+                        PointF[] transformables = { frame.Location, new PointF(frame.Right, frame.Bottom) };
+                        io.LocalToParentControl.TransformPoints(transformables);
+
+                        var bounds = new Rectangle(
+                            (int)transformables[0].X, (int)transformables[0].Y,
+                            (int)transformables[1].X - (int)transformables[0].X, (int)transformables[1].Y - (int)transformables[0].Y);
+
+                        Utils.HoveringFloatEditBox(
+                            setter, getter,
+                            bounds, io.ParentControl);
+                    }
                 };
                 labelBox.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
                 {
@@ -818,7 +829,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = outerFrame };
         }
 
-        public SimpleControl InnerBoundedInt(int min, int max, GetDelegate<int> getter, SetDelegate<int> setter)
+        public SimpleControl InnerBoundedInt(int min, int max, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter)
         {
             ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid("boundedvalue")));
             node.Margin = 0;
@@ -854,7 +865,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = node };
         }
 
-        public SimpleControl BoundedInt(string label, int min, int max, GetDelegate<int> getter, SetDelegate<int> setter)
+        public SimpleControl BoundedInt(string label, int min, int max, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter)
         {
             ImbuedNode outerFrame = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
             outerFrame.FlexDirection = YogaFlexDirection.Row;
@@ -896,7 +907,7 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = outerFrame };
         }
 
-        public SimpleControl BoundedIntLog(string label, int min, int max, GetDelegate<int> getter, SetDelegate<int> setter)
+        public SimpleControl BoundedIntLog(string label, int min, int max, Utils.GetDelegate<int> getter, Utils.SetDelegate<int> setter)
         {
             return BoundedInt(label, min, max, getter, setter);
         }

@@ -273,5 +273,56 @@ namespace AuthoringConcept.ImmediateGUI
                 }
             }
         }
+
+        public void OnMouseDoubleClick(MouseEventArgs e, Control parentControl, System.Drawing.Drawing2D.Matrix frameToControl)
+        {
+            UpdateMouseOver(e.Location);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                bool redoLayout = false;
+                foreach (var node in BreadthFirstNodes)
+                {
+                    if (node.Guid != CurrentMouseOver)
+                        continue;
+
+                    if (node.IO != null)
+                    {
+                        var io = new IO
+                        {
+                            CurrentMouseOver = CurrentMouseOver,
+                            LButtonDown = false,
+                            LButtonTransition = false,
+                            LButtonDblClk = true,
+                            MousePosition = e.Location,
+                            ParentControl = parentControl,
+                            LocalToParentControl = frameToControl
+                        };
+                        var topLeft = Utils.GetAbsoluteTopLeft(node);
+                        var frameRect = new RectangleF(topLeft.X, topLeft.Y, node.LayoutWidth, node.LayoutHeight);
+                        var contentRect = new RectangleF(
+                            frameRect.Left + node.LayoutPaddingLeft,
+                            frameRect.Top + node.LayoutPaddingTop,
+                            frameRect.Right - node.LayoutPaddingRight - (frameRect.Left + node.LayoutPaddingLeft),
+                            frameRect.Bottom - node.LayoutPaddingBottom - (frameRect.Top + node.LayoutPaddingTop));
+                        node.IO(frameRect, contentRect, node.Guid, io);
+                        redoLayout = true;
+                    }
+
+                    break;  // break once we find the "CurrentMouseOver" node
+                }
+
+                if (redoLayout)
+                {
+                    LayedOutRoots = null;
+                    Invalidate();
+                }
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                LayedOutRoots = null;
+                Invalidate();
+            }
+        }
     }
 }

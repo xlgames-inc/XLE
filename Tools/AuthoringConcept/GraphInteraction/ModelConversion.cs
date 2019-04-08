@@ -46,12 +46,28 @@ namespace AuthoringConcept
             // emulate both mouse down & up events
             _guiFrame.OnMouseDown(localEvnt);
             _guiFrame.OnMouseUp(localEvnt);
-            return true;
+            return false;   // note -- we must return false here in order for the GraphControl to generate a double click (if that's about to happen)
         }
 
-        public override bool OnDoubleClick(Control container)
+        public override bool OnDoubleClick(Control container, MouseEventArgs evnt, Matrix viewTransform)
         {
-            return false;
+            Point[] transformables = { new Point(evnt.X, evnt.Y) };
+            var frameToControl = viewTransform.Clone();
+            frameToControl.Translate(GetBounds().X, GetBounds().Y, MatrixOrder.Prepend);
+
+            var controlToFrame = frameToControl.Clone();
+            controlToFrame.Invert();
+            controlToFrame.TransformPoints(transformables);
+
+            var localEvnt = new MouseEventArgs(
+                evnt.Button,
+                evnt.Clicks,
+                transformables[0].X,
+                transformables[0].Y,
+                evnt.Delta);
+
+            _guiFrame.OnMouseDoubleClick(localEvnt, container, frameToControl);
+            return true;
         }
 
         public override bool OnStartDrag(PointF location, out PointF original_location) { original_location = Point.Empty; return false; }
