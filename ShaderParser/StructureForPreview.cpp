@@ -18,6 +18,7 @@
 #include "../Utility/Conversion.h"
 #include <regex>
 #include <tuple>
+#include <set>
 
 #include "plustache/template.hpp"
 
@@ -548,12 +549,17 @@ namespace ShaderSourceParser
             //      constants together in a single cbuffer called "BasicMaterialConstants"
             //
         bool hasMaterialConstants = false;
+		std::set<std::string> texturesAlreadyStored;
+		// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
+		texturesAlreadyStored.insert("DiffuseTexture");
+		texturesAlreadyStored.insert("NormalsTexture");
         for(const auto& i: captures) {
             if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
 				auto cname = MakeGlobalName(i._name);
-				// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
-				if (!XlEqString(cname, "DiffuseTexture") && !XlEqString(cname, "NormalsTexture"))
+				if (texturesAlreadyStored.find(cname) == texturesAlreadyStored.end()) {
+					texturesAlreadyStored.insert(cname);
 					result << i._type << " " << cname << ";" << std::endl;
+				}
             } else
                 hasMaterialConstants = true;
         }
@@ -599,7 +605,7 @@ namespace ShaderSourceParser
 			auto globalName = MakeGlobalName(c._name);
 			elements.push_back(RenderCore::Techniques::PredefinedCBLayout::NameAndType{ globalName, fmt });
 
-			if (c._default.empty())
+			if (!c._default.empty())
 				result->_defaults.SetParameter(
 					MakeStringSection(globalName).Cast<utf8>(),
 					MakeStringSection(c._default));

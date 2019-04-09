@@ -44,6 +44,7 @@ namespace Assets
 
 		void SetAsset(AssetPtr<AssetType>&&, const Blob& log);
 		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);
+		void SetAssetForeground(AssetPtr<AssetType>&& newAsset, const Blob& log);
 		void SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&&);
 		
 	private:
@@ -239,6 +240,26 @@ namespace Assets
 			_pendingState = AssetState::Ready;
 			_pendingActualizationLog = log;
 			_pendingDepVal = _pending ? _pending->GetDependencyValidation() : nullptr;
+
+			// If we are already in invalid / ready state, we will never move the pending
+			// asset into the foreground. We also cannot change from those states to pending, 
+			// because of some other assumptions.
+			assert(_state == ::Assets::AssetState::Pending);
+		}
+		_conditional.notify_all();
+	}
+
+	template<typename AssetType>
+		void AssetFuture<AssetType>::SetAssetForeground(AssetPtr<AssetType>&& newAsset, const Blob& log)
+	{
+		// this is intended for "shadowing" assets only; it sets the asset directly into the foreground
+		// asset and goes immediately into ready state
+		{
+			ScopedLock(_lock);
+			_actualized = std::move(newAsset);
+			_actualizationLog = log;
+			_actualizedDepVal = _actualized ? _actualized->GetDependencyValidation() : nullptr;
+			_state = _actualized ? AssetState::Ready : AssetState::Invalid;
 		}
 		_conditional.notify_all();
 	}

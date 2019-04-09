@@ -13,6 +13,8 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 
+#include "../../SceneEngine/SceneParser.h"
+
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
@@ -183,6 +185,16 @@ namespace GUILayer
 				return GenerateErrorBitmap(errorLog.value().c_str(), size);
 			} else {
 				return nullptr;		// pending
+			}
+		}
+
+		if (geometry == MaterialVisSettings::GeometryType::Model) {
+			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(actualScene.get());
+			if (visContent) {
+				camSettings = 
+					ToolsRig::AlignCameraToBoundingBox(
+						camSettings._verticalFieldOfView,
+						visContent->GetBoundingBox());
 			}
 		}
 

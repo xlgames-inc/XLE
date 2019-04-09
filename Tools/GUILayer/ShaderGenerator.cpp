@@ -185,6 +185,11 @@ namespace GUILayer
 					str << ";";
 				}
 				if (_pretransformedFlag) str << "GEO_PRETRANSFORMED=1;";
+
+				// Many node graphs need the world position as input. Ideally we would be able to detect
+				// this directly from the graph structure -- but until then, we'll just have to force it on
+				str << "OUTPUT_WORLD_POSITION=1;";
+
 				definesTable = str.str();
 			}
 			{
