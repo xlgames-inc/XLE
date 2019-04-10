@@ -5,6 +5,7 @@
 #include "NodeGraph.h"
 #include "AssetsLayer.h"
 #include "MarshalString.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include <msclr/auto_gcroot.h>
 #include <regex>
@@ -403,6 +404,7 @@ namespace GUILayer
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
 		std::optional<NodeGraph> FindGraph(StringSection<> name);
+		std::string TryFindAttachedFile(StringSection<> name);
 
         GraphNodeGraphProvider(
 			NodeGraphFile^ parsedGraphFile,
@@ -487,6 +489,23 @@ namespace GUILayer
 		return BasicNodeGraphProvider::FindGraph(name);
 	}
 
+	std::string GraphNodeGraphProvider::TryFindAttachedFile(StringSection<> name)
+	{
+		char resolvedName[MaxPath];
+		auto splitter = MakeFileNameSplitter(name);
+		auto rootName = splitter.DrivePathAndFilename();
+		auto importedName = _imports.find(rootName.AsString());
+		if (importedName != _imports.end()) {
+			resolvedName[0] = '\0';
+			XlCatString(resolvedName, importedName->second);
+			XlCatString(resolvedName, splitter.ExtensionWithPeriod());
+			_searchRules.ResolveFile(resolvedName, resolvedName);
+		} else {
+			_searchRules.ResolveFile(resolvedName, name);
+		}
+		return resolvedName;
+	}
+
 	GraphNodeGraphProvider::GraphNodeGraphProvider(
 		NodeGraphFile^ parsedGraphFile,
 		const std::unordered_map<std::string, std::string>& imports,
@@ -502,6 +521,38 @@ namespace GUILayer
 	std::shared_ptr<GraphLanguage::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
 	{
 		return MakeGraphSyntaxProvider(this, GetImportTable(this), GetSearchRules()->GetNative());
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	AttachedSchemaFile::AttachedSchemaFile(String^ schemaFileName, String^ schemaName)
+	{
+		SchemaFileName = schemaFileName;
+		SchemaName = schemaName;
+	}
+
+	AttachedSchemaFile::~AttachedSchemaFile() {}
+
+	IEnumerable<AttachedSchemaFile^>^ NodeGraphFile::FindAttachedSchemaFilesForNode(String^ nodeArchiveName)
+	{
+		auto nodeGraphProvider = MakeNodeGraphProvider();
+
+		std::vector<std::pair<std::string, std::string>> schemaFiles;
+		AddAttachedSchemaFiles(
+			schemaFiles, 
+			clix::marshalString<clix::E_UTF8>(nodeArchiveName), 
+			*nodeGraphProvider);
+
+		if (schemaFiles.empty())
+			return nullptr;
+
+		List<AttachedSchemaFile^>^ result = gcnew List<AttachedSchemaFile^>();
+		for (const auto&s:schemaFiles)
+			result->Add(gcnew AttachedSchemaFile(
+				clix::marshalString<clix::E_UTF8>(s.first),
+				clix::marshalString<clix::E_UTF8>(s.second)
+			));
+		return result;
 	}
 }
 

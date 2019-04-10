@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/MinimalShaderSource.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/IArtifact.h"
@@ -228,15 +229,20 @@ namespace GUILayer
 		NodeGraphMetaData^ doc, 
 		NodeGraphPreviewConfiguration^ nodeGraphFile)
 	{
-		auto previewShader = GUILayer::GeneratePreviewShader(
-			nodeGraphFile->_nodeGraph,
-			nodeGraphFile->_subGraphName,
-			nodeGraphFile->_previewNodeId,
-			nodeGraphFile->_settings,
-			nodeGraphFile->_variableRestrictions);
+		try {
+			auto previewShader = GUILayer::GeneratePreviewShader(
+				nodeGraphFile->_nodeGraph,
+				nodeGraphFile->_subGraphName,
+				nodeGraphFile->_previewNodeId,
+				nodeGraphFile->_settings,
+				nodeGraphFile->_variableRestrictions);
 
-		bool pretransformed = false;
-		return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(std::move(previewShader), pretransformed));
+			bool pretransformed = false;
+			return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(std::move(previewShader), pretransformed));
+		} catch (const std::exception& e) {
+			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
+			return nullptr;
+		}
 	}
 
 	GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
@@ -244,8 +250,13 @@ namespace GUILayer
 		String^ subGraphName,
 		MessageRelayWrapper^ logMessages)
 	{
-		auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
-		return gcnew TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
+		try {
+			auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
+			return gcnew TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
+		} catch (const std::exception& e) {
+			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
+			return nullptr;
+		}
 	}
 
 	static std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterialFromRestriction(
@@ -277,23 +288,28 @@ namespace GUILayer
 		NodeGraphPreviewConfiguration^ nodeGraphFile,
 		RawMaterial^ materialOverrides)
 	{
-		auto previewShader = GUILayer::GeneratePreviewShader(
-			nodeGraphFile->_nodeGraph,
-			nodeGraphFile->_subGraphName,
-			nodeGraphFile->_previewNodeId,
-			nodeGraphFile->_settings,
-			nodeGraphFile->_variableRestrictions);
+		try {
+			auto previewShader = GUILayer::GeneratePreviewShader(
+				nodeGraphFile->_nodeGraph,
+				nodeGraphFile->_subGraphName,
+				nodeGraphFile->_previewNodeId,
+				nodeGraphFile->_settings,
+				nodeGraphFile->_variableRestrictions);
 
-		for (const auto&cb : previewShader._constantBuffers) {
-			if (XlEqString(cb._name, "BasicMaterialConstants")) {
-				auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
-				materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
+			for (const auto&cb : previewShader._constantBuffers) {
+				if (XlEqString(cb._name, "BasicMaterialConstants")) {
+					auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
+					materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
 
-				auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
-				return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+					auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
+					return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+				}
 			}
+			return nullptr;
+		} catch (const std::exception& e) {
+			Log(Warning) << "Got exception while building material delegate for preview. Exception message follows: " << e.what() << std::endl;
+			return nullptr;
 		}
-		return nullptr;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

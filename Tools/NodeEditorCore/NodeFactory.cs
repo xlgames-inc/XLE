@@ -40,7 +40,7 @@ namespace NodeEditorCore
 
     public interface INodeAmender
     {
-        void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets);
+        void AmendNode(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets);
     }
 
     public interface INodeFactory
@@ -402,7 +402,7 @@ namespace NodeEditorCore
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PreviewsNodeAmender : INodeAmender, IDisposable
     {
-        public void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
+        public void AmendNode(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {
             if (type != ProcedureNodeType.Normal || dataPackets == null)
                 return;
@@ -697,12 +697,12 @@ namespace NodeEditorCore
             node.Tag = new ShaderProcedureNodeTag(archiveName) { Type = type };
             node.Layout = Node.LayoutType.Rectangular;
 
-            SetProcedureNodeType_Internal(node, type, dataPackets);
+            SetProcedureNodeType_Internal(diagramContext, node, type, dataPackets);
             UpdateProcedureNode(diagramContext, node);
             return node;
         }
 
-        private void SetProcedureNodeType_Internal(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
+        private void SetProcedureNodeType_Internal(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {
             ShaderProcedureNodeTag tag = node.Tag as ShaderProcedureNodeTag;
             if (tag == null) return;
@@ -715,14 +715,14 @@ namespace NodeEditorCore
                 node.RemoveItem(item);
 
             foreach (var amender in Amenders)
-                amender.AmendNode(node, type, dataPackets);
+                amender.AmendNode(diagramContext, node, type, dataPackets);
 
             tag.Type = type;
         }
 
         public void SetProcedureNodeType(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type)
         {
-            SetProcedureNodeType_Internal(node, type, null);
+            SetProcedureNodeType_Internal(diagramContext, node, type, null);
             UpdateProcedureNode(diagramContext, node);
         }
 

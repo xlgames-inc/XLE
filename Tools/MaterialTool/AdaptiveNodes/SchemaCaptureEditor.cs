@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.Composition;
 using System.Collections.Generic;
+using System.Linq;
 using NodeEditorCore;
 using HyperGraph;
 using AuthoringConcept.AdaptiveEditing;
@@ -11,30 +12,32 @@ namespace MaterialTool.AdaptiveNodes
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PreviewsNodeAmender : INodeAmender
     {
-        public void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
+        public void AmendNode(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {
             var tag = node.Tag as NodeEditorCore.ShaderProcedureNodeTag;
             if (tag == null) return;
 
             tag.MaterialProperties = null;
+            if (diagramContext == null) return;
 
-            var archiveName = tag.ArchiveName.Split(':');
-            if (archiveName.Length < 2) return;
+            var attachedSchemaFiles = diagramContext.FindAttachedSchemaFilesForNode(tag.ArchiveName);
+            if (attachedSchemaFiles ==  null || !attachedSchemaFiles.Any()) return;
 
-            var ext = archiveName[0].IndexOf('.');
-            if (ext != -1) archiveName[0] = archiveName[0].Substring(0, ext);
-            var script = SchemaSource.GetScript(archiveName[0] + ".py");
-            if (script.Script == null) return;
+            foreach (var script in attachedSchemaFiles)
+            {
+                var schemaSourceScript = SchemaSource.GetScript(script.SchemaFileName);
+                if (schemaSourceScript.Script == null) continue;
 
-            if (!script.Script.DataBlockDeclarations.TryGetValue(archiveName[1], out IDataBlockDeclaration dataBlockDecl))
-                return;
+                if (!schemaSourceScript.Script.DataBlockDeclarations.TryGetValue(script.SchemaName, out IDataBlockDeclaration dataBlockDecl))
+                    continue;
 
-            var storage = dataBlockDecl.CreateStorage(null, null);
+                var storage = dataBlockDecl.CreateStorage(null, null);
 
-            var frame = new AuthoringConcept.AdaptiveEditing.EditorFrame { Declaration = dataBlockDecl, Storage = storage };
-            node.AddItem(new AuthoringConcept.EditorFrameItem(frame), HyperGraph.Node.Dock.Center);
+                var frame = new AuthoringConcept.AdaptiveEditing.EditorFrame { Declaration = dataBlockDecl, Storage = storage };
+                node.AddItem(new AuthoringConcept.EditorFrameItem(frame), HyperGraph.Node.Dock.Center);
 
-            tag.MaterialProperties = () => (storage as RawMaterialStorage).Material;
+                tag.MaterialProperties = () => (storage as RawMaterialStorage).Material;
+            }
         }
 
         [Import]

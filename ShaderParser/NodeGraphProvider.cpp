@@ -5,6 +5,7 @@
 #include "NodeGraphProvider.h"
 #include "GraphSyntax.h"
 #include "ShaderSignatureParser.h"
+#include "../Assets/RawFileAsset.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
@@ -130,6 +131,15 @@ namespace GraphLanguage
 		return LoadGraphSyntaxFile(std::get<0>(splitName), std::get<1>(splitName));
 	}
 
+	std::string BasicNodeGraphProvider::TryFindAttachedFile(StringSection<> name)
+	{
+		char resolvedName[MaxPath];
+		_searchRules.ResolveFile(resolvedName, name);
+		if (resolvedName[0])
+			return resolvedName;
+		return {};
+	}
+
     BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)
     : _searchRules(searchRules) {}
         
@@ -138,6 +148,51 @@ namespace GraphLanguage
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	INodeGraphProvider::~INodeGraphProvider() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void AddAttachedSchemaFiles(
+		std::vector<std::pair<std::string, std::string>>& result,
+		const std::string& graphArchiveName,
+		GraphLanguage::INodeGraphProvider& nodeGraphProvider)
+	{
+		auto scopingOperator = graphArchiveName.begin();
+		while (scopingOperator < graphArchiveName.end() && *scopingOperator != ':')
+			++scopingOperator;
+
+		auto attachedFileName = MakeStringSection(graphArchiveName.begin(), scopingOperator).AsString() + ".py";
+		attachedFileName = nodeGraphProvider.TryFindAttachedFile(attachedFileName);
+		if (	!attachedFileName.empty()
+			&&	::Assets::MainFileSystem::TryGetDesc(attachedFileName)._state == ::Assets::FileDesc::State::Normal) {
+
+			while (scopingOperator < graphArchiveName.end() && *scopingOperator == ':')
+				++scopingOperator;
+			auto schemaName = MakeStringSection(scopingOperator, graphArchiveName.end());
+
+			bool foundExisting = false;
+			for (const auto&r:result) {
+				if (XlEqString(MakeStringSection(attachedFileName), r.first) && XlEqString(schemaName, r.second)) {
+					foundExisting = true;
+					break;
+				}
+			}
+
+			if (!foundExisting)
+				result.push_back(std::make_pair(attachedFileName, schemaName.AsString()));
+		}
+
+		// If this node is actually a node graph itself, we must recurse into it and look for more attached schema files inside
+		auto sig = nodeGraphProvider.FindSignature(graphArchiveName);
+		if (sig.has_value() && sig.value()._isGraphSyntax) {
+			auto oSubGraph = nodeGraphProvider.FindGraph(graphArchiveName);
+			if (oSubGraph.has_value()) {
+				const auto& subGraph = oSubGraph.value();
+				for (const auto&n:subGraph._graph.GetNodes()) {
+					AddAttachedSchemaFiles(result, n.ArchiveName(), *subGraph._subProvider);
+				}
+			}
+		}
+	}
 
 }
 
