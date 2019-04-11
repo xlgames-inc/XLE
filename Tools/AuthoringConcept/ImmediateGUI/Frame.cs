@@ -10,15 +10,15 @@ namespace AuthoringConcept.ImmediateGUI
 {
     public abstract class Frame
     {
-        public void Draw(Graphics graphics, RectangleF destination)
+        public void Draw(Graphics graphics, RectangleF destination, object context)
         {
-            PrepareLayout(graphics, destination.Size);
+            PrepareLayout(graphics, destination.Size, context);
             DrawYogaHierarchy(new ImbuedGraphics { Underlying = graphics }, destination.Location);
         }
 
-        public SizeF Measure(Graphics graphics, SizeF defaultSize)
+        public SizeF Measure(Graphics graphics, SizeF defaultSize, object context)
         {
-            PrepareLayout(graphics, defaultSize);
+            PrepareLayout(graphics, defaultSize, context);
             if (!LayedOutRoots.Any())
                 return SizeF.Empty;
             return new SizeF(
@@ -26,9 +26,9 @@ namespace AuthoringConcept.ImmediateGUI
                 LayedOutRoots.ElementAt(0).LayoutHeight);
         }
 
-        protected abstract void PerformLayout(Arbiter gui);
+        protected abstract void PerformLayout(Arbiter gui, object context);
 
-        private void PrepareLayout(Graphics graphics, SizeF destinationSize)
+        private void PrepareLayout(Graphics graphics, SizeF destinationSize, object context)
         {
             if (LayedOutRoots == null)
             {
@@ -39,7 +39,7 @@ namespace AuthoringConcept.ImmediateGUI
                 mainRoot.MinWidth = destinationSize.Width;
                 mainRoot.MinHeight = destinationSize.Height;
 
-                PerformLayout(gui);
+                PerformLayout(gui, context);
 
                 gui.EndRoot();
 

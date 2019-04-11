@@ -17,14 +17,14 @@ namespace AuthoringConcept
     public class EditorFrameItem : HyperGraph.NodeItem
     {
         #region Drawing & Measuring
-        public override SizeF Measure(Graphics context)
+        public override SizeF Measure(Graphics graphics, object context)
         {
-            return _guiFrame.Measure(context, new SizeF(256.0f + 128.0f, 64.0f));
+            return _frame.Measure(graphics, new SizeF(256.0f + 128.0f, 64.0f), context);
         }
 
         public override void Render(Graphics graphics, RectangleF rectangle, object context)
         {
-            _guiFrame.Draw(graphics, rectangle);
+            _frame.Draw(graphics, rectangle, context);
         }
         #endregion
 
@@ -44,8 +44,8 @@ namespace AuthoringConcept
                 evnt.Delta);
 
             // emulate both mouse down & up events
-            _guiFrame.OnMouseDown(localEvnt);
-            _guiFrame.OnMouseUp(localEvnt);
+            _frame.OnMouseDown(localEvnt);
+            _frame.OnMouseUp(localEvnt);
             return false;   // note -- we must return false here in order for the GraphControl to generate a double click (if that's about to happen)
         }
 
@@ -66,7 +66,7 @@ namespace AuthoringConcept
                 transformables[0].Y,
                 evnt.Delta);
 
-            _guiFrame.OnMouseDoubleClick(localEvnt, container, frameToControl);
+            _frame.OnMouseDoubleClick(localEvnt, container, frameToControl);
             return true;
         }
 
@@ -75,12 +75,23 @@ namespace AuthoringConcept
         public override bool OnEndDrag() { return false; }
         #endregion
 
-        public EditorFrameItem(AdaptiveEditing.EditorFrame frame)
+        public EditorFrameItem(AdaptiveEditing.IDataBlockDeclaration declaration)
         {
-            _guiFrame = frame;
+            _frame = new Frame();
+            _frame.Declaration = declaration;
         }
 
-        private AdaptiveEditing.EditorFrame _guiFrame;
+        private class Frame : ImmediateGUI.Frame
+        {
+            internal AdaptiveEditing.IDataBlockDeclaration Declaration;
+
+            protected override void PerformLayout(ImmediateGUI.Arbiter gui, object context)
+            {
+                Declaration.PerformLayout(gui, context as AdaptiveEditing.IDataBlock);
+            }
+        };
+
+        Frame _frame;
     }
 
     public static class TestNodeFactory
@@ -144,8 +155,8 @@ namespace AuthoringConcept
             node.AddItem(new TestNodeConnector("Input0", "float"), HyperGraph.Node.Dock.Input);
             node.AddItem(new TestNodeConnector("Input1", "float"), HyperGraph.Node.Dock.Input);
             node.AddItem(new TestNodeConnector("Output", "float"), HyperGraph.Node.Dock.Output);
-            var frame = new AdaptiveEditing.EditorFrame { Declaration = decl, Storage = storage };
-            node.AddItem(new EditorFrameItem(frame), HyperGraph.Node.Dock.Center);
+            // var frame = new AdaptiveEditing.EditorFrame { Declaration = decl, Storage = storage };
+            node.AddItem(new EditorFrameItem(decl), HyperGraph.Node.Dock.Center);
             return node;
         }
 
@@ -204,7 +215,7 @@ namespace AuthoringConcept
             internal SizeF TextSize;
             #endregion
 
-            public override SizeF Measure(Graphics graphics)
+            public override SizeF Measure(Graphics graphics, object context)
             {
                 // Resize based on the length of the strings. Sometimes we get really
                 // long names, so it's useful to resize the connector to match...!

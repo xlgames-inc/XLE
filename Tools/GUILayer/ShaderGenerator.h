@@ -26,12 +26,15 @@ namespace GUILayer
 		static PreviewGeometry PreviewGeometryFromString(String^ input);
      };
 
+	ref class RawMaterial;
+
 		///////////////////////////////////////////////////////////////
 	[DataContract] public ref class NodeGraphMetaData
     {
     public:
         property String^ DefaultsMaterial;
         property String^ PreviewModelFile;
+		property RawMaterial^ Material;
 
         // Restrictions placed on the input variables
         [DataMember] property Dictionary<String^, String^>^ Variables { Dictionary<String^, String^>^ get() { if (!_variables) _variables = gcnew Dictionary<String^, String^>(); return _variables; } }

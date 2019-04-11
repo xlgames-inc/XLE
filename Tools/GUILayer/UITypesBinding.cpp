@@ -596,6 +596,81 @@ namespace GUILayer
 		}
 	}
 
+	bool RawMaterial::TryGetConstantInt(String^ label, [Out] int% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<int>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat(String^ label, [Out] float% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<float>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantBool(String^ label, [Out] bool% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<bool>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat2(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float2>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat3(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float3>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		value[2] = p[2];
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat4(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float4>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		value[2] = p[2];
+		value[3] = p[3];
+		return true;
+	}
+
     System::String^ RawMaterial::Filename::get()
     { 
         auto native = MakeFileNameSplitter(clix::marshalString<clix::E_UTF8>(_initializer)).AllExceptParameters();

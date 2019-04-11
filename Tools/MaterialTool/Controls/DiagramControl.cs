@@ -678,7 +678,7 @@ namespace MaterialTool.Controls
         #endregion
 
         [Import] private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
-        [Import] private NodeEditorCore.INodeFactory _nodeFactory;
+        [Import] private NodeEditorCore.ShaderFragmentNodeCreator _nodeFactory;
         private HoverLabel _hover = null;
         private AdaptableSet _contextSet;
     }

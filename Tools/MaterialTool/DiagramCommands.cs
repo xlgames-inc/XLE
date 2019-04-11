@@ -93,21 +93,7 @@ namespace MaterialTool
                                         };
 
                                         GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
-                                        {
-                                            if (context.Document.NodeGraphFile.SubGraphs.TryGetValue(config._subGraphName as string, out GUILayer.NodeGraphFile.SubGraph sg))
-                                            {
-                                                foreach (var n in sg.Graph.Nodes)
-                                                {
-                                                    var mat = n.MaterialProperties as GUILayer.RawMaterial;
-                                                    if (mat != null)
-                                                    {
-                                                        if (rawMaterial == null)
-                                                            rawMaterial = GUILayer.RawMaterial.CreateUntitled();
-                                                        mat.MergeInto(rawMaterial);
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        context.Document.GraphMetaData.Material.MergeInto(rawMaterial);
                                         if (rawMaterial != null)
                                         {
                                             previewerContext.MaterialOverrides = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);

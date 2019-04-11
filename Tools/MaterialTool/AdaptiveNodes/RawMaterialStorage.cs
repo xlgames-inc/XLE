@@ -6,41 +6,35 @@ using Sce.Atf.VectorMath;
 
 namespace MaterialTool.AdaptiveNodes
 {
-    class RawMaterialStorage : AuthoringConcept.AdaptiveEditing.VanillaStorage, IDisposable
+    class RawMaterialStorage : AuthoringConcept.AdaptiveEditing.VanillaStorage
     {
         public override void SetInt(string label, int newValue)
         {
-            base.SetInt(label, newValue);
             SetValue(label, newValue.ToString() + "i");
         }
 
         public override void SetFloat(string label, float newValue)
         {
-            base.SetFloat(label, newValue);
             SetValue(label, newValue.ToString() + "f");
         }
 
         public override void SetBool(string label, bool newValue)
         {
-            base.SetBool(label, newValue);
             SetValue(label, newValue ? "true" : "false");
         }
 
         public override void SetFloat2(string label, Vec2F newValue)
         {
-            base.SetFloat2(label, newValue);
             SetValue(label, "{" + newValue.X.ToString() + "f, " + newValue.Y.ToString() + "f}");
         }
 
         public override void SetFloat3(string label, Vec3F newValue)
         {
-            base.SetFloat3(label, newValue);
             SetValue(label, "{" + newValue.X.ToString() + "f, " + newValue.Y.ToString() + "f, " + newValue.Z.ToString() + "f}");
         }
 
         public override void SetFloat4(string label, Vec4F newValue)
         {
-            base.SetFloat4(label, newValue);
             SetValue(label, "{" + newValue.X.ToString() + "f, " + newValue.Y.ToString() + "f, " + newValue.Z.ToString() + "f, " + newValue.W.ToString() + "f}");
         }
 
@@ -57,28 +51,61 @@ namespace MaterialTool.AdaptiveNodes
             Material.ShaderConstants.Add(GUILayer.RawMaterial.MakePropertyPair(label, newValue));
         }
 
-        public RawMaterialStorage()
+        public override bool GetBool(string label)
         {
-            Material = GUILayer.RawMaterial.CreateUntitled();
-        }
-
-        ~RawMaterialStorage()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (Material != null)
+            if (Material.TryGetConstantBool(label, out bool value))
             {
-                Material.Dispose();
-                Material = null;
+                return value;
             }
+            return false;
+        }
+
+        public override int GetInt(string label)
+        {
+            if (Material.TryGetConstantInt(label, out int value))
+            {
+                return value;
+            }
+            return 0;   // default value when no existing value
+        }
+
+        public override float GetFloat(string label)
+        {
+            if (Material.TryGetConstantFloat(label, out float value))
+            {
+                return value;
+            }
+            return 0.0f;   // default value when no existing value
+        }
+
+        public override Vec2F GetFloat2(string label)
+        {
+            float[] value = new float[2];
+            if (Material.TryGetConstantFloat2(label, value))
+            {
+                return new Vec2F(value[0], value[1]);
+            }
+            return new Vec2F(0.0f, 0.0f);   // default value when no existing value
+        }
+
+        public override Vec3F GetFloat3(string label)
+        {
+            float[] value = new float[3];
+            if (Material.TryGetConstantFloat3(label, value))
+            {
+                return new Vec3F(value[0], value[1], value[2]);
+            }
+            return new Vec3F(0.0f, 0.0f, 0.0f);   // default value when no existing value
+        }
+
+        public override Vec4F GetFloat4(string label)
+        {
+            float[] value = new float[4];
+            if (Material.TryGetConstantFloat4(label, value))
+            {
+                return new Vec4F(value[0], value[1], value[2], value[3]);
+            }
+            return new Vec4F(0.0f, 0.0f, 0.0f, 0.0f);   // default value when no existing value
         }
 
         public GUILayer.RawMaterial Material;

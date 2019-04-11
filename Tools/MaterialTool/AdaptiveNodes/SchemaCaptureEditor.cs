@@ -5,9 +5,30 @@ using System.Linq;
 using NodeEditorCore;
 using HyperGraph;
 using AuthoringConcept.AdaptiveEditing;
+using System.Drawing;
+using System.Drawing.Drawing2D;
 
 namespace MaterialTool.AdaptiveNodes
 {
+    public class EditorFrameItem : AuthoringConcept.EditorFrameItem
+    {
+        public override SizeF Measure(Graphics graphics, object context)
+        {
+            var mat = (context as NodeEditorCore.IEditingContext).Document.GraphMetaData.Material;
+            var matContext = new RawMaterialStorage { Material = mat };
+            return base.Measure(graphics, matContext);
+        }
+
+        public override void Render(Graphics graphics, RectangleF rectangle, object context)
+        {
+            var mat = (context as NodeEditorCore.IEditingContext).Document.GraphMetaData.Material;
+            var matContext = new RawMaterialStorage { Material = mat };
+            base.Render(graphics, rectangle, matContext);
+        }
+
+        public EditorFrameItem(IDataBlockDeclaration declaration) : base(declaration) {}
+    }
+
     [Export(typeof(INodeAmender))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PreviewsNodeAmender : INodeAmender
@@ -17,7 +38,6 @@ namespace MaterialTool.AdaptiveNodes
             var tag = node.Tag as NodeEditorCore.ShaderProcedureNodeTag;
             if (tag == null) return;
 
-            tag.MaterialProperties = null;
             if (diagramContext == null) return;
 
             var attachedSchemaFiles = diagramContext.FindAttachedSchemaFilesForNode(tag.ArchiveName);
@@ -31,12 +51,7 @@ namespace MaterialTool.AdaptiveNodes
                 if (!schemaSourceScript.Script.DataBlockDeclarations.TryGetValue(script.SchemaName, out IDataBlockDeclaration dataBlockDecl))
                     continue;
 
-                var storage = dataBlockDecl.CreateStorage(null, null);
-
-                var frame = new AuthoringConcept.AdaptiveEditing.EditorFrame { Declaration = dataBlockDecl, Storage = storage };
-                node.AddItem(new AuthoringConcept.EditorFrameItem(frame), HyperGraph.Node.Dock.Center);
-
-                tag.MaterialProperties = () => (storage as RawMaterialStorage).Material;
+                node.AddItem(new EditorFrameItem(dataBlockDecl), HyperGraph.Node.Dock.Center);
             }
         }
 

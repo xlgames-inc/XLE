@@ -400,6 +400,7 @@ namespace GUILayer
                 managedArray = AsManagedArray(AsPointer(contextChunk));
                 memStream = gcnew System::IO::MemoryStream(managedArray);
                 context = LoadMetaData(memStream);
+				context->Material = RawMaterial::CreateUntitled();
             }
             finally
             {

@@ -8,7 +8,7 @@ namespace AuthoringConcept.AdaptiveEditing
 {
     public class EditorFrame : ImmediateGUI.Frame
     {
-        protected override void PerformLayout(ImmediateGUI.Arbiter gui)
+        protected override void PerformLayout(ImmediateGUI.Arbiter gui, object context)
         {
             Declaration.PerformLayout(gui, Storage);
         }

@@ -43,28 +43,6 @@ namespace NodeEditorCore
         void AmendNode(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets);
     }
 
-    public interface INodeFactory
-    {
-        Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, IEnumerable<object> dataPackets = null);
-        void SetProcedureNodeType(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
-        ProcedureNodeType GetProcedureNodeType(Node node);
-        void UpdateProcedureNode(GUILayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
-
-        Node CreateCapturesNode(String name, IEnumerable<GUILayer.NodeGraphSignature.Parameter> parameters);
-
-        Node CreateSubGraph(GUILayer.NodeGraphFile diagramContext, String name, String implements);
-        void SetSubGraphProperties(GUILayer.NodeGraphFile context, Node subGraph, String name, String implements);
-        void GetSubGraphProperties(Node subGraph, out String name, out String implements);
-        void UpdateSubGraphNode(GUILayer.NodeGraphFile context, Node subGraph);
-
-        HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
-        string GetDescription(object item);
-
-        // Utilities, etc
-        Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
-        bool IsInstantiationConnector(HyperGraph.NodeConnector connector);
-    }
-
     internal static class Utils
     {
         internal static T AsEnumValue<T>(String input, IDictionary<Enum, string> table) where T : struct, IComparable, IConvertible, IFormattable
@@ -167,7 +145,7 @@ namespace NodeEditorCore
         internal SizeF TextSize;
         #endregion
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
         {
                 // Resize based on the length of the strings. Sometimes we get really
                 // long names, so it's useful to resize the connector to match...!
@@ -284,21 +262,8 @@ namespace NodeEditorCore
                     var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(editingContext.Document.GraphMetaData, config);
 
                     GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
-                    {
-                        if (editingContext.Document.NodeGraphFile.SubGraphs.TryGetValue(Node.SubGraphTag as string, out GUILayer.NodeGraphFile.SubGraph sg))
-                        {
-                            foreach(var n in sg.Graph.Nodes)
-                            {
-                                var mat = n.MaterialProperties as GUILayer.RawMaterial;
-                                if (mat != null)
-                                {
-                                    if (rawMaterial == null)
-                                        rawMaterial = GUILayer.RawMaterial.CreateUntitled();
-                                    mat.MergeInto(rawMaterial);
-                                }
-                            }
-                        }
-                    }
+                    editingContext.Document.GraphMetaData.Material.MergeInto(rawMaterial);
+
                     GUILayer.MaterialDelegateWrapper materialDelegate = null;
                     if (rawMaterial != null)
                     {
@@ -340,7 +305,7 @@ namespace NodeEditorCore
             }
         }
 
-        public override SizeF   Measure(Graphics graphics) { return new SizeF(196, 196); }
+        public override SizeF   Measure(Graphics graphics, object context) { return new SizeF(196, 196); }
 
         public void InvalidateShaderStructure() { _cachedBitmap = null; _shaderStructureHash = 0;  }
         public void InvalidateParameters() { _cachedBitmap = null; }
@@ -593,7 +558,7 @@ namespace NodeEditorCore
             return true;
         }
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
         {
             return new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
         }
@@ -634,9 +599,6 @@ namespace NodeEditorCore
     {
         public ProcedureNodeType Type { get; set; }
         public ShaderProcedureNodeTag(string archiveName) : base(archiveName) { Type = ProcedureNodeType.Normal; }
-
-        public delegate object MaterialPropertiesQueryDelegate();
-        public MaterialPropertiesQueryDelegate MaterialProperties = null;
     }
 
     public class ShaderCapturesNodeTag : ShaderFragmentNodeTag
@@ -649,9 +611,9 @@ namespace NodeEditorCore
         public string Implements;
     }
 
-    [Export(typeof(INodeFactory))]
+    [Export(typeof(ShaderFragmentNodeCreator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ShaderFragmentNodeCreator : INodeFactory
+    public class ShaderFragmentNodeCreator
     {
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
         
@@ -908,16 +870,6 @@ namespace NodeEditorCore
                         var target = connection.To as ShaderFragmentNodeConnector;
                         if (target == null) continue;
 
-                        // find the specific parameter we're connected to (within the signature of the particular node)
-                        /*var targetTag = target.Node.Tag as ShaderProcedureNodeTag;
-                        if (targetTag == null) continue;
-
-                        var targetSig = FindSignature(null, targetTag.ArchiveName);
-                        if (targetSig == null) continue;
-
-                        var targetParam = targetSig.TemplateParameters.Where(x => string.Compare(x.Name, target.Name) == 0).FirstOrDefault();
-                        if (targetParam == null) continue;*/
-
                         var match = s_templatedNameMatch.Match(target.Type);
                         if (!match.Success) continue;
 
@@ -1133,7 +1085,7 @@ namespace NodeEditorCore
         }
 
         [Import]
-        NodeEditorCore.Archive _shaderFragments;
+        Archive _shaderFragments;
 
         [ImportMany]
         IEnumerable<INodeAmender> Amenders;
