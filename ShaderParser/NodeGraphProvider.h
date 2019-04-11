@@ -11,8 +11,6 @@
 #include <unordered_map>
 #include <set>
 
-namespace Assets { class RawFileAsset; }
-
 namespace GraphLanguage
 {
 	class FunctionSignature;

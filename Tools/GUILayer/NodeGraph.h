@@ -12,7 +12,6 @@ using namespace System;
 using namespace System::Collections::Generic;
 
 namespace GraphLanguage { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
-namespace Assets { class RawFileAsset; }
 
 namespace GUILayer
 {

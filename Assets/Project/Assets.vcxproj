@@ -73,6 +73,7 @@
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\NascentChunk.h" />
     <ClInclude Include="..\OSFileSystem.h" />
+    <ClInclude Include="..\RawFileAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ArchiveCache.cpp" />
@@ -81,6 +82,7 @@
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
+    <ClCompile Include="..\RawFileAsset.cpp" />
     <ClInclude Include="..\AsyncMarkerGroup.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />

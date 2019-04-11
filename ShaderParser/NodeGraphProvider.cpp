@@ -5,7 +5,6 @@
 #include "NodeGraphProvider.h"
 #include "GraphSyntax.h"
 #include "ShaderSignatureParser.h"
-#include "../Assets/RawFileAsset.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"

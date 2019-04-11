@@ -70,6 +70,7 @@
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
     <ClInclude Include="..\AsyncMarkerGroup.cpp" />
+    <ClInclude Include="..\RawFileAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />
@@ -115,6 +116,7 @@
     <ClCompile Include="..\GeneralCompiler.cpp">
       <Filter>CompileAndAsync</Filter>
     </ClCompile>
+    <ClCompile Include="..\RawFileAsset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="AssetHeaps">
