@@ -23,6 +23,9 @@ namespace AuthoringConcept.AdaptiveEditing
         Vec4F GetFloat4(string label);
         void SetFloat4(string label, Vec4F newValue);
 
+        bool HasValue(string label);
+        void RemoveValue(string label);
+
         string Identifier { get; }
         string TypeIdentifier { get; }
     }

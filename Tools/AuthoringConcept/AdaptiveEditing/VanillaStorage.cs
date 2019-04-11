@@ -81,6 +81,27 @@ namespace AuthoringConcept.AdaptiveEditing
             _float4s[label] = newValue;
         }
 
+        public virtual bool HasValue(string label)
+        {
+            return _bools.ContainsKey(label)
+                || _ints.ContainsKey(label)
+                || _floats.ContainsKey(label)
+                || _float2s.ContainsKey(label)
+                || _float3s.ContainsKey(label)
+                || _float4s.ContainsKey(label)
+                ;
+        }
+
+        public virtual void RemoveValue(string label)
+        {
+            _bools.Remove(label);
+            _ints.Remove(label);
+            _floats.Remove(label);
+            _float2s.Remove(label);
+            _float3s.Remove(label);
+            _float4s.Remove(label);
+        }
+
         private Dictionary<string, bool> _bools = new Dictionary<string, bool>();
         private Dictionary<string, int> _ints = new Dictionary<string, int>();
         private Dictionary<string, float> _floats = new Dictionary<string, float>();

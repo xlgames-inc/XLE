@@ -395,6 +395,8 @@ namespace GUILayer
 		bool TryGetConstantFloat2(System::String^ label, array<float>^ value);
 		bool TryGetConstantFloat3(System::String^ label, array<float>^ value);
 		bool TryGetConstantFloat4(System::String^ label, array<float>^ value);
+		bool HasConstant(System::String^ label);
+		void RemoveConstant(System::String^ label);
 
         property System::String^ Filename { System::String^ get(); }
         property System::String^ Initializer { System::String^ get(); }

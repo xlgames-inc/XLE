@@ -979,6 +979,41 @@ namespace Utility
         return i;
     }
 
+	void ParameterBox::RemoveParameter(ParameterName name)
+	{
+		auto i = std::lower_bound(_hashNames.begin(), _hashNames.end(), name._hash);
+        if (i==_hashNames.end() || *i != name._hash)
+			return;
+
+		auto index = std::distance(_hashNames.begin(), i);
+
+		{
+			auto prevSize = _offsets[index]._valueSize;
+			_values.erase(
+                _values.cbegin() + _offsets[index]._valueBegin,
+                _values.cbegin() + _offsets[index]._valueBegin + prevSize);
+
+            signed sizeChange = 0 - signed(prevSize);
+            for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2)
+                i2->_valueBegin += sizeChange;
+        }
+
+		{
+			auto prevSize = _offsets[index]._nameSize;
+			_names.erase(
+                _names.cbegin() + _offsets[index]._nameBegin,
+                _names.cbegin() + _offsets[index]._nameBegin + prevSize);
+
+            signed sizeChange = 0 - signed(prevSize);
+			for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2)
+                i2->_nameBegin += sizeChange;
+        }
+
+		_hashNames.erase(_hashNames.begin() + index);
+		_offsets.erase(_offsets.begin() + index);
+		_types.erase(_types.begin() + index);
+	}
+
     template<typename Type>
         std::optional<Type> ParameterBox::GetParameter(ParameterName name) const
     {

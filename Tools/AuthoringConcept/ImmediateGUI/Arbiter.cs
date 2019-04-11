@@ -222,7 +222,9 @@ namespace AuthoringConcept.ImmediateGUI
             node.Margin = 2;
             node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
             {
-                SizeF labelSize = Graphics.MeasureString(HideAfterHash(label), SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
+                var l = HideAfterHash(label);
+                if (string.IsNullOrEmpty(l)) l = "X";
+                SizeF labelSize = Graphics.MeasureString(l, SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
                 float check_sz = Math.Min(labelSize.Width, labelSize.Height);
                 return MeasureOutput.Make(labelSize.Width + check_sz + 2.0f, labelSize.Height);
             });
@@ -816,6 +818,7 @@ namespace AuthoringConcept.ImmediateGUI
                     SizeF stringSize = Graphics.MeasureString(label + ": XXXX", SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
                     return MeasureOutput.Make(stringSize.Width+4, stringSize.Height+4);
                 });
+                labelBox.AlignSelf = YogaAlign.Center;
                 outerFrame.AddChild(labelBox);
 
                 var innerCtrl = InnerBoundedFloat(min, max, getter, setter);

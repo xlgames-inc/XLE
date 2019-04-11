@@ -31,7 +31,7 @@ namespace MaterialTool.AdaptiveNodes
 
     [Export(typeof(INodeAmender))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class PreviewsNodeAmender : INodeAmender
+    public class EditorFrameAmender : INodeAmender
     {
         public void AmendNode(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {

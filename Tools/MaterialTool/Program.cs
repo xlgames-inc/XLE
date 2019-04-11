@@ -130,7 +130,7 @@ namespace MaterialTool
                 typeof(Controls.SchemaSourceArchiveControl),
                 typeof(AdaptiveNodes.PythonAdaptiveSchemaSource),
                 typeof(AdaptiveNodes.AdaptiveSchemaSourceArchiveModel),
-                typeof(AdaptiveNodes.PreviewsNodeAmender),
+                typeof(AdaptiveNodes.EditorFrameAmender),
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
