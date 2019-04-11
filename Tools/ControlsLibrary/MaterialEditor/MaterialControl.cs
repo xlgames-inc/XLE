@@ -203,6 +203,7 @@ namespace ControlsLibrary.MaterialEditor
 
         public abstract class ExtraControls : UserControl
         {
+            public abstract string TabName { get; }
             public abstract GUILayer.RawMaterial Object { set; }
         }
 

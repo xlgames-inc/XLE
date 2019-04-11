@@ -77,6 +77,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveMaterialContext.cs" />
+    <Compile Include="AdaptiveNodes\AdaptiveMaterialEditing.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="AdaptiveNodes\RawMaterialStorage.cs" />
     <Compile Include="AdaptiveNodes\SchemaCaptureEditor.cs" />
     <Compile Include="AdaptiveNodes\SchemaSource.cs" />

@@ -131,6 +131,7 @@ namespace MaterialTool
                 typeof(AdaptiveNodes.PythonAdaptiveSchemaSource),
                 typeof(AdaptiveNodes.AdaptiveSchemaSourceArchiveModel),
                 typeof(AdaptiveNodes.EditorFrameAmender),
+                typeof(AdaptiveNodes.MaterialTab),
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
@@ -143,6 +144,7 @@ namespace MaterialTool
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
+                typeof(ControlsLibraryExt.Material.MatTab),
                 typeof(ControlsLibraryExt.ModelView.PreviewerControl),
                 typeof(ControlsLibraryExt.ModelView.PreviewerContext),
                 typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
