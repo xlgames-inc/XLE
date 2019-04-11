@@ -653,7 +653,7 @@ namespace HyperGraph
             if (_model == null || (!_model.Nodes.Any() && !_model.SubGraphs.Any()))
                 return;
 
-            GraphRenderer.PerformLayout(e.Graphics, _model);
+            GraphRenderer.PerformLayout(e.Graphics, _model, Context);
             GraphRenderer.Render(e.Graphics, _model, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
@@ -1254,7 +1254,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, false);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node, Context);
 					needRedraw = true;
 				}
 
@@ -1265,7 +1265,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, true);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node, Context);
 					needRedraw = true;
 				}
 			}

@@ -171,7 +171,7 @@ namespace HyperGraph.Items
             return false;
 		}
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			var text = string.Empty;
 			if (Items != null &&

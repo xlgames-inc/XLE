@@ -33,7 +33,7 @@ namespace HyperGraph.Items
 	{
 		public string	Title { get; set; }
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Title))
 			{
