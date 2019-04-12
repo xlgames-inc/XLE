@@ -66,6 +66,7 @@ namespace RenderCore { namespace Techniques
         void Unbind(const IResource& resource);
         void UnbindAll();
 		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
+		auto GetBoundResourceDesc(uint64_t semantic) -> const AttachmentDesc*;
 
         std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
 
@@ -250,6 +251,22 @@ namespace RenderCore { namespace Techniques
         AttachmentName RemapToRPI(unsigned inputAttachmentSlot) const;
     };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class SemanticNamedAttachments : public RenderCore::INamedAttachments
+    {
+    public:
+        virtual IResourcePtr GetResource(AttachmentName resName) const;
+        virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
+
+        SemanticNamedAttachments(
+			AttachmentPool& pool, 
+			IteratorRange<const uint64_t*> semanticMapping);
+        ~SemanticNamedAttachments();
+    private:
+        AttachmentPool* _pool;
+        std::vector<uint64_t> _semanticMapping;
+    };
 
     /// <summary>Tests to see if the attachment usage of the given fragment can be optimized</summary>
     /// Sometimes of the number of attachments used by a fragment can be reduced by reusing

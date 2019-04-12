@@ -687,6 +687,19 @@ namespace RenderCore { namespace Techniques
 		return nullptr;
 	}
 
+	auto AttachmentPool::GetBoundResourceDesc(uint64_t semantic) -> const AttachmentDesc*
+	{
+		auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [semantic](const Pimpl::SemanticAttachment& a) {
+                return a._semantic == semantic;
+            });
+		if (existingBinding != _pimpl->_semanticAttachments.end())
+			return &existingBinding->_desc;
+		return nullptr;
+	}
+
     void AttachmentPool::Bind(FrameBufferProperties props)
     {
         bool xyChanged = 
@@ -760,6 +773,29 @@ namespace RenderCore { namespace Techniques
     AttachmentPool::~AttachmentPool()
     {}
     
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	RenderCore::IResourcePtr SemanticNamedAttachments::GetResource(RenderCore::AttachmentName resName) const
+	{
+		assert(resName < _semanticMapping.size());
+        return _pool->GetBoundResource(_semanticMapping[resName]);
+	}
+
+    const RenderCore::AttachmentDesc* SemanticNamedAttachments::GetDesc(RenderCore::AttachmentName resName) const
+	{
+		assert(resName < _semanticMapping.size());
+        return _pool->GetBoundResourceDesc(_semanticMapping[resName]);
+	}
+
+    SemanticNamedAttachments::SemanticNamedAttachments(
+		RenderCore::Techniques::AttachmentPool& pool, 
+		IteratorRange<const uint64_t*> semanticMapping)
+	: _pool(&pool), _semanticMapping(semanticMapping.begin(), semanticMapping.end()) 
+	{}
+
+    SemanticNamedAttachments::~SemanticNamedAttachments()
+	{}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
