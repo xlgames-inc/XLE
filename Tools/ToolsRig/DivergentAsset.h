@@ -194,7 +194,8 @@ namespace ToolsRig
 		auto triggerDepVal = _workingCopy->GetDependencyValidation();
 		*_workingCopy = std::move(*_pristineCopy);
 
-		const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
+		if (triggerDepVal)
+			const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
 		return 0u; // newId;
 	}
 

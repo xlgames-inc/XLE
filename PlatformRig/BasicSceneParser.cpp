@@ -54,7 +54,12 @@ namespace PlatformRig
 
 	float		BasicLightingParserDelegate::GetTimeValue() const
 	{
-		return 0.f;
+		return _timeValue;
+	}
+
+	void		BasicLightingParserDelegate::SetTimeValue(float newValue)
+	{
+		_timeValue = newValue;
 	}
 
 	void BasicLightingParserDelegate::ConstructToFuture(
@@ -85,6 +90,7 @@ namespace PlatformRig
 	BasicLightingParserDelegate::BasicLightingParserDelegate(
 		const std::shared_ptr<EnvironmentSettings>& envSettings)
 	: _envSettings(envSettings)
+	, _timeValue(0.f)
 	{
 	}
 

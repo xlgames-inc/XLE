@@ -78,6 +78,7 @@ namespace PlatformRig
         auto        GetToneMapSettings() const -> SceneEngine::ToneMapSettings;
 
 		float		GetTimeValue() const;
+		void		SetTimeValue(float newValue);
 
 		BasicLightingParserDelegate(
 			const std::shared_ptr<EnvironmentSettings>& envSettings);
@@ -92,6 +93,7 @@ namespace PlatformRig
     protected:
         const EnvironmentSettings&  GetEnvSettings() const;
 		std::shared_ptr<EnvironmentSettings>	_envSettings;
+		float									_timeValue;
     };
 
     SceneEngine::LightDesc          DefaultDominantLight();

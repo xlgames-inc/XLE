@@ -161,6 +161,10 @@ namespace ToolsRig
 		if (_pimpl->_envSettings && _pimpl->_scene) {
 			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
 
+			static float time = 0.f;
+			time += 1.0f / 60.f;
+			lightingParserDelegate.SetTimeValue(time);
+
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
