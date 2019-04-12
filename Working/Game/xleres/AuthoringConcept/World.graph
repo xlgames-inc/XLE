@@ -1,23 +1,23 @@
 // CompoundDocument:1
 import basic = "game/xleres/nodes/basic.sh"
-import utils = "game/xleres/authoringconcept/utils.h"
+import utils = "game/xleres/authoringconcept/utils.sh"
 import noise = "game/xleres/nodes/noise.sh"
 import perlinnoise = "game/xleres/utility/perlinnoise.h"
 
 void CloudShadows(float2 UV, out float clouds)
 {
-	node node_0 = [[visualNode1]]utils::GetSceneTime();
-	captures Uniforms = [[visualNode2]](float hgrid, float UVFreq, float UVFreq2);
+	node node_0 = [[visualNode2]]utils::GetSceneTime();
+	captures Uniforms = [[visualNode0]](float hgrid = "1", float UVFreq = "1", float UVFreq2 = "1");
 	node node_1 = [[visualNode3]]basic::Multiply1(lhs:Uniforms.hgrid, rhs:"0.01");
 	node node_2 = [[visualNode4]]basic::Separate4(input:[[visualNode5]]basic::Multiply4Scalar(lhs:[[visualNode6]]basic::Absolute4(input:[[visualNode7]]basic::Subtract4(lhs:[[visualNode8]]basic::Fract4(input:[[visualNode9]]basic::Add4(rhs:[[visualNode10]]basic::Add4(lhs:[[visualNode11]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5", position:[[visualNode12]]basic::AddMany2(second:[[visualNode13]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.005, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode14]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq, lhs:UV).result).result).result, rhs:[[visualNode15]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, position:[[visualNode16]]basic::AddMany2(second:[[visualNode17]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.0, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode18]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq2, lhs:UV).result).result, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5").result).result, lhs:[[visualNode19]]basic::Multiply4Scalar(rhs:[[visualNode20]]basic::Multiply1(lhs:node_0.result, rhs:".3").result, lhs:"float4(0.1, 0.2, 0.3, 0.4)").result).result).result, rhs:"float4(0.5, 0.5, 0.5, 0.5)").result).result, rhs:"2.0").result);
 	node node_3 = [[visualNode21]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, position:UV, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"3");
 	node node_4 = [[visualNode22]]perlinnoise::fbmNoise2D(hgrid:Uniforms.hgrid, position:UV, gain:".65", lacunarity:"2.1042", octaves:"4");
-	clouds = [[visualNode23]]basic::Multiply1(lhs:[[visualNode0]]basic::AddMany1(first:node_2.r, second:node_2.g, third:node_2.b).result, rhs:"1.0/3.0").result;
+	clouds = [[visualNode23]]basic::Multiply1(lhs:[[visualNode1]]basic::AddMany1(first:node_2.r, second:node_2.g, third:node_2.b).result, rhs:"1.0/3.0").result;
 }
 attributes visualNode8(PreviewGeometry:"plane2d", X:"382", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode0(PreviewGeometry:"plane2d", X:"1126", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode1(PreviewGeometry:"chart", X:"-726", Y:"198", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode2(X:"-911", Y:"-119", State:"Normal");
+attributes visualNode0(X:"-911", Y:"-119", State:"Normal");
+attributes visualNode1(PreviewGeometry:"plane2d", X:"1126", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"chart", X:"-726", Y:"198", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode3(PreviewGeometry:"plane2d", X:"-903", Y:"557", State:"Normal", OutputToVisualize:"");
 attributes visualNode4(PreviewGeometry:"plane2d", X:"980", Y:"84", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode5(PreviewGeometry:"plane2d", X:"822", Y:"84", State:"Collapsed", OutputToVisualize:"");
@@ -43,19 +43,6 @@ attributes visualNode23(PreviewGeometry:"plane2d", X:"1268", Y:"86", State:"Coll
 <NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
-	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
-		<d2p1:KeyValueOfstringstring>
-			<d2p1:Key>hgrid</d2p1:Key>
-			<d2p1:Value>1</d2p1:Value>
-		</d2p1:KeyValueOfstringstring>
-		<d2p1:KeyValueOfstringstring>
-			<d2p1:Key>UVFreq</d2p1:Key>
-			<d2p1:Value>1</d2p1:Value>
-		</d2p1:KeyValueOfstringstring>
-		<d2p1:KeyValueOfstringstring>
-			<d2p1:Key>UVFreq2</d2p1:Key>
-			<d2p1:Value>1</d2p1:Value>
-		</d2p1:KeyValueOfstringstring>
-	</Variables>
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 </NodeGraphMetaData>
 )-- */

@@ -33,6 +33,7 @@ float AddMany1(float first, float second, float third, float forth) { return fir
 float MultiplyMany1(float first, float second, float third, float forth) { return first * second * third * forth; }
 float Abs1(float value) { return abs(value); }
 float Square1(float value) { return value * value; }
+float Fract1(float input) { return frac(input); }
 
 float2 Add2(float2 lhs, float2 rhs)            { return lhs + rhs; }
 float2 AddMany2(float2 first, float2 second, float2 third, float2 forth)    { return first + second + third + forth; }

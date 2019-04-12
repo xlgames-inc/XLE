@@ -1,0 +1,4 @@
+
+
+float2 GetViewportDimensions();
+
