@@ -4,11 +4,11 @@ import unit = "game/xleres/authoringconcept/unit.graph"
 
 float4 main(VSOutput geo, float4 inputColor) implements templates::AmendColor
 {
-	node node_0 = [[visualNode1]]unit::Freeze2(geo:geo, inputColor:inputColor);
-	return [[visualNode0]]unit::Hologram2(geo:geo, inputColor:inputColor).result;
+	node node_0 = [[visualNode1]]unit::Hologram2(geo:geo);
+	return [[visualNode0]]unit::Freeze2(geo:geo, inputColor:inputColor).result;
 }
-attributes visualNode0(PreviewGeometry:"chart", X:"694.6741", Y:"722.2184", State:"Normal", OutputToVisualize:"");
-attributes visualNode1(PreviewGeometry:"chart", X:"606", Y:"366", State:"Normal", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"chart", X:"606", Y:"366", State:"Normal", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"chart", X:"1263", Y:"515", State:"Normal", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:UnitPipeline>>--(
 <?xml version="1.0" encoding="utf-8"?>
 <NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
