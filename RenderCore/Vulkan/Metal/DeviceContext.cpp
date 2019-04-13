@@ -413,6 +413,11 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList.GetUnderlying());
 
+		if (!_renderPass) {
+			Log(Warning) << "Attempting to bind graphics pipeline without a render pass" << std::endl;
+			return false;
+		}
+
         // If we've been using the pipeline layout builder directly, then we
         // must flush those changes down to the GraphicsPipelineBuilder
         if (_graphicsDescriptors._numericBindings.HasChanges()) {
@@ -420,11 +425,6 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
-
-		if (!_renderPass) {
-			Log(Warning) << "Attempting to bind graphics pipeline without a render pass" << std::endl;
-			return false;
-		}
 
 		_currentGraphicsPipeline = GraphicsPipelineBuilder::CreatePipeline(
             *_factory, _globalPools->_mainPipelineCache.get(),
@@ -457,15 +457,6 @@ namespace RenderCore { namespace Metal_Vulkan
         // must flush those changes down to the ComputePipelineBuilder
         if (_computeDescriptors._numericBindings.HasChanges()) {
 			RebindNumericDescriptorSet(PipelineType::Compute);
-        }
-
-		if (_computeDescriptors._hasSetsAwaitingFlush) {
-            _commandList.BindDescriptorSets(
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-				ComputePipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
-                0, ComputePipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
-                0, nullptr);
-            _computeDescriptors._hasSetsAwaitingFlush = false;
         }
 
         if (_currentComputePipeline && !ComputePipelineBuilder::IsPipelineStale()) return true;
@@ -660,8 +651,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		RebindNumericDescriptorSet(PipelineType::Graphics);
         _graphicsDescriptors._hasSetsAwaitingFlush = true;
+
 		RebindNumericDescriptorSet(PipelineType::Compute);
-        _computeDescriptors._hasSetsAwaitingFlush = true;
+		_commandList.BindDescriptorSets(
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+			ComputePipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
+            0, ComputePipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
+            0, nullptr);
 
 		VkCommandBufferInheritanceInfo inheritInfo = {};
 		inheritInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
