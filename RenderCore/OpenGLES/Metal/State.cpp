@@ -18,10 +18,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool enableMipmaps) const never_throws
     {
         unsigned guid = enableMipmaps ? _guid : (_guid+1);
-        if (_prebuiltSamplerMipmaps) {
+        if (_prebuiltSamplerMipmaps && _prebuiltSamplerNoMipmaps) {
             assert(textureUnit < capture._samplerStateBindings.size());
             assert(_gles300Factory);
-            if (capture._samplerStateBindings[textureUnit] != guid) {
+            if (textureUnit < capture._samplerStateBindings.size() && capture._samplerStateBindings[textureUnit] != guid) {
                 glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
                 capture._samplerStateBindings[textureUnit] = guid;
             }
@@ -34,9 +34,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(activeTexture == GL_TEXTURE0 + textureUnit);
             #endif
 
-            if (_gles300Factory && capture._samplerStateBindings[textureUnit] != 0) {
+            if (_gles300Factory) {
+                assert(textureUnit < capture._samplerStateBindings.size());
                 glBindSampler(textureUnit, 0);
-                capture._samplerStateBindings[textureUnit] = 0;
+                if (textureUnit < capture._samplerStateBindings.size() && capture._samplerStateBindings[textureUnit] != 0) {
+                    capture._samplerStateBindings[textureUnit] = 0;
+                }
             }
 
             if (res) {
@@ -66,7 +69,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
-        if (_prebuiltSamplerMipmaps) {
+        if (_prebuiltSamplerMipmaps && _prebuiltSamplerNoMipmaps) {
             assert(_gles300Factory);
             glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
         } else {
