@@ -75,11 +75,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class Stream
         {
         public:
-            const IVertexSourceData& GetSourceData() const      { return *_sourceData; }
             const std::vector<unsigned>& GetVertexMap() const   { return _vertexMap; }
             const std::string& GetSemanticName() const          { return _semanticName; }
             const unsigned GetSemanticIndex() const             { return _semanticIndex; }
-			const std::shared_ptr<IVertexSourceData>& ShareSourceData() const { return _sourceData; }
+			const std::shared_ptr<IVertexSourceData>& GetSourceData() const { return _sourceData; }
 
 			void SetSemantic(const std::string& newName, unsigned semanticIndex) { _semanticName = newName; _semanticIndex = semanticIndex; }
 

@@ -11,11 +11,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NascentObjectGuid
     {
     public:
-        uint64_t  _objectId;
-        uint64_t  _namespaceId;
-
-        NascentObjectGuid() : _objectId(~0ull), _namespaceId(~0ull) {}
-        NascentObjectGuid(uint64_t objectId, uint64_t fileId = 0) : _objectId(objectId), _namespaceId(fileId) {}
+        uint64_t  _objectId = ~0ull;
+        uint64_t  _namespaceId = ~0ull;
     };
 
     inline bool operator==(const NascentObjectGuid& lhs, const NascentObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._namespaceId == rhs._namespaceId); }

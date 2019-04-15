@@ -538,7 +538,7 @@ namespace Assets
 						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
 						std::string{kind._regexFilter},
 						std::string{kind._name},
-						std::string{kind._extensionsForOpenDlg}});
+						kind._extensionsForOpenDlg ? std::string{kind._extensionsForOpenDlg} : std::string{}});
 				}
 			}
 		}

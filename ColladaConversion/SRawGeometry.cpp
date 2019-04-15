@@ -1293,7 +1293,6 @@ namespace ColladaConversion
             std::move(b4), std::move(b2), std::move(b1), std::move(b0),
             std::move(inverseBindMatrices), bindShapeMatrix, 
             std::move(jointNames), 
-            NascentObjectGuid(ref._id, ref._fileHash),
             std::move(vertexPositionToBucketIndex));
     }
 

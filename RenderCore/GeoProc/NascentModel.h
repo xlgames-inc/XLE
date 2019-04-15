@@ -24,6 +24,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class UnboundSkinController;
 	class NascentSkeletonMachine;
 	class NascentSkeleton;
+	struct NativeVBSettings;
 
 	class NascentModel
 	{
@@ -87,7 +88,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		std::vector<::Assets::ICompileOperation::OperationResult> SerializeToChunks(
 			const std::string& name,
-			const NascentSkeleton& embeddedSkeleton) const;
+			const NascentSkeleton& embeddedSkeleton,
+			const NativeVBSettings& nativeSettings) const;
 
 	private:
 		std::vector<std::pair<Indexor,GeometryBlock>>		_geoBlocks;

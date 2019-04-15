@@ -296,9 +296,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Type MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
     {
         auto& stream = _streams[elementIndex];
-        auto indexInStream = stream.GetVertexMap()[vertexIndex];
-        auto& sourceData = stream.GetSourceData();
-        return GetVertex<Type>(sourceData, indexInStream);
+		if (vertexIndex < stream.GetVertexMap().size())
+			vertexIndex = stream.GetVertexMap()[vertexIndex];
+        auto& sourceData = *stream.GetSourceData();
+        return GetVertex<Type>(sourceData, vertexIndex);
     }
 
     template Float3 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
@@ -332,7 +333,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         const Stream& stream,
         const void* dst, Format dstFormat, size_t dstStride, size_t dstSize) const
     {
-        const auto& sourceData = stream.GetSourceData();
+        const auto& sourceData = *stream.GetSourceData();
         auto stride = sourceData.GetStride();
         CopyVertexData(
             dst, dstFormat, dstStride, dstSize,
@@ -520,7 +521,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 //          is used, and how this vertex element is bound to materials. But in this function
                 //          call we only have access to the "Geometry" object, without any context information.
                 //          We don't yet know how it will be bound to materials.
-            nativeElement._nativeFormat         = CalculateFinalVBFormat(stream.GetSourceData(), settings);
+            nativeElement._nativeFormat         = CalculateFinalVBFormat(*stream.GetSourceData(), settings);
             nativeElement._inputSlot            = 0;
             nativeElement._alignedByteOffset    = accumulatingOffset;
             nativeElement._inputSlotClass       = InputDataRate::PerVertex;
@@ -930,7 +931,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		MeshDatabase result;
 		for (unsigned s = 0; s < inputStreams.size(); ++s) {
 			result.AddStream(
-				inputStreams[s].ShareSourceData(),
+				inputStreams[s].GetSourceData(),
 				std::move(workingMapping[s]._unifiedToStreamElement),
 				inputStreams[s].GetSemanticName().c_str(),
 				inputStreams[s].GetSemanticIndex());

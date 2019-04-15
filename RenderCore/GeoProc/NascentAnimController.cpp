@@ -68,13 +68,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      the vertex and index buffers.
             //
                             
-        size_t unifiedVertexCount = sourceGeo._unifiedVertexIndexToPositionIndex.size();
+        size_t unifiedVertexCount = sourceGeo._unifiedVertexCount;
+		assert(sourceGeo._unifiedVertexIndexToPositionIndex.empty() || sourceGeo._unifiedVertexIndexToPositionIndex.size() >= unifiedVertexCount);
 
         std::vector<std::pair<uint32,uint32>> unifiedVertexIndexToBucketIndex;
         unifiedVertexIndexToBucketIndex.reserve(unifiedVertexCount);
 
         for (uint32 c=0; c<unifiedVertexCount; ++c) {
-            uint32 positionIndex = sourceGeo._unifiedVertexIndexToPositionIndex[c];
+            uint32 positionIndex = c < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[c] : c;
             uint32 bucketIndex   = controller._positionIndexToBucketIndex[positionIndex];
             unifiedVertexIndexToBucketIndex.push_back(std::make_pair(c, bucketIndex));
         }
@@ -110,7 +111,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             uint32 newIndex = indexAccumulator++;
             uint32 oldIndex = i->first;
             unifiedVertexReordering[oldIndex] = newIndex;
-            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32)sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex];
+            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32)(oldIndex < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex] : oldIndex);
         }
         bucketEnd[currentBucket] = indexAccumulator;
         for (unsigned b=currentBucket+1; b<bucketCount; ++b) {
@@ -502,13 +503,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
         std::vector<std::string>&& jointNames,
-        NascentObjectGuid sourceRef,
         std::vector<uint32>&& vertexPositionToBucketIndex)
     :       _inverseBindMatrices(std::move(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)
     ,       _positionIndexToBucketIndex(vertexPositionToBucketIndex)
     ,       _jointNames(jointNames)
-    ,       _sourceRef(sourceRef)
     {
         _bucket[0] = std::forward<Bucket>(bucket4);
         _bucket[1] = std::forward<Bucket>(bucket2);

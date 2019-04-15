@@ -90,7 +90,7 @@ namespace ColladaConversion
 			Throw(::Exceptions::BasicLabel("Could not found geometry object to instantiate (%s)",
 				reference.AsString().c_str()));
 
-		NascentObjectGuid geoId(refGuid._id, refGuid._fileHash);
+		NascentObjectGuid geoId { refGuid._id, refGuid._fileHash };
 		auto* existingGeometry = model.FindGeometryBlock(geoId);
 		if (!existingGeometry) {
 			auto convertedMesh = Convert(*scaffoldGeo, resolveContext, cfg);
@@ -129,7 +129,7 @@ namespace ColladaConversion
 			mati->second, resolveContext);
 
 		model.Add(
-			attachedNode.GetId().GetHash(),
+			{ attachedNode.GetId().GetHash() },
 			attachedNode.GetName().Cast<char>().AsString(),
 			NascentModel::Command {
 				geoId, controllerId,
@@ -216,7 +216,7 @@ namespace ColladaConversion
 				//////////////////
 
 				GuidReference controllerRef(instController._reference);
-				NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+				NascentObjectGuid controllerId { controllerRef._id, controllerRef._fileHash };
 				auto* scaffoldController = FindElement(controllerRef, input._resolveContext, &IDocScopeIdResolver::FindSkinController);
 				if (!scaffoldController)
 					Throw(::Exceptions::BasicLabel("Could not find controller object to instantiate (%s)",
@@ -314,7 +314,7 @@ namespace ColladaConversion
 		auto model = ConvertModel(input, *scene, MakeIteratorRange(roots));
 		auto embeddedSkeleton = ConvertSkeleton(input, *scene, GetSkeletons(model), MakeIteratorRange(roots));
 		OptimizeSkeleton(embeddedSkeleton, model);
-		return model.SerializeToChunks("skin", embeddedSkeleton);
+		return model.SerializeToChunks("skin", embeddedSkeleton, NativeVBSettings { true });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,7 +442,7 @@ namespace ColladaConversion
         for (auto i=effects.cbegin(); i!=effects.cend(); ++i) {
             TRY
             {
-                NascentObjectGuid id = i->GetId().GetHash();
+				NascentObjectGuid id { i->GetId().GetHash() };
                 compiledEffects.insert(
                     LowerBound(compiledEffects, id), 
                     std::make_pair(id, Convert(*i, model._resolveContext, model._cfg)));
@@ -453,8 +453,8 @@ namespace ColladaConversion
         const auto& mats = model._doc->_materials;
         for (auto m=mats.cbegin(); m!=mats.cend(); ++m) {
             GuidReference effect(m->_effectReference);
-            auto i = LowerBound(compiledEffects, NascentObjectGuid(effect._id, effect._fileHash));
-            if (i == compiledEffects.end() || !(i->first == NascentObjectGuid(effect._id, effect._fileHash)))
+			auto i = LowerBound(compiledEffects, NascentObjectGuid { effect._id, effect._fileHash });
+			if (i == compiledEffects.end() || !(i->first == NascentObjectGuid { effect._id, effect._fileHash }))
                 continue;
 
             auto ele = formatter.BeginElement(m->_name.AsString());

@@ -74,15 +74,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<std::string>	_jointNames;
         std::vector<Float4x4>		_inverseBindMatrices;
 
-        NascentObjectGuid			_sourceRef;
-
 		void RemapJoints(IteratorRange<const unsigned*> newIndices);
 
         UnboundSkinController(
             Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
             std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
             std::vector<std::string>&& jointNames,
-            NascentObjectGuid sourceRef,
             std::vector<uint32>&& vertexPositionToBucketIndex);
         UnboundSkinController(UnboundSkinController&& moveFrom) = default;
         UnboundSkinController& operator=(UnboundSkinController&& moveFrom) = default;

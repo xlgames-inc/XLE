@@ -16,7 +16,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
 	static const unsigned ModelScaffoldVersion = 1;
 	static const unsigned ModelScaffoldLargeBlocksVersion = 0;
 
@@ -98,7 +97,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return result;
 	}
 
-	static NascentRawGeometry CompleteInstantiation(const NascentModel::GeometryBlock& geoBlock)
+	static NascentRawGeometry CompleteInstantiation(const NascentModel::GeometryBlock& geoBlock, const NativeVBSettings& nativeVBSettings)
 	{
 		const bool generateMissingTangentsAndNormals = true;
         if (constant_expression<generateMissingTangentsAndNormals>::result()) {
@@ -117,7 +116,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         if (constant_expression<removeRedundantBitangents>::result())
             RemoveRedundantBitangents(*geoBlock._mesh);
 
-        NativeVBLayout vbLayout = BuildDefaultLayout(*geoBlock._mesh, NativeSettings);
+        NativeVBLayout vbLayout = BuildDefaultLayout(*geoBlock._mesh, nativeVBSettings);
         auto nativeVB = geoBlock._mesh->BuildNativeVertexBuffer(vbLayout);
 
 		std::vector<DrawCallDesc> drawCalls;
@@ -130,6 +129,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             geoBlock._indexFormat,
 			drawCalls,
+			geoBlock._mesh->GetUnifiedVertexCount(),
 			geoBlock._meshVertexIndexToSrcIndex };
 	}
 
@@ -304,7 +304,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			};
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton) const
+	std::vector<::Assets::ICompileOperation::OperationResult> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton, const NativeVBSettings& nativeSettings) const
 	{
 		NascentGeometryObjects geoObjects;
 		NascentModelCommandStream cmdStream;
@@ -315,15 +315,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 			std::vector<uint64_t> materialGuid;
 			materialGuid.reserve(cmd.second._materialBindingSymbols.size());
-			for (const auto&mat:cmd.second._materialBindingSymbols)
-				materialGuid.push_back(Hash64(mat));
+			for (const auto&mat:cmd.second._materialBindingSymbols) {
+				const char* end = nullptr;
+				auto guid = XlAtoUI64(mat.c_str(), &end, 16);
+				if (end != nullptr || end == '\0') {
+					materialGuid.push_back(guid);
+				} else
+					materialGuid.push_back(Hash64(mat));
+			}
 
 			auto* skinController = FindSkinControllerBlock(cmd.second._skinControllerBlock);
 			if (!skinController) {
 				auto i = std::find_if(geoObjects._rawGeos.begin(), geoObjects._rawGeos.end(),
 					[&cmd](const std::pair<NascentObjectGuid, NascentRawGeometry>& p) { return p.first == cmd.second._geometryBlock; });
 				if (i == geoObjects._rawGeos.end()) {
-					auto rawGeo = CompleteInstantiation(*geoBlock);
+					auto rawGeo = CompleteInstantiation(*geoBlock, nativeSettings);
 					geoObjects._rawGeos.emplace_back(
 						std::make_pair(cmd.second._geometryBlock, std::move(rawGeo)));
 					i = geoObjects._rawGeos.end ()-1;
@@ -340,7 +346,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				auto i = std::find_if(geoObjects._skinnedGeos.begin(), geoObjects._skinnedGeos.end(),
 					[&cmd](const std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>& p) { return p.first == cmd.second._skinControllerBlock; });
 				if (i == geoObjects._skinnedGeos.end()) {
-					auto rawGeo = CompleteInstantiation(*geoBlock);
+					auto rawGeo = CompleteInstantiation(*geoBlock, nativeSettings);
 					DynamicArray<uint16> jointMatrices(
 						std::make_unique<uint16[]>(skinController->_controller->_jointNames.size()),
 						skinController->_controller->_jointNames.size());

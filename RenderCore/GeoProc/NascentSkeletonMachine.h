@@ -43,7 +43,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::vector<uint64_t>			BuildHashedOutputInterface() const;
 
 		T1(Type) bool	TryAddParameter(uint32_t& paramIndex, StringSection<> paramName);
-		bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
 
 		void			FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn);
 
@@ -82,6 +81,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		template<typename Type>
 			std::vector<ParameterTag>& GetParameterTables();
+
+        bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
     };
 
         ////////////////// template implementation //////////////////

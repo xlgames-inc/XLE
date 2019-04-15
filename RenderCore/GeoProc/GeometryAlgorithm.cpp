@@ -336,7 +336,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const TransformFn& transform)
     {
         const auto& stream = mesh.GetStreams()[streamIndex];
-        auto newStream = TransformStream<PivotType>(stream.GetSourceData(), transform);
+        auto newStream = TransformStream<PivotType>(*stream.GetSourceData(), transform);
 
             // swap the old stream with the new one.
         auto semanticName = stream.GetSemanticName();
@@ -393,7 +393,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
             if (type == None) continue;
 
-            const auto& src = stream.GetSourceData();
+            const auto& src = *stream.GetSourceData();
             auto componentCount = GetComponentCount(GetComponents(src.GetFormat()));
             if (type == Point) {
                     // We can support both 3d and 2d pretty easily here. Collada generalizes to 2d well,

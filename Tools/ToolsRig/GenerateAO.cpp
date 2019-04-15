@@ -515,7 +515,7 @@ namespace ToolsRig
                 const auto& stream = mesh.GetStreams()[posElement];
                 std::vector<unsigned> remapping;
                 auto newSource = RemoveDuplicates(
-                    remapping, stream.GetSourceData(), 
+                    remapping, *stream.GetSourceData(), 
                     MakeIteratorRange(stream.GetVertexMap()), duplicatesThreshold);
 
                 mesh.RemoveStream(posElement);
@@ -540,7 +540,7 @@ namespace ToolsRig
 
                     // find the final sample points
                 std::vector<Float3> samplePoints;
-                samplePoints.resize(pStream.GetSourceData().GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+                samplePoints.resize(pStream.GetSourceData()->GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
 
                 for (auto p=pn.cbegin(); p!=pn.cend();) {
                     auto p2 = p+1;
@@ -548,9 +548,9 @@ namespace ToolsRig
 
                     auto n = Zero<Float3>();
                     for (auto q=p; q<p2; ++q)
-                        n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
+                        n += GetVertex<Float3>(*nStream.GetSourceData(), q->second);
                     n = Normalize(n);
-                    auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
+                    auto baseSamplePoint = GetVertex<Float3>(*pStream.GetSourceData(), p->first);
 
                         // transform through to model space...
                     baseSamplePoint = TransformPoint(toModel, baseSamplePoint);

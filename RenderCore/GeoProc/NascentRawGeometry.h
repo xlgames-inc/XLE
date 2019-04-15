@@ -26,7 +26,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<DrawCallDesc>   _mainDrawCalls;
 
             //  Only required during processing
-        std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;
+        size_t						_unifiedVertexCount;
+		std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;
 
         void Serialize(
             Serialization::NascentBlockSerializer& outputSerializer, 

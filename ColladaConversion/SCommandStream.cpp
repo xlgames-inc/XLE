@@ -370,14 +370,14 @@ namespace ColladaConversion
     static RenderCore::Assets::GeoProc::NascentObjectGuid AsObjectGuid(const Node& node)
     { 
         if (!node.GetId().IsEmpty())
-            return node.GetId().GetHash(); 
+			return { node.GetId().GetHash() }; 
         if (!node.GetName().IsEmpty())
-            return Hash64(node.GetName().begin(), node.GetName().end());
+			return { Hash64(node.GetName().begin(), node.GetName().end()) };
 
         // If we have no name & no id -- it is truly anonymous. 
         // We can just use the index of the node, it's the only unique
         // thing we have.
-        return RenderCore::Assets::GeoProc::NascentObjectGuid(node.GetIndex());
+		return { node.GetIndex() };
     }
 
 }
