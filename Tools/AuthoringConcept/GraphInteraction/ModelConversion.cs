@@ -19,12 +19,12 @@ namespace AuthoringConcept
         #region Drawing & Measuring
         public override SizeF Measure(Graphics graphics, object context)
         {
-            return _frame.Measure(graphics, new SizeF(256.0f + 128.0f, 64.0f), context);
+            return _frame.Measure(graphics, new SizeF(256.0f + 128.0f, 64.0f), FixedContext ?? context);
         }
 
         public override void Render(Graphics graphics, RectangleF rectangle, object context)
         {
-            _frame.Draw(graphics, rectangle, context);
+            _frame.Draw(graphics, rectangle, FixedContext ?? context);
         }
         #endregion
 
@@ -92,6 +92,7 @@ namespace AuthoringConcept
         };
 
         Frame _frame;
+        public object FixedContext;
     }
 
     public static class TestNodeFactory
@@ -156,7 +157,7 @@ namespace AuthoringConcept
             node.AddItem(new TestNodeConnector("Input1", "float"), HyperGraph.Node.Dock.Input);
             node.AddItem(new TestNodeConnector("Output", "float"), HyperGraph.Node.Dock.Output);
             // var frame = new AdaptiveEditing.EditorFrame { Declaration = decl, Storage = storage };
-            node.AddItem(new EditorFrameItem(decl), HyperGraph.Node.Dock.Center);
+            node.AddItem(new EditorFrameItem(decl) { FixedContext = storage }, HyperGraph.Node.Dock.Center);
             return node;
         }
 

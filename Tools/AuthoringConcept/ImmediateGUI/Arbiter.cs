@@ -301,9 +301,12 @@ namespace AuthoringConcept.ImmediateGUI
             return new SimpleControl { Node = node };
         }
 
-        public SimpleControl Label(Utils.GetDelegate<string> label)
+        public SimpleControl Label(string labelForGuid, Utils.GetDelegate<string> label)
         {
-            ImbuedNode node = new ImbuedNode(Config, 0);
+            ulong guid = 0;
+            if (labelForGuid != null)
+                guid = GuidCombine(_workingStack.Peek().Guid, MakeGuid(labelForGuid));
+            ImbuedNode node = new ImbuedNode(Config, guid);
             node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
             {
                 SizeF stringSize = Graphics.MeasureString(label(), SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
@@ -312,6 +315,38 @@ namespace AuthoringConcept.ImmediateGUI
             node.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
             {
                 RenderText(graphics, GetMin(content), label(), GetColorU32(SystemColor.ImGuiCol_Text));
+            };
+            _workingStack.Peek().AddChild(node);
+            return new SimpleControl { Node = node };
+        }
+
+        public SimpleControl String(string label, Utils.GetDelegate<string> getter, Utils.SetDelegate<string> setter)
+        {
+            ImbuedNode node = new ImbuedNode(Config, GuidCombine(_workingStack.Peek().Guid, MakeGuid(label)));
+            node.SetMeasureFunction((_, width, widthMode, height, heightMode) =>
+            {
+                SizeF stringSize = Graphics.MeasureString(label + ": " + getter(), SystemFonts.DefaultFont, new SizeF(width, height), StringFormat.GenericDefault);
+                return MeasureOutput.Make(stringSize.Width, stringSize.Height);
+            });
+            node.Draw = (ImbuedGraphics graphics, RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
+            {
+                RenderText(graphics, GetMin(content), label + ": " + getter(), GetColorU32(SystemColor.ImGuiCol_Text));
+            };
+            node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
+            {
+                if (io.CurrentMouseOver == controlId && io.LButtonDblClk)
+                {
+                    PointF[] transformables = { frame.Location, new PointF(frame.Right, frame.Bottom) };
+                    io.LocalToParentControl.TransformPoints(transformables);
+
+                    var bounds = new Rectangle(
+                        (int)transformables[0].X, (int)transformables[0].Y,
+                        (int)transformables[1].X - (int)transformables[0].X, (int)transformables[1].Y - (int)transformables[0].Y);
+
+                    Utils.HoveringStringEditBox(
+                        setter, getter,
+                        bounds, io.ParentControl);
+                }
             };
             _workingStack.Peek().AddChild(node);
             return new SimpleControl { Node = node };
@@ -701,7 +736,24 @@ namespace AuthoringConcept.ImmediateGUI
                 outerFrame.AddChild(arrowBox);
             }
 
-            Label(label + ": " + getter().ToString("N2")).Node.Margin = 2;
+            var l = Label(label + "---", () => label + ": " + getter().ToString("N2"));
+            l.Node.Margin = 2;
+            l.Node.IO = (RectangleF frame, RectangleF content, UInt64 controlId, IO io) =>
+            {
+                if (io.CurrentMouseOver == controlId && io.LButtonDblClk)
+                {
+                    PointF[] transformables = { frame.Location, new PointF(frame.Right, frame.Bottom) };
+                    io.LocalToParentControl.TransformPoints(transformables);
+
+                    var bounds = new Rectangle(
+                        (int)transformables[0].X, (int)transformables[0].Y,
+                        (int)transformables[1].X - (int)transformables[0].X, (int)transformables[1].Y - (int)transformables[0].Y);
+
+                    Utils.HoveringFloatEditBox(
+                        setter, getter,
+                        bounds, io.ParentControl);
+                }
+            };
 
             {
                 ImbuedNode arrowBox = new ImbuedNode(Config, GuidCombine(outerFrame.Guid, MakeGuid("increase")));

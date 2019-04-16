@@ -15,6 +15,8 @@ namespace AuthoringConcept.AdaptiveEditing
         void SetFloat(string label, float newValue);
         bool GetBool(string label);
         void SetBool(string label, bool newValue);
+        string GetString(string label);
+        void SetString(string label, string newValue);
 
         Vec2F GetFloat2(string label);
         void SetFloat2(string label, Vec2F newValue);
@@ -44,12 +46,20 @@ namespace AuthoringConcept.AdaptiveEditing
             public string NativeProperty;
         }
 
+        public Dictionary<string, Member<string>> Strings = new Dictionary<string, Member<string>>();
         public Dictionary<string, Member<bool>> Bools = new Dictionary<string, Member<bool>>();
         public Dictionary<string, Member<int>> Ints = new Dictionary<string, Member<int>>();
         public Dictionary<string, Member<float>> Floats = new Dictionary<string, Member<float>>();
         public Dictionary<string, Member<Vec2F>> Float2s = new Dictionary<string, Member<Vec2F>>();
         public Dictionary<string, Member<Vec3F>> Float3s = new Dictionary<string, Member<Vec3F>>();
         public Dictionary<string, Member<Vec4F>> Float4s = new Dictionary<string, Member<Vec4F>>();
+
+        public Member<string> String(string name, string def)
+        {
+            var member = new Member<string> { Default = def };
+            Strings.Add(name, member);
+            return member;
+        }
 
         public Member<bool> Bool(string name, bool def)
         {
@@ -95,6 +105,8 @@ namespace AuthoringConcept.AdaptiveEditing
 
         public void SetAllDefaults(IDataBlock dataBlock)
         {
+            foreach (var b in Strings)
+                dataBlock.SetString(b.Key, b.Value.Default);
             foreach (var b in Bools)
                 dataBlock.SetBool(b.Key, b.Value.Default);
             foreach (var b in Ints)

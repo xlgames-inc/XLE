@@ -45,6 +45,18 @@ namespace AuthoringConcept.AdaptiveEditing
             _bools[label] = newValue;
         }
 
+        public virtual string GetString(string label)
+        {
+            if (!_strings.TryGetValue(label, out string value))
+                return null;
+            return value;
+        }
+
+        public virtual void SetString(string label, string newValue)
+        {
+            _strings[label] = newValue;
+        }
+
         public virtual Vec2F GetFloat2(string label)
         {
             if (!_float2s.TryGetValue(label, out Vec2F value))
@@ -85,6 +97,7 @@ namespace AuthoringConcept.AdaptiveEditing
         {
             return _bools.ContainsKey(label)
                 || _ints.ContainsKey(label)
+                || _strings.ContainsKey(label)
                 || _floats.ContainsKey(label)
                 || _float2s.ContainsKey(label)
                 || _float3s.ContainsKey(label)
@@ -96,6 +109,7 @@ namespace AuthoringConcept.AdaptiveEditing
         {
             _bools.Remove(label);
             _ints.Remove(label);
+            _strings.Remove(label);
             _floats.Remove(label);
             _float2s.Remove(label);
             _float3s.Remove(label);
@@ -105,6 +119,7 @@ namespace AuthoringConcept.AdaptiveEditing
         private Dictionary<string, bool> _bools = new Dictionary<string, bool>();
         private Dictionary<string, int> _ints = new Dictionary<string, int>();
         private Dictionary<string, float> _floats = new Dictionary<string, float>();
+        private Dictionary<string, string> _strings = new Dictionary<string, string>();
 
         private Dictionary<string, Vec2F> _float2s = new Dictionary<string, Vec2F>();
         private Dictionary<string, Vec3F> _float3s = new Dictionary<string, Vec3F>();

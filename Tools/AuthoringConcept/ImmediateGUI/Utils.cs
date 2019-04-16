@@ -102,5 +102,54 @@ namespace AuthoringConcept.ImmediateGUI
 
             return textBox;
         }
+
+        internal static System.Windows.Forms.Control HoveringStringEditBox(
+            SetDelegate<string> setter, GetDelegate<string> getter,
+            Rectangle bounds, System.Windows.Forms.Control parentControl)
+        {
+            var textBox = new System.Windows.Forms.TextBox();
+            textBox.Text = getter();
+            textBox.Bounds = bounds;
+
+            textBox.Capture = true;
+            textBox.MouseCaptureChanged += (object sender, EventArgs e) =>
+            {
+                var tb = (System.Windows.Forms.TextBox)sender;
+                setter(tb.Text);        // commit to setter
+                tb.Parent = null;
+                tb.Dispose();
+            };
+            textBox.Click += (object sender, EventArgs e) =>
+            {
+                var tb = (System.Windows.Forms.TextBox)sender;
+                setter(tb.Text);        // commit to setter
+                tb.Parent = null;
+                tb.Dispose();
+            };
+            textBox.LostFocus += (object sender, EventArgs e) =>
+            {
+                var tb = (System.Windows.Forms.TextBox)sender;
+                setter(tb.Text);        // commit to setter
+                tb.Parent = null;
+                tb.Dispose();
+            };
+            textBox.KeyPress += (object sender, System.Windows.Forms.KeyPressEventArgs e) =>
+            {
+                if (e.KeyChar == (char)System.Windows.Forms.Keys.Enter)
+                {
+                    e.Handled = true;
+                    var tb = (System.Windows.Forms.TextBox)sender;
+                    setter(tb.Text);        // commit to setter
+                    tb.Parent = null;
+                    tb.Dispose();
+                }
+            };
+
+            textBox.Parent = parentControl;
+            textBox.Visible = true;
+            textBox.Focus();
+
+            return textBox;
+        }
     }
 }
