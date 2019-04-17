@@ -77,21 +77,16 @@ namespace AuthoringConcept
 
         public EditorFrameItem(AdaptiveEditing.IDataBlockDeclaration declaration)
         {
-            _frame = new Frame();
-            _frame.Declaration = declaration;
-        }
-
-        private class Frame : ImmediateGUI.Frame
-        {
-            internal AdaptiveEditing.IDataBlockDeclaration Declaration;
-
-            protected override void PerformLayout(ImmediateGUI.Arbiter gui, object context)
+            Declaration = declaration;
+            _frame = new ImmediateGUI.Frame();
+            _frame.PerformLayout = (ImmediateGUI.Arbiter gui, object context) =>
             {
                 Declaration.PerformLayout(gui, context as AdaptiveEditing.IDataBlock);
-            }
-        };
+            };
+        }
 
-        Frame _frame;
+        private ImmediateGUI.Frame _frame;
+        private AdaptiveEditing.IDataBlockDeclaration Declaration;
         public object FixedContext;
     }
 

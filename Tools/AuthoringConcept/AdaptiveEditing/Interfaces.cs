@@ -141,6 +141,21 @@ namespace AuthoringConcept.AdaptiveEditing
             return null;
         }
 
+        public IEnumerable<string> DataBlocks
+        {
+            get
+            {
+                foreach (var script in SchemaScripts)
+                {
+                    string prefix = script.Key + ":";
+                    foreach (var decl in script.Value.DataBlockDeclarations)
+                    {
+                        yield return prefix + decl.Key;
+                    }
+                }
+            }
+        }
+
         public interface ISchemaScript
         {
             IDictionary<string, IDataBlockDeclaration> DataBlockDeclarations { get; }

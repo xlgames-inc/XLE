@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace AuthoringConcept.ImmediateGUI
 {
-    public abstract class Frame
+    public class Frame
     {
         public void Draw(Graphics graphics, RectangleF destination, object context)
         {
@@ -26,7 +26,8 @@ namespace AuthoringConcept.ImmediateGUI
                 LayedOutRoots.ElementAt(0).LayoutHeight);
         }
 
-        protected abstract void PerformLayout(Arbiter gui, object context);
+        public delegate void PerformLayoutDelegate(Arbiter gui, object context);
+        public PerformLayoutDelegate PerformLayout;
 
         private void PrepareLayout(Graphics graphics, SizeF destinationSize, object context)
         {
@@ -36,20 +37,25 @@ namespace AuthoringConcept.ImmediateGUI
                 gui.Reset();
 
                 var mainRoot = gui.BeginRoot();
-                mainRoot.MinWidth = destinationSize.Width;
-                mainRoot.MinHeight = destinationSize.Height;
-
                 PerformLayout(gui, context);
-
                 gui.EndRoot();
 
                 LayedOutRoots = gui.GetRoots();
                 BreadthFirstNodes.Clear();
 
+                bool firstRoot = true;
                 foreach (var n in LayedOutRoots)
                 {
                     n.RootFrame?.Invoke(n);
-                    n.CalculateLayout();
+                    if (firstRoot)
+                    {
+                        n.CalculateLayout(destinationSize.Width, destinationSize.Height);
+                        firstRoot = false;
+                    }
+                    else
+                    {
+                        n.CalculateLayout();
+                    }
                 }
 
                 foreach (var n in LayedOutRoots)

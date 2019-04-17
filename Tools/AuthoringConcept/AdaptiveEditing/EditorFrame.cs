@@ -8,9 +8,15 @@ namespace AuthoringConcept.AdaptiveEditing
 {
     public class EditorFrame : ImmediateGUI.Frame
     {
-        protected override void PerformLayout(ImmediateGUI.Arbiter gui, object context)
+        public EditorFrame()
         {
-            Declaration.PerformLayout(gui, Storage);
+            PerformLayout = (ImmediateGUI.Arbiter gui, object context) =>
+            {
+                if (Declaration != null && Storage != null)
+                {
+                    Declaration.PerformLayout(gui, Storage);
+                }
+            };
         }
 
         public IDataBlock Storage;
