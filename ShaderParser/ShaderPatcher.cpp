@@ -323,14 +323,14 @@ namespace ShaderSourceParser
         std::string _name;
         std::string _finalArchiveName;
         NodeGraphSignature _signature;
-		InstantiationParameters _instantiationParameters;
+		InstantiationRequest _instantiationParameters;
 		bool _isGraphSyntaxFile;
 		std::shared_ptr<INodeGraphProvider> _customProvider;
     };
 
     static ResolvedFunction ResolveFunction(
         const std::string& archiveName, 
-        const InstantiationParameters& instantiationParameters, 
+        const InstantiationRequest& instantiationParameters, 
         INodeGraphProvider& sigProvider)
     {
         ResolvedFunction result;
@@ -348,7 +348,7 @@ namespace ShaderSourceParser
             auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
             if (i!=instantiationParameters._parameterBindings.end()) {
 				result._finalArchiveName = i->second._archiveName;
-				result._instantiationParameters = i->second._parameters;
+				result._instantiationParameters = i->second;
 				result._customProvider = i->second._customProvider;
             } else {
 				result._finalArchiveName = restriction.AsString();
@@ -398,7 +398,7 @@ namespace ShaderSourceParser
         DependencyTable& workingDependencyTable,    // this is the dependency table into which we'll append this function call
         const Node& node, 
         const NodeGraph& nodeGraph,
-        const InstantiationParameters& instantiationParameters,
+        const InstantiationRequest& instantiationParameters,
         INodeGraphProvider& sigProvider)
     {
             //
@@ -426,7 +426,7 @@ namespace ShaderSourceParser
             //  There are template parameters in the signature, and if we are passing values
             //  for those parameters, we must select a specific instantiation of the function
             //
-        InstantiationParameters callInstantiation;
+        InstantiationRequest callInstantiation;
 		callInstantiation._parameterBindings.insert(
 			sigRes._instantiationParameters._parameterBindings.begin(),
 			sigRes._instantiationParameters._parameterBindings.end());
@@ -445,7 +445,7 @@ namespace ShaderSourceParser
 				// There can be values attached as inputs to the instantiation node; they act like curried parameters.
 				auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
 				assert(instantiationNode);
-				auto param = InstantiationParameters::Dependency { instantiationNode->ArchiveName(), {} };
+				auto param = InstantiationRequest_ArchiveName { instantiationNode->ArchiveName(), {} };
 
 				// Any input parameters to this node that aren't part of the restriction signature should become curried
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
@@ -507,7 +507,7 @@ namespace ShaderSourceParser
 		auto n = RemoveTemplateRestrictions(node.ArchiveName());
 		auto parameterBindingsForThisNode = std::find_if(
 			instantiationParameters._parameterBindings.begin(), instantiationParameters._parameterBindings.end(),
-			[n](const std::pair<std::string, InstantiationParameters::Dependency>&p) {
+			[n](const std::pair<std::string, InstantiationRequest_ArchiveName>&p) {
 				return XlEqString(MakeStringSection(p.first), n);
 			});
 
@@ -541,7 +541,7 @@ namespace ShaderSourceParser
 				}
 			}
 
-            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._generateDanglingInputs, sigProvider)._expression;
+            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider)._expression;
         }
 
 		// If the call instantiation itself has curried parameters, they won't appear in the 
@@ -567,7 +567,7 @@ namespace ShaderSourceParser
 					pendingComma = true;
 
 					NodeGraphSignature::Parameter param{"auto", c};
-					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._generateDanglingInputs, sigProvider)._expression;
+					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider)._expression;
 				}
 			}
 		}
@@ -579,12 +579,16 @@ namespace ShaderSourceParser
         }
 
         // Append the function call to the dependency table
-        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation), sigRes._isGraphSyntaxFile, sigRes._customProvider };
-		auto depHash = dep._parameters.CalculateHash();
+        DependencyTable::Dependency dep;
+		dep._instantiation = InstantiationRequest_ArchiveName { sigRes._finalArchiveName, std::move(callInstantiation) };
+		dep._instantiation._customProvider = sigRes._customProvider;
+		dep._isGraphSyntaxFile = sigRes._isGraphSyntaxFile;
+
+		auto depHash = dep._instantiation.CalculateHash();
         auto existing = std::find_if(
             workingDependencyTable._dependencies.begin(), workingDependencyTable._dependencies.end(),
             [&dep, depHash](const DependencyTable::Dependency& d) 
-                { return d._archiveName == dep._archiveName && d._parameters.CalculateHash() == depHash; });
+                { return d._instantiation._archiveName == dep._instantiation._archiveName && d._instantiation.CalculateHash() == depHash; });
         if (existing == workingDependencyTable._dependencies.end())
             workingDependencyTable._dependencies.emplace_back(std::move(dep));
 
@@ -602,7 +606,7 @@ namespace ShaderSourceParser
     static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
         const NodeGraph& graph,
 		IteratorRange<const NodeGraphSignature::Parameter*> predefinedParameters,
-        const InstantiationParameters& instantiationParameters,
+        const InstantiationRequest& instantiationParameters,
         INodeGraphProvider& sigProvider)
     {
         std::stringstream result;
@@ -635,7 +639,7 @@ namespace ShaderSourceParser
 					// Look for "dangling outputs". These are outputs that have been generated by GenerateFunctionCall, but
 					// are not attached to any other nodes as inputs. If the flag is set, these will become part of the 
 					// function interface (and can be used for preview shaders, etc)
-					if (i2->NodeId() == instantiationParameters._generateDanglingOutputs) {
+					if (i2->NodeId() == instantiationParameters._options._generateDanglingOutputs) {
 						const auto& fnSig = fnCall.second._signature;
 						for (const auto& p:fnSig.GetParameters()) {
 							if (p._direction == ParameterDirection::Out) {
@@ -652,7 +656,7 @@ namespace ShaderSourceParser
         }
 
         for (const auto& dep:depTable._dependencies)
-            result << "\t//Dependency: " << dep._archiveName << " inst hash: " << dep._parameters.CalculateHash() << std::endl;
+            result << "\t//Dependency: " << dep._instantiation._archiveName << " inst hash: " << dep._instantiation.CalculateHash() << std::endl;
 
 		FillDirectOutputParameters(result, graph, graph.GetConnections(), interfContext, sigProvider);
 
@@ -675,7 +679,7 @@ namespace ShaderSourceParser
 
     InstantiatedShader GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
-        const InstantiationParameters& instantiationParameters,
+        const InstantiationRequest& instantiationParameters,
         INodeGraphProvider& sigProvider)
     {
 		std::string mainBody;
@@ -699,9 +703,11 @@ namespace ShaderSourceParser
 
 		std::vector<std::string> fragments;
 		fragments.emplace_back(result.str());
+		std::vector<InstantiatedShader::EntryPoint> entryPoints;
+		entryPoints.emplace_back(InstantiatedShader::EntryPoint { name.AsString(), std::move(interf) });
         return InstantiatedShader{
 			std::move(fragments), 
-			std::move(interf), 
+			std::move(entryPoints), 
 			std::move(depTable)};
     }
 

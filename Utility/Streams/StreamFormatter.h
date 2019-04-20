@@ -95,8 +95,13 @@ namespace Utility
         const void* End() const { return _end; }
 
         MemoryMappedInputStream(const void* start, const void* end);
-		MemoryMappedInputStream(IteratorRange<const void*> range);
         ~MemoryMappedInputStream();
+
+		template<typename Type>
+			MemoryMappedInputStream(IteratorRange<Type*> range)
+				: MemoryMappedInputStream(range.begin(), range.end()) {}
+
+		MemoryMappedInputStream(const char* nullTerminatedStr);
     protected:
         const void* _start;
         const void* _end;

@@ -21,39 +21,54 @@ namespace ShaderSourceParser
         return baseName + "_" + std::to_string(instantiationHash);
     }
 
-	InstantiatedShader InstantiateShader(
-        const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
-		bool useScaffoldFunction,
-		const InstantiationParameters& instantiationParameters)
+	struct PendingInstantiation
+	{
+		GraphLanguage::INodeGraphProvider::NodeGraph _graph;
+		bool _useScaffoldFunction = false;
+		bool _isRootInstantiation = true;
+		InstantiationRequest _instantiationParams;
+	};
+
+	static std::pair<std::string, std::string> SplitArchiveName(const std::string& input)
+	{
+		static std::regex archiveNameRegex(R"--(([\w\.\\/]+)::(\w+))--");
+		std::smatch archiveNameMatch;
+		if (std::regex_match(input, archiveNameMatch, archiveNameRegex) && archiveNameMatch.size() >= 3) {
+			return { archiveNameMatch[1].str(), archiveNameMatch[2].str() };
+		}
+		return { input, std::string{} };
+	}
+
+	static InstantiatedShader InstantiateShader(IteratorRange<const PendingInstantiation*> rootInstantiations)
 	{
 		std::set<std::string> includes;
 
-		struct PendingInstantiation
-		{
-			GraphLanguage::INodeGraphProvider::NodeGraph _graph;
-			bool _useScaffoldFunction;
-			InstantiationParameters _instantiationParams;
-		};
-
         InstantiatedShader result;
 		std::stack<PendingInstantiation> instantiations;
-		instantiations.emplace(PendingInstantiation{initialGraph, useScaffoldFunction, instantiationParameters});
+
+		// Add to the stack in reverse order, so that the first item in rootInstantiations appears highest in
+		// the output file
+		assert(!rootInstantiations.empty());
+		for (auto i=rootInstantiations.end()-1; i>=rootInstantiations.begin(); --i)
+			instantiations.emplace(*i);
 
 		std::set<std::pair<std::string, uint64_t>> previousInstantiation;
 
-		bool entryPointInstantiation = true;
-        while (!instantiations.empty()) {
+		while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
             instantiations.pop();
 
 			// Slightly different rules for function name generation with inst._scope is not null. inst._scope is
 			// only null for the original instantiation request -- in that case, we want the outer most function
 			// to have the same name as the original request
-			auto scaffoldName = entryPointInstantiation ? inst._graph._name : MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
+			auto scaffoldName = MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
 			auto implementationName = inst._useScaffoldFunction ? (scaffoldName + "_impl") : scaffoldName;
 			auto instFn = GenerateFunction(
 				inst._graph._graph, implementationName, 
 				inst._instantiationParams, *inst._graph._subProvider);
+
+			assert(instFn._entryPoints.size() == 1);
+			auto& instFnEntryPoint = instFn._entryPoints[0];
 
 			if (inst._useScaffoldFunction) {
 				auto scaffoldSignature = inst._graph._signature;
@@ -61,14 +76,14 @@ namespace ShaderSourceParser
 					for (const auto&c:tp.second._parametersToCurry) {
 						auto name = "curried_" + tp.first + "_" + c;
 						auto instP = std::find_if(
-							instFn._entryPointSignature.GetParameters().begin(), instFn._entryPointSignature.GetParameters().end(),
+							instFnEntryPoint._signature.GetParameters().begin(), instFnEntryPoint._signature.GetParameters().end(),
 							[name](const GraphLanguage::NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(name), p._name); });
-						if (instP != instFn._entryPointSignature.GetParameters().end())
+						if (instP != instFnEntryPoint._signature.GetParameters().end())
 							scaffoldSignature.AddParameter(*instP);
 					}
 				}
 
-				result._sourceFragments.push_back(ShaderSourceParser::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
+				result._sourceFragments.push_back(ShaderSourceParser::GenerateScaffoldFunction(scaffoldSignature, instFnEntryPoint._signature, scaffoldName, implementationName));
 			}
 
 			result._sourceFragments.insert(
@@ -84,45 +99,37 @@ namespace ShaderSourceParser
 					result._sourceFragments.push_back(fragment);
 			}
 
-			if (entryPointInstantiation)
-				result._entryPointSignature = instFn._entryPointSignature;
-			entryPointInstantiation = false;
+			if (inst._isRootInstantiation)
+				result._entryPoints.push_back(instFnEntryPoint);
                 
 			for (const auto&dep:instFn._dependencies._dependencies) {
 
-				std::string filename = dep._archiveName;
-
-				static std::regex archiveNameRegex(R"--(([\w\.\\/]+)::(\w+))--");
-				std::smatch archiveNameMatch;
-				if (std::regex_match(dep._archiveName, archiveNameMatch, archiveNameRegex) && archiveNameMatch.size() >= 3) {
-					filename = archiveNameMatch[1].str();
-				}
-
 				// if it's a graph file, then we must create a specific instantiation
-				auto instHash = dep._parameters.CalculateHash();
+				auto instHash = dep._instantiation.CalculateHash();
 				if (dep._isGraphSyntaxFile) {
 					// todo -- not taking into account the custom provider on the following line
-					if (previousInstantiation.find({dep._archiveName, instHash}) == previousInstantiation.end()) {
-						if (dep._customProvider) {
+					if (previousInstantiation.find({dep._instantiation._archiveName, instHash}) == previousInstantiation.end()) {
+						if (dep._instantiation._customProvider) {
 							instantiations.emplace(
-								PendingInstantiation{dep._customProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
-							previousInstantiation.insert({dep._archiveName, instHash});
+								PendingInstantiation{dep._instantiation._customProvider->FindGraph(dep._instantiation._archiveName).value(), true, false, dep._instantiation});
+							previousInstantiation.insert({dep._instantiation._archiveName, instHash});
 						} else {
 							instantiations.emplace(
-								PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
-							previousInstantiation.insert({dep._archiveName, instHash});
+								PendingInstantiation{inst._graph._subProvider->FindGraph(dep._instantiation._archiveName).value(), true, false, dep._instantiation});
+							previousInstantiation.insert({dep._instantiation._archiveName, instHash});
 						}
 					}
 				} else {
 					// This is just an include of a normal shader header
 					if (instHash!=0) {
+						auto filename = SplitArchiveName(dep._instantiation._archiveName).first;
 						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << instHash));
 					} else {
-						if (dep._customProvider) {
-							auto sig = dep._customProvider->FindSignature(dep._archiveName);
+						if (dep._instantiation._customProvider) {
+							auto sig = dep._instantiation._customProvider->FindSignature(dep._instantiation._archiveName);
 							includes.insert(sig.value()._sourceFile);
 						} else {
-							auto sig = inst._graph._subProvider->FindSignature(dep._archiveName);
+							auto sig = inst._graph._subProvider->FindSignature(dep._instantiation._archiveName);
 							includes.insert(sig.value()._sourceFile);
 						}
 					}
@@ -143,25 +150,54 @@ namespace ShaderSourceParser
 	}
 
 	InstantiatedShader InstantiateShader(
-		StringSection<> entryFile,
-		StringSection<> entryFn,
-		const InstantiationParameters& instantiationParameters)
+        const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
+		bool useScaffoldFunction,
+		const InstantiationRequest& instantiationParameters)
 	{
-		return InstantiateShader(
-			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true,
-			instantiationParameters);
+		// Note that we end up with a few extra copies of initialGraph, because PendingInstantiation
+		// contains a complete copy of the node graph
+		PendingInstantiation pendingInst { initialGraph, true, true, instantiationParameters };
+		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1));
 	}
 
-	static uint64_t CalculateDepHash(const InstantiationParameters::Dependency& dep, uint64_t seed = DefaultSeed64)
+	InstantiatedShader InstantiateShader(
+		StringSection<> entryFile,
+		StringSection<> entryFn,
+		const InstantiationRequest& instantiationParameters)
+	{
+		PendingInstantiation pendingInst {
+			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true, true,
+			instantiationParameters
+		};
+		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1));
+	}
+
+	InstantiatedShader InstantiateShader(IteratorRange<const InstantiationRequest_ArchiveName*> request)
+	{
+		assert(!request.empty());
+		std::vector<PendingInstantiation> pendingInst;
+		pendingInst.reserve(request.size());
+		for (const auto&r:request) {
+			auto split = SplitArchiveName(r._archiveName);
+			pendingInst.emplace_back(
+				PendingInstantiation {
+					GraphLanguage::LoadGraphSyntaxFile(split.first, split.second), true, true,
+					r
+				});
+		}
+		return InstantiateShader(MakeIteratorRange(pendingInst));
+	}
+
+	static uint64_t CalculateDepHash(const InstantiationRequest_ArchiveName& dep, uint64_t seed = DefaultSeed64)
 	{
 		uint64_t result = Hash64(dep._archiveName);
 		// todo -- ordering of parameters matters to the hash here
-		for (const auto& d:dep._parameters._parameterBindings)
+		for (const auto& d:dep._parameterBindings)
 			result = Hash64(d.first, CalculateDepHash(d.second, result));
 		return result;
 	}
 
-    uint64_t InstantiationParameters::CalculateHash() const
+    uint64_t InstantiationRequest::CalculateHash() const
     {
         if (_parameterBindings.empty()) return 0;
         uint64 result = DefaultSeed64;

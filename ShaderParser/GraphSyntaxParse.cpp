@@ -74,6 +74,8 @@ namespace GraphLanguage
 
     GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode)
     {
+		if (sourceCode.IsEmpty()) Throw(::Exceptions::BasicLabel("Empty string passed to ParseGraphSyntax"));
+
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
             (ANTLR3_UINT8*)sourceCode.begin(), ANTLR3_ENC_8BIT, 
             (unsigned)sourceCode.size(), (ANTLR3_UINT8*)"InputStream");
