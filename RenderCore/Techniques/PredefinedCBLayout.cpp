@@ -61,6 +61,13 @@ namespace RenderCore { namespace Techniques
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
     }
 
+	PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements)
+	{
+		_cbSize = 0;
+		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		AppendElements(elements);
+	}
+
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
         std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:\[(\d*)\])?\s*(?:=\s*([^;]*))?;.*)--");
@@ -139,9 +146,8 @@ namespace RenderCore { namespace Techniques
 
 		for (const auto& nameAndType : elements) {
 			Element e;
-			e._name = nameAndType._name;
-			e._hash = ParameterBox::MakeParameterNameHash(e._name);
-			e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
+			e._hash = ParameterBox::MakeParameterNameHash(nameAndType._name);
+			e._hash64 = Hash64(AsPointer(nameAndType._name.begin()), AsPointer(nameAndType._name.end()));
 			e._type = nameAndType._type;
 
 			// HLSL adds padding so that vectors don't straddle 16 byte boundaries!
@@ -158,10 +164,68 @@ namespace RenderCore { namespace Techniques
 			if (e._arrayElementCount != 0)
 				cbIterator += (e._arrayElementCount - 1) * e._arrayElementStride + size;
 			_elements.push_back(e);
+			_elementNames.push_back(nameAndType._name);
 		}
 
 		_cbSize = cbIterator;
 		_cbSize = CeilToMultiplePow2(_cbSize, 16);
+	}
+
+	static PredefinedCBLayout::NameAndType* FindAlignmentGap(IteratorRange<PredefinedCBLayout::NameAndType*> elements, size_t requestSize)
+	{
+		unsigned cbIterator = 0;
+
+		auto i = elements.begin();
+		for(;i!=elements.end(); ++i) {
+			auto newCBIterator = cbIterator;
+			if (FloorToMultiplePow2(newCBIterator, 16) != FloorToMultiplePow2(newCBIterator + std::min(16u, i->_type.GetSize()) - 1, 16)) {
+				newCBIterator = CeilToMultiplePow2(newCBIterator, 16);
+
+				auto paddingSpace = newCBIterator - cbIterator;
+				// If the paddingSpace equals or exceeds the space we're looking for, then let's use this space
+				// We return the current iterator, which means the space can be found immediately before this element
+				if (paddingSpace >= requestSize)
+					return i;
+			}
+
+			auto eleSize = i->_type.GetSize();
+			auto arrayElementStride = (i->_arrayElementCount > 1) ? CeilToMultiplePow2(eleSize, 16) : eleSize;
+			if (i->_arrayElementCount != 0)
+				cbIterator += (i->_arrayElementCount - 1) * arrayElementStride + eleSize;
+		}
+
+		return i;
+	}
+
+	void PredefinedCBLayout::OptimizeElementOrder(IteratorRange<NameAndType*> elements)
+	{
+		// Optimize ordering in 2 steps:
+		//  1) order by type size (largest first) -- using a stable sort to maintain the original ordering as much as possible
+		//	2) move any elements that can be squeezed into gaps in earlier parts of the ordering
+		std::stable_sort(
+			elements.begin(), elements.end(),
+			[](const NameAndType& lhs, const NameAndType& rhs) {
+				if (lhs._arrayElementCount > rhs._arrayElementCount) return true;
+				if (lhs._arrayElementCount < rhs._arrayElementCount) return false;
+				return lhs._type.GetSize() > rhs._type.GetSize();
+			});
+
+		for (auto i=elements.begin(); i!=elements.end(); ++i) {
+			if (i->_arrayElementCount != 1 || i->_type.GetSize() >= 16) continue;
+
+			// Find the best gap to squeeze this into
+			// (note that since "elements" is ordered from largest to smallest, we will always
+			// find and occupy the large alignment gaps first)
+			auto insertionPoint = FindAlignmentGap(MakeIteratorRange(elements.begin(), i), i->_type.GetSize());
+			if (insertionPoint == i) continue;	// no better location found
+
+			// we can insert this object immediate before 'insertionPoint'. To do that, we should
+			// move all elements from i-1 up to (and including) insertionPoint forward on element
+			auto elementToInsert = *i;
+			for (auto i2=i; (i2-1)>=insertionPoint; i2--)
+				*i2 = *(i2-1);
+			*insertionPoint = elementToInsert;
+		}
 	}
 
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const

@@ -102,6 +102,7 @@
     <ClCompile Include="..\BasicMaths.cpp" />
     <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\ModelConversion.cpp" />
+    <ClCompile Include="..\CBLayoutTests.cpp" />
     <ClCompile Include="..\ShaderParser.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
     <ClCompile Include="..\StreamFormatter.cpp" />
