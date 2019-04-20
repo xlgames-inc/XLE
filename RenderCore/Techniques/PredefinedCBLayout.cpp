@@ -23,6 +23,7 @@ namespace RenderCore { namespace Techniques
 {
     PredefinedCBLayout::PredefinedCBLayout(StringSection<::Assets::ResChar> initializer)
     {
+		_cbSize = 0;
 		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_validationCallback, initializer);
 
@@ -55,6 +56,7 @@ namespace RenderCore { namespace Techniques
 
     PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
     {
+		_cbSize = 0;
         Parse(source);
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
     }
@@ -63,8 +65,9 @@ namespace RenderCore { namespace Techniques
     {
         std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:\[(\d*)\])?\s*(?:=\s*([^;]*))?;.*)--");
 
-        unsigned cbIterator = 0;
-        const char* iterator = source.begin();
+		std::vector<NameAndType> nameAndTypes;
+
+		const char* iterator = source.begin();
         const char* end = source.end();
         for (;;) {
             while (iterator < end && (*iterator == '\n' || *iterator == '\r' || *iterator == ' '|| *iterator == '\t')) ++iterator;
@@ -80,35 +83,21 @@ namespace RenderCore { namespace Techniques
             std::match_results<const char*> match;
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 4) {
-                Element e;
-                e._name = match[2].str();
-                e._hash = ParameterBox::MakeParameterNameHash(e._name);
-                e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
-                e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
+				auto name = match[2].str();
+				auto type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
-                auto size = e._type.GetSize();
-                if (!size) {
-                    Log(Warning) << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator) << std::endl;
-                    continue;
-                }
+				unsigned arrayElementCount = 1;
+				if (match.size() > 3 && match[3].matched) {
+					arrayElementCount = Conversion::Convert<unsigned>(match[3].str());
+				}
 
-                    // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
-                    // let's detect that case, and add padding as necessary
-                if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
-                    cbIterator = CeilToMultiplePow2(cbIterator, 16);
-                }
+				auto size = type.GetSize();
+				if (!size) {
+					Log(Warning) << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator) << std::endl;
+					continue;
+				}
 
-                unsigned arrayElementCount = 1;
-                if (match.size() > 3 && match[3].matched) {
-                    arrayElementCount = Conversion::Convert<unsigned>(match[3].str());
-                }
-
-                e._offset = cbIterator;
-                e._arrayElementCount = arrayElementCount;
-                e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
-                if (arrayElementCount != 0)
-                    cbIterator += (arrayElementCount-1) * e._arrayElementStride + size;
-                _elements.push_back(e);
+				nameAndTypes.push_back(PredefinedCBLayout::NameAndType { name, type, arrayElementCount });
 
                 if (match.size() > 4 && match[4].matched) {
 
@@ -120,20 +109,20 @@ namespace RenderCore { namespace Techniques
                         MakeStringSection(match[4].first, match[4].second),
                         buffer0, dimof(buffer0));
 
-                    if (!(defaultType == e._type)) {
+                    if (!(defaultType == type)) {
                             //  The initialiser isn't exactly the same type as the
                             //  defined variable. Let's try a casting operation.
                             //  Sometimes we can get int defaults for floats variables, etc.
                         bool castSuccess = ImpliedTyping::Cast(
-                            MakeIteratorRange(buffer1), e._type,
+                            MakeIteratorRange(buffer1), type,
                             MakeIteratorRange(buffer0), defaultType);
                         if (castSuccess) {
-							_defaults.SetParameter(MakeStringSection(e._name).Cast<utf8>(), {buffer1, PtrAdd(buffer1, std::min(sizeof(buffer1), (size_t)e._type.GetSize()))}, e._type);
+							_defaults.SetParameter(MakeStringSection(name).Cast<utf8>(), {buffer1, PtrAdd(buffer1, std::min(sizeof(buffer1), (size_t)type.GetSize()))}, type);
                         } else {
                             Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
-                        _defaults.SetParameter(MakeStringSection(e._name).Cast<utf8>(), {buffer0, PtrAdd(buffer0, std::min(sizeof(buffer0), (size_t)defaultType.GetSize()))}, defaultType);
+                        _defaults.SetParameter(MakeStringSection(name).Cast<utf8>(), {buffer0, PtrAdd(buffer0, std::min(sizeof(buffer0), (size_t)defaultType.GetSize()))}, defaultType);
                     }
                 }
             } else {
@@ -141,9 +130,39 @@ namespace RenderCore { namespace Techniques
             }
         }
 
-        _cbSize = cbIterator;
-        _cbSize = CeilToMultiplePow2(_cbSize, 16);
+		AppendElements(MakeIteratorRange(nameAndTypes));
     }
+
+	void PredefinedCBLayout::AppendElements(IteratorRange<const NameAndType*> elements)
+	{
+		unsigned cbIterator = _cbSize;
+
+		for (const auto& nameAndType : elements) {
+			Element e;
+			e._name = nameAndType._name;
+			e._hash = ParameterBox::MakeParameterNameHash(e._name);
+			e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
+			e._type = nameAndType._type;
+
+			// HLSL adds padding so that vectors don't straddle 16 byte boundaries!
+			// let's detect that case, and add padding as necessary
+			if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
+				cbIterator = CeilToMultiplePow2(cbIterator, 16);
+			}
+
+			auto size = e._type.GetSize();
+
+			e._offset = cbIterator;
+			e._arrayElementCount = nameAndType._arrayElementCount;
+			e._arrayElementStride = (e._arrayElementCount > 1) ? CeilToMultiplePow2(size, 16) : size;
+			if (e._arrayElementCount != 0)
+				cbIterator += (e._arrayElementCount - 1) * e._arrayElementStride + size;
+			_elements.push_back(e);
+		}
+
+		_cbSize = cbIterator;
+		_cbSize = CeilToMultiplePow2(_cbSize, 16);
+	}
 
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {

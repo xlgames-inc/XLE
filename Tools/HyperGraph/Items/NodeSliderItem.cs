@@ -127,7 +127,7 @@ namespace HyperGraph.Items
 		protected const int SliderHeight	= 8;
 		protected const int Spacing		= 2;
 
-		public override SizeF Measure(Graphics graphics)
+		public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Text))
 			{

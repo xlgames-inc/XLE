@@ -6,6 +6,7 @@
 
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
+using System.ComponentModel.Composition.Hosting;
 
 using Sce.Atf;
 using Sce.Atf.Applications;
@@ -24,7 +25,13 @@ namespace ControlsLibraryExt.Material
         void IInitializable.Initialize()
         {
             _controls = new HierchicalMaterialControl();
-            _controls.FocusedMatControls.AddExtraControls("Material", new MatTab(_schemaLoader));
+
+            var exports = _exportProvider.GetExports<MaterialControl.ExtraControls>();
+            foreach(var e in exports)
+            {
+                _controls.FocusedMatControls.AddExtraControls(e.Value.TabName, e.Value);
+            }
+
             _controls.Object = _context.MaterialName;
             _context.OnChange += OnActiveMaterialChange;
             _controlHostService.RegisterControl(
@@ -53,11 +60,15 @@ namespace ControlsLibraryExt.Material
         [Import(AllowDefault = false)] private IControlHostService _controlHostService;
         [Import(AllowDefault = false)] private ActiveMaterialContext _context;
         [Import(AllowDefault = false)] private MaterialSchemaLoader _schemaLoader;
+        [Import(AllowDefault = false)] private ExportProvider _exportProvider;
         HierchicalMaterialControl _controls;
     }
 
-    class MatTab : MaterialControl.ExtraControls
+    [Export(typeof(MaterialControl.ExtraControls))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
+    public class MatTab : MaterialControl.ExtraControls
     {
+        [ImportingConstructor]
         public MatTab(MaterialSchemaLoader schemaLoader)
         {
             m_schemaLoader = schemaLoader;
@@ -91,6 +102,8 @@ namespace ControlsLibraryExt.Material
                 }
             }
         }
+
+        public override string TabName { get { return "Material"; } }
 
         private Sce.Atf.Controls.PropertyEditing.PropertyGrid m_child;
         private MaterialSchemaLoader m_schemaLoader; 

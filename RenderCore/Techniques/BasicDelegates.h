@@ -5,10 +5,11 @@
 #pragma once
 
 #include "DrawableDelegates.h"
-#include "PredefinedCBLayout.h"
 
 namespace RenderCore { namespace Techniques
 {
+	class PredefinedCBLayout;
+
 	class MaterialDelegate_Basic : public IMaterialDelegate
     {
     public:
@@ -24,6 +25,15 @@ namespace RenderCore { namespace Techniques
 
         MaterialDelegate_Basic();
 		~MaterialDelegate_Basic();
+
+	protected:
+		void MaterialDelegate_Basic::ApplyUniforms(
+			ParsingContext& context,
+			RenderCore::Metal::DeviceContext& devContext,
+			const RenderCore::Metal::BoundUniforms& boundUniforms,
+			unsigned streamIdx,
+			const void* objectContext,
+			const PredefinedCBLayout& cbLayout) const;
     };
 
 	class TechniqueDelegate_Basic : public ITechniqueDelegate

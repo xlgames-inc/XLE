@@ -29,7 +29,7 @@ namespace MaterialTool
                 return ModelConversion.ToShaderPatcherLayer(ViewModel);
             }
             public HyperGraph.IGraphModel ViewModel { get; set; }
-            public NodeEditorCore.IModelConversion ModelConversion;
+            public NodeEditorCore.ModelConversion ModelConversion;
         }
 
         public NodeEditorCore.IDiagramDocument Document
@@ -118,8 +118,8 @@ namespace MaterialTool
         }
         #endregion
 
-        [Import] private NodeEditorCore.INodeFactory NodeFactory;
-        [Import] private NodeEditorCore.IModelConversion ModelConversion;
+        [Import] private NodeEditorCore.ShaderFragmentNodeCreator NodeFactory;
+        [Import] private NodeEditorCore.ModelConversion ModelConversion;
         private NodeEditorCore.IDiagramDocument _document;
 
         private static Color s_zeroColor = new Color();

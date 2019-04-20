@@ -71,7 +71,7 @@ namespace HyperGraph.Items
 		const int ColorBoxSize = 16;
 		const int Spacing = 2;
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Text))
 			{

@@ -161,6 +161,6 @@ namespace MaterialTool.Controls
         IControlHostService _controlHostService;
 
         [Import]
-        NodeEditorCore.INodeFactory _nodeCreator;
+        NodeEditorCore.ShaderFragmentNodeCreator _nodeCreator;
     }
 }

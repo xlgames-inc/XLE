@@ -132,6 +132,7 @@ namespace Utility
         T1(Type) void   SetParameter(StringSection<utf8> name, Type value);
 
         void            SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type);
+		void			RemoveParameter(ParameterName name);
         
         ////////////////////////////////////////////////////////////////////////////////////////
             //      G E T                                                   //

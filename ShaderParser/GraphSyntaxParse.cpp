@@ -15,6 +15,7 @@
 #include "Grammar/GraphSyntaxEval.h"
 #include "../Assets/IFileSystem.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../ConsoleRig/Log.h"
 #include <unordered_map>
 #include <stack>
@@ -121,6 +122,7 @@ namespace GraphLanguage
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
 		std::optional<NodeGraph> FindGraph(StringSection<> name);
+		std::string TryFindAttachedFile(StringSection<> name);
 
         GraphNodeGraphProvider(
 			const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
@@ -205,6 +207,23 @@ namespace GraphLanguage
 			return NodeGraph{ i->first, i->second._graph, i->second._signature, shared_from_this() };
 
 		return BasicNodeGraphProvider::FindGraph(name);
+	}
+
+	std::string GraphNodeGraphProvider::TryFindAttachedFile(StringSection<> name)
+	{
+		char resolvedName[MaxPath];
+		auto splitter = MakeFileNameSplitter(name);
+		auto rootName = splitter.DrivePathAndFilename();
+		auto importedName = _parsedGraphFile->_imports.find(rootName.AsString());
+		if (importedName != _parsedGraphFile->_imports.end()) {
+			resolvedName[0] = '\0';
+			XlCatString(resolvedName, importedName->second);
+			XlCatString(resolvedName, splitter.ExtensionWithPeriod());
+			_searchRules.ResolveFile(resolvedName, resolvedName);
+		} else {
+			_searchRules.ResolveFile(resolvedName, name);
+		}
+		return resolvedName;
 	}
 
 	GraphNodeGraphProvider::GraphNodeGraphProvider(

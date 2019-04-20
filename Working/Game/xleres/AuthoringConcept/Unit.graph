@@ -1,0 +1,146 @@
+// CompoundDocument:1
+import templates = "xleres/nodes/templates.sh"
+import basic = "game/xleres/nodes/basic.sh"
+import utils = "game/xleres/authoringconcept/utils.sh"
+import surface = "game/xleres/surface.h"
+import texture = "game/xleres/nodes/texture.sh"
+import conditions = "game/xleres/nodes/conditions.sh"
+import lighting = "game/xleres/nodes/lighting.sh"
+
+float4 Freeze2(VSOutput geo, float4 inputColor) implements templates::AmendColor
+{
+	node node_0 = [[visualNode36]]basic::Separate3(input:[[visualNode38]]basic::Multiply3Scalar(lhs:[[visualNode39]]surface::GetWorldPosition(geo:geo).result, rhs:"1").result);
+	captures Uniforms = [[visualNode32]](float sheen_speed = "3.0", Texture2D dissolveMask);
+	node node_1 = [[visualNode31]]basic::MultiplyMany1(first:[[visualNode33]]utils::GetSceneTime().result, second:Uniforms.sheen_speed, third:"1/200", forth:"1");
+	node node_2 = [[visualNode81]]basic::Negate1(input:node_1.result);
+	node node_3 = [[visualNode37]]basic::Negate1(input:node_0.b);
+	captures Uniforms2 = [[visualNode82]](float3 freeze = "{.4, 0.627, .9}", float freezeAmt = ".55");
+	node node_4 = [[visualNode46]]basic::SeparateAlpha(input:inputColor);
+	captures Uniforms3 = [[visualNode8]](Texture2D cloudTexture);
+	node node_5 = [[visualNode13]]utils::GetPixelCoordZeroToOne(geo:geo);
+	node node_6 = [[visualNode9]]utils::GetSceneTime();
+	node node_7 = [[visualNode14]]basic::Multiply1(rhs:Uniforms.sheen_speed, lhs:"1.5/200");
+	node node_8 = [[visualNode20]]basic::Negate1(input:node_7.result);
+	node node_9 = [[visualNode29]]basic::MultiplyMany1(first:[[visualNode27]]conditions::Ternary1(test:[[visualNode21]]conditions::LessThan(lhs:[[visualNode22]]basic::MultiplyMany1(first:[[visualNode23]]basic::Separate4(input:[[visualNode16]]texture::Sample(inputTexture:Uniforms3.cloudTexture, texCoord:[[visualNode11]]basic::Add2(rhs:[[visualNode10]]basic::Multiply2Scalar(rhs:node_6.result, lhs:[[visualNode24]]basic::Combine2(g:node_7.result, r:node_8.result).fnResult).result, lhs:[[visualNode12]]basic::Multiply2(lhs:node_5.result, rhs:"float2(43, 33)").result).result).result).r, second:[[visualNode25]]basic::Separate4(input:[[visualNode15]]texture::Sample(inputTexture:Uniforms3.cloudTexture, texCoord:[[visualNode17]]basic::Add2(lhs:[[visualNode19]]basic::Multiply2(lhs:node_5.result, rhs:"float2(-31, -42)").result, rhs:[[visualNode18]]basic::Multiply2Scalar(rhs:node_6.result, lhs:[[visualNode26]]basic::Combine2(r:node_7.result, g:node_8.result).fnResult).result).result).result).g, third:"2.0", forth:"1.0").result, rhs:".5").result, onTruth:"1.0f", onFalse:".01").result, second:[[visualNode28]]lighting::SkyReflectionFresnelFactor(geo:geo).result, third:"2.0", forth:"1.0f");
+	return [[visualNode5]]basic::CombineAlpha(alpha:[[visualNode6]]basic::SeparateAlpha(input:inputColor).alpha, color:[[visualNode30]]basic::Add3(lhs:[[visualNode7]]basic::Combine3(r:node_9.result, g:node_9.result, b:node_9.result).fnResult, rhs:[[visualNode83]]basic::Lerp3(alpha:[[visualNode43]]basic::Multiply1(rhs:[[visualNode0]]basic::AddMany1(first:[[visualNode2]]basic::Negate1(input:[[visualNode3]]basic::Saturate1(input:[[visualNode4]]basic::Dot3(lhs:node_4.rgb, rhs:"float3(0.2126, 0.7152, 0.0722)").result).result).result, second:[[visualNode1]]basic::MultiplyMany1(forth:[[visualNode44]]lighting::SkyReflectionFresnelFactor(geo:geo).result, third:"80.0", second:[[visualNode41]]basic::Separate4(input:[[visualNode34]]texture::Sample(inputTexture:Uniforms.dissolveMask, texCoord:[[visualNode40]]basic::Combine2(r:[[visualNode84]]basic::Add1(lhs:node_2.result, rhs:[[visualNode85]]basic::Multiply1(rhs:node_0.r, lhs:[[visualNode86]]basic::PassThrough1(input:".04").result).result).result, g:[[visualNode87]]basic::Add1(lhs:node_1.result, rhs:node_3.result).result).fnResult).result).r, first:[[visualNode42]]basic::Separate4(input:[[visualNode35]]texture::Sample(inputTexture:Uniforms.dissolveMask, texCoord:[[visualNode88]]basic::Combine2(g:[[visualNode89]]basic::Add1(rhs:node_3.result, lhs:node_2.result).result, r:[[visualNode90]]basic::Add1(lhs:node_1.result, rhs:[[visualNode91]]basic::Multiply1(rhs:node_0.r, lhs:[[visualNode92]]basic::PassThrough1(input:".05").result).result).result).fnResult).result).r).result, third:"1.0f", forth:"0").result, lhs:Uniforms2.freezeAmt).result, min:[[visualNode45]]basic::Multiply3(lhs:node_4.rgb, rhs:Uniforms2.freeze).result, max:Uniforms2.freeze).result).result).result;
+}
+float4 Hologram2(VSOutput geo, float4 inputColor) implements templates::AmendColor
+{
+	captures Uniforms = [[visualNode48]](Texture2D dissolveMask, float hologram_speed = "10", float dissolve_texscale2 = "500.0");
+	node node_0 = [[visualNode49]]basic::Divide1(lhs:Uniforms.dissolve_texscale2, rhs:[[visualNode50]]basic::Multiply1(lhs:Uniforms.hologram_speed, rhs:[[visualNode51]]utils::GetSceneTime().result).result);
+	node node_1 = [[visualNode52]]basic::Multiply1(lhs:[[visualNode53]]basic::Separate2(input:[[visualNode54]]utils::GetPixelCoordZeroToOne(geo:geo).result).g, rhs:".5");
+	node node_2 = [[visualNode55]]basic::Saturate1(input:[[visualNode56]]basic::MultiplyMany1(first:[[visualNode57]]basic::Lerp1(alpha:[[visualNode58]]basic::Abs1(value:[[visualNode59]]basic::Add1(lhs:[[visualNode60]]basic::Multiply1(lhs:[[visualNode61]]basic::Fract1(input:[[visualNode62]]basic::Add1(lhs:[[visualNode63]]basic::Multiply1(lhs:node_1.result, rhs:"128").result, rhs:[[visualNode64]]utils::GetSceneTime().result).result).result, rhs:"2.0").result, rhs:"-1").result).result, min:".3", max:"1").result, second:[[visualNode65]]basic::Add1(lhs:[[visualNode66]]basic::Separate4(input:[[visualNode67]]texture::Sample(inputTexture:Uniforms.dissolveMask, texCoord:[[visualNode68]]basic::Combine2(r:"0.0f", g:[[visualNode69]]basic::Add1(rhs:node_0.result, lhs:node_1.result).result).fnResult).result).r, rhs:[[visualNode70]]basic::Separate4(input:[[visualNode71]]texture::Sample(inputTexture:Uniforms.dissolveMask, texCoord:[[visualNode72]]basic::Combine2(r:".5", g:[[visualNode73]]basic::Subtract1(rhs:node_0.result, lhs:node_1.result).result).fnResult).result).r).result, third:".5", forth:"1").result);
+	node node_3 = [[visualNode74]]basic::SeparateAlpha(input:inputColor);
+	node node_4 = [[visualNode75]]basic::MultiplyMany1(first:node_2.result, second:node_3.alpha, third:"2.0", forth:"1.0");
+	return [[visualNode76]]basic::CombineAlpha(alpha:node_4.result, color:[[visualNode77]]basic::Multiply3Scalar(rhs:node_4.result, lhs:[[visualNode78]]basic::Multiply3Scalar(lhs:node_3.rgb, rhs:[[visualNode79]]basic::Lerp1(alpha:node_2.result, min:[[visualNode80]]basic::Multiply1(lhs:[[visualNode47]]basic::Separate4(input:inputColor).a, rhs:"2.0").result, max:"4.0").result).result).result).result;
+}
+attributes visualNode46(PreviewGeometry:"plane2d", X:"1181", Y:"-446", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode8(X:"992", Y:"-1170", State:"Normal");
+attributes visualNode0(PreviewGeometry:"sphere", X:"1925", Y:"5", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"sphere", X:"1731", Y:"156", State:"Normal", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"plane2d", X:"1675", Y:"-94", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"chart", X:"1530", Y:"-103", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"plane2d", X:"1393", Y:"-148", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode5(PreviewGeometry:"chart", X:"3831", Y:"-800", State:"Normal", OutputToVisualize:"");
+attributes visualNode48(X:"-220", Y:"1051", State:"Normal");
+attributes visualNode6(PreviewGeometry:"chart", X:"3491", Y:"-729", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode49(PreviewGeometry:"chart", X:"418", Y:"1152", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode7(PreviewGeometry:"plane2d", X:"2900", Y:"-833", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode47(PreviewGeometry:"chart", X:"1790", Y:"778", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode9(PreviewGeometry:"chart", X:"402", Y:"-962", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode10(PreviewGeometry:"plane2d", X:"776", Y:"-967", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode11(PreviewGeometry:"plane2d", X:"1089", Y:"-1015", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode12(PreviewGeometry:"plane2d", X:"796", Y:"-1070", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode13(PreviewGeometry:"plane2d", X:"496", Y:"-1076", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode58(PreviewGeometry:"chart", X:"1440", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode14(PreviewGeometry:"chart", X:"257", Y:"-839", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode59(PreviewGeometry:"chart", X:"1286", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode15(PreviewGeometry:"plane2d", X:"1377", Y:"-859", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode16(PreviewGeometry:"plane2d", X:"1380", Y:"-1025", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode17(PreviewGeometry:"plane2d", X:"1083", Y:"-869", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode54(PreviewGeometry:"chart", X:"-143", Y:"909", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode18(PreviewGeometry:"chart", X:"778", Y:"-816", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode55(PreviewGeometry:"chart", X:"1996", Y:"1031", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode19(PreviewGeometry:"plane2d", X:"797", Y:"-895", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode20(PreviewGeometry:"chart", X:"438", Y:"-883", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode21(PreviewGeometry:"chart", X:"2025", Y:"-933", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode22(PreviewGeometry:"plane2d", X:"1813", Y:"-939", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode23(PreviewGeometry:"plane2d", X:"1595", Y:"-1029", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode24(PreviewGeometry:"chart", X:"624", Y:"-847", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode25(PreviewGeometry:"plane2d", X:"1592", Y:"-872", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode26(PreviewGeometry:"chart", X:"622", Y:"-785", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode27(PreviewGeometry:"chart", X:"2201", Y:"-941", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode28(PreviewGeometry:"chart", X:"2137", Y:"-842", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode29(PreviewGeometry:"sphere", X:"2512", Y:"-931", State:"Normal", OutputToVisualize:"");
+attributes visualNode63(PreviewGeometry:"chart", X:"685", Y:"825", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode30(PreviewGeometry:"sphere", X:"3215", Y:"-875", State:"Normal", OutputToVisualize:"");
+attributes visualNode62(PreviewGeometry:"plane2d", X:"832", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode31(PreviewGeometry:"chart", X:"429", Y:"-88", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode61(PreviewGeometry:"chart", X:"986", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode32(X:"66", Y:"-52", State:"Normal");
+attributes visualNode60(PreviewGeometry:"chart", X:"1143", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode33(PreviewGeometry:"chart", X:"171", Y:"-134", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode34(PreviewGeometry:"sphere", X:"1310", Y:"180", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode35(PreviewGeometry:"sphere", X:"1320", Y:"14", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode36(PreviewGeometry:"plane2d", X:"104", Y:"165", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode64(PreviewGeometry:"plane2d", X:"646", Y:"902", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode37(PreviewGeometry:"chart", X:"496", Y:"208", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode38(PreviewGeometry:"sphere", X:"94", Y:"186", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode39(PreviewGeometry:"model", X:"-107", Y:"186", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode40(PreviewGeometry:"chart", X:"1099", Y:"271", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode41(PreviewGeometry:"model", X:"1470", Y:"183", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode42(PreviewGeometry:"model", X:"1479", Y:"14", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode43(PreviewGeometry:"sphere", X:"2009", Y:"-67", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode44(PreviewGeometry:"sphere", X:"1328", Y:"357", State:"Normal", OutputToVisualize:"");
+attributes visualNode45(PreviewGeometry:"plane2d", X:"2165", Y:"-336", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode50(PreviewGeometry:"plane2d", X:"197", Y:"1194", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode51(PreviewGeometry:"chart", X:"-90", Y:"1208", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode52(PreviewGeometry:"plane2d", X:"418", Y:"1047", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode53(PreviewGeometry:"plane2d", X:"197", Y:"971", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode56(PreviewGeometry:"chart", X:"1795", Y:"1027", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode57(PreviewGeometry:"chart", X:"1610", Y:"860", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode65(PreviewGeometry:"chart", X:"1514", Y:"1025", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode66(PreviewGeometry:"chart", X:"1267", Y:"964", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode67(PreviewGeometry:"chart", X:"1100", Y:"975", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode68(PreviewGeometry:"chart", X:"910", Y:"1035", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode69(PreviewGeometry:"plane2d", X:"746", Y:"1087", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode70(PreviewGeometry:"chart", X:"1277", Y:"1117", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode71(PreviewGeometry:"plane2d", X:"1100", Y:"1139", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode72(PreviewGeometry:"plane2d", X:"910", Y:"1179", State:"Normal", OutputToVisualize:"");
+attributes visualNode73(PreviewGeometry:"plane2d", X:"746", Y:"1201", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode74(PreviewGeometry:"plane2d", X:"2157", Y:"777", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode75(PreviewGeometry:"plane2d", X:"2621", Y:"1179", State:"Normal", OutputToVisualize:"");
+attributes visualNode76(PreviewGeometry:"plane2d", X:"3111", Y:"924", State:"Normal", OutputToVisualize:"");
+attributes visualNode77(PreviewGeometry:"chart", X:"3122", Y:"738", State:"Normal", OutputToVisualize:"");
+attributes visualNode78(PreviewGeometry:"plane2d", X:"2625", Y:"873", State:"Normal", OutputToVisualize:"");
+attributes visualNode79(PreviewGeometry:"plane2d", X:"2276", Y:"973", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode80(PreviewGeometry:"plane2d", X:"1976", Y:"848", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode81(PreviewGeometry:"chart", X:"630", Y:"-123", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode82(X:"1718", Y:"-301", State:"Normal");
+attributes visualNode83(PreviewGeometry:"model", X:"2496", Y:"-161", State:"Normal", OutputToVisualize:"");
+attributes visualNode84(PreviewGeometry:"chart", X:"901", Y:"227", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode85(PreviewGeometry:"chart", X:"626", Y:"304", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode86(PreviewGeometry:"plane2d", X:"410", Y:"308", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode87(PreviewGeometry:"chart", X:"901", Y:"317", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode88(PreviewGeometry:"plane2d", X:"1103", Y:"62", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode89(PreviewGeometry:"plane2d", X:"901", Y:"106", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode90(PreviewGeometry:"plane2d", X:"901", Y:"18", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode91(PreviewGeometry:"chart", X:"632", Y:"140", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode92(PreviewGeometry:"plane2d", X:"422", Y:"112", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:Unit>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+		<d2p1:KeyValueOfstringstring>
+			<d2p1:Key>sheen_speed</d2p1:Key>
+			<d2p1:Value>3.0</d2p1:Value>
+		</d2p1:KeyValueOfstringstring>
+		<d2p1:KeyValueOfstringstring>
+			<d2p1:Key>inputColor</d2p1:Key>
+			<d2p1:Value>float4(.5,.5,.5,1)</d2p1:Value>
+		</d2p1:KeyValueOfstringstring>
+	</Variables>
+</NodeGraphMetaData>
+)-- */

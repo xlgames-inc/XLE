@@ -3,6 +3,7 @@
 #include "../../gbuffer.h"
 
 float3 CoordinatesToColor(float3 coords);
+float4 AmendColor(VSOutput geo, float4 inputColor);
 
 bool EarlyRejectionTest(VSOutput geo);
 GBufferValues PerPixel(VSOutput geo);

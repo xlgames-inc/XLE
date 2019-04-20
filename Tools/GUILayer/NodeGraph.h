@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "CLIXAutoPtr.h"
 #include "../../ShaderParser/GraphSyntax.h"
 #include <unordered_map>
 
@@ -147,6 +148,16 @@ namespace GUILayer
 
 	ref class DirectorySearchRules;
 
+	public ref class AttachedSchemaFile
+	{
+	public:
+		property String^		SchemaFileName;
+		property String^		SchemaName;
+
+		AttachedSchemaFile(String^ schemaFileName, String^ schemaName);
+		~AttachedSchemaFile();
+	};
+
 	public ref class NodeGraphFile
     {
     public:
@@ -154,7 +165,7 @@ namespace GUILayer
 		{
 		public:
 			property NodeGraphSignature^	Signature;
-			property NodeGraph^			Graph;
+			property NodeGraph^				Graph;
 		};
 		property Dictionary<String^, SubGraph^>^ SubGraphs
         {
@@ -173,6 +184,8 @@ namespace GUILayer
 		std::shared_ptr<GraphLanguage::INodeGraphProvider> MakeNodeGraphProvider();
 
 		DirectorySearchRules^ GetSearchRules();
+
+		IEnumerable<AttachedSchemaFile^>^ FindAttachedSchemaFilesForNode(String^ nodeArchiveName);
 
 		NodeGraphFile();
 		~NodeGraphFile();

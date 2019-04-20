@@ -7,6 +7,8 @@
 #include "NodeGraphSignature.h"
 #include "ShaderSignatureParser.h"
 #include "../RenderCore/ShaderLangUtil.h"
+#include "../RenderCore/Techniques/PredefinedCBLayout.h"		// (todo -- move to RenderCore::Assets)
+#include "../RenderCore/Format.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"
 #include "../Assets/DepVal.h"
@@ -16,6 +18,7 @@
 #include "../Utility/Conversion.h"
 #include <regex>
 #include <tuple>
+#include <set>
 
 #include "plustache/template.hpp"
 
@@ -536,7 +539,7 @@ namespace ShaderSourceParser
 		return str;
 	}
 
-	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)
+	std::string GenerateCapturesCBuffer(StringSection<> name, IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures)
 	{
 		std::stringstream result;
 
@@ -546,29 +549,70 @@ namespace ShaderSourceParser
             //      constants together in a single cbuffer called "BasicMaterialConstants"
             //
         bool hasMaterialConstants = false;
-        for(auto i:interf.GetCapturedParameters()) {
+		std::set<std::string> texturesAlreadyStored;
+		// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
+		texturesAlreadyStored.insert("DiffuseTexture");
+		texturesAlreadyStored.insert("NormalsTexture");
+        for(const auto& i: captures) {
             if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
-				auto name = MakeGlobalName(i._name);
-				// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
-				if (!XlEqString(name, "DiffuseTexture") && !XlEqString(name, "NormalsTexture"))
-					result << i._type << " " << name << ";" << std::endl;
+				auto cname = MakeGlobalName(i._name);
+				if (texturesAlreadyStored.find(cname) == texturesAlreadyStored.end()) {
+					texturesAlreadyStored.insert(cname);
+					result << i._type << " " << cname << ";" << std::endl;
+				}
             } else
                 hasMaterialConstants = true;
         }
 
         if (hasMaterialConstants) {
-                // in XLE, the cbuffer name "BasicMaterialConstants" is reserved for this purpose.
-                // But it is not assigned to a fixed cbuffer register.
-            result << "cbuffer BasicMaterialConstants" << std::endl;
+            result << "cbuffer " << name << std::endl;
             result << "{" << std::endl;
-            for (const auto& i:interf.GetCapturedParameters())
-                if (CanBeStoredInCBuffer(MakeStringSection(i._type)))
+            for (const auto& i: captures)
+                if (CanBeStoredInCBuffer(MakeStringSection(i._type))) {
+					auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(i._type);
+					if (fmt == ImpliedTyping::TypeCat::Void) {
+						result << "\t// Could not convert type (" << i._type << ") to shader language type for capture (" << i._name << "). Skipping cbuffer entry." << std::endl;
+						continue;
+					}
+
                     result << "\t" << i._type << " " << MakeGlobalName(i._name) << ";" << std::endl;
+				}
             result << "}" << std::endl;
         }
 		result << std::endl;
 
 		return result.str();
+	}
+
+	std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> MakePredefinedCBLayout(
+		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
+		std::ostream& warningStream)
+	{
+		auto result = std::make_shared<RenderCore::Techniques::PredefinedCBLayout>();
+		std::vector<RenderCore::Techniques::PredefinedCBLayout::NameAndType> elements;
+		elements.reserve(captures.size());
+
+		for (const auto&c : captures) {
+			if (!CanBeStoredInCBuffer(MakeStringSection(c._type)))
+				continue;
+
+			auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(c._type);
+			if (fmt._type == ImpliedTyping::TypeCat::Void) {
+				warningStream << "\t// Could not convert type (" << c._type << ") to shader language type for capture (" << c._name << "). Skipping cbuffer entry." << std::endl;
+				continue;
+			}
+
+			auto globalName = MakeGlobalName(c._name);
+			elements.push_back(RenderCore::Techniques::PredefinedCBLayout::NameAndType{ globalName, fmt });
+
+			if (!c._default.empty())
+				result->_defaults.SetParameter(
+					MakeStringSection(globalName).Cast<utf8>(),
+					MakeStringSection(c._default));
+		}
+
+		result->AppendElements(MakeIteratorRange(elements));
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

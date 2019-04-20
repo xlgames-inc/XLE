@@ -139,9 +139,19 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTestsMetal", "..\UnitTests\Project\UnitTestsMetal.vcxproj", "{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}"
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "HyperGraphAdapter", "..\Tools\HyperGraphAdapter\HyperGraphAdapter.shproj", "{E4905621-8390-42E4-B1DC-B3B5E3F7BB00}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "AuthoringConcept", "..\Tools\AuthoringConcept\AuthoringConcept.shproj", "{5A5E22E4-9584-4B48-B095-A125471B05DA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "yoga", "..\Foreign\yoga\csharp\Yoga\Yoga.vcxproj", "{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Facebook.Yoga.Shared", "..\Foreign\yoga\csharp\Facebook.Yoga\Facebook.Yoga.Shared.shproj", "{91C42D32-291D-4B72-90B4-551663D60B8B}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\Tools\AuthoringConcept\AuthoringConcept.projitems*{5a5e22e4-9584-4b48-b095-a125471b05da}*SharedItemsImports = 13
+		..\Foreign\yoga\csharp\Facebook.Yoga\Facebook.Yoga.Shared.projitems*{91c42d32-291d-4b72-90b4-551663d60b8b}*SharedItemsImports = 13
 		..\Tools\HyperGraphAdapter\HyperGraphAdapter.projitems*{e4905621-8390-42e4-b1dc-b3b5e3f7bb00}*SharedItemsImports = 13
+		..\Foreign\yoga\csharp\Facebook.Yoga\Facebook.Yoga.Shared.projitems*{ffa59dbc-fd8a-4738-b693-cd384478d73f}*SharedItemsImports = 4
+		..\Tools\AuthoringConcept\AuthoringConcept.projitems*{ffa59dbc-fd8a-4738-b693-cd384478d73f}*SharedItemsImports = 4
 		..\Tools\HyperGraphAdapter\HyperGraphAdapter.projitems*{ffa59dbc-fd8a-4738-b693-cd384478d73f}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -939,6 +949,22 @@ Global
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|Win32.Build.0 = Release|x86
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|x64.ActiveCfg = Release|x64
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|x64.Build.0 = Release|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-DX11|Win32.ActiveCfg = Debug|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-DX11|Win32.Build.0 = Debug|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-DX11|x64.ActiveCfg = Debug|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-DX11|x64.Build.0 = Debug|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-Vulkan|Win32.ActiveCfg = Debug|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-Vulkan|Win32.Build.0 = Debug|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-Vulkan|x64.ActiveCfg = Debug|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Debug-Vulkan|x64.Build.0 = Debug|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-DX11|Win32.ActiveCfg = Release|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-DX11|Win32.Build.0 = Release|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-DX11|x64.ActiveCfg = Release|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-DX11|x64.Build.0 = Release|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-Vulkan|Win32.ActiveCfg = Release|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-Vulkan|Win32.Build.0 = Release|Win32
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-Vulkan|x64.ActiveCfg = Release|x64
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5}.Release-Vulkan|x64.Build.0 = Release|x64
 		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|Win32.ActiveCfg = Debug-DX11|Win32
 		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|Win32.Build.0 = Debug-DX11|Win32
 		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|x64.ActiveCfg = Debug-DX11|x64
@@ -1007,6 +1033,9 @@ Global
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{E4905621-8390-42E4-B1DC-B3B5E3F7BB00} = {7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0}
+		{5A5E22E4-9584-4B48-B095-A125471B05DA} = {7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0}
+		{0446C86B-F47B-4C46-B673-C7AE0CFF35D5} = {16CFD681-2D5D-47CF-BEC6-62B6E9D82303}
+		{91C42D32-291D-4B72-90B4-551663D60B8B} = {16CFD681-2D5D-47CF-BEC6-62B6E9D82303}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E4188857-D548-409C-BFE2-EA2791107CCD}

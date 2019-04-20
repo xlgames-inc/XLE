@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 
+namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
+
 namespace ShaderSourceParser
 {
 	class InstantiationRequest_ArchiveName;
@@ -86,6 +88,13 @@ namespace ShaderSourceParser
 		std::vector<EntryPoint> _entryPoints;
 		
 		DependencyTable _dependencies;
+
+		struct ConstantBuffer
+		{
+			std::string _name;
+			std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> _layout;
+		};
+		std::vector<ConstantBuffer> _constantBuffers;
 	};
 
 	InstantiatedShader InstantiateShader(

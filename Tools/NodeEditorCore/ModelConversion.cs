@@ -17,15 +17,9 @@ using HyperGraph.Items;
 
 namespace NodeEditorCore
 {
-    public interface IModelConversion
-    {
-        GUILayer.NodeGraphFile ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
-        void AddToHyperGraph(GUILayer.NodeGraphFile graphFile, HyperGraph.IGraphModel graph);
-    }
-
-    [Export(typeof(IModelConversion))]
+    [Export(typeof(ModelConversion))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ModelConversion : IModelConversion
+    public class ModelConversion
     {
         private static GUILayer.Node.Type AsNodeType(ParamSourceType input)
         {
@@ -602,6 +596,6 @@ namespace NodeEditorCore
         }
 
         [Import]
-        INodeFactory _nodeCreator;
+        ShaderFragmentNodeCreator _nodeCreator;
     }
 }

@@ -881,6 +881,30 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
+	Float3x4   AsFloat3x4(const ScaleRotationTranslationQ& input)
+    {
+            //
+            //          Convert from our separate rotation/scale/translation representation to
+            //          a general 4x4 matrix
+            //
+        Float3x3 rotationPart = AsFloat3x3(input._rotation);
+        const Float3& s = input._scale;
+        return MakeFloat3x4(
+            rotationPart(0,0) * s[0], rotationPart(0,1) * s[1], rotationPart(0,2) * s[2], input._translation[0],
+            rotationPart(1,0) * s[0], rotationPart(1,1) * s[1], rotationPart(1,2) * s[2], input._translation[1],
+            rotationPart(2,0) * s[0], rotationPart(2,1) * s[1], rotationPart(2,2) * s[2], input._translation[2]);
+    }
+
+    Float3x4   AsFloat3x4(const ScaleRotationTranslationM& input)
+    {
+        const Float3x3& rotationPart = input._rotation;
+        const Float3& s = input._scale;
+        return MakeFloat3x4(
+            rotationPart(0,0) * s[0], rotationPart(0,1) * s[1], rotationPart(0,2) * s[2], input._translation[0],
+            rotationPart(1,0) * s[0], rotationPart(1,1) * s[1], rotationPart(1,2) * s[2], input._translation[1],
+            rotationPart(2,0) * s[0], rotationPart(2,1) * s[1], rotationPart(2,2) * s[2], input._translation[2]);
+    }
+
     Float4x4   AsFloat4x4(const UniformScale& input)
     {
         return Float4x4(

@@ -57,7 +57,7 @@ namespace HyperGraph
             ctrl.MouseDown += OnMouseDown;
             ctrl.MouseMove += OnMouseMove;
             ctrl.MouseUp += OnMouseUp;
-            ctrl.DoubleClick += OnDoubleClick;
+            ctrl.MouseDoubleClick += OnMouseDoubleClick;
             ctrl.MouseClick += OnMouseClick;
             ctrl.KeyDown += OnKeyDown;
             ctrl.KeyUp += OnKeyUp;
@@ -75,7 +75,7 @@ namespace HyperGraph
             ctrl.MouseDown -= OnMouseDown;
             ctrl.MouseMove -= OnMouseMove;
             ctrl.MouseUp -= OnMouseUp;
-            ctrl.DoubleClick -= OnDoubleClick;
+            ctrl.MouseDoubleClick -= OnMouseDoubleClick;
             ctrl.MouseClick -= OnMouseClick;
             ctrl.KeyDown -= OnKeyDown;
             ctrl.KeyUp -= OnKeyUp;
@@ -653,7 +653,7 @@ namespace HyperGraph
             if (_model == null || (!_model.Nodes.Any() && !_model.SubGraphs.Any()))
                 return;
 
-            GraphRenderer.PerformLayout(e.Graphics, _model);
+            GraphRenderer.PerformLayout(e.Graphics, _model, Context);
             GraphRenderer.Render(e.Graphics, _model, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
@@ -668,7 +668,7 @@ namespace HyperGraph
 							case ElementType.Connector:
 								var connector = DragElement as NodeConnector;
                                 renderState |= (connector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
-                                GraphRenderer.RenderConnection(e.Graphics, connector, transformed_location.X, transformed_location.Y, renderState);
+                                GraphRenderer.RenderDraggedConnection(e.Graphics, connector, transformed_location.X, transformed_location.Y, renderState);
 								break;
 						}
 					}
@@ -1254,7 +1254,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, false);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node, Context);
 					needRedraw = true;
 				}
 
@@ -1265,7 +1265,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, true);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node, Context);
 					needRedraw = true;
 				}
 			}
@@ -1469,9 +1469,9 @@ namespace HyperGraph
 		}
 		#endregion
 
-		#region OnDoubleClick
+		#region OnMouseDoubleClick
 		bool ignoreDoubleClick = false;
-		private void OnDoubleClick(object sender, EventArgs e)
+		private void OnMouseDoubleClick(object sender, MouseEventArgs e)
 		{
 			if (mouseMoved || ignoreDoubleClick || 
 				Control.ModifierKeys != Keys.None)
@@ -1494,7 +1494,7 @@ namespace HyperGraph
 					break;
 				case ElementType.NodeItem:
 					var item = element as NodeItem;
-                    if (item.OnDoubleClick(ctrl))
+                    if (item.OnDoubleClick(ctrl, e, transformation))
 					{
                         ctrl.Invalidate();
 						return;

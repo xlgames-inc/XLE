@@ -47,7 +47,7 @@ namespace HyperGraph
             return false; 
         }
 
-        public virtual bool OnDoubleClick(System.Windows.Forms.Control container)
+        public virtual bool OnDoubleClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
             return false; 
         }
@@ -55,7 +55,7 @@ namespace HyperGraph
 		public virtual bool			OnStartDrag(PointF location, out PointF original_location) { original_location = Point.Empty; return false; }
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
-		public abstract SizeF		Measure(Graphics context);
+		public abstract SizeF		Measure(Graphics graphics, object context);
 		public abstract void		Render(Graphics graphics, RectangleF rectangle, object context);
 
 		public virtual ElementType ElementType { get { return ElementType.NodeItem; } }

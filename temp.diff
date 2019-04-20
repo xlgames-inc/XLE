@@ -1,0 +1,103 @@
+diff --git a/Tools/HyperGraph/GraphConstants.cs b/Tools/HyperGraph/GraphConstants.cs
+index 5c0d543b4..5a771bd7b 100644
+--- a/Tools/HyperGraph/GraphConstants.cs
++++ b/Tools/HyperGraph/GraphConstants.cs
+@@ -44,7 +44,7 @@ namespace HyperGraph
+         public const int ConnectorCornerSize    = 12;
+ 		public const int ConnectorWidth			= 128;
+         public const int ConnectorWidthCollapsed= 8;
+-		public const int HorizontalSpacing		= 8;
++		public const int HorizontalSpacing		= 2;
+         public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
+         public const float ConnectionWidth      = 1.5f;
+ 
+diff --git a/Tools/HyperGraph/GraphControl.cs b/Tools/HyperGraph/GraphControl.cs
+index e4c47a1f1..73381e44b 100644
+--- a/Tools/HyperGraph/GraphControl.cs
++++ b/Tools/HyperGraph/GraphControl.cs
+@@ -483,7 +483,7 @@ namespace HyperGraph
+ 			return null;
+ 		}
+ 
+-        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null)
++        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null, bool testSubgraphArea = false)
+ 		{
+             foreach (var node in model.Nodes)
+ 			{
+@@ -564,10 +564,11 @@ namespace HyperGraph
+                     if (item != null && (acceptElement == null || acceptElement(item)))
+                         return item;
+ 
+-                    // We don't ever really need to hit test against the subgraph itself
+-                    // (and it causes problems, such as when drag-selecting within the subgraph area)
+-                    // if (acceptElement == null || acceptElement(subGraph))
+-                    // return subGraph;
++                    // Most of the time, hit test against the subgraph itself causes problems (such as when drag-selecting 
++                    // within the subgraph area)
++                    // However, we need it occasionally, so there's a flag for that.
++                    if (testSubgraphArea && (acceptElement == null || acceptElement(subGraph)))
++                        return subGraph;
+                 }
+             }
+ 
+@@ -1543,7 +1544,7 @@ namespace HyperGraph
+ 							ShowElementMenu(this, eventArgs);
+ 							// If the owner declines (cancel == true) then we'll continue looking up the hierarchy ..
+ 							return !eventArgs.Cancel;
+-						});
++						}, true);
+ 						// If we haven't found anything to click on we'll just return the event with a null pointer .. 
+ 						//	allowing our owner to show a generic menu
+ 						if (result == null)
+diff --git a/Tools/HyperGraph/GraphModel.cs b/Tools/HyperGraph/GraphModel.cs
+index d54c2f915..9f6d7f882 100644
+--- a/Tools/HyperGraph/GraphModel.cs
++++ b/Tools/HyperGraph/GraphModel.cs
+@@ -408,7 +408,11 @@ namespace HyperGraph
+         private void UpdateRevisionIndex() { GlobalRevisionIndex = _nextRevisionIndex++; }
+         public uint GlobalRevisionIndex { get; private set; }
+ 
+-        public void InvokeMiscChange(bool rebuildShaders) { if (rebuildShaders) UpdateRevisionIndex(); MiscChange.Invoke(this, new MiscChangeEventArgs(rebuildShaders)); }
++        public void InvokeMiscChange(bool rebuildShaders)
++        {
++            if (rebuildShaders) UpdateRevisionIndex();
++            if (MiscChange != null) MiscChange.Invoke(this, new MiscChangeEventArgs(rebuildShaders));
++        }
+     }
+ 
+     public class GraphSelection : IGraphSelection
+diff --git a/Tools/HyperGraph/GraphRenderer.cs b/Tools/HyperGraph/GraphRenderer.cs
+index 45cc275ef..63fed72fb 100644
+--- a/Tools/HyperGraph/GraphRenderer.cs
++++ b/Tools/HyperGraph/GraphRenderer.cs
+@@ -378,7 +378,7 @@ namespace HyperGraph
+                 }
+                 else
+                 {
+-                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + 2, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
++                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
+                     float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - 4, size.OutputPartWidth };
+ 
+                     for (uint side = 0; side < 3; ++side)
+@@ -702,7 +702,7 @@ namespace HyperGraph
+ 
+                 LayoutItemsHorizontally(
+                     graphics, node.TopItems,
+-                    minX, maxX, minY,
++                    minX, maxX, minY + 8,
+                     HorizontalItemLayoutSide.BelowAnchor);
+             }
+ 
+diff --git a/Tools/ShaderFragmentArchive/PreviewRenderManager.cpp b/Tools/ShaderFragmentArchive/PreviewRenderManager.cpp
+index b066082d7..5bea0d664 100644
+--- a/Tools/ShaderFragmentArchive/PreviewRenderManager.cpp
++++ b/Tools/ShaderFragmentArchive/PreviewRenderManager.cpp
+@@ -274,7 +274,7 @@ namespace ShaderPatcherLayer
+ 		visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
+ 
+ 		auto envSettings = std::make_shared<ToolsRig::VisEnvSettings>();
+-		envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
++		// envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
+ 
+ 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
+ 		parserContext.SetTechniqueDelegate(std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed));

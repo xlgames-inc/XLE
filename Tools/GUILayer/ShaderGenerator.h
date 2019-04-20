@@ -26,12 +26,15 @@ namespace GUILayer
 		static PreviewGeometry PreviewGeometryFromString(String^ input);
      };
 
+	ref class RawMaterial;
+
 		///////////////////////////////////////////////////////////////
 	[DataContract] public ref class NodeGraphMetaData
     {
     public:
         property String^ DefaultsMaterial;
         property String^ PreviewModelFile;
+		property RawMaterial^ Material;
 
         // Restrictions placed on the input variables
         [DataMember] property Dictionary<String^, String^>^ Variables { Dictionary<String^, String^>^ get() { if (!_variables) _variables = gcnew Dictionary<String^, String^>(); return _variables; } }
@@ -67,7 +70,7 @@ namespace GUILayer
 	public ref class ShaderGeneratorLayer
 	{
 	public:
-		static Tuple<String^, String^>^ GeneratePreviewShader(
+		static String^ GeneratePreviewShader(
 			NodeGraphFile^ nodeGraphFile,
 			String^ subGraphName, UInt32 previewNodeId,
 			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
@@ -85,6 +88,7 @@ namespace GUILayer
 			MessageRelayWrapper^ logMessages);
 
 		static MaterialDelegateWrapper^ MakeMaterialDelegate(
+			NodeGraphPreviewConfiguration^ nodeGraphFile,
 			RawMaterial^ materialOverrides);
 	};
 

@@ -9,6 +9,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/Optional.h"
 #include <unordered_map>
+#include <set>
 
 namespace GraphLanguage
 {
@@ -35,6 +36,8 @@ namespace GraphLanguage
         };
         virtual std::optional<NodeGraph> FindGraph(StringSection<> name) = 0;
 
+		virtual std::string TryFindAttachedFile(StringSection<> name) = 0;
+
         virtual ~INodeGraphProvider();
     };
 
@@ -43,6 +46,7 @@ namespace GraphLanguage
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
 		std::optional<NodeGraph> FindGraph(StringSection<> name);
+		std::string TryFindAttachedFile(StringSection<> name);
 
         BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules);
         ~BasicNodeGraphProvider();
@@ -57,5 +61,10 @@ namespace GraphLanguage
 		};
         std::unordered_map<uint64, Entry> _cache;        
     };
+
+	void AddAttachedSchemaFiles(
+		std::vector<std::pair<std::string, std::string>>& result,
+		const std::string& graphArchiveName,
+		GraphLanguage::INodeGraphProvider& nodeGraphProvider);
 }
 

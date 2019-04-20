@@ -40,6 +40,22 @@ namespace EntityInterface
 
         Identifier(DocumentId doc = 0, ObjectId obj = 0, ObjectTypeId objType = 0)
 		: _doc(doc), _obj(obj), _objType(objType) {}
+
+		friend bool operator<(const Identifier& lhs, const Identifier& rhs)
+		{
+			if (lhs._doc < rhs._doc) return true;
+			if (lhs._doc > rhs._doc) return false;
+			if (lhs._objType < rhs._objType) return true;
+			if (lhs._objType > rhs._objType) return false;
+			if (lhs._obj < rhs._obj) return true;
+			return false;
+		}
+
+		friend bool operator==(const Identifier& lhs, const Identifier& rhs)
+		{
+			return (lhs._doc == rhs._doc) || (lhs._objType == rhs._objType) || (lhs._obj == rhs._obj);
+		}
+
     protected:
         DocumentId _doc;
         ObjectId _obj;
@@ -127,7 +143,9 @@ namespace EntityInterface
         ChildListId     GetChildListId(ObjectTypeId type, const char name[]) const;
 
         uint32  MapTypeId(ObjectTypeId type, const IEntityInterface& owner);
-        void    RegisterType(std::shared_ptr<IEntityInterface> type);
+        void    RegisterInterface(const std::shared_ptr<IEntityInterface>& type);
+		void	UnregisterInterface(const std::shared_ptr<IEntityInterface>& type);
+		void    RegisterDefaultInterface(const std::shared_ptr<IEntityInterface>& type);
 
 		void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
@@ -135,6 +153,7 @@ namespace EntityInterface
         ~Switch();
     protected:
         std::vector<std::shared_ptr<IEntityInterface>> _types;
+		std::shared_ptr<IEntityInterface> _defaultType;
 
         class KnownType
         {

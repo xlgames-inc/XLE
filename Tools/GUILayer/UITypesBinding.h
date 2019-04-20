@@ -17,6 +17,7 @@
 using namespace System::ComponentModel;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
+using System::Runtime::InteropServices::OutAttribute;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class MaterialScaffoldMaterial; } }
 namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; class MaterialVisSettings; }
@@ -387,6 +388,15 @@ namespace GUILayer
         void RemoveInheritted(System::String^);
 
 		void MergeInto(RawMaterial^ destination);
+
+		bool TryGetConstantInt(System::String^ label, [Out] int% value);
+		bool TryGetConstantFloat(System::String^ label, [Out] float% value);
+		bool TryGetConstantBool(System::String^ label, [Out] bool% value);
+		bool TryGetConstantFloat2(System::String^ label, array<float>^ value);
+		bool TryGetConstantFloat3(System::String^ label, array<float>^ value);
+		bool TryGetConstantFloat4(System::String^ label, array<float>^ value);
+		bool HasConstant(System::String^ label);
+		void RemoveConstant(System::String^ label);
 
         property System::String^ Filename { System::String^ get(); }
         property System::String^ Initializer { System::String^ get(); }

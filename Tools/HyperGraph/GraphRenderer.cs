@@ -77,7 +77,7 @@ namespace HyperGraph
             return (NodeColumns)Enum.GetValues(typeof(NodeColumns)).GetValue(index);
         }
 
-        private static NodeSize MeasureRectangular(Graphics context, Node node)
+        private static NodeSize MeasureRectangular(Graphics graphics, Node node, object context)
         {
             if (node == null)
                 return new NodeSize { BaseSize = SizeF.Empty, InputPartWidth = 0, OutputPartWidth = 0 };
@@ -91,7 +91,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                 {
-                    var itemSize = item.Measure(context);
+                    var itemSize = item.Measure(graphics, context);
 
                     if (side != 1)
                         itemSize = AdjustConnectorSize(itemSize);
@@ -112,7 +112,7 @@ namespace HyperGraph
             for (uint c = 0; c < 3; ++c)
                 size.Height = Math.Max(size.Height, sizes[c].Height);
 
-            size.Width += GraphConstants.NodeExtraWidth;
+            size.Width += GraphConstants.HorizontalSpacing * 2;
             size.Height += node.Collapsed ? GraphConstants.BottomHeightCollapsed : GraphConstants.BottomHeight;
 
             return new NodeSize { BaseSize = size, InputPartWidth = sizes[0].Width, OutputPartWidth = sizes[2].Width };
@@ -138,24 +138,6 @@ namespace HyperGraph
                 }
             }
 		}
-
-		internal static Pen BorderPen = new Pen(Color.FromArgb(96, 96, 96));
-        internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(96, 96, 96)) { Width = 0.5f };
-
-        internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
-        internal static Brush HoverBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(80, 80, 80), Color.FromArgb(96, 96, 96));
-        internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
-        internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
-        internal static Brush NullAreaBrush = new HatchBrush(HatchStyle.ForwardDiagonal, Color.FromArgb(128, 192, 192, 192), Color.FromArgb(0, 96, 96, 96));
-
-        internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
-        internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
-        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 1 };
-
-        internal static Pen SubGraphOutline = new Pen(Color.FromArgb(164, 164, 164)) { Width = 6 };
 
         enum ConnectorType { Input, Output };
 
@@ -207,8 +189,8 @@ namespace HyperGraph
                 RectangleF clientRect;
                 using (var path = MakePathForConnector(bounds, state, type, out statusRect, out clientRect))
                 {
-                    graphics.FillPath(((state & RenderState.Hover)!=0) ? HoverBrush : NormalBrush , path);
-                    graphics.DrawPath(ConnectionBorderPen, path);
+                    graphics.FillPath(((state & RenderState.Hover)!=0) ? GraphConstants.HoverBrush : GraphConstants.NormalBrush, path);
+                    graphics.DrawPath(GraphConstants.ConnectorBorderPen, path);
                     graphics.FillEllipse(brush, statusRect);
 
                     if (connector!=null)
@@ -260,16 +242,16 @@ namespace HyperGraph
 			}
 		}
 
-		public static void PerformLayout(Graphics graphics, IGraphModel model)
+		public static void PerformLayout(Graphics graphics, IGraphModel model, object context)
 		{
             foreach (var node in model.Nodes.Reverse<Node>())
 			{
-				GraphRenderer.PerformLayout(graphics, node);
+				GraphRenderer.PerformLayout(graphics, node, context);
 			}
 
             foreach (var subGraph in model.SubGraphs.Reverse<Node>())
             {
-                GraphRenderer.PerformSubGraphLayout(graphics, subGraph, model);
+                GraphRenderer.PerformSubGraphLayout(graphics, subGraph, model, context);
             }
         }
 
@@ -300,7 +282,7 @@ namespace HyperGraph
                     }
                 }
 
-                graphics.FillRegion(NullAreaBrush, myRegion);
+                graphics.FillRegion(GraphConstants.NullAreaBrush, myRegion);
             }
 
             foreach (var node in model.SubGraphs.Reverse<Node>())
@@ -344,11 +326,11 @@ namespace HyperGraph
             return new RectangleF(center.X - radius, center.Y - radius, 2.0f * radius, 2.0f * radius);
         }
 
-        public static void PerformLayout(Graphics graphics, Node node)
+        public static void PerformLayout(Graphics graphics, Node node, object context)
         {
             if (node.Layout == Node.LayoutType.Rectangular || node.Collapsed)
             {
-                var size = MeasureRectangular(graphics, node);
+                var size = MeasureRectangular(graphics, node, context);
                 var position = node.Location;
                 node.bounds = new RectangleF(position, size.BaseSize);
                 position.Y += node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
@@ -372,14 +354,17 @@ namespace HyperGraph
 
                     if (node.TitleItem != null)
                     {
-                        node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics));
+                        node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics, context));
                         node.TitleItem.bounds.Width = System.Math.Max(node.TitleItem.bounds.Width, node.bounds.Width);
                     }
                 }
                 else
                 {
-                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
-                    float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - 4, size.OutputPartWidth };
+                    PointF[] positions = new PointF[] {
+                        new PointF(position.X - size.InputPartWidth, position.Y),
+                        new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y),
+                        new PointF(position.X + size.BaseSize.Width, position.Y) };
+                    float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - GraphConstants.HorizontalSpacing * 2, size.OutputPartWidth };
 
                     for (uint side = 0; side < 3; ++side)
                     {
@@ -388,7 +373,7 @@ namespace HyperGraph
                         {
                             if (!first) positions[side].Y += GraphConstants.ItemSpacing;
                             first = false;
-                            var itemSize = item.Measure(graphics);
+                            var itemSize = item.Measure(graphics, context);
                             itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
                             item.bounds = new RectangleF(positions[side], itemSize);
                             positions[side].Y += itemSize.Height;
@@ -398,14 +383,14 @@ namespace HyperGraph
             }
             else
             {
-                PerformCircularLayout(graphics, node);
+                PerformCircularLayout(graphics, node, context);
             }
         }
 
         private enum VerticalItemLayoutSide { LeftOfAnchor, RightOfAnchor };
-        private static float LayoutItemsVertically(Graphics graphics, IEnumerable<NodeItem> items, PointF anchor, bool centerAroundAnchor, VerticalItemLayoutSide layoutType)
+        private static float LayoutItemsVertically(Graphics graphics, IEnumerable<NodeItem> items, PointF anchor, bool centerAroundAnchor, VerticalItemLayoutSide layoutType, object context)
         {
-            var inputRects = items.Select(x => AdjustConnectorSize(x.Measure(graphics)));
+            var inputRects = items.Select(x => AdjustConnectorSize(x.Measure(graphics, context)));
 
             float groupHeight = 0.0f, groupWidth = 0.0f;
             bool firstItem = true;
@@ -436,9 +421,9 @@ namespace HyperGraph
         }
 
         private enum HorizontalItemLayoutSide { AboveAnchor, BelowAnchor };
-        private static float LayoutItemsHorizontally(Graphics graphics, IEnumerable<NodeItem> items, float left, float right, float verticalAnchor, HorizontalItemLayoutSide layoutSide)
+        private static float LayoutItemsHorizontally(Graphics graphics, IEnumerable<NodeItem> items, float left, float right, float verticalAnchor, HorizontalItemLayoutSide layoutSide, object context)
         {
-            var inputRects = items.Select(x => x.Measure(graphics));
+            var inputRects = items.Select(x => x.Measure(graphics, context));
 
             float groupHeight = 0.0f, groupWidth = 0.0f;
             bool firstItem = true;
@@ -466,19 +451,21 @@ namespace HyperGraph
             return groupHeight;
         }
 
-        private static void PerformCircularLayout(Graphics graphics, Node node)
+        private static void PerformCircularLayout(Graphics graphics, Node node, object context)
         {
             node.bounds = new RectangleF(node.Location, MeasureCircular(graphics, node).BaseSize);
 
             LayoutItemsVertically(
                 graphics, node.InputItems,
                 new PointF(node.bounds.Left, node.bounds.Top + node.bounds.Height / 2.0f),
-                true, VerticalItemLayoutSide.LeftOfAnchor);
+                true, VerticalItemLayoutSide.LeftOfAnchor,
+                context);
 
             LayoutItemsVertically(
                 graphics, node.OutputItems,
                 new PointF(node.bounds.Right, node.bounds.Top + node.bounds.Height / 2.0f),
-                true, VerticalItemLayoutSide.RightOfAnchor);
+                true, VerticalItemLayoutSide.RightOfAnchor,
+                context);
 
             double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(node.bounds.Size.Width, node.bounds.Size.Height);
             var centerItemBoundary = node.bounds;
@@ -489,12 +476,14 @@ namespace HyperGraph
             LayoutItemsHorizontally(
                 graphics, node.TopItems,
                 node.bounds.Left, node.bounds.Right, node.bounds.Top,
-                HorizontalItemLayoutSide.BelowAnchor);
+                HorizontalItemLayoutSide.BelowAnchor,
+                context);
 
             LayoutItemsHorizontally(
                 graphics, node.BottomItems,
                 node.bounds.Left, node.bounds.Right, node.bounds.Bottom,
-                HorizontalItemLayoutSide.AboveAnchor);
+                HorizontalItemLayoutSide.AboveAnchor,
+                context);
         }
 
         static void RenderOutline(Graphics graphics, Node node, object context)
@@ -509,17 +498,17 @@ namespace HyperGraph
                     //          we need to look for connections now.
                     var inputConnector = item as NodeConnector;
                     if (inputConnector != null && !inputConnector.bounds.IsEmpty)
-                        graphics.DrawPath(DottedPen, MakePathForConnector(inputConnector.bounds, inputConnector.state, ConnectorType.Input, out statusRect, out clientRect));
+                        graphics.DrawPath(GraphConstants.DottedPen, MakePathForConnector(inputConnector.bounds, inputConnector.state, ConnectorType.Input, out statusRect, out clientRect));
                 }
 
                 foreach (var item in node.ItemsForDock(Node.Dock.Output))
                 {
                     var outputConnector = item as NodeConnector;
                     if (outputConnector != null && !outputConnector.bounds.IsEmpty)
-                        graphics.DrawPath(DottedPen, MakePathForConnector(outputConnector.bounds, outputConnector.state, ConnectorType.Output, out statusRect, out clientRect));
+                        graphics.DrawPath(GraphConstants.DottedPen, MakePathForConnector(outputConnector.bounds, outputConnector.state, ConnectorType.Output, out statusRect, out clientRect));
                 }
 
-                graphics.DrawRectangle(DottedPen, Rectangle.Round(node.bounds));
+                graphics.DrawRectangle(GraphConstants.DottedPen, Rectangle.Round(node.bounds));
             }
         }
 
@@ -527,9 +516,9 @@ namespace HyperGraph
         static void Render(Graphics graphics, Node node, object context)
 		{
             Brush brush;
-            if ((node.state & RenderState.Dragging) != 0)       { brush = DraggingBrush; }
+            if ((node.state & RenderState.Dragging) != 0)       { brush = GraphConstants.DraggingBrush; }
             // else if ((node.state & RenderState.Hover) != 0)     { brush = HoverBrush; }
-            else                                                { brush = NormalBrush; }
+            else                                                { brush = GraphConstants.NormalBrush; }
 
             if (node.SubGraphTag == null)
             {
@@ -542,11 +531,19 @@ namespace HyperGraph
             var rect = node.bounds;
             if (node.Collapsed)
             {
-                graphics.FillRectangle(TitleAreaBrush, rect);
+                graphics.FillRectangle(GraphConstants.TitleAreaBrush, rect);
             }
             else
             {
-                int titleHeight = (node.TitleItem != null) ? (int)(node.TitleItem.bounds.Height + GraphConstants.TopHeight) : 0;
+                int titleHeight = 0;
+                if (node.TitleItem != null)
+                {
+                    titleHeight = (int)(node.TitleItem.bounds.Height + GraphConstants.TopHeight);
+                }
+                else if (node.TopItems.Any())
+                {
+                    titleHeight = (int)(node.TopItems.FirstOrDefault().bounds.Height + GraphConstants.TopHeight);
+                }
                 titleHeight = Math.Min((int)rect.Height, titleHeight);
 
                 var titleRect = new Rectangle((int)rect.Left, (int)rect.Top, (int)rect.Width, titleHeight);
@@ -555,14 +552,14 @@ namespace HyperGraph
                 DrawShadow(graphics, Rectangle.Round(rect));
                 graphics.FillRectangle(brush, backgroundRect);
                 if (titleHeight != 0)
-                    graphics.FillRectangle(TitleAreaBrush, titleRect);
-                graphics.DrawRectangle(BorderPen, Rectangle.Round(rect));
+                    graphics.FillRectangle(GraphConstants.TitleAreaBrush, titleRect);
+                graphics.DrawRectangle(GraphConstants.BorderPen, Rectangle.Round(rect));
             }
 
             var isFocused = (node.state & RenderState.Focus) != 0;
             if (!node.Collapsed || isFocused)
             {
-                var outlinePen = isFocused ? FocusPen : ThinDottedPen;
+                var outlinePen = isFocused ? GraphConstants.FocusPen : GraphConstants.ThinDottedPen;
 
                 // We're going to draw a outline around the edge of the entire node
                 // This should be a thick line, with some bright color
@@ -633,7 +630,7 @@ namespace HyperGraph
                 path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
                 path.CloseFigure();
 
-                graphics.DrawPath(SubGraphOutline, path);
+                graphics.DrawPath(GraphConstants.SubGraphOutline, path);
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))
@@ -646,7 +643,7 @@ namespace HyperGraph
                 RenderItem(graphics, item, context);
         }
 
-        public static void PerformSubGraphLayout(Graphics graphics, Node node, IGraphModel model)
+        public static void PerformSubGraphLayout(Graphics graphics, Node node, IGraphModel model, object context)
         {
             if (node == null)
                 return;
@@ -671,7 +668,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, nodeColumns[side]))
                 {
-                    var itemSize = AdjustConnectorSize(item.Measure(graphics));
+                    var itemSize = AdjustConnectorSize(item.Measure(graphics, context));
                     widths[side] = Math.Max(widths[side], itemSize.Width);
                 }
             }
@@ -688,7 +685,8 @@ namespace HyperGraph
                 minY -= 8 + LayoutItemsHorizontally(
                     graphics, node.TopItems,
                     minX, maxX, minY,
-                    HorizontalItemLayoutSide.AboveAnchor);
+                    HorizontalItemLayoutSide.AboveAnchor,
+                    context);
             }
             else
             {
@@ -703,7 +701,8 @@ namespace HyperGraph
                 LayoutItemsHorizontally(
                     graphics, node.TopItems,
                     minX, maxX, minY + 8,
-                    HorizontalItemLayoutSide.BelowAnchor);
+                    HorizontalItemLayoutSide.BelowAnchor,
+                    context);
             }
 
             node.Location = new PointF(minX - leftBorder, minY);
@@ -719,7 +718,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, nodeColumns[side]))
                 {
-                    var itemSize = item.Measure(graphics);
+                    var itemSize = item.Measure(graphics, context);
                     item.bounds = new RectangleF(positions[side], itemSize);
                     item.bounds.Width = System.Math.Max(item.bounds.Width, widths[side]);
                     positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
@@ -751,7 +750,6 @@ namespace HyperGraph
                             using (var brush = new SolidBrush(GetArrowLineColor(connection.state | RenderState.Connected)))
                             {
                                 graphics.FillPath(brush, path);
-                                graphics.DrawPath(ConnectionBorderPen, path);
                             }
                             connection.bounds = path.GetBounds();
                         }
@@ -830,35 +828,42 @@ namespace HyperGraph
 		static Color GetArrowLineColor(RenderState state)
 		{
             if ((state & (RenderState.Hover | RenderState.Dragging)) != 0)
-			{
-				if ((state & RenderState.Incompatible) != 0)
-				{
-					return Color.Red;
-				} else
+            {
+                if ((state & RenderState.Incompatible) != 0)
+                {
+                    return Color.Red;
+                }
+                else
                 if ((state & RenderState.Conversion) != 0)
                 {
                     return Color.LemonChiffon;
-                } else 
+                }
+                else
                 if ((state & RenderState.Compatible) != 0)
-				{
-					return Color.LemonChiffon;
-				} else
+                {
                     return Color.LemonChiffon;
-			} else
-			if ((state & RenderState.Incompatible) != 0)
-			{
-				return Color.Gray;
-			} else
-			if ((state & RenderState.Compatible) != 0)
-			{
+                }
+                else
+                    return Color.LemonChiffon;
+            }
+            else
+            if ((state & RenderState.Incompatible) != 0)
+            {
+                return Color.Gray;
+            }
+            else
+            if ((state & RenderState.Compatible) != 0)
+            {
                 return Color.ForestGreen;
-			} else
+            }
+            else
             if ((state & RenderState.Conversion) != 0)
             {
                 return Color.LightSkyBlue;
-            } else
-				return Color.LightGray;
-		}
+            }
+            else
+                return Color.FromArgb(86, 144, 145);
+        }
 		
 		static PointF[] GetArrowPoints(float x, float y, float extra_thickness = 0)
 		{
@@ -1023,7 +1028,7 @@ namespace HyperGraph
             return connector.Node.InputConnectors.Contains(connector);
         }
 
-		public static void RenderConnection(Graphics graphics, NodeConnector connector, float x, float y, RenderState state)
+        public static void RenderDraggedConnection(Graphics graphics, NodeConnector connector, float x, float y, RenderState state)
 		{
 			if (graphics == null ||
                 connector == null)
@@ -1053,7 +1058,6 @@ namespace HyperGraph
 				using (var brush = new SolidBrush(GetArrowLineColor(state)))
 				{
 					graphics.FillPath(brush, path);
-                    graphics.DrawPath(ConnectionBorderPen, path);
 				}
 			}
 		}

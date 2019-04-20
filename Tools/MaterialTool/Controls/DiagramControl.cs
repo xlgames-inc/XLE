@@ -67,6 +67,10 @@ namespace MaterialTool.Controls
             graphAdapter.ConnectorDoubleClick += OnConnectorDoubleClick;
             graphAdapter.ShowElementMenu += OnShowElementMenu;
 
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(50)))));
+            graphAdapter.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(45)))), ((int)(((byte)(45)))));
+            graphAdapter.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(55)))));
+
             // calling Adapt will unbind previous adapters
             var hoverAdapter = new HoverAdapter();
             hoverAdapter.HoverStarted += (object sender, HoverEventArgs<object, object> args) =>
@@ -126,7 +130,7 @@ namespace MaterialTool.Controls
                 graphContext.Document.GraphMetaData.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
-                System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", System.Environment.NewLine));        // (make sure we to convert the line endings into windows form)
+                System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", System.Environment.NewLine));        // (make sure we to convert the line endings into windows form)
         }
 
         private void EndHover(object sender, EventArgs args)
@@ -674,7 +678,7 @@ namespace MaterialTool.Controls
         #endregion
 
         [Import] private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
-        [Import] private NodeEditorCore.INodeFactory _nodeFactory;
+        [Import] private NodeEditorCore.ShaderFragmentNodeCreator _nodeFactory;
         private HoverLabel _hover = null;
         private AdaptableSet _contextSet;
     }

@@ -57,7 +57,7 @@ namespace HyperGraph.Items
 			return true;
 		}
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (this.Image != null)
 			{

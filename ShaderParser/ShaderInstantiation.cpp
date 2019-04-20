@@ -5,6 +5,7 @@
 #include "ShaderInstantiation.h"
 #include "GraphSyntax.h"
 #include "NodeGraphSignature.h"
+#include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -54,7 +55,9 @@ namespace ShaderSourceParser
 
 		std::set<std::pair<std::string, uint64_t>> previousInstantiation;
 
-		while (!instantiations.empty()) {
+		std::vector<GraphLanguage::NodeGraphSignature::Parameter> capturedParameters;
+
+        while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
             instantiations.pop();
 
@@ -90,14 +93,11 @@ namespace ShaderSourceParser
 				result._sourceFragments.end(),
 				instFn._sourceFragments.begin(), instFn._sourceFragments.end());
 
-			{
-				// write captured parameters into a cbuffer (todo -- merge captures from all instantiations)
-				std::stringstream str;
-				str << ShaderSourceParser::GenerateMaterialCBuffer(inst._graph._signature);
-				auto fragment = str.str();
-				if (!fragment.empty())
-					result._sourceFragments.push_back(fragment);
-			}
+			// We must collate our "captured" parameters
+			capturedParameters.insert(
+				capturedParameters.end(),
+				inst._graph._signature.GetCapturedParameters().begin(),
+				inst._graph._signature.GetCapturedParameters().end());
 
 			if (inst._isRootInstantiation)
 				result._entryPoints.push_back(instFnEntryPoint);
@@ -136,6 +136,26 @@ namespace ShaderSourceParser
 				}
 			}
         }
+
+		// Write the merged captures as a cbuffers
+		{
+			std::stringstream str;
+			str << ShaderSourceParser::GenerateCapturesCBuffer("BasicMaterialConstants", MakeIteratorRange(capturedParameters));
+			auto fragment = str.str();
+			if (!fragment.empty())
+				result._sourceFragments.push_back(fragment);
+
+			std::stringstream warningMessages;
+			result._constantBuffers.emplace_back(
+				InstantiatedShader::ConstantBuffer{
+					"BasicMaterialConstants",
+					MakePredefinedCBLayout(MakeIteratorRange(capturedParameters), warningMessages)
+				});
+
+			fragment = warningMessages.str();
+			if (!fragment.empty())
+				result._sourceFragments.push_back(fragment);
+		}
 
 		std::reverse(result._sourceFragments.begin(), result._sourceFragments.end());
 

@@ -82,6 +82,28 @@ namespace MaterialTool
                                             context.Document.NodeGraphFile.SubGraphs.First().Key,
                                             actualizationMsgs);
 
+                                    {
+                                        var config = new GUILayer.NodeGraphPreviewConfiguration
+                                        {
+                                            _nodeGraph = context.Document.NodeGraphFile,
+                                            _subGraphName = context.Document.NodeGraphFile.SubGraphs.First().Key as string,
+                                            _previewNodeId = ~0u,
+                                            _settings = null,
+                                            _variableRestrictions = context.Document.GraphMetaData.Variables
+                                        };
+
+                                        GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                                        context.Document.GraphMetaData.Material.MergeInto(rawMaterial);
+                                        if (rawMaterial != null)
+                                        {
+                                            previewerContext.MaterialOverrides = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
+                                        }
+                                        else
+                                        {
+                                            previewerContext.MaterialOverrides = null;
+                                        }
+                                    }
+
                                     if (msgsWindow!=null)
                                         msgsWindow.SetContext(actualizationMsgs);
                                 }

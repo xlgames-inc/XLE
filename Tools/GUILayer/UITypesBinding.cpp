@@ -456,6 +456,7 @@ namespace GUILayer
                     this, &RawMaterial::ParameterBox_Changed);
             _materialParameterBox->AllowNew = true;
             _materialParameterBox->AllowEdit = true;
+			_materialParameterBox->AllowRemove = true;
         }
         return _materialParameterBox;
     }
@@ -470,6 +471,7 @@ namespace GUILayer
                     this, &RawMaterial::ParameterBox_Changed);
             _shaderConstants->AllowNew = true;
             _shaderConstants->AllowEdit = true;
+			_shaderConstants->AllowRemove = true;
         }
         return _shaderConstants;
     }
@@ -484,6 +486,7 @@ namespace GUILayer
                     this, &RawMaterial::ResourceBinding_Changed);
             _resourceBindings->AllowNew = true;
             _resourceBindings->AllowEdit = true;
+			_resourceBindings->AllowRemove = true;
         }
         return _resourceBindings;
     }
@@ -505,7 +508,10 @@ namespace GUILayer
 
         if (e->ListChangedType == ListChangedType::ItemAdded) {
             assert(e->NewIndex < ((Box^)obj)->Count);
-            if (!((Box^)obj)[e->NewIndex]->Name || ((Box^)obj)[e->NewIndex]->Name->Length > 0) {
+			// When a new item is added, prevent creating the underlying parameter before the
+			// name of the new entry is fully filled in (otherwise we end up in a sort of 
+			// partial constructed state)
+            if (!((Box^)obj)[e->NewIndex]->Name || ((Box^)obj)[e->NewIndex]->Name->Length <= 0) {
                 return;
             }
         }
@@ -593,6 +599,98 @@ namespace GUILayer
 		if (transaction) {
 			_underlying->GetWorkingAsset()->MergeInto(transaction->GetAsset());
 			destination->_transId = transaction->Commit();
+		}
+	}
+
+	bool RawMaterial::TryGetConstantInt(String^ label, [Out] int% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<int>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat(String^ label, [Out] float% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<float>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantBool(String^ label, [Out] bool% value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<bool>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		value = param.value();
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat2(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float2>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat3(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float3>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		value[2] = p[2];
+		return true;
+	}
+
+	bool RawMaterial::TryGetConstantFloat4(String^ label, array<float>^ value)
+	{
+		auto param = _underlying->GetWorkingAsset()->_constants.GetParameter<Float4>(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+		if (!param.has_value())
+			return false;
+		
+		auto p = param.value();
+		value[0] = p[0];
+		value[1] = p[1];
+		value[2] = p[2];
+		value[3] = p[3];
+		return true;
+	}
+
+	bool RawMaterial::HasConstant(System::String^ label)
+	{
+		return _underlying->GetWorkingAsset()->_constants.HasParameter(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(label)));
+	}
+
+	void RawMaterial::RemoveConstant(System::String^ label)
+	{
+		auto e = ShaderConstants->GetEnumerator();
+		while (e->MoveNext()) {
+			if (String::Equals(e->Current->Name, label)) {
+				ShaderConstants->Remove(e->Current);
+				return;
+			}
 		}
 	}
 
