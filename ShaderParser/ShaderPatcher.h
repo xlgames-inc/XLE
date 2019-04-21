@@ -20,13 +20,10 @@ namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {
-	std::string GenerateCapturesCBuffer(
-		StringSection<> name,
+	class MaterialDescriptorSet;
+	std::string GenerateDescriptorVariables(
+		const MaterialDescriptorSet& descriptorSet, 
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures);
-
-	std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> MakePredefinedCBLayout(
-		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
-		std::ostream& warningStream);
 
     struct PreviewOptions
     {

@@ -4,12 +4,11 @@
 
 #include "ShaderInstantiation.h"
 #include "GraphSyntax.h"
+#include "DescriptorSetInstantiation.h"
 #include "NodeGraphSignature.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
-#include <set>
 #include <stack>
 #include <regex>
 #include <sstream>
@@ -55,8 +54,6 @@ namespace ShaderSourceParser
 
 		std::set<std::pair<std::string, uint64_t>> previousInstantiation;
 
-		std::vector<GraphLanguage::NodeGraphSignature::Parameter> capturedParameters;
-
         while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
             instantiations.pop();
@@ -93,11 +90,19 @@ namespace ShaderSourceParser
 				result._sourceFragments.end(),
 				instFn._sourceFragments.begin(), instFn._sourceFragments.end());
 
-			// We must collate our "captured" parameters
-			capturedParameters.insert(
-				capturedParameters.end(),
-				inst._graph._signature.GetCapturedParameters().begin(),
-				inst._graph._signature.GetCapturedParameters().end());
+			{
+				for (const auto&c:inst._graph._signature.GetCapturedParameters()) {
+					auto existing = std::find_if(
+						result._captures.begin(), result._captures.end(),
+						[c](const GraphLanguage::NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(p._name), c._name); });
+					if (existing != result._captures.end()) {
+						if (existing->_type != c._type || existing->_direction != c._direction)
+							Throw(::Exceptions::BasicLabel("Type mismatch detected for capture (%s). Multiple fragments have this capture, but they are not compatible types.", existing->_name.c_str()));
+						continue;
+					}
+					result._captures.push_back(c);
+				}
+			}
 
 			if (inst._isRootInstantiation)
 				result._entryPoints.push_back(instFnEntryPoint);
@@ -139,18 +144,14 @@ namespace ShaderSourceParser
 
 		// Write the merged captures as a cbuffers
 		{
-			std::stringstream str;
-			str << ShaderSourceParser::GenerateCapturesCBuffer("BasicMaterialConstants", MakeIteratorRange(capturedParameters));
-			auto fragment = str.str();
+			std::stringstream warningMessages;
+			result._descriptorSet = MakeMaterialDescriptorSet(
+				MakeIteratorRange(result._captures),
+				warningMessages);
+
+			auto fragment = GenerateDescriptorVariables(*result._descriptorSet, MakeIteratorRange(result._captures));
 			if (!fragment.empty())
 				result._sourceFragments.push_back(fragment);
-
-			std::stringstream warningMessages;
-			result._constantBuffers.emplace_back(
-				InstantiatedShader::ConstantBuffer{
-					"BasicMaterialConstants",
-					MakePredefinedCBLayout(MakeIteratorRange(capturedParameters), warningMessages)
-				});
 
 			fragment = warningMessages.str();
 			if (!fragment.empty())

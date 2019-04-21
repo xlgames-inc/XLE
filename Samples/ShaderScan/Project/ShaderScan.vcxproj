@@ -28,6 +28,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.cpp" />
+    <ClCompile Include="..\..\..\RenderCore\Techniques\PredefinedCBLayout.cpp" />
     <ClCompile Include="..\Main.cpp" />
   </ItemGroup>
   <ItemGroup>

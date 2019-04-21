@@ -6,6 +6,7 @@
 #include "NodeGraph.h"
 #include "NodeGraphSignature.h"
 #include "ShaderSignatureParser.h"
+#include "DescriptorSetInstantiation.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"		// (todo -- move to RenderCore::Assets)
 #include "../RenderCore/Format.h"
@@ -25,8 +26,6 @@
 namespace ShaderSourceParser
 {
 	using namespace GraphLanguage;
-
-	static bool CanBeStoredInCBuffer(const StringSection<char> type);
 
 	class TemplateItem
     {
@@ -299,7 +298,8 @@ namespace ShaderSourceParser
     {
             // Resource types (eg, texture, etc) can't be handled like scalars
             // they must become globals in the shader.
-        return !CanBeStoredInCBuffer(MakeStringSection(_parameters[index]._type));
+		auto descriptor = CalculateTypeDescriptor(MakeStringSection(_parameters[index]._type));
+		return descriptor != TypeDescriptor::Constant;
     }
 
     ParameterGenerator::ParameterGenerator(const NodeGraphSignature& interf, const PreviewOptions& previewOptions)
@@ -490,129 +490,47 @@ namespace ShaderSourceParser
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static bool CanBeStoredInCBuffer(const StringSection<char> type)
-    {
-        // HLSL keywords are not case sensitive. We could assume that
-        // a type name that does not begin with one of the scalar type
-        // prefixes is a global resource (like a texture, etc). This
-        // should provide some flexibility with new DX12 types, and perhaps
-        // allow for manipulating custom "interface" types...?
-        //
-        // However, that isn't going to work well with struct types (which
-        // can be contained with cbuffers and be passed to functions like
-        // scalars)
-        //
-        // const char* scalarTypePrefixes[] =
-        // {
-        //     "bool", "int", "uint", "half", "float", "double"
-        // };
-        //
-        // Note that we only check the prefix -- to catch variations on
-        // texture and RWTexture (and <> arguments like Texture2D<float4>)
-
-        const char* resourceTypePrefixes[] =
-        {
-            "cbuffer", "tbuffer",
-            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer",
-            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
-
-            "sampler", // SamplerState, SamplerComparisonState
-            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
-            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
-
-            // special .fx file types:
-            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView",
-        };
-        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
-
-        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
-            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
-                return false;
-        return true;
-    }
-
-	static std::string MakeGlobalName(const std::string& str)
-	{
-		auto i = str.find('.');
-		if (i != std::string::npos)
-			return str.substr(i+1);
-		return str;
-	}
-
-	std::string GenerateCapturesCBuffer(StringSection<> name, IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures)
+	std::string GenerateDescriptorVariables(
+		const MaterialDescriptorSet& descriptorSet, 
+		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures)
 	{
 		std::stringstream result;
 
-		    //
-            //      We need to write the global parameters as part of the shader body.
-            //      Global resources (like textures) appear first. But we put all shader
-            //      constants together in a single cbuffer called "BasicMaterialConstants"
-            //
-        bool hasMaterialConstants = false;
-		std::set<std::string> texturesAlreadyStored;
-		// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
-		texturesAlreadyStored.insert("DiffuseTexture");
-		texturesAlreadyStored.insert("NormalsTexture");
-        for(const auto& i: captures) {
-            if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
-				auto cname = MakeGlobalName(i._name);
-				if (texturesAlreadyStored.find(cname) == texturesAlreadyStored.end()) {
-					texturesAlreadyStored.insert(cname);
-					result << i._type << " " << cname << ";" << std::endl;
-				}
-            } else
-                hasMaterialConstants = true;
-        }
+		for (auto i=descriptorSet._srvs.begin(); i!=descriptorSet._srvs.end(); ++i) {
+			auto descriptorIdx = std::distance(descriptorSet._srvs.begin(), i);
+			std::string type = "<<unknown type>>";
+			auto cap = std::find_if(
+				captures.begin(), captures.end(),
+				[i](const GraphLanguage::NodeGraphSignature::Parameter&p) { return p._name == *i; });
+			if (cap != captures.end())
+				type = cap->_type;
 
-        if (hasMaterialConstants) {
-            result << "cbuffer " << name << std::endl;
-            result << "{" << std::endl;
-            for (const auto& i: captures)
-                if (CanBeStoredInCBuffer(MakeStringSection(i._type))) {
-					auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(i._type);
-					if (fmt == ImpliedTyping::TypeCat::Void) {
-						result << "\t// Could not convert type (" << i._type << ") to shader language type for capture (" << i._name << "). Skipping cbuffer entry." << std::endl;
-						continue;
-					}
-
-                    result << "\t" << i._type << " " << MakeGlobalName(i._name) << ";" << std::endl;
-				}
-            result << "}" << std::endl;
-        }
-		result << std::endl;
-
-		return result.str();
-	}
-
-	std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> MakePredefinedCBLayout(
-		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
-		std::ostream& warningStream)
-	{
-		auto result = std::make_shared<RenderCore::Techniques::PredefinedCBLayout>();
-		std::vector<RenderCore::Techniques::PredefinedCBLayout::NameAndType> elements;
-		elements.reserve(captures.size());
-
-		for (const auto&c : captures) {
-			if (!CanBeStoredInCBuffer(MakeStringSection(c._type)))
-				continue;
-
-			auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(c._type);
-			if (fmt._type == ImpliedTyping::TypeCat::Void) {
-				warningStream << "\t// Could not convert type (" << c._type << ") to shader language type for capture (" << c._name << "). Skipping cbuffer entry." << std::endl;
-				continue;
-			}
-
-			auto globalName = MakeGlobalName(c._name);
-			elements.push_back(RenderCore::Techniques::PredefinedCBLayout::NameAndType{ globalName, fmt });
-
-			if (!c._default.empty())
-				result->_defaults.SetParameter(
-					MakeStringSection(globalName).Cast<utf8>(),
-					MakeStringSection(c._default));
+			result << type << " " << *i << " BIND_MAT_T" << descriptorIdx << ";" << std::endl;
 		}
 
-		result->AppendElements(MakeIteratorRange(elements));
-		return result;
+		for (auto i=descriptorSet._samplers.begin(); i!=descriptorSet._samplers.end(); ++i) {
+			auto descriptorIdx = std::distance(descriptorSet._samplers.begin(), i);
+			std::string type = "<<unknown type>>";
+			auto cap = std::find_if(
+				captures.begin(), captures.end(),
+				[i](const GraphLanguage::NodeGraphSignature::Parameter&p) { return p._name == *i; });
+			if (cap != captures.end())
+				type = cap->_type;
+
+			result << type << " " << *i << " BIND_MAT_S" << descriptorIdx << ";" << std::endl;
+		}
+
+		for (auto cb=descriptorSet._constantBuffers.begin(); cb!=descriptorSet._constantBuffers.end(); ++cb) {
+			result << "cbuffer " << cb->_name << " BIND_MAT_B" << std::distance(descriptorSet._constantBuffers.begin(), cb) << std::endl;
+            result << "{" << std::endl;
+			for (auto ele=cb->_layout->_elements.begin(); ele!=cb->_layout->_elements.end(); ++ele) {
+				auto idx = std::distance(cb->_layout->_elements.begin(), ele);
+				result << "\t" << RenderCore::AsShaderLangTypeName(ele->_type) << " " << cb->_layout->_elementNames[idx] << ";" << std::endl;
+			}
+			result << "}" << std::endl;
+		}
+
+		return result.str();
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

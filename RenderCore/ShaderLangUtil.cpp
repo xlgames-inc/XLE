@@ -26,25 +26,26 @@ namespace RenderCore
         return result;
     }
 
+	static std::pair<StringSection<char>, ImpliedTyping::TypeCat> s_baseTypes[] = 
+    {
+        { "float", ImpliedTyping::TypeCat::Float },
+        { "uint", ImpliedTyping::TypeCat::UInt32 },
+        { "dword", ImpliedTyping::TypeCat::UInt32 },
+        { "int", ImpliedTyping::TypeCat::Int32 },
+        { "byte", ImpliedTyping::TypeCat::UInt8 },
+        { "bool", ImpliedTyping::TypeCat::Bool }
+        // "half", "double" not supported
+    };
+
     ImpliedTyping::TypeDesc ShaderLangTypeNameAsTypeDesc(StringSection<char> hlslTypeName)
     {
             // Note that HLSL type names are not case sensitive!
             //  see "Keywords" in the HLSL docs
         using namespace ImpliedTyping;
-        static std::pair<StringSection<char>, ImpliedTyping::TypeCat> baseTypes[] = 
-        {
-            { "float", TypeCat::Float },
-            { "uint", TypeCat::UInt32 },
-            { "dword", TypeCat::UInt32 },
-            { "int", TypeCat::Int32 },
-            { "byte", TypeCat::UInt8 },
-            { "bool", TypeCat::Bool }
-            // "half", "double" not supported
-        };
-        for (unsigned c=0; c<dimof(baseTypes); ++c) {
-            auto len = baseTypes[c].first.Length();
+        for (unsigned c=0; c<dimof(s_baseTypes); ++c) {
+            auto len = s_baseTypes[c].first.Length();
             if (hlslTypeName.Length() >= len
-                && !XlComparePrefixI(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
+                && !XlComparePrefixI(s_baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
 
                 auto matrixMarker = hlslTypeName.begin() + len;
                 while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;
@@ -54,7 +55,7 @@ namespace RenderCore
 
                     TypeDesc result;
                     result._arrayCount = (uint16)std::max(1u, count0 * count1);
-                    result._type = baseTypes[c].second;
+                    result._type = s_baseTypes[c].second;
                     result._typeHint = TypeHint::Matrix;
                     return result;
                 } else {
@@ -62,7 +63,7 @@ namespace RenderCore
                     if (count == 0 || count > 4) count = 1;
                     TypeDesc result;
                     result._arrayCount = (uint16)count;
-                    result._type = baseTypes[c].second;
+                    result._type = s_baseTypes[c].second;
                     result._typeHint = (count > 1) ? TypeHint::Vector : TypeHint::None;
                     return result;
                 }
@@ -71,6 +72,19 @@ namespace RenderCore
 
         return TypeDesc(TypeCat::Void, 0);
     }
+
+	std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& typeDesc)
+	{
+		using namespace ImpliedTyping;
+        for (unsigned c=0; c<dimof(s_baseTypes); ++c) {
+			if (s_baseTypes[c].second == typeDesc._type) {
+				if (typeDesc._arrayCount > 1)
+					return s_baseTypes[c].first.AsString() + std::to_string(typeDesc._arrayCount);
+				return s_baseTypes[c].first.AsString();
+			}
+		}
+		return "<<unknown type>>";
+	}
 }
 
 

@@ -48,6 +48,9 @@
     <ClCompile Include="..\ShaderPatcher.cpp">
       <Filter>Shaders</Filter>
     </ClCompile>
+    <ClCompile Include="..\DescriptorSetInstantiation.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -81,6 +84,9 @@
     <ClInclude Include="..\NodeGraph.h" />
     <ClInclude Include="..\NodeGraphSignature.h" />
     <ClInclude Include="..\ShaderPatcher.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DescriptorSetInstantiation.h">
       <Filter>Shaders</Filter>
     </ClInclude>
   </ItemGroup>

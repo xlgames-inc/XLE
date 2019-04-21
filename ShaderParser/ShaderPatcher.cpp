@@ -703,12 +703,14 @@ namespace ShaderSourceParser
 
 		std::vector<std::string> fragments;
 		fragments.emplace_back(result.str());
+		std::vector<GraphLanguage::NodeGraphSignature::Parameter> captures { interf.GetCapturedParameters().begin(), interf.GetCapturedParameters().end() };
 		std::vector<InstantiatedShader::EntryPoint> entryPoints;
-		entryPoints.emplace_back(InstantiatedShader::EntryPoint { name.AsString(), std::move(interf) });
-        return InstantiatedShader{
+		entryPoints.emplace_back(InstantiatedShader::EntryPoint { name.AsString(), std::move(interf) });		
+        return InstantiatedShader {
 			std::move(fragments), 
-			std::move(entryPoints), 
-			std::move(depTable)};
+			std::move(entryPoints),
+			std::move(depTable),
+			std::move(captures) };
     }
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }

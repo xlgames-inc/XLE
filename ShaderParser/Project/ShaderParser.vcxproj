@@ -90,6 +90,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AntlrHelper.cpp" />
+    <ClCompile Include="..\DescriptorSetInstantiation.cpp" />
     <ClCompile Include="..\Grammar\GraphSyntaxEval.c" />
     <ClCompile Include="..\Grammar\GraphSyntaxLexer.c" />
     <ClCompile Include="..\Grammar\GraphSyntaxParser.c" />
@@ -108,6 +109,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AntlrHelper.h" />
+    <ClInclude Include="..\DescriptorSetInstantiation.h" />
     <ClInclude Include="..\Exceptions.h" />
     <ClInclude Include="..\Grammar\GraphSyntaxEval.h" />
     <ClInclude Include="..\Grammar\GraphSyntaxLexer.h" />

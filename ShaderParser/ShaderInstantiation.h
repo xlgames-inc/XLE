@@ -74,6 +74,8 @@ namespace ShaderSourceParser
         std::vector<Dependency> _dependencies;
     };
 
+	class MaterialDescriptorSet;
+
 	class InstantiatedShader
 	{
 	public:
@@ -86,15 +88,11 @@ namespace ShaderSourceParser
 			GraphLanguage::NodeGraphSignature _signature;
 		};
 		std::vector<EntryPoint> _entryPoints;
-		
+
 		DependencyTable _dependencies;
 
-		struct ConstantBuffer
-		{
-			std::string _name;
-			std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> _layout;
-		};
-		std::vector<ConstantBuffer> _constantBuffers;
+		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
+		std::shared_ptr<MaterialDescriptorSet> _descriptorSet;
 	};
 
 	InstantiatedShader InstantiateShader(
