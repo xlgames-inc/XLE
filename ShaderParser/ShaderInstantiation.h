@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {

@@ -70,11 +70,11 @@ namespace ToolsRig
 
 		MaterialMergeDelegate(
 			const std::shared_ptr<RenderCore::Assets::RawMaterial>& mergeIn,
-			const std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout>& materialCBLayout);
+			const std::shared_ptr<RenderCore::Assets::PredefinedCBLayout>& materialCBLayout);
 		virtual ~MaterialMergeDelegate();
 	private:
 		std::shared_ptr<RenderCore::Assets::RawMaterial> _mergeIn;
-		std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> _materialCBLayout;
+		std::shared_ptr<RenderCore::Assets::PredefinedCBLayout> _materialCBLayout;
 
 		mutable std::unordered_map<const void*, RenderCore::Assets::MaterialScaffoldMaterial> _mergedResults;
 
@@ -125,7 +125,7 @@ namespace ToolsRig
 
 	MaterialMergeDelegate::MaterialMergeDelegate(
 		const std::shared_ptr<RenderCore::Assets::RawMaterial>& mergeIn,
-		const std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout>& materialCBLayout)
+		const std::shared_ptr<RenderCore::Assets::PredefinedCBLayout>& materialCBLayout)
 	: _mergeIn(mergeIn)
 	, _materialCBLayout(materialCBLayout)
 	{
@@ -137,7 +137,7 @@ namespace ToolsRig
 
 	std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>
 		MakeMaterialMergeDelegate(const std::shared_ptr<RenderCore::Assets::RawMaterial>& material,
-		const std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout>& materialCBLayout)
+		const std::shared_ptr<RenderCore::Assets::PredefinedCBLayout>& materialCBLayout)
 	{
 		return std::make_shared<MaterialMergeDelegate>(material, materialCBLayout);
 	}

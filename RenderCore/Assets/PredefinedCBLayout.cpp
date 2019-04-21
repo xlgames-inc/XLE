@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -19,7 +17,7 @@
 #include "../../Utility/Conversion.h"
 #include <regex>
 
-namespace RenderCore { namespace Techniques
+namespace RenderCore { namespace Assets
 {
     PredefinedCBLayout::PredefinedCBLayout(StringSection<::Assets::ResChar> initializer)
     {

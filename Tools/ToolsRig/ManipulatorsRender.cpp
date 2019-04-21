@@ -21,7 +21,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderOverlays/HighlightEffects.h"

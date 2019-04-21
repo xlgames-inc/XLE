@@ -6,10 +6,10 @@
 
 #include "DrawableDelegates.h"
 
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; }}
+
 namespace RenderCore { namespace Techniques
 {
-	class PredefinedCBLayout;
-
 	class MaterialDelegate_Basic : public IMaterialDelegate
     {
     public:
@@ -33,7 +33,7 @@ namespace RenderCore { namespace Techniques
 			const RenderCore::Metal::BoundUniforms& boundUniforms,
 			unsigned streamIdx,
 			const void* objectContext,
-			const PredefinedCBLayout& cbLayout) const;
+			const RenderCore::Assets::PredefinedCBLayout& cbLayout) const;
     };
 
 	class TechniqueDelegate_Basic : public ITechniqueDelegate

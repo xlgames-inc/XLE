@@ -9,7 +9,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/ShaderService.h"
-#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/BufferView.h"
@@ -220,7 +220,7 @@ namespace TextureTransform
 				UniformsStreamInterface{},
 				usi);
 
-            Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
+            RenderCore::Assets::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
 
             auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
             auto dstTexture = uploads.Transaction_Immediate(

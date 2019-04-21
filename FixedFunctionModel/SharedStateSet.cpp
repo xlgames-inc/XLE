@@ -10,7 +10,7 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -249,7 +249,7 @@ namespace FixedFunctionModel
         _currentRenderState = renderStateSetIndex;
     }
 
-    const Techniques::PredefinedCBLayout* SharedStateSet::GetCBLayout(SharedTechniqueConfig shaderName)
+    const RenderCore::Assets::PredefinedCBLayout* SharedStateSet::GetCBLayout(SharedTechniqueConfig shaderName)
     {
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default

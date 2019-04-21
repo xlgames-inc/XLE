@@ -4,7 +4,7 @@
 
 #include "DescriptorSetInstantiation.h"
 #include "NodeGraphSignature.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
@@ -73,12 +73,12 @@ namespace ShaderSourceParser
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
 		std::ostream& warningStream)
 	{
-		using NameAndType = RenderCore::Techniques::PredefinedCBLayout::NameAndType;
+		using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
 
 		std::vector<std::string> srvs;
 		std::vector<std::string> samplers;
 
-		auto mainCB = std::make_shared<RenderCore::Techniques::PredefinedCBLayout>();
+		auto mainCB = std::make_shared<RenderCore::Assets::PredefinedCBLayout>();
 		std::vector<NameAndType> cbElements;
 		cbElements.reserve(captures.size());
 
@@ -126,7 +126,7 @@ namespace ShaderSourceParser
 			[](const NameAndType& lhs, const NameAndType& rhs) {
 				return lhs._name < rhs._name;
 			});
-		RenderCore::Techniques::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cbElements));
+		RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cbElements));
 
 		mainCB->AppendElements(MakeIteratorRange(cbElements));
 

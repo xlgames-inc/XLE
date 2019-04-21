@@ -78,6 +78,7 @@
     <ClCompile Include="..\GeoProc\NascentSkeletonMachine.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\PredefinedCBLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -152,5 +153,6 @@
     <ClInclude Include="..\GeoProc\NascentSkeletonMachine.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\PredefinedCBLayout.h" />
   </ItemGroup>
 </Project>

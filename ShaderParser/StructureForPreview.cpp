@@ -8,7 +8,7 @@
 #include "ShaderSignatureParser.h"
 #include "DescriptorSetInstantiation.h"
 #include "../RenderCore/ShaderLangUtil.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"		// (todo -- move to RenderCore::Assets)
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"

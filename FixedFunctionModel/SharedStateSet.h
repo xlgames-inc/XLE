@@ -14,12 +14,11 @@
 namespace RenderCore
 {
 	class InputElementDesc;
-	namespace Assets { class RenderStateSet; }
+	namespace Assets { class RenderStateSet; class PredefinedCBLayout; }
 	namespace Techniques 
 	{ 
 		class TechniqueContext; class ParsingContext; 
-		class IRenderStateDelegate;
-		class PredefinedCBLayout;
+		class IRenderStateDelegate;		
 	}
 }
 namespace Utility { class ParameterBox; }
@@ -95,7 +94,7 @@ namespace FixedFunctionModel
             const ModelRendererContext& context, 
             SharedRenderStateSet renderStateSetIndex) const;
 
-        const RenderCore::Techniques::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
+        const RenderCore::Assets::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
 
         class CaptureMarker
         {

@@ -7,7 +7,7 @@
 #include "ParsingContext.h"
 #include "TechniqueMaterial.h"
 #include "DeferredShaderResource.h"
-#include "PredefinedCBLayout.h"
+#include "../Assets/PredefinedCBLayout.h"
 #include "../Metal/InputLayout.h"
 #include "../BufferView.h"
 #include "../../Assets/Assets.h"
@@ -68,7 +68,7 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::Metal::BoundUniforms& boundUniforms,
 		unsigned streamIdx,
 		const void* objectContext,
-		const PredefinedCBLayout& cbLayout) const
+		const RenderCore::Assets::PredefinedCBLayout& cbLayout) const
 	{
 		Material& mat = *(Material*)objectContext;
 		const RenderCore::Metal::ShaderResourceView* srvs[32];

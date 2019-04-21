@@ -17,7 +17,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../FixedFunctionModel/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"

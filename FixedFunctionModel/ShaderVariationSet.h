@@ -8,7 +8,7 @@
 #include "../Utility/ParameterBox.h"
 
 namespace RenderCore { class InputElementDesc; }
-namespace RenderCore { namespace Techniques
+namespace RenderCore { namespace Assets
 {
 	class PredefinedCBLayout;
 }}
@@ -27,7 +27,7 @@ namespace FixedFunctionModel
         {
         public:
 			RenderCore::Techniques::ResolvedTechniqueShaders::ResolvedShader      _shader;
-            const RenderCore::Techniques::PredefinedCBLayout* _cbLayout;
+            const RenderCore::Assets::PredefinedCBLayout* _cbLayout;
         };
 
         Variation FindVariation(
@@ -35,7 +35,7 @@ namespace FixedFunctionModel
             unsigned techniqueIndex,
             StringSection<> techniqueConfig) const;
 
-        const RenderCore::Techniques::PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
+        const RenderCore::Assets::PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
 
         ShaderVariationSet(
             IteratorRange<const RenderCore::InputElementDesc*> inputLayout,

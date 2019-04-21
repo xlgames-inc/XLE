@@ -76,7 +76,7 @@ namespace FixedFunctionModel
         return result;
     }
 
-    const Techniques::PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
+    const RenderCore::Assets::PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
     {
         auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(techniqueConfigName);
         return techConfig.GetTechnique().TechniqueCBLayout();

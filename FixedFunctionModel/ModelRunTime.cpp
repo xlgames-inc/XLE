@@ -15,7 +15,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 
 #include "../RenderCore/Metal/Buffer.h"
@@ -210,7 +210,7 @@ namespace FixedFunctionModel
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
-            ParamBoxDescriptions& paramBoxDesc, std::set<const Techniques::PredefinedCBLayout*>& cbLayouts,
+            ParamBoxDescriptions& paramBoxDesc, std::set<const RenderCore::Assets::PredefinedCBLayout*>& cbLayouts,
             const ::Assets::DirectorySearchRules* searchRules)
         {
             std::vector<std::pair<MaterialGuid, SubMatResources>> materialResources;
@@ -458,7 +458,7 @@ namespace FixedFunctionModel
             //  (at the given level of detail)
         std::vector<uint64> textureBindPoints;
         std::vector<std::vector<uint8>> prescientMaterialConstantBuffers;
-        std::set<const Techniques::PredefinedCBLayout*> cbLayouts;
+        std::set<const RenderCore::Assets::PredefinedCBLayout*> cbLayouts;
         ModelConstruction::ParamBoxDescriptions paramBoxDesc;
         auto materialResources = BuildMaterialResources(
             scaffold, matScaffold, sharedStateSet, levelOfDetail,

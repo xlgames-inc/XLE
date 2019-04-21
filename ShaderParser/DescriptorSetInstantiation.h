@@ -12,7 +12,7 @@
 #include <vector>
 #include <ios>
 
-namespace RenderCore { namespace Techniques { class PredefinedCBLayout; }}
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; }}
 
 namespace ShaderSourceParser
 {
@@ -22,7 +22,7 @@ namespace ShaderSourceParser
 		struct ConstantBuffer
 		{
 			std::string _name;
-			std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> _layout;
+			std::shared_ptr<RenderCore::Assets::PredefinedCBLayout> _layout;
 		};
 
 		std::vector<ConstantBuffer> _constantBuffers;

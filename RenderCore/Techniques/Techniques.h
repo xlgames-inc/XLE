@@ -7,7 +7,7 @@
 #pragma once
 
 #include "CommonBindings.h"     // for TechniqueIndex::Max
-#include "PredefinedCBLayout.h"
+#include "../Assets/PredefinedCBLayout.h"
 #include "../Init.h"
 #include "../../Utility/ParameterBox.h"
 #include <string>
@@ -63,7 +63,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
-		const PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
+		const RenderCore::Assets::PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
 		TechniqueEntry& GetEntry(unsigned idx);
 		const TechniqueEntry& GetEntry(unsigned idx) const;
 
@@ -73,7 +73,7 @@ namespace RenderCore { namespace Techniques
 		TechniqueEntry			_entries[size_t(TechniqueIndex::Max)];
 
 		::Assets::DepValPtr		_validationCallback;
-		PredefinedCBLayout		_cbLayout;
+		RenderCore::Assets::PredefinedCBLayout		_cbLayout;
 
         void ParseConfigFile(
             InputStreamFormatter<utf8>& formatter, 

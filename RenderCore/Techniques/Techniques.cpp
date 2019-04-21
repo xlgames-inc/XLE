@@ -429,7 +429,7 @@ namespace RenderCore { namespace Techniques
                                 Throw(FormatException("Bad attribute in technique list", formatter.GetLocation()));
 
 							if (XlEqString(name, u("CBLayout"))) {
-								_cbLayout = PredefinedCBLayout(MakeStringSection((const char*)value.begin(), (const char*)value.end()), true);
+								_cbLayout = RenderCore::Assets::PredefinedCBLayout(MakeStringSection((const char*)value.begin(), (const char*)value.end()), true);
 							} else {
 								auto index = AsTechniqueIndex(name);
 								if (index != ~0) {		// (silent failure if the technique name is unknown)

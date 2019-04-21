@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
 
@@ -10,7 +10,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
-	using NameAndType = RenderCore::Techniques::PredefinedCBLayout::NameAndType;
+	using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
 
 	static const std::vector<NameAndType> s_poorlyOrdered {
 		NameAndType { "f_a", ImpliedTyping::TypeOf<float>() },
@@ -47,20 +47,20 @@ namespace UnitTests
 	public:
 		TEST_METHOD(OptimizeElementOrder)
 		{
-            RenderCore::Techniques::PredefinedCBLayout poorlyOrdered(
+            RenderCore::Assets::PredefinedCBLayout poorlyOrdered(
 				MakeIteratorRange(s_poorlyOrdered));
-			RenderCore::Techniques::PredefinedCBLayout wellOrdered(
+			RenderCore::Assets::PredefinedCBLayout wellOrdered(
 				MakeIteratorRange(s_wellOrdered));
 
 			auto reorderedPoorEle = s_poorlyOrdered;
-			RenderCore::Techniques::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedPoorEle));
+			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedPoorEle));
 
 			auto reorderedWellEle = s_wellOrdered;
-			RenderCore::Techniques::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedWellEle));
+			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedWellEle));
 
-			RenderCore::Techniques::PredefinedCBLayout reorderedPoor(
+			RenderCore::Assets::PredefinedCBLayout reorderedPoor(
 				MakeIteratorRange(reorderedPoorEle));
-			RenderCore::Techniques::PredefinedCBLayout reorderedWell(
+			RenderCore::Assets::PredefinedCBLayout reorderedWell(
 				MakeIteratorRange(reorderedWellEle));
 
 			Assert::AreEqual(wellOrdered._cbSize, reorderedWell._cbSize);

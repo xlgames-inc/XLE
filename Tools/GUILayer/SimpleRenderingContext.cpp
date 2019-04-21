@@ -21,7 +21,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
-#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"

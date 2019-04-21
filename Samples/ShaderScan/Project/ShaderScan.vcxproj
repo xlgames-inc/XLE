@@ -28,7 +28,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.cpp" />
-    <ClCompile Include="..\..\..\RenderCore\Techniques\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.cpp" />
     <ClCompile Include="..\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -44,9 +44,6 @@
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
       <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
     </ProjectReference>
@@ -56,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.h" />
+    <ClInclude Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <RootNamespace>ShaderScan</RootNamespace>

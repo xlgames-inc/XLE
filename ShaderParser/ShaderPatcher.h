@@ -16,7 +16,7 @@
 #include <iosfwd>
 
 namespace GraphLanguage { class NodeGraph; class NodeGraphSignature; }
-namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {

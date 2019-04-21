@@ -17,7 +17,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
-#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/State.h"
