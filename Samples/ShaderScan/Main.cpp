@@ -9,6 +9,8 @@
 #include "ShaderParser/ShaderInstantiation.h"
 #include "ShaderParser/ShaderPatcher.h"
 #include "ShaderParser/GraphSyntax.h"
+#include "RenderCore/Assets/RawMaterial.h"
+#include "RenderCore/Assets/ShaderPatchCollection.h"
 #include "Assets/IFileSystem.h"
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetServices.h"
@@ -62,81 +64,6 @@ namespace ShaderScan
         } CATCH_END
     }
 
-	static ShaderSourceParser::InstantiationRequest_ArchiveName DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter)
-	{
-		ShaderSourceParser::InstantiationRequest_ArchiveName result;
-
-		for (;;) {
-			auto next = formatter.PeekNext();
-			switch (next) {
-			case InputStreamFormatter<utf8>::Blob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(FormatException("Could not parse attribute", formatter.GetLocation()));
-					if (!value.IsEmpty())
-						Throw(FormatException("Expecting only a single attribute in each fragment, which is the entry point name, with no value", formatter.GetLocation()));
-					if (!result._archiveName.empty())
-						Throw(FormatException("Multiple entry points found for a single technique fragment declaration", formatter.GetLocation()));
-					result._archiveName = name.Cast<char>().AsString();
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::BeginElement:
-				{
-					StringSection<utf8> name;
-					if (!formatter.TryBeginElement(name))
-						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result._parameterBindings.emplace(
-						std::make_pair(
-							name.Cast<char>().AsString(),
-							DeserializeInstantiationRequest(formatter)));
-
-					if (!formatter.TryEndElement())
-						Throw(FormatException("Expecting end element", formatter.GetLocation()));
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::EndElement:
-			case InputStreamFormatter<utf8>::Blob::None:
-				if (result._archiveName.empty())
-					Throw(FormatException("No entry point was specified for fragment ending at marked location", formatter.GetLocation()));
-				return result;
-
-			default:
-				Throw(FormatException("Unexpected blob while parsing TechniqueFragment", formatter.GetLocation()));
-			}
-		}
-	}
-
-	std::vector<ShaderSourceParser::InstantiationRequest_ArchiveName> DeserializeInstantiationRequests(InputStreamFormatter<utf8>& formatter)
-	{
-		std::vector<ShaderSourceParser::InstantiationRequest_ArchiveName> result;
-		for (;;) {
-			auto next = formatter.PeekNext();
-			switch (next) {
-			case InputStreamFormatter<utf8>::Blob::BeginElement:
-				{
-					StringSection<utf8> name;
-					if (!formatter.TryBeginElement(name))
-						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result.emplace_back(DeserializeInstantiationRequest(formatter));
-
-					if (!formatter.TryEndElement())
-						Throw(FormatException("Expecting end element", formatter.GetLocation()));
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::EndElement:
-			case InputStreamFormatter<utf8>::Blob::None:
-				return result;
-
-			default:
-				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
-			}
-		}
-	}
-
 	static void TestGraphSyntax()
 	{
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
@@ -144,17 +71,16 @@ namespace ShaderScan
 		const char techniqueFragments[] = R"--(
 		~fragment
 			xleres/Objects/Example/ProcWood/Wood_04_G.graph::Wood_04_G
-		~fragment
+		~main
 			xleres/Techniques/Graph/Pass_Deferred.graph::deferred_pass_main
 			~perPixel
 				xleres/Techniques/Graph/Object_Default.graph::Default_PerPixel
 		)--";
 
 		InputStreamFormatter<utf8> formattr { techniqueFragments };
-		auto instRequests = DeserializeInstantiationRequests(formattr);
-
-		auto inst = InstantiateShader(MakeIteratorRange(instRequests));
-		(void)inst;
+		auto instRequests = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
+		RenderCore::Assets::CompiledShaderPatchCollection patchCollection(instRequests);
+		(void)patchCollection;
 
 		/*auto earlyRejection = ShaderSourceParser::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
 		auto perPixel = ShaderSourceParser::InstantiationParameters::Dependency { 

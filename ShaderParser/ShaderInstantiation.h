@@ -86,6 +86,9 @@ namespace ShaderSourceParser
 		public:
 			std::string _name;
 			GraphLanguage::NodeGraphSignature _signature;
+
+			std::string _implementsName;
+			GraphLanguage::NodeGraphSignature _implementsSignature;
 		};
 		std::vector<EntryPoint> _entryPoints;
 

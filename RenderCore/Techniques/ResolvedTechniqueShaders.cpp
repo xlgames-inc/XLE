@@ -111,29 +111,7 @@ namespace RenderCore { namespace Techniques
     }
 
         ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
-		
-	ResolvedTechniqueShaders::ResolvedShader ResolvedTechniqueShaders::Entry::AsResolvedShader(uint64_t hash, const BoundShader& shader)
-	{
-		return ResolvedShader {
-			hash,
-			shader._shaderProgram.get(),
-			shader._boundUniforms.get(),
-			shader._boundLayout.get() };
-	}
-
-    static ::Assets::FuturePtr<Metal::ShaderProgram> GetShaderVariation(
-		StringSection<> vsName,
-		StringSection<> gsName,
-		StringSection<> psName,
-		StringSection<> defines)
-    {
-        if (gsName.IsEmpty()) {
-            return ::Assets::MakeAsset<Metal::ShaderProgram>(vsName, psName, defines);
-        } else {
-            return ::Assets::MakeAsset<Metal::ShaderProgram>(vsName, gsName, psName, defines);
-        }
-	}
-
+			
 	static uint64_t Hash64(const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max])
 	{
 		uint64_t inputHash = 0;
@@ -154,8 +132,9 @@ namespace RenderCore { namespace Techniques
 	}
 
 	const ::Assets::FuturePtr<Metal::ShaderProgram>& ResolvedShaderVariationSet::FindVariation(
-		const TechniqueEntry& techEntry,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
+		const ShaderSelectors& baseSelectors,
+		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
+		IShaderVariationFactory& factory) const
 	{
 		auto inputHash = Hash64(shaderSelectors);
         
@@ -164,16 +143,18 @@ namespace RenderCore { namespace Techniques
         if (i!=_globalToFiltered.cend() && i->first == inputHash) {
             filteredHashValue = i->second;
         } else {
-			filteredHashValue = techEntry._baseSelectors.CalculateFilteredHash(inputHash, shaderSelectors);
+			filteredHashValue = baseSelectors.CalculateFilteredHash(inputHash, shaderSelectors);
 			_globalToFiltered.insert(i, {inputHash, filteredHashValue});
 		}
+
+		filteredHashValue = HashCombine(filteredHashValue, factory._factoryGuid);
 
 		auto i3 = LowerBound(_filteredToResolved, filteredHashValue);
         if (i3!=_filteredToResolved.cend() && i3->first == filteredHashValue) {
 			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->second = MakeShaderVariation(techEntry, shaderSelectors);;
+				i3->second = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
         } else {
-			auto newVariation = MakeShaderVariation(techEntry, shaderSelectors);
+			auto newVariation = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
 			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
 		}
 
@@ -181,18 +162,19 @@ namespace RenderCore { namespace Techniques
 	}
 
 	auto ResolvedShaderVariationSet::MakeShaderVariation(
-		const TechniqueEntry& techEntry,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const -> ShaderFuture
+		const ShaderSelectors& baseSelectors,
+		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
+		IShaderVariationFactory& factory) const -> ShaderFuture
 	{
 		std::vector<std::pair<const utf8*, std::string>> defines;
-		techEntry._baseSelectors.BuildStringTable(defines);
+		baseSelectors.BuildStringTable(defines);
 		for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
 			OverrideStringTable(defines, *shaderSelectors[c]);
 		}
 
 		auto combinedStrings = FlattenStringTable(defines);
 
-		std::string vs, ps, gs;
+		/*std::string vs, ps, gs;
 		auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
 		if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
 			char buffer[32];
@@ -221,18 +203,41 @@ namespace RenderCore { namespace Techniques
 			} else {
 				gs = techEntry._geometryShaderName + ":" GS_DefShaderModel;
 			}
-		}
+		}*/
 
-		return _creationFn(MakeStringSection(vs), MakeStringSection(gs), MakeStringSection(ps), MakeStringSection(combinedStrings));
+		return factory.MakeShaderVariation(MakeStringSection(combinedStrings));
 	}
 
-	ResolvedShaderVariationSet::ResolvedShaderVariationSet() 
-	{
-		_creationFn = GetShaderVariation;
-	}
+	ResolvedShaderVariationSet::ResolvedShaderVariationSet()  {}
 	ResolvedShaderVariationSet::~ResolvedShaderVariationSet() {}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ResolvedTechniqueShaders::ResolvedShader ResolvedTechniqueShaders::Entry::AsResolvedShader(uint64_t hash, const BoundShader& shader)
+	{
+		return ResolvedShader {
+			hash,
+			shader._shaderProgram.get(),
+			shader._boundUniforms.get(),
+			shader._boundLayout.get() };
+	}
+
+	class ShaderVariationFactory_Basic : public IShaderVariationFactory
+	{
+	public:
+		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines) 
+		{
+			if (_entry->_geometryShaderName.empty()) {
+				return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_pixelShaderName, defines);
+			} else {
+				return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_geometryShaderName, _entry->_pixelShaderName, defines);
+			}
+		}
+
+		ShaderVariationFactory_Basic(const TechniqueEntry& entry) : _entry(&entry) {}
+	private:
+		const TechniqueEntry* _entry;
+	};
 
     auto      ResolvedTechniqueShaders::Entry::FindResolvedShaderVariation(	
 		const TechniqueEntry& techEntry,
@@ -263,10 +268,13 @@ namespace RenderCore { namespace Techniques
 
 		auto i3 = LowerBound(_filteredToResolved, filteredHashValue);
         if (i3!=_filteredToResolved.cend() && i3->first == filteredHashValue) {
-			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->second = MakeShaderVariation(techEntry, shaderSelectors);
+			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0) {
+				ShaderVariationFactory_Basic factory(techEntry);
+				i3->second = MakeShaderVariation(techEntry._baseSelectors, shaderSelectors, factory);
+			}
         } else {
-			auto newVariation = MakeShaderVariation(techEntry, shaderSelectors);
+			ShaderVariationFactory_Basic factory(techEntry);
+			auto newVariation = MakeShaderVariation(techEntry._baseSelectors, shaderSelectors, factory);
 			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
 		}
 
@@ -327,7 +335,8 @@ namespace RenderCore { namespace Techniques
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
         if (techniqueIndex >= dimof(_entries) || !techEntry.IsValid())
 			return {};
-        return _entries[techniqueIndex].FindVariation(techEntry, shaderSelectors);
+		ShaderVariationFactory_Basic factory(techEntry);
+        return _entries[techniqueIndex].FindVariation(techEntry._baseSelectors, shaderSelectors, factory);
 	}
 
 	void ResolvedTechniqueShaders::ResolvedShader::Apply(
@@ -384,4 +393,6 @@ namespace RenderCore { namespace Techniques
 			return false;
 		});
 	}
+
+	IShaderVariationFactory::~IShaderVariationFactory() {}
 }}

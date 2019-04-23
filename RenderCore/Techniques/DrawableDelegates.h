@@ -11,6 +11,7 @@
 #include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { class IResource; class ConstantBufferView; }
+namespace RenderCore { namespace Assets { class CompiledShaderPatchCollection; }}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -58,9 +59,8 @@ namespace RenderCore { namespace Techniques
 	public:
 		virtual Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
-			StringSection<::Assets::ResChar> techniqueCfgFile,
-			const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max
-			unsigned techniqueIndex) = 0;
+			const ParameterBox* shaderSelectors[],
+			const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection) = 0;		// ShaderSelectors::Source::Max
 		virtual ~ITechniqueDelegate();
 	};
 

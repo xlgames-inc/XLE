@@ -59,6 +59,23 @@ namespace RenderCore { namespace Techniques
         ~TechniqueEntry();
     };
 
+	class TechniqueSetFile
+	{
+	public:
+		std::vector<std::pair<uint64_t, TechniqueEntry>> _settings;
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+		const TechniqueEntry* FindEntry(uint64_t hashName) const;
+
+		TechniqueSetFile(
+            Utility::InputStreamFormatter<utf8>& formatter, 
+			const ::Assets::DirectorySearchRules& searchRules, 
+			const ::Assets::DepValPtr& depVal);
+		~TechniqueSetFile();
+	private:
+		::Assets::DepValPtr _depVal;
+	};
+
 	class Technique
 	{
 	public:

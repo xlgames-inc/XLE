@@ -44,10 +44,16 @@ namespace ShaderSourceParser
 		const GraphLanguage::NodeGraphSignature& interf, 
 		StringSection<char> graphName);
 
+	namespace ScaffoldFunctionFlags
+	{
+		enum Bits { ScaffoldeeUsesReturnSlot = 1<<0 };
+		using BitField = unsigned;
+	}
 	std::string GenerateScaffoldFunction(
 		const GraphLanguage::NodeGraphSignature& outputSignature, 
 		const GraphLanguage::NodeGraphSignature& generatedFunctionSignature, 
 		StringSection<char> scaffoldFunctionName,
-		StringSection<char> implementationFunctionName);
+		StringSection<char> implementationFunctionName,
+		ScaffoldFunctionFlags::BitField flags = 0);
 }
 

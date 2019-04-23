@@ -61,20 +61,24 @@ namespace RenderCore { namespace Techniques
         friend class ResolvedTechniqueShaders; // makes internal structure easier
     };
 
+	class IShaderVariationFactory
+	{
+	public:
+		uint64_t _factoryGuid = 0;
+
+		virtual ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(
+			StringSection<> defines) = 0;
+		virtual ~IShaderVariationFactory();
+	};
+
 	class ResolvedShaderVariationSet
 	{
 	public:
 		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
 		const ShaderFuture& FindVariation(
-			const TechniqueEntry& techEntry,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
-
-		using CreationFn = std::function<ShaderFuture(
-			StringSection<> vsName,
-			StringSection<> gsName,
-			StringSection<> psName,
-			StringSection<> defines)>;
-		CreationFn _creationFn;
+			const ShaderSelectors& baseSelectors,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			IShaderVariationFactory& factory) const;
 
 		ResolvedShaderVariationSet();
 		~ResolvedShaderVariationSet();
@@ -83,8 +87,9 @@ namespace RenderCore { namespace Techniques
 		mutable std::vector<std::pair<uint64_t, uint64_t>>										_globalToFiltered;
 
 		ShaderFuture MakeShaderVariation(
-			const TechniqueEntry& techEntry,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
+			const ShaderSelectors& baseSelectors,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			IShaderVariationFactory& factory) const;
 	};
 
     class ResolvedTechniqueShaders

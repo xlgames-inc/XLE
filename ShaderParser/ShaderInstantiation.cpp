@@ -84,6 +84,23 @@ namespace ShaderSourceParser
 				}
 
 				result._sourceFragments.push_back(ShaderSourceParser::GenerateScaffoldFunction(scaffoldSignature, instFnEntryPoint._signature, scaffoldName, implementationName));
+
+				if (inst._isRootInstantiation) {
+					InstantiatedShader::EntryPoint entryPoint { scaffoldName, scaffoldSignature };
+					if (!scaffoldSignature.GetImplements().empty()) {
+						auto implementsSig = inst._graph._subProvider->FindSignature(scaffoldSignature.GetImplements());
+						if (implementsSig.has_value()) {
+							entryPoint._implementsName = implementsSig.value()._name;
+							entryPoint._implementsSignature = implementsSig.value()._signature;
+						}
+					}
+					result._entryPoints.emplace_back(std::move(entryPoint));
+				}
+			}
+			else
+			{
+				if (inst._isRootInstantiation)
+					result._entryPoints.push_back(instFnEntryPoint);
 			}
 
 			result._sourceFragments.insert(
@@ -103,9 +120,6 @@ namespace ShaderSourceParser
 					result._captures.push_back(c);
 				}
 			}
-
-			if (inst._isRootInstantiation)
-				result._entryPoints.push_back(instFnEntryPoint);
                 
 			for (const auto&dep:instFn._dependencies._dependencies) {
 

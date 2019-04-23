@@ -264,13 +264,12 @@ namespace ToolsRig
 				auto psNameSplit = MakeFileNameSplitter(psName);
 				const char* entryPoint;
 				if (structureType == StructureType::DeferredPass) {
-					auto earlyRejection = ShaderSourceParser::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
+					auto earlyRejection = ShaderSourceParser::InstantiationRequest_ArchiveName { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default", {} };
 
-					auto overridePerPixel = ShaderSourceParser::InstantiationParameters::Dependency { 
-						psMainName, {}, {}, provider
-					};
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					overridePerPixel._customProvider = provider;
 
-					ShaderSourceParser::InstantiationParameters instParams {
+					ShaderSourceParser::InstantiationRequest instParams {
 						{ "rejectionTest", earlyRejection },
 						{ "perPixel", overridePerPixel }
 					};
@@ -279,14 +278,13 @@ namespace ToolsRig
 						psNameSplit.AllExceptParameters(), entryPoint,
 						instParams);
 				} else {
-					auto overridePerPixel = ShaderSourceParser::InstantiationParameters::Dependency { 
-						psMainName, {}, {}, provider
-					};
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					overridePerPixel._customProvider = provider;
 
 					entryPoint = "deferred_pass_color_from_worldcoords";
 					fragments = ShaderSourceParser::InstantiateShader(
 						psNameSplit.AllExceptParameters(), entryPoint,
-						ShaderSourceParser::InstantiationParameters {
+						ShaderSourceParser::InstantiationRequest {
 							{ "perPixel", overridePerPixel }
 						});
 				}

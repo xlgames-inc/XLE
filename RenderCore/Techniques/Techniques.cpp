@@ -22,21 +22,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-	class TechniqueSetFile
-	{
-	public:
-		std::vector<std::pair<uint64_t, TechniqueEntry>> _settings;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-
-		TechniqueSetFile(
-            Utility::InputStreamFormatter<utf8>& formatter, 
-			const ::Assets::DirectorySearchRules& searchRules, 
-			const ::Assets::DepValPtr& depVal);
-		~TechniqueSetFile();
-	private:
-		::Assets::DepValPtr _depVal;
-	};
-
     static const char* s_parameterBoxNames[] = 
         { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
 
@@ -236,7 +221,6 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueSetFile::~TechniqueSetFile() {}
 
-
     void TechniqueEntry::MergeIn(const TechniqueEntry& source)
     {
         if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;
@@ -281,11 +265,14 @@ namespace RenderCore { namespace Techniques
             //      binding. We need to make sure these are initialized with sensible
             //      values.
             //
-        auto& globalParam = _baseSelectors._selectors[ShaderSelectors::Source::GlobalEnvironment];
+        /*auto& globalParam = _baseSelectors._selectors[ShaderSelectors::Source::GlobalEnvironment];
         globalParam.SetParameter((const utf8*)"vs_", 50);
-        globalParam.SetParameter((const utf8*)"ps_", 50);
+        globalParam.SetParameter((const utf8*)"ps_", 50);*/
 	}
+
     TechniqueEntry::~TechniqueEntry() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     T1(Pair) class CompareFirstString
     {

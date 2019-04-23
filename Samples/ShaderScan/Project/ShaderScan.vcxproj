@@ -29,6 +29,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\..\..\RenderCore\Assets\ShaderPatchCollection.cpp" />
     <ClCompile Include="..\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -54,6 +55,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\..\..\RenderCore\Assets\ShaderPatchCollection.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <RootNamespace>ShaderScan</RootNamespace>

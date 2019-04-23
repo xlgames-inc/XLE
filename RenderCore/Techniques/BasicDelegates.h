@@ -36,19 +36,6 @@ namespace RenderCore { namespace Techniques
 			const RenderCore::Assets::PredefinedCBLayout& cbLayout) const;
     };
 
-	class TechniqueDelegate_Basic : public ITechniqueDelegate
-	{
-	public:
-		virtual RenderCore::Metal::ShaderProgram* GetShader(
-			ParsingContext& context,
-			StringSection<::Assets::ResChar> techniqueCfgFile,
-			const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max
-			unsigned techniqueIndex);
-
-		TechniqueDelegate_Basic();
-		~TechniqueDelegate_Basic();
-	};
-
 	class GlobalCBDelegate : public IUniformBufferDelegate
     {
     public:

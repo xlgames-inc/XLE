@@ -79,6 +79,9 @@
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\Assets\ShaderPatchCollection.cpp">
+      <Filter>Assets\Material</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -154,5 +157,8 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\Assets\ShaderPatchCollection.h">
+      <Filter>Assets\Material</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

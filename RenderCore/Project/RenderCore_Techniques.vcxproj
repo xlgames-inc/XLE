@@ -79,6 +79,7 @@
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
+    <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
     <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
@@ -93,6 +94,7 @@
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
+    <ClCompile Include="..\Techniques\TechniqueDelegates.cpp" />
     <ClCompile Include="..\Techniques\Techniques.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
   </ItemGroup>

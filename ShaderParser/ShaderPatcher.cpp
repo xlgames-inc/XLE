@@ -719,7 +719,8 @@ namespace ShaderSourceParser
 		const NodeGraphSignature& inputSlotSignature, 
 		const NodeGraphSignature& generatedFunctionSignature, 
 		StringSection<char> scaffoldFunctionName,
-		StringSection<char> implementationFunctionName)
+		StringSection<char> implementationFunctionName,
+		ScaffoldFunctionFlags::BitField flags)
 	{
 			//
 			//	Generate the scaffolding function that conforms to the given signature in "slotSignature", but that calls the implementation
@@ -741,12 +742,18 @@ namespace ShaderSourceParser
 			}
 		}
 
+		std::string temporaryForCatchingReturn;
+
 		std::stringstream paramStream;
 		for (const auto& p:generatedFunctionSignature.GetParameters()) {
             MaybeComma(paramStream);
 
 			if (p._direction == ParameterDirection::Out) {
-                paramStream << "temp_" << p._name;
+				if ((flags & ScaffoldFunctionFlags::ScaffoldeeUsesReturnSlot) && p._name == s_resultName) {
+					temporaryForCatchingReturn = "temp_" + p._name;
+				} else {
+					paramStream << "temp_" << p._name;
+				}
 				continue;
 			}
 
@@ -775,7 +782,10 @@ namespace ShaderSourceParser
 			paramStream << "DefaultValue_" << p._type << "()";
 		}
 
-		result << "\t" << implementationFunctionName << "(" << paramStream.str() << ");" << std::endl;
+		result << "\t";
+		if (!temporaryForCatchingReturn.empty())
+			result << temporaryForCatchingReturn << " = ";
+		result << implementationFunctionName << "(" << paramStream.str() << ");" << std::endl;
 
 		// Map the output parameters to their final destination.
 		std::stringstream returnExpression;
