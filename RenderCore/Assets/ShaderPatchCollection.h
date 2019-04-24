@@ -40,14 +40,11 @@ namespace RenderCore { namespace Assets
 	{
 	public:
 		std::string _srcCode;
+
 		struct Patch 
 		{
 			uint64_t		_implementsHash;
 			std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
-
-			/*std::string							_patchFnName;
-			GraphLanguage::NodeGraphSignature	_patchFnSignature;
-			GraphLanguage::NodeGraphSignature	_implementsFnSignature;*/
 		};
 		std::vector<Patch> _patches;
 

@@ -8,6 +8,7 @@
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
+#include <set>
 
 namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
 
@@ -96,6 +97,8 @@ namespace ShaderSourceParser
 
 		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
 		std::shared_ptr<MaterialDescriptorSet> _descriptorSet;
+
+		std::set<::Assets::DepValPtr> _depVals;
 	};
 
 	InstantiatedShader InstantiateShader(

@@ -107,6 +107,8 @@ namespace ShaderSourceParser
 				result._sourceFragments.end(),
 				instFn._sourceFragments.begin(), instFn._sourceFragments.end());
 
+			result._depVals.insert(instFn._depVals.begin(), instFn._depVals.end());
+
 			{
 				for (const auto&c:inst._graph._signature.GetCapturedParameters()) {
 					auto existing = std::find_if(

@@ -110,7 +110,7 @@ namespace GraphLanguage
 						auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
 						auto* fn = frag.GetFunction(std::get<1>(splitName));
 						if (fn != nullptr) {
-							existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile}}).first;
+							existing = _cache.insert({hash, Signature{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile, frag.GetDependencyValidation()}}).first;
 						}
 					} CATCH (const ::Assets::Exceptions::RetrievalError&) {
 					} CATCH_END
@@ -118,8 +118,8 @@ namespace GraphLanguage
 			}
         }
 
-		if (existing != _cache.end())        
-			return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile, existing->second._isGraphSyntaxFile };
+		if (existing != _cache.end())
+			return existing->second;
 
 		return {};
     }

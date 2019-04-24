@@ -6,6 +6,7 @@
 
 #include "NodeGraph.h"
 #include "NodeGraphSignature.h"
+#include "../Assets/AssetsCore.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/Optional.h"
 #include <unordered_map>
@@ -24,6 +25,7 @@ namespace GraphLanguage
             NodeGraphSignature _signature;
 			std::string _sourceFile;
 			bool _isGraphSyntax = false;
+			::Assets::DepValPtr _depVal;
         };
         virtual std::optional<Signature> FindSignature(StringSection<> name) = 0;
 
@@ -33,6 +35,7 @@ namespace GraphLanguage
             GraphLanguage::NodeGraph _graph;
 			NodeGraphSignature _signature;
 			std::shared_ptr<INodeGraphProvider> _subProvider;
+			::Assets::DepValPtr _depVal;
         };
         virtual std::optional<NodeGraph> FindGraph(StringSection<> name) = 0;
 
@@ -52,14 +55,7 @@ namespace GraphLanguage
         ~BasicNodeGraphProvider();
     protected:
         ::Assets::DirectorySearchRules _searchRules;
-		struct Entry
-		{
-			std::string _name;
-			NodeGraphSignature _sig;
-			std::string _sourceFile;
-			bool _isGraphSyntaxFile;
-		};
-        std::unordered_map<uint64, Entry> _cache;        
+        std::unordered_map<uint64_t, Signature> _cache;        
     };
 
 	void AddAttachedSchemaFiles(

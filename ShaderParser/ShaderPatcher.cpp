@@ -85,7 +85,8 @@ namespace ShaderSourceParser
 
     static std::string TypeFromShaderFragment(
         StringSection<> archiveName, StringSection<> paramName, ParameterDirection direction,
-        INodeGraphProvider& sigProvider)
+        INodeGraphProvider& sigProvider,
+		std::set<::Assets::DepValPtr>& depVals)
     {
             // Go back to the shader fragments to find the current type for the given parameter
 		std::optional<INodeGraphProvider::Signature> sigResult;
@@ -105,6 +106,7 @@ namespace ShaderSourceParser
             // Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.AsString().c_str()));
 
         const auto& sig = sigResult.value()._signature;
+		depVals.insert(sigResult.value()._depVal);
 
             // find a parameter with the right direction & name
         for (const auto& p:sig.GetParameters())
@@ -168,7 +170,7 @@ namespace ShaderSourceParser
 		return {};
 	}
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider, std::set<::Assets::DepValPtr>& depVals)
     {
 		std::stringstream str;
 		std::string finalType;
@@ -211,7 +213,7 @@ namespace ShaderSourceParser
 			if (n) {
 				ExpressionString expr;
 				if (n->GetType() == Node::Type::Procedure) {
-					auto type = TypeFromShaderFragment(n->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
+					auto type = TypeFromShaderFragment(n->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider, depVals);
 					expr = {OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type};
 				} else {
 					assert(n->GetType() == Node::Type::Captures);
@@ -254,12 +256,13 @@ namespace ShaderSourceParser
 		const NodeGraph& nodeGraph, NodeId nodeId, const NodeGraphSignature::Parameter& signatureParam,
 		GraphInterfaceContext& interfContext, 
 		bool generateDanglingInputs,
-		INodeGraphProvider& sigProvider)
+		INodeGraphProvider& sigProvider,
+		std::set<::Assets::DepValPtr>& depVals)
     {
 		auto expectedType = signatureParam._type;
         auto i = FindConnectionThatOutputsTo(nodeGraph.GetConnections(), nodeId, signatureParam._name);
         if (i!=nodeGraph.GetConnections().cend()) {
-            return QueryExpression(nodeGraph, *i, expectedType, interfContext, sigProvider);
+            return QueryExpression(nodeGraph, *i, expectedType, interfContext, sigProvider, depVals);
 		}
 
 		// We must add this request as some kind of input to the function (ie, a parameter input or a global input)
@@ -279,7 +282,8 @@ namespace ShaderSourceParser
             const NodeGraph& graph,
             IteratorRange<const Connection*> range,
             GraphInterfaceContext& interfContext,
-            INodeGraphProvider& sigProvider)
+            INodeGraphProvider& sigProvider,
+			std::set<::Assets::DepValPtr>& depVals)
     {
         for (const auto& connection:range) {
 			auto* destinationNode = graph.GetNode(connection.OutputNodeId());
@@ -293,7 +297,7 @@ namespace ShaderSourceParser
 				std::string inputType;
 				auto* srcNode = graph.GetNode(connection.InputNodeId());
 				if (srcNode)
-					inputType = TypeFromShaderFragment(srcNode->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
+					inputType = TypeFromShaderFragment(srcNode->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider, depVals);
 
 				auto p = std::find_if(
 					interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
@@ -312,7 +316,7 @@ namespace ShaderSourceParser
 					}
 				}
 
-				result << "\t" << p->_name << " = " << QueryExpression(graph, connection, p->_type, interfContext, sigProvider)._expression << ";" << std::endl;
+				result << "\t" << p->_name << " = " << QueryExpression(graph, connection, p->_type, interfContext, sigProvider, depVals)._expression << ";" << std::endl;
 			}
         }
     }
@@ -331,7 +335,8 @@ namespace ShaderSourceParser
     static ResolvedFunction ResolveFunction(
         const std::string& archiveName, 
         const InstantiationRequest& instantiationParameters, 
-        INodeGraphProvider& sigProvider)
+        INodeGraphProvider& sigProvider,
+		std::set<::Assets::DepValPtr>& depVals)
     {
         ResolvedFunction result;
 
@@ -379,6 +384,8 @@ namespace ShaderSourceParser
 
 			result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
 
+			depVals.insert(sigProviderResult.value()._depVal);
+
             return result;
         }
 
@@ -390,6 +397,7 @@ namespace ShaderSourceParser
         // result._finalArchiveName = sigProviderResult.value()._sourceFile.empty() ? archiveName : sigProviderResult.value()._sourceFile + ":" + result._name;
 		result._finalArchiveName = archiveName;
 		result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
+		depVals.insert(sigProviderResult.value()._depVal);
         return result;
     }
 
@@ -399,7 +407,8 @@ namespace ShaderSourceParser
         const Node& node, 
         const NodeGraph& nodeGraph,
         const InstantiationRequest& instantiationParameters,
-        INodeGraphProvider& sigProvider)
+        INodeGraphProvider& sigProvider,
+		std::set<::Assets::DepValPtr>& depVals)
     {
             //
             //      Parse the fragment again, to get the correct function
@@ -418,7 +427,7 @@ namespace ShaderSourceParser
             //
 
 
-        auto sigRes = ResolveFunction(node.ArchiveName(), instantiationParameters, sigProvider);
+        auto sigRes = ResolveFunction(node.ArchiveName(), instantiationParameters, sigProvider, depVals);
         auto functionName = sigRes._name;
         auto& sig = sigRes._signature;
 
@@ -449,6 +458,8 @@ namespace ShaderSourceParser
 
 				// Any input parameters to this node that aren't part of the restriction signature should become curried
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
+				if (restrictionSignature)
+					depVals.insert(restrictionSignature.value()._depVal);
 				for (const auto&c:nodeGraph.GetConnections()) {
 					if (c.OutputNodeId() == instantiationNode->NodeId()) {
 						auto paramName = c.OutputParameterName();
@@ -541,7 +552,7 @@ namespace ShaderSourceParser
 				}
 			}
 
-            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider)._expression;
+            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider, depVals)._expression;
         }
 
 		// If the call instantiation itself has curried parameters, they won't appear in the 
@@ -567,7 +578,7 @@ namespace ShaderSourceParser
 					pendingComma = true;
 
 					NodeGraphSignature::Parameter param{"auto", c};
-					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider)._expression;
+					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider, depVals)._expression;
 				}
 			}
 		}
@@ -607,7 +618,8 @@ namespace ShaderSourceParser
         const NodeGraph& graph,
 		IteratorRange<const NodeGraphSignature::Parameter*> predefinedParameters,
         const InstantiationRequest& instantiationParameters,
-        INodeGraphProvider& sigProvider)
+        INodeGraphProvider& sigProvider,
+		std::set<::Assets::DepValPtr>& depVals)
     {
         std::stringstream result;
 
@@ -633,7 +645,7 @@ namespace ShaderSourceParser
                                     graph.GetNodes().cend(), [i](const Node& n) { return n.NodeId() == *i; } );
             if (i2 != graph.GetNodes().cend()) {
                 if (i2->GetType() == Node::Type::Procedure) {
-					auto fnCall = GenerateFunctionCall(interfContext, depTable, *i2, graph, instantiationParameters, sigProvider);
+					auto fnCall = GenerateFunctionCall(interfContext, depTable, *i2, graph, instantiationParameters, sigProvider, depVals);
                     result << fnCall.first.str();
 
 					// Look for "dangling outputs". These are outputs that have been generated by GenerateFunctionCall, but
@@ -658,7 +670,7 @@ namespace ShaderSourceParser
         for (const auto& dep:depTable._dependencies)
             result << "\t//Dependency: " << dep._instantiation._archiveName << " inst hash: " << dep._instantiation.CalculateHash() << std::endl;
 
-		FillDirectOutputParameters(result, graph, graph.GetConnections(), interfContext, sigProvider);
+		FillDirectOutputParameters(result, graph, graph.GetConnections(), interfContext, sigProvider, depVals);
 
 		// todo -- any outputs in the fixed interface that we didn't write to in FillDirectOutputParameters should get default valuess
 
@@ -685,7 +697,8 @@ namespace ShaderSourceParser
 		std::string mainBody;
 		NodeGraphSignature interf;
         DependencyTable depTable;
-		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(graph, {}, instantiationParameters, sigProvider);
+		std::set<::Assets::DepValPtr> depVals;
+		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(graph, {}, instantiationParameters, sigProvider, depVals);
 
 			//
             //      Our graph function is always a "void" function, and all of the output
@@ -710,7 +723,8 @@ namespace ShaderSourceParser
 			std::move(fragments), 
 			std::move(entryPoints),
 			std::move(depTable),
-			std::move(captures) };
+			std::move(captures), {},
+			std::move(depVals) };
     }
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }

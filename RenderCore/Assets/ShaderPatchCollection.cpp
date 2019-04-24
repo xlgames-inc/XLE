@@ -5,6 +5,7 @@
 #include "ShaderPatchCollection.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
+#include "../../Assets/DepVal.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 
@@ -153,12 +154,6 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
-	/*static GraphLanguage::INodeGraphProvider::Signature GetTemplateSignature(StringSection<> templateName)
-	{
-		GraphLanguage::BasicNodeGraphProvider provider({});
-		return provider.FindSignature(templateName).value();
-	}*/
-
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(const ShaderPatchCollection& src)
 	{
 		// With the given shader patch collection, build the source code and the 
@@ -187,6 +182,11 @@ namespace RenderCore { namespace Assets
 
 			_patches.emplace_back(std::move(p));
 		}
+
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		for (const auto&d:inst._depVals)
+			if (d)
+				::Assets::RegisterAssetDependency(_depVal, d);
 	}
 
 	CompiledShaderPatchCollection::~CompiledShaderPatchCollection() {}

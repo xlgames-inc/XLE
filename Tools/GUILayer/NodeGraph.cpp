@@ -419,9 +419,10 @@ namespace GUILayer
 	std::shared_ptr<GraphLanguage::INodeGraphProvider> MakeGraphSyntaxProvider(
 		NodeGraphFile^ parsedGraphFile,
 		const std::unordered_map<std::string, std::string>& imports,
-		const ::Assets::DirectorySearchRules& searchRules)
+		const ::Assets::DirectorySearchRules& searchRules,
+		const ::Assets::DepValPtr& dependencyValidation)
 	{
-		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules, dependencyValidation);
 	}
 
 	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
@@ -481,7 +482,10 @@ namespace GUILayer
 			ConversionContext convContext;
 			NodeGraph result { name.AsString(), subGraph->Graph->ConvertToNative(convContext), subGraph->Signature->ConvertToNative(convContext), nullptr };
 			convContext._importTable.insert(_imports.begin(), _imports.end());
-			result._subProvider = MakeGraphSyntaxProvider(_parsedGraphFile, convContext._importTable, _parsedGraphFile->GetSearchRules()->GetNative());
+			result._subProvider = MakeGraphSyntaxProvider(
+				_parsedGraphFile, convContext._importTable, 
+				_parsedGraphFile->GetSearchRules()->GetNative(),
+				nullptr);
 			return result;
 		}
 
@@ -520,7 +524,7 @@ namespace GUILayer
 
 	std::shared_ptr<GraphLanguage::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
 	{
-		return MakeGraphSyntaxProvider(this, GetImportTable(this), GetSearchRules()->GetNative());
+		return MakeGraphSyntaxProvider(this, GetImportTable(this), GetSearchRules()->GetNative(), nullptr);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
