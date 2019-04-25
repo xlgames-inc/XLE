@@ -20,6 +20,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
+#include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/StringFormat.h"
 
 namespace RenderCore { namespace Assets
@@ -71,7 +72,9 @@ namespace RenderCore { namespace Assets
 				//  and re-parsing the same files over and over again!
 			SerializableVector<std::pair<MaterialGuid, MaterialScaffold::Material>> resolved;
 			SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> resolvedNames;
+			std::vector<ShaderPatchCollection> patchCollections;
 			resolved.reserve(modelMat->_configurations.size());
+			patchCollections.reserve(modelMat->_configurations.size());
 
 			auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
 			::Assets::ResChar resolvedSourceMaterial[MaxPath];
@@ -84,6 +87,7 @@ namespace RenderCore { namespace Assets
 			for (const auto& cfg:modelMat->_configurations) {
 
 				MaterialScaffold::Material resMat;
+				ShaderPatchCollection patchCollection;
 				std::basic_stringstream<::Assets::ResChar> resName;
 				auto guid = MakeMaterialGuid(MakeStringSection(cfg));
 
@@ -111,15 +115,15 @@ namespace RenderCore { namespace Assets
 				Meld meld; meld << sourceModel << ":" << Conversion::Convert<::Assets::rstring>(cfg);
 				resName << meld;
 
-				MergeIn_Stall(resMat, meld.AsStringSection(), searchRules, deps);
+				MergeIn_Stall(resMat, patchCollection, meld.AsStringSection(), searchRules, deps);
 
 				if (resolvedSourceMaterial[0] != '\0') {
 						// resolve in material:*
 					Meld starInit; starInit << resolvedSourceMaterial << ":*";
 					Meld configInit; configInit << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(cfg);
                 
-					MergeIn_Stall(resMat, starInit.AsStringSection(), searchRules, deps);
-					MergeIn_Stall(resMat, configInit.AsStringSection(), searchRules, deps);
+					MergeIn_Stall(resMat, patchCollection, starInit.AsStringSection(), searchRules, deps);
+					MergeIn_Stall(resMat, patchCollection, configInit.AsStringSection(), searchRules, deps);
 
 					resName << ";" << starInit << ";" << configInit;
 				}
@@ -129,6 +133,7 @@ namespace RenderCore { namespace Assets
 				auto resNameStr = resName.str();
 				SerializableVector<char> resNameVec(resNameStr.begin(), resNameStr.end());
 				resolvedNames.push_back(std::make_pair(guid, std::move(resNameVec)));
+				patchCollections.emplace_back(std::move(patchCollection));
 			}
 
 			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, MaterialScaffold::Material>());
@@ -139,10 +144,20 @@ namespace RenderCore { namespace Assets
 			::Serialize(blockSerializer, resolved);
 			::Serialize(blockSerializer, resolvedNames);
 
+			MemoryOutputStream<utf8> patchCollectionStrm;
+			{
+				OutputStreamFormatter fmtter(patchCollectionStrm);
+				SerializeShaderPatchCollectionSet(fmtter, MakeIteratorRange(patchCollections));
+			}
+
 			::Assets::NascentChunk chunks[] = {
 				{
 					Serialization::ChunkFile::ChunkHeader{ ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
 					::Assets::AsBlob(blockSerializer)
+				},
+				{
+					Serialization::ChunkFile::ChunkHeader{ ChunkType_PatchCollections, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
+					::Assets::AsBlob(MakeIteratorRange(patchCollectionStrm.GetBuffer().Begin(), patchCollectionStrm.GetBuffer().End()))
 				}
 			};
 

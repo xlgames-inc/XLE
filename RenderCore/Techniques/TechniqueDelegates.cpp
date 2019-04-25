@@ -53,12 +53,8 @@ namespace RenderCore { namespace Techniques
 				// using that template function name. The raw input source code won't have any implementation
 				// for that -- just the function signature.
 				// So we provide the implementation here, in the form of a scaffold function
-				if (i->_patchFnSignature.GetImplements() != i->_patchFnName) {
-					output << ShaderSourceParser::GenerateScaffoldFunction(
-						i->_implementsFnSignature, i->_patchFnSignature,
-						i->_patchFnSignature.GetImplements(),
-						i->_patchFnName);
-				}
+				if (!i->_scaffoldInFunction.empty())
+					output << i->_scaffoldInFunction;
 			}
 
 			// For simplicity, we'll just append the entry point file using an #include directive
@@ -162,19 +158,22 @@ namespace RenderCore { namespace Techniques
 	RenderCore::Metal::ShaderProgram* TechniqueDelegate_Illum::GetShader(
 		ParsingContext& context,
 		const ParameterBox* shaderSelectors[],
-		RenderCore::Assets::CompiledShaderPatchCollection* patchCollection)
+		const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection)
 	{
 		auto perPixel = std::find_if(
-			patchCollection->_patches.begin(), patchCollection->_patches.end(),
+			patchCollection._patches.begin(), patchCollection._patches.end(),
 			[](const RenderCore::Assets::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_perPixel; });
+
+		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
+			return nullptr;
 
 		IteratorRange<const uint64_t*> patchExpansions = {};
 		const TechniqueEntry* techEntry = &_noPatches;
-		if (perPixel != patchCollection->_patches.end()) {
+		if (perPixel != patchCollection._patches.end()) {
 			auto earlyRejection = std::find_if(
-				patchCollection->_patches.begin(), patchCollection->_patches.end(),
+				patchCollection._patches.begin(), patchCollection._patches.end(),
 				[](const RenderCore::Assets::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_earlyRejectionTest; });
-			if (earlyRejection != patchCollection->_patches.end()) {
+			if (earlyRejection != patchCollection._patches.end()) {
 				techEntry = &_perPixelAndEarlyRejection;
 				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
 			} else {
@@ -183,7 +182,7 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		ShaderPatchFactory factory(*techEntry, patchCollection, patchExpansions);
+		ShaderPatchFactory factory(*techEntry, &patchCollection, patchExpansions);
 		const auto& shaderFuture = _sharedResources->_mainVariationSet.FindVariation(
 			techEntry->_baseSelectors, shaderSelectors, factory);
 		if (!shaderFuture) return nullptr;
@@ -195,6 +194,13 @@ namespace RenderCore { namespace Techniques
 	{
 		_techniqueSetFuture = ::Assets::MakeAsset<TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
 		_cfgFileState = ::Assets::AssetState::Pending;
+	}
+
+	static std::shared_ptr<TechniqueSharedResources> s_mainSharedResources = std::make_shared<TechniqueSharedResources>();
+
+	TechniqueDelegate_Illum::TechniqueDelegate_Illum()
+	: TechniqueDelegate_Illum(s_mainSharedResources)
+	{
 	}
 
 	TechniqueDelegate_Illum::~TechniqueDelegate_Illum()

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "MaterialScaffold.h"
+#include "ShaderPatchCollection.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -43,7 +44,8 @@ namespace RenderCore { namespace Assets
         ParameterBox	_matParamBox;
         RenderStateSet	_stateSet;
         ParameterBox	_constants;
-        AssetName		_techniqueConfig;
+        
+		ShaderPatchCollection _patchCollection;
 
         std::vector<AssetName> _inherit;
 
@@ -94,16 +96,18 @@ namespace RenderCore { namespace Assets
 
 	MaterialGuid MakeMaterialGuid(StringSection<utf8> name);
 
-	void MergeInto(MaterialScaffoldMaterial& dest, const RawMaterial& source); 
+	void MergeInto(MaterialScaffoldMaterial& dest, ShaderPatchCollection& patchCollectionResult, const RawMaterial& source); 
 
 	void MergeIn_Stall(
 		MaterialScaffoldMaterial& result,
+		ShaderPatchCollection& patchCollectionResult,
 		StringSection<> sourceMaterialName,
 		const ::Assets::DirectorySearchRules& searchRules,
 		std::vector<::Assets::DependentFileState>& deps);
 
 	void MergeIn_Stall(
 		MaterialScaffoldMaterial& result,
+		ShaderPatchCollection& patchCollectionResult,
 		const RawMaterial& src,
 		const ::Assets::DirectorySearchRules& searchRules);
 

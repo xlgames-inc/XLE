@@ -154,19 +154,16 @@ namespace RenderCore { namespace Assets
 		ParameterBox		_matParams;				// material parameters used for selecting the appropriate shader variation
 		RenderStateSet		_stateSet;				// used by the RenderStateResolver for selecting render state settings (like depth read/write settings, blend modes)
 		ParameterBox		_constants;				// values typically passed to shader constants
-		::Assets::ResChar	_techniqueConfig[32];	// root technique config file
-
+		uint64_t			_patchCollection = 0ull;
+	
 		template<typename Serializer>
 			void Serialize(Serializer& serializer) const;
-
-		MaterialScaffoldMaterial();
-		MaterialScaffoldMaterial(MaterialScaffoldMaterial&& moveFrom) never_throws;
-		MaterialScaffoldMaterial& operator=(MaterialScaffoldMaterial&& moveFrom) never_throws;
-		MaterialScaffoldMaterial(const MaterialScaffoldMaterial&);
-		MaterialScaffoldMaterial& operator=(const MaterialScaffoldMaterial&);
 	};
 
+
 	#pragma pack(pop)
+
+	class ShaderPatchCollection;
 
     /// <summary>An asset containing compiled material settings</summary>
     /// This is the equivalent of other scaffold objects (like ModelScaffold
@@ -181,10 +178,12 @@ namespace RenderCore { namespace Assets
         const Material*					GetMaterial(MaterialGuid guid) const;
         StringSection<>					GetMaterialName(MaterialGuid guid) const;
 
+		const ShaderPatchCollection*	GetShaderPatchCollection(uint64_t hash) const;
+
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[1];
+		static const ::Assets::AssetChunkRequest ChunkRequests[2];
 
         MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
@@ -194,9 +193,12 @@ namespace RenderCore { namespace Assets
     protected:
         std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
 		::Assets::DepValPtr _depVal;
+
+		std::vector<ShaderPatchCollection> _patchCollections;
     };
 
 	static constexpr uint64 ChunkType_ResolvedMat = ConstHash64<'ResM', 'at'>::Value;
+	static constexpr uint64 ChunkType_PatchCollections = ConstHash64<'Patc', 'hCol'>::Value;
 	static constexpr unsigned ResolvedMat_ExpectedVersion = 1;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +210,7 @@ namespace RenderCore { namespace Assets
         ::Serialize(serializer, _matParams);
         ::Serialize(serializer, _stateSet.GetHash());
         ::Serialize(serializer, _constants);
-        serializer.SerializeRaw(_techniqueConfig);
+		::Serialize(serializer, _patchCollection);
     }
 		
     inline RenderStateSet::RenderStateSet()

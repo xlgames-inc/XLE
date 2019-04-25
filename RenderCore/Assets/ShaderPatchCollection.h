@@ -11,7 +11,7 @@
 #include <utility>
 
 namespace ShaderSourceParser { class InstantiationRequest_ArchiveName; }
-namespace Utility { template<typename Char> class InputStreamFormatter; }
+namespace Utility { template<typename Char> class InputStreamFormatter; class OutputStreamFormatter; }
 
 namespace RenderCore { namespace Assets
 {
@@ -21,7 +21,13 @@ namespace RenderCore { namespace Assets
 		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> GetPatches() const { return MakeIteratorRange(_patches); }
 		uint64_t GetHash() const { return _hash; }
 
-		void MergeInto(ShaderPatchCollection& dest) const; 
+		void MergeInto(ShaderPatchCollection& dest) const;
+
+		void Serialize(OutputStreamFormatter& formatter) const;
+
+		friend bool operator<(const ShaderPatchCollection& lhs, const ShaderPatchCollection& rhs);
+		friend bool operator<(const ShaderPatchCollection& lhs, uint64_t rhs);
+		friend bool operator<(uint64_t lhs, const ShaderPatchCollection& rhs);
 
 		ShaderPatchCollection();
 		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> patches);
@@ -35,6 +41,8 @@ namespace RenderCore { namespace Assets
 	};
 
 	ShaderPatchCollection DeserializeShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
+	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter);
+	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
 
 	class CompiledShaderPatchCollection
 	{
@@ -52,10 +60,25 @@ namespace RenderCore { namespace Assets
 		::Assets::DepValPtr _depVal;
 		std::vector<::Assets::DependentFileState> _dependencies;
 
-		uint64_t GetGUID() const;
+		uint64_t _guid = 0;
+		uint64_t GetGUID() const { return _guid; }
 
 		CompiledShaderPatchCollection(const ShaderPatchCollection& src);
+		CompiledShaderPatchCollection();
 		~CompiledShaderPatchCollection();
+	};
+
+	class ShaderPatchCollectionRegistry
+	{
+	public:
+		const CompiledShaderPatchCollection& GetCompiledShaderPatchCollection(uint64_t hash) const;
+		void RegisterShaderPatchCollection(const ShaderPatchCollection& patchCollection) const;
+
+		static ShaderPatchCollectionRegistry& GetInstance() { assert(s_instance); return *s_instance; }
+		ShaderPatchCollectionRegistry();
+		~ShaderPatchCollectionRegistry();
+	private:
+		static ShaderPatchCollectionRegistry* s_instance;
 	};
 }}
 

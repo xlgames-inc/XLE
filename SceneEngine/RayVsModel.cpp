@@ -384,6 +384,73 @@ namespace SceneEngine
 	static const std::string s_pixelShaderName = "null";
 	static const std::string s_geometryShaderName = "xleres/forward/raytest.gsh:triangles:gs_*";
 
+	static void TryRegisterDependency(
+		::Assets::DepValPtr& dst,
+		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+	{
+		auto futureDepVal = future->GetDependencyValidation();
+		if (futureDepVal)
+			::Assets::RegisterAssetDependency(dst, futureDepVal);
+	}
+
+	class ShaderVariationFactory_RayTest : public Techniques::IShaderVariationFactory
+	{
+	public:
+		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines) 
+		{
+			std::string definesTable = defines.AsString() + ";OUTPUT_WORLD_POSITION=1";
+			auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(_entry->_vertexShaderName, definesTable);
+			auto psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_pixelShaderName, definesTable);
+
+			std::stringstream str;
+			str << ";SO_OFFSETS=";
+			unsigned rollingOffset = 0;
+			for (const auto&e:s_soEles) {
+				assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
+				if (rollingOffset!=0) str << ",";
+				str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
+				rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
+			}
+			definesTable += str.str();
+			auto gsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_geometryShaderName, definesTable);
+
+			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("RayTestShader");
+			future->SetPollingFunction(
+				[vsCode, gsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
+
+				auto vsActual = vsCode->TryActualize();
+				auto gsActual = gsCode->TryActualize();
+				auto psActual = psCode->TryActualize();
+
+				if (!vsActual || !gsActual || !psActual) {
+					auto vsState = vsCode->GetAssetState();
+					auto gsState = gsCode->GetAssetState();
+					auto psState = psCode->GetAssetState();
+					if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+						auto depVal = std::make_shared<::Assets::DependencyValidation>();
+						TryRegisterDependency(depVal, vsCode);
+						TryRegisterDependency(depVal, gsCode);
+						TryRegisterDependency(depVal, psCode);
+						thatFuture.SetInvalidAsset(depVal, nullptr);
+						return false;
+					}
+					return true;
+				}
+
+				StreamOutputInitializers so { MakeIteratorRange(s_soEles), MakeIteratorRange(s_soStrides) };
+				auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, so);
+				thatFuture.SetAsset(std::move(newShaderProgram), {});
+				return false;
+			});
+
+			return future;
+		}
+
+		ShaderVariationFactory_RayTest(const Techniques::TechniqueEntry& entry) : _entry(&entry) {}
+	private:
+		const Techniques::TechniqueEntry* _entry;
+	};
+
 	Metal::ShaderProgram* TechniqueDelegate_RayTest::GetShader(
 		Techniques::ParsingContext& context,
 		StringSection<::Assets::ResChar> techniqueCfgFile,
@@ -394,76 +461,15 @@ namespace SceneEngine
 		auto tech = techFuture->TryActualize();
 		if (!tech) return nullptr;
 
-		const auto& shaderFuture = _resolvedShaders.FindVariation(tech->GetEntry(techniqueIndex), shaderSelectors);
+		auto& entry = tech->GetEntry(techniqueIndex);
+		ShaderVariationFactory_RayTest factory(entry);
+		const auto& shaderFuture = _resolvedShaders.FindVariation(entry._baseSelectors, shaderSelectors, factory);
 		if (!shaderFuture) return nullptr;
 		return shaderFuture->TryActualize().get();
 	}
 
-	static void TryRegisterDependency(
-		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
-	{
-		auto futureDepVal = future->GetDependencyValidation();
-		if (futureDepVal)
-			::Assets::RegisterAssetDependency(dst, futureDepVal);
-	}
-
 	TechniqueDelegate_RayTest::TechniqueDelegate_RayTest()
-	{
-		_resolvedShaders._creationFn = 
-			[](	StringSection<> vsName,
-				StringSection<> gsName,
-				StringSection<> psName,
-				StringSection<> defines)
-			{
-				std::string definesTable = defines.AsString() + ";OUTPUT_WORLD_POSITION=1";
-				auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vsName, definesTable);
-				auto psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_pixelShaderName, definesTable);
-
-				std::stringstream str;
-				str << ";SO_OFFSETS=";
-				unsigned rollingOffset = 0;
-				for (const auto&e:s_soEles) {
-					assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
-					if (rollingOffset!=0) str << ",";
-					str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
-					rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
-				}
-				definesTable += str.str();
-				auto gsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_geometryShaderName, definesTable);
-
-				auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("RayTestShader");
-				future->SetPollingFunction(
-					[vsCode, gsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
-
-					auto vsActual = vsCode->TryActualize();
-					auto gsActual = gsCode->TryActualize();
-					auto psActual = psCode->TryActualize();
-
-					if (!vsActual || !gsActual || !psActual) {
-						auto vsState = vsCode->GetAssetState();
-						auto gsState = gsCode->GetAssetState();
-						auto psState = psCode->GetAssetState();
-						if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-							auto depVal = std::make_shared<::Assets::DependencyValidation>();
-							TryRegisterDependency(depVal, vsCode);
-							TryRegisterDependency(depVal, gsCode);
-							TryRegisterDependency(depVal, psCode);
-							thatFuture.SetInvalidAsset(depVal, nullptr);
-							return false;
-						}
-						return true;
-					}
-
-					StreamOutputInitializers so { MakeIteratorRange(s_soEles), MakeIteratorRange(s_soStrides) };
-					auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, so);
-					thatFuture.SetAsset(std::move(newShaderProgram), {});
-					return false;
-				});
-
-				return future;
-			};
-	}
+	{}
 
 	TechniqueDelegate_RayTest::~TechniqueDelegate_RayTest()
 	{}

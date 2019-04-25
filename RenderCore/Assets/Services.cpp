@@ -9,6 +9,7 @@
 #include "MaterialCompiler.h"
 #include "MaterialScaffold.h"   // just for MaterialScaffold::CompileProcessType
 #include "SkinDeformer.h"
+#include "ShaderPatchCollection.h"
 #include "../IDevice.h"
 #include "../Init.h"
 #include "../ShaderService.h"
@@ -55,6 +56,8 @@ namespace RenderCore { namespace Assets
 
 		_deformOpsFactory = std::make_unique<RenderCore::Assets::DeformOperationFactory>();
 		RenderCore::Assets::SkinDeformer::Register();
+
+		_compiledShaderPatchCollectionRegistry = std::make_unique<ShaderPatchCollectionRegistry>();
     }
 
     Services::~Services()

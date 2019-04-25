@@ -86,8 +86,10 @@
   <ItemGroup>
     <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\PredefinedCBLayout.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawMaterial.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp" />
@@ -111,8 +113,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\PredefinedCBLayout.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawMaterial.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h" />
     <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h" />
@@ -149,6 +153,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ShaderParser\Project\ShaderParser.vcxproj">
+      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

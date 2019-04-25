@@ -88,7 +88,8 @@ namespace ToolsRig
 			return i->second;
 
 		RenderCore::Assets::MaterialScaffoldMaterial merged = *(const RenderCore::Assets::MaterialScaffoldMaterial*)objectContext;
-		MergeInto(merged, *_mergeIn);
+		RenderCore::Assets::ShaderPatchCollection patchCollection;
+		MergeInto(merged, patchCollection, *_mergeIn);
 		auto i2 = _mergedResults.emplace(std::make_pair(objectContext, std::move(merged)));
 		return i2.first->second;
 	}

@@ -33,8 +33,9 @@ namespace GUILayer
 		const ::Assets::DirectorySearchRules& searchRules)
 	{
 		RenderCore::Assets::MaterialScaffoldMaterial result;
+		RenderCore::Assets::ShaderPatchCollection patchCollection;
 		for each(auto c in rawMaterials)
-			RenderCore::Assets::MergeIn_Stall(result, *c->GetUnderlying(), searchRules);
+			RenderCore::Assets::MergeIn_Stall(result, patchCollection, *c->GetUnderlying(), searchRules);
 		return result;
 	}
     

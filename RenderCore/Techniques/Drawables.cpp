@@ -18,6 +18,7 @@
 #include "../Metal/Shader.h"
 #include "../Metal/Resource.h"
 #include "../Metal/TextureView.h"
+#include "../Assets/ShaderPatchCollection.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -64,6 +65,8 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
+		auto& shaderPatchCollectionRegistry = RenderCore::Assets::ShaderPatchCollectionRegistry::GetInstance();
+
 		// this part would normally be a loop -- 
 		{
 			auto& material = *drawable._material;
@@ -78,9 +81,8 @@ namespace RenderCore { namespace Techniques
 
 			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(
 				parserContext,
-				MakeStringSection(material._techniqueConfig),
 				shaderSelectors,
-				techniqueIndex);
+				shaderPatchCollectionRegistry.GetCompiledShaderPatchCollection(material._patchCollection));
 			if (!shaderProgram)
 				return;
 

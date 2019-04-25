@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialScaffold.h"
+#include "ShaderPatchCollection.h"
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/Assets.h"
@@ -45,78 +46,58 @@ namespace RenderCore { namespace Assets
 		return {};
 	}
 
+	const ShaderPatchCollection*	MaterialScaffold::GetShaderPatchCollection(uint64_t hash) const
+	{
+		auto i = std::lower_bound(_patchCollections.begin(), _patchCollections.end(), hash);
+		if (i != _patchCollections.end() && i->GetHash() == hash)
+			return AsPointer(i);
+		return nullptr;
+	}
+
 	const ::Assets::AssetChunkRequest MaterialScaffold::ChunkRequests[]
 	{
 		::Assets::AssetChunkRequest{
 			"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
 			::Assets::AssetChunkRequest::DataType::BlockSerializer
+		},
+		::Assets::AssetChunkRequest{
+			"PatchCollections", ChunkType_PatchCollections, ResolvedMat_ExpectedVersion,
+			::Assets::AssetChunkRequest::DataType::Raw
 		}
 	};
 
 	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
-		assert(chunks.size() == 1);
+		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
+
+		InputStreamFormatter<utf8> formatter(
+			{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
+		_patchCollections = DeserializeShaderPatchCollectionSet(formatter);
+
+		for (const auto&p:_patchCollections)
+			ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(p);
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
 	: _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _depVal(moveFrom._depVal)
+	, _depVal(std::move(moveFrom._depVal))
+	, _patchCollections(std::move(moveFrom._patchCollections))
 	{}
 
 	MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
 	{
 		ImmutableData().~MaterialImmutableData();
 		_rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_depVal = moveFrom._depVal;
+		_depVal = std::move(moveFrom._depVal);
+		_patchCollections = std::move(moveFrom._patchCollections);
 		return *this;
 	}
 
 	MaterialScaffold::~MaterialScaffold()
 	{
 		ImmutableData().~MaterialImmutableData();
-	}
-
-
-	MaterialScaffoldMaterial::MaterialScaffoldMaterial() { _techniqueConfig[0] = '\0'; }
-
-	MaterialScaffoldMaterial::MaterialScaffoldMaterial(MaterialScaffoldMaterial&& moveFrom) never_throws
-	: _bindings(std::move(moveFrom._bindings))
-	, _matParams(std::move(moveFrom._matParams))
-	, _stateSet(moveFrom._stateSet)
-	, _constants(std::move(moveFrom._constants))
-	{
-		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
-	}
-
-	MaterialScaffoldMaterial& MaterialScaffoldMaterial::operator=(MaterialScaffoldMaterial&& moveFrom) never_throws
-	{
-		_bindings = std::move(moveFrom._bindings);
-		_matParams = std::move(moveFrom._matParams);
-		_stateSet = moveFrom._stateSet;
-		_constants = std::move(moveFrom._constants);
-		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
-		return *this;
-	}
-
-	MaterialScaffoldMaterial::MaterialScaffoldMaterial(const MaterialScaffoldMaterial& cloneFrom)
-	: _bindings(cloneFrom._bindings)
-	, _matParams(cloneFrom._matParams)
-	, _stateSet(cloneFrom._stateSet)
-	, _constants(cloneFrom._constants)
-	{
-		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
-	}
-
-	MaterialScaffoldMaterial& MaterialScaffoldMaterial::operator=(const MaterialScaffoldMaterial& cloneFrom)
-	{
-		_bindings = cloneFrom._bindings;
-		_matParams = cloneFrom._matParams;
-		_stateSet = cloneFrom._stateSet;
-		_constants = cloneFrom._constants;
-		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
-		return *this;
 	}
 
 	

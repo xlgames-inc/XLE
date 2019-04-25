@@ -297,9 +297,6 @@ namespace RenderCore { namespace Assets
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
-                    if (XlEqString(name, u("TechniqueConfig"))) {
-                        _techniqueConfig = Conversion::Convert<AssetName>(value.AsString());
-                    } 
                     break;
                 }
 
@@ -319,6 +316,8 @@ namespace RenderCore { namespace Assets
                         _resourceBindings = ParameterBox(formatter);
                     } else if (XlEqString(eleName, u("States"))) {
                         _stateSet = DeserializeStateSet(formatter);
+					} else if (XlEqString(eleName, u("Patches"))) {
+						_patchCollection = DeserializeShaderPatchCollection(formatter);
                     } else {
                         formatter.SkipElement();
                     }
@@ -346,8 +345,11 @@ namespace RenderCore { namespace Assets
 
     void RawMaterial::Serialize(OutputStreamFormatter& formatter) const
     {
-        if (!_techniqueConfig.empty())
-            formatter.WriteAttribute(u("TechniqueConfig"), Conversion::Convert<std::basic_string<utf8>>(_techniqueConfig));
+		if (!_patchCollection.GetPatches().empty()) {
+			auto ele = formatter.BeginElement(u("Patches"));
+			_patchCollection.Serialize(formatter);
+			formatter.EndElement(ele);
+		}
 
         if (!_inherit.empty()) {
             auto ele = formatter.BeginElement(u("Inherit"));
@@ -391,8 +393,7 @@ namespace RenderCore { namespace Assets
         dest._stateSet = Merge(dest._stateSet, _stateSet);
         dest._constants.MergeIn(_constants);
         dest._resourceBindings.MergeIn(_resourceBindings);
-        if (!_techniqueConfig.empty())
-            dest._techniqueConfig = _techniqueConfig;
+		_patchCollection.MergeInto(dest._patchCollection);
 	}
 
 	void ResolveMaterialFilename(
@@ -502,7 +503,7 @@ namespace RenderCore { namespace Assets
 
 	}
 
-	void MergeInto(MaterialScaffold::Material& dest, const RawMaterial& source)
+	void MergeInto(MaterialScaffold::Material& dest, ShaderPatchCollection& destPatchCollection, const RawMaterial& source)
     {
         dest._matParams.MergeIn(source._matParamBox);
         dest._stateSet = Merge(dest._stateSet, source._stateSet);
@@ -520,14 +521,7 @@ namespace RenderCore { namespace Assets
 			}
 		}
 
-        if (!source._techniqueConfig.empty()) {
-            // Shader names in "ResolvedMaterial" are kept very short. We
-            // want the material object to be fairly light-weight. 
-            if (source._techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
-                Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
-
-            XlCopyString(dest._techniqueConfig, source._techniqueConfig);
-        }
+		source._patchCollection.MergeInto(destPatchCollection);
     }
 
 	static void AddDep(
@@ -546,6 +540,7 @@ namespace RenderCore { namespace Assets
 
 	void MergeIn_Stall(
 		MaterialScaffold::Material& result,
+		ShaderPatchCollection& patchCollectionResult,
 		StringSection<> sourceMaterialName,
         const ::Assets::DirectorySearchRules& searchRules,
         std::vector<::Assets::DependentFileState>& deps)
@@ -567,14 +562,15 @@ namespace RenderCore { namespace Assets
 			childSearchRules.Merge(searchRules);
 
 			for (const auto& child: source->ResolveInherited(searchRules))
-				MergeIn_Stall(result, child, childSearchRules, deps);
+				MergeIn_Stall(result, patchCollectionResult, child, childSearchRules, deps);
 
-			MergeInto(result, *source);
+			MergeInto(result, patchCollectionResult, *source);
 		}
     }
 
 	void MergeIn_Stall(
 		MaterialScaffold::Material& result,
+		ShaderPatchCollection& patchCollectionResult,
 		const RenderCore::Assets::RawMaterial& src,
 		const ::Assets::DirectorySearchRules& searchRules)
 	{
@@ -585,11 +581,11 @@ namespace RenderCore { namespace Assets
 			auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(child);
 			auto state = dependencyMat->StallWhilePending();
 			if (state == ::Assets::AssetState::Ready) {
-				MergeIn_Stall(result, *dependencyMat->Actualize(), childSearchRules);
+				MergeIn_Stall(result, patchCollectionResult, *dependencyMat->Actualize(), childSearchRules);
 			}
 		}
 
-		MergeInto(result, src);
+		MergeInto(result, patchCollectionResult, src);
 	}
 
 	MaterialGuid MakeMaterialGuid(StringSection<utf8> name)

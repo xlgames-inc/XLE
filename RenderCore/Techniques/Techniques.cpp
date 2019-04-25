@@ -221,6 +221,14 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueSetFile::~TechniqueSetFile() {}
 
+	const TechniqueEntry* TechniqueSetFile::FindEntry(uint64_t hashName) const
+	{
+		auto i = LowerBound(_settings, hashName);
+		if (i != _settings.end() && i->first == hashName)
+			return &i->second;
+		return nullptr;
+	}
+
     void TechniqueEntry::MergeIn(const TechniqueEntry& source)
     {
         if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;

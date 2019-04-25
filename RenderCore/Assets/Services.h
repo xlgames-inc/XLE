@@ -19,6 +19,7 @@ namespace Assets { class IAssetCompiler; }
 namespace RenderCore { namespace Assets
 {
 	class DeformOperationFactory;
+	class ShaderPatchCollectionRegistry;
 
     class Services
     {
@@ -45,6 +46,7 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<RenderCore::IDevice> _device;
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
         std::unique_ptr<ShaderService> _shaderService;
+		std::unique_ptr<ShaderPatchCollectionRegistry> _compiledShaderPatchCollectionRegistry;
         ::Assets::DirectorySearchRules _techConfDirs;
         static Services* s_instance;
 

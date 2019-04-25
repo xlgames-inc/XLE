@@ -21,9 +21,10 @@ namespace RenderCore { namespace Techniques
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
 			const ParameterBox* shaderSelectors[],
-			RenderCore::Assets::CompiledShaderPatchCollection* patchCollection);
+			const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection) override;
 
 		TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources);
+		TechniqueDelegate_Illum();
 		~TechniqueDelegate_Illum();
 	private:
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;
