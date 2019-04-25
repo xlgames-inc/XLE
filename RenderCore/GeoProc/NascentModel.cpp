@@ -318,7 +318,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			for (const auto&mat:cmd.second._materialBindingSymbols) {
 				const char* end = nullptr;
 				auto guid = XlAtoUI64(mat.c_str(), &end, 16);
-				if (end != nullptr || end == '\0') {
+				if (end != nullptr && *end == '\0') {
 					materialGuid.push_back(guid);
 				} else
 					materialGuid.push_back(Hash64(mat));
