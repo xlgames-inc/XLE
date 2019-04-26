@@ -130,11 +130,11 @@ namespace Utility
         while (!_shouldStop) {
             kevent64_s change;
             
-            // Timeout is 10ms. After that it checks if the thread
+            // Timeout is 500ms. After that it checks if the thread
             // should exit (the application has been closed)
             timespec t;
             t.tv_sec = 0;
-            t.tv_nsec = 10 * 1000; // 10ms
+            t.tv_nsec = 500 * 1000 * 1000; // 500ms
             int num_changes = kevent64(_kq, NULL, 0, &change, 1, 0, &t);
             if (num_changes > 0) {
                 int fd = static_cast<int>(change.ident);
