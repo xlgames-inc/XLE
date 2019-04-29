@@ -102,6 +102,8 @@ namespace Utility
 
             if (globbuf.gl_pathc > 0)
                 globfree(&globbuf);
+#else
+            assert(0); // implement me!
 #endif
 
             return fileList;
