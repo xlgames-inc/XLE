@@ -107,9 +107,30 @@ namespace Utility
 
         bool Cast(
             void* dest, size_t destSize, TypeDesc destType,
-            const void* src, TypeDesc srcType)
+            const void* rawSrc, TypeDesc srcType)
         {
+            const void *src = rawSrc;
             if (destType._arrayCount <= 1) {
+#if defined(__arm__) && !defined(__aarch64__)
+                // Only 32-bit ARM, we may get unaligned access reading directly from rawSrc
+                // Therefore, we check if it is 4-byte unaligned and copy if so
+
+                // Setup the stack buffer if we need it
+                // Right now maximum size of a type is 8 bytes, adjust if necessary
+                const size_t MAXIMUM_SRC_SIZE = 8;
+                const size_t srcSize = srcType.GetSize();
+                assert(srcSize > 0);
+                assert(srcSize <= MAXIMUM_SRC_SIZE);
+                uint8_t srcBuffer[MAXIMUM_SRC_SIZE];
+
+                // Check if unaligned
+                if ((uintptr_t)rawSrc & 3u) {
+                    // If unaligned, copy to the srcBuffer (memcpy is safe to do unaligned access)
+                    memcpy(&srcBuffer[0], src, srcSize);
+                    // Set src to the srcBuffer
+                    src = &srcBuffer[0];
+                }
+#endif
                     // casting single element. Will we read the first element
                     // of the 
                 switch (destType._type) {
