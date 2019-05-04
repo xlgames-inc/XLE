@@ -17,7 +17,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
-#include "../../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"

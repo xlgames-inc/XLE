@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SharedStateSet.h"
+#include "PreboundShaders.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -11,7 +12,6 @@
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
-#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -33,7 +33,7 @@ namespace FixedFunctionModel
     class SharedStateSet::Pimpl
     {
     public:
-        using TechInterface = Techniques::TechniquePrebindingInterface;
+        using TechInterface = TechniquePrebindingInterface;
         std::vector<uint64>                 _rawTechniqueConfigs;
         std::vector<::Assets::rstring>      _resolvedTechniqueConfigs;
         
@@ -86,7 +86,7 @@ namespace FixedFunctionModel
         auto existingInterface = std::find(hashes.cbegin(), hashes.cend(), interfHash);
         if (existingInterface == hashes.cend()) {
                 //  No existing interface. We have to build a new one.
-            Techniques::TechniquePrebindingInterface techniqueInterface(
+            TechniquePrebindingInterface techniqueInterface(
                 MakeIteratorRange(vertexElements, &vertexElements[count]));
 
 			techniqueInterface.BindUniformsStream(0, Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
@@ -193,7 +193,7 @@ namespace FixedFunctionModel
         }
 
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::BoundShaderVariationSet>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<BoundShaderVariationSet>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &context._parserContext->GetTechniqueContext()._globalEnvironmentState,

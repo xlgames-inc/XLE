@@ -5,7 +5,7 @@
 #pragma once
 
 #include "DrawableDelegates.h"
-#include "ResolvedTechniqueShaders.h"
+#include "ShaderVariationSet.h"
 
 namespace RenderCore { namespace Techniques
 {

@@ -24,7 +24,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../FixedFunctionModel/ShaderVariationSet.h"
+#include "../FixedFunctionModel/PreboundShaders.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -47,7 +47,7 @@ namespace SceneEngine
         Format _indexFormat;
         unsigned _indexCount;
 
-        FixedFunctionModel::ShaderVariationSet _basicMaterial;
+        FixedFunctionModel::SimpleShaderVariationManager _basicMaterial;
         RenderCore::SharedPkt _materialConstants;
 
         std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
@@ -296,7 +296,7 @@ namespace SceneEngine
         pimpl->_indexCount = (unsigned)ibDataCount;
 
         using namespace Techniques;
-        pimpl->_basicMaterial = FixedFunctionModel::ShaderVariationSet(
+        pimpl->_basicMaterial = FixedFunctionModel::SimpleShaderVariationManager(
             GlobalInputLayouts::PN, 
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
@@ -329,7 +329,7 @@ namespace SceneEngine
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 
-            FixedFunctionModel::ShaderVariationSet material(
+            FixedFunctionModel::SimpleShaderVariationManager material(
                 GlobalInputLayouts::PN, 
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());

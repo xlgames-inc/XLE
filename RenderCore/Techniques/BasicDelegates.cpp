@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicDelegates.h"
-#include "ResolvedTechniqueShaders.h"
+#include "ShaderVariationSet.h"
 #include "ParsingContext.h"
 #include "TechniqueMaterial.h"
 #include "DeferredShaderResource.h"

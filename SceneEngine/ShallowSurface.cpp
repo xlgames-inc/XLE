@@ -19,7 +19,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../FixedFunctionModel/ShaderVariationSet.h"
+#include "../FixedFunctionModel/PreboundShaders.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
@@ -448,14 +448,14 @@ namespace SceneEngine
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
 		if (skyProjType != ~0u)
 			matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
-        FixedFunctionModel::ShaderVariationSet simMaterial(
+        FixedFunctionModel::SimpleShaderVariationManager simMaterial(
             InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
-		FixedFunctionModel::ShaderVariationSet unsimMaterial(
+		FixedFunctionModel::SimpleShaderVariationManager unsimMaterial(
             InputLayout(nullptr, 0),
             { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);

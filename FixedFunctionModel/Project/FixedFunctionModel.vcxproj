@@ -85,7 +85,7 @@
     <ClCompile Include="..\ModelCache.cpp" />
     <ClCompile Include="..\ModelRunTime.cpp" />
     <ClCompile Include="..\ModelUtils.cpp" />
-    <ClCompile Include="..\ShaderVariationSet.cpp" />
+    <ClCompile Include="..\PreboundShaders.cpp" />
     <ClCompile Include="..\SharedStateSet.cpp" />
     <ClCompile Include="..\SkinningRunTime.cpp" />
   </ItemGroup>
@@ -96,7 +96,7 @@
     <ClInclude Include="..\ModelRendererInternal.h" />
     <ClInclude Include="..\ModelRunTime.h" />
     <ClInclude Include="..\ModelUtils.h" />
-    <ClInclude Include="..\ShaderVariationSet.h" />
+    <ClInclude Include="..\PreboundShaders.h" />
     <ClInclude Include="..\SharedStateSet.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

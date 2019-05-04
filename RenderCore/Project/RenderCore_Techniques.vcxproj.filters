@@ -12,7 +12,6 @@
     <ClInclude Include="..\Techniques\RenderPass.h" />
     <ClInclude Include="..\Techniques\DrawableDelegates.h" />
     <ClInclude Include="..\Techniques\Drawables.h" />
-    <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
     <ClInclude Include="..\Techniques\BasicDelegates.h" />
     <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
     <ClInclude Include="..\Techniques\RenderPassUtils.h" />
@@ -23,6 +22,7 @@
     <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h">
       <Filter>DrawableMaterial</Filter>
     </ClInclude>
+    <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -32,7 +32,6 @@
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
     <ClCompile Include="..\Techniques\Drawables.cpp" />
-    <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
     <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
@@ -43,6 +42,7 @@
     <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp">
       <Filter>DrawableMaterial</Filter>
     </ClCompile>
+    <ClCompile Include="..\Techniques\ShaderVariationSet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DrawableMaterial">

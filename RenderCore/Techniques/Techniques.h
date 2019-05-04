@@ -54,9 +54,12 @@ namespace RenderCore { namespace Techniques
         ::Assets::rstring   _vertexShaderName;
         ::Assets::rstring   _pixelShaderName;
         ::Assets::rstring   _geometryShaderName;
+		uint64_t			_shaderNamesHash = 0;		// hash of the shader names, but not _baseSelectors
 
         TechniqueEntry();
         ~TechniqueEntry();
+
+		void GenerateHash();
     };
 
 	class TechniqueSetFile

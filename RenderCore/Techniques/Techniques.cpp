@@ -162,6 +162,7 @@ namespace RenderCore { namespace Techniques
                 }
 
             case Formatter::Blob::EndElement:
+				result.GenerateHash();
                 return result;
 
             default:
@@ -241,7 +242,20 @@ namespace RenderCore { namespace Techniques
             for (const auto& i:s)
                 d.SetParameter(i.Name(), i.RawValue(), i.Type());
         }
+
+		GenerateHash();
     }
+
+	void TechniqueEntry::GenerateHash()
+	{
+		_shaderNamesHash = DefaultSeed64;
+		if (!_vertexShaderName.empty())
+			_shaderNamesHash = Hash64(_vertexShaderName);
+		if (!_pixelShaderName.empty())
+			_shaderNamesHash = Hash64(_pixelShaderName, _shaderNamesHash);
+		if (!_geometryShaderName.empty())
+			_shaderNamesHash = Hash64(_geometryShaderName, _shaderNamesHash);
+	}
 
 	template<typename Char>
 		static void ReplaceInString(
@@ -264,6 +278,7 @@ namespace RenderCore { namespace Techniques
 		ReplaceInString(entry._vertexShaderName, selfRef, filename);
 		ReplaceInString(entry._pixelShaderName, selfRef, filename);
 		ReplaceInString(entry._geometryShaderName, selfRef, filename);
+		entry.GenerateHash();
 	}
 
     TechniqueEntry::TechniqueEntry() 

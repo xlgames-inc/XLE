@@ -122,7 +122,7 @@ namespace GUILayer
             using namespace RenderCore;
             const auto techniqueIndex = 0u;
 
-            FixedFunctionModel::ShaderVariationSet material(
+            FixedFunctionModel::SimpleShaderVariationManager material(
                 vf._inputLayout,
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
 				{});

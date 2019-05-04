@@ -9,7 +9,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/MetalStubs.h"
 #include "../../FixedFunctionModel/ModelRunTime.h"
-#include "../../FixedFunctionModel/ShaderVariationSet.h"
+#include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
@@ -261,7 +261,7 @@ namespace ToolsRig
 
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-        FixedFunctionModel::ShaderVariationSet _materialGenCylinder;
+        FixedFunctionModel::SimpleShaderVariationManager _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:

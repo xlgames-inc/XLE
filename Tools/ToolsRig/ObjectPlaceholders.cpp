@@ -8,7 +8,7 @@
 #include "VisualisationGeo.h"
 #include "../EntityInterface/RetainedEntities.h"
 #include "../../FixedFunctionModel/ModelRunTime.h"
-#include "../../FixedFunctionModel/ShaderVariationSet.h"
+#include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
@@ -72,7 +72,7 @@ namespace ToolsRig
 		IResourcePtr _vb;
 		IResourcePtr _ib;
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
-		FixedFunctionModel::ShaderVariationSet _material;
+		FixedFunctionModel::SimpleShaderVariationManager _material;
 		unsigned _vbStride;
 		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
@@ -153,7 +153,7 @@ namespace ToolsRig
 		std::vector<InputElementDesc> eles;
 		for (const auto&i:geo._vb._ia._elements)
 			eles.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
-		_material = FixedFunctionModel::ShaderVariationSet(
+		_material = FixedFunctionModel::SimpleShaderVariationManager(
 			MakeIteratorRange(eles),
 			{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants }, ParameterBox());
 	}
@@ -173,11 +173,11 @@ namespace ToolsRig
         RenderCore::IResourcePtr	_cubeVB;
         unsigned					_cubeVBCount;
         unsigned					_cubeVBStride;
-		FixedFunctionModel::ShaderVariationSet	_material;
-		FixedFunctionModel::ShaderVariationSet	_materialP;
-		FixedFunctionModel::ShaderVariationSet	_materialGenSphere;
-		FixedFunctionModel::ShaderVariationSet	_materialGenTube;
-		FixedFunctionModel::ShaderVariationSet	_materialGenRectangle;
+		FixedFunctionModel::SimpleShaderVariationManager	_material;
+		FixedFunctionModel::SimpleShaderVariationManager	_materialP;
+		FixedFunctionModel::SimpleShaderVariationManager	_materialGenSphere;
+		FixedFunctionModel::SimpleShaderVariationManager	_materialGenTube;
+		FixedFunctionModel::SimpleShaderVariationManager	_materialGenRectangle;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -260,7 +260,7 @@ namespace ToolsRig
     static void DrawSphereStandIn(
         Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
+		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
     {
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
@@ -281,7 +281,7 @@ namespace ToolsRig
 	static void DrawPointerStandIn(
 		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext,
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
+		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
 	{
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/pointerstandin.dae");
@@ -302,8 +302,8 @@ namespace ToolsRig
 	static void DrawGenObject(
 		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
 		const ObjectParams& params,
-		const FixedFunctionModel::ShaderVariationSet::Variation& generatorShader, unsigned vertexCount,
-		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
+		const FixedFunctionModel::SimpleShaderVariationManager::Variation& generatorShader, unsigned vertexCount,
+		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
 	{
 		if (generatorShader._shader._shaderProgram) {
 			generatorShader._shader.Apply(devContext, parserContext, {});
@@ -327,7 +327,7 @@ namespace ToolsRig
         Metal::DeviceContext& devContext,
         Techniques::ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const FixedFunctionModel::ShaderVariationSet::Variation& shader, const RetainedEntity& obj,
+        const FixedFunctionModel::SimpleShaderVariationManager::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
@@ -419,7 +419,7 @@ namespace ToolsRig
 						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
 
 						auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
-						FixedFunctionModel::ShaderVariationSet::Variation* var;
+						FixedFunctionModel::SimpleShaderVariationManager::Variation* var;
 						unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
 						switch (shape) { 
 						case 2: var = &tubeShader; break;

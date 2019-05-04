@@ -21,7 +21,6 @@
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
@@ -34,6 +33,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../FixedFunctionModel/PreboundShaders.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -672,7 +672,7 @@ namespace SceneEngine
         const bool useWireframeRender               = Tweakable("OceanRenderWireframe", false);
         if (!useWireframeRender) {
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::BoundShaderVariationSet>("xleres/ocean/oceanmaterial.tech");
+            auto& shaderType = ::Assets::GetAssetDep<FixedFunctionModel::BoundShaderVariationSet>("xleres/ocean/oceanmaterial.tech");
 
             ParameterBox materialParameters;
             materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
@@ -695,7 +695,7 @@ namespace SceneEngine
             usi.BindShaderResource(4, {HashDynamicReflectionTexture});
             usi.BindShaderResource(5, {HashSurfaceSpecularity});
 
-			Techniques::TechniquePrebindingInterface techniqueInterface;
+			FixedFunctionModel::TechniquePrebindingInterface techniqueInterface;
 			techniqueInterface.BindUniformsStream(0, Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
 			techniqueInterface.BindUniformsStream(1, usi);
 

@@ -22,7 +22,7 @@
 #include "../FixedFunctionModel/ModelRunTime.h"
 #include "../FixedFunctionModel/DelayedDrawCall.h"
 #include "../FixedFunctionModel/SharedStateSet.h"
-#include "../FixedFunctionModel/ShaderVariationSet.h"
+#include "../FixedFunctionModel/PreboundShaders.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -216,7 +216,7 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        FixedFunctionModel::ShaderVariationSet   _material;
+        FixedFunctionModel::SimpleShaderVariationManager   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
         std::shared_ptr<Techniques::IRenderStateDelegate> _stateRes;
@@ -1003,7 +1003,7 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = FixedFunctionModel::ShaderVariationSet(
+        _pimpl->_material = FixedFunctionModel::SimpleShaderVariationManager(
             MakeIteratorRange(s_inputLayout),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
