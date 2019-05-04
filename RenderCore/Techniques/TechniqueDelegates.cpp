@@ -3,6 +3,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueDelegates.h"
+#include "DrawableMaterial.h"
+#include "CompiledShaderPatchCollection.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
 #include "../Metal/Shader.h"
@@ -24,7 +26,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		static SourceCodeWithRemapping AssembleShader(
-			const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection,
+			const RenderCore::Techniques::CompiledShaderPatchCollection& patchCollection,
 			IteratorRange<const uint64_t*> redirectedPatchFunctions,
 			const std::string& entryPointFileName)
 		{
@@ -35,14 +37,14 @@ namespace RenderCore { namespace Techniques
 
 			std::stringstream output;
 
-			output << patchCollection._srcCode;
+			output << patchCollection.GetSourceCode();
 
 			for (auto fn:redirectedPatchFunctions) {
 				auto i = std::find_if(
-					patchCollection._patches.begin(), patchCollection._patches.end(),
-					[fn](const RenderCore::Assets::CompiledShaderPatchCollection::Patch& p) { return p._implementsHash == fn; });
-				assert(i!=patchCollection._patches.end());
-				if (i == patchCollection._patches.end()) {
+					patchCollection.GetPatches().begin(), patchCollection.GetPatches().end(),
+					[fn](const RenderCore::Techniques::CompiledShaderPatchCollection::Patch& p) { return p._implementsHash == fn; });
+				assert(i!=patchCollection.GetPatches().end());
+				if (i == patchCollection.GetPatches().end()) {
 					Log(Warning) << "Could not find matching patch function for hash (" << fn << ")" << std::endl;
 					continue;
 				}
@@ -66,9 +68,9 @@ namespace RenderCore { namespace Techniques
 
 			SourceCodeWithRemapping result;
 			result._processedSource = output.str();
-			result._dependencies.insert(
+			/*result._dependencies.insert(
 				result._dependencies.end(),
-				patchCollection._dependencies.begin(), patchCollection._dependencies.end());
+				patchCollection._dependencies.begin(), patchCollection._dependencies.end());*/
 
 			// We could fill in the _lineMarkers member with some line marker information
 			// from the original shader graph compile; but that might be overkill
@@ -99,7 +101,7 @@ namespace RenderCore { namespace Techniques
 			return AssembleShader(*i->second, MakeIteratorRange(redirectedPatchFunctions), filename);
 		}
 
-		void RegisterPatchCollection(const std::shared_ptr<RenderCore::Assets::CompiledShaderPatchCollection>& patchCollection)
+		void RegisterPatchCollection(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
 		{
 			auto guid = patchCollection->GetGUID();
 			auto e = LowerBound(_patchCollections, guid);
@@ -116,7 +118,7 @@ namespace RenderCore { namespace Techniques
 		~InstantiateShaderGraphPreprocessor() {}
 
 	private:
-		std::vector<std::pair<uint64_t, std::shared_ptr<RenderCore::Assets::CompiledShaderPatchCollection>>> _patchCollections;
+		std::vector<std::pair<uint64_t, std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>>> _patchCollections;
 	};
 
 	class ShaderPatchFactory : public IShaderVariationFactory
@@ -137,7 +139,7 @@ namespace RenderCore { namespace Techniques
 
 		ShaderPatchFactory(
 			const TechniqueEntry& techEntry, 
-			const RenderCore::Assets::CompiledShaderPatchCollection* patchCollection,
+			const RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection,
 			IteratorRange<const uint64_t*> patchExpansions)
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
@@ -148,7 +150,7 @@ namespace RenderCore { namespace Techniques
 		ShaderPatchFactory() {}
 	private:
 		const TechniqueEntry* _entry;
-		const RenderCore::Assets::CompiledShaderPatchCollection* _patchCollection;
+		const RenderCore::Techniques::CompiledShaderPatchCollection* _patchCollection;
 		IteratorRange<const uint64_t*> _patchExpansions;
 	};
 
@@ -158,35 +160,32 @@ namespace RenderCore { namespace Techniques
 	RenderCore::Metal::ShaderProgram* TechniqueDelegate_Illum::GetShader(
 		ParsingContext& context,
 		const ParameterBox* shaderSelectors[],
-		const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection)
+		const DrawableMaterial& material)
 	{
-		auto perPixel = std::find_if(
-			patchCollection._patches.begin(), patchCollection._patches.end(),
-			[](const RenderCore::Assets::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_perPixel; });
-
 		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
 			return nullptr;
 
 		IteratorRange<const uint64_t*> patchExpansions = {};
 		const TechniqueEntry* techEntry = &_noPatches;
-		if (perPixel != patchCollection._patches.end()) {
-			auto earlyRejection = std::find_if(
-				patchCollection._patches.begin(), patchCollection._patches.end(),
-				[](const RenderCore::Assets::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_earlyRejectionTest; });
-			if (earlyRejection != patchCollection._patches.end()) {
-				techEntry = &_perPixelAndEarlyRejection;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
-			} else {
-				techEntry = &_perPixel;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
-			}
+		using IllumType = CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType;
+		switch (material._patchCollection->_illumDelegate._type) {
+		case IllumType::PerPixel:
+			techEntry = &_perPixel;
+			patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+			break;
+		case IllumType::PerPixelAndEarlyRejection:
+			techEntry = &_perPixelAndEarlyRejection;
+			patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+			break;
+		default:
+			break;
 		}
 
-		ShaderPatchFactory factory(*techEntry, &patchCollection, patchExpansions);
-		const auto& shaderFuture = _sharedResources->_mainVariationSet.FindVariation(
+		ShaderPatchFactory factory(*techEntry, material._patchCollection.get(), patchExpansions);
+		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
 			techEntry->_baseSelectors, shaderSelectors, factory);
-		if (!shaderFuture) return nullptr;
-		return shaderFuture->TryActualize().get();
+		if (!variation._shaderFuture) return nullptr;
+		return variation._shaderFuture->TryActualize().get();
 	}
 
 	TechniqueDelegate_Illum::TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources)

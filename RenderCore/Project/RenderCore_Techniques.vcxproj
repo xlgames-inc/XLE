@@ -71,8 +71,10 @@
     <ClInclude Include="..\Techniques\CommonBindings.h" />
     <ClInclude Include="..\Techniques\CommonResources.h" />
     <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
+    <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h" />
     <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
     <ClInclude Include="..\Techniques\DrawableDelegates.h" />
+    <ClInclude Include="..\Techniques\DrawableMaterial.h" />
     <ClInclude Include="..\Techniques\Drawables.h" />
     <ClInclude Include="..\Techniques\RenderPass.h" />
     <ClInclude Include="..\Techniques\RenderPassUtils.h" />
@@ -87,7 +89,9 @@
   <ItemGroup>
     <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
     <ClCompile Include="..\Techniques\CommonResources.cpp" />
+    <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp" />
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
+    <ClCompile Include="..\Techniques\DrawableMaterial.cpp" />
     <ClCompile Include="..\Techniques\Drawables.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
     <ClCompile Include="..\Techniques\ParsingContext.cpp" />

@@ -24,6 +24,7 @@
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../RenderCore/UniformsStream.h"
@@ -118,7 +119,7 @@ namespace ToolsRig
                 };
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._material = _material.get();
+				drawable._material = RenderCore::Techniques::MakeDrawableMaterial(*_material, {});
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -142,7 +143,7 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._material = _material.get();
+				drawable._material = Techniques::MakeDrawableMaterial(*_material.get(), {});
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -187,13 +188,13 @@ namespace ToolsRig
 
         MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
-			const std::shared_ptr<RenderCore::Techniques::Material>& material)
+			const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
         : _settings(settings), _material(material)
 		{
 			_depVal = std::make_shared<::Assets::DependencyValidation>();
 			if (!_material) {
-				_material = std::make_shared<RenderCore::Techniques::Material>();
-				XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+				_material = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
+				// XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
 			}
 		}
 
@@ -201,13 +202,13 @@ namespace ToolsRig
 
     protected:
         MaterialVisSettings  _settings;
-		std::shared_ptr<RenderCore::Techniques::Material> _material;
+		std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> _material;
 		::Assets::DepValPtr _depVal;
     };
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
 		const MaterialVisSettings& visObject,
-		const std::shared_ptr<RenderCore::Techniques::Material>& material)
+		const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
 	{
 		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
 		::Assets::AutoConstructToFuture(*result, visObject, material);
@@ -231,12 +232,14 @@ namespace ToolsRig
 				_technique = future->Actualize();
 			}
 
-			const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
+			/*const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
 			if (!shaderFuture) return nullptr;
 			// In this case we want invalid / pending shaders to get registered as such. So use the "throwing" version of
 			// the Actualize call
 			shaderFuture->OnFrameBarrier();		// hack -- we still need to invoke the OnFrameBarrier call, because the future is not registered with the asset manager
-			return shaderFuture->Actualize().get();
+			return shaderFuture->Actualize().get();*/
+			assert(0);
+			return nullptr;
 		}
 
 		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(
@@ -375,7 +378,8 @@ namespace ToolsRig
 				RenderCore::Metal::CreateLowLevelShaderCompiler(RenderCore::Assets::Services::GetDevice()),
 				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
 
-			_resolvedShaders._creationFn = 
+			assert(0);
+			/*_resolvedShaders._creationFn = 
 				[provider, psMainName, logMessages, shaderSource](
 					StringSection<> vsName,
 					StringSection<> gsName,
@@ -418,11 +422,11 @@ namespace ToolsRig
 					});
 
 					return future;
-				};
+				};*/
 		}
 	private:
 		std::shared_ptr<RenderCore::Techniques::Technique> _technique;
-		Techniques::ResolvedShaderVariationSet _resolvedShaders;
+		Techniques::UniqueShaderVariationSet _resolvedShaders;
 		static const char s_techFile[];
 	};
 

@@ -12,7 +12,7 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawablesPacket; class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawableMaterial; class DrawablesPacket; class ParsingContext; }}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
@@ -86,6 +86,9 @@ namespace RenderCore { namespace Assets
 
 		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _geos;
 		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _boundSkinnedControllers;
+
+		std::vector<std::shared_ptr<Techniques::DrawableMaterial>> _geoMaterials;
+		std::vector<std::shared_ptr<Techniques::DrawableMaterial>> _boundSkinnedControllerMaterials;
 
 		SkeletonBinding _skeletonBinding;
 

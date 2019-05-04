@@ -15,10 +15,11 @@
 
 namespace RenderCore { namespace Techniques
 {
+	const char* g_techName = "xleres/Techniques/Illum.tech";
 
 	RenderCore::UniformsStreamInterface MaterialDelegate_Basic::GetInterface(const void* objectContext) const
 	{
-		Material& mat = *(Material*)objectContext;
+		ScaffoldMaterial& mat = *(ScaffoldMaterial*)objectContext;
 		RenderCore::UniformsStreamInterface result;
 		result.BindConstantBuffer(0, {ObjectCB::BasicMaterialConstants});
 		unsigned c=0;
@@ -29,15 +30,15 @@ namespace RenderCore { namespace Techniques
 
     uint64_t MaterialDelegate_Basic::GetInterfaceHash(const void* objectContext) const
 	{
-		Material& mat = *(Material*)objectContext;
+		ScaffoldMaterial& mat = *(ScaffoldMaterial*)objectContext;
 		return HashCombine(
 			mat._bindings.GetParameterNamesHash(),
-			Hash64(mat._techniqueConfig));
+			Hash64(g_techName));
 	}
 
 	const ParameterBox* MaterialDelegate_Basic::GetShaderSelectors(const void* objectContext) const
 	{
-		Material& mat = *(Material*)objectContext;
+		ScaffoldMaterial& mat = *(ScaffoldMaterial*)objectContext;
 		static ParameterBox dummy;
 		dummy = ParameterBox();
 		for (const auto& i:mat._bindings)
@@ -54,8 +55,8 @@ namespace RenderCore { namespace Techniques
 		unsigned streamIdx,
 		const void* objectContext) const
 	{
-		Material& mat = *(Material*)objectContext;
-		auto techniqueFuture = ::Assets::MakeAsset<Technique>(mat._techniqueConfig);
+		// ScaffoldMaterial& mat = *(ScaffoldMaterial*)objectContext;
+		auto techniqueFuture = ::Assets::MakeAsset<Technique>(g_techName);
 		const auto& cbLayout = techniqueFuture->Actualize()->TechniqueCBLayout();
 		return ApplyUniforms(
 			context, devContext, boundUniforms,
@@ -70,7 +71,7 @@ namespace RenderCore { namespace Techniques
 		const void* objectContext,
 		const RenderCore::Assets::PredefinedCBLayout& cbLayout) const
 	{
-		Material& mat = *(Material*)objectContext;
+		ScaffoldMaterial& mat = *(ScaffoldMaterial*)objectContext;
 		const RenderCore::Metal::ShaderResourceView* srvs[32];
 		unsigned c=0;
 		for (const auto&i:mat._bindings) {
@@ -121,7 +122,7 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max
 		unsigned techniqueIndex)
 	{
-		auto techFuture = ::Assets::MakeAsset<ResolvedTechniqueShaders>(techniqueCfgFile);
+		auto techFuture = ::Assets::MakeAsset<TechniqueShaderVariationSet>(techniqueCfgFile);
 		auto tech = techFuture->TryActualize();
 		if (!tech) return nullptr;
 		const auto& shaderFuture = tech->FindVariation(techniqueIndex, shaderSelectors);

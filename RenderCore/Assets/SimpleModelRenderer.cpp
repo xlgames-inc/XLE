@@ -10,6 +10,7 @@
 #include "MaterialScaffold.h"
 #include "AssetUtils.h"
 #include "Services.h"
+#include "ShaderPatchCollection.h"
 #include "../Techniques/Drawables.h"
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
@@ -78,9 +79,9 @@ namespace RenderCore { namespace Assets
 	}
 
 	#if defined(BAD_MATERIAL_FALLBACK)
-		static Techniques::Material& GetDummyMaterial()
+		static Techniques::ScaffoldMaterial& GetDummyMaterial()
 		{
-			static Techniques::Material dummyMaterial;
+			static Techniques::ScaffoldMaterial dummyMaterial;
 			static bool dummyMaterialIsInitialized = false;
 			if (!dummyMaterialIsInitialized) {
 				XlCopyString(dummyMaterial._techniqueConfig, "xleres/techniques/illum.tech");
@@ -100,6 +101,7 @@ namespace RenderCore { namespace Assets
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
+		auto materialIterator = _geoMaterials.begin();
         for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
@@ -111,7 +113,7 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._material = *materialIterator++;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -132,6 +134,7 @@ namespace RenderCore { namespace Assets
             }
         }
 
+		materialIterator = _boundSkinnedControllerMaterials.begin();
         for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
@@ -148,7 +151,7 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._material = *materialIterator++;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -205,6 +208,7 @@ namespace RenderCore { namespace Assets
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
+		auto materialIterator = _geoMaterials.begin();
         for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
@@ -216,7 +220,7 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._material = *materialIterator++;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -241,7 +245,8 @@ namespace RenderCore { namespace Assets
             }
         }
 
-        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
+        materialIterator = _boundSkinnedControllerMaterials.begin();
+		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
 
@@ -257,7 +262,7 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._material = *materialIterator++;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -446,6 +451,7 @@ namespace RenderCore { namespace Assets
 		unsigned dynVBIterator = 0;
 
 		_geos.reserve(modelScaffold->ImmutableData()._geoCount);
+		_geoMaterials.reserve(modelScaffold->ImmutableData()._geoCount);
 		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._geoCount; ++geo) {
 			const auto& rg = modelScaffold->ImmutableData()._geos[geo];
 
@@ -470,6 +476,7 @@ namespace RenderCore { namespace Assets
 		}
 
 		_boundSkinnedControllers.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
+		_boundSkinnedControllerMaterials.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
 		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._boundSkinnedControllerCount; ++geo) {
 			const auto& rg = modelScaffold->ImmutableData()._boundSkinnedControllers[geo];
 
@@ -492,6 +499,47 @@ namespace RenderCore { namespace Assets
 			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
 			drawableGeo->_ibFormat = rg._ib._format;
 			_boundSkinnedControllers.push_back(std::move(drawableGeo));
+		}
+
+		// Setup the DrawableMaterials
+		RenderCore::Assets::ShaderPatchCollection patchCollection;
+		std::vector<std::pair<uint64_t, std::shared_ptr<Techniques::DrawableMaterial>>> drawableMaterials;
+
+		const auto& cmdStream = _modelScaffold->CommandStream();
+		for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
+				auto materialGuid = geoCall._materialGuids[d];
+				auto hash = HashCombine(materialGuid, patchCollection.GetHash());
+				auto i = LowerBound(drawableMaterials, hash);
+				if (i != drawableMaterials.end() && i->first == hash) {
+					_geoMaterials.push_back(i->second);
+				} else {
+					auto m = Techniques::MakeDrawableMaterial(
+						*_materialScaffold->GetMaterial(materialGuid),
+						patchCollection);
+					_geoMaterials.push_back(m);
+					drawableMaterials.insert(i, std::make_pair(hash, m));
+				}
+			}
+		}
+
+		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetSkinCall(c);
+            for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
+				auto materialGuid = geoCall._materialGuids[d];
+				auto hash = HashCombine(materialGuid, patchCollection.GetHash());
+				auto i = LowerBound(drawableMaterials, hash);
+				if (i != drawableMaterials.end() && i->first == hash) {
+					_boundSkinnedControllerMaterials.push_back(i->second);
+				} else {
+					auto m = Techniques::MakeDrawableMaterial(
+						*_materialScaffold->GetMaterial(materialGuid),
+						patchCollection);
+					_boundSkinnedControllerMaterials.push_back(m);
+					drawableMaterials.insert(i, std::make_pair(hash, m));
+				}
+			}
 		}
 
 		// Create the dynamic VB and assign it to all of the slots it needs to go to

@@ -24,7 +24,7 @@ namespace EntityInterface
             const auto* child = sys.GetEntity(obj._doc, cid);
             if (!child) continue;
 
-            auto material = CreateFromParameters<VegetationSpawnConfig::Material>(child->_properties);
+            auto material = CreateFromParameters<VegetationSpawnConfig::ScaffoldMaterial>(child->_properties);
 
             for (auto cid2:child->_children) {
                 const auto* objType = sys.GetEntity(obj._doc, cid2);

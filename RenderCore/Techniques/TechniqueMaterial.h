@@ -10,6 +10,6 @@ namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 
 namespace RenderCore { namespace Techniques {
 
-	using Material = RenderCore::Assets::MaterialScaffoldMaterial;
+	using ScaffoldMaterial = RenderCore::Assets::MaterialScaffoldMaterial;
 
 }}

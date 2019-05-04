@@ -65,11 +65,16 @@ namespace RenderCore { namespace Techniques
         Flags::BitField     _flags = 0u;
     };
 
+	class DrawableMaterial;
+	std::shared_ptr<DrawableMaterial> MakeDrawableMaterial(
+		const RenderCore::Assets::MaterialScaffoldMaterial& mat,
+		const RenderCore::Assets::ShaderPatchCollection& patchCollection);
+
 	class Drawable
 	{
 	public:
-        const Material*					_material;
-        std::shared_ptr<DrawableGeo>	_geo;
+        std::shared_ptr<DrawableMaterial>	_material;
+        std::shared_ptr<DrawableGeo>		_geo;
 
         typedef void (ExecuteDrawFn)(
             Metal::DeviceContext&,

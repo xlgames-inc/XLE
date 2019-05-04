@@ -43,42 +43,5 @@ namespace RenderCore { namespace Assets
 	ShaderPatchCollection DeserializeShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
-
-	class CompiledShaderPatchCollection
-	{
-	public:
-		std::string _srcCode;
-
-		struct Patch 
-		{
-			uint64_t		_implementsHash;
-			std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
-		};
-		std::vector<Patch> _patches;
-
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-		::Assets::DepValPtr _depVal;
-		std::vector<::Assets::DependentFileState> _dependencies;
-
-		uint64_t _guid = 0;
-		uint64_t GetGUID() const { return _guid; }
-
-		CompiledShaderPatchCollection(const ShaderPatchCollection& src);
-		CompiledShaderPatchCollection();
-		~CompiledShaderPatchCollection();
-	};
-
-	class ShaderPatchCollectionRegistry
-	{
-	public:
-		const CompiledShaderPatchCollection& GetCompiledShaderPatchCollection(uint64_t hash) const;
-		void RegisterShaderPatchCollection(const ShaderPatchCollection& patchCollection) const;
-
-		static ShaderPatchCollectionRegistry& GetInstance() { assert(s_instance); return *s_instance; }
-		ShaderPatchCollectionRegistry();
-		~ShaderPatchCollectionRegistry();
-	private:
-		static ShaderPatchCollectionRegistry* s_instance;
-	};
 }}
 

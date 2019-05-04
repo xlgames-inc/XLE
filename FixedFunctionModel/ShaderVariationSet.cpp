@@ -16,7 +16,7 @@ namespace FixedFunctionModel
 {
 	using namespace RenderCore;
 
-    static Techniques::TechniqueInterface MakeTechInterface(
+    static Techniques::TechniquePrebindingInterface MakeTechInterface(
         IteratorRange<const InputElementDesc*> inputLayout,
         const std::initializer_list<uint64_t>& objectCBs)
     {
@@ -25,7 +25,7 @@ namespace FixedFunctionModel
 		for (auto o : objectCBs)
 			interf.BindConstantBuffer(index++, { o });
 
-        Techniques::TechniqueInterface techniqueInterface(inputLayout);
+        Techniques::TechniquePrebindingInterface techniqueInterface(inputLayout);
         techniqueInterface.BindGlobalUniforms();
 		techniqueInterface.BindUniformsStream(1, interf);
         return std::move(techniqueInterface);
@@ -67,7 +67,7 @@ namespace FixedFunctionModel
 		::Assets::ResChar resName[MaxPath];
 		searchDirs.ResolveFile(resName, dimof(resName), techniqueConfig);
 
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(resName));
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::BoundShaderVariationSet>(MakeStringSection(resName));
 
         Variation result;
         result._cbLayout = nullptr;
@@ -78,7 +78,7 @@ namespace FixedFunctionModel
 
     const RenderCore::Assets::PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
     {
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(techniqueConfigName);
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::TechniqueShaderVariationSet>(techniqueConfigName);
         return techConfig.GetTechnique().TechniqueCBLayout();
     }
 

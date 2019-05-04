@@ -33,7 +33,7 @@ namespace FixedFunctionModel
     class SharedStateSet::Pimpl
     {
     public:
-        using TechInterface = Techniques::TechniqueInterface;
+        using TechInterface = Techniques::TechniquePrebindingInterface;
         std::vector<uint64>                 _rawTechniqueConfigs;
         std::vector<::Assets::rstring>      _resolvedTechniqueConfigs;
         
@@ -86,7 +86,7 @@ namespace FixedFunctionModel
         auto existingInterface = std::find(hashes.cbegin(), hashes.cend(), interfHash);
         if (existingInterface == hashes.cend()) {
                 //  No existing interface. We have to build a new one.
-            Techniques::TechniqueInterface techniqueInterface(
+            Techniques::TechniquePrebindingInterface techniqueInterface(
                 MakeIteratorRange(vertexElements, &vertexElements[count]));
 
 			techniqueInterface.BindUniformsStream(0, Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
@@ -193,7 +193,7 @@ namespace FixedFunctionModel
         }
 
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::BoundShaderVariationSet>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &context._parserContext->GetTechniqueContext()._globalEnvironmentState,
@@ -254,7 +254,7 @@ namespace FixedFunctionModel
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::TechniqueShaderVariationSet>(MakeStringSection(sn));
 		return &shaderType.GetTechnique().TechniqueCBLayout();
     }
 

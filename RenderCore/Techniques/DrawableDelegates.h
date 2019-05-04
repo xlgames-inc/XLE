@@ -9,14 +9,15 @@
 #include "../Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/StringUtils.h"
 
 namespace RenderCore { class IResource; class ConstantBufferView; }
-namespace RenderCore { namespace Assets { class CompiledShaderPatchCollection; }}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
 {
 	class ParsingContext;
+	extern const char* g_techName;
 
     class IUniformBufferDelegate
     {
@@ -54,13 +55,22 @@ namespace RenderCore { namespace Techniques
         virtual ~IMaterialDelegate();
     };
 
+	class DrawableMaterial;
+
 	class ITechniqueDelegate
 	{
 	public:
 		virtual Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
 			const ParameterBox* shaderSelectors[],
-			const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection) = 0;		// ShaderSelectors::Source::Max
+			const DrawableMaterial& material)  { return nullptr; }		// ShaderSelectors::Source::Max
+
+		virtual RenderCore::Metal::ShaderProgram* GetShader(
+			ParsingContext& context,
+			StringSection<> techniqueCfgFile,
+			const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max
+			unsigned techniqueIndex) { return nullptr; }
+
 		virtual ~ITechniqueDelegate();
 	};
 

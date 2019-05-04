@@ -378,7 +378,7 @@ namespace SceneEngine
 		TechniqueDelegate_RayTest();
 		~TechniqueDelegate_RayTest();
 	private:
-		Techniques::ResolvedShaderVariationSet _resolvedShaders;
+		Techniques::UniqueShaderVariationSet _resolvedShaders;
 	};
 
 	static const std::string s_pixelShaderName = "null";
@@ -463,9 +463,9 @@ namespace SceneEngine
 
 		auto& entry = tech->GetEntry(techniqueIndex);
 		ShaderVariationFactory_RayTest factory(entry);
-		const auto& shaderFuture = _resolvedShaders.FindVariation(entry._baseSelectors, shaderSelectors, factory);
-		if (!shaderFuture) return nullptr;
-		return shaderFuture->TryActualize().get();
+		const auto& variation = _resolvedShaders.FindVariation(entry._baseSelectors, shaderSelectors, factory);
+		if (!variation._shaderFuture) return nullptr;
+		return variation._shaderFuture->TryActualize().get();
 	}
 
 	TechniqueDelegate_RayTest::TechniqueDelegate_RayTest()

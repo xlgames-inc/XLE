@@ -70,9 +70,9 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static std::shared_ptr<RenderCore::Techniques::Material> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
+	static std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto result = std::make_shared<RenderCore::Techniques::Material>();
+		auto result = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
 
         // Our default material settings come from the "Document" object. This
         // give us our starting material and shader properties.

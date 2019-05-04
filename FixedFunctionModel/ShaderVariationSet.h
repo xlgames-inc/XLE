@@ -21,12 +21,12 @@ namespace FixedFunctionModel
     public:
         ParameterBox _materialParameters;
         ParameterBox _geometryParameters;
-        RenderCore::Techniques::TechniqueInterface _techniqueInterface;
+        RenderCore::Techniques::TechniquePrebindingInterface _techniqueInterface;
 
         class Variation
         {
         public:
-			RenderCore::Techniques::ResolvedTechniqueShaders::ResolvedShader      _shader;
+			RenderCore::Techniques::BoundShaderVariationSet::ResolvedShader      _shader;
             const RenderCore::Assets::PredefinedCBLayout* _cbLayout;
         };
 

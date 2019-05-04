@@ -23,6 +23,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -369,7 +370,7 @@ namespace ToolsRig
 
 		Pimpl()
 		{
-			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();
 			_materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
 			_stencilPrimeDelegate = std::make_shared<StencilRefDelegate>();
 		}

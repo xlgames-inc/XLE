@@ -4,6 +4,7 @@
 
 #include "Drawables.h"
 #include "DrawableDelegates.h"
+#include "DrawableMaterial.h"
 #include "Techniques.h"
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
@@ -65,8 +66,6 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		auto& shaderPatchCollectionRegistry = RenderCore::Assets::ShaderPatchCollectionRegistry::GetInstance();
-
 		// this part would normally be a loop -- 
 		{
 			auto& material = *drawable._material;
@@ -79,10 +78,7 @@ namespace RenderCore { namespace Techniques
 
 			shaderSelectors[Techniques::ShaderSelectors::Source::Geometry] = &geoSelectors;
 
-			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(
-				parserContext,
-				shaderSelectors,
-				shaderPatchCollectionRegistry.GetCompiledShaderPatchCollection(material._patchCollection));
+			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(parserContext, shaderSelectors, material);
 			if (!shaderProgram)
 				return;
 
@@ -91,7 +87,7 @@ namespace RenderCore { namespace Techniques
 			//////////////////////////////////////////////////////////////////////////////
 
 			if (sequencerTechnique._renderStateDelegate) {
-				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, techniqueIndex);
+				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._material._stateSet, techniqueIndex);
 				metalContext.Bind(resolvedStates._blendState);
 				metalContext.Bind(resolvedStates._rasterizerState);
 			}

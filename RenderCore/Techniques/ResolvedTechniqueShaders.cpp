@@ -20,7 +20,7 @@ namespace RenderCore { namespace Techniques
 
         ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
 
-    class TechniqueInterface::Pimpl
+    class TechniquePrebindingInterface::Pimpl
     {
     public:
         std::vector<InputElementDesc>			_vertexInputLayout;
@@ -32,7 +32,7 @@ namespace RenderCore { namespace Techniques
         void        UpdateHashValue();
     };
 
-    void        TechniqueInterface::Pimpl::UpdateHashValue()
+    void        TechniquePrebindingInterface::Pimpl::UpdateHashValue()
     {
 		_hashValue = 0;
 		for (const auto& i : _uniformStreams)
@@ -64,7 +64,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void    TechniqueInterface::BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf)
+    void    TechniquePrebindingInterface::BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf)
     {
 		if (_pimpl->_uniformStreams.size() <= streamIndex)
 			_pimpl->_uniformStreams.resize(streamIndex + 1);
@@ -72,39 +72,39 @@ namespace RenderCore { namespace Techniques
 		_pimpl->UpdateHashValue();
     }
 
-	void     TechniqueInterface::BindGlobalUniforms()
+	void     TechniquePrebindingInterface::BindGlobalUniforms()
     {
 		BindUniformsStream(0, TechniqueContext::GetGlobalUniformsStreamInterface());
     }
 
-    uint64_t  TechniqueInterface::GetHashValue() const
+    uint64_t  TechniquePrebindingInterface::GetHashValue() const
     {
         return _pimpl->_hashValue;
     }
 
-    TechniqueInterface::TechniqueInterface() 
+    TechniquePrebindingInterface::TechniquePrebindingInterface() 
     {
-        _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
+        _pimpl = std::make_unique<TechniquePrebindingInterface::Pimpl>();
     }
 
-    TechniqueInterface::TechniqueInterface(IteratorRange<const InputElementDesc*> vertexInputLayout)
+    TechniquePrebindingInterface::TechniquePrebindingInterface(IteratorRange<const InputElementDesc*> vertexInputLayout)
     {
-        _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
+        _pimpl = std::make_unique<TechniquePrebindingInterface::Pimpl>();
         _pimpl->_vertexInputLayout.insert(
             _pimpl->_vertexInputLayout.begin(),
             vertexInputLayout.begin(), vertexInputLayout.end());
         _pimpl->UpdateHashValue();
     }
 
-    TechniqueInterface::~TechniqueInterface()
+    TechniquePrebindingInterface::~TechniquePrebindingInterface()
     {}
 
-    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom) never_throws
+    TechniquePrebindingInterface::TechniquePrebindingInterface(TechniquePrebindingInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
     }
 
-    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom) never_throws
+    TechniquePrebindingInterface&TechniquePrebindingInterface::operator=(TechniquePrebindingInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
         return *this;
@@ -131,10 +131,10 @@ namespace RenderCore { namespace Techniques
 		return inputHash;
 	}
 
-	const ::Assets::FuturePtr<Metal::ShaderProgram>& ResolvedShaderVariationSet::FindVariation(
+	auto UniqueShaderVariationSet::FindVariation(
 		const ShaderSelectors& baseSelectors,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-		IShaderVariationFactory& factory) const
+		IShaderVariationFactory& factory) const -> const Variation&
 	{
 		auto inputHash = Hash64(shaderSelectors);
         
@@ -149,19 +149,21 @@ namespace RenderCore { namespace Techniques
 
 		filteredHashValue = HashCombine(filteredHashValue, factory._factoryGuid);
 
-		auto i3 = LowerBound(_filteredToResolved, filteredHashValue);
-        if (i3!=_filteredToResolved.cend() && i3->first == filteredHashValue) {
-			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->second = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
+		auto i3 = std::lower_bound(
+			_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashValue,
+			[](const Variation& v, uint64_t h) { return v._variationHash < h; });
+        if (i3!=_filteredToResolved.cend() && i3->_variationHash == filteredHashValue) {
+			if (i3->_shaderFuture->GetDependencyValidation() && i3->_shaderFuture->GetDependencyValidation()->GetValidationIndex()!=0)
+				i3->_shaderFuture = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
         } else {
 			auto newVariation = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
 			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
 		}
 
-		return i3->second;
+		return *i3;
 	}
 
-	auto ResolvedShaderVariationSet::MakeShaderVariation(
+	auto UniqueShaderVariationSet::MakeShaderVariation(
 		const ShaderSelectors& baseSelectors,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
 		IShaderVariationFactory& factory) const -> ShaderFuture
@@ -173,54 +175,13 @@ namespace RenderCore { namespace Techniques
 		}
 
 		auto combinedStrings = FlattenStringTable(defines);
-
-		/*std::string vs, ps, gs;
-		auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
-		if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
-			char buffer[32];
-			int integerValue = Utility::XlAtoI32(vsi->second.c_str());
-			sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
-			vs = techEntry._vertexShaderName + buffer;
-		} else {
-			vs = techEntry._vertexShaderName + ":" VS_DefShaderModel;
-		}
-		auto psi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"ps_", CompareFirst<const utf8*, std::string>());
-		if (psi != defines.cend() && !XlCompareString(psi->first, (const utf8*)"ps_")) {
-			char buffer[32];
-			int integerValue = Utility::XlAtoI32(psi->second.c_str());
-			sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
-			ps = techEntry._pixelShaderName + buffer;
-		} else {
-			ps = techEntry._pixelShaderName + ":" PS_DefShaderModel;
-		}
-		if (!techEntry._geometryShaderName.empty()) {
-			auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"gs_", CompareFirst<const utf8*, std::string>());
-			if (gsi != defines.cend() && !XlCompareString(gsi->first, (const utf8*)"gs_")) {
-				char buffer[32];
-				int integerValue = Utility::XlAtoI32(psi->second.c_str());
-				sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
-				gs = techEntry._geometryShaderName + buffer;
-			} else {
-				gs = techEntry._geometryShaderName + ":" GS_DefShaderModel;
-			}
-		}*/
-
 		return factory.MakeShaderVariation(MakeStringSection(combinedStrings));
 	}
 
-	ResolvedShaderVariationSet::ResolvedShaderVariationSet()  {}
-	ResolvedShaderVariationSet::~ResolvedShaderVariationSet() {}
+	UniqueShaderVariationSet::UniqueShaderVariationSet()  {}
+	UniqueShaderVariationSet::~UniqueShaderVariationSet() {}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	ResolvedTechniqueShaders::ResolvedShader ResolvedTechniqueShaders::Entry::AsResolvedShader(uint64_t hash, const BoundShader& shader)
-	{
-		return ResolvedShader {
-			hash,
-			shader._shaderProgram.get(),
-			shader._boundUniforms.get(),
-			shader._boundLayout.get() };
-	}
 
 	class ShaderVariationFactory_Basic : public IShaderVariationFactory
 	{
@@ -239,10 +200,68 @@ namespace RenderCore { namespace Techniques
 		const TechniqueEntry* _entry;
 	};
 
-    auto      ResolvedTechniqueShaders::Entry::FindResolvedShaderVariation(	
+	::Assets::FuturePtr<Metal::ShaderProgram> TechniqueShaderVariationSet::FindVariation(
+		int techniqueIndex,
+		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
+	{
+		const auto& techEntry = _technique->GetEntry(techniqueIndex);
+		ShaderVariationFactory_Basic factory(techEntry);
+        return _variationSet.FindVariation(techEntry._baseSelectors, shaderSelectors, factory)._shaderFuture;
+	}
+
+	TechniqueShaderVariationSet::TechniqueShaderVariationSet(const std::shared_ptr<Technique>& technique)
+	: _technique(technique)
+	{}
+
+	TechniqueShaderVariationSet::~TechniqueShaderVariationSet(){}
+
+	const ::Assets::DepValPtr& TechniqueShaderVariationSet::GetDependencyValidation()
+	{
+		return _technique->GetDependencyValidation();
+	}
+
+	void TechniqueShaderVariationSet::ConstructToFuture(
+		::Assets::AssetFuture<TechniqueShaderVariationSet>& future,
+		StringSection<::Assets::ResChar> modelScaffoldName)
+	{
+		auto scaffoldFuture = ::Assets::MakeAsset<Technique>(modelScaffoldName);
+
+		future.SetPollingFunction(
+			[scaffoldFuture](::Assets::AssetFuture<TechniqueShaderVariationSet>& thatFuture) -> bool {
+
+			auto scaffoldActual = scaffoldFuture->TryActualize();
+
+			if (!scaffoldActual) {
+				auto state = scaffoldFuture->GetAssetState();
+				if (state == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(scaffoldFuture->GetDependencyValidation(), nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newModel = std::make_shared<TechniqueShaderVariationSet>(scaffoldActual);
+			thatFuture.SetAsset(std::move(newModel), {});
+			return false;
+		});
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	BoundShaderVariationSet::ResolvedShader BoundShaderVariationSet::Entry::AsResolvedShader(uint64_t hash, const BoundShader& shader)
+	{
+		return ResolvedShader {
+			hash,
+			shader._shaderProgram.get(),
+			shader._boundUniforms.get(),
+			shader._boundLayout.get() };
+	}
+
+#if 0 
+    auto      TechniqueShaderVariationSet::Entry::FindResolvedShaderVariation(	
 		const TechniqueEntry& techEntry,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-		const TechniqueInterface& techniqueInterface) const -> ResolvedShader
+		const TechniquePrebindingInterface& techniqueInterface) const -> ResolvedShader
     {
         auto inputHash = Hash64(shaderSelectors);
         
@@ -287,12 +306,13 @@ namespace RenderCore { namespace Techniques
 		i2 = _filteredToBoundShader.insert(i2, {filteredHashWithInterface, std::move(newBoundShader)});
         return Entry::AsResolvedShader(filteredHashValue, i2->second);
     }
+#endif
 
-	auto ResolvedTechniqueShaders::Entry::MakeBoundShader(	
+	auto BoundShaderVariationSet::Entry::MakeBoundShader(	
 		const std::shared_ptr<Metal::ShaderProgram>& shader, 
 		const TechniqueEntry& techEntry,
 		const ParameterBox* globalState[ShaderSelectors::Source::Max],
-		const TechniqueInterface& techniqueInterface) -> BoundShader
+		const TechniquePrebindingInterface& techniqueInterface) -> BoundShader
     {
 		BoundShader result;
 		result._shaderProgram = shader;
@@ -317,29 +337,34 @@ namespace RenderCore { namespace Techniques
 		return result;
     }
 
-	auto ResolvedTechniqueShaders::FindVariation(  
+	auto BoundShaderVariationSet::FindVariation(  
 		int techniqueIndex, 
         const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-        const TechniqueInterface& techniqueInterface) const -> ResolvedShader
+        const TechniquePrebindingInterface& techniqueInterface) const -> ResolvedShader
     {
-		const auto& techEntry = _technique->GetEntry(techniqueIndex);
+		/*const auto& techEntry = _technique->GetEntry(techniqueIndex);
         if (techniqueIndex >= dimof(_entries) || !techEntry.IsValid())
             return ResolvedShader();
-        return _entries[techniqueIndex].FindResolvedShaderVariation(techEntry, shaderSelectors, techniqueInterface);
+        return _entries[techniqueIndex].FindResolvedShaderVariation(techEntry, shaderSelectors, techniqueInterface);*/
+
+		const auto& techEntry = _technique->GetEntry(techniqueIndex);
+		ShaderVariationFactory_Basic factory(techEntry);
+        auto& base = _variationSet.FindVariation(techEntry._baseSelectors, shaderSelectors, factory);
+
+		auto& boundShaders = _entries[techniqueIndex]._boundShaders;
+		auto i = LowerBound(boundShaders, base._variationHash);
+		if (i == boundShaders.end() || i->first != base._variationHash) {
+			auto actual = base._shaderFuture->TryActualize();
+			if (!actual)	// invalid or still pending
+				return {};
+
+			auto shr = Entry::MakeBoundShader(actual, techEntry, shaderSelectors, techniqueInterface);
+			i = boundShaders.insert(i, std::make_pair(base._variationHash, std::move(shr)));
+		}
+		return Entry::AsResolvedShader(i->first, i->second);
     }
 
-	::Assets::FuturePtr<Metal::ShaderProgram> ResolvedTechniqueShaders::FindVariation(
-		int techniqueIndex,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
-	{
-		const auto& techEntry = _technique->GetEntry(techniqueIndex);
-        if (techniqueIndex >= dimof(_entries) || !techEntry.IsValid())
-			return {};
-		ShaderVariationFactory_Basic factory(techEntry);
-        return _entries[techniqueIndex].FindVariation(techEntry._baseSelectors, shaderSelectors, factory);
-	}
-
-	void ResolvedTechniqueShaders::ResolvedShader::Apply(
+	void BoundShaderVariationSet::ResolvedShader::Apply(
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
 		const std::initializer_list<VertexBufferView>& vbs) const
@@ -349,7 +374,7 @@ namespace RenderCore { namespace Techniques
         _shaderProgram->Apply(devContext);
     }
 
-	void ResolvedTechniqueShaders::ResolvedShader::ApplyUniforms(
+	void BoundShaderVariationSet::ResolvedShader::ApplyUniforms(
 		Metal::DeviceContext& devContext,
 		unsigned streamIdx,
 		const UniformsStream& stream) const
@@ -357,25 +382,20 @@ namespace RenderCore { namespace Techniques
 		_boundUniforms->Apply(devContext, streamIdx, stream);
 	}
 
-	ResolvedTechniqueShaders::ResolvedTechniqueShaders(const std::shared_ptr<Technique>& technique)
-	: _technique(technique)
+	BoundShaderVariationSet::BoundShaderVariationSet(const std::shared_ptr<Technique>& technique)
+	: TechniqueShaderVariationSet(technique)
 	{
 	}
-	ResolvedTechniqueShaders::~ResolvedTechniqueShaders(){}
+	BoundShaderVariationSet::~BoundShaderVariationSet() {}
 
-	const ::Assets::DepValPtr& ResolvedTechniqueShaders::GetDependencyValidation()
-	{
-		return _technique->GetDependencyValidation();
-	}
-
-	void ResolvedTechniqueShaders::ConstructToFuture(
-		::Assets::AssetFuture<ResolvedTechniqueShaders>& future,
+	void BoundShaderVariationSet::ConstructToFuture(
+		::Assets::AssetFuture<BoundShaderVariationSet>& future,
 		StringSection<::Assets::ResChar> modelScaffoldName)
 	{
 		auto scaffoldFuture = ::Assets::MakeAsset<Technique>(modelScaffoldName);
 
 		future.SetPollingFunction(
-			[scaffoldFuture](::Assets::AssetFuture<ResolvedTechniqueShaders>& thatFuture) -> bool {
+			[scaffoldFuture](::Assets::AssetFuture<BoundShaderVariationSet>& thatFuture) -> bool {
 
 			auto scaffoldActual = scaffoldFuture->TryActualize();
 
@@ -388,7 +408,7 @@ namespace RenderCore { namespace Techniques
 				return true;
 			}
 
-			auto newModel = std::make_shared<ResolvedTechniqueShaders>(scaffoldActual);
+			auto newModel = std::make_shared<BoundShaderVariationSet>(scaffoldActual);
 			thatFuture.SetAsset(std::move(newModel), {});
 			return false;
 		});

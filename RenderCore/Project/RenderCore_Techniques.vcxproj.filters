@@ -17,6 +17,12 @@
     <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
     <ClInclude Include="..\Techniques\RenderPassUtils.h" />
     <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
+    <ClInclude Include="..\Techniques\DrawableMaterial.h">
+      <Filter>DrawableMaterial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h">
+      <Filter>DrawableMaterial</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -31,5 +37,16 @@
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
     <ClCompile Include="..\Techniques\TechniqueDelegates.cpp" />
+    <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
+      <Filter>DrawableMaterial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp">
+      <Filter>DrawableMaterial</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="DrawableMaterial">
+      <UniqueIdentifier>{f1879710-2466-4488-8b25-d81e50de387c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

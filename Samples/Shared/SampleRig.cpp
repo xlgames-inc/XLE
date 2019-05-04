@@ -43,6 +43,8 @@
 
 #include "../../RenderCore/Metal/DeviceContext.h"		// (for PrepareForDestruction)
 
+#include "../../RenderCore/Techniques/DrawableMaterial.h"
+
 namespace Sample
 {
 	static void InitProfilerDisplays(
@@ -88,6 +90,8 @@ namespace Sample
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitModelCompilers();
         sampleGlobals._techniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
+
+		RenderCore::Techniques::ShaderPatchCollectionRegistry patchCollectionRegistry; 
 
         {
                 // currently we need to maintain a reference on these two fonts -- 

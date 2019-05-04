@@ -364,6 +364,7 @@ namespace RenderCore { namespace Assets
         auto compiler = _compiler;
         auto definesTable = _definesTable;
         auto resId = _res;
+		assert(resId._filename[0] != '\0');		// empty filenames will result in a crash in the async function below, so catch here
 
         std::function<void(::Assets::ArtifactFuture&)> operation =
             [compiler, definesTable, resId] (::Assets::ArtifactFuture& future) {

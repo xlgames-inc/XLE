@@ -12,7 +12,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueSharedResources
 	{
 	public:
-		ResolvedShaderVariationSet _mainVariationSet;
+		UniqueShaderVariationSet _mainVariationSet;
 	};
 
 	class TechniqueDelegate_Illum : public ITechniqueDelegate
@@ -21,7 +21,7 @@ namespace RenderCore { namespace Techniques
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
 			const ParameterBox* shaderSelectors[],
-			const RenderCore::Assets::CompiledShaderPatchCollection& patchCollection) override;
+			const DrawableMaterial& material) override;
 
 		TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources);
 		TechniqueDelegate_Illum();

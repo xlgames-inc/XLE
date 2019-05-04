@@ -6,19 +6,94 @@
 
 #include "Techniques.h"
 #include "../Metal/Forward.h"
-#include <functional>
 
 namespace RenderCore { class InputElementDesc; class VertexBufferView; class UniformsStream; }
 
 namespace RenderCore { namespace Techniques 
 {
 	class ParsingContext;
+	class ShaderSelectors;
+	class Technique;
+	class TechniqueEntry;
 
-        //
+	/// <summary>Used with UniqueShaderVariationSet to provide customizability for shader construction</summary>
+	class IShaderVariationFactory
+	{
+	public:
+		uint64_t _factoryGuid = 0;
+
+		virtual ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(
+			StringSection<> defines) = 0;
+		virtual ~IShaderVariationFactory();
+	};
+
+	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
+	///
+	/// Sometimes 2 different sets of construction parameters for a shader can result in equivalent final byte code.
+	/// Ideally we want to minimize the number of different shaders; so this object will filter construction parameters
+	/// to attempt to identify though which will result in duplicates.
+	///
+	/// UniqueShaderVariationSet maintains a list of previously generated shaders, which can be reused as appropriate.
+	class UniqueShaderVariationSet
+	{
+	public:
+		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
+		struct Variation
+		{
+			uint64_t		_variationHash;
+			ShaderFuture	_shaderFuture;
+		};
+		const Variation& FindVariation(
+			const ShaderSelectors& baseSelectors,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			IShaderVariationFactory& factory) const;
+
+		UniqueShaderVariationSet();
+		~UniqueShaderVariationSet();
+	protected:
+		mutable std::vector<Variation>							_filteredToResolved;
+		mutable std::vector<std::pair<uint64_t, uint64_t>>		_globalToFiltered;
+
+		ShaderFuture MakeShaderVariation(
+			const ShaderSelectors& baseSelectors,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			IShaderVariationFactory& factory) const;
+	};
+
+	/// <summary>Provides convenient access to shader variations generated from a technique file</summary>
+    class TechniqueShaderVariationSet
+    {
+    public:
+		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
+			int techniqueIndex,
+			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
+
+		const Technique& GetTechnique() const { return *_technique; }
+
+		TechniqueShaderVariationSet(const std::shared_ptr<Technique>& technique);
+		~TechniqueShaderVariationSet();
+
+		///////////////////////////////////////
+
+		const ::Assets::DepValPtr& GetDependencyValidation();
+		static void ConstructToFuture(
+			::Assets::AssetFuture<TechniqueShaderVariationSet>& future,
+			StringSection<::Assets::ResChar> techniqueName);
+
+    protected:
+		UniqueShaderVariationSet _variationSet;
+		
+
+		std::shared_ptr<Technique> _technique;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		//
         //  <summary>Vertex, constants and resources interface for a technique<summary>
         //
         //  Defines an input interface for a technique. Normally a client may only define
-        //  a few "TechniqueInterface" objects, and reuse them with many techniques.
+        //  a few "TechniquePrebindingInterface" objects, and reuse them with many techniques.
         //
         //  The interface consists of:
         //      * vertex input layout
@@ -39,7 +114,7 @@ namespace RenderCore { namespace Techniques
         //  Then you can pass:
         //      BindShaderResource(Hash64("Depth"), interfaceSlotIndex);
         //
-    class TechniqueInterface
+    class TechniquePrebindingInterface
     {
     public:
 		uint64_t	GetHashValue() const;
@@ -47,64 +122,24 @@ namespace RenderCore { namespace Techniques
         void		BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf);
 		void		BindGlobalUniforms();
 
-		TechniqueInterface(IteratorRange<const InputElementDesc*> vertexInputLayout);
+		TechniquePrebindingInterface(IteratorRange<const InputElementDesc*> vertexInputLayout);
 
-        TechniqueInterface();        
-        TechniqueInterface(TechniqueInterface&& moveFrom) never_throws;
-        TechniqueInterface&operator=(TechniqueInterface&& moveFrom) never_throws;
-        ~TechniqueInterface();
+        TechniquePrebindingInterface();        
+        TechniquePrebindingInterface(TechniquePrebindingInterface&& moveFrom) never_throws;
+        TechniquePrebindingInterface&operator=(TechniquePrebindingInterface&& moveFrom) never_throws;
+        ~TechniquePrebindingInterface();
 
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        friend class ResolvedTechniqueShaders; // makes internal structure easier
+        friend class BoundShaderVariationSet; // makes internal structure easier
     };
 
-	class IShaderVariationFactory
-	{
-	public:
-		uint64_t _factoryGuid = 0;
-
-		virtual ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(
-			StringSection<> defines) = 0;
-		virtual ~IShaderVariationFactory();
-	};
-
-	class ResolvedShaderVariationSet
-	{
-	public:
-		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
-		const ShaderFuture& FindVariation(
-			const ShaderSelectors& baseSelectors,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max],
-			IShaderVariationFactory& factory) const;
-
-		ResolvedShaderVariationSet();
-		~ResolvedShaderVariationSet();
-	protected:
-		mutable std::vector<std::pair<uint64_t, ::Assets::FuturePtr<Metal::ShaderProgram>>>		_filteredToResolved;
-		mutable std::vector<std::pair<uint64_t, uint64_t>>										_globalToFiltered;
-
-		ShaderFuture MakeShaderVariation(
-			const ShaderSelectors& baseSelectors,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max],
-			IShaderVariationFactory& factory) const;
-	};
-
-    class ResolvedTechniqueShaders
+	/// <summary>Like TechniqueShaderVariationSet, but also caches objects generated from a TechniquePrebindingInterface</summary>
+	class BoundShaderVariationSet : public TechniqueShaderVariationSet
     {
-    public:
-		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
-			int techniqueIndex,
-			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
-
-		const Technique& GetTechnique() const { return *_technique; }
-
-		ResolvedTechniqueShaders(const std::shared_ptr<Technique>& technique);
-		~ResolvedTechniqueShaders();
-
-		///////////////////////////////////////
+	public:
 		class ResolvedShader
 		{
 		public:
@@ -124,19 +159,20 @@ namespace RenderCore { namespace Techniques
 				const UniformsStream& stream) const;
 		};
 
-        ResolvedShader  FindVariation(
-            int techniqueIndex, 
-            const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
-            const TechniqueInterface& techniqueInterface) const;
-		///////////////////////////////////////
+		ResolvedShader FindVariation(
+			int techniqueIndex, 
+			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
+			const TechniquePrebindingInterface& techniqueInterface) const;
 
-		const ::Assets::DepValPtr& GetDependencyValidation();
+		BoundShaderVariationSet(const std::shared_ptr<Technique>& technique);
+		~BoundShaderVariationSet();
+
 		static void ConstructToFuture(
-			::Assets::AssetFuture<ResolvedTechniqueShaders>& future,
+			::Assets::AssetFuture<BoundShaderVariationSet>& future,
 			StringSection<::Assets::ResChar> techniqueName);
 
-    private:
-		class Entry : public ResolvedShaderVariationSet
+	protected:
+		class Entry
 		{
 		public:
 			class BoundShader
@@ -146,22 +182,15 @@ namespace RenderCore { namespace Techniques
 				std::unique_ptr<Metal::BoundUniforms>		_boundUniforms;
 				std::unique_ptr<Metal::BoundInputLayout>	_boundLayout;
 			};
-			mutable std::vector<std::pair<uint64_t, BoundShader>>									_filteredToBoundShader;
+			mutable std::vector<std::pair<uint64_t, BoundShader>> _boundShaders;
 			
-			ResolvedShader FindResolvedShaderVariation(
-				const TechniqueEntry& techEntry,
-				const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
-				const TechniqueInterface& techniqueInterface) const;
-
 			static BoundShader MakeBoundShader(
 				const std::shared_ptr<Metal::ShaderProgram>& shader, 
 				const TechniqueEntry& techEntry,
 				const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-				const TechniqueInterface& techniqueInterface);
-			static ResolvedTechniqueShaders::ResolvedShader AsResolvedShader(uint64_t hash, const BoundShader&);
+				const TechniquePrebindingInterface& techniqueInterface);
+			static ResolvedShader AsResolvedShader(uint64_t hash, const BoundShader&);
 		};
         Entry	_entries[size_t(TechniqueIndex::Max)];
-
-		std::shared_ptr<Technique> _technique;
-    };
+	};
 }}

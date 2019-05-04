@@ -79,7 +79,7 @@ namespace ShaderScan
 
 		InputStreamFormatter<utf8> formattr { techniqueFragments };
 		auto instRequests = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
-		RenderCore::Assets::CompiledShaderPatchCollection patchCollection(instRequests);
+		RenderCore::Techniques::CompiledShaderPatchCollection patchCollection(instRequests);
 		(void)patchCollection;
 
 		/*auto earlyRejection = ShaderSourceParser::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };

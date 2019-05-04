@@ -56,8 +56,6 @@ namespace RenderCore { namespace Assets
 
 		_deformOpsFactory = std::make_unique<RenderCore::Assets::DeformOperationFactory>();
 		RenderCore::Assets::SkinDeformer::Register();
-
-		_compiledShaderPatchCollectionRegistry = std::make_unique<ShaderPatchCollectionRegistry>();
     }
 
     Services::~Services()

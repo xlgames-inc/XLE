@@ -8,6 +8,7 @@
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/BasicDelegates.h"
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetsCore.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -67,7 +68,7 @@ namespace SceneEngine
 	{
 		_sequencerTechnique._techniqueDelegate = parserContext.GetTechniqueDelegate();
 		if (!_sequencerTechnique._techniqueDelegate)
-			_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+			_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();
 		_sequencerTechnique._materialDelegate = parserContext.GetMaterialDelegate();
 		if (!_sequencerTechnique._materialDelegate)
 			_sequencerTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
