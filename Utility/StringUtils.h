@@ -10,6 +10,7 @@
 #include "../Core/Types.h"
 #include "UTFUtils.h"
 #include "PtrUtils.h"	// for AsPointer
+#include "Optional.h"
 #include <string>
 #include <cstring>
 #include <algorithm>
@@ -357,6 +358,9 @@ namespace Utility
 
     XL_UTILITY_API bool     XlToHexStr(const char* x, size_t xlen, char* y, size_t ylen);
     XL_UTILITY_API bool     XlHexStrToBin(const char* x, char* y);
+
+	template<typename Type>
+		std::optional<Type> ParseInteger(StringSection<> input, int radix = 10);
 
         ////////////   H E L P E R S   ////////////
     template <int Count, typename CharType>

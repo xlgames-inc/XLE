@@ -1680,6 +1680,55 @@ static inline T tpl_atoi(const char* buffer, const char** end_ptr, int radix)
 	return (neg) ? -result : result;
 }
 
+template<typename Type>
+	std::optional<Type> ParseInteger(StringSection<> input, int radix)
+{
+	const char* s = input.begin(), *se = input.end();
+
+	assert(radix >= RADIX_MIN && radix <= RADIX_MAX);
+
+	// Check for sign
+	bool neg = false;
+	(void)neg;
+	if constexpr (std::is_signed<Type>::value) {
+		if ((neg = *s == '-') || *s == '+') {
+			++s;
+		}
+	} else if (*s == '+') {
+		++s;
+	}
+	
+	if (radix == 16) {
+		if (((se-s)>=2) && s[0] == '0' && __lower_table[s[1]] == 'x') {
+			s += 2;
+		}
+	}
+
+    // Accumulate digits
+    Type result = 0;
+    while (s<se && __hex_table[*s] != 255 && __hex_table[*s] < radix) {
+        result = (result * (Type)radix) + (Type)__hex_table[*s];
+        ++s;
+    }
+
+	if (s != se)
+		return {};		// did not parse all the way to the end
+
+	if constexpr (std::is_signed<Type>::value)
+		if (neg)
+			return (Type)-result;
+	return result;
+}
+
+template std::optional<uint8_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<uint16_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<uint32_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<uint64_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<int8_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<int16_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<int32_t> ParseInteger(StringSection<> input, int radix);
+template std::optional<int64_t> ParseInteger(StringSection<> input, int radix);
+
 int XlAtoI32(const char* str, const char** end_ptr, int radix)
 {
 	return tpl_atoi<int32>(str, end_ptr, radix);
