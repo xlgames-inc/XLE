@@ -1,6 +1,6 @@
 
-#include "../../MainGeometry.h"
-#include "../../gbuffer.h"
+#include "../MainGeometry.h"
+#include "../gbuffer.h"
 
 float3 CoordinatesToColor(float3 coords);
 float4 AmendColor(VSOutput geo, float4 inputColor);

@@ -1,0 +1,21 @@
+// CompoundDocument:1
+import templates = "xleres/nodes/templates.sh"
+import output = "game/xleres/nodes/output.sh"
+import surface = "game/xleres/surface.h"
+import materialparam = "game/xleres/nodes/materialparam.sh"
+
+GBufferValues ps_main(VSOutput geo) implements templates::PerPixel
+{
+	return [[visualNode1]]output::Output_PerPixel(worldSpaceNormal:[[visualNode0]]surface::GetNormal(geo:geo).result, material:[[visualNode2]]materialparam::CommonMaterialParam_Make(roughness:".5", specular:"0.05", metal:"0").result, diffuseAlbedo:"float3(.75, 0.75, 0.25)", blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"0.0", cookedLightOcclusion:"0.0", transmission:"float3(0.0, 0.0, 0.0)").result;
+}
+attributes visualNode0(PreviewGeometry:"plane2d", X:"166", Y:"524", State:"Normal", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"plane2d", X:"867", Y:"344", State:"Normal", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"plane2d", X:"272", Y:"403", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:NodeBasedTechnique>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+</NodeGraphMetaData>
+)-- */
