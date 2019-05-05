@@ -12,11 +12,28 @@
 
 namespace GraphLanguage
 {
-    static std::string LoadSourceFile(StringSection<char> sourceFileName)
+    static std::pair<std::string, ::Assets::DependentFileState> LoadSourceFile(StringSection<char> sourceFileName)
     {
-		size_t sizeResult = 0;
-		auto data = ::Assets::TryLoadFileAsMemoryBlock(sourceFileName, &sizeResult);
-		return std::string((const char*)data.get(), (const char*)PtrAdd(data.get(), sizeResult));
+        TRY {
+			auto file = ::Assets::MainFileSystem::OpenBasicFile(sourceFileName.AsString().c_str(), "rb");
+
+			::Assets::DependentFileState fileState;
+			fileState._filename = sourceFileName.AsString();
+			fileState._status = ::Assets::DependentFileState::Status::Normal;
+			fileState._timeMarker = file.GetFileTime();
+
+            file.Seek(0, FileSeekAnchor::End);
+            size_t size = file.TellP();
+            file.Seek(0, FileSeekAnchor::Start);
+
+            std::string result;
+            result.resize(size, '\0');
+            file.Read(&result.at(0), 1, size);
+            return std::make_pair(result, fileState);
+
+        } CATCH(const std::exception& ) {
+			return {};
+        } CATCH_END
     }
 
 	class ShaderFragment
@@ -29,6 +46,7 @@ namespace GraphLanguage
 		const std::string& GetSourceFileName() const { return _srcFileName; }
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependentFileState& GetFileState() const { return _fileState; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
 
@@ -36,6 +54,7 @@ namespace GraphLanguage
 	private:
 		ShaderFragmentSignature _sig;
 		::Assets::DepValPtr _depVal;
+		::Assets::DependentFileState _fileState;
 		std::string _srcFileName;
 	};
 
@@ -64,14 +83,15 @@ namespace GraphLanguage
 	{
 		auto shaderFile = LoadSourceFile(fn);
 		if (XlEqStringI(MakeFileNameSplitter(fn).Extension(), "graph")) {
-			auto graphSyntax = ParseGraphSyntax(shaderFile);
+			auto graphSyntax = ParseGraphSyntax(shaderFile.first);
 			for (auto& subGraph:graphSyntax._subGraphs)
 				_sig._functions.emplace_back(std::make_pair(subGraph.first, std::move(subGraph.second._signature)));
 			_isGraphSyntaxFile = true;
 		} else {
-			_sig = ShaderSourceParser::ParseHLSL(MakeStringSection(shaderFile));
+			_sig = ShaderSourceParser::ParseHLSL(MakeStringSection(shaderFile.first));
 		}
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		_fileState = shaderFile.second;
 		::Assets::RegisterFileDependency(_depVal, fn);
 	}
 

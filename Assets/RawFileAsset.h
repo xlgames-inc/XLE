@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "AssetUtils.h"
 #include "DepVal.h"
 #include "../Utility/IteratorUtils.h"
 #include <string>
@@ -17,11 +18,13 @@ namespace Assets
 		IteratorRange<const void*> GetData() const { return MakeIteratorRange(_data.get(), PtrAdd(_data.get(), _dataSize)); }
 		const std::string& GetFileName() const { return _fname; }
 		const DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const DependentFileState& GetFileState() const { return _fileState; }
 
 		RawFileAsset(StringSection<> fname);
 		~RawFileAsset();
 	private:
-		::Assets::DepValPtr _depVal;
+		DepValPtr _depVal;
+		DependentFileState _fileState;
 		std::unique_ptr<uint8_t[]> _data;
 		size_t _dataSize;
 		std::string _fname;

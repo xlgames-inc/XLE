@@ -35,6 +35,12 @@ namespace ShaderSourceParser
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	struct DependencyTrackers
+	{
+		std::set<::Assets::DepValPtr> _depVals;
+		std::set<::Assets::DependentFileState> _depFileStates;
+	};
+
     static std::string AsString(uint32_t i)
     {
         char buffer[128];
@@ -87,7 +93,7 @@ namespace ShaderSourceParser
     static std::string TypeFromShaderFragment(
         StringSection<> archiveName, StringSection<> paramName, ParameterDirection direction,
         INodeGraphProvider& sigProvider,
-		std::set<::Assets::DepValPtr>& depVals)
+		DependencyTrackers& depVals)
     {
             // Go back to the shader fragments to find the current type for the given parameter
 		std::optional<INodeGraphProvider::Signature> sigResult;
@@ -108,7 +114,8 @@ namespace ShaderSourceParser
 
         const auto& sig = sigResult.value()._signature;
 		assert(sigResult.value()._depVal);
-		depVals.insert(sigResult.value()._depVal);
+		depVals._depVals.insert(sigResult.value()._depVal);
+		depVals._depFileStates.insert(sigResult.value()._fileState);
 
             // find a parameter with the right direction & name
         for (const auto& p:sig.GetParameters())
@@ -172,7 +179,7 @@ namespace ShaderSourceParser
 		return {};
 	}
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider, std::set<::Assets::DepValPtr>& depVals)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider, DependencyTrackers& depVals)
     {
 		std::stringstream str;
 		std::string finalType;
@@ -259,7 +266,7 @@ namespace ShaderSourceParser
 		GraphInterfaceContext& interfContext, 
 		bool generateDanglingInputs,
 		INodeGraphProvider& sigProvider,
-		std::set<::Assets::DepValPtr>& depVals)
+		DependencyTrackers& depVals)
     {
 		auto expectedType = signatureParam._type;
         auto i = FindConnectionThatOutputsTo(nodeGraph.GetConnections(), nodeId, signatureParam._name);
@@ -285,7 +292,7 @@ namespace ShaderSourceParser
             IteratorRange<const Connection*> range,
             GraphInterfaceContext& interfContext,
             INodeGraphProvider& sigProvider,
-			std::set<::Assets::DepValPtr>& depVals)
+			DependencyTrackers& depVals)
     {
         for (const auto& connection:range) {
 			auto* destinationNode = graph.GetNode(connection.OutputNodeId());
@@ -338,7 +345,7 @@ namespace ShaderSourceParser
         const std::string& archiveName, 
         const InstantiationRequest& instantiationParameters, 
         INodeGraphProvider& sigProvider,
-		std::set<::Assets::DepValPtr>& depVals)
+		DependencyTrackers& depVals)
     {
         ResolvedFunction result;
 
@@ -387,7 +394,8 @@ namespace ShaderSourceParser
 			result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
 
 			assert(sigProviderResult.value()._depVal);
-			depVals.insert(sigProviderResult.value()._depVal);
+			depVals._depVals.insert(sigProviderResult.value()._depVal);
+			depVals._depFileStates.insert(sigProviderResult.value()._fileState);
 
             return result;
         }
@@ -401,7 +409,8 @@ namespace ShaderSourceParser
 		result._finalArchiveName = archiveName;
 		result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
 		assert(sigProviderResult.value()._depVal);
-		depVals.insert(sigProviderResult.value()._depVal);
+		depVals._depVals.insert(sigProviderResult.value()._depVal);
+		depVals._depFileStates.insert(sigProviderResult.value()._fileState);
         return result;
     }
 
@@ -413,7 +422,7 @@ namespace ShaderSourceParser
         const InstantiationRequest& instantiationParameters,
 		const GenerateFunctionOptions& generateOptions,
         INodeGraphProvider& sigProvider,
-		std::set<::Assets::DepValPtr>& depVals)
+		DependencyTrackers& depVals)
     {
             //
             //      Parse the fragment again, to get the correct function
@@ -469,7 +478,8 @@ namespace ShaderSourceParser
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
 				if (restrictionSignature) {
 					assert(restrictionSignature.value()._depVal);
-					depVals.insert(restrictionSignature.value()._depVal);
+					depVals._depVals.insert(restrictionSignature.value()._depVal);
+					depVals._depFileStates.insert(restrictionSignature.value()._fileState);
 				}
 				for (const auto&c:nodeGraph.GetConnections()) {
 					if (c.OutputNodeId() == instantiationNode->NodeId()) {
@@ -628,7 +638,7 @@ namespace ShaderSourceParser
         const InstantiationRequest& instantiationParameters,
 		const GenerateFunctionOptions& generateOptions,
         INodeGraphProvider& sigProvider,
-		std::set<::Assets::DepValPtr>& depVals)
+		DependencyTrackers& depVals)
     {
         std::stringstream result;
 
@@ -731,8 +741,8 @@ namespace ShaderSourceParser
 		std::string mainBody;
 		NodeGraphSignature interf;
         DependencyTable depTable;
-		std::set<::Assets::DepValPtr> depVals;
-		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(filteredGraph, {}, instantiationParameters, generateOptions, sigProvider, depVals);
+		DependencyTrackers depTrackers;
+		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(filteredGraph, {}, instantiationParameters, generateOptions, sigProvider, depTrackers);
 
 			//
             //      Our graph function is always a "void" function, and all of the output
@@ -756,7 +766,8 @@ namespace ShaderSourceParser
 			ShaderEntryPoint { name.AsString(), std::move(interf) },
 			std::move(depTable),
 			std::vector<GraphLanguage::NodeGraphSignature::Parameter> { interf.GetCapturedParameters().begin(), interf.GetCapturedParameters().end() },
-			std::move(depVals) };
+			std::move(depTrackers._depVals),
+			std::move(depTrackers._depFileStates) };
     }
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }

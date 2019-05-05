@@ -128,11 +128,13 @@ namespace GraphLanguage
         GraphNodeGraphProvider(
 			const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const ::Assets::DepValPtr& parsedGraphFileDepVal);
+			const ::Assets::DepValPtr& parsedGraphFileDepVal,
+			const ::Assets::DependentFileState& parsedGraphFileState);
         ~GraphNodeGraphProvider();
     protected:
 		std::shared_ptr<GraphSyntaxFile> _parsedGraphFile;
 		::Assets::DepValPtr _parsedGraphFileDepVal;
+		::Assets::DependentFileState _parsedGraphFileState;
     };
 
 	auto GraphNodeGraphProvider::FindSignatures(StringSection<> name) -> std::vector<Signature>
@@ -154,7 +156,7 @@ namespace GraphLanguage
 		// Look for all of the functions within the parsed graph syntax file
 		std::vector<Signature> result;
 		for (const auto&subGraph:_parsedGraphFile->_subGraphs)
-			result.push_back(Signature{ subGraph.first, subGraph.second._signature, {}, true, _parsedGraphFileDepVal });
+			result.push_back(Signature{ subGraph.first, subGraph.second._signature, {}, true, _parsedGraphFileDepVal, parsedGraphFileState });
 
 		return result;
 	}
@@ -169,14 +171,15 @@ namespace GraphLanguage
 		if (main == graphSyntax->_subGraphs.end())
 			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input file (%s)", entryPoint.AsString().c_str(), filename.AsString().c_str()));
 
-		auto sigProvider = MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename), asset.GetDependencyValidation());
+		auto sigProvider = MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename), asset.GetDependencyValidation(), asset.GetFileState());
 
 		return INodeGraphProvider::NodeGraph {
 			main->first,
 			main->second._graph,
 			main->second._signature,
 			std::move(sigProvider),
-			asset.GetDependencyValidation() };
+			asset.GetDependencyValidation(),
+			asset.GetFileState() };
 	}
 
 	auto GraphNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
@@ -202,7 +205,7 @@ namespace GraphLanguage
 		// Look for the function within the parsed graph syntax file
 		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
 		if (i != _parsedGraphFile->_subGraphs.end())
-			return NodeGraph{ i->first, i->second._graph, i->second._signature, shared_from_this(), _parsedGraphFileDepVal };
+			return NodeGraph{ i->first, i->second._graph, i->second._signature, shared_from_this(), _parsedGraphFileDepVal, _parsedGraphFileState };
 
 		return BasicNodeGraphProvider::FindGraph(name);
 	}
@@ -227,11 +230,15 @@ namespace GraphLanguage
 	GraphNodeGraphProvider::GraphNodeGraphProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& parsedGraphFileDepVal)
+		const ::Assets::DepValPtr& parsedGraphFileDepVal,
+		const ::Assets::DependentFileState& parsedGraphFileState)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)
 	, _parsedGraphFileDepVal(parsedGraphFileDepVal)
-	{}
+	, _parsedGraphFileState(parsedGraphFileState)
+	{
+		assert(!_parsedGraphFileState._filename.empty());
+	}
 
 	GraphNodeGraphProvider::~GraphNodeGraphProvider()
 	{}
@@ -239,9 +246,10 @@ namespace GraphLanguage
 	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& dependencyValidation)
+		const ::Assets::DepValPtr& dependencyValidation,
+		const ::Assets::DependentFileState& parsedGraphFileState)
 	{
-		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules, dependencyValidation);
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules, dependencyValidation, parsedGraphFileState);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

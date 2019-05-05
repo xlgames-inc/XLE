@@ -1296,9 +1296,9 @@ namespace RenderCore { namespace Metal_DX11
                     shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 
-            dependencies.insert(
-				dependencies.end(),
-				includeHandler.GetIncludeFiles().begin(), includeHandler.GetIncludeFiles().end());
+            for (auto&i:includeHandler.GetIncludeFiles())
+				if (std::find(dependencies.begin(), dependencies.end(), i) == dependencies.end())
+					dependencies.push_back(i);
 
             return SUCCEEDED(hresult);
 

@@ -81,6 +81,9 @@ namespace RenderCore { namespace Techniques
 		for (const auto&d:inst._depVals)
 			if (d)
 				::Assets::RegisterAssetDependency(_depVal, d);
+		for (const auto&d:inst._depFileStates)
+			if (std::find(_dependencies.begin(), _dependencies.end(), d) == _dependencies.end())
+				_dependencies.push_back(d);
 
 		_interface._selectorRelevance = inst._selectorRelevance;
 		if (!inst._rawShaderFileIncludes.empty()) {

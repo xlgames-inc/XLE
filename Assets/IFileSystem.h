@@ -19,6 +19,7 @@ namespace Assets
 	class FileDesc;
 	class MountingTree;
 	class IFileInterface;
+	class DependentFileState;
 	using IFileMonitor = OSServices::OnChangeCallback;
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 	using FileSystemId = unsigned;
@@ -268,9 +269,11 @@ namespace Assets
 	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
 	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult);
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
 	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName);
 
 }

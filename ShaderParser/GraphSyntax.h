@@ -35,7 +35,8 @@ namespace GraphLanguage
 	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& dependencyValidation);
+		const ::Assets::DepValPtr& dependencyValidation,
+		const ::Assets::DependentFileState& parsedGraphFileState);
 
 	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
 

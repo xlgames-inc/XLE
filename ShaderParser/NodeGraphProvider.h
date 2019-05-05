@@ -26,6 +26,7 @@ namespace GraphLanguage
 			std::string _sourceFile;
 			bool _isGraphSyntax = false;
 			::Assets::DepValPtr _depVal;
+			::Assets::DependentFileState _fileState;
         };
 		virtual std::vector<Signature> FindSignatures(StringSection<> name) = 0;
 
@@ -36,6 +37,7 @@ namespace GraphLanguage
 			NodeGraphSignature _signature;
 			std::shared_ptr<INodeGraphProvider> _subProvider;
 			::Assets::DepValPtr _depVal;
+			::Assets::DependentFileState _fileState;
         };
         virtual std::optional<NodeGraph> FindGraph(StringSection<> name) = 0;
 

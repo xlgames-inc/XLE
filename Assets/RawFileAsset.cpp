@@ -10,7 +10,7 @@ namespace Assets
 	RawFileAsset::RawFileAsset(StringSection<> fname)
 	: _fname(fname.AsString())
 	{
-		_data = TryLoadFileAsMemoryBlock(fname, &_dataSize);
+		_data = TryLoadFileAsMemoryBlock_TolerateSharingErrors(fname, &_dataSize, &_fileState);
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, fname);
 	}

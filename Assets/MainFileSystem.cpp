@@ -4,6 +4,7 @@
 
 #include "IFileSystem.h"
 #include "MountingTree.h"
+#include "AssetUtils.h"
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -398,8 +399,20 @@ namespace Assets
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult)
 	{
+		return TryLoadFileAsMemoryBlock(sourceFileName, sizeResult, nullptr);
+	}
+
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
+	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
+
+			if (fileState) {
+				fileState->_filename = sourceFileName.AsString();
+				fileState->_status = DependentFileState::Status::Normal;
+				fileState->_timeMarker = file->GetDesc()._modificationTime;
+			}
+
 			size_t size = file->GetSize();
 			if (size) {
 				auto result = std::make_unique<uint8[]>(size);
@@ -672,12 +685,24 @@ namespace Assets
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult)
 	{
+		return TryLoadFileAsMemoryBlock_TolerateSharingErrors(sourceFileName, sizeResult, nullptr);
+	}
+
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
+	{
 		std::unique_ptr<::Assets::IFileInterface> file;
 
         unsigned retryCount = 0;
         for (;;) {
             auto openResult = ::Assets::MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read);
             if (openResult == ::Assets::IFileSystem::IOReason::Success) {
+
+				if (fileState) {
+					fileState->_filename = sourceFileName.AsString();
+					fileState->_status = DependentFileState::Status::Normal;
+					fileState->_timeMarker = file->GetDesc()._modificationTime;
+				}
+
                 size_t size = file->GetSize();
                 if (sizeResult) {
                     *sizeResult = size;

@@ -407,6 +407,12 @@ namespace RenderCore { namespace Assets
 					auto fileData = std::make_unique<uint8[]>(fileSize);
 					file->Read(fileData.get(), 1, fileSize);
 
+					deps.push_back(
+						::Assets::DependentFileState {
+							std::string{resId._filename},
+							file->GetDesc()._modificationTime
+						});
+
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						fileData.get(), fileSize, resId,

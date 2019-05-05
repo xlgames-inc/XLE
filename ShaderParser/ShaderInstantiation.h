@@ -138,6 +138,7 @@ namespace ShaderSourceParser
 		DependencyTable _dependencies;
 		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
 		std::set<::Assets::DepValPtr> _depVals;
+		std::set<::Assets::DependentFileState> _depFileStates;
 	};
 
     GenerateFunctionResult GenerateFunction(

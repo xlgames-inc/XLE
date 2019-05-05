@@ -70,6 +70,20 @@ namespace Assets
         : _filename(filename.AsString()), _timeMarker(timeMarker), _status(Status::Normal) {}
 		DependentFileState(const std::basic_string<ResChar>& filename, uint64 timeMarker)
 		: _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
+
+		friend bool operator<(const DependentFileState& lhs, const DependentFileState& rhs)
+		{
+			if (lhs._filename < rhs._filename) return true;
+			if (lhs._filename > rhs._filename) return false;
+			if (lhs._timeMarker < rhs._timeMarker) return true;
+			if (lhs._timeMarker > rhs._timeMarker) return false;
+			return (int)lhs._status < (int)rhs._status;
+		}
+
+		friend bool operator==(const DependentFileState& lhs, const DependentFileState& rhs)
+		{
+			return lhs._filename == rhs._filename && lhs._timeMarker == rhs._timeMarker && lhs._status == rhs._status;
+		}
     };
 
 	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps);

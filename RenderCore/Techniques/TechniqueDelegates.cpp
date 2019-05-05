@@ -94,13 +94,12 @@ namespace RenderCore { namespace Techniques
 
 		ISourceCodePreprocessor::SourceCodeWithRemapping result;
 		result._processedSource = output.str();
-		/*result._dependencies.insert(
+		result._dependencies.insert(
 			result._dependencies.end(),
-			patchCollection._dependencies.begin(), patchCollection._dependencies.end());*/
+			patchCollection._dependencies.begin(), patchCollection._dependencies.end());
 
 		// We could fill in the _lineMarkers member with some line marker information
 		// from the original shader graph compile; but that might be overkill
-
 		return result;
 	}
 
