@@ -302,17 +302,6 @@ namespace RenderCore { namespace Techniques
 					(const char*)sourceFile.get(), 
 					(const char*)PtrAdd(sourceFile.get(), sourceFileSize));
 
-				auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-				if (!compoundDoc.empty()) {
-					auto i = std::find_if(
-						compoundDoc.cbegin(), compoundDoc.cend(),
-						[](const ::Assets::TextChunk<char>& chunk)
-						{ return XlEqString(chunk._type, "TechniqueConfig"); });
-
-					if (i != compoundDoc.cend())
-						configSection = i->_content;
-				}
-
 				Formatter formatter(configSection);
 				ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
 

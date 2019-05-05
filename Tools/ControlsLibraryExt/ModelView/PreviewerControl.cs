@@ -253,14 +253,6 @@ namespace ControlsLibraryExt.ModelView
                         {
                             cm.MenuItems.Add(
                                 new MenuItem("Pick &Material (" + context.MouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial)) { Tag = context.MouseOver.FullMaterialName });
-
-                            /*foreach (var t in ActiveMaterialContext.AssignableTechniqueConfigs)
-                            {
-                                cm.MenuItems.Add(
-                                    new MenuItem("Assign Technique (" + t + ")",
-                                    new EventHandler(ContextMenu_AssignTechnique))
-                                    { Tag = new Tuple<string, string>(context.MouseOver.FullMaterialName, t) });
-                            }*/
                         }
 
                         cm.Show(this, e.Location);

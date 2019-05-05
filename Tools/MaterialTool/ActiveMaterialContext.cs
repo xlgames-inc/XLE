@@ -13,7 +13,7 @@ namespace MaterialTool
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext, NodeEditorCore.IPreviewMaterialContext
     {
-        public override IEnumerable<string> AssignableTechniqueConfigs 
+        /*public override IEnumerable<string> AssignableTechniqueConfigs 
         {
             get 
             {
@@ -34,12 +34,11 @@ namespace MaterialTool
                     }
                 }
             } 
-        }
+        }*/
 
         string NodeEditorCore.IPreviewMaterialContext.ActivePreviewMaterialNames {
             get { return MaterialName; }
         }
-         
 
         [Import] IDocumentRegistry _documentRegistry;
     }

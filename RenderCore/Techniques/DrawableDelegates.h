@@ -19,7 +19,6 @@ namespace Utility { class ParameterBox; }
 namespace RenderCore { namespace Techniques 
 {
 	class ParsingContext;
-	extern const char* g_techName;
 
     class IUniformBufferDelegate
     {

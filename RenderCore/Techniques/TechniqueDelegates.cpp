@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueDelegates.h"
+#include "Drawables.h"
 #include "CompiledShaderPatchCollection.h"
 #include "CommonResources.h"
 #include "CommonUtils.h"
@@ -37,6 +38,7 @@ namespace RenderCore { namespace Techniques
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
 		StringSection<> definesTable) -> ISourceCodePreprocessor::SourceCodeWithRemapping
+
 	{
 		// We can assemble the final shader in 3 fragments:
 		//  1) the source code in CompiledShaderPatchCollection
@@ -210,6 +212,7 @@ namespace RenderCore { namespace Techniques
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
 		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
 		::Assets::IntermediateCompilers& intermediateCompilers)
+
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-graph-compiler",
@@ -843,6 +846,18 @@ namespace RenderCore { namespace Techniques
 	}
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}
+
+	std::shared_ptr<DrawableMaterial> MakeDrawableMaterial(
+		const RenderCore::Assets::MaterialScaffoldMaterial& mat,
+		const RenderCore::Assets::ShaderPatchCollection& patchCollection)
+	{
+		auto result = std::make_shared<DrawableMaterial>();
+		auto future = ::Assets::MakeAsset<CompiledShaderPatchCollection>(patchCollection);
+		future->StallWhilePending();
+		result->_patchCollection = future->Actualize();
+		result->_material = mat;
+		return result;
+	}
 
 }}
 

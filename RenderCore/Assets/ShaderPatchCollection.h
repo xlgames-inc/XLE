@@ -30,6 +30,7 @@ namespace RenderCore { namespace Assets
 		friend bool operator<(const ShaderPatchCollection& lhs, const ShaderPatchCollection& rhs);
 		friend bool operator<(const ShaderPatchCollection& lhs, uint64_t rhs);
 		friend bool operator<(uint64_t lhs, const ShaderPatchCollection& rhs);
+		friend std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection&);
 
 		ShaderPatchCollection();
 		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);

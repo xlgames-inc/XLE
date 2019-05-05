@@ -120,14 +120,13 @@ namespace MaterialTool.AdaptiveNodes
 
         public string GetString(string label)
         {
-            return string.Empty;
+            throw new InvalidOperationException("Strings not supported in RawMaterialStorage data blocks");
         }
 
         public void SetString(string label, string newValue)
         {
+            throw new InvalidOperationException("Strings not supported in RawMaterialStorage data blocks");
         }
-
-        
 
         public GUILayer.RawMaterial Material;
 

@@ -44,7 +44,6 @@
 
 #include "../../RenderCore/Metal/DeviceContext.h"		// (for PrepareForDestruction)
 
-
 namespace Sample
 {
 	static void InitProfilerDisplays(
@@ -95,7 +94,6 @@ namespace Sample
 				//  * the global technique context contains some global rendering settings
 			renderAssetServices->InitModelCompilers();
 			sampleGlobals._techniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
-
 
                 // currently we need to maintain a reference on these two fonts -- 
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);

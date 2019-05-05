@@ -24,6 +24,7 @@ namespace RenderCore { namespace Techniques
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
 	class SequencerConfig;
+	class CompiledShaderPatchCollection;
 
 	class SequencerContext
 	{
@@ -58,6 +59,13 @@ namespace RenderCore { namespace Techniques
         Flags::BitField     _flags = 0u;
     };
 
+	class DrawableMaterial
+	{
+	public:
+		RenderCore::Assets::MaterialScaffoldMaterial _material;
+		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
+	}
+	;
 	class Drawable
 	{
 	public:

@@ -32,8 +32,6 @@ namespace ControlsLibraryExt.Material
         public delegate void OnChangeDelegate();
         public event OnChangeDelegate OnChange;
 
-        public virtual IEnumerable<string> AssignableTechniqueConfigs { get { return System.Linq.Enumerable.Empty<string>(); } }
-
         private string m_materialName = null;
     }
 }

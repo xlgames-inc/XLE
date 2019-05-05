@@ -81,6 +81,10 @@ namespace RenderCore { namespace Assets
 	bool operator<(const ShaderPatchCollection& lhs, const ShaderPatchCollection& rhs) { return lhs.GetHash() < rhs.GetHash(); }
 	bool operator<(const ShaderPatchCollection& lhs, uint64_t rhs) { return lhs.GetHash() < rhs; }
 	bool operator<(uint64_t lhs, const ShaderPatchCollection& rhs) { return lhs < rhs.GetHash(); }
+	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection)
+	{
+		return str << patchCollection.GetHash();
+	}
 
 	static void SerializeInstantiationRequest(
 		OutputStreamFormatter& formatter, 

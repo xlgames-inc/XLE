@@ -1,10 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="..\Techniques\DrawableMaterial.h">
+    <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h">
+      <Filter>DrawableMaterial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
+    <ClInclude Include="..\Techniques\TechniqueMaterial.h">
       <Filter>Drawables</Filter>
     </ClInclude>
-    <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h">
+    <ClInclude Include="..\Techniques\TechniqueDelegates.h">
       <Filter>Drawables</Filter>
     </ClInclude>
     <ClInclude Include="..\Techniques\Drawables.h">
@@ -76,7 +80,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
+    <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp">
       <Filter>Drawables</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp">
