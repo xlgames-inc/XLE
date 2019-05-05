@@ -502,7 +502,6 @@ namespace RenderCore { namespace Assets
 		}
 
 		// Setup the DrawableMaterials
-		RenderCore::Assets::ShaderPatchCollection patchCollection;
 		std::vector<std::pair<uint64_t, std::shared_ptr<Techniques::DrawableMaterial>>> drawableMaterials;
 
 		const auto& cmdStream = _modelScaffold->CommandStream();
@@ -510,16 +509,14 @@ namespace RenderCore { namespace Assets
             const auto& geoCall = cmdStream.GetGeoCall(c);
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				auto materialGuid = geoCall._materialGuids[d];
-				auto hash = HashCombine(materialGuid, patchCollection.GetHash());
-				auto i = LowerBound(drawableMaterials, hash);
-				if (i != drawableMaterials.end() && i->first == hash) {
+				auto i = LowerBound(drawableMaterials, materialGuid);
+				if (i != drawableMaterials.end() && i->first == materialGuid) {
 					_geoMaterials.push_back(i->second);
 				} else {
-					auto m = Techniques::MakeDrawableMaterial(
-						*_materialScaffold->GetMaterial(materialGuid),
-						patchCollection);
+					auto& mat = *_materialScaffold->GetMaterial(materialGuid);
+					auto m = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
 					_geoMaterials.push_back(m);
-					drawableMaterials.insert(i, std::make_pair(hash, m));
+					drawableMaterials.insert(i, std::make_pair(materialGuid, m));
 				}
 			}
 		}
@@ -528,16 +525,14 @@ namespace RenderCore { namespace Assets
             const auto& geoCall = cmdStream.GetSkinCall(c);
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				auto materialGuid = geoCall._materialGuids[d];
-				auto hash = HashCombine(materialGuid, patchCollection.GetHash());
-				auto i = LowerBound(drawableMaterials, hash);
-				if (i != drawableMaterials.end() && i->first == hash) {
+				auto i = LowerBound(drawableMaterials, materialGuid);
+				if (i != drawableMaterials.end() && i->first == materialGuid) {
 					_boundSkinnedControllerMaterials.push_back(i->second);
 				} else {
-					auto m = Techniques::MakeDrawableMaterial(
-						*_materialScaffold->GetMaterial(materialGuid),
-						patchCollection);
+					auto& mat = *_materialScaffold->GetMaterial(materialGuid);
+					auto m = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
 					_boundSkinnedControllerMaterials.push_back(m);
-					drawableMaterials.insert(i, std::make_pair(hash, m));
+					drawableMaterials.insert(i, std::make_pair(materialGuid, m));
 				}
 			}
 		}

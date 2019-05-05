@@ -524,7 +524,7 @@ namespace RenderCore { namespace Assets
             //  We just have to be careful about multiple threads or multiple processes accessing the
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
-		if (typeCode != CompiledShaderByteCode::CompileProcessType) return nullptr;
+		if (typeCode != _associatedCompileProcessType) return nullptr;
 
 		assert(initializerCount >= 1 && !initializers[0].IsEmpty());
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
@@ -628,9 +628,11 @@ namespace RenderCore { namespace Assets
     LocalCompiledShaderSource::LocalCompiledShaderSource(
         std::shared_ptr<ILowLevelCompiler> compiler,
         std::shared_ptr<ISourceCodePreprocessor> preprocessor,
-        const DeviceDesc& devDesc)
+        const DeviceDesc& devDesc,
+		uint64_t associatedCompileProcessType)
     : _compiler(std::move(compiler))
     , _preprocessor(std::move(preprocessor))
+	, _associatedCompileProcessType(associatedCompileProcessType)
     {
         _shaderCacheSet = std::make_shared<ShaderCacheSet>(devDesc, ::Assets::Services::GetAsyncMan().GetIntermediateStore());
     }

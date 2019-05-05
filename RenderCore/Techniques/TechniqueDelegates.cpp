@@ -7,28 +7,35 @@
 #include "CompiledShaderPatchCollection.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
+#include "../Assets/Services.h"
 #include "../Metal/Shader.h"
+#include "../Metal/ObjectFactory.h"
+#include "../IDevice.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/StringFormat.h"
 #include <sstream>
 #include <regex>
 
 namespace RenderCore { namespace Techniques
 {
-	static const auto s_perPixel = Hash64("xleres/Nodes/Templates.sh::PerPixel");
-	static const auto s_earlyRejectionTest = Hash64("xleres/Nodes/Templates.sh::EarlyRejectionTest");
+	static const auto s_perPixel = Hash64("PerPixel");
+	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
 	
 	static bool HasReturn(const GraphLanguage::NodeGraphSignature&);
+
+	static uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 
 	class InstantiateShaderGraphPreprocessor : public RenderCore::Assets::ISourceCodePreprocessor
 	{
 	public:
 		static SourceCodeWithRemapping AssembleShader(
-			const RenderCore::Techniques::CompiledShaderPatchCollection& patchCollection,
+			const CompiledShaderPatchCollection& patchCollection,
 			IteratorRange<const uint64_t*> redirectedPatchFunctions,
-			const std::string& entryPointFileName)
+			StringSection<> entryPointFileName)
 		{
 			// We can assemble the final shader in 3 fragments:
 			//  1) the source code in CompiledShaderPatchCollection
@@ -42,7 +49,7 @@ namespace RenderCore { namespace Techniques
 			for (auto fn:redirectedPatchFunctions) {
 				auto i = std::find_if(
 					patchCollection.GetPatches().begin(), patchCollection.GetPatches().end(),
-					[fn](const RenderCore::Techniques::CompiledShaderPatchCollection::Patch& p) { return p._implementsHash == fn; });
+					[fn](const CompiledShaderPatchCollection::Patch& p) { return p._implementsHash == fn; });
 				assert(i!=patchCollection.GetPatches().end());
 				if (i == patchCollection.GetPatches().end()) {
 					Log(Warning) << "Could not find matching patch function for hash (" << fn << ")" << std::endl;
@@ -64,7 +71,7 @@ namespace RenderCore { namespace Techniques
 			// Note that this relies on the underlying shader compiler supporting #includes, however
 			//   -- in cases  (like GLSL) that don't have #include support, we would need another
 			//	changed preprocessor to handle the include expansions.
-			output << "#include \'" << entryPointFileName << "\"" << std::endl;
+			output << "#include \"" << entryPointFileName << "\"" << std::endl;
 
 			SourceCodeWithRemapping result;
 			result._processedSource = output.str();
@@ -88,58 +95,144 @@ namespace RenderCore { namespace Techniques
 			if (!std::regex_match(filename, XlStringEnd(filename), matches, filenameExp) || matches.size() < 3)
 				return {};		// don't understand the input filename, we can't expand this
 
-			uint64_t patchCollectionGuid = Conversion::Convert<uint64_t>(MakeStringSection(matches[2].first, matches[2].second));
-			auto i = LowerBound(_patchCollections, patchCollectionGuid);
-			if (i == _patchCollections.end() || i->first != patchCollectionGuid)
-				return {};		// the patch collection hasn't been registered before hand!
+			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
+			auto& patchCollection = ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollectionGuid);
+			if (!patchCollection)
+				return {};
 
 			std::vector<uint64_t> redirectedPatchFunctions;
 			redirectedPatchFunctions.reserve(matches.size() - 3);
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
-				redirectedPatchFunctions.push_back(Conversion::Convert<uint64_t>(MakeStringSection(m->first, m->second)));
+				redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
 
-			return AssembleShader(*i->second, MakeIteratorRange(redirectedPatchFunctions), filename);
-		}
-
-		void RegisterPatchCollection(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
-		{
-			auto guid = patchCollection->GetGUID();
-			auto e = LowerBound(_patchCollections, guid);
-			if (e == _patchCollections.end() || e->first != guid) {
-				_patchCollections.push_back(std::make_pair(guid, patchCollection));
-			} else {
-				// We're trying to add a patch collection that matches another already registered one with
-				// the same guid.
-				assert(e->second == patchCollection);
-			}
+			return AssembleShader(*patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second));
 		}
 
 		InstantiateShaderGraphPreprocessor() {}
 		~InstantiateShaderGraphPreprocessor() {}
-
-	private:
-		std::vector<std::pair<uint64_t, std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>>> _patchCollections;
 	};
+
+	static void TryRegisterDependency(
+		::Assets::DepValPtr& dst,
+		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+	{
+		auto futureDepVal = future->GetDependencyValidation();
+		if (futureDepVal)
+			::Assets::RegisterAssetDependency(dst, futureDepVal);
+	}
 
 	class ShaderPatchFactory : public IShaderVariationFactory
 	{
 	public:
+		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
+			ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
+		{
+			char temp[MaxPath];
+			auto meld = StringMeldInPlace(temp);
+			auto sep = std::find(initializer.begin(), initializer.end(), ':');
+			meld << MakeStringSection(initializer.begin(), sep);
+
+			// patch collection & expansions
+			meld << "-" << std::hex << _patchCollection->GetGUID();
+			for (auto exp:_patchExpansions) meld << "-" << exp;
+
+			meld << MakeStringSection(sep, initializer.end());
+
+			// shader profile
+			{
+				char profileStr[] = "?s_";
+				switch (stage) {
+				case ShaderStage::Vertex: profileStr[0] = 'v'; break;
+				case ShaderStage::Geometry: profileStr[0] = 'g'; break;
+				case ShaderStage::Pixel: profileStr[0] = 'p'; break;
+				case ShaderStage::Domain: profileStr[0] = 'd'; break;
+				case ShaderStage::Hull: profileStr[0] = 'h'; break;
+				case ShaderStage::Compute: profileStr[0] = 'c'; break;
+				}
+				if (!XlFindStringI(initializer, profileStr)) {
+					meld << ":" << profileStr << "*";
+				}
+			}
+
+			StringSection<> initializers[] = { MakeStringSection(temp), definesTable };
+			auto future = std::make_shared<::Assets::AssetFuture<CompiledShaderByteCode>>(temp);
+			::Assets::DefaultCompilerConstruction<CompiledShaderByteCode>(
+				*future,
+				initializers, dimof(initializers),
+				CompileProcess_InstantiateShaderGraph);
+			return future;
+		}
+
 		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines)
 		{
-			std::stringstream vsName;
-			vsName << _entry->_vertexShaderName << "-" << std::hex << _patchCollection->GetGUID();
-			for (auto exp:_patchExpansions) vsName << "-" << exp;
+			::Assets::FuturePtr<CompiledShaderByteCode> vsCode, psCode, gsCode;
+			vsCode = MakeByteCodeFuture(ShaderStage::Vertex, _entry->_vertexShaderName, defines);
+			psCode = MakeByteCodeFuture(ShaderStage::Pixel, _entry->_pixelShaderName, defines);
+			if (!_entry->_geometryShaderName.empty())
+				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, defines);
 
-			if (_entry->_geometryShaderName.empty()) {
-				return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_pixelShaderName, defines);
+			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPatchFactory");
+			if (gsCode) {
+				future->SetPollingFunction(
+					[vsCode, gsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
+
+					auto vsActual = vsCode->TryActualize();
+					auto gsActual = gsCode->TryActualize();
+					auto psActual = psCode->TryActualize();
+
+					if (!vsActual || !gsActual || !psActual) {
+						auto vsState = vsCode->GetAssetState();
+						auto gsState = gsCode->GetAssetState();
+						auto psState = psCode->GetAssetState();
+						if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+							auto depVal = std::make_shared<::Assets::DependencyValidation>();
+							TryRegisterDependency(depVal, vsCode);
+							TryRegisterDependency(depVal, gsCode);
+							TryRegisterDependency(depVal, psCode);
+							thatFuture.SetInvalidAsset(depVal, nullptr);
+							return false;
+						}
+						return true;
+					}
+
+					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
+						RenderCore::Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual);
+					thatFuture.SetAsset(std::move(newShaderProgram), {});
+					return false;
+				});
 			} else {
-				return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_geometryShaderName, _entry->_pixelShaderName, defines);
+				future->SetPollingFunction(
+					[vsCode, gsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
+
+					auto vsActual = vsCode->TryActualize();
+					auto psActual = psCode->TryActualize();
+
+					if (!vsActual || !psActual) {
+						auto vsState = vsCode->GetAssetState();
+						auto psState = psCode->GetAssetState();
+						if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+							auto depVal = std::make_shared<::Assets::DependencyValidation>();
+							TryRegisterDependency(depVal, vsCode);
+							TryRegisterDependency(depVal, psCode);
+							thatFuture.SetInvalidAsset(depVal, nullptr);
+							return false;
+						}
+						return true;
+					}
+
+					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
+						RenderCore::Metal::GetObjectFactory(), *vsActual, *psActual);
+					thatFuture.SetAsset(std::move(newShaderProgram), {});
+					return false;
+				});
 			}
+
+			return future;
 		}
 
 		ShaderPatchFactory(
 			const TechniqueEntry& techEntry, 
-			const RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection,
+			const CompiledShaderPatchCollection* patchCollection,
 			IteratorRange<const uint64_t*> patchExpansions)
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
@@ -150,7 +243,7 @@ namespace RenderCore { namespace Techniques
 		ShaderPatchFactory() {}
 	private:
 		const TechniqueEntry* _entry;
-		const RenderCore::Techniques::CompiledShaderPatchCollection* _patchCollection;
+		const CompiledShaderPatchCollection* _patchCollection;
 		IteratorRange<const uint64_t*> _patchExpansions;
 	};
 
@@ -193,6 +286,19 @@ namespace RenderCore { namespace Techniques
 	{
 		_techniqueSetFuture = ::Assets::MakeAsset<TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
 		_cfgFileState = ::Assets::AssetState::Pending;
+
+		static bool installedPreprocessor = false;
+		if (!installedPreprocessor) {
+			auto shaderSource = std::make_shared<RenderCore::Assets::LocalCompiledShaderSource>(
+				RenderCore::Assets::Services::GetDevice().CreateShaderCompiler(),
+				std::make_shared<InstantiateShaderGraphPreprocessor>(),
+				RenderCore::Assets::Services::GetDevice().GetDesc(),
+				CompileProcess_InstantiateShaderGraph);
+			RenderCore::ShaderService::GetInstance().AddShaderSource(shaderSource);
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(shaderSource);
+			
+			installedPreprocessor = true;
+		}
 	}
 
 	static std::shared_ptr<TechniqueSharedResources> s_mainSharedResources = std::make_shared<TechniqueSharedResources>();

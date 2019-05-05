@@ -65,12 +65,14 @@ namespace RenderCore { namespace Assets
         LocalCompiledShaderSource(
             std::shared_ptr<ILowLevelCompiler> compiler,
             std::shared_ptr<ISourceCodePreprocessor> preprocessor,
-            const DeviceDesc& devDesc);
+            const DeviceDesc& devDesc,
+			uint64_t associatedCompileProcessType = CompiledShaderByteCode::CompileProcessType);
         ~LocalCompiledShaderSource();
     protected:
         std::shared_ptr<ShaderCacheSet> _shaderCacheSet;
         std::shared_ptr<ILowLevelCompiler> _compiler;
         std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
+		uint64_t _associatedCompileProcessType;
         bool _writeErrorLogFiles = false;
 
         class Marker;

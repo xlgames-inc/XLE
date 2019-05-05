@@ -522,6 +522,7 @@ namespace RenderCore { namespace Assets
 		}
 
 		source._patchCollection.MergeInto(destPatchCollection);
+		dest._patchCollection = destPatchCollection.GetHash();
     }
 
 	static void AddDep(

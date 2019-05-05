@@ -24,8 +24,8 @@ namespace RenderCore { namespace Techniques
 	{
 		auto i = LowerBound(s_compiledShaderPatchCollections, hash);
 		if (i != s_compiledShaderPatchCollections.end() && i->first == hash)
-			return s_defaultCompiledShaderPatchCollection;
-		return i->second;
+			return i->second;
+		return s_defaultCompiledShaderPatchCollection;		
 	}
 
 	void ShaderPatchCollectionRegistry::RegisterShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& patchCollection) const

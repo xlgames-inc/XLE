@@ -21,8 +21,8 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	static const auto s_perPixel = Hash64("xleres/Nodes/Templates.sh::PerPixel");
-	static const auto s_earlyRejectionTest = Hash64("xleres/Nodes/Templates.sh::EarlyRejectionTest");
+	static const auto s_perPixel = Hash64("PerPixel");
+	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
 
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src)
 	{
@@ -45,7 +45,7 @@ namespace RenderCore { namespace Techniques
 				if (patch._implementsName.empty()) continue;
 
 				Patch p;
-				p._implementsHash = Hash64(patch._signature.GetImplements());
+				p._implementsHash = Hash64(patch._implementsName);
 
 				if (patch._implementsName != patch._name) {
 					p._scaffoldInFunction = ShaderSourceParser::GenerateScaffoldFunction(

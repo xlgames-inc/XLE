@@ -44,7 +44,7 @@ namespace RenderCore { namespace Techniques
 		struct IllumDelegateAttachment
 		{
 			enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
-			IllumType _type;
+			IllumType _type = IllumType::NoPerPixel;
 		};
 		IllumDelegateAttachment _illumDelegate;
 

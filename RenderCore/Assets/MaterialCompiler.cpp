@@ -133,7 +133,13 @@ namespace RenderCore { namespace Assets
 				auto resNameStr = resName.str();
 				SerializableVector<char> resNameVec(resNameStr.begin(), resNameStr.end());
 				resolvedNames.push_back(std::make_pair(guid, std::move(resNameVec)));
-				patchCollections.emplace_back(std::move(patchCollection));
+
+				bool gotExisting = false;
+				for (const auto&p:patchCollections)
+					gotExisting |= p.GetHash() == patchCollection.GetHash();
+
+				if (!gotExisting)
+					patchCollections.emplace_back(std::move(patchCollection));
 			}
 
 			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, MaterialScaffold::Material>());

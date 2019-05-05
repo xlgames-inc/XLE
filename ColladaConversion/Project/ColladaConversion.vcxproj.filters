@@ -69,10 +69,10 @@
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\ColladaConversion.cpp" />
-    <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp">
+    <ClCompile Include="..\..\RenderCore\Assets\PredefinedCBLayout.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\Assets\PredefinedCBLayout.cpp">
+    <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -144,10 +144,10 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\ColladaConversion.h" />
-    <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h">
+    <ClInclude Include="..\..\RenderCore\Assets\PredefinedCBLayout.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\Assets\PredefinedCBLayout.h">
+    <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>
