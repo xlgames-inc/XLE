@@ -13,6 +13,7 @@
     #include "../../Core/WinAPI/IncludeWindows.h"
     #include <winsock2.h>
     #include <ws2tcpip.h>
+    typedef long suseconds_t;
 #else
     #include <netinet/in.h>
     #include <arpa/inet.h>
@@ -53,6 +54,29 @@ namespace
             }
         #endif
     }
+
+    void HandleTimeout(int fd, uint16_t port, const std::chrono::milliseconds timeout)
+    {
+        using namespace std::chrono_literals;
+        if (timeout > 0ms) {
+            fd_set rfds;
+            FD_ZERO(&rfds);
+            FD_SET(fd, &rfds);
+
+            struct timeval timeout_value;
+            timeout_value.tv_sec = (suseconds_t)timeout.count() / 1000; // milliseconds to seconds
+            timeout_value.tv_usec = ((suseconds_t)timeout.count() % 1000) * 1000; // milliseconds (minus whole seconds) to microseconds
+
+            int timeoutResult = select(fd + 1, &rfds, nullptr, nullptr, &timeout_value);
+            if (timeoutResult < 0) {
+                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_connection));
+            }
+            if (timeoutResult == 0) {
+                Log(Debug) << "Connection timed out on port " << port << std::endl;
+                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::timeout));
+            }
+        }
+    }
 }
 
 
@@ -70,7 +94,7 @@ namespace Utility { namespace Networking
         }
     #endif
 
-    SocketConnection::SocketConnection(const std::string &address, const uint16_t port)
+    SocketConnection::SocketConnection(const std::string &address, const uint16_t port, const std::chrono::milliseconds timeout)
     {
         EnsureNetworkingInitialized();
 
@@ -79,6 +103,8 @@ namespace Utility { namespace Networking
         if ((_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             Throw(SocketException(SocketException::ErrorCode::bad_creation));
         }
+
+        HandleTimeout(_fd, port, timeout);
 
         if (connect(_fd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
             closesocket(_fd);
@@ -175,14 +201,17 @@ namespace Utility { namespace Networking
         closesocket(_fd);
     }
 
-    std::unique_ptr<SocketConnection> SocketServer::Listen()
+    std::unique_ptr<SocketConnection> SocketServer::Listen(const std::chrono::milliseconds timeout)
     {
         Log(Debug) << "Waiting for client connection on port " << _port << "..." << std::endl;
+
+        HandleTimeout(_fd, _port, timeout);
+
         struct sockaddr_in clientAddr;
         socklen_t clilen = sizeof(clientAddr);
         int acceptedFD = accept(_fd, (struct sockaddr *)&clientAddr, &clilen);
         if (acceptedFD < 0) {
-            return nullptr;
+            Throw(SocketException(SocketException::ErrorCode::bad_connection));
         }
         Log(Debug) << "Connection established on port " << _port << std::endl;
         return std::make_unique<SocketConnection>(acceptedFD);

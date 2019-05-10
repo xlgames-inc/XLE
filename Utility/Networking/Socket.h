@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -20,7 +21,7 @@ namespace Utility { namespace Networking
         bytes Read(const uint32_t count);
         void Write(IteratorRange<const void*> data) const;
 
-        SocketConnection(const std::string &address, const uint16_t port);
+        SocketConnection(const std::string &address, const uint16_t port, const std::chrono::milliseconds timeout);
         SocketConnection(int socket);
         ~SocketConnection();
     private:
@@ -31,7 +32,7 @@ namespace Utility { namespace Networking
     class SocketServer
     {
     public:
-        std::unique_ptr<SocketConnection> Listen();
+        std::unique_ptr<SocketConnection> Listen(const std::chrono::milliseconds timeout);
 
         SocketServer(uint16_t port);
         ~SocketServer();
@@ -50,14 +51,16 @@ namespace Utility { namespace Networking
             bad_connection,
             incomplete,
             disconnected,
+            timeout,
         };
 
-        const std::string ErrorCodeMsg[5] = {
+        const std::string ErrorCodeMsg[6] = {
             "cannot create the socket",
             "invalid address",
             "bad connection",
             "data received is incomplete",
             "the socket is disconnected",
+            "the connection timed out",
         };
 
         SocketException(const ErrorCode code);
