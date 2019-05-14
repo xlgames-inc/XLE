@@ -63,18 +63,20 @@ namespace Utility { namespace Networking
             "the connection timed out",
         };
 
-        SocketException(const ErrorCode code);
-        SocketException(const std::string& message, const ErrorCode code);
+        SocketException(const ErrorCode code, const int errnoValue);
+        SocketException(const std::string& message, const ErrorCode code, const int errnoValue);
 
         ~SocketException();
 
         ErrorCode GetErrorCode() const;
         std::string GetErrorMsg() const;
+        int GetErrno() const;
 
         const char* what() const noexcept override;
     private:
         const std::string _message;
         const ErrorCode _code;
+        const int _errno;
     };
 }}
 using namespace Utility;

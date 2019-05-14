@@ -35,7 +35,8 @@ namespace
         serverAddr.sin_port = htons(port);
         // Convert IPv4 and IPv6 addresses from text to binary form
         if (inet_pton(AF_INET, address, &serverAddr.sin_addr) <= 0) {
-            Throw(Networking::SocketException(Networking::SocketException::ErrorCode::invalid_address));
+            int errnoValue = errno;
+            Throw(Networking::SocketException(Networking::SocketException::ErrorCode::invalid_address, errnoValue));
         }
         return serverAddr;
     }
@@ -48,7 +49,8 @@ namespace
                 WSADATA wsaData;
                 int error = WSAStartup(MAKEWORD(2,2), &wsaData);
                 if (error != 0) {
-                    Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_creation));
+                    int errnoValue = errno;
+                    Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_creation, errnoValue));
                 }
                 s_WSAInitialized = true;
             }
@@ -69,11 +71,13 @@ namespace
 
             int timeoutResult = select(fd + 1, &rfds, nullptr, nullptr, &timeout_value);
             if (timeoutResult < 0) {
-                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_connection));
+                int errnoValue = errno;
+                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_connection, errnoValue));
             }
             if (timeoutResult == 0) {
                 Log(Debug) << "Connection timed out on port " << port << std::endl;
-                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::timeout));
+                int errnoValue = errno;
+                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::timeout, errnoValue));
             }
         }
     }
@@ -101,14 +105,16 @@ namespace Utility { namespace Networking
         struct sockaddr_in serverAddr = CreateSocketAddress(address.c_str(), port);
 
         if ((_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            Throw(SocketException(SocketException::ErrorCode::bad_creation));
+            int errnoValue = errno;
+            Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
 
         HandleTimeout(_fd, port, timeout);
 
         if (connect(_fd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+            int errnoValue = errno;
             closesocket(_fd);
-            Throw(SocketException(SocketException::ErrorCode::bad_connection));
+            Throw(SocketException(SocketException::ErrorCode::bad_connection, errnoValue));
         }
     }
 
@@ -131,13 +137,17 @@ namespace Utility { namespace Networking
             uint32_t curBlockSize = std::min(unread, blockSize);
             long numOfRead = recv(_fd, buffer, curBlockSize, 0);
             if (numOfRead <= 0) {
-                Throw(SocketException(SocketException::ErrorCode::disconnected));
+                int errnoValue = errno;
+                Throw(SocketException(SocketException::ErrorCode::disconnected, errnoValue));
             }
 
             std::copy(buffer, buffer + numOfRead, iter);
             unread -= numOfRead;
             iter += numOfRead;
-            if (numOfRead == 0 && unread != 0) Throw(SocketException(SocketException::ErrorCode::incomplete));
+            if (numOfRead == 0 && unread != 0) {
+                int errnoValue = errno;
+                Throw(SocketException(SocketException::ErrorCode::incomplete, errnoValue));
+            }
         }
 
         return data;
@@ -161,7 +171,8 @@ namespace Utility { namespace Networking
         struct sockaddr_in serverAddr = CreateSocketAddress("127.0.0.1", port);
 
         if ((_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            Throw(SocketException(SocketException::ErrorCode::bad_creation));
+            int errnoValue = errno;
+            Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
 
         { // socket flags
@@ -170,8 +181,9 @@ namespace Utility { namespace Networking
             // When connections are interrupted, the addres:port pair might noy be available to be used right away.
             // This flag allows us to create another socket with the same address right away.
             if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable, sizeof(enable)) < 0) {
+                int errnoValue = errno;
                 closesocket(_fd);
-                Throw(SocketException(SocketException::ErrorCode::bad_creation));
+                Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
             }
 
             #if PLATFORMOS_TARGET != PLATFORMOS_WINDOWS
@@ -180,19 +192,22 @@ namespace Utility { namespace Networking
                 // worked well on desktop, however. To learn more, search for SIGPIPE in:
                 // https://developer.apple.com/library/archive/documentation/NetworkingInternetWeb/Conceptual/NetworkingOverview/CommonPitfalls/CommonPitfalls.html#//apple_ref/doc/uid/TP40010220-CH4-SW11
                 if (setsockopt(_fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
+                    int errnoValue = errno;
                     closesocket(_fd);
-                    Throw(SocketException(SocketException::ErrorCode::bad_creation));
+                    Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
                 }
             #endif
         }
 
         if (bind(_fd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+            int errnoValue = errno;
             closesocket(_fd);
-            Throw(SocketException(SocketException::ErrorCode::bad_creation));
+            Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
         if (listen(_fd, 5) < 0) {
+            int errnoValue = errno;
             closesocket(_fd);
-            Throw(SocketException(SocketException::ErrorCode::bad_creation));
+            Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
     }
 
@@ -211,7 +226,8 @@ namespace Utility { namespace Networking
         socklen_t clilen = sizeof(clientAddr);
         int acceptedFD = accept(_fd, (struct sockaddr *)&clientAddr, &clilen);
         if (acceptedFD < 0) {
-            Throw(SocketException(SocketException::ErrorCode::bad_connection));
+            int errnoValue = errno;
+            Throw(SocketException(SocketException::ErrorCode::bad_connection, errnoValue));
         }
         Log(Debug) << "Connection established on port " << _port << std::endl;
         return std::make_unique<SocketConnection>(acceptedFD);
@@ -219,13 +235,14 @@ namespace Utility { namespace Networking
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SocketException::SocketException(const SocketException::ErrorCode code)
+    SocketException::SocketException(const SocketException::ErrorCode code, const int errnoValue)
     : _message("socket exception: " + ErrorCodeMsg[(int) code]),
-    _code(code) {}
+    _code(code), _errno(errnoValue) {}
 
     SocketException::SocketException(const std::string &message,
-                                     const SocketException::ErrorCode code)
-    : _message(message), _code(code) {}
+                                     const SocketException::ErrorCode code,
+                                     const int errnoValue)
+    : _message(message), _code(code), _errno(errnoValue) {}
 
     SocketException::~SocketException() {}
 
@@ -237,6 +254,11 @@ namespace Utility { namespace Networking
     std::string SocketException::GetErrorMsg() const
     {
         return _message;
+    }
+
+    int SocketException::GetErrno() const
+    {
+        return _errno;
     }
 
     const char* SocketException::what() const noexcept
