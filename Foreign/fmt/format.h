@@ -104,9 +104,11 @@ typedef __int64          intmax_t;
 # define FMT_ICC_VERSION __INTEL_COMPILER
 #elif defined(__ICL)
 # define FMT_ICC_VERSION __ICL
+#else
+# define FMT_ICC_VERSION 0
 #endif
 
-#if defined(__clang__) && !defined(FMT_ICC_VERSION)
+#if defined(__clang__)
 # define FMT_CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wdocumentation-unknown-command"
@@ -266,7 +268,7 @@ typedef __int64          intmax_t;
    FMT_USE_VARIADIC_TEMPLATES && FMT_USE_RVALUE_REFERENCES && \
    (FMT_HAS_FEATURE(cxx_user_literals) || \
      (FMT_GCC_VERSION >= 407 && FMT_HAS_GXX_CXX11) || FMT_MSC_VER >= 1900) && \
-   (!defined(FMT_ICC_VERSION) || FMT_ICC_VERSION >= 1500)
+   (FMT_ICC_VERSION == 0 || FMT_ICC_VERSION >= 1500)
 #endif
 
 #ifndef FMT_USE_EXTERN_TEMPLATES
@@ -3998,7 +4000,7 @@ operator"" _a(const wchar_t *s, std::size_t) { return {s}; }
 # pragma GCC diagnostic pop
 #endif
 
-#if defined(__clang__) && !defined(FMT_ICC_VERSION)
+#if defined(__clang__)
 # pragma clang diagnostic pop
 #endif
 
