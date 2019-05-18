@@ -293,6 +293,7 @@ namespace XLEMath
             // might be more efficient to sort the list before doing this.
         for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
             const auto r = *i;
+            (void)r;
             auto newEnd = _freeRectangles.end();
             for (auto i2=i+1; i2<newEnd; ++i2) {
                 assert(i!=i2);
