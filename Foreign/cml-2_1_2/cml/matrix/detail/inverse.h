@@ -176,7 +176,7 @@ inline void inverse_pivot(writable_matrix<Sub>& M,
 
       value_type mult = -M(j,col);
       M(j,col) = value_type(0);
-      for(int k = 0; k < N; ++ k) M(j,k) += mult * M(col,k);
+      for(int l = 0; k < N; ++ l) M(j,l) += mult * M(col,l);
     }
   }
 
