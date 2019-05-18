@@ -21,7 +21,7 @@ add_dependencies(ShaderScan Utility Math Assets ConsoleRig RenderCore ShaderPars
 target_link_libraries(ShaderScan Utility Math Assets ConsoleRig RenderCore ShaderParser ForeignMisc pthread)
 
 # Foreign Common
-include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
+include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-2_1_2 ${FOREIGN_DIR})
 
 target_compile_options(ShaderScan PRIVATE -std=c++14 -fapple-pragma-pack -fexceptions -frtti -ffunction-sections -fdata-sections -fcxx-exceptions)
 target_compile_options(ShaderScan PRIVATE -O0)
