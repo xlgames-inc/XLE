@@ -12,9 +12,8 @@
 #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
     #pragma warning(push)
     #pragma warning(disable:4512)       // assignment operator could not be generated
-    #include <cml/mathlib/matrix_rotation.h>
-    #include <cml/mathlib/quaternion_rotation.h>
-    #include <cml/mathlib/interpolation.h>
+    #include <cml/mathlib/matrix/rotation.h>
+    #include <cml/mathlib/quaternion/rotation.h>
     #pragma warning(pop)
 #endif
 
