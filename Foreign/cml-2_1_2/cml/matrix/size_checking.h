@@ -215,7 +215,7 @@ template<class Sub1, class Sub2> void check_same_size(
  * CML_NO_RUNTIME_MATRIX_SIZE_CHECKS at compile time.
  */
 template<class Sub, class Other, int Rows, int Cols> void check_same_size(
-  const readable_matrix<Sub>& left, Other const (&array)[Rows][Cols]);
+  const readable_matrix<Sub>& left, Other const (&right)[Rows][Cols]);
 
 /** Front-end for both compile-time and run-time matrix row size
  * checking against a vector expression.  @c left must derive from

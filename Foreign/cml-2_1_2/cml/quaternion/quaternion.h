@@ -24,7 +24,7 @@ namespace cml {
  * @tparam Element The scalar type for quaternion elements, with the
  * following operators defined: +, -, *, /, <, >, ==, = (assign).
  *
- * @tparam StorageType Storage type to use for holding the array of quaternion
+ * @tparam ArrayType Storage type to use for holding the array of quaternion
  * elements.
  *
  * @tparam Order Specifies the position of the scalar and imaginary

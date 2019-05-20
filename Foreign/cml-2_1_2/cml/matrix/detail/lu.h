@@ -32,7 +32,7 @@ lu_inplace(writable_matrix<Sub>& M);
  * implements the algorithm from Cormen, Leiserson, Rivest, '96.
  *
  * @tparam Sub Derived output matrix type.
- * @tparam order Row order array.
+ * @tparam OrderArray Row order array.
  *
  * @returns 1 if no pivots or an even number of pivots are performed, -1 if
  * an odd number of pivots are performed, 0 if M is singular.
