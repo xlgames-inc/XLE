@@ -8,6 +8,7 @@
 
 #include "../Core/Prefix.h"
 #include <memory>
+#include <string>
 #include <vector>
 #include <assert.h>
 #include <stddef.h>     // (for ptrdiff_t)
