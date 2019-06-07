@@ -11,9 +11,7 @@
 #include "IncludeGLES.h"
 
 #if !defined(GL_FUNC_ATTRIBUTES)
-    #if PLATFORMOS_TARGET == PLATFORMOS_ANDROID
-        #define GL_FUNC_ATTRIBUTES __attribute__((pcs("aapcs")))
-    #elif PROJECT_ANGLE
+    #if PROJECT_ANGLE
         #define GL_FUNC_ATTRIBUTES __attribute__((stdcall))
     #else
         #define GL_FUNC_ATTRIBUTES
