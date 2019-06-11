@@ -9,6 +9,7 @@
 #include "../../Core/Types.h"
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace EntityInterface
 {
@@ -103,6 +104,20 @@ namespace EntityInterface
         virtual ChildListId GetChildListId(ObjectTypeId type, const char name[]) const = 0;
 
         virtual ~IEntityInterface();
+    };
+
+    class IEnumerableEntityInterface
+    {
+    public:
+        virtual std::vector<std::pair<ObjectTypeId, std::string>> FindObjectTypes() const = 0;
+        virtual std::vector<std::pair<DocumentTypeId, std::string>> FindDocumentTypes() const = 0;
+
+        virtual std::vector<std::pair<DocumentId, DocumentTypeId>> FindDocuments(DocumentTypeId docType) const = 0;
+        virtual std::vector<ObjectId> FindEntities(DocumentId doc, ObjectTypeId objectType) const = 0;
+        virtual std::vector<std::pair<PropertyId, std::string>> FindProperties(ObjectTypeId objectType) const = 0;
+        virtual std::vector<std::pair<ChildListId, std::string>> FindChildLists(ObjectTypeId objectType) const = 0;
+
+        virtual ~IEnumerableEntityInterface();
     };
 
     /// <summary>Holds a collection of IObjectType interface, and selects the appropriate interface for a given object</summary>

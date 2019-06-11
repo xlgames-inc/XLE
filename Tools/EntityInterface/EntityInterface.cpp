@@ -10,6 +10,7 @@
 namespace EntityInterface
 {
     IEntityInterface::~IEntityInterface() {}
+    IEnumerableEntityInterface::~IEnumerableEntityInterface() {}
 
     IEntityInterface* Switch::GetInterface(
         Identifier& translatedId, 
