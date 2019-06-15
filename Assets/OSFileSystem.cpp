@@ -70,12 +70,20 @@ namespace Assets
 
 	IOReason File_OS::TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
 	{
-		return _file.TryOpen(filename, openMode, shareMode);
+		auto res = _file.TryOpen(filename, openMode, shareMode);
+        if (res == Utility::Exceptions::IOException::Reason::Success) {
+            _fn = filename;
+        }
+        return res;
 	}
 
 	IOReason File_OS::TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
 	{
-		return _file.TryOpen(filename, openMode, shareMode);
+        auto res = _file.TryOpen(filename, openMode, shareMode);
+        if (res == Utility::Exceptions::IOException::Reason::Success) {
+            _fn = Conversion::Convert<std::basic_string<utf8>>(MakeStringSection(filename));
+        }
+        return res;
 	}
 
 	File_OS::File_OS() {}
