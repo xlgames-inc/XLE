@@ -456,6 +456,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         for (unsigned am=0; am < dimof(srcArgumentsDstMappings); ++am) {
             for (MTLArgument* arg in srcArgumentsDstMappings[am].first) {
+                if (!arg.active) continue;
+
                 auto* riMap = srcArgumentsDstMappings[am].second;
 
                 const char* argName = [arg.name cStringUsingEncoding:NSUTF8StringEncoding];

@@ -328,6 +328,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 uint32_t textureArgTable = 0u;
                 uint32_t samplerArgTable = 0u;
                 for (MTLArgument* arg in argumentSets[as]) {
+                    if (!arg.active) continue;
+
                     uint32_t intendedIndex = (1 << arg.index);
                     if (arg.type == MTLArgumentTypeBuffer) {
                         if ((intendedIndex & bufferArgTable) != 0) {
@@ -383,6 +385,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                                 assert(0);
                             }
                             for (MTLArgument* arg in arguments) {
+                                if (!arg.active) continue;
+
                                 if (arg.type == MTLArgumentTypeBuffer) {
                                     if (arg.index == map.index) {
                                         assert(length == arg.bufferDataSize);

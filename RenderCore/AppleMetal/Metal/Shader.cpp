@@ -15,6 +15,7 @@
 #include "../../../Utility/MemoryUtils.h"
 #include <iostream>
 #include <unordered_map>
+#include <sstream>
 
 #include "IncludeAppleMetal.h"
 #import <Metal/MTLLibrary.h>
@@ -244,7 +245,27 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* this function can be useful on an ad-hoc basis, but otherwise, could remove it */
         assert(s_defaultLibrary);
         _vf = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:vertexFunctionName.c_str() encoding:NSUTF8StringEncoding]];
+        if (!_vf) {
+            std::stringstream str;
+            str << "Could not create ShaderProgram because vertex shader with name (" << vertexFunctionName << ") was not found in the shader library" << std::endl;
+            str << "Known functions: " << std::endl;
+            for (NSString* s in s_defaultLibrary.functionNames) {
+                str << "\t" << s.UTF8String << std::endl;
+            }
+            Throw(std::runtime_error(str.str()));
+        }
+
         _ff = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:fragmentFunctionName.c_str() encoding:NSUTF8StringEncoding]];
+        if (!_ff) {
+            std::stringstream str;
+            str << "Could not create ShaderProgram because fragment shader with name (" << fragmentFunctionName << ") was not found in the shader library" << std::endl;
+            str << "Known functions: " << std::endl;
+            for (NSString* s in s_defaultLibrary.functionNames) {
+                str << "\t" << s.UTF8String << std::endl;
+            }
+            Throw(std::runtime_error(str.str()));
+        }
+
         assert(_vf);
         assert(_ff);
 
