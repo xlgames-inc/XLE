@@ -17,6 +17,22 @@
 		8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6202017F894009F52AB /* Log.cpp */; };
 		8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
 		8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
+		8F4D188422BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
+		8F4D188522BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
+		8F4D188622BC1DFD00E48517 /* catch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188022BC1DFD00E48517 /* catch.cpp */; };
+		8F4D188722BC1DFD00E48517 /* catch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188022BC1DFD00E48517 /* catch.cpp */; };
+		8F4D188822BC1DFD00E48517 /* shunting-yard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */; };
+		8F4D188922BC1DFD00E48517 /* shunting-yard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */; };
+		8F4D188A22BC1DFD00E48517 /* functions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188222BC1DFD00E48517 /* functions.cpp */; };
+		8F4D188B22BC1DFD00E48517 /* functions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188222BC1DFD00E48517 /* functions.cpp */; };
+		8F4D188C22BC1DFD00E48517 /* packToken.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188322BC1DFD00E48517 /* packToken.cpp */; };
+		8F4D188D22BC1DFD00E48517 /* packToken.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188322BC1DFD00E48517 /* packToken.cpp */; };
+		8F4D189922BC1EC400E48517 /* shunting-yard-exceptions.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189322BC1EC300E48517 /* shunting-yard-exceptions.h */; };
+		8F4D189A22BC1EC400E48517 /* shunting-yard.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189422BC1EC300E48517 /* shunting-yard.h */; };
+		8F4D189B22BC1EC400E48517 /* packToken.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189522BC1EC300E48517 /* packToken.h */; };
+		8F4D189C22BC1EC400E48517 /* functions.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189622BC1EC300E48517 /* functions.h */; };
+		8F4D189D22BC1EC400E48517 /* catch.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189722BC1EC400E48517 /* catch.hpp */; };
+		8F4D189E22BC1EC400E48517 /* containers.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D189822BC1EC400E48517 /* containers.h */; };
 		8F5DCB892023E5920022BA7E /* RenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F5DCB872023E5920022BA7E /* RenderPass.h */; };
 		8F5DCB8A2023E5920022BA7E /* RenderPass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB882023E5920022BA7E /* RenderPass.cpp */; };
 		8F67C91D20291FF500C5869F /* RenderPass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB882023E5920022BA7E /* RenderPass.cpp */; };
@@ -193,6 +209,17 @@
 		8F2DB6212017F894009F52AB /* LogStartup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogStartup.h; path = ../../ConsoleRig/LogStartup.h; sourceTree = "<group>"; };
 		8F2DB6222017F894009F52AB /* LogUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogUtil.h; path = ../../ConsoleRig/LogUtil.h; sourceTree = "<group>"; };
 		8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Font_Dummy.cpp; path = ../../RenderOverlays/Font_Dummy.cpp; sourceTree = "<group>"; };
+		8F4D187F22BC1DFD00E48517 /* containers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = containers.cpp; path = ../../../Foreign/cparse/containers.cpp; sourceTree = "<group>"; };
+		8F4D188022BC1DFD00E48517 /* catch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = catch.cpp; path = ../../../Foreign/cparse/catch.cpp; sourceTree = "<group>"; };
+		8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "shunting-yard.cpp"; path = "../../../Foreign/cparse/shunting-yard.cpp"; sourceTree = "<group>"; };
+		8F4D188222BC1DFD00E48517 /* functions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = functions.cpp; path = ../../../Foreign/cparse/functions.cpp; sourceTree = "<group>"; };
+		8F4D188322BC1DFD00E48517 /* packToken.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = packToken.cpp; path = ../../../Foreign/cparse/packToken.cpp; sourceTree = "<group>"; };
+		8F4D189322BC1EC300E48517 /* shunting-yard-exceptions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "shunting-yard-exceptions.h"; path = "../../../Foreign/cparse/shunting-yard-exceptions.h"; sourceTree = "<group>"; };
+		8F4D189422BC1EC300E48517 /* shunting-yard.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "shunting-yard.h"; path = "../../../Foreign/cparse/shunting-yard.h"; sourceTree = "<group>"; };
+		8F4D189522BC1EC300E48517 /* packToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = packToken.h; path = ../../../Foreign/cparse/packToken.h; sourceTree = "<group>"; };
+		8F4D189622BC1EC300E48517 /* functions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = functions.h; path = ../../../Foreign/cparse/functions.h; sourceTree = "<group>"; };
+		8F4D189722BC1EC400E48517 /* catch.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = catch.hpp; path = ../../../Foreign/cparse/catch.hpp; sourceTree = "<group>"; };
+		8F4D189822BC1EC400E48517 /* containers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = containers.h; path = ../../../Foreign/cparse/containers.h; sourceTree = "<group>"; };
 		8F5DCB872023E5920022BA7E /* RenderPass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderPass.h; path = ../../RenderCore/Techniques/RenderPass.h; sourceTree = "<group>"; };
 		8F5DCB882023E5920022BA7E /* RenderPass.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = RenderPass.cpp; path = ../../RenderCore/Techniques/RenderPass.cpp; sourceTree = "<group>"; };
 		8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -332,6 +359,24 @@
 				8F2DB6222017F894009F52AB /* LogUtil.h */,
 			);
 			name = ConsoleRig;
+			sourceTree = "<group>";
+		};
+		8F4D187E22BC1DCC00E48517 /* cparse */ = {
+			isa = PBXGroup;
+			children = (
+				8F4D188022BC1DFD00E48517 /* catch.cpp */,
+				8F4D189722BC1EC400E48517 /* catch.hpp */,
+				8F4D187F22BC1DFD00E48517 /* containers.cpp */,
+				8F4D189822BC1EC400E48517 /* containers.h */,
+				8F4D188222BC1DFD00E48517 /* functions.cpp */,
+				8F4D189622BC1EC300E48517 /* functions.h */,
+				8F4D188322BC1DFD00E48517 /* packToken.cpp */,
+				8F4D189522BC1EC300E48517 /* packToken.h */,
+				8F4D189322BC1EC300E48517 /* shunting-yard-exceptions.h */,
+				8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */,
+				8F4D189422BC1EC300E48517 /* shunting-yard.h */,
+			);
+			path = cparse;
 			sourceTree = "<group>";
 		};
 		8F707B521EA6C41F00DEC600 = {
@@ -476,6 +521,7 @@
 		8F707BDE1EA6CAB200DEC600 /* Foreign */ = {
 			isa = PBXGroup;
 			children = (
+				8F4D187E22BC1DCC00E48517 /* cparse */,
 				8F707BDF1EA6CB0A00DEC600 /* Hash */,
 				8F9417BB1FDA01C000DADA27 /* Lua */,
 			);
@@ -596,10 +642,13 @@
 				8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */,
 				8F9418331FDA01DC00DADA27 /* lauxlib.h in Headers */,
 				8F8B15EB216D28F600515269 /* HierarchicalSpikesDisplay.h in Headers */,
+				8F4D189E22BC1EC400E48517 /* containers.h in Headers */,
 				8F707B751EA6C59100DEC600 /* IOverlayContext_Forward.h in Headers */,
 				8F94182B1FDA01DC00DADA27 /* lctype.h in Headers */,
+				8F4D189D22BC1EC400E48517 /* catch.hpp in Headers */,
 				8F94183C1FDA01DC00DADA27 /* lopcodes.h in Headers */,
 				8F9417FD1FDA01DC00DADA27 /* llimits.h in Headers */,
+				8F4D189922BC1EC400E48517 /* shunting-yard-exceptions.h in Headers */,
 				8F9418391FDA01DC00DADA27 /* ldebug.h in Headers */,
 				8F707B841EA6C5D500DEC600 /* FiniteResourceHeap.h in Headers */,
 				8F707B861EA6C5D500DEC600 /* GenericGridPartitioning.h in Headers */,
@@ -607,8 +656,10 @@
 				8F9418511FDA01DC00DADA27 /* ldo.h in Headers */,
 				8F94181A1FDA01DC00DADA27 /* lparser.h in Headers */,
 				8F707B821EA6C5D500DEC600 /* DualContour.h in Headers */,
+				8F4D189C22BC1EC400E48517 /* functions.h in Headers */,
 				8FABD39D2191207000835E06 /* TechniqueUtils.h in Headers */,
 				8F9418041FDA01DC00DADA27 /* lobject.h in Headers */,
+				8F4D189A22BC1EC400E48517 /* shunting-yard.h in Headers */,
 				8F94181D1FDA01DC00DADA27 /* luaconf.h in Headers */,
 				8F2DB6262017F894009F52AB /* LogUtil.h in Headers */,
 				8F707BAB1EA6C75C00DEC600 /* RawMaterial.h in Headers */,
@@ -635,6 +686,7 @@
 				8F707B881EA6C5D500DEC600 /* GenericQuadTree.h in Headers */,
 				8F94181F1FDA01DC00DADA27 /* lundump.h in Headers */,
 				8F2DB6232017F894009F52AB /* Log.h in Headers */,
+				8F4D189B22BC1EC400E48517 /* packToken.h in Headers */,
 				8F5DCB892023E5920022BA7E /* RenderPass.h in Headers */,
 				8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */,
 				8F2DB6172017F1DF009F52AB /* TechniqueMaterial.h in Headers */,
@@ -702,6 +754,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 8F707B521EA6C41F00DEC600;
@@ -733,10 +786,12 @@
 				8F707C7F1EA6D25700DEC600 /* GeoProcUtil.cpp in Sources */,
 				8F9418341FDA01DC00DADA27 /* lstring.c in Sources */,
 				8F707B851EA6C5D500DEC600 /* GenericGridPartitioning.cpp in Sources */,
+				8F4D188822BC1DFD00E48517 /* shunting-yard.cpp in Sources */,
 				8F9418411FDA01DC00DADA27 /* loslib.c in Sources */,
 				8F5DCB8A2023E5920022BA7E /* RenderPass.cpp in Sources */,
 				8F9418121FDA01DC00DADA27 /* lgc.c in Sources */,
 				8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */,
+				8F4D188C22BC1DFD00E48517 /* packToken.cpp in Sources */,
 				8F2DB6242017F894009F52AB /* Log.cpp in Sources */,
 				8F707B831EA6C5D500DEC600 /* FiniteResourceHeap.cpp in Sources */,
 				8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
@@ -757,6 +812,7 @@
 				8F9418281FDA01DC00DADA27 /* lstrlib.c in Sources */,
 				8F9418051FDA01DC00DADA27 /* lvm.c in Sources */,
 				8F9418521FDA01DC00DADA27 /* lstate.c in Sources */,
+				8F4D188422BC1DFD00E48517 /* containers.cpp in Sources */,
 				8F707B871EA6C5D500DEC600 /* GenericQuadTree.cpp in Sources */,
 				8F2DB6162017F1DF009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418441FDA01DC00DADA27 /* ldump.c in Sources */,
@@ -765,7 +821,9 @@
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,
 				8F94182D1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418141FDA01DC00DADA27 /* ltablib.c in Sources */,
+				8F4D188622BC1DFD00E48517 /* catch.cpp in Sources */,
 				8F9418101FDA01DC00DADA27 /* linit.c in Sources */,
+				8F4D188A22BC1DFD00E48517 /* functions.cpp in Sources */,
 				8F707BE51EA6CB0A00DEC600 /* MurmurHash2.cpp in Sources */,
 				8F9418461FDA01DC00DADA27 /* lbaselib.c in Sources */,
 				8F94182F1FDA01DC00DADA27 /* llex.c in Sources */,
@@ -795,10 +853,12 @@
 				8FA3F73D1EDD157B003EF623 /* MurmurHash3.cpp in Sources */,
 				8F9418351FDA01DC00DADA27 /* lstring.c in Sources */,
 				8FA3F73F1EDD157B003EF623 /* CPUProfileDisplay.cpp in Sources */,
+				8F4D188922BC1DFD00E48517 /* shunting-yard.cpp in Sources */,
 				8F9418421FDA01DC00DADA27 /* loslib.c in Sources */,
 				8F67C91D20291FF500C5869F /* RenderPass.cpp in Sources */,
 				8F9418131FDA01DC00DADA27 /* lgc.c in Sources */,
 				8FA3F7411EDD157B003EF623 /* GeometryAlgorithm.cpp in Sources */,
+				8F4D188D22BC1DFD00E48517 /* packToken.cpp in Sources */,
 				8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */,
 				8FA3F7431EDD157B003EF623 /* GeoProcUtil.cpp in Sources */,
 				8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
@@ -819,6 +879,7 @@
 				8F9418061FDA01DC00DADA27 /* lvm.c in Sources */,
 				8F9418531FDA01DC00DADA27 /* lstate.c in Sources */,
 				8FA3F74D1EDD157B003EF623 /* PredefinedCBLayout.cpp in Sources */,
+				8F4D188522BC1DFD00E48517 /* containers.cpp in Sources */,
 				8F9418451FDA01DC00DADA27 /* ldump.c in Sources */,
 				8F2DB61B2017F403009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418321FDA01DC00DADA27 /* lparser.c in Sources */,
@@ -827,7 +888,9 @@
 				8F94182E1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418151FDA01DC00DADA27 /* ltablib.c in Sources */,
 				8FA3F75E1EDD157B003EF623 /* IOverlayContext.cpp in Sources */,
+				8F4D188722BC1DFD00E48517 /* catch.cpp in Sources */,
 				8F9418111FDA01DC00DADA27 /* linit.c in Sources */,
+				8F4D188B22BC1DFD00E48517 /* functions.cpp in Sources */,
 				8FA3F7601EDD157B003EF623 /* DualContour.cpp in Sources */,
 				8F9418471FDA01DC00DADA27 /* lbaselib.c in Sources */,
 				8F9418301FDA01DC00DADA27 /* llex.c in Sources */,
