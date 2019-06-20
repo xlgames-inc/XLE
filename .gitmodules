@@ -4,3 +4,6 @@
 [submodule "Foreign/optional-lite"]
 	path = Foreign/optional-lite
 	url = git@github.com:martinmoene/optional-lite
+[submodule "Foreign/cparse"]
+	path = Foreign/cparse
+	url = git@github.com:djewsbury/cparse.git
