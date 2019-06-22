@@ -10,6 +10,8 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"
+#include <unordered_map>
+#include <string>
 
 namespace RenderCore { class SharedPkt; }
 namespace RenderCore { namespace Techniques
@@ -28,6 +30,7 @@ namespace RenderCore { namespace Techniques
             unsigned _arrayElementCount;
             unsigned _arrayElementStride;
             std::string _name;
+            std::string _conditions;
         };
         std::vector<Element> _elements;
         ParameterBox _defaults;
@@ -55,5 +58,22 @@ namespace RenderCore { namespace Techniques
 
         void Parse(StringSection<char> source);
         void WriteBuffer(void* dst, const ParameterBox& parameters) const;
+    };
+
+    class PredefinedCBLayoutFile
+    {
+    public:
+        std::unordered_map<std::string, std::shared_ptr<PredefinedCBLayout>> _layouts;
+
+        PredefinedCBLayoutFile(
+            StringSection<> inputData,
+            const ::Assets::DirectorySearchRules& searchRules,
+            const ::Assets::DepValPtr& depVal);
+        ~PredefinedCBLayoutFile();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+            { return _validationCallback; }
+    private:
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 }}

@@ -38,7 +38,9 @@ namespace RenderCore
             { "dword", TypeCat::UInt32 },
             { "int", TypeCat::Int32 },
             { "byte", TypeCat::UInt8 },
-            { "bool", TypeCat::Bool }
+            { "bool", TypeCat::Bool },
+
+            { "vec", TypeCat::Float }          // GLSL-style naming
             // "half", "double" not supported
         };
         for (unsigned c=0; c<dimof(baseTypes); ++c) {
