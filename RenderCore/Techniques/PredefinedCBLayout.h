@@ -40,6 +40,8 @@ namespace RenderCore { namespace Techniques
         uint64_t CalculateHash() const;
         std::vector<ConstantBufferElementDesc> MakeConstantBufferElements() const;
 
+        PredefinedCBLayout Filter(const std::unordered_map<std::string, int>& definedTokens);
+
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
         PredefinedCBLayout(StringSection<char> source, bool);

@@ -18,6 +18,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/Streams/PreprocessorInterpreter.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -434,7 +435,7 @@ namespace RenderCore { namespace Techniques
 
             // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
             // let's detect that case, and add padding as necessary
-        if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
+        if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, size) - 1, 16)) {
             cbIterator = CeilToMultiplePow2(cbIterator, 16);
         }
 
@@ -508,8 +509,7 @@ namespace RenderCore { namespace Techniques
             /**/
         }
 
-        _cbSize = cbIterator;
-        _cbSize = CeilToMultiplePow2(_cbSize, 16);
+        _cbSize = CeilToMultiplePow2(cbIterator, 16);
     }
 
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
@@ -555,6 +555,44 @@ namespace RenderCore { namespace Techniques
                 i->_hash64, AsFormat(i->_type),
                 i->_offset, i->_arrayElementCount });
         }
+        return result;
+    }
+
+    PredefinedCBLayout PredefinedCBLayout::Filter(const std::unordered_map<std::string, int>& definedTokens)
+    {
+        PredefinedCBLayout result;
+        result._validationCallback = _validationCallback;
+        unsigned cbIterator = 0;
+
+        result._elements.reserve(_elements.size());
+        for (const auto& e:_elements) {
+            if (    e._conditions.empty()
+                ||  EvaluatePreprocessorExpression(e._conditions, definedTokens)) {
+
+                result._elements.push_back(e);
+                auto& newE = *(result._elements.end()-1);
+
+                auto size = newE._type.GetSize();
+                if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, size) - 1, 16)) {
+                    cbIterator = CeilToMultiplePow2(cbIterator, 16);
+                }
+                newE._offset = cbIterator;
+
+                if (newE._arrayElementCount != 0)
+                    cbIterator += (newE._arrayElementCount-1) * newE._arrayElementStride + size;
+
+                auto defaultType = _defaults.GetParameterType(newE._hash);
+                if (defaultType._type != ImpliedTyping::TypeCat::Void) {
+                    const void* rawValue = _defaults.GetParameterRawValue(newE._hash);
+                    result._defaults.SetParameter(
+                        e._hash,
+                        MakeIteratorRange(rawValue, PtrAdd(rawValue, defaultType.GetSize())),
+                        defaultType);
+                }
+            }
+        }
+
+        result._cbSize = CeilToMultiplePow2(cbIterator, 16);
         return result;
     }
 
