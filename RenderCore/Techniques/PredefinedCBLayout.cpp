@@ -18,12 +18,10 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Conversion.h"
-// #include <regex>
-#include <stack>
 
 namespace RenderCore { namespace Techniques
 {
-    class StreamIterator
+    class Tokenizer
     {
     public:
         struct Token
@@ -33,29 +31,47 @@ namespace RenderCore { namespace Techniques
         };
 
         Token GetNextToken();
-        Token GetNextLine();
-        Token ReadUntil(const char delim[], bool negate = false);
         Token PeekNextToken();
 
         StreamLocation GetLocation() const;
         StringSection<> Remaining() const { return _input; }
 
-        // void AdvanceChars(size_t amt);
+        class PreprocessorParseContext
+        {
+        public:
+            using Expression = std::string;
+            struct Cond
+            {
+                Expression _positiveCond;
+                Expression _negativeCond;
+            };
+            std::vector<Cond> _conditionsStack;
 
-        StreamIterator(
+            Expression GetCurrentConditionString();
+
+            PreprocessorParseContext();
+            ~PreprocessorParseContext();
+        };
+        PreprocessorParseContext _preprocessorContext;
+
+        Tokenizer(
             StringSection<> input,
             unsigned lineIndex = 0, const void* lineStart = nullptr);
-        ~StreamIterator();
+        ~Tokenizer();
 
     private:
         StringSection<>     _input;
         unsigned            _lineIndex;
         const void*         _lineStart;
+        bool                _preprocValid = true;
 
         void SkipWhitespace();
-    };
+        Token ReadUntilEndOfLine();
 
-    template<typename CharType> bool IsSingleLineWhitespace(CharType chr) { return chr == ' ' || chr == '\t'; }
+        void ParsePreprocessorDirective();
+        void PreProc_SkipWhitespace();
+        auto PreProc_GetNextToken() -> Token;
+    };
 
     static bool IsIdentifierOrNumericChar(char c)
     {
@@ -66,45 +82,55 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    void StreamIterator::SkipWhitespace()
+    void Tokenizer::SkipWhitespace()
     {
-        for (;;) {
-            ReadUntil(" \t\n\r", true);
-            if ((_input.begin()+2) <= _input.end() && *_input.begin() == '/' && *(_input.begin()+1) == '/') {
-                // start of a line comment. We need to skip over it by scanning until the end of the line
-                ReadUntil("\n\r");
-                continue;   // repeat skipping whitespace on the next line
-            } else {
-                break;
-            }
-        }
-
-        /*while (_input.begin() != _input.end()) {
+        while (_input.begin() != _input.end()) {
             switch (*_input.begin()) {
+            case '/':
+                if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
+                    // read upto, but don't swallow the next newline (line extension not supported for these comments)
+                    _input._start += 2;
+                    ReadUntilEndOfLine();
+                    break;
+                } else
+                    return;
+
             case ' ':
             case '\t':
                 ++_input._start;
-                continue;
+                break;
 
             case '\r':  // (could be an independant new line, or /r/n combo)
                 ++_input._start;
                 if (_input.begin() != _input.end() &&  *_input.begin() == '\n')
                     ++_input._start;
                 ++_lineIndex; _lineStart = _input.begin();
-                continue;
+                _preprocValid = true;
+                break;
 
             case '\n':  // (independant new line. A following /r will be treated as another new line)
                 ++_input._start;
                 ++_lineIndex; _lineStart = _input.begin();
-                continue;
+                _preprocValid = true;
+                break;
+
+            case '#':
+                if (!_preprocValid)
+                    return;
+
+                ++_input._start;
+                ParsePreprocessorDirective();
+                break;
 
             default:
+                // something other than whitespace; time to get out
+                // (we also get here on a newline char)
                 return;
             }
-        }*/
+        }
     }
 
-    auto StreamIterator::GetNextToken() -> Token
+    auto Tokenizer::GetNextToken() -> Token
     {
         SkipWhitespace();
 
@@ -118,80 +144,173 @@ namespace RenderCore { namespace Techniques
             } else {
                 ++_input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
             }
+            _preprocValid = false;      // can't start a preprocessor directive if there is any non-whitespace content prior on the same line
         }
 
         return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
     }
 
-    auto StreamIterator::PeekNextToken() -> Token
+    auto Tokenizer::PeekNextToken() -> Token
     {
-        // somewhat dodgy implementation of this; but it works
+        // We do the destructive "SkipWhitespace" -- including parsing
+        // any preprocessor directives before the next token, etc. This is a little more
+        // efficient because PeekNextToken is usually followed by a GetNextToken, so we avoid having
+        // to do this twice.
+        SkipWhitespace();
 
-        auto input = _input;
-        auto lineIndex = _lineIndex;
-        auto lineStart = _lineStart;
+        auto startLocation = GetLocation();
 
-        auto next = GetNextToken();
+        auto startOfToken = _input.begin();
+        auto iterator = startOfToken;
+        if (iterator != _input.end()) {
+            if (IsIdentifierOrNumericChar(*iterator)) {
+                while ((iterator != _input.end()) && IsIdentifierOrNumericChar(*iterator))
+                    ++iterator;
+            } else {
+                ++iterator; // non identifier tokens are always single chars (ie, for some kind of operator)
+            }
+        }
 
-        _input = input;
-        _lineIndex = lineIndex;
-        _lineStart = lineStart;
-
-        return next;
+        auto endLocation = startLocation;
+        endLocation._charIndex += iterator-startOfToken;
+        return Token { { startOfToken, iterator }, startLocation, endLocation };
     }
 
-    auto StreamIterator::GetNextLine() -> Token
+    void Tokenizer::PreProc_SkipWhitespace()
     {
-        auto res = ReadUntil("\n\r");
-        ReadUntil("\n\r", true);
-        return res;
+        while (_input.begin() != _input.end()) {
+            switch (*_input.begin()) {
+            case '/':
+                if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
+                    // read upto, but don't swallow the next newline (line extension not supported for these comments)s
+                    _input._start += 2;
+                    ReadUntilEndOfLine();
+                }
+                return;
+
+            case ' ':
+            case '\t':
+                ++_input._start;
+                continue;       // back to top of the loop
+
+            default:
+                // something other than whitespace; time to get out
+                // (we also get here on a newline char)
+                return;
+            }
+        }
+
     }
 
-    auto StreamIterator::ReadUntil(const char delim[], bool negate) -> Token
+    auto Tokenizer::PreProc_GetNextToken() -> Token
+    {
+        // we need a special implementation for this for reading the preprocessor tokens themselves,
+        // because the rules are slightly different (for example, we don't want to start parsing
+        // preprocessor tokens recursively)
+        PreProc_SkipWhitespace();
+
+        auto startLocation = GetLocation();
+
+        auto startOfToken = _input.begin();
+        if (_input.begin() != _input.end()) {
+            if (IsIdentifierOrNumericChar(*_input.begin())) {
+                while ((_input.begin() != _input.end()) && IsIdentifierOrNumericChar(*_input.begin()))
+                    ++_input._start;
+            } else {
+                if (*_input.begin() == '\r' || *_input.begin() == '\n')
+                    return {};      // hit newline, no more tokens
+                ++_input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
+            }
+        }
+
+        return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
+    }
+
+    void Tokenizer::ParsePreprocessorDirective()
+    {
+        //
+        // There are only a few options here, after the hash:
+        //      1) define, undef, include, line, error, pragma
+        //      2) if, ifdef, ifndef
+        //      3) elif, else, endif
+        //
+        //  (not case sensitive)
+        //
+
+        auto directive = PreProc_GetNextToken();
+        if (    XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef") || XlEqStringI(directive._value, "include")
+            ||  XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
+
+            Throw(FormatException(StringMeld<256>() << "Unexpected preprocessor directive: " << directive._value << ". This directive is not supported.", directive._start));
+
+        } else if (XlEqStringI(directive._value, "if")) {
+
+            // the rest of the line should be some preprocessor condition expression
+            PreProc_SkipWhitespace();
+            auto remainingLine = ReadUntilEndOfLine();
+            _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString()});
+
+        } else if (XlEqStringI(directive._value, "ifdef")) {
+
+            auto symbol = PreProc_GetNextToken();
+            if (symbol._value.IsEmpty())
+                Throw(FormatException("Expected token in #ifdef", directive._start));
+
+            _preprocessorContext._conditionsStack.push_back({"defined(" + symbol._value.AsString() + ")"});
+
+        } else if (XlEqStringI(directive._value, "ifndef")) {
+
+            auto symbol = PreProc_GetNextToken();
+            if (symbol._value.IsEmpty())
+                Throw(FormatException("Expected token in #ifndef", directive._start));
+
+            _preprocessorContext._conditionsStack.push_back({"!defined(" + symbol._value.AsString() + ")"});
+
+        } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
+
+            if (_preprocessorContext._conditionsStack.empty())
+                Throw(FormatException(
+                    StringMeld<256>() << "endif/else/elif when there has been no if",
+                    directive._start));
+
+            auto prevCondition = *(_preprocessorContext._conditionsStack.end()-1);
+            _preprocessorContext._conditionsStack.erase(_preprocessorContext._conditionsStack.end()-1);
+
+            if (XlEqStringI(directive._value, "elif")) {
+                auto negCondition = prevCondition._positiveCond;
+                if (!prevCondition._negativeCond.empty())
+                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
+                _preprocessorContext._conditionsStack.push_back({Remaining().AsString(), negCondition});
+            } else if (XlEqStringI(directive._value, "else")) {
+                auto negCondition = prevCondition._positiveCond;
+                if (!prevCondition._negativeCond.empty())
+                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
+                _preprocessorContext._conditionsStack.push_back({"1", prevCondition._positiveCond});
+            }
+
+        } else {
+
+            Throw(FormatException(
+                StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
+                directive._start));
+
+        }
+
+    }
+
+    auto Tokenizer::ReadUntilEndOfLine() -> Token
     {
         auto startLocation = GetLocation();
         auto startOfToken = _input.begin();
 
-        while (_input.begin() != _input.end()) {
-            bool isDelim = strchr(delim, *_input.begin()) != nullptr;
-            if (isDelim != negate)
-                break;
-
-            switch (*_input.begin()) {
-            case '\r':  // (could be an independant new line, or /r/n combo)
-                ++_input._start;
-                if (_input.begin() != _input.end() &&  *_input.begin() == '\n')
-                    ++_input._start;
-                ++_lineIndex; _lineStart = _input.begin();
-                break;
-
-            case '\n':  // (independant new line. A following /r will be treated as another new line)
-                ++_input._start;
-                ++_lineIndex; _lineStart = _input.begin();
-                break;
-
-            default:
-                ++_input._start;
-                break;
-            }
+        while (_input.begin() != _input.end() && *_input.begin() != '\r' && *_input.begin() != '\n') {
+            ++_input._start;
         }
 
         return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
     }
 
-    /*void StreamIterator::AdvanceChars(size_t amt)
-    {
-        auto* newInputStart = std::min(_input._start + amt, _input._end);
-        #if defined(_DEBUG)     // ensure we're not skipping over a newline in this way -- because the line index information won't be updated
-            while (_input._start != newInputStart) {
-                assert(*_input._start != '\r' && *_input._start != '\n');
-                ++_input._start;
-            }
-        #endif
-        _input._start = newInputStart;
-    }*/
-
-    StreamLocation StreamIterator::GetLocation() const
+    StreamLocation Tokenizer::GetLocation() const
     {
         StreamLocation result;
         result._charIndex = 1 + unsigned(size_t(_input.begin()) - size_t(_lineStart));
@@ -199,7 +318,7 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
-    StreamIterator::StreamIterator(
+    Tokenizer::Tokenizer(
         StringSection<> input,
         unsigned lineIndex, const void* lineStart)
     {
@@ -210,9 +329,28 @@ namespace RenderCore { namespace Techniques
             _lineStart = input.begin();
     }
 
-    StreamIterator::~StreamIterator()
+    Tokenizer::~Tokenizer()
     {
     }
+
+    auto Tokenizer::PreprocessorParseContext::GetCurrentConditionString() -> Expression
+    {
+        Expression result;
+        for (auto i=_conditionsStack.rbegin(); i!=_conditionsStack.rend(); ++i) {
+            if (!i->_negativeCond.empty()) {
+                if (!result.empty()) result += " && ";
+                result += "!(" + i->_negativeCond + ")";
+            }
+            if (!i->_positiveCond.empty()) {
+                if (!result.empty()) result += " && ";
+                result += "(" + i->_positiveCond + ")";
+            }
+        }
+        return result;
+    }
+
+    Tokenizer::PreprocessorParseContext::PreprocessorParseContext() {}
+    Tokenizer::PreprocessorParseContext::~PreprocessorParseContext() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -254,143 +392,117 @@ namespace RenderCore { namespace Techniques
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
     }
 
-    static bool ParseStatement(PredefinedCBLayout& cbLayout, StreamIterator& streamIterator, unsigned& cbIterator)
+    static bool ParseStatement(PredefinedCBLayout& cbLayout, Tokenizer& streamIterator, unsigned& cbIterator)
     {
-        // std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:\[(\d*)\])?\s*(?:=\s*([^;]*))?;.*)--");
+        auto type = streamIterator.GetNextToken();
+        if (type._value.IsEmpty())
+            return false;
 
+        auto cond = streamIterator._preprocessorContext.GetCurrentConditionString();
 
-            /*
-            while (iterator < end && (*iterator == '\n' || *iterator == '\r' || *iterator == ' '|| *iterator == '\t')) ++iterator;
-            const char* lineStart = iterator;
-            if (lineStart >= end) break;
+        auto name = streamIterator.GetNextToken();
+        if (name._value.IsEmpty())
+            Throw(FormatException("Expecting variable name", name._start));
 
-            while (iterator < end && *iterator != '\n' && *iterator != '\r') ++iterator;
+        StringSection<> arrayCount;
+        if (XlEqString(streamIterator.PeekNextToken()._value, "[")) {
+            streamIterator.GetNextToken();      // skip the one we peeked
 
-                // double slash at the start of a line means ignore the reset of the line
-            if (*lineStart == '/' && (lineStart+1) < iterator && *(lineStart+1) == '/')
-                continue;
-            */
+            auto count = streamIterator.GetNextToken();
+            if (count._value.IsEmpty() || XlEqString(count._value, "]"))
+                Throw(FormatException("Expecting array count", count._start));
 
-            auto type = streamIterator.GetNextToken();
-            if (type._value.IsEmpty())
-                return false;
+            arrayCount = count._value;
+            auto token = streamIterator.GetNextToken();
+            if (!XlEqString(token._value, "]"))
+                Throw(FormatException("Expecting closing array brace", token._start));
+        }
 
-            auto name = streamIterator.GetNextToken();
-            if (name._value.IsEmpty())
-                Throw(FormatException("Expecting variable name", name._start));
+        PredefinedCBLayout::Element e;
+        e._name = name._value.AsString();
+        e._hash = ParameterBox::MakeParameterNameHash(e._name);
+        e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
+        e._type = ShaderLangTypeNameAsTypeDesc(type._value);
+        e._conditions = cond;
 
-            StringSection<> arrayCount;
-            if (XlEqString(streamIterator.PeekNextToken()._value, "[")) {
-                streamIterator.GetNextToken();      // skip the one we peeked
+        auto size = e._type.GetSize();
+        if (!size) {
+            Throw(FormatException(
+                StringMeld<256>() << "Problem parsing type (" << type._value << ") in PredefinedCBLayout. Type size is: " << size,
+                type._start));
+        }
 
-                auto count = streamIterator.GetNextToken();
-                if (count._value.IsEmpty() || XlEqString(count._value, "]"))
-                    Throw(FormatException("Expecting array count", count._start));
+            // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
+            // let's detect that case, and add padding as necessary
+        if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
+            cbIterator = CeilToMultiplePow2(cbIterator, 16);
+        }
 
-                arrayCount = count._value;
-                auto token = streamIterator.GetNextToken();
-                if (!XlEqString(token._value, "]"))
-                    Throw(FormatException("Expecting closing array brace", token._start));
+        unsigned arrayElementCount = 1;
+        if (!arrayCount.IsEmpty()) {
+            arrayElementCount = Conversion::Convert<unsigned>(arrayCount);
+        }
+
+        e._offset = cbIterator;
+        e._arrayElementCount = arrayElementCount;
+        e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
+        if (arrayElementCount != 0)
+            cbIterator += (arrayElementCount-1) * e._arrayElementStride + size;
+        cbLayout._elements.push_back(e);
+
+        if (XlEqString(streamIterator.PeekNextToken()._value, "=")) {
+            auto equalsToken = streamIterator.GetNextToken();      // skip the one we peeked
+
+            if (!arrayCount.IsEmpty())
+                Throw(FormatException(
+                    "Attempting to provide an default for an array type in PredefinedCBLayout (this isn't supported)",
+                    equalsToken._start));
+
+            // We should read until we hit a ';'
+            // (note that the whitespace between tokens will be removed by this method)
+            auto startLocation = streamIterator.GetLocation();
+            std::string value;
+            for (;;) {
+                auto nextToken = streamIterator.GetNextToken();
+                if (nextToken._value.IsEmpty() || XlEqString(nextToken._value, ";"))
+                    break;
+                value.insert(value.end(), nextToken._value.begin(), nextToken._value.end());
             }
 
-            /*
-            std::match_results<const char*> match;
-            bool a = std::regex_match(lineStart, iterator, match, parseStatement);
-            if (a && match.size() >= 4) {
-            */
+            uint8 buffer0[256], buffer1[256];
+            auto defaultType = ImpliedTyping::Parse(
+                AsPointer(value.begin()), AsPointer(value.end()),
+                buffer0, dimof(buffer0));
 
-                PredefinedCBLayout::Element e;
-                e._name = name._value.AsString();
-                e._hash = ParameterBox::MakeParameterNameHash(e._name);
-                e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
-                e._type = ShaderLangTypeNameAsTypeDesc(type._value);
-
-                auto size = e._type.GetSize();
-                if (!size) {
-                    Throw(FormatException(
-                        StringMeld<256>() << "Problem parsing type (" << type._value << ") in PredefinedCBLayout. Type size is: " << size,
-                        type._start));
-                }
-
-                    // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
-                    // let's detect that case, and add padding as necessary
-                if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
-                    cbIterator = CeilToMultiplePow2(cbIterator, 16);
-                }
-
-                unsigned arrayElementCount = 1;
-                if (!arrayCount.IsEmpty()) {
-                    arrayElementCount = Conversion::Convert<unsigned>(arrayCount);
-                }
-
-                e._offset = cbIterator;
-                e._arrayElementCount = arrayElementCount;
-                e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
-                if (arrayElementCount != 0)
-                    cbIterator += (arrayElementCount-1) * e._arrayElementStride + size;
-                cbLayout._elements.push_back(e);
-
-                if (XlEqString(streamIterator.PeekNextToken()._value, "=")) {
-                    auto equalsToken = streamIterator.GetNextToken();      // skip the one we peeked
-
-                    if (!arrayCount.IsEmpty())
-                        Throw(FormatException(
-                            "Attempting to provide an default for an array type in PredefinedCBLayout (this isn't supported)",
-                            equalsToken._start));
-
-                    // We should read until we hit a ';'
-                    // (note that the whitespace between tokens will be removed by this method)
-                    auto startLocation = streamIterator.GetLocation();
-                    std::string value;
-                    for (;;) {
-                        auto nextToken = streamIterator.GetNextToken();
-                        if (nextToken._value.IsEmpty() || XlEqString(nextToken._value, ";"))
-                            break;
-                        value.insert(value.end(), nextToken._value.begin(), nextToken._value.end());
-                    }
-
-                    uint8 buffer0[256], buffer1[256];
-                    auto defaultType = ImpliedTyping::Parse(
-                        AsPointer(value.begin()), AsPointer(value.end()),
-                        buffer0, dimof(buffer0));
-
-                    if (!(defaultType == e._type)) {
-                            //  The initialiser isn't exactly the same type as the
-                            //  defined variable. Let's try a casting operation.
-                            //  Sometimes we can get int defaults for floats variables, etc.
-                        bool castSuccess = ImpliedTyping::Cast(
-                            buffer1, dimof(buffer1), e._type,
-                            buffer0, defaultType);
-                        if (castSuccess) {
-                            cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer1, e._type);
-                        } else {
-                            Throw(FormatException(
-                                "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: ",
-                                startLocation));
-                        }
-                    } else {
-                        cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer0, defaultType);
-                    }
+            if (!(defaultType == e._type)) {
+                    //  The initialiser isn't exactly the same type as the
+                    //  defined variable. Let's try a casting operation.
+                    //  Sometimes we can get int defaults for floats variables, etc.
+                bool castSuccess = ImpliedTyping::Cast(
+                    buffer1, dimof(buffer1), e._type,
+                    buffer0, defaultType);
+                if (castSuccess) {
+                    cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer1, e._type);
                 } else {
-                    auto token = streamIterator.GetNextToken();
-                    if (!XlEqString(token._value, ";"))
-                        Throw(FormatException("Expecting ';' to finish statement", token._start));
+                    Throw(FormatException(
+                        "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: ",
+                        startLocation));
                 }
-
-            /*
             } else {
-                Log(Warning) << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
+                cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer0, defaultType);
             }
-            */
-
-        // }
+        } else {
+            auto token = streamIterator.GetNextToken();
+            if (!XlEqString(token._value, ";"))
+                Throw(FormatException("Expecting ';' to finish statement", token._start));
+        }
 
         return true;
     }
 
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
-        StreamIterator si { source };
+        Tokenizer si { source };
         unsigned cbIterator = 0;
         while (ParseStatement(*this, si, cbIterator)) {
             /**/
@@ -451,153 +563,6 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PreprocessorParseContext
-    {
-    public:
-        using Expression = std::string;
-        struct Cond
-        {
-            Expression _positiveCond;
-            Expression _negativeCond;
-        };
-        std::stack<Cond> _conditionsStack;
-
-        bool ParseLine(StreamIterator& iterator);
-
-        PreprocessorParseContext();
-        ~PreprocessorParseContext();
-    };
-
-    bool PreprocessorParseContext::ParseLine(StreamIterator& iterator)
-    {
-        //
-        // There are only a few options here, after the hash:
-        //      1) define, undef, include, line, error, pragma
-        //      2) if, ifdef, ifndef
-        //      3) elif, else, endif
-        //
-        //  (not case sensitive)
-        //
-
-        auto directive = iterator.GetNextToken();
-        if (    XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef") || XlEqStringI(directive._value, "include")
-            ||  XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
-
-            Throw(::Exceptions::BasicLabel("Unexpected preprocessor directive: %s. This directive is not supported.", directive._value.AsString().c_str()));
-
-        } else if (XlEqStringI(directive._value, "if")) {
-
-            // the rest of the line should be some preprocessor condition expression
-            _conditionsStack.push({iterator.Remaining().AsString()});
-
-        } else if (XlEqStringI(directive._value, "ifdef")) {
-
-            auto symbol = iterator.GetNextToken();
-            if (symbol._value.IsEmpty())
-                Throw(FormatException("Expected token in #ifdef", directive._start));
-
-            _conditionsStack.push({"defined(" + symbol._value.AsString() + ")"});
-
-        } else if (XlEqStringI(directive._value, "ifndef")) {
-
-            auto symbol = iterator.GetNextToken();
-            if (symbol._value.IsEmpty())
-                Throw(FormatException("Expected token in #ifndef", directive._start));
-
-            _conditionsStack.push({"!defined(" + symbol._value.AsString() + ")"});
-
-        } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
-
-            auto prevCondition = _conditionsStack.top();
-            _conditionsStack.pop();
-
-            if (XlEqStringI(directive._value, "elif")) {
-                auto negCondition = prevCondition._positiveCond;
-                if (!prevCondition._negativeCond.empty())
-                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
-                _conditionsStack.push({iterator.Remaining().AsString(), negCondition});
-            } else if (XlEqStringI(directive._value, "else")) {
-                auto negCondition = prevCondition._positiveCond;
-                if (!prevCondition._negativeCond.empty())
-                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
-                _conditionsStack.push({"1", prevCondition._positiveCond});
-            }
-
-        } else {
-
-            Throw(FormatException(
-                StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
-                directive._start));
-
-        }
-
-        return true;
-    }
-
-    PreprocessorParseContext::PreprocessorParseContext() {}
-    PreprocessorParseContext::~PreprocessorParseContext() {}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    struct WorkingLayoutSet
-    {
-        std::unordered_map<std::string, std::shared_ptr<PredefinedCBLayout>> _layouts;
-
-        std::string _currentLayoutName;
-        std::shared_ptr<PredefinedCBLayout> _currentLayout;
-        unsigned _currentLayoutCBIterator = 0;
-
-        void ParseFragment(StreamIterator& iterator, const PreprocessorParseContext& preprocParseContext)
-        {
-            for (;;) {
-                auto next = iterator.PeekNextToken();
-                if (next._value.IsEmpty())
-                    break;
-
-                if (_currentLayoutName.empty()) {
-                    auto token = iterator.GetNextToken();
-                    if (!XlEqString(token._value, "struct"))
-                        Throw(FormatException(StringMeld<256>() << "Expecting 'struct' keyword, but got " << token._value, token._start));
-
-                    auto layoutName = iterator.GetNextToken();
-                    if (layoutName._value.IsEmpty())
-                        Throw(FormatException("Expecting identifier after struct keyword", token._start));
-
-                    _currentLayoutName = layoutName._value.AsString();
-
-                    token = iterator.GetNextToken();
-                    if (!XlEqString(token._value, "{"))
-                        Throw(FormatException(StringMeld<256>() << "Expecting '{', but got " << token._value, token._start));
-                }
-
-                if (XlEqString(next._value, "}")) {
-                    iterator.GetNextToken();
-                    auto token = iterator.GetNextToken();
-                    if (!XlEqString(token._value, ";"))
-                        Throw(FormatException(StringMeld<256>() << "Expecting ; after }, but got " << token._value, token._start));
-
-                    CompleteCurrentLayout();
-                    continue;
-                }
-
-                if (!_currentLayout)
-                    _currentLayout = std::make_shared<PredefinedCBLayout>();
-                ParseStatement(*_currentLayout, iterator, _currentLayoutCBIterator);
-            }
-        }
-
-        void CompleteCurrentLayout()
-        {
-            if (!_currentLayout) return;
-
-            _currentLayout->_cbSize = CeilToMultiplePow2(_currentLayoutCBIterator, 16);
-            _layouts.insert(std::make_pair(_currentLayoutName, std::move(_currentLayout)));
-            _currentLayoutName = {};
-            _currentLayout = nullptr;
-            _currentLayoutCBIterator = 0;
-        }
-    };
-
     PredefinedCBLayoutFile::PredefinedCBLayoutFile(
         StringSection<> inputData,
         const ::Assets::DirectorySearchRules& searchRules,
@@ -615,46 +580,56 @@ namespace RenderCore { namespace Techniques
         //  by whitespace (same as C/CPP)
         //
 
-        StreamIterator iterator(inputData);
-        StreamIterator::Token pendingLayoutData;
-        PreprocessorParseContext preprocParseContext;
-        WorkingLayoutSet workingLayoutSet;
+        Tokenizer iterator(inputData);
+
+        std::string currentLayoutName;
+        std::shared_ptr<PredefinedCBLayout> currentLayout;
+        unsigned currentLayoutCBIterator = 0;
+
         for (;;) {
-            if (iterator.Remaining().begin() == iterator.Remaining().end())
+            auto next = iterator.PeekNextToken();
+            if (next._value.IsEmpty())
                 break;
 
-            if (XlEqString(iterator.PeekNextToken()._value, "#")) {
+            if (currentLayoutName.empty()) {
+                auto token = iterator.GetNextToken();
+                if (!XlEqString(token._value, "struct"))
+                    Throw(FormatException(StringMeld<256>() << "Expecting 'struct' keyword, but got " << token._value, token._start));
 
-                // First; complete any pending layout data (because we need to use the #ifdef
-                // information that is currently in the PreprocessorParseContext)
-                if (!pendingLayoutData._value.IsEmpty()) {
-                    StreamIterator subIterator { pendingLayoutData._value, pendingLayoutData._start._lineIndex - 1, pendingLayoutData._value.begin() - (pendingLayoutData._start._charIndex - 1) };
-                    workingLayoutSet.ParseFragment(subIterator, preprocParseContext);
-                    pendingLayoutData._value = {};
-                }
+                auto layoutName = iterator.GetNextToken();
+                if (layoutName._value.IsEmpty())
+                    Throw(FormatException("Expecting identifier after struct keyword", token._start));
 
-                iterator.GetNextToken();  // skip over #
-                auto line = iterator.GetNextLine();
-                StreamIterator subIterator { line._value, line._start._lineIndex - 1, line._value.begin() - (line._start._charIndex - 1) };
-                preprocParseContext.ParseLine(subIterator);
-            } else {
-                auto line = iterator.GetNextLine();
-                if (!pendingLayoutData._value.IsEmpty()) {
-                    pendingLayoutData._value._end = line._value._end;
-                    pendingLayoutData._end = line._end;
-                } else {
-                    pendingLayoutData = line;
-                }
+                currentLayoutName = layoutName._value.AsString();
+
+                token = iterator.GetNextToken();
+                if (!XlEqString(token._value, "{"))
+                    Throw(FormatException(StringMeld<256>() << "Expecting '{', but got " << token._value, token._start));
             }
+
+            if (XlEqString(next._value, "}")) {
+                iterator.GetNextToken();
+                auto token = iterator.GetNextToken();
+                if (!XlEqString(token._value, ";"))
+                    Throw(FormatException(StringMeld<256>() << "Expecting ; after }, but got " << token._value, token._start));
+
+                currentLayout->_cbSize = CeilToMultiplePow2(currentLayoutCBIterator, 16);
+                _layouts.insert(std::make_pair(currentLayoutName, std::move(currentLayout)));
+                currentLayoutName = {};
+                currentLayout = nullptr;
+                currentLayoutCBIterator = 0;
+                continue;
+            }
+
+            if (!currentLayout)
+                currentLayout = std::make_shared<PredefinedCBLayout>();
+            ParseStatement(*currentLayout, iterator, currentLayoutCBIterator);
         }
 
-        if (!pendingLayoutData._value.IsEmpty()) {
-            StreamIterator subIterator { pendingLayoutData._value, pendingLayoutData._start._lineIndex - 1, pendingLayoutData._value.begin() - (pendingLayoutData._start._charIndex - 1) };
-            workingLayoutSet.ParseFragment(subIterator, preprocParseContext);
-            pendingLayoutData._value = {};
+        if (currentLayout) {
+            currentLayout->_cbSize = CeilToMultiplePow2(currentLayoutCBIterator, 16);
+            _layouts.insert(std::make_pair(currentLayoutName, std::move(currentLayout)));
         }
-
-        workingLayoutSet.CompleteCurrentLayout();
     }
 
     PredefinedCBLayoutFile::~PredefinedCBLayoutFile()
