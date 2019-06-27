@@ -73,6 +73,40 @@ namespace RenderCore
 
         return TypeDesc(TypeCat::Void, 0);
     }
+
+    std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type)
+    {
+        const char* baseName = nullptr;
+        using namespace ImpliedTyping;
+        switch (type._type) {
+        case TypeCat::Bool: baseName = "bool"; break;
+        case TypeCat::Int8: baseName = "int"; break;
+        case TypeCat::UInt8: baseName = "byte"; break;
+        case TypeCat::Int16: baseName = "int"; break;
+        case TypeCat::UInt16: baseName = "uint"; break;
+        case TypeCat::Int32: baseName = "int"; break;
+        case TypeCat::UInt32: baseName = "uint"; break;
+        case TypeCat::Int64: baseName = "uint"; break;
+        case TypeCat::UInt64: baseName = "uint"; break;
+        case TypeCat::Float: baseName = "float"; break;
+        case TypeCat::Double: baseName = "float"; break;
+        default:
+        case TypeCat::Void: return "";
+        }
+
+        if (type._typeHint == TypeHint::Matrix) {
+            if (type._arrayCount == 16)
+                return baseName + std::string("4x4");
+            if (type._arrayCount == 12)
+                return baseName + std::string("3x4");
+            if (type._arrayCount == 9)
+                return baseName + std::string("3x3");
+        }
+
+        if (type._arrayCount <= 1)
+            return baseName;
+        return baseName + std::to_string(type._arrayCount);
+    }
 }
 
 
