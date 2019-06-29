@@ -8,7 +8,7 @@ file(GLOB ProfilingSrc "Profiling/*.cpp")
 file(GLOB MetaSrc "Meta/*.cpp")
 if (WIN32)
     file(GLOB WinAPISrc "WinAPI/*.cpp" "Streams/WinAPI/*.cpp" "Threading/WinAPI/*.cpp")
-else()
+elseif (NOT APPLE)
     file(GLOB LinuxSrc "Linux/*.cpp" "Streams/Linux/*.cpp")
 endif()
 

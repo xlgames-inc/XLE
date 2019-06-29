@@ -12,7 +12,15 @@ set(Src
     "UniformsStream.cpp"
     "Version.cpp"
     )
-set(Src "${Src}" "OpenGLES/Device_EGL.cpp" "OpenGLES/EGLUtils.cpp")
+if (APPLE)
+    if (UNIX)
+        set(Src "${Src}" "OpenGLES/Device_CGL.mm") # macos
+    else()
+        set(Src "${Src}" "OpenGLES/Device_EAGL.mm") # ios
+    endif()
+else()
+    set(Src "${Src}" "OpenGLES/Device_EGL.cpp" "OpenGLES/EGLUtils.cpp") # win32, android, linux
+endif()
 set(Src
     "${Src}"
     "OpenGLES/Metal/Buffer.cpp"
