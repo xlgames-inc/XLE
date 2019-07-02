@@ -13,6 +13,7 @@
 #include "State.h"
 #include "Resource.h"
 #include "DeviceContext.h"
+#include "GPUSyncedAllocator.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -433,28 +434,41 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgramCapturedState
     {
     public:
-        struct CB
+        struct Structs
         {
             uint64_t _cbNameHash;
             uint64_t _boundContents;
             unsigned _deviceContextCaptureGUID;
         };
-        std::vector<CB> _cbs;
+        std::vector<Structs> _structs;
+
+        struct UniformBuffers
+        {
+            uint64_t _cbNameHash;
+            unsigned _boundBuffer;
+            unsigned _deviceContextCaptureGUID;
+        };
+        std::vector<UniformBuffers> _uniformBuffers;
 
         unsigned GetCBIndex(uint64_t hashName)
         {
             auto i = std::find_if(
-                _cbs.begin(), _cbs.end(),
-                [hashName](const CB& cb) { return cb._cbNameHash == hashName; });
-            if (i == _cbs.end()) return ~0u;
-            return (unsigned)std::distance(_cbs.begin(), i);
+                _structs.begin(), _structs.end(),
+                [hashName](const Structs& cb) { return cb._cbNameHash == hashName; });
+            if (i == _structs.end()) return ~0u;
+            return (unsigned)std::distance(_structs.begin(), i);
         }
 
         ShaderProgramCapturedState(const ShaderIntrospection& introspection)
         {
-            _cbs.reserve(introspection.GetStructs().size());
+            _structs.reserve(introspection.GetStructs().size());
             for (const auto&s:introspection.GetStructs()) {
-                _cbs.push_back(CB{s.first, 0, 0});
+                _structs.push_back(Structs{s.first, 0, 0});
+            }
+
+            _uniformBuffers.reserve(introspection.GetUniformBlocks().size());
+            for (const auto&s:introspection.GetUniformBlocks()) {
+                _uniformBuffers.push_back(UniformBuffers{s.first, 0, 0});
             }
         }
     };
@@ -481,8 +495,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& pkt = cbv._packet;
             if (pkt.size() != 0) {
                 auto hash = pkt.GetHash();
-                assert(cb._capturedStateIndex < _capturedState->_cbs.size());
-                auto& capturedState = _capturedState->_cbs[cb._capturedStateIndex];
+                assert(cb._capturedStateIndex < _capturedState->_structs.size());
+                auto& capturedState = _capturedState->_structs[cb._capturedStateIndex];
                 bool redundantSet = false;
                 if (hash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
                     redundantSet = capturedState._boundContents == hash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
@@ -511,7 +525,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& sampler = *(SamplerState*)stream._samplers[srv._slot];
 
             if (res.GetResource()) {
-                
                 if (capture) {
                     if (capture->_activeTextureIndex != srv._textureUnit) {
                         glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
@@ -530,6 +543,58 @@ namespace RenderCore { namespace Metal_OpenGLES
                 #endif
             }
         }
+
+        #if defined(GL_ES_VERSION_3_0)
+            for (const auto&uniformBuffer:_uniformBuffer) {
+                if (uniformBuffer._stream != streamIdx) continue;
+                assert(uniformBuffer._slot < stream._constantBuffers.size());
+
+                static DynamicBuffer buffer(
+                    RenderCore::LinearBufferDesc::Create(128 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true);
+
+                const auto& cbv = stream._constantBuffers[uniformBuffer._slot];
+                const auto& pkt = cbv._packet;
+                if (pkt.size() != 0) {
+                    unsigned offset = buffer.Write(context, pkt.AsIteratorRange());
+                    glBindBufferRange(
+                        GL_UNIFORM_BUFFER,
+                        uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
+                        buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
+                        offset, pkt.size());
+                } else {
+                    assert(((IResource*)cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
+                    auto* res = checked_cast<const Resource*>(cbv._prebuiltBuffer);
+
+                    assert(uniformBuffer._uniformBlockIdx < _capturedState->_uniformBuffers.size());
+                    auto& capturedState = _capturedState->_uniformBuffers[uniformBuffer._uniformBlockIdx];
+
+                    if (!res->GetConstantBuffer().empty()) {
+
+                        // note -- we don't do redundant change checking in this case. The wrapping
+                        // behaviour in the DynamicBuffer class makes it more difficult -- because
+                        // we can overwrite the part of the buffer that was previously bound and
+                        // thereby mark some updates as incorrectly redundant.
+
+                        unsigned offset = buffer.Write(context, res->GetConstantBuffer());
+                        glBindBufferRange(
+                            GL_UNIFORM_BUFFER,
+                            uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
+                            buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
+                            offset, res->GetConstantBuffer().size());
+
+                    } else {
+                        auto glHandle = res->GetBuffer()->AsRawGLHandle();
+                        if (    capturedState._boundBuffer != glHandle
+                            ||  capturedState._deviceContextCaptureGUID != context.GetCapturedStates()->_captureGUID) {
+
+                            glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
+                            capturedState._boundBuffer = res->GetBuffer()->AsRawGLHandle();
+                            capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                        }
+                    }
+                }
+            }
+        #endif
 
         // Commit changes to texture uniforms
         // This must be done separately to the texture binding, because when using array uniforms,
@@ -641,7 +706,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& interf = *inputInterface[s];
             for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
                 const auto& binding = interf._cbBindings[slot];
-                if (binding._elements.empty()) continue;
 
                 // Ensure it's not shadowed by bindings from streams with higher index
                 // Note that we don't enforce this for bindings to global uniforms. This allows the client to
@@ -655,12 +719,26 @@ namespace RenderCore { namespace Metal_OpenGLES
                     #endif
                 }
 
-                auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
-                if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup),
-                        _capturedState->GetCBIndex(binding._hashName)
+                // Try binding either as a command group or as a uniform block
+                if (!binding._elements.empty()) {
+                    auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
+                    if (!cmdGroup._commands.empty()) {
+                        _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup),
+                            _capturedState->GetCBIndex(binding._hashName)
+                            #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                , cmdGroup._name
+                            #endif
+                            });
+                        _boundUniformBufferSlots[s] |= (1ull << uint64_t(slot));
+                    }
+                }
+
+                auto block = introspection.FindUniformBlock(binding._hashName);
+                if (block._blockIdx != ~0u) {
+                    _uniformBuffer.emplace_back(UniformBuffer{
+                        (unsigned)s, slot, block._blockIdx
                         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
-                            , cmdGroup._name
+                            , block._name
                         #endif
                         });
                     _boundUniformBufferSlots[s] |= (1ull << uint64_t(slot));
@@ -789,6 +867,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
     : _cbs(std::move(moveFrom._cbs))
     , _srvs(std::move(moveFrom._srvs))
+    , _uniformBuffer(std::move(moveFrom._uniformBuffer))
     , _textureAssignmentCommands(std::move(moveFrom._textureAssignmentCommands))
     , _textureAssignmentByteData(std::move(moveFrom._textureAssignmentByteData))
     #if defined(_DEBUG)
@@ -808,6 +887,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         _cbs = std::move(moveFrom._cbs);
         _srvs = std::move(moveFrom._srvs);
+        _uniformBuffer = std::move(moveFrom._uniformBuffer);
         _textureAssignmentCommands = std::move(moveFrom._textureAssignmentCommands);
         _textureAssignmentByteData = std::move(moveFrom._textureAssignmentByteData);
         for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {

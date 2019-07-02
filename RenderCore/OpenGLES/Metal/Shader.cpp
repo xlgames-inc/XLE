@@ -434,6 +434,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                 errorsLog));
         }
 
+        #if defined(GL_ES_VERSION_3_0)
+            // We have to give each uniform block index a "binding"
+            if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                GLint uniformBlockCount = 0;
+                glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_ACTIVE_UNIFORM_BLOCKS, &uniformBlockCount);
+                for (unsigned c=0; c<uniformBlockCount; ++c)
+                    glUniformBlockBinding(newProgramIndex->AsRawGLHandle(), c, c);
+            }
+        #endif
+
         #if defined(_DEBUG)
             _sourceIdentifiers = sourceIdentifiers;
         #endif

@@ -130,6 +130,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             DEBUG_ONLY(std::string _name;)
         };
         std::vector<SRV> _srvs;
+        struct UniformBuffer
+        {
+            unsigned _stream, _slot;
+            unsigned _uniformBlockIdx;
+            DEBUG_ONLY(std::string _name;)
+        };
+        std::vector<UniformBuffer> _uniformBuffer;
 
         SetUniformCommandGroup  _textureAssignmentCommands;
         std::vector<uint8_t>    _textureAssignmentByteData;

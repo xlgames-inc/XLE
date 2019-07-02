@@ -8,10 +8,13 @@
 #include "../../../Core/Types.h"
 #include <algorithm>
 #include <memory>
+#include <deque>
 
 #if defined(_DEBUG) && !defined(GPUANNOTATIONS_ENABLE)
     #define GPUANNOTATIONS_ENABLE
 #endif
+
+typedef struct __GLsync *GLsync;
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -46,6 +49,27 @@ namespace RenderCore { namespace Metal_OpenGLES
 		~QueryPool();
 	private:
 	};
+
+    class SyncEventSet
+    {
+    public:
+        using SyncEvent = unsigned;
+        SyncEvent SetEvent();
+        SyncEvent NextEventToSet() { return _nextEvent; }
+        SyncEvent LastCompletedEvent();
+        void Stall();
+
+        static bool IsSupported();
+
+        SyncEventSet();
+        ~SyncEventSet();
+        SyncEventSet(const SyncEventSet&) = delete;
+        SyncEventSet& operator=(const SyncEventSet&) = delete;
+    private:
+        std::deque<std::pair<GLsync, SyncEvent>> _pendingSyncs;
+        SyncEvent _nextEvent;
+        SyncEvent _lastCompletedEvent;
+    };
 
     #if defined(GPUANNOTATIONS_ENABLE)
 

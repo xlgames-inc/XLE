@@ -47,7 +47,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
         public:
             HashType    _bindingName;
-            int         _location;
+            int         _location;          // when used in a UniformBlock, this is the offset from the start of the UniformBlock
             GLenum      _type;
             int         _elementCount;
             unsigned    _activeUniformIndex;
@@ -67,10 +67,24 @@ namespace RenderCore { namespace Metal_OpenGLES
             #endif
         };
 
-        Uniform     FindUniform(HashType uniformName) const;
-        Struct      FindStruct(HashType structName) const;
+        class UniformBlock
+        {
+        public:
+            unsigned _blockIdx;
+            unsigned _blockSize;
+            std::vector<Uniform> _uniforms;
+
+            #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                std::string _name;
+            #endif
+        };
+
+        Uniform         FindUniform(HashType uniformName) const;
+        Struct          FindStruct(HashType structName) const;
+        UniformBlock    FindUniformBlock(HashType structName) const;
 
         IteratorRange<const std::pair<HashType, Struct>*> GetStructs() const { return MakeIteratorRange(_structs); };
+        IteratorRange<const std::pair<HashType, UniformBlock>*> GetUniformBlocks() const { return MakeIteratorRange(_blockIdx); };
 
         ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();
@@ -78,6 +92,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         static std::string GetName(const ShaderProgram& shader, const Uniform& uniform);
     private:
         std::vector<std::pair<HashType, Struct>> _structs;
+        std::vector<std::pair<HashType, UniformBlock>> _blockIdx;
     };
 
     unsigned Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data);

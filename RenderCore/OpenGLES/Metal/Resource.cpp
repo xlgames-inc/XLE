@@ -114,7 +114,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             SubResourceInitData initData;
             if (initializer)
                 initData = initializer({0,0});
-            if (desc._bindFlags & BindFlag::ConstantBuffer) {
+
+            bool supportsUniformBuffers = (factory.GetFeatureSet() & FeatureSet::GLES300);
+            if ((desc._bindFlags & BindFlag::ConstantBuffer) && !supportsUniformBuffers) {
+                // If we request a constant buffer on a device that doesn't support uniform
+                // buffers; we just use a basic data array.
                 _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
             } else {
                 _underlyingBuffer = factory.CreateBuffer();

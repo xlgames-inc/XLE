@@ -46,6 +46,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
                 auto inputBasicType = AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
+                    assert(i._location != -1);
                     result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
                 } else {
                     #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
@@ -86,6 +87,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (str != _structs.end() && str->first == structName)
             return str->second;
         return {};
+    }
+
+    auto ShaderIntrospection::FindUniformBlock(HashType structName) const -> UniformBlock
+    {
+        auto i = LowerBound(_blockIdx, structName);
+        if (i != _blockIdx.end() && i->first == structName)
+            return i->second;
+        return {~0u};
     }
 
     std::string ShaderIntrospection::GetName(const ShaderProgram& program, const Uniform& uniform)
@@ -158,12 +167,15 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             auto location = glGetUniformLocation(glProgram, nameBuffer);
+            if (location == -1) {
+                continue;       // uniforms at location -1 are not useful -- they can be values inside of a uniform buffers (which we'll get to in the uniform buffer reflection below)
+            }
 
             ////////////////////////////////////////////////
             auto fullName = MakeStringSection(nameBuffer);
             auto separatedNames = FindStructSeparator(fullName);
             if (!separatedNames.second.IsEmpty()) {
-                assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.'));     // can't support nested structures
+                assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.') == separatedNames.second.end());     // can't support nested structures
 
                 auto structName = separatedNames.first;
                 auto structNameHash = Hash64(structName);
@@ -205,7 +217,89 @@ namespace RenderCore { namespace Metal_OpenGLES
                         #endif
                     });
             }
+            ////////////////////////////////////////////////
         }
+
+#if defined(GL_ES_VERSION_3_0)
+        bool uniformBlockSupport = GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;
+        if (uniformBlockSupport) {
+            GLint uniformBlockCount = 0;
+            glGetProgramiv(glProgram, GL_ACTIVE_UNIFORM_BLOCKS, &uniformBlockCount);
+
+            std::vector<GLchar> name;
+            std::vector<GLint> uniformIndicies;
+            std::vector<GLint> uniformOffsets;
+            for (unsigned c=0; c<uniformBlockCount; ++c) {
+                GLint nameLen;
+                glGetActiveUniformBlockiv(glProgram, c, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
+                if (!nameLen) continue;
+
+                name.resize(nameLen);
+                glGetActiveUniformBlockName(glProgram, c, nameLen, NULL, &name[0]);
+
+                GLint blockSize = 0;
+                glGetActiveUniformBlockiv(glProgram, c, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+
+                // we can query:
+                // GL_UNIFORM_BLOCK_BINDING
+                // GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS
+                // GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES
+                // GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER
+                // GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER
+
+                GLint uniformCount = 0;
+                glGetActiveUniformBlockiv(glProgram, c, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &uniformCount);
+
+                uniformIndicies.resize(uniformCount);
+                uniformOffsets.resize(uniformCount);
+                glGetActiveUniformBlockiv(glProgram, c, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, uniformIndicies.data());
+                glGetActiveUniformsiv(glProgram, GLsizei(uniformCount), (const GLuint*)uniformIndicies.data(), GL_UNIFORM_OFFSET, uniformOffsets.data());
+
+                auto n = std::string(&name[0], &name[nameLen-1]);       // -1 to remove the null terminator
+                auto h = Hash64(n);
+                auto i = LowerBound(_blockIdx, h);
+                if (i==_blockIdx.end() || i->first != h) {
+                    i = _blockIdx.insert(i, std::make_pair(h,
+                        UniformBlock { c, (unsigned)blockSize, {}
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                            , n
+                        #endif
+                        }));
+
+                    for (unsigned u=0; u<uniformCount; ++u) {
+                        GLint size = 0;
+                        GLenum type = 0;
+                        glGetActiveUniform(glProgram, uniformIndicies[u], uniformMaxNameLength, nullptr, &size, &type, nameBuffer);
+
+                        auto fullName = MakeStringSection(nameBuffer);
+                        auto separatedNames = FindStructSeparator(fullName);
+                        if (!separatedNames.second.IsEmpty()) {
+                            assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.') == separatedNames.second.end());     // can't support nested structures
+                            i->second._uniforms.emplace_back(
+                                Uniform {
+                                    HashVariableName(separatedNames.second),
+                                    (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
+
+                                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                        , fullName.AsString()
+                                    #endif
+                                });
+                        } else {
+                            i->second._uniforms.emplace_back(
+                                Uniform {
+                                    HashVariableName(fullName),
+                                    (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
+
+                                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                        , fullName.AsString()
+                                    #endif
+                                });
+                        }
+                    }
+                }
+            }
+        }
+#endif
 
         CheckGLError("Construct ShaderIntrospection");
     }

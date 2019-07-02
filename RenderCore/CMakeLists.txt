@@ -19,6 +19,7 @@ set(Src
     "OpenGLES/Metal/DeviceContext.cpp"
     "OpenGLES/Metal/Format.cpp"
     "OpenGLES/Metal/FrameBuffer.cpp"
+    "OpenGLES/Metal/GPUSyncedAllocator.cpp"
     "OpenGLES/Metal/InputLayout.cpp"
     "OpenGLES/Metal/ObjectFactory.cpp"
     "OpenGLES/Metal/PipelineLayout.cpp"
