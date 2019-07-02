@@ -115,41 +115,24 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
 
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
+        const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n" : "";
+        definesPreamble << versionDecl;
+        definesPreamble << MakeStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength));
 
-        NSString *s = [NSString stringWithCString:(const char*)sourceCode encoding:NSUTF8StringEncoding];
-        // #include <metal_stdlib>
-        // using namespace metal;
-        // #define METAL_INSTEAD_OF_OPENGL
-        s = [@"#include <metal_stdlib>\nusing namespace metal;\n#define METAL_INSTEAD_OF_OPENGL\n" stringByAppendingString:s];
-
-#if PLATFORMOS_TARGET == PLATFORMOS_OSX
-        // hack for version string for OSX
-        const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n";
-#else
-        const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n";
-#endif
-        s = [[NSString stringWithCString:versionDecl encoding:NSUTF8StringEncoding] stringByAppendingString:s];
-
-        s = [[NSString stringWithCString:definesPreamble.str().c_str() encoding:NSUTF8StringEncoding] stringByAppendingString:s];
-
-        s = [s stringByReplacingOccurrencesOfString:@"__VERSION__" withString:@"110"];
-
-        auto definesPreambleStr = definesPreamble.str();
-        const char* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const char*)sourceCode };
-        unsigned shaderSourceLengths[3] = { (unsigned)std::strlen(versionDecl), (unsigned)definesPreambleStr.size(), (unsigned)sourceCodeLength };
+        auto finalShaderCode = definesPreamble.str();
 
         MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
-        options.languageVersion = MTLLanguageVersion1_1;
+        options.languageVersion = MTLLanguageVersion1_2;
         [preprocessorMacros release];
         NSError* error = NULL;
-        id<MTLLibrary> newLibrary = [_device.get() newLibraryWithSource:s
+        id<MTLLibrary> newLibrary = [_device.get() newLibraryWithSource:[NSString stringWithUTF8String:finalShaderCode.c_str()]
                                                                 options:options
                                                                   error:&error];
         [options release];
         if (!newLibrary) {
 #if defined(_DEBUG)
             // Failure in shader
-            std::cout << "Failed to create library from source:" << std::endl << definesPreambleStr << [s UTF8String] << std::endl;
+            std::cout << "Failed to create library from source:" << std::endl << finalShaderCode << std::endl;
             std::cout << "Errors:" << std::endl << [[error description] UTF8String] << std::endl;
 #endif
             return false;
@@ -159,10 +142,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];
 #endif
 
-        uint64_t hashCode = DefaultSeed64;
-        /* TODO: improve hash for shader library */
-        for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
-            hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
+        uint64_t hashCode = Hash64(finalShaderCode);
         s_compiledShaders.emplace(std::make_pair(hashCode, newLibrary));
 
         struct OutputBlob
@@ -223,11 +203,13 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLLibrary> vertexLibrary = vs.get();
         id<MTLLibrary> fragmentLibrary = fs.get();
 
-        assert([vertexLibrary functionNames].count == 1);
-        assert([fragmentLibrary functionNames].count == 1);
-        /* as for what function to call, there should only be one function in the library */
-        _vf = [vertexLibrary newFunctionWithName:[[vertexLibrary functionNames] firstObject]];
-        _ff = [fragmentLibrary newFunctionWithName:[[fragmentLibrary functionNames] firstObject]];
+        /*
+            Look for the entrypoints by the following names.
+            Ideally we should get these entrypoint names from the original shader request (ie, the ShaderService::ResId)
+            But we've lost that information by now (it's not carried in the CompiledShaderByteCode)
+        */
+        _vf = [vertexLibrary newFunctionWithName:@"vs_framework_entry"];
+        _ff = [fragmentLibrary newFunctionWithName:@"fs_framework_entry"];
 #if defined(_DEBUG)
         [_vf setLabel:[[_vf.get() name] stringByAppendingFormat:@" (%@)", vertexLibrary.label]];
         [_ff setLabel:[[_ff.get() name] stringByAppendingFormat:@" (%@)", fragmentLibrary.label]];

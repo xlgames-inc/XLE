@@ -47,6 +47,26 @@ namespace RenderCore { namespace Metal_AppleMetal
 	private:
 	};
 
+    class SyncEventSet
+    {
+    public:
+        using SyncEvent = unsigned;
+        SyncEvent SetEvent();
+        SyncEvent NextEventToSet() { return _nextEvent; }
+        SyncEvent LastCompletedEvent();
+        void Stall();
+
+        static bool IsSupported();
+
+        SyncEventSet();
+        ~SyncEventSet();
+        SyncEventSet(const SyncEventSet&) = delete;
+        SyncEventSet& operator=(const SyncEventSet&) = delete;
+    private:
+        SyncEvent _nextEvent;
+        SyncEvent _lastCompletedEvent;
+    };
+
     #if defined(GPUANNOTATIONS_ENABLE)
 
         /// <summary>Add a debugging annotation into the GPU command buffer</summary>

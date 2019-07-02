@@ -28,6 +28,23 @@ namespace RenderCore { namespace Metal_AppleMetal
     QueryPool::QueryPool(ObjectFactory& factory) {}
     QueryPool::~QueryPool() {}
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto SyncEventSet::SetEvent() -> SyncEvent { return 0; }
+    auto SyncEventSet::LastCompletedEvent() -> SyncEvent { return 0; }
+    void SyncEventSet::Stall() {}
+
+    bool SyncEventSet::IsSupported() { return false; }
+
+    SyncEventSet::SyncEventSet()
+    {
+        _nextEvent = 0;
+        _lastCompletedEvent = 0;
+    }
+    SyncEventSet::~SyncEventSet() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     #if defined(GPUANNOTATIONS_ENABLE)
 
         void GPUAnnotation::Begin(DeviceContext& context, const char annotationName[])

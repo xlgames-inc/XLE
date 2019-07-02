@@ -298,7 +298,10 @@ namespace RenderCore { namespace Metal_AppleMetal
          * for buffers and textures.  Then, bind the resources from the stream. */
 
         const auto& reflectionInformation = context.GetReflectionInformation(_vf, _ff);
-        const std::pair<const std::vector<ReflectionInformation::Mapping>*, GraphicsPipeline::ShaderTarget> shaderMappings[] = { std::make_pair(&reflectionInformation._vfMappings, GraphicsPipeline::ShaderTarget::Vertex), std::make_pair(&reflectionInformation._ffMappings, GraphicsPipeline::ShaderTarget::Fragment) };
+        const std::pair<const std::vector<ReflectionInformation::Mapping>*, GraphicsPipeline::ShaderTarget> shaderMappings[] = {
+            std::make_pair(&reflectionInformation._vfMappings, GraphicsPipeline::ShaderTarget::Vertex),
+            std::make_pair(&reflectionInformation._ffMappings, GraphicsPipeline::ShaderTarget::Fragment)
+        };
 #if DEBUG
         /* Validation/sanity check of reflection information */
         {
@@ -365,48 +368,55 @@ namespace RenderCore { namespace Metal_AppleMetal
                 for (unsigned r=0; r < mappings.size(); ++r) {
                     const auto& map = mappings[r];
                     if (cb.hashName == map.hashName) {
-                        /* KenD -- Metal TODO -- support binding buffers in addition to packets.
-                         * When creating the constantBuffer, prefer packets for smaller sizes
-                         * and buffers for larger sizes.
-                         */
                         const auto& constantBuffer = stream._constantBuffers[cb.slot];
                         const auto& pkt = constantBuffer._packet;
-                        const void* constantBufferData = pkt.get();
-                        unsigned length = (unsigned)pkt.size();
+                        //
+                        // Input CBV might be a SharedPkt (ie, just some temporary data); or it
+                        // could be an actual prebuilt hardware resource
+                        //
+                        if (!pkt.size()) {
+                            assert(constantBuffer._prebuiltBuffer);
+                            context.Bind(
+                                checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get(),
+                                0, map.index, mappingSet.second);
+                        } else {
+                            const void* constantBufferData = pkt.get();
+                            unsigned length = (unsigned)pkt.size();
 
 #if DEBUG
-                        {
-                            NSArray<MTLArgument*>* arguments = nil;
-                            if (mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex) {
-                                arguments = renderReflection.vertexArguments;
-                            } else if (mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment) {
-                                arguments = renderReflection.fragmentArguments;
-                            } else {
-                                assert(0);
-                            }
-                            for (MTLArgument* arg in arguments) {
-                                if (!arg.active) continue;
+                            {
+                                NSArray<MTLArgument*>* arguments = nil;
+                                if (mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex) {
+                                    arguments = renderReflection.vertexArguments;
+                                } else if (mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment) {
+                                    arguments = renderReflection.fragmentArguments;
+                                } else {
+                                    assert(0);
+                                }
+                                for (MTLArgument* arg in arguments) {
+                                    if (!arg.active) continue;
 
-                                if (arg.type == MTLArgumentTypeBuffer) {
-                                    if (arg.index == map.index) {
-                                        assert(length == arg.bufferDataSize);
-                                        assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
+                                    if (arg.type == MTLArgumentTypeBuffer) {
+                                        if (arg.index == map.index) {
+                                            assert(length == arg.bufferDataSize);
+                                            assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
 
 /* Only in Metal shading language 2.0 -- newer versions of Xcode warned about this, but I ignored it */
 #if 0
-                                        MTLPointerType* ptrType = arg.bufferPointerType;
-                                        MTLStructType* structType = ptrType.elementStructType;
-                                        if (structType) {
-                                            /* Metal TODO -- examine elements, comparing pipeline layout with struct, ensuring the offset is reasonable */
-                                        }
+                                            MTLPointerType* ptrType = arg.bufferPointerType;
+                                            MTLStructType* structType = ptrType.elementStructType;
+                                            if (structType) {
+                                                /* Metal TODO -- examine elements, comparing pipeline layout with struct, ensuring the offset is reasonable */
+                                            }
 #endif
+                                        }
                                     }
                                 }
                             }
-                        }
 #endif
 
-                        context.Bind(constantBufferData, length, map.index, mappingSet.second);
+                            context.Bind(constantBufferData, length, map.index, mappingSet.second);
+                        }
                         break;
                     }
                 }
