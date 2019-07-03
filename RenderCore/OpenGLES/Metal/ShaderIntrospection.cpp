@@ -255,47 +255,92 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glGetActiveUniformBlockiv(glProgram, c, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, uniformIndicies.data());
                 glGetActiveUniformsiv(glProgram, GLsizei(uniformCount), (const GLuint*)uniformIndicies.data(), GL_UNIFORM_OFFSET, uniformOffsets.data());
 
+                std::string uniformBufferName;
+
+                std::vector<Uniform> uniforms;
+                for (unsigned u=0; u<uniformCount; ++u) {
+                    GLint size = 0;
+                    GLenum type = 0;
+                    glGetActiveUniform(glProgram, uniformIndicies[u], uniformMaxNameLength, nullptr, &size, &type, nameBuffer);
+
+                    auto fullName = MakeStringSection(nameBuffer);
+                    auto separatedNames = FindStructSeparator(fullName);
+                    if (!separatedNames.second.IsEmpty()) {
+                        assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.') == separatedNames.second.end());     // can't support nested structures
+                        #if defined(_DEBUG)
+                            if (!uniformBufferName.empty() && !XlEqString(separatedNames.first, uniformBufferName)) {
+                                Log(Warning) << "Multiple scoped names detected within uniform block. (" << uniformBufferName << ") and (" << separatedNames.first.AsString() << ") detected" << std::endl;
+                            }
+                        #endif
+                        if (uniformBufferName.empty())
+                            uniformBufferName = separatedNames.first.AsString();
+                        uniforms.emplace_back(
+                            Uniform {
+                                HashVariableName(separatedNames.second),
+                                (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
+
+                                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                    , fullName.AsString()
+                                #endif
+                            });
+                    } else {
+                        #if defined(_DEBUG)
+                            if (!uniformBufferName.empty() && uniformBufferName != "global") {
+                                Log(Warning) << "Multiple scoped names detected within uniform block. (" << uniformBufferName << ") and (global) detected" << std::endl;
+                            }
+                        #endif
+                        if (uniformBufferName.empty())
+                            uniformBufferName = "global";
+                        uniforms.emplace_back(
+                            Uniform {
+                                HashVariableName(fullName),
+                                (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
+
+                                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                    , fullName.AsString()
+                                #endif
+                            });
+                    }
+                }
+
+                //
+                // There are 2 names we have access to
+                //  1) the name of the actual block. In C++, this is equivalent to the
+                //      name of the type/struct/class
+                //  2) the name of the uniform. This is like the actual variable name
+                //
+                // The uniform name is used to refer to the members by the shader code.
+                // For example:
+                //  uniform MaterialType
+                //  {
+                //      vec4 Diffuse;
+                //  } MaterialUniform;
+                //
+                //  Here, in the shader code we write:
+                //      MaterialUniform.Diffuse
+                //  to refer to the value (not MaterialType.Diffuse)
+                //
+                //  The name we ideally want to bind to is also the uniform name -- since this is
+                //  more consistant with other shader languages. However, there's no obvious way
+                //  to access it via this introspection interface. We can only get the type name.
+                //  It's odd because we can only access the type name from the CPU side, but we
+                //  only really use the uniform name from the shader side.
+                //  The best way to deal with this is just to always have the type name and uniform
+                //  name be the same string, which should prevent any confusion.
+                //
+
                 auto n = std::string(&name[0], &name[nameLen-1]);       // -1 to remove the null terminator
                 auto h = Hash64(n);
                 auto i = LowerBound(_blockIdx, h);
                 if (i==_blockIdx.end() || i->first != h) {
                     i = _blockIdx.insert(i, std::make_pair(h,
-                        UniformBlock { c, (unsigned)blockSize, {}
-                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
-                            , n
-                        #endif
+                        UniformBlock {
+                            c, (unsigned)blockSize, std::move(uniforms)
+
+                            #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                                , n
+                            #endif
                         }));
-
-                    for (unsigned u=0; u<uniformCount; ++u) {
-                        GLint size = 0;
-                        GLenum type = 0;
-                        glGetActiveUniform(glProgram, uniformIndicies[u], uniformMaxNameLength, nullptr, &size, &type, nameBuffer);
-
-                        auto fullName = MakeStringSection(nameBuffer);
-                        auto separatedNames = FindStructSeparator(fullName);
-                        if (!separatedNames.second.IsEmpty()) {
-                            assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.') == separatedNames.second.end());     // can't support nested structures
-                            i->second._uniforms.emplace_back(
-                                Uniform {
-                                    HashVariableName(separatedNames.second),
-                                    (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
-
-                                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
-                                        , fullName.AsString()
-                                    #endif
-                                });
-                        } else {
-                            i->second._uniforms.emplace_back(
-                                Uniform {
-                                    HashVariableName(fullName),
-                                    (int)uniformOffsets[u], type, size, (unsigned)uniformIndicies[u]
-
-                                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
-                                        , fullName.AsString()
-                                    #endif
-                                });
-                        }
-                    }
                 }
             }
         }
