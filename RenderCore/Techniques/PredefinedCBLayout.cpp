@@ -439,7 +439,7 @@ namespace RenderCore { namespace Techniques
             cbIterator = CeilToMultiplePow2(cbIterator, 16);
         }
 
-        unsigned arrayElementCount = 1;
+        unsigned arrayElementCount = 0;
         if (!arrayCount.IsEmpty()) {
             arrayElementCount = Conversion::Convert<unsigned>(arrayCount);
         }
@@ -447,8 +447,7 @@ namespace RenderCore { namespace Techniques
         e._offset = cbIterator;
         e._arrayElementCount = arrayElementCount;
         e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
-        if (arrayElementCount != 0)
-            cbIterator += (arrayElementCount-1) * e._arrayElementStride + size;
+        cbIterator += (std::max(1u, e._arrayElementCount)-1) * e._arrayElementStride + size;
         cbLayout._elements.push_back(e);
 
         if (XlEqString(streamIterator.PeekNextToken()._value, "=")) {
@@ -515,7 +514,7 @@ namespace RenderCore { namespace Techniques
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
-            for (auto e=0; e<c->_arrayElementCount; e++) {
+            for (auto e=0; e<std::max(1u, c->_arrayElementCount); e++) {
                 bool gotValue = parameters.GetParameter(
                     c->_hash + e, PtrAdd(dst, c->_offset + e * c->_arrayElementStride),
                     c->_type);
@@ -578,8 +577,7 @@ namespace RenderCore { namespace Techniques
                 }
                 newE._offset = cbIterator;
 
-                if (newE._arrayElementCount != 0)
-                    cbIterator += (newE._arrayElementCount-1) * newE._arrayElementStride + size;
+                cbIterator += (std::max(1u, newE._arrayElementCount)-1) * newE._arrayElementStride + size;
 
                 auto defaultType = _defaults.GetParameterType(newE._hash);
                 if (defaultType._type != ImpliedTyping::TypeCat::Void) {

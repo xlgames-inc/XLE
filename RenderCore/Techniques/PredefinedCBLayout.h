@@ -27,7 +27,7 @@ namespace RenderCore { namespace Techniques
             uint64_t _hash64;
             ImpliedTyping::TypeDesc _type;
             unsigned _offset;
-            unsigned _arrayElementCount;
+            unsigned _arrayElementCount;            // set to zero if this parameter is not actually an array
             unsigned _arrayElementStride;
             std::string _name;
             std::string _conditions;

@@ -34,7 +34,7 @@ namespace RenderCore
         uint64_t    _semanticHash = 0ull;
         Format      _nativeFormat = Format(0);
         unsigned    _offset = 0u;
-        unsigned    _arrayElementCount = 1u;
+        unsigned    _arrayElementCount = 0u;            // set to zero if the element is not actually an array (ie, use std::max(1u, _arrayElementCount) in most cases)
     };
 
     class UniformsStreamInterface
