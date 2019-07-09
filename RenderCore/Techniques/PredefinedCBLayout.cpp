@@ -393,7 +393,62 @@ namespace RenderCore { namespace Techniques
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
     }
 
-    static bool ParseStatement(PredefinedCBLayout& cbLayout, Tokenizer& streamIterator, unsigned& cbIterator)
+    /**
+        "iterator" is the current offset iterator, and "nextElement" is the next element we want to
+        append to the CB.
+        The return value will be the offset to this new element, and "iterator" will be updated so
+        it can be used in a subsequent call to CalculateElementOffset.
+        In this way, the function can apply alignment both before and after the element.
+
+        arrayElementStride will also receive the stride of the array elements, if it is an array
+    */
+    static unsigned CalculateElementOffset(unsigned& iterator, unsigned& arrayElementStride, const ImpliedTyping::TypeDesc& nextElement, unsigned nextElementArrayCount, PredefinedCBLayout::AlignmentRules alignmentRules)
+    {
+        if (alignmentRules == PredefinedCBLayout::AlignmentRules_HLSL) {
+
+            auto size = nextElement.GetSize();
+
+            // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
+            // let's detect that case, and add pre-alignment as necessary
+            if (FloorToMultiplePow2(iterator, 16) != FloorToMultiplePow2(iterator + std::min(16u, size) - 1, 16)) {
+                iterator = CeilToMultiplePow2(iterator, 16);
+            }
+
+            unsigned result = iterator;     // this is the offset for the new element
+
+            unsigned arrayElementStride = (nextElementArrayCount>1) ? CeilToMultiplePow2(size, 16) : size;
+
+            // now add the size of the
+            iterator += (std::max(1u, nextElementArrayCount)-1) * arrayElementStride + size;
+
+            return result;
+
+        } else if (alignmentRules == PredefinedCBLayout::AlignmentRules_MSL) {
+
+            // In metal shader language, the alignment is always equal to the size of the type,
+            // however we regard 3-component types as having the same size as 4 component types.
+            //
+            // There are "packed" types, which have slightly different rules. These are the
+            // rules for the non-packed types. We're avoiding the packed types on the assumption
+            // that the non-packed types will have performance advantages.
+
+            auto adjustedType = nextElement;
+            if (adjustedType._arrayCount == 3)
+                adjustedType._arrayCount = 4;
+            auto size = adjustedType.GetSize();
+
+            iterator = CeilToMultiplePow2(iterator, size);
+            unsigned result = iterator;                                 // this is the offset for the new element
+            iterator += std::max(1u, nextElementArrayCount) * size;     // simplified logic, given alignment is equal to size
+
+            return result;
+
+        } else {
+            return iterator;
+        }
+    }
+
+    static bool ParseStatement(PredefinedCBLayout& cbLayout, Tokenizer& streamIterator, unsigned cbIterator[PredefinedCBLayout::AlignmentRules_Max])
     {
         auto type = streamIterator.GetNextToken();
         if (type._value.IsEmpty())
@@ -433,21 +488,15 @@ namespace RenderCore { namespace Techniques
                 type._start));
         }
 
-            // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
-            // let's detect that case, and add padding as necessary
-        if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, size) - 1, 16)) {
-            cbIterator = CeilToMultiplePow2(cbIterator, 16);
-        }
-
         unsigned arrayElementCount = 0;
         if (!arrayCount.IsEmpty()) {
             arrayElementCount = Conversion::Convert<unsigned>(arrayCount);
         }
-
-        e._offset = cbIterator;
         e._arrayElementCount = arrayElementCount;
-        e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
-        cbIterator += (std::max(1u, e._arrayElementCount)-1) * e._arrayElementStride + size;
+
+        for (unsigned c=0; c<PredefinedCBLayout::AlignmentRules_Max; ++c)
+            e._offsetsByLanguage[c] = CalculateElementOffset(cbIterator[c], e._arrayElementStride, e._type, e._arrayElementCount, (PredefinedCBLayout::AlignmentRules)c);
+
         cbLayout._elements.push_back(e);
 
         if (XlEqString(streamIterator.PeekNextToken()._value, "=")) {
@@ -503,40 +552,44 @@ namespace RenderCore { namespace Techniques
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
         Tokenizer si { source };
-        unsigned cbIterator = 0;
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
         while (ParseStatement(*this, si, cbIterator)) {
             /**/
         }
 
-        _cbSize = CeilToMultiplePow2(cbIterator, 16);
+        for (unsigned c=0; c<dimof(cbIterator); ++c)
+            _cbSizeByLanguage[c] = CeilToMultiplePow2(cbIterator[c], 16);
     }
 
-    void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
+    void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters, ShaderLanguage lang) const
     {
+        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
             for (auto e=0; e<std::max(1u, c->_arrayElementCount); e++) {
                 bool gotValue = parameters.GetParameter(
-                    c->_hash + e, PtrAdd(dst, c->_offset + e * c->_arrayElementStride),
+                    c->_hash + e, PtrAdd(dst, c->_offsetsByLanguage[alignmentRules] + e * c->_arrayElementStride),
                     c->_type);
 
                 if (!gotValue)
-                    _defaults.GetParameter(c->_hash + e, PtrAdd(dst, c->_offset), c->_type);
+                    _defaults.GetParameter(c->_hash + e, PtrAdd(dst, c->_offsetsByLanguage[alignmentRules]), c->_type);
             }
         }
     }
 
-    std::vector<uint8> PredefinedCBLayout::BuildCBDataAsVector(const ParameterBox& parameters) const
+    std::vector<uint8> PredefinedCBLayout::BuildCBDataAsVector(const ParameterBox& parameters, ShaderLanguage lang) const
     {
-        std::vector<uint8> cbData(_cbSize, uint8(0));
-        WriteBuffer(AsPointer(cbData.begin()), parameters);
+        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        std::vector<uint8> cbData(_cbSizeByLanguage[alignmentRules], uint8(0));
+        WriteBuffer(AsPointer(cbData.begin()), parameters, lang);
         return std::move(cbData);
     }
 
-    SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters) const
+    SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters, ShaderLanguage lang) const
     {
-        SharedPkt result = MakeSharedPktSize(_cbSize);
-        std::memset(result.begin(), 0, _cbSize);
-        WriteBuffer(result.begin(), parameters);
+        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        SharedPkt result = MakeSharedPktSize(_cbSizeByLanguage[alignmentRules]);
+        std::memset(result.begin(), 0, _cbSizeByLanguage[alignmentRules]);
+        WriteBuffer(result.begin(), parameters, lang);
         return std::move(result);
     }
     
@@ -545,23 +598,30 @@ namespace RenderCore { namespace Techniques
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
     }
     
-    auto PredefinedCBLayout::MakeConstantBufferElements() const -> std::vector<ConstantBufferElementDesc>
+    auto PredefinedCBLayout::MakeConstantBufferElements(ShaderLanguage lang) const -> std::vector<ConstantBufferElementDesc>
     {
+        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
         std::vector<ConstantBufferElementDesc> result;
         result.reserve(_elements.size());
         for (auto i=_elements.begin(); i!=_elements.end(); ++i) {
             result.push_back(ConstantBufferElementDesc {
                 i->_hash64, AsFormat(i->_type),
-                i->_offset, i->_arrayElementCount });
+                i->_offsetsByLanguage[alignmentRules], i->_arrayElementCount });
         }
         return result;
+    }
+
+    unsigned PredefinedCBLayout::GetSize(ShaderLanguage lang) const
+    {
+        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        return _cbSizeByLanguage[alignmentRules];
     }
 
     PredefinedCBLayout PredefinedCBLayout::Filter(const std::unordered_map<std::string, int>& definedTokens)
     {
         PredefinedCBLayout result;
         result._validationCallback = _validationCallback;
-        unsigned cbIterator = 0;
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
 
         result._elements.reserve(_elements.size());
         for (const auto& e:_elements) {
@@ -571,13 +631,8 @@ namespace RenderCore { namespace Techniques
                 result._elements.push_back(e);
                 auto& newE = *(result._elements.end()-1);
 
-                auto size = newE._type.GetSize();
-                if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, size) - 1, 16)) {
-                    cbIterator = CeilToMultiplePow2(cbIterator, 16);
-                }
-                newE._offset = cbIterator;
-
-                cbIterator += (std::max(1u, newE._arrayElementCount)-1) * newE._arrayElementStride + size;
+                for (unsigned c=0; c<PredefinedCBLayout::AlignmentRules_Max; ++c)
+                    newE._offsetsByLanguage[c] = CalculateElementOffset(cbIterator[c], newE._arrayElementStride, newE._type, newE._arrayElementCount, (PredefinedCBLayout::AlignmentRules)c);
 
                 auto defaultType = _defaults.GetParameterType(newE._hash);
                 if (defaultType._type != ImpliedTyping::TypeCat::Void) {
@@ -590,11 +645,16 @@ namespace RenderCore { namespace Techniques
             }
         }
 
-        result._cbSize = CeilToMultiplePow2(cbIterator, 16);
+        for (unsigned c=0; c<AlignmentRules_Max; ++c)
+            result._cbSizeByLanguage[c] = CeilToMultiplePow2(cbIterator[c], 16);
         return result;
     }
 
-    PredefinedCBLayout::PredefinedCBLayout() : _cbSize(0) {}
+    PredefinedCBLayout::PredefinedCBLayout()
+    {
+        for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
+            _cbSizeByLanguage[c] = 0;
+    }
     PredefinedCBLayout::~PredefinedCBLayout() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -620,7 +680,7 @@ namespace RenderCore { namespace Techniques
 
         std::string currentLayoutName;
         std::shared_ptr<PredefinedCBLayout> currentLayout;
-        unsigned currentLayoutCBIterator = 0;
+        unsigned currentLayoutCBIterator[PredefinedCBLayout::AlignmentRules_Max] = { 0, 0 };
 
         for (;;) {
             auto next = iterator.PeekNextToken();
@@ -649,11 +709,13 @@ namespace RenderCore { namespace Techniques
                 if (!XlEqString(token._value, ";"))
                     Throw(FormatException(StringMeld<256>() << "Expecting ; after }, but got " << token._value, token._start));
 
-                currentLayout->_cbSize = CeilToMultiplePow2(currentLayoutCBIterator, 16);
+                for (unsigned c=0; c<dimof(currentLayout->_cbSizeByLanguage); ++c)
+                    currentLayout->_cbSizeByLanguage[c] = CeilToMultiplePow2(currentLayoutCBIterator[c], 16);
                 _layouts.insert(std::make_pair(currentLayoutName, std::move(currentLayout)));
                 currentLayoutName = {};
                 currentLayout = nullptr;
-                currentLayoutCBIterator = 0;
+                for (unsigned c=0; c<dimof(currentLayout->_cbSizeByLanguage); ++c)
+                    currentLayoutCBIterator[c] = 0;
                 continue;
             }
 
@@ -663,7 +725,8 @@ namespace RenderCore { namespace Techniques
         }
 
         if (currentLayout) {
-            currentLayout->_cbSize = CeilToMultiplePow2(currentLayoutCBIterator, 16);
+            for (unsigned c=0; c<dimof(currentLayout->_cbSizeByLanguage); ++c)
+                currentLayout->_cbSizeByLanguage[c] = CeilToMultiplePow2(currentLayoutCBIterator[c], 16);
             _layouts.insert(std::make_pair(currentLayoutName, std::move(currentLayout)));
         }
     }

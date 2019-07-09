@@ -13,5 +13,12 @@ namespace RenderCore
 {
     ImpliedTyping::TypeDesc ShaderLangTypeNameAsTypeDesc(StringSection<char> shaderLangTypeName);
     std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type);
+
+    enum class ShaderLanguage
+    {
+        HLSL,
+        GLSL,
+        MetalShaderLanguage     // (ie, Apple Metal)
+    };
 }
 
