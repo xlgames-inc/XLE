@@ -42,7 +42,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                                   [bindingName](const ConstantBufferElementDesc& e) { return e._semanticHash == bindingName; });
             if (b != inputElements.end()) {
                 // Check for compatibility of types.
-                assert(i._elementCount == b->_arrayElementCount); // "Array uniforms within structs not currently supported");
+                assert(std::max(1, i._elementCount) == std::max(1u, b->_arrayElementCount)); // "Array uniforms within structs not currently supported");
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
                 auto inputBasicType = AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
