@@ -416,7 +416,7 @@ namespace RenderCore { namespace Techniques
 
             unsigned result = iterator;     // this is the offset for the new element
 
-            unsigned arrayElementStride = (nextElementArrayCount>1) ? CeilToMultiplePow2(size, 16) : size;
+            arrayElementStride = (nextElementArrayCount>1) ? CeilToMultiplePow2(size, 16) : size;
 
             // now add the size of the
             iterator += (std::max(1u, nextElementArrayCount)-1) * arrayElementStride + size;
@@ -440,6 +440,8 @@ namespace RenderCore { namespace Techniques
             iterator = CeilToMultiplePow2(iterator, size);
             unsigned result = iterator;                                 // this is the offset for the new element
             iterator += std::max(1u, nextElementArrayCount) * size;     // simplified logic, given alignment is equal to size
+
+            arrayElementStride = size;
 
             return result;
 
