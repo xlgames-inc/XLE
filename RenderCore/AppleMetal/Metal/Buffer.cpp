@@ -7,12 +7,17 @@
 #include "../../../Utility/PtrUtils.h"
 #include <assert.h>
 
+#include "IncludeAppleMetal.h"
+
 namespace RenderCore { namespace Metal_AppleMetal
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
-        /* KenD -- Metal TODO -- implement updating buffer (required for DynamicGeoBuffer and other cases like non-tracking particle emitters) */
-        //assert(0);
+        assert((GetDesc()._cpuAccess & CPUAccess::Write) != 0);
+        id<MTLBuffer> buffer = (AplMtlBuffer*)GetBuffer().get();
+        assert(buffer.storageMode == MTLStorageModeShared);
+        void* dst = buffer.contents;
+        memcpy(PtrAdd(dst, writeOffset), data, dataSize);
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
