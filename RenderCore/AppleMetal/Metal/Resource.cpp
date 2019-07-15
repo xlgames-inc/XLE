@@ -177,9 +177,10 @@ namespace RenderCore { namespace Metal_AppleMetal
                     for (unsigned m=0; m < desc._textureDesc._mipCount; ++m) {
                         auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
                         auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                        assert(desc._textureDesc._depth <= 1);              // DavidJ -- 3D textures are not supported by this Metal API, so we must ensure that this is a 2d texture
                         auto subRes = initializer({m, f});
                         auto bytesPerRow = subRes._pitches._rowPitch;
-                        auto bytesPerImage = subRes._pitches._slicePitch;
+                        auto bytesPerImage = subRes._pitches._slicePitch;   // Since 3d textures are not supported, the "slice pitch" is equal to the image pitch
                         if (hasPVRTCPixelFormat) {
                             /* From Apple documentation on replaceRegion...:
                              *    This method is supported if you are copying to an entire texture with a PVRTC pixel format; in
@@ -188,6 +189,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                              */
                             bytesPerRow = 0;
                             bytesPerImage = 0;
+                        } else {
+                            // When the input pitches are zero, it means the texture data is densely packed,
+                            // and we should just derive the pitches from the dimensions
+                            if (bytesPerRow == 0)
+                                bytesPerRow = mipWidth * BitsPerPixel(desc._textureDesc._format);
+                            if (bytesPerImage == 0)
+                                bytesPerImage = mipHeight * bytesPerRow;
                         }
                         [_underlyingTexture replaceRegion:MTLRegionMake2D(0, 0, mipWidth, mipHeight)
                                               mipmapLevel:m
