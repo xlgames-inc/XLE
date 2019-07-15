@@ -152,6 +152,7 @@ namespace RenderCore { namespace Techniques
 
     void RenderPassInstance::End()
     {
+        assert(_attachedContext);
         Metal::EndSubpass(*_attachedContext, *_frameBuffer);
         Metal::EndRenderPass(*_attachedContext);
     }
@@ -340,7 +341,9 @@ namespace RenderCore { namespace Techniques
     
     RenderPassInstance::~RenderPassInstance() 
     {
-        End();
+        if (_frameBuffer) {
+            End();
+        }
     }
 
     RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom)
