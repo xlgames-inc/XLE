@@ -298,19 +298,19 @@ namespace RenderCore { namespace Metal_OpenGLES
                     capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
             } else {
-                    auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
-                    if (differences) {
-                        #if GL_ARB_instanced_arrays
-                            int firstActive = xl_ctz4(differences);
-                            int lastActive = 32u - xl_clz4(differences);
-                            for (int c=firstActive; c<lastActive; ++c)
-                                if (_attributeState & (1<<c))
-                                    glVertexAttribDivisorARB(c, instanceDataRate[c]);
-                            capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
-                        #else
-                            assert(0);  // no hardware support for variable rate input attributes
-                        #endif
-                    }
+                auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
+                if (differences) {
+                    #if GL_ARB_instanced_arrays
+                        int firstActive = xl_ctz4(differences);
+                        int lastActive = 32u - xl_clz4(differences);
+                        for (int c=firstActive; c<lastActive; ++c)
+                            if (_attributeState & (1<<c))
+                                glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                        capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                    #else
+                        assert(0);  // no hardware support for variable rate input attributes
+                    #endif
+                }
             }
 
             // set enable/disable flags --
@@ -549,6 +549,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (uniformBuffer._stream != streamIdx) continue;
                 assert(uniformBuffer._slot < stream._constantBuffers.size());
 
+                // METAL_TODO: something should own this object!
                 static DynamicBuffer buffer(
                     RenderCore::LinearBufferDesc::Create(128 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true);
 
@@ -556,11 +557,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 const auto& pkt = cbv._packet;
                 if (pkt.size() != 0) {
                     unsigned offset = buffer.Write(context, pkt.AsIteratorRange());
-                    glBindBufferRange(
-                        GL_UNIFORM_BUFFER,
-                        uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
-                        buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
-                        offset, pkt.size());
+                    if (offset != ~0u) {
+                        glBindBufferRange(
+                            GL_UNIFORM_BUFFER,
+                            uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
+                            buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
+                            offset, pkt.size());
+                    } else {
+                        Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
+                    }
                 } else {
                     assert(((IResource*)cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
                     auto* res = checked_cast<const Resource*>(cbv._prebuiltBuffer);

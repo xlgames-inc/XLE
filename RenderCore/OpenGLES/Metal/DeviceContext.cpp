@@ -146,19 +146,22 @@ namespace RenderCore { namespace Metal_OpenGLES
     DepthStencilDesc GraphicsPipeline::ActiveDepthStencilDesc()
     {
         DepthStencilDesc depthStencil = {};
-        GLint depthTest = 0, depthMask = 0;
-        glGetIntegerv(GL_DEPTH_TEST, &depthTest);
+        GLint depthFunc = 0;
+        GLboolean depthTest = 0, depthMask = 0;
+        // glGetBooleanv(GL_DEPTH_TEST, &depthTest);      (this is supposed to work, according to the documentation, but IOS drivers don't seem to like it)
+        depthTest = glIsEnabled(GL_DEPTH_TEST);
         if (depthTest) {
-            glGetIntegerv(GL_DEPTH_FUNC, &depthTest);
-            depthStencil._depthTest = AsCompareOp(depthTest);
+            glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+            depthStencil._depthTest = AsCompareOp(depthFunc);
         } else
             depthStencil._depthTest = CompareOp::Always;
         
-        glGetIntegerv(GL_DEPTH_TEST, &depthMask);
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
         depthStencil._depthWrite = depthMask != 0;
         
-        GLint stencilEnable = 0;
-        glGetIntegerv(GL_STENCIL_TEST, &stencilEnable);
+        GLboolean stencilEnable = 0;
+        // glGetBooleanv(GL_STENCIL_TEST, &stencilEnable);      (this is supposed to work, according to the documentation, but IOS drivers don't seem to like it)
+        stencilEnable = glIsEnabled(GL_STENCIL_TEST);
         if (stencilEnable) {
             depthStencil._stencilEnable = true;
             

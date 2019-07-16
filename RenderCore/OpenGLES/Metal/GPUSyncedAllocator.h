@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class GPUSyncedAllocator
     {
     public:
-        unsigned Allocate(unsigned size);
+        unsigned Allocate(unsigned size, unsigned alignment);
         unsigned GetTotalSize() const { return _totalSize; }
         void Stall();
         void SetGPUMarker();
@@ -41,12 +41,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         Buffer& GetBuffer()             { return _underlyingBuffer; }
         size_t GetResourceSize() const  { return _resourceSize; }
 
-        DynamicBuffer(const RenderCore::LinearBufferDesc& desc, RenderCore::BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface);
+        DynamicBuffer(const LinearBufferDesc& desc, BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface);
         ~DynamicBuffer();
     private:
         Buffer                                  _underlyingBuffer;
         std::unique_ptr<GPUSyncedAllocator>     _syncedAllocator;
         size_t                                  _resourceSize;
+
+        unsigned                                _allocationAlignment;
 
         unsigned _allocatedSizeSinceLastMarker;
     };
