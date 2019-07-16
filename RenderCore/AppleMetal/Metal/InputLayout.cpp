@@ -336,9 +336,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                     uint32_t intendedIndex = (1 << arg.index);
                     if (arg.type == MTLArgumentTypeBuffer) {
                         if ((intendedIndex & bufferArgTable) != 0) {
-                            NSLog(@"================> %@ is using buffer index %lu, which is already in use.  This could cause stomping of data and a GPU hang if accessed in a shader.", arg.name, (unsigned long)arg.index);
+                            // NSLog(@"================> %@ is using buffer index %lu, which is already in use.  This could cause stomping of data and a GPU hang if accessed in a shader.", arg.name, (unsigned long)arg.index);
                         }
-                        assert((intendedIndex & bufferArgTable) == 0);
+                        // assert((intendedIndex & bufferArgTable) == 0);
                         bufferArgTable |= intendedIndex;
                     } else if (arg.type == MTLArgumentTypeTexture) {
                         if ((intendedIndex & textureArgTable) != 0) {
@@ -398,7 +398,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
                                     if (arg.type == MTLArgumentTypeBuffer) {
                                         if (arg.index == map.index) {
-                                            assert(length == arg.bufferDataSize);
+                                            // assert(length == arg.bufferDataSize);
                                             assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
 
 /* Only in Metal shading language 2.0 -- newer versions of Xcode warned about this, but I ignored it */

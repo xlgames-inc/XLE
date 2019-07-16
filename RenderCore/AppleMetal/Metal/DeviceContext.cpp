@@ -489,7 +489,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void GraphicsPipeline::FinalizePipeline()
     {
-#if DEBUG
+#if 0 // DEBUG
         {
             auto& reflectionInformation = GetReflectionInformation([_pimpl->_pipelineDescriptor.get() vertexFunction],
                                                                    [_pimpl->_pipelineDescriptor.get() fragmentFunction]);
