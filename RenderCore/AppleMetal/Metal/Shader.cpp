@@ -283,6 +283,13 @@ namespace RenderCore { namespace Metal_AppleMetal
         */
         _vf = [vertexLibrary newFunctionWithName:@"vs_framework_entry"];
         _ff = [fragmentLibrary newFunctionWithName:@"fs_framework_entry"];
+
+        // METAL_TODO: use consistent rules for entry point functions
+        if (!_vf)
+            _vf = [vertexLibrary newFunctionWithName:[[vertexLibrary functionNames] firstObject]];
+        if (!_ff)
+            _ff = [fragmentLibrary newFunctionWithName:[[fragmentLibrary functionNames] firstObject]];
+
 #if defined(_DEBUG)
         [_vf setLabel:[[_vf.get() name] stringByAppendingFormat:@" (%@)", vertexLibrary.label]];
         [_ff setLabel:[[_ff.get() name] stringByAppendingFormat:@" (%@)", fragmentLibrary.label]];
