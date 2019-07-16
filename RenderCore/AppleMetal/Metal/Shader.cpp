@@ -13,9 +13,11 @@
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/Conversion.h"
 #include <iostream>
 #include <unordered_map>
 #include <sstream>
+#include <regex>
 
 #include "IncludeAppleMetal.h"
 #import <Metal/MTLLibrary.h>
@@ -66,6 +68,72 @@ namespace RenderCore { namespace Metal_AppleMetal
             XlCopyString(destination, destinationCount, inputShaderModel);
     }
 
+    static std::pair<std::string, unsigned> FindTranslatedSourceLine(
+        unsigned inputLineNumber,
+        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers,
+        unsigned preambleLineCount)
+    {
+        if (inputLineNumber < preambleLineCount)
+            return {{}, 0};
+
+        inputLineNumber -= preambleLineCount;
+
+        auto m = sourceLineMarkers.end()-1;
+        while (m >= sourceLineMarkers.begin()) {
+            if (m->_processedSourceLine <= inputLineNumber)
+                return { m->_sourceName, unsigned(inputLineNumber - m->_processedSourceLine + m->_sourceLine) };
+            --m;
+        }
+
+        return {{}, 0};
+    }
+
+    static std::string TranslateErrorMsgs(
+        StringSection<> inputErrorMsgs,
+        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers,
+        unsigned preambleLineCount)
+    {
+        std::regex translateableContent(R"--([^:]+:(\d+):(\d+):(.*))--");
+
+        std::stringstream str;
+
+        auto i = inputErrorMsgs.begin();
+        while (i != inputErrorMsgs.end()) {
+            auto startOfChunk = i;
+
+            while (i != inputErrorMsgs.end() && (*i == ' ' || *i == '\t' || *i == '\n' || *i == '\r')) ++i;
+
+            auto startOfLine = i;
+            while (i != inputErrorMsgs.end() && *i != '\n' && *i != '\r') ++i;
+            auto endOfLine = i;
+
+            // Look for translatable content
+            std::cmatch match;
+            if (std::regex_match(startOfLine, endOfLine, match, translateableContent)) {
+
+                // note some +1 and -1 here to convert between 1-based and 0-based indices
+                auto line = Conversion::Convert<unsigned>(MakeStringSection(match[1].first, match[1].second)) - 1;
+
+                auto translated = FindTranslatedSourceLine(line, sourceLineMarkers, preambleLineCount);
+                if (!translated.first.empty()) {
+                    str << MakeStringSection(startOfChunk, startOfLine);
+
+                    str << translated.first
+                        << ":" << (translated.second+1)
+                        << ":" << MakeStringSection(match[2].first, match[2].second)
+                        << ":" << MakeStringSection(match[3].first, match[3].second);
+
+                } else {
+                    str << MakeStringSection(startOfChunk, i);
+                }
+            } else {
+                str << MakeStringSection(startOfChunk, i);
+            }
+        }
+
+        return str.str();
+    }
+
     bool ShaderCompiler::DoLowLevelCompile(
         /*out*/ Payload& payload,
         /*out*/ Payload& errors,
@@ -79,6 +147,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::stringstream variantLabel;
 #endif
         std::stringstream definesPreamble;
+        unsigned preambleLineCount = 0;
         NSMutableDictionary* preprocessorMacros = [[NSMutableDictionary alloc] init];
         {
             auto p = definesTable.begin();
@@ -98,6 +167,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     NSString* value = [NSString stringWithCString:MakeStringSection(e, defineEnd).AsString().c_str() encoding:NSUTF8StringEncoding];
                     preprocessorMacros[key] = value;
                     definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
+                    ++preambleLineCount;
 #if defined(_DEBUG)
                     variantLabel << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "; ";
 #endif
@@ -105,6 +175,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
                     preprocessorMacros[key] = @(1);
                     definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
+                    ++preambleLineCount;
 #if defined(_DEBUG)
                     variantLabel << MakeStringSection(p, endOfName).AsString() << "; ";
 #endif
@@ -116,6 +187,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
         const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n" : "";
+        if (isFragmentShader) ++preambleLineCount;
         definesPreamble << versionDecl;
         definesPreamble << MakeStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength));
 
@@ -130,11 +202,12 @@ namespace RenderCore { namespace Metal_AppleMetal
                                                                   error:&error];
         [options release];
         if (!newLibrary) {
-#if defined(_DEBUG)
-            // Failure in shader
-            std::cout << "Failed to create library from source:" << std::endl << finalShaderCode << std::endl;
-            std::cout << "Errors:" << std::endl << [[error description] UTF8String] << std::endl;
-#endif
+            auto errorMsg = TranslateErrorMsgs(error.localizedDescription.UTF8String, sourceLineMarkers, preambleLineCount);
+
+            Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
+            Log(Error) << errorMsg << std::endl;
+
+            errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
             return false;
         }
         assert(newLibrary);
