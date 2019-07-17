@@ -193,7 +193,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                             // When the input pitches are zero, it means the texture data is densely packed,
                             // and we should just derive the pitches from the dimensions
                             if (bytesPerRow == 0)
-                                bytesPerRow = mipWidth * BitsPerPixel(desc._textureDesc._format);
+                                bytesPerRow = mipWidth * BitsPerPixel(desc._textureDesc._format) / 8u;
                             if (bytesPerImage == 0)
                                 bytesPerImage = mipHeight * bytesPerRow;
                         }
