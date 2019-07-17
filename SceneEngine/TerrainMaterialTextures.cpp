@@ -7,12 +7,13 @@
 #include "TerrainMaterialTextures.h"
 #include "TerrainMaterial.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/CompileAndAsyncManager.h"
@@ -50,10 +51,10 @@ namespace SceneEngine
             //      the main rendering thread (or whatever thread is associated with the 
             //      immediate context)
 
-        auto inputTexture = RenderCore::Assets::DeferredShaderResource::LoadImmediately(sourceFile);
-        auto inputRes = Metal::ExtractResource(inputTexture);
+        auto inputTexture = RenderCore::Techniques::DeferredShaderResource::LoadImmediately(sourceFile);
+        auto inputRes = inputTexture.GetResource();
 
-        auto destinationDesc = Metal::ExtractDesc(&destinationArray);
+        auto destinationDesc = destinationArray.GetDesc();
         const auto dstMipCount = destinationDesc._textureDesc._mipCount;
         auto dstWidthPower = (int)IntegerLog2(destinationDesc._textureDesc._width);
 
@@ -65,7 +66,7 @@ namespace SceneEngine
             Throw(::Exceptions::BasicLabel("Expecting square texture for terrain texturing (%s)", sourceFile));
         }
 
-        auto sourceDesc = Metal::ExtractDesc(inputRes);
+        auto sourceDesc = inputRes->GetDesc();
         auto srcWidthPower = (int)IntegerLog2(sourceDesc._textureDesc._width);
         auto mipDifference = srcWidthPower - dstWidthPower;
 
@@ -74,8 +75,8 @@ namespace SceneEngine
             auto sourceMip = m + mipDifference;
             if (sourceMip < 0) {
 
-                LogWarning << 
-                    "LoadTextureIntoArray -- performing resample on texture (" << sourceFile << "). All textures in the array must be the same size!\n";
+                Log(Warning) << 
+                    "LoadTextureIntoArray -- performing resample on texture (" << sourceFile << "). All textures in the array must be the same size!\n" << std::endl;
 
                     //  We have to up-sample to get the same number of mips
                     //  Using the highest LOD from the source texture, resample into
@@ -101,17 +102,17 @@ namespace SceneEngine
                 desc._textureDesc = BufferUploads::TextureDesc::Plain2D(expectedWidth, expectedHeight, resamplingFormat);
                 XlCopyString(desc._name, "ResamplingTexture");
                 auto resamplingBuffer = bufferUploads.Transaction_Immediate(desc);
-                Metal::UnorderedAccessView uav(resamplingBuffer->ShareUnderlying());
+                Metal::UnorderedAccessView uav(resamplingBuffer->GetUnderlying());
 
                     //	actually getting better results with point resampling.
 		            //	After the compression, the bilinear sampled texture looks quite dithered
 		            //	and ugly... it might be a consequence of compressing twice?
                 auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("xleres/basic.csh:ResamplePoint:cs_*");
                 context.Bind(resamplingShader);
-                context.BindCS(MakeResourceList(uav));
-                context.BindCS(MakeResourceList(inputTexture));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(uav));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(inputTexture));
                 context.Dispatch(expectedWidth/8, expectedHeight/8);
-                context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 if (resamplingFormat!=destFormat) {
@@ -150,15 +151,15 @@ namespace SceneEngine
 
                 Metal::CopyPartial(
                     context, 
-					Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-					Metal::CopyPartial_Src(resamplingBuffer->GetUnderlying(), {}));
+					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+					Metal::CopyPartial_Src(Metal::AsResource(*resamplingBuffer->GetUnderlying()), {}));
 
             } else {
 
                 Metal::CopyPartial(
                     context,
-					Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-					Metal::CopyPartial_Src(inputRes, {sourceMip, 0}));
+					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+					Metal::CopyPartial_Src(Metal::AsResource(*inputRes), {sourceMip, 0}));
 
             }
         }
@@ -170,7 +171,7 @@ namespace SceneEngine
     {
             // copy dummy white data into all of the mip levels of the given array index in the
             // destination resource
-        auto destinationDesc = Metal::ExtractDesc(&destinationArray);
+        auto destinationDesc = destinationArray.GetDesc();
         const auto mipCount = destinationDesc._textureDesc._mipCount;
 
         auto minDims = blockCompressed ? 4u : 1u;
@@ -179,8 +180,8 @@ namespace SceneEngine
             const auto mipHeight = std::max(destinationDesc._textureDesc._height >> m, minDims);
             Metal::CopyPartial(
                 context,
-				Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-				Metal::CopyPartial_Src(&sourceResource, {}, {}, {mipWidth, mipHeight, 1}));
+				Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+				Metal::CopyPartial_Src(Metal::AsResource(sourceResource), {}, {}, {mipWidth, mipHeight, 1}));
         }
     }
 
@@ -326,7 +327,7 @@ namespace SceneEngine
     }
 
     TerrainMaterialTextures::TerrainMaterialTextures(
-        Metal::DeviceContext& metalContext,
+        IThreadContext& context,
         const TerrainMaterialConfig& scaffold, 
         bool useGradFlagMaterials)
     {
@@ -479,6 +480,8 @@ namespace SceneEngine
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+
         for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
             ResolvedTextureFiles texFiles(i->c_str(), scaffold._searchRules);
 
@@ -531,11 +534,13 @@ namespace SceneEngine
                 texturingConstants.resize(sizeof(Float4) * 32 * 5, 0);
         #endif
 
-        _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->ShareUnderlying());
-        _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->ShareUnderlying());
-        _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->ShareUnderlying());
-        _texturingConstants = Metal::ConstantBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
-        _procTexContsBuffer = Metal::ConstantBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
+        _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->GetUnderlying());
+        _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->GetUnderlying());
+        _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->GetUnderlying());
+		if (!texturingConstants.empty())
+			_texturingConstants = MakeMetalCB(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+		if (!procTextureConstants.empty())
+			_procTexContsBuffer = MakeMetalCB(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);

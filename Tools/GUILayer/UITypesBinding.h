@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../ToolsRig/ModelVisualisation.h"
@@ -15,14 +14,14 @@
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
 
-using namespace System;
 using namespace System::ComponentModel;
-using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
+using System::Runtime::InteropServices::OutAttribute;
 
-namespace RenderCore { namespace Assets { class RawMaterial; } }
-namespace RenderCore { namespace Techniques { class Material; } }
+namespace RenderCore { namespace Assets { class RawMaterial; class MaterialScaffoldMaterial; } }
+namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; class MaterialVisSettings; }
+namespace Assets { class DirectorySearchRules; }
 
 namespace GUILayer
 {
@@ -46,7 +45,7 @@ namespace GUILayer
 
             ofd->InitialDirectory = clix::marshalString<clix::E_UTF8>(dirName);
             ofd->Filter = "Model files|*.dae|Material files|*.material|All Files|*.*";
-            if (ofd->ShowDialog() == DialogResult::OK) {
+            if (ofd->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
                 return ofd->FileName;
             }
 
@@ -55,11 +54,11 @@ namespace GUILayer
 
         FileNameEditor()
         {
-            ofd = gcnew OpenFileDialog();
+            ofd = gcnew System::Windows::Forms::OpenFileDialog();
         }
 
     private:
-        OpenFileDialog ^ofd;
+        System::Windows::Forms::OpenFileDialog ^ofd;
     };
 
     public ref class VisCameraSettings
@@ -68,12 +67,9 @@ namespace GUILayer
         const std::shared_ptr<ToolsRig::VisCameraSettings>& GetUnderlying() { return _object.GetNativePtr(); }
         ToolsRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get(); }
 
-        VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached)
-        {
-            _object = std::move(attached);
-        }
-        VisCameraSettings()     { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
-        ~VisCameraSettings()    { _object.reset(); }
+		VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached);
+		VisCameraSettings();
+		~VisCameraSettings();
     protected:
         clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
     };
@@ -84,39 +80,39 @@ namespace GUILayer
         [Category("Model")]
         [Description("Active model file")]
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
-        property String^ ModelName
+        property System::String^ ModelName
         {
-            String^ get()
+            System::String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>(_object->_modelName);
             }
 
-            void set(String^ value);
+            void set(System::String^ value);
         }
 
         [Category("Model")]
         [Description("Active material file")]
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
-        property String^ MaterialName
+        property System::String^ MaterialName
         {
-            String^ get()
+            System::String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>(_object->_materialName);
             }
 
-            void set(String^ value);
+            void set(System::String^ value);
         }
 
         [Category("Model")]
         [Description("Supplements")]
-        property String^ Supplements
+        property System::String^ Supplements
         {
-            String^ get()
+            System::String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>(_object->_supplements);
             }
 
-            void set(String^ value);
+            void set(System::String^ value);
         }
 
         [Category("Model")]
@@ -127,138 +123,178 @@ namespace GUILayer
             void set(unsigned value);
         }
 
-        [Category("Environment")]
-        [Description("Environment settings name")]
-        property String^ EnvSettingsFile
+		[Category("Animation")]
+        [Description("Active animation file")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+        property System::String^ AnimationFileName
         {
-            String^ get()
+            System::String^ get()
             {
-                return clix::marshalString<clix::E_UTF8>(_object->_envSettingsFile);
+                return clix::marshalString<clix::E_UTF8>(_object->_animationFileName);
             }
 
-            void set(String^ value);
+            void set(System::String^ value);
         }
 
-        enum class ColourByMaterialType { None, All, MouseOver };
-
-        [Category("Visualisation")]
-        [Description("Highlight material divisions")]
-        property ColourByMaterialType ColourByMaterial
+		[Category("Animation")]
+        [Description("Active skeleton file")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+        property System::String^ SkeletonFileName
         {
-            ColourByMaterialType get() { return (ColourByMaterialType)_object->_colourByMaterial; }
-            void set(ColourByMaterialType value)
+            System::String^ get()
             {
-                _object->_colourByMaterial = unsigned(value); 
-                _object->_changeEvent.Trigger(); 
+                return clix::marshalString<clix::E_UTF8>(_object->_skeletonFileName);
             }
+
+            void set(System::String^ value);
         }
 
-        [Category("Visualisation")]
-        [Description("Reset camera to match the object")]
-        property bool ResetCamera
-        {
-            bool get() { return _object->_pendingCameraAlignToModel; }
-            void set(bool value)
-            {
-                _object->_pendingCameraAlignToModel = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
+		[Category("Model")]
+        [Description("Material Binding Filter")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+		property System::UInt64 MaterialBindingFilter
+		{
+			System::UInt64 get() { return _object->_materialBindingFilter; }
+            void set(System::UInt64 value);
+		}
 
-        [Category("Visualisation")]
-        [Description("Draw Normals, tangents and bitangents")]
-        property bool DrawNormals
+		ModelVisSettings(const std::shared_ptr<ToolsRig::ModelVisSettings>& attached)
         {
-            bool get() { return _object->_drawNormals; }
-            void set(bool value)
-            {
-                _object->_drawNormals = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
-
-        [Category("Visualisation")]
-        [Description("Draw wireframe")]
-        property bool DrawWireframe
-        {
-            bool get() { return _object->_drawWireframe; }
-            void set(bool value)
-            {
-                _object->_drawWireframe = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
-
-        [Browsable(false)]
-        property VisCameraSettings^ Camera
-        {
-            VisCameraSettings^ get() { return _camSettings; }
-        }
-
-        void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
-
-        ModelVisSettings(std::shared_ptr<ToolsRig::ModelVisSettings> attached)
-        {
-            _object = std::move(attached);
-            _camSettings = gcnew VisCameraSettings(_object->_camera);
+            _object = attached;
         }
 
         ModelVisSettings() 
         {
             _object = std::make_shared<ToolsRig::ModelVisSettings>();
-            _camSettings = gcnew VisCameraSettings(_object->_camera);
         }
 
-        ~ModelVisSettings() { delete _camSettings; _object.reset(); }
+        ~ModelVisSettings() { _object.reset(); }
 
-        static ModelVisSettings^ CreateDefault();
+		static ModelVisSettings^ CreateDefault();
+		static ModelVisSettings^ FromCommandLine(array<System::String^>^ args);
 
-    protected:
-        clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
-        VisCameraSettings^ _camSettings;
+		// virtual event PropertyChangedEventHandler^ PropertyChanged;
+		const std::shared_ptr<ToolsRig::ModelVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
+
+	protected:
+		clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
+
+		void NotifyPropertyChanged(System::String^ propertyName);
+	};
+
+	public ref class MaterialVisSettings
+    {
+    public:
+        enum class GeometryType { Sphere, Cube, Plane2D, Model, Chart };
+        enum class LightingType { Deferred, Forward, Direct };
+
+        property GeometryType Geometry;
+        property LightingType Lighting;
+
+		std::shared_ptr<ToolsRig::MaterialVisSettings> ConvertToNative();
+		static MaterialVisSettings^ ConvertFromNative(const ToolsRig::MaterialVisSettings& input);
+		MaterialVisSettings();
+    };
+
+	public ref class VisOverlaySettings
+	{
+	public:
+        enum class ColourByMaterialType { None, All, MouseOver };
+		enum class SkeletonModes { None, Render, BoneNames };
+
+        [Category("Visualisation")]
+        [Description("Highlight material divisions")]
+        property ColourByMaterialType ColourByMaterial;
+
+		[Category("Visualisation")]
+        [Description("Mode for skeleton visualization")]
+        property SkeletonModes SkeletonMode;
+
+        [Category("Visualisation")]
+        [Description("Draw Normals, tangents and bitangents")]
+        property bool DrawNormals;
+
+        [Category("Visualisation")]
+        [Description("Draw wireframe")]
+        property bool DrawWireframe;
+
+		std::shared_ptr<ToolsRig::VisOverlaySettings> ConvertToNative();
+		static VisOverlaySettings^ ConvertFromNative(const ToolsRig::VisOverlaySettings& input);
     };
 
     public ref class VisMouseOver
     {
     public:
         [Description("Intersection coordinate")]
-        property String^ IntersectionPt { String^ get(); }
+        property System::String^ IntersectionPt { System::String^ get(); }
 
         [Description("Draw call index")]
         property unsigned DrawCallIndex { unsigned get(); }
 
         [Description("Model file name")]
-        property String^ ModelName { String^ get(); }
+        property System::String^ ModelName { System::String^ get(); }
 
         [Category("Material")]
-        property String^ MaterialName { String^ get(); }
+        property System::String^ MaterialName { System::String^ get(); }
 
         [Browsable(false)] property bool HasMouseOver { bool get(); }
-        [Browsable(false)] property String^ FullMaterialName { String^ get(); }
+        [Browsable(false)] property System::String^ FullMaterialName { System::String^ get(); }
         [Browsable(false)] property uint64 MaterialBindingGuid { uint64 get(); }
 
-        void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return _object.GetNativePtr(); }
-
-        static String^ BuildFullMaterialName(
-            const ToolsRig::ModelVisSettings& modelSettings,
-            RenderCore::Assets::ModelCache& modelCache,
-            uint64 materialGuid);
-        static String^ DescriptiveMaterialName(String^ fullName);
+        void AttachCallback(System::Windows::Forms::PropertyGrid^ callback);
+        const std::shared_ptr<ToolsRig::VisMouseOver>& GetUnderlying() { return _object.GetNativePtr(); }
 
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
-            std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-            std::shared_ptr<RenderCore::Assets::ModelCache> cache);
+            std::shared_ptr<SceneEngine::IScene> scene);
         VisMouseOver();
         ~VisMouseOver();
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
-        clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
-        clix::shared_ptr<RenderCore::Assets::ModelCache> _modelCache;
+        clix::shared_ptr<SceneEngine::IScene> _scene;
     };
+
+	public ref class VisAnimationState
+	{
+	public:
+		ref class AnimationDetails
+		{
+		public:
+			System::String^ Name;
+			float BeginTime;
+			float EndTime;
+		};
+
+        [Description("Available Animations List")]
+        property System::Collections::Generic::IEnumerable<AnimationDetails^>^ AnimationList { System::Collections::Generic::IEnumerable<AnimationDetails^>^ get(); }
+
+        [Description("Active Animation")]
+        property System::String^ ActiveAnimation { System::String^ get(); void set(System::String^); }
+
+        [Description("Animation Time")]
+        property float AnimationTime { float get(); void set(float); }
+
+        [Description("Anchor Time")]
+        property unsigned AnchorTime { unsigned get(); void set(unsigned); }
+
+		enum class State { Stopped, Playing, BindPose };
+		
+		[Description("State")]
+		property State CurrentState { State get(); void set(State); }
+
+        const std::shared_ptr<ToolsRig::VisAnimationState>& GetUnderlying() { return _animState.GetNativePtr(); }
+
+		delegate void OnChangedCallback();
+		void AddOnChangedCallback(OnChangedCallback^ del);
+
+        VisAnimationState(const std::shared_ptr<ToolsRig::VisAnimationState>& attached);
+        VisAnimationState();
+        ~VisAnimationState();
+
+    protected:
+        clix::shared_ptr<ToolsRig::VisAnimationState> _animState;
+	};
 
     template<typename NameType, typename ValueType>
         public ref class PropertyPair : public INotifyPropertyChanged
@@ -273,15 +309,15 @@ namespace GUILayer
         virtual event PropertyChangedEventHandler^ PropertyChanged;
 
     protected:
-        void NotifyPropertyChanged(/*[CallerMemberName]*/ String^ propertyName);
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
 
         NameType _name;
         ValueType _value;
     };
 
-    using StringIntPair = PropertyPair<String^, unsigned> ;
-    using StringStringPair = PropertyPair<String^, String^>;
+    using StringIntPair = PropertyPair<System::String^, unsigned> ;
+    using StringStringPair = PropertyPair<System::String^, System::String^>;
 
     public enum class StandardBlendModes
     {
@@ -313,7 +349,7 @@ namespace GUILayer
 
         property StandardBlendModes StandardBlendMode { StandardBlendModes get(); void set(StandardBlendModes); }
 
-        virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
+        virtual event PropertyChangedEventHandler^ PropertyChanged;
 
         using NativeConfig = ToolsRig::DivergentAsset<RenderCore::Assets::RawMaterial>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
@@ -321,7 +357,7 @@ namespace GUILayer
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
 
-        void NotifyPropertyChanged(/*[CallerMemberName]*/ String^ propertyName);
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
     };
 
@@ -340,25 +376,35 @@ namespace GUILayer
             BindingList<StringStringPair^>^ get();
         }
         
-        static StringStringPair^ MakePropertyPair(String^ name, String^ value) { return gcnew StringStringPair(name, value); }
-
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        property String^ TechniqueConfig { String^ get(); void set(String^); }
+        property System::String^ TechniqueConfig { System::String^ get(); void set(System::String^); }
 
         const RenderCore::Assets::RawMaterial* GetUnderlying();
+		std::shared_ptr<RenderCore::Assets::RawMaterial> GetUnderlyingPtr();
 
-        String^ BuildInheritanceList();
-        void Resolve(RenderCore::Techniques::Material& destination);
+        System::String^ BuildInheritanceList();
+        void AddInheritted(System::String^);
+        void RemoveInheritted(System::String^);
 
-        void AddInheritted(String^);
-        void RemoveInheritted(String^);
+		void MergeInto(RawMaterial^ destination);
 
-        property String^ Filename { String^ get(); }
-        property String^ Initializer { String^ get(); }
+		bool TryGetConstantInt(System::String^ label, [Out] int% value);
+		bool TryGetConstantFloat(System::String^ label, [Out] float% value);
+		bool TryGetConstantBool(System::String^ label, [Out] bool% value);
+		bool TryGetConstantFloat2(System::String^ label, array<float>^ value);
+		bool TryGetConstantFloat3(System::String^ label, array<float>^ value);
+		bool TryGetConstantFloat4(System::String^ label, array<float>^ value);
+		bool HasConstant(System::String^ label);
+		void RemoveConstant(System::String^ label);
 
-        static RawMaterial^ Get(String^ initializer);
+        property System::String^ Filename { System::String^ get(); }
+        property System::String^ Initializer { System::String^ get(); }
+
+        static RawMaterial^ Get(System::String^ initializer);
         static RawMaterial^ CreateUntitled();
+
+		static StringStringPair^ MakePropertyPair(System::String^ name, System::String^ value) { return gcnew StringStringPair(name, value); }
 
         ~RawMaterial();
     private:
@@ -370,25 +416,28 @@ namespace GUILayer
         BindingList<StringStringPair^>^ _materialParameterBox;
         BindingList<StringStringPair^>^ _shaderConstants;
         BindingList<StringStringPair^>^ _resourceBindings;
-        String^ _initializer;
+        System::String^ _initializer;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
 
-        RawMaterial(String^ initialiser);
+        RawMaterial(System::String^ initialiser);
 
 		uint32 _transId;
-		void CheckBindingInvalidation();
 
         static RawMaterial();
-        static Dictionary<String^, WeakReference^>^ s_table;
+        static Dictionary<System::String^, System::WeakReference^>^ s_table;
     };
+
+	RenderCore::Assets::MaterialScaffoldMaterial ResolveNativeMaterial(
+		System::Collections::Generic::IEnumerable<RawMaterial^>^ rawMaterials,
+		const ::Assets::DirectorySearchRules& searchRules);
 
     public ref class InvalidAssetList
     {
     public:
-        property IEnumerable<Tuple<String^, String^>^>^ AssetList 
+        property IEnumerable<System::Tuple<System::String^, System::String^>^>^ AssetList 
         {
-            IEnumerable<Tuple<String^, String^>^>^ get();
+            IEnumerable<System::Tuple<System::String^, System::String^>^>^ get();
         }
 
         static bool			HasInvalidAssets();

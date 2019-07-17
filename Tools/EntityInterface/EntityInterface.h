@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
 #include <vector>
@@ -23,16 +24,11 @@ namespace EntityInterface
     class PropertyInitializer
     {
     public:
-        PropertyId _prop;
-        const void* _src;
-        unsigned _elementType;
-        unsigned _arrayCount;
-        bool _isString;
-
-        PropertyInitializer() 
-            : _prop(0), _src(nullptr)
-            , _elementType(0), _arrayCount(0)
-            , _isString(false) {}
+        PropertyId _prop = 0;
+        IteratorRange<const void*> _src;
+        unsigned _elementType = 0;
+        unsigned _arrayCount = 0;
+        bool _isString = false;
     };
 
     class Identifier
@@ -42,8 +38,24 @@ namespace EntityInterface
         ObjectTypeId ObjectType() const     { return _objType; }
         ObjectId Object() const             { return _obj; }
 
-        Identifier(DocumentId doc, ObjectId obj, ObjectTypeId objType) : _doc(doc), _obj(obj), _objType(objType) {}
-        Identifier() : _doc(DocumentId(0)), _obj(ObjectId(0)), _objType(ObjectTypeId(0)) {}
+        Identifier(DocumentId doc = 0, ObjectId obj = 0, ObjectTypeId objType = 0)
+		: _doc(doc), _obj(obj), _objType(objType) {}
+
+		friend bool operator<(const Identifier& lhs, const Identifier& rhs)
+		{
+			if (lhs._doc < rhs._doc) return true;
+			if (lhs._doc > rhs._doc) return false;
+			if (lhs._objType < rhs._objType) return true;
+			if (lhs._objType > rhs._objType) return false;
+			if (lhs._obj < rhs._obj) return true;
+			return false;
+		}
+
+		friend bool operator==(const Identifier& lhs, const Identifier& rhs)
+		{
+			return (lhs._doc == rhs._doc) || (lhs._objType == rhs._objType) || (lhs._obj == rhs._obj);
+		}
+
     protected:
         DocumentId _doc;
         ObjectId _obj;
@@ -95,12 +107,14 @@ namespace EntityInterface
         virtual bool DeleteObject(const Identifier& id) = 0;
         virtual bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) = 0;
         virtual bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const = 0;
-        virtual bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) = 0;
+        virtual bool SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition) = 0;
 
         virtual ObjectTypeId GetTypeId(const char name[]) const = 0;
         virtual DocumentTypeId GetDocumentTypeId(const char name[]) const = 0;
         virtual PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const = 0;
         virtual ChildListId GetChildListId(ObjectTypeId type, const char name[]) const = 0;
+
+		virtual void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
         virtual ~IEntityInterface();
     };
@@ -129,12 +143,17 @@ namespace EntityInterface
         ChildListId     GetChildListId(ObjectTypeId type, const char name[]) const;
 
         uint32  MapTypeId(ObjectTypeId type, const IEntityInterface& owner);
-        void    RegisterType(std::shared_ptr<IEntityInterface> type);
+        void    RegisterInterface(const std::shared_ptr<IEntityInterface>& type);
+		void	UnregisterInterface(const std::shared_ptr<IEntityInterface>& type);
+		void    RegisterDefaultInterface(const std::shared_ptr<IEntityInterface>& type);
+
+		void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
         Switch();
         ~Switch();
     protected:
         std::vector<std::shared_ptr<IEntityInterface>> _types;
+		std::shared_ptr<IEntityInterface> _defaultType;
 
         class KnownType
         {

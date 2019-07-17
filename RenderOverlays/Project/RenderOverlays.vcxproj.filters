@@ -3,11 +3,9 @@
   <ItemGroup>
     <ClCompile Include="..\DebuggingDisplay.cpp" />
     <ClCompile Include="..\Font.cpp" />
-    <ClCompile Include="..\FontPrimitives.cpp" />
     <ClCompile Include="..\FT_Font.cpp" />
     <ClCompile Include="..\FT_FontTexture.cpp" />
     <ClCompile Include="..\OverlayContext.cpp" />
-    <ClCompile Include="..\TextStyle.cpp" />
     <ClCompile Include="..\Overlays\OceanSettings.cpp">
       <Filter>Overlays</Filter>
     </ClCompile>
@@ -23,19 +21,20 @@
     <ClCompile Include="..\Overlays\VolFogSettings.cpp">
       <Filter>Overlays</Filter>
     </ClCompile>
-    <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Overlays\ShadowFrustumDebugger.cpp">
       <Filter>Overlays</Filter>
     </ClCompile>
     <ClCompile Include="..\OverlayUtils.cpp" />
     <ClCompile Include="..\HighlightEffects.cpp" />
+    <ClCompile Include="..\FontRectanglePacking.cpp" />
+    <ClCompile Include="..\OverlayPrimitives.cpp" />
+    <ClCompile Include="..\FontRendering.cpp" />
+    <ClCompile Include="..\animationvisualization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
     <ClInclude Include="..\IOverlayContext.h" />
     <ClInclude Include="..\Font.h" />
-    <ClInclude Include="..\FontPrimitives.h" />
-    <ClInclude Include="..\FontRendering.h" />
     <ClInclude Include="..\FT_Font.h" />
     <ClInclude Include="..\FT_FontTexture.h" />
     <ClInclude Include="..\IOverlayContext_Forward.h" />
@@ -55,12 +54,14 @@
     <ClInclude Include="..\Overlays\VolFogSettings.h">
       <Filter>Overlays</Filter>
     </ClInclude>
-    <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\Overlays\ShadowFrustumDebugger.h">
       <Filter>Overlays</Filter>
     </ClInclude>
     <ClInclude Include="..\OverlayUtils.h" />
     <ClInclude Include="..\HighlightEffects.h" />
+    <ClInclude Include="..\FontRectanglePacking.h" />
+    <ClInclude Include="..\OverlayPrimitives.h" />
+    <ClInclude Include="..\animationvisualization.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Overlays">

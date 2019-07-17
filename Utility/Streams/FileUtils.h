@@ -11,6 +11,7 @@
 #include "../../Core/Types.h"
 #include "../StringUtils.h" // for StringSection
 #include "../Optional.h"
+#include "../IteratorUtils.h"
 #include <memory>       // for std::unique_ptr
 
 #include <vector>
@@ -91,21 +92,21 @@ namespace Utility
     class MemoryMappedFile
     {
     public:
-        void*           GetData()           { return _begin; }
-        const void*     GetData() const     { return _begin; }
-        bool            IsGood() const		{ return _begin != 0; }
-        size_t          GetSize() const		{ return ptrdiff_t(_end) - ptrdiff_t(_begin); }
+        IteratorRange<void*>		GetData()		{ return _data; }
+		IteratorRange<const void*>	GetData() const	{ return _data; }
+        bool            IsGood() const				{ return !_data.empty(); }
+        size_t          GetSize() const				{ return _data.size(); }
 
-		using CloseFn = std::function<void(const void*, const void*)>;
+		using CloseFn = std::function<void(IteratorRange<const void*>)>;
 
         MemoryMappedFile();
-		MemoryMappedFile(void* begin, void* end, CloseFn&& close);
+		MemoryMappedFile(IteratorRange<void*> data, CloseFn&& close);
         MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws;
         MemoryMappedFile& operator=(MemoryMappedFile&& moveFrom) never_throws;
         ~MemoryMappedFile();
 
 	protected:
-        void* _begin, *_end;
+        IteratorRange<void*> _data;
 		CloseFn _closeFn;
     };
 

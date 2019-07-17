@@ -17,10 +17,10 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
+#include "../../FixedFunctionModel/ModelCache.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
@@ -35,6 +35,7 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
@@ -197,7 +198,7 @@ namespace Overlays
         context->Bind(Topology::TriangleStrip);
         context->Draw(dimof(vertices));
 
-        context->UnbindPS<ShaderResourceView>(0, 1);
+		boundLayout.UnbindShaderResources(*context, 0);
     }
 
     class ButtonFormatting
@@ -215,7 +216,7 @@ namespace Overlays
         // DrawText(context, rect, 0.f, nullptr, formatting._foreground, manipulatorName);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label);
+			GetDefaultFont(), TextStyle{}, formatting._foreground, TextAlignment::Center, label);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
@@ -260,19 +261,18 @@ namespace Overlays
             interactables.Register(Interactables::Widget(toolBoxLayout.GetMaximumSize(), Id_TotalRect));
 
             const auto headingRect = toolBoxLayout.AllocateFullWidth(25);
-            TextStyle font(_pimpl->_headingFont);
             context.DrawText(
                 std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
-                &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
+				_pimpl->_headingFont, TextStyle{}, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
                     _pimpl->_headerName.c_str());
         }
 
             //  Write the current directory name
-        unsigned textHeight = 8 + (unsigned)context.TextHeight();
+        unsigned textHeight = 8 + (unsigned)GetDefaultFont()->GetFontProperties()._lineHeight;
         auto curDirRect = toolBoxLayout.AllocateFullWidth(textHeight);
         context.DrawText(
             std::make_tuple(Float3(float(curDirRect._topLeft[0]), float(curDirRect._topLeft[1]), 0.f), Float3(float(curDirRect._bottomRight[0]), float(curDirRect._bottomRight[1]), 0.f)),
-            nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str());
+			GetDefaultFont(), TextStyle{}, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str());
 
         {
             auto border = toolBoxLayout.AllocateFullWidth(2); // small border to reset current line
@@ -289,7 +289,7 @@ namespace Overlays
                 char utf8Filename[MaxPath], baseName[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), (utf8*)utf8Filename, dimof(utf8Filename));
                 XlBasename(baseName, dimof(baseName), utf8Filename);
-                unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, baseName);
+                unsigned textWidth = 20 + (unsigned)StringWidth(*GetDefaultFont(), MakeStringSection(baseName));
                 auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
                 DrawButtonBasic(
                     &context, directoryRect, baseName, 
@@ -298,7 +298,7 @@ namespace Overlays
             }
 
             const char back[] = "<up>";
-            unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, back);
+            unsigned textWidth = 20 + (unsigned)StringWidth(*GetDefaultFont(), MakeStringSection(back));
             auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
             DrawButtonBasic(
                 &context, directoryRect, back, 
@@ -396,7 +396,7 @@ namespace Overlays
 
             context.DrawText(
                 std::make_tuple(Float3(float(labelRect._topLeft[0]), float(labelRect._topLeft[1]), 0.f), Float3(float(labelRect._bottomRight[0]), float(labelRect._bottomRight[1]), 0.f)),
-                nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str());
+				GetDefaultFont(), TextStyle{}, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str());
         }
 
             // draw the scroll bar over the top on the right size
@@ -408,7 +408,7 @@ namespace Overlays
 
     static const std::string Slashes("/\\");
 
-    bool    SharedBrowser::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    SharedBrowser::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         if (input._wheelDelta && interfaceState.HasMouseOver(Id_MainSurface)) {
             _mainScrollBar.ProcessDelta(float(-input._wheelDelta));
@@ -481,8 +481,8 @@ namespace Overlays
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using RenderCore::Assets::ModelCache;
-	using RenderCore::Assets::ModelCacheModel;
+    using FixedFunctionModel::ModelCache;
+	using FixedFunctionModel::ModelCacheModel;
 
     class ModelBrowser::Pimpl
     {
@@ -503,16 +503,19 @@ namespace Overlays
             //      We need to create a LightingParserContext, and ISceneParser as well.
             //      Cameras and lights should be arranged to suit the bounding box given. Let's use 
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
-        auto viewDims = context.GetStateDesc()._viewportDimensions;
-        SceneEngine::RenderingQualitySettings qualitySettings(UInt2(viewDims[0], viewDims[1]));
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+		SceneEngine::RenderSceneSettings qualitySettings{};
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+		(void)metalContext;
 
-        auto sceneParser = ToolsRig::CreateModelScene(model);
+		assert(0); // broken in lighting parser refactoring. Needs a bit of restructing in the way ToolsRig::CreateModelScene works
+				// with SceneEngine::IScene & SceneEngine::ILightingParserDelegate
+
+        /*auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
-        SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
+		Techniques::ParsingContext parsingContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(
-            context, lightingParserContext, *sceneParser.get(), 
-            sceneParser->GetCameraDesc(), qualitySettings);
+            context, parsingContext, *sceneParser.get(), 
+            sceneParser->GetCameraDesc(), qualitySettings);*/
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;
@@ -553,9 +556,9 @@ namespace Overlays
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }
 
-    auto ModelBrowser::SpecialProcessInput(InterfaceState& interfaceState, const InputSnapshot& input) -> ProcessInputResult
+    auto ModelBrowser::SpecialProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input) -> ProcessInputResult
     {
-        if (SharedBrowser::ProcessInput(interfaceState, input)) {
+        if (SharedBrowser::ProcessInput(interfaceState, inputContext, input)) {
             return true;
         }
 
@@ -615,7 +618,7 @@ namespace Overlays
     class TextureBrowser::Pimpl
     {
     public:
-        LRUCache<RenderCore::Assets::DeferredShaderResource> _resources;
+        LRUCache<::Assets::AssetFuture<RenderCore::Techniques::DeferredShaderResource>> _resources;
         Pimpl();
     };
 
@@ -636,11 +639,12 @@ namespace Overlays
         if (!res) {
             utf8 utf8Filename[MaxPath];
             ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
-            res = std::make_shared<RenderCore::Assets::DeferredShaderResource>((const char*)utf8Filename);
+            res = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>((const char*)utf8Filename);
             _pimpl->_resources.Insert(hashedName, res);
         }
 
-        return std::make_pair(&res->GetShaderResource(), hashedName);
+		auto a = res->TryActualize();
+        return std::make_pair(a ? &a->GetShaderResource() : nullptr, hashedName);
     }
 
     bool TextureBrowser::Filter(const std::basic_string<ucs2>& filename)

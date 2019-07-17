@@ -6,97 +6,78 @@
 
 #pragma once
 
-#include "PreparedScene.h"
-#include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/Metal/Forward.h"
-#include <functional>
+#include "../Math/Vector.h"
+#include <vector>
+#include <memory>
 
-namespace RenderCore { namespace Techniques 
-{
-    class CameraDesc; class ProjectionDesc; 
-    class TechniqueContext;
-    class TechniqueInterface;
-}}
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { class IThreadContext; class IResource; }
+namespace RenderCore { class TextureViewDesc; }
 
 namespace SceneEngine
 {
     class MetricsBox;
-    class ISceneParser;
     class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
-    class ShadowProjectionConstants;
+	class ILightingParserDelegate;
     class ILightingParserPlugin;
-    class RenderingQualitySettings;
+	class RenderSceneSettings;
+	class PreparedScene;
+	class MainTargets;
 
     using LightId = unsigned;
 
-    class LightingParserContext : public RenderCore::Techniques::ParsingContext
+	class MainTargets
     {
     public:
+		std::vector<std::pair<uint64_t, unsigned>> _namedTargetsMapping;
+		UInt2 _dimensions = UInt2{0,0};
+		unsigned _samplingCount = 0;
+
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
+		std::shared_ptr<RenderCore::IResource> GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
+
+		UInt2		GetDimensions() const;
+		unsigned    GetSamplingCount() const;
+
+		MainTargets();
+		~MainTargets();
+    };
+
+    class LightingParserContext
+    {
+    public:
+		const ILightingParserDelegate*	_delegate = nullptr;
+		PreparedScene*				_preparedScene = nullptr;
+		unsigned					_sampleCount = 0;
+		unsigned					_gbufferType = 0;
+
+		const MainTargets&	GetMainTargets() const { return _mainTargets; }
+		MainTargets			_mainTargets;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }
         void            SetMetricsBox(MetricsBox* box);
-        ISceneParser*   GetSceneParser()                    { return _sceneParser; }
 
             //  ----------------- Working shadow state ----------------- 
         std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
         std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
-
-            //  ----------------- Overlays for late rendering -----------------
-        typedef std::function<void(RenderCore::Metal::DeviceContext&, LightingParserContext&)> PendingOverlay;
-        std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;
 
         void Reset();
 
-        LightingParserContext(
-            const RenderCore::Techniques::TechniqueContext& techniqueContext, 
-            RenderCore::Techniques::AttachmentPool* namedResources = nullptr);
-        ~LightingParserContext();
+		LightingParserContext();
+		~LightingParserContext();
+		LightingParserContext(LightingParserContext&& moveFrom);
+		LightingParserContext& operator=(LightingParserContext&& moveFrom);
 
     private:
-        MetricsBox*         _metricsBox;
-        ISceneParser*       _sceneParser;
-
-        friend class AttachedSceneMarker;
-        AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
-        friend AttachedSceneMarker LightingParser_SetupScene(
-            RenderCore::Metal::DeviceContext&, LightingParserContext&, 
-            ISceneParser*, unsigned, unsigned);
-    };
-
-    class AttachedSceneMarker
-    {
-    public:
-        PreparedScene& GetPreparedScene() { return _preparedScene; }
-
-        AttachedSceneMarker() : _parserContext(nullptr) {}
-        AttachedSceneMarker(AttachedSceneMarker&& moveFrom) never_throws
-        : _parserContext(moveFrom._parserContext)
-        {
-            moveFrom._parserContext = nullptr; 
-            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
-        }
-        const AttachedSceneMarker& operator=(AttachedSceneMarker&& moveFrom) never_throws
-        {
-            _parserContext = moveFrom._parserContext;
-            moveFrom._parserContext = nullptr;
-            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
-        }
-        ~AttachedSceneMarker() { if (_parserContext) _parserContext->_sceneParser = nullptr; }
-
-        AttachedSceneMarker(const AttachedSceneMarker&) = delete;
-        const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;
-    private:
-        AttachedSceneMarker(LightingParserContext& parserContext) : _parserContext(&parserContext) {}
-        LightingParserContext*  _parserContext;
-        PreparedScene           _preparedScene;
-
-        friend class LightingParserContext;
+        MetricsBox*			_metricsBox = nullptr;
     };
 }
 

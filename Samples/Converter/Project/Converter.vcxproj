@@ -27,11 +27,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\GeneralCompiler.cpp" />
     <ClCompile Include="..\Main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\GeneralCompiler.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Assets\Project\Assets.vcxproj">

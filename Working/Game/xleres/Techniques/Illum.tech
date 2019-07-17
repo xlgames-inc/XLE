@@ -35,7 +35,7 @@
             SKIP_MATERIAL_DIFFUSE=0
 
 ~Forward
-    ~Inherit; Illum; shared.tech:System
+    ~Inherit; Illum; shared.tech:Forward
     VertexShader=xleres/forward/illum.vsh:main
     PixelShader=xleres/forward/illum.psh:main
 
@@ -43,11 +43,6 @@
     ~Inherit; Illum; shared.tech:Deferred
     VertexShader=xleres/deferred/basic.vsh:main
     PixelShader=xleres/deferred/basic.psh:main
-
-~DeferredFlex
-    ~Inherit; Deferred
-    VertexShader=xleres/deferred/basic.vsh:main
-    PixelShader=xleres/deferred/flex.psh:main
 
 ~OrderIndependentTransparency
     ~Inherit; Illum; shared.tech:Forward
@@ -129,10 +124,11 @@
         ~Geometry
             OUTPUT_WORLD_POSITION=1
             OUTPUT_NORMAL=1
-            OUTPUT_TANGENT_FRAME=1
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
+        ~Material
+            RES_HAS_NormalsTexture
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents
     PixelShader=xleres/basic.psh:PC
@@ -151,7 +147,6 @@
 ~Technique
     Forward = Forward
     Deferred = Deferred
-    Deferred, has(Signal_PBRSample) = DeferredFlex
     OrderIndependentTransparency = OrderIndependentTransparency
     StochasticTransparency = StochasticTransparency
     DepthWeightedTransparency = DepthWeightedTransparency
@@ -164,7 +159,7 @@
 
     CBLayout = <:(
         float3  MaterialDiffuse = {1.f,1.f,1.f}c;
-        float   Opacity = 1
+        float   Opacity = 1;
         float3  MaterialSpecular = {1.f,1.f,1.f}c;
         float   AlphaThreshold = .33f;
         float   RoughnessMin = 0.5f;

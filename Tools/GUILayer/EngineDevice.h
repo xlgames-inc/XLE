@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../../RenderCore/IThreadContext_Forward.h"
-#include "CLIXAutoPtr.h"
 #include <memory>
 
 using namespace System::ComponentModel::Composition;
@@ -51,7 +50,7 @@ namespace GUILayer
         ~EngineDevice();
         !EngineDevice();
     protected:
-        NativeEngineDevice* _pimpl;
+        NativeEngineDevice* _pimpl;			// (note that we can't use a clix::auto_ptr, because that requires an extra include here)
         System::Collections::Generic::IList<System::WeakReference^>^ _shutdownCallbacks;
 
         static EngineDevice^ s_instance;

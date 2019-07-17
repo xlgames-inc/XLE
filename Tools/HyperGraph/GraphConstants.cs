@@ -26,24 +26,49 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 
 namespace HyperGraph
 {
 	public static class GraphConstants
 	{
 		public const int MinimumItemWidth		= 64+8;
-		public const int MinimumItemHeight		= 20;
-		public const int TitleHeight			= 20;
-		public const int ItemSpacing			= 3;
-		public const int TopHeight				= 6;
-        public const int BottomHeight           = 6;
-        public const int CornerSize             = 3; 
+		public const int MinimumItemHeight		= 12;
+		public const int ItemSpacing			= 2;
+        public const int TitleHeight            = 20;
+
+        public const int CornerSize             = 4;
+        public const int SubGraphCornerSize     = 64;
         public const int ConnectorCornerSize    = 12;
 		public const int ConnectorWidth			= 128;
         public const int ConnectorWidthCollapsed= 8;
-		public const int HorizontalSpacing		= 8;
-        public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
-        public const float ConnectionWidth      = 4.0f;
+
+        public const int TopHeight              = 8;    // space between the top of the node & the first top item
+        public const int BottomHeight           = 8;
+        public const int TopHeightCollapsed     = 6;
+        public const int BottomHeightCollapsed  = 6;
+        public const int HorizontalSpacing		= 8;
+
+        public const float ConnectionWidth      = 1.5f;
+
+        internal static Pen BorderPen = new Pen(Color.FromArgb(255, 255, 255), 2.0f);
+        internal static Pen ConnectorBorderPen = new Pen(Color.FromArgb(192, 192, 192)) { Width = 0.5f };
+        internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(32, 32, 32)) { Width = 0.5f };
+
+        internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+                                                            Color.FromArgb(64, 64, 64),  Color.FromArgb(48, 48, 48));
+
+        internal static Brush DraggingBrush = NormalBrush;
+        internal static Brush HoverBrush = NormalBrush;
+
+        internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(32, 32, 32));
+        internal static Brush NullAreaBrush = new HatchBrush(HatchStyle.ForwardDiagonal, Color.FromArgb(20, 192, 192, 192), Color.FromArgb(0, 96, 96, 96));
+
+        internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
+        internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
+        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(255, 255, 255)) { DashStyle = DashStyle.Dash, Width = 1 };
+
+        internal static Pen SubGraphOutline = new Pen(Color.FromArgb(164, 164, 164)) { Width = 6 };
 
         public const TextFormatFlags TitleTextFlags =       TextFormatFlags.ExternalLeading |
 															TextFormatFlags.GlyphOverhangPadding |
@@ -86,6 +111,8 @@ namespace HyperGraph
 		public static readonly StringFormat LeftMeasureTextStringFormat;
 		public static readonly StringFormat RightMeasureTextStringFormat;
 
+        public static readonly Font TitleFont;
+
 		static GraphConstants()
 		{
 			var defaultFlags = StringFormatFlags.NoClip | StringFormatFlags.NoWrap | StringFormatFlags.LineLimit;
@@ -124,6 +151,8 @@ namespace HyperGraph
 			RightTextStringFormat.LineAlignment			= StringAlignment.Center;
 			RightTextStringFormat.Trimming				= StringTrimming.EllipsisCharacter;
 			RightMeasureTextStringFormat.Trimming		= StringTrimming.None;
-		}
+
+            TitleFont = new Font("Constantia", SystemFonts.CaptionFont.Size + 2, FontStyle.Italic);
+        }
 	}
 }

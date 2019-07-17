@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ConsoleDisplay.h"
+#include "../../RenderOverlays/Font.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../ConsoleRig/Console.h"
@@ -22,7 +24,9 @@ namespace PlatformRig { namespace Overlays
         const unsigned height               = std::min(consoleMaxSize.Height() / 2, 512);
         consoleMaxSize._bottomRight[1]       = consoleMaxSize._topLeft[1] + height;
 
-        const float         textHeight      = context.TextHeight();
+		auto font = GetX2Font("OrbitronBlack", 20);
+
+        const float         textHeight      = font->GetFontProperties()._lineHeight;
         const Coord         entryBoxHeight  = Coord(textHeight) + 2 * layout._paddingBetweenAllocations;
 
         const Rect          historyArea     = layout.AllocateFullWidth(consoleMaxSize.Height() - 2 * layout._paddingInternalBorder - layout._paddingBetweenAllocations - entryBoxHeight);
@@ -54,35 +58,25 @@ namespace PlatformRig { namespace Overlays
         for (auto i=lines.cbegin(); i!=lines.cend(); ++i) {
             char buffer[1024];
             ucs2_2_utf8(AsPointer(i->begin()), i->size(), (utf8*)buffer, dimof(buffer));
-            DrawText(&context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, nullptr,
-                textColor, TextAlignment::Left, buffer);
+			context.DrawText(AsPixelCoords(historyAreaLayout.AllocateFullWidth(Coord(textHeight))), font, TextStyle{}, textColor, TextAlignment::Left, buffer);
         }
 
         Coord caretOffset = 0;
         Coord selStart = 0, selEnd = 0;
         if (!_currentLine.empty()) {
 
-            char buffer[1024];
-            size_t firstPart = std::min(_caret, dimof(buffer)-1);
+            size_t firstPart = std::min(_caret, _currentLine.size());
+            if (firstPart)
+                caretOffset = (Coord)StringWidth(*font, MakeStringSection(_currentLine.begin(), _currentLine.begin() + firstPart));
+
+            firstPart = std::min(_selectionStart, _currentLine.size());
             if (firstPart) {
-                ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
-                buffer[firstPart] = '\0';
-                caretOffset = (Coord)context.StringWidth(1.f, nullptr, buffer);
+                selStart = (Coord)StringWidth(*font, MakeStringSection(_currentLine.begin(), _currentLine.begin() + firstPart));
             }
 
-            firstPart = std::min(_selectionStart, dimof(buffer)-1);
-            if (firstPart) {
-                ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
-                buffer[firstPart] = '\0';
-                selStart = (Coord)context.StringWidth(1.f, nullptr, buffer);
-            }
-
-            firstPart = std::min(_selectionEnd, dimof(buffer)-1);
-            if (firstPart) {
-                ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, firstPart);
-                buffer[firstPart] = '\0';
-                selEnd = (Coord)context.StringWidth(1.f, nullptr, buffer);
-            }
+            firstPart = std::min(_selectionEnd, _currentLine.size());
+            if (firstPart)
+                selEnd = (Coord)StringWidth(*font, MakeStringSection(_currentLine.begin(), _currentLine.begin() + firstPart));
 
             if (selStart != selEnd) {
                 Rect rect(  Coord2(entryBoxArea._topLeft[0] + std::min(selStart, selEnd), entryBoxArea._topLeft[1]),
@@ -90,9 +84,10 @@ namespace PlatformRig { namespace Overlays
                 DrawRectangle(&context, rect, selectionColor);
             }
 
-            ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, dimof(buffer));
+            char buffer[1024];
+			ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, dimof(buffer));
             buffer[dimof(buffer)-1] = '\0';
-            DrawText(&context, entryBoxArea, 0.f, nullptr, textColor, TextAlignment::Left, buffer);
+			context.DrawText(AsPixelCoords(entryBoxArea), font, TextStyle{}, textColor, TextAlignment::Left, buffer);
 
         }
 
@@ -119,7 +114,7 @@ namespace PlatformRig { namespace Overlays
         return std::basic_string<ucs2>(buffer);
     }
 
-    bool    ConsoleDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ConsoleDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         bool consume = false;
         if (input._pressedChar) {

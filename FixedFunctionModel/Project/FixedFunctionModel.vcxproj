@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-DX11|x64">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-Vulkan|x64">
+      <Configuration>Debug-Vulkan</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-DX11|Win32">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-Vulkan|Win32">
+      <Configuration>Debug-Vulkan</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|x64">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-Vulkan|x64">
+      <Configuration>Profile-Vulkan</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|Win32">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-Vulkan|Win32">
+      <Configuration>Profile-Vulkan</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|x64">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Vulkan|x64">
+      <Configuration>Release-Vulkan</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|Win32">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Vulkan|Win32">
+      <Configuration>Release-Vulkan</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <RootNamespace>FixedFunctionModel</RootNamespace>
+    <ProjectGuid>{BE4B2816-52BA-4A12-AC28-D338DA574CD2}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="..\..\Solutions\Main.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
+      <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\DelayedDrawCall.cpp" />
+    <ClCompile Include="..\ModelCache.cpp" />
+    <ClCompile Include="..\ModelRunTime.cpp" />
+    <ClCompile Include="..\ModelUtils.cpp" />
+    <ClCompile Include="..\PreboundShaders.cpp" />
+    <ClCompile Include="..\SharedStateSet.cpp" />
+    <ClCompile Include="..\SkinningRunTime.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\DelayedDrawCall.h" />
+    <ClInclude Include="..\IModelFormat.h" />
+    <ClInclude Include="..\ModelCache.h" />
+    <ClInclude Include="..\ModelRendererInternal.h" />
+    <ClInclude Include="..\ModelRunTime.h" />
+    <ClInclude Include="..\ModelUtils.h" />
+    <ClInclude Include="..\PreboundShaders.h" />
+    <ClInclude Include="..\SharedStateSet.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

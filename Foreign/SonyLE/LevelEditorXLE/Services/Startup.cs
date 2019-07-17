@@ -57,7 +57,9 @@ namespace LevelEditorXLE
 
                 typeof(AssetMan.ResourcePreview),
                 typeof(Manipulators.ExtraEditCommands),
-                typeof(Terrain.TerrainNamingBridge)
+                typeof(Terrain.TerrainNamingBridge),
+
+                typeof(XLEBridgeUtils.ResourceQueryService)
                 );
         }
     }

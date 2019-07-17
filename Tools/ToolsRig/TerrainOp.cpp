@@ -37,8 +37,8 @@ namespace ToolsRig
         MemoryMappedFile _file;
     };
 
-    void* UberSurfaceWriter::GetData()              { return PtrAdd(_file.GetData(), sizeof(TerrainUberHeader)); }
-    const void* UberSurfaceWriter::GetData() const  { return PtrAdd(_file.GetData(), sizeof(TerrainUberHeader)); }
+    void* UberSurfaceWriter::GetData()              { return PtrAdd(_file.GetData().begin(), sizeof(TerrainUberHeader)); }
+    const void* UberSurfaceWriter::GetData() const  { return PtrAdd(_file.GetData().begin(), sizeof(TerrainUberHeader)); }
 
     UberSurfaceWriter::UberSurfaceWriter(
         const ::Assets::ResChar outFile[],
@@ -58,7 +58,7 @@ namespace ToolsRig
         hdr._typeArrayCount = format._arrayCount;
         hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2] = 0;
 
-        *(TerrainUberHeader*)_file.GetData() = hdr;
+        *(TerrainUberHeader*)_file.GetData().begin() = hdr;
     }
 
     UberSurfaceWriter::~UberSurfaceWriter() {}

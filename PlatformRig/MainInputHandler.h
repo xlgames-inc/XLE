@@ -6,28 +6,30 @@
 
 #pragma once
 
-#include "../RenderOverlays/DebuggingDisplay.h"
+#include "InputListener.h"
 #include <vector>
 #include <memory>
 
+namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
+
 namespace PlatformRig
 {
-    class MainInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
+    class MainInputHandler : public IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-        void    AddListener(std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
+        bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt);
+        void    AddListener(std::shared_ptr<IInputListener> listener);
 
         MainInputHandler();
         ~MainInputHandler();
     private:
-        std::vector<std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>> _listeners;
+        std::vector<std::shared_ptr<IInputListener>> _listeners;
     };
 
-    class DebugScreensInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
+    class DebugScreensInputHandler : public IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt);
 
         DebugScreensInputHandler(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreens);
         ~DebugScreensInputHandler();

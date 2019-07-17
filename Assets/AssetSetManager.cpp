@@ -19,7 +19,7 @@ namespace Assets
 	{
 	public:
 		std::vector<std::pair<size_t, std::unique_ptr<IDefaultAssetHeap>>> _sets;
-		Threading::Mutex _lock;
+		Threading::RecursiveMutex _lock;
 	};
 
 	IDefaultAssetHeap * AssetSetManager::GetSetForTypeCode(size_t typeCode)

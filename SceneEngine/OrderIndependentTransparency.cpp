@@ -8,14 +8,15 @@
 #include "OITInternal.h"
 #include "SceneEngineUtils.h"
 #include "SceneParser.h"
-#include "LightingParserContext.h"
 #include "Noise.h"
 #include "MetricsBox.h"
 #include "LightDesc.h"
 #include "Sky.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
@@ -60,17 +61,18 @@ namespace SceneEngine
             "OI-NodeBuffer");
         _nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc);
 
-        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->ShareUnderlying());
+        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->GetUnderlying());
         _nodeListBufferUAV = Metal::UnorderedAccessView(
-            _nodeListBuffer->ShareUnderlying(),
-			TextureViewDesc(
-				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+            _nodeListBuffer->GetUnderlying(),
+			TextureViewDesc{
+				Format::Unknown,
 				TextureViewDesc::All,
 				TextureViewDesc::All,
-				TextureViewDesc::Flags::AttachedCounter));
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::AttachedCounter});
 
-        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->ShareUnderlying());
-        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->ShareUnderlying());
+        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->GetUnderlying());
+        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->GetUnderlying());
         _pendingInitialClear = true;
 
         if (desc._checkInfiniteLoops) {
@@ -81,8 +83,8 @@ namespace SceneEngine
                     TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
                     "Trans"));
 
-            _infiniteLoopRTV = RTV(_infiniteLoopTexture->ShareUnderlying());
-            _infiniteLoopSRV = SRV(_infiniteLoopTexture->ShareUnderlying());
+            _infiniteLoopRTV = RTV(_infiniteLoopTexture->GetUnderlying());
+            _infiniteLoopSRV = SRV(_infiniteLoopTexture->GetUnderlying());
         }
     }
 
@@ -113,13 +115,13 @@ namespace SceneEngine
             1, prevTargets.GetRenderTargets(), prevTargets.GetDepthStencilView(),
             1, dimof(uavs), uavs, initialCounts);
 
-        metalContext.BindPS(MakeResourceList(17, depthBufferDupe));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(17, depthBufferDupe));
 #endif
     }
 
     TransparencyTargetsBox* OrderIndependentTransparency_Prepare(
         Metal::DeviceContext& metalContext, 
-        LightingParserContext&, const Metal::ShaderResourceView& depthBufferDupe)
+        RenderCore::Techniques::ParsingContext&, const Metal::ShaderResourceView& depthBufferDupe)
     {
         Metal::ViewportDesc mainViewport(metalContext);
 
@@ -140,9 +142,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        // auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
-        // auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
-        // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
+        // auto box5   = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
+        // auto box12  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
+        // auto box34  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
         // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         // auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
@@ -161,21 +163,22 @@ namespace SceneEngine
 
     void OrderIndependentTransparency_Resolve(  
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TransparencyTargetsBox& transparencyTargets,
-        const Metal::ShaderResourceView& originalDepthStencilSRV)
+        const Metal::ShaderResourceView& originalDepthStencilSRV,
+		MetricsBox& metricsBox)
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         SavedTargets savedTargets(metalContext);
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
         CATCH_ASSETS_BEGIN
-            auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
+            auto metricsUAV = metricsBox._metricsBufferUAV.GetUnderlying();
             metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
                 1, savedTargets.GetRenderTargets(), nullptr,
                 1, 1, &metricsUAV, nullptr);
 
-            metalContext.BindPS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 transparencyTargets._fragmentIdsTextureSRV, 
                 transparencyTargets._nodeListBufferSRV, 
                 originalDepthStencilSRV));
@@ -194,7 +197,7 @@ namespace SceneEngine
                 metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
                     1, savedTargets.GetRenderTargets(), nullptr,
                     1, 1, &metricsUAV, nullptr);
-                metalContext.BindPS(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
             }
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -207,7 +210,7 @@ namespace SceneEngine
 
             metalContext.Draw(4);
 
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 4);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 4);
         CATCH_ASSETS_END(parserContext)
 #endif
     }

@@ -6,86 +6,47 @@
 
 #pragma once
 
-#include "ModelVisualisation.h"
-#include "MaterialBinder.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
-#include "../../RenderCore/Metal/Forward.h"
-#include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetsCore.h"
+#include <memory>
+
+namespace SceneEngine { class IScene; }
+namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
+namespace GraphLanguage { class INodeGraphProvider; }
+namespace Utility { class OnChangeCallback; }
 
 namespace ToolsRig
 {
     class MaterialVisSettings
     {
     public:
-        std::shared_ptr<VisCameraSettings> _camera;
-        
-        struct GeometryType
-        {
-            enum Enum { Sphere, Cube, Plane2D, Model };
-        };
-        GeometryType::Enum _geometryType;
-
-        struct LightingType
-        {
-            enum Enum { Deferred, Forward, NoLightingParser };
-        };
-        LightingType::Enum _lightingType;
-
-        mutable bool _pendingCameraAlignToModel;
-
-        MaterialVisSettings();
+        enum class GeometryType { Sphere, Cube, Plane2D };
+        GeometryType _geometryType = GeometryType::Sphere;
     };
 
-    class MaterialVisObject
-    {
-    public:
-        RenderCore::Techniques::Material _parameters;
-        ::Assets::DirectorySearchRules _searchRules;
-        IMaterialBinder::SystemConstants _systemConstants;
-        std::shared_ptr<IMaterialBinder> _materialBinder;
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const MaterialVisSettings& visObject, 
+		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
 
-        ::Assets::rstring _previewModelFile;
-        uint64 _previewMaterialBinding;
+	class MessageRelay
+	{
+	public:
+		std::string GetMessages() const;
 
-        MaterialVisObject();
-        ~MaterialVisObject();
-    };
+		unsigned AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback);
+		void RemoveCallback(unsigned);
 
-    class VisEnvSettings;
+		void AddMessage(const std::string& msg);
 
-    /// <summary>Renders a visualisation of a material</summary>
-    /// Designed for tools, this layer will render a material on a 
-    /// generic piece of geometry, with generic environment settings.
-    class MaterialVisLayer : public PlatformRig::IOverlaySystem
-    {
-    public:
-        virtual std::shared_ptr<IInputListener> GetInputListener();
+		MessageRelay();
+		~MessageRelay();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
 
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext); 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parsingContext);
-        virtual void SetActivationState(bool newState);
-
-        MaterialVisLayer(
-            std::shared_ptr<MaterialVisSettings> settings,
-            std::shared_ptr<VisEnvSettings> envSettings,
-            std::shared_ptr<MaterialVisObject> object);
-        ~MaterialVisLayer();
-
-        static bool Draw(
-            RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& lightingParser,
-            const MaterialVisSettings& settings,
-            const VisEnvSettings& envSettings,
-            const MaterialVisObject& object);
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-    
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
+		const std::string& psMainName,
+		const std::shared_ptr<MessageRelay>& logMessages);
 }
-
-

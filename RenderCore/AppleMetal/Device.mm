@@ -70,7 +70,8 @@ namespace RenderCore { namespace ImplAppleMetal
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            _annotator = CreateAnnotator(*d);
+            assert(0);
+            // _annotator = CreateAnnotator(*d);         DavidJ -- update to new IAnnotator interface
         }
         return *_annotator;
     }
@@ -156,6 +157,12 @@ namespace RenderCore { namespace ImplAppleMetal
     IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
         return Metal_AppleMetal::CreateResource(*_objectFactory, desc, init);
+    }
+
+    std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
+    {
+        assert(0);      // DavidJ -- unimplemented
+        return nullptr;
     }
 
     DeviceDesc Device::GetDesc()

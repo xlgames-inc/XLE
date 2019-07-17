@@ -14,35 +14,34 @@ namespace RenderCore { namespace Techniques
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IStateSetResolver::~IStateSetResolver() {}
+    IRenderStateDelegate::~IRenderStateDelegate() {}
 
-    Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states)
+    Metal::RasterizerState BuildDefaultRastizerState(const Assets::RenderStateSet& states)
     {
         auto cullMode = CullMode::Back;
         auto fillMode = FillMode::Solid;
         unsigned depthBias = 0;
-        if (states._flag & RenderStateSet::Flag::DoubleSided) {
+        if (states._flag & Assets::RenderStateSet::Flag::DoubleSided) {
             cullMode = states._doubleSided ? CullMode::None : CullMode::Back;
         }
-        if (states._flag & RenderStateSet::Flag::DepthBias) {
+        if (states._flag & Assets::RenderStateSet::Flag::DepthBias) {
             depthBias = states._depthBias;
         }
-        if (states._flag & RenderStateSet::Flag::Wireframe) {
+        if (states._flag & Assets::RenderStateSet::Flag::Wireframe) {
             fillMode = states._wireframe ? FillMode::Wireframe : FillMode::Solid;
         }
 
         return Metal::RasterizerState(cullMode, true, fillMode, depthBias, 0.f, 0.f);
     }
 
-    class StateSetResolver_Default : public IStateSetResolver
+    class StateSetResolver_Default : public IRenderStateDelegate
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
-            return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states));
+			return CompiledRenderStateSet { Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states) };
         }
 
         virtual uint64 GetHash()
@@ -51,38 +50,36 @@ namespace RenderCore { namespace Techniques
         }
     };
 
-    class StateSetResolver_Deferred : public IStateSetResolver
+    class StateSetResolver_Deferred : public IRenderStateDelegate
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             bool deferredDecal = 
-                    (states._flag & RenderStateSet::Flag::BlendType)
-                && (states._blendType == RenderStateSet::BlendType::DeferredDecal);
+                    (states._flag & Assets::RenderStateSet::Flag::BlendType)
+                && (states._blendType == Assets::RenderStateSet::BlendType::DeferredDecal);
 
             auto& blendState = deferredDecal
                 ? CommonResources()._blendStraightAlpha
                 : CommonResources()._blendOpaque;
 
-            return CompiledRenderStateSet(Metal::BlendState(blendState), BuildDefaultRastizerState(states));
+			return CompiledRenderStateSet { Metal::BlendState(blendState), BuildDefaultRastizerState(states) };
         }
 
         virtual uint64 GetHash() { return typeid(StateSetResolver_Deferred).hash_code(); }
     };
 
-    class StateSetResolver_Forward : public IStateSetResolver
+    class StateSetResolver_Forward : public IRenderStateDelegate
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             CompiledRenderStateSet result;
-            if (states._flag & RenderStateSet::Flag::ForwardBlend) {
+            if (states._flag & Assets::RenderStateSet::Flag::ForwardBlend) {
                 result._blendState = Metal::BlendState(
                     states._forwardBlendOp, states._forwardBlendSrc, states._forwardBlendDst);
             } else {
@@ -96,12 +93,11 @@ namespace RenderCore { namespace Techniques
         virtual uint64 GetHash() { return typeid(StateSetResolver_Forward).hash_code(); }
     };
 
-    class StateSetResolver_DepthOnly : public IStateSetResolver
+    class StateSetResolver_DepthOnly : public IRenderStateDelegate
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
                 // When rendering the shadows, most states are constant.
@@ -110,8 +106,8 @@ namespace RenderCore { namespace Techniques
                 // wants to inherit the depth bias and slope scaled depth bias
                 // settings.
             CompiledRenderStateSet result;
-            unsigned cullDisable    = !!(states._flag & RenderStateSet::Flag::DoubleSided);
-            unsigned wireframe      = !!(states._flag & RenderStateSet::Flag::Wireframe);
+            unsigned cullDisable    = !!(states._flag & Assets::RenderStateSet::Flag::DoubleSided);
+            unsigned wireframe      = !!(states._flag & Assets::RenderStateSet::Flag::Wireframe);
             result._rasterizerState = _rs[wireframe<<1|cullDisable];
             return result;
         }
@@ -140,10 +136,10 @@ namespace RenderCore { namespace Techniques
         uint64 _hashCode;
     };
 
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Default()     { return std::make_shared<StateSetResolver_Default>(); }
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward()     { return std::make_shared<StateSetResolver_Forward>(); }
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred()    { return std::make_shared<StateSetResolver_Deferred>(); }
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Default()     { return std::make_shared<StateSetResolver_Default>(); }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Forward()     { return std::make_shared<StateSetResolver_Forward>(); }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Deferred()    { return std::make_shared<StateSetResolver_Deferred>(); }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_DepthOnly(
         const RSDepthBias& singleSidedBias, const RSDepthBias& doubleSidedBias, CullMode cullMode)
     { 
         return std::make_shared<StateSetResolver_DepthOnly>(

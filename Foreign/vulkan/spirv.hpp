@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2016 The Khronos Group Inc.
+// Copyright (c) 2014-2019 The Khronos Group Inc.
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and/or associated documentation files (the "Materials"),
@@ -26,13 +26,16 @@
 // the Binary Section of the SPIR-V specification.
 
 // Enumeration tokens for SPIR-V, in various styles:
-//   C, C++, C++11, JSON, Lua, Python
+//   C, C++, C++11, JSON, Lua, Python, C#, D
 // 
 // - C will have tokens with a "Spv" prefix, e.g.: SpvSourceLanguageGLSL
 // - C++ will have tokens in the "spv" name space, e.g.: spv::SourceLanguageGLSL
 // - C++11 will use enum classes in the spv namespace, e.g.: spv::SourceLanguage::GLSL
 // - Lua will use tables, e.g.: spv.SourceLanguage.GLSL
 // - Python will use dictionaries, e.g.: spv['SourceLanguage']['GLSL']
+// - C# will use enum classes in the Specification class located in the "Spv" namespace,
+//     e.g.: Spv.Specification.SourceLanguage.GLSL
+// - D will have tokens under the "spv" module, e.g: spv.SourceLanguage.GLSL
 // 
 // Some tokens act like mask values, which can be OR'd together,
 // while others are mutually exclusive.  The mask-like ones have
@@ -46,12 +49,12 @@ namespace spv {
 
 typedef unsigned int Id;
 
-#define SPV_VERSION 0x10000
-#define SPV_REVISION 3
+#define SPV_VERSION 0x10300
+#define SPV_REVISION 6
 
 static const unsigned int MagicNumber = 0x07230203;
-static const unsigned int Version = 0x00010000;
-static const unsigned int Revision = 3;
+static const unsigned int Version = 0x00010300;
+static const unsigned int Revision = 6;
 static const unsigned int OpCodeMask = 0xffff;
 static const unsigned int WordCountShift = 16;
 
@@ -61,6 +64,8 @@ enum SourceLanguage {
     SourceLanguageGLSL = 2,
     SourceLanguageOpenCL_C = 3,
     SourceLanguageOpenCL_CPP = 4,
+    SourceLanguageHLSL = 5,
+    SourceLanguageMax = 0x7fffffff,
 };
 
 enum ExecutionModel {
@@ -71,18 +76,31 @@ enum ExecutionModel {
     ExecutionModelFragment = 4,
     ExecutionModelGLCompute = 5,
     ExecutionModelKernel = 6,
+    ExecutionModelTaskNV = 5267,
+    ExecutionModelMeshNV = 5268,
+    ExecutionModelRayGenerationNV = 5313,
+    ExecutionModelIntersectionNV = 5314,
+    ExecutionModelAnyHitNV = 5315,
+    ExecutionModelClosestHitNV = 5316,
+    ExecutionModelMissNV = 5317,
+    ExecutionModelCallableNV = 5318,
+    ExecutionModelMax = 0x7fffffff,
 };
 
 enum AddressingModel {
     AddressingModelLogical = 0,
     AddressingModelPhysical32 = 1,
     AddressingModelPhysical64 = 2,
+    AddressingModelPhysicalStorageBuffer64EXT = 5348,
+    AddressingModelMax = 0x7fffffff,
 };
 
 enum MemoryModel {
     MemoryModelSimple = 0,
     MemoryModelGLSL450 = 1,
     MemoryModelOpenCL = 2,
+    MemoryModelVulkanKHR = 3,
+    MemoryModelMax = 0x7fffffff,
 };
 
 enum ExecutionMode {
@@ -117,6 +135,26 @@ enum ExecutionMode {
     ExecutionModeOutputTriangleStrip = 29,
     ExecutionModeVecTypeHint = 30,
     ExecutionModeContractionOff = 31,
+    ExecutionModeInitializer = 33,
+    ExecutionModeFinalizer = 34,
+    ExecutionModeSubgroupSize = 35,
+    ExecutionModeSubgroupsPerWorkgroup = 36,
+    ExecutionModeSubgroupsPerWorkgroupId = 37,
+    ExecutionModeLocalSizeId = 38,
+    ExecutionModeLocalSizeHintId = 39,
+    ExecutionModePostDepthCoverage = 4446,
+    ExecutionModeDenormPreserve = 4459,
+    ExecutionModeDenormFlushToZero = 4460,
+    ExecutionModeSignedZeroInfNanPreserve = 4461,
+    ExecutionModeRoundingModeRTE = 4462,
+    ExecutionModeRoundingModeRTZ = 4463,
+    ExecutionModeStencilRefReplacingEXT = 5027,
+    ExecutionModeOutputLinesNV = 5269,
+    ExecutionModeOutputPrimitivesNV = 5270,
+    ExecutionModeDerivativeGroupQuadsNV = 5289,
+    ExecutionModeDerivativeGroupLinearNV = 5290,
+    ExecutionModeOutputTrianglesNV = 5298,
+    ExecutionModeMax = 0x7fffffff,
 };
 
 enum StorageClass {
@@ -132,6 +170,15 @@ enum StorageClass {
     StorageClassPushConstant = 9,
     StorageClassAtomicCounter = 10,
     StorageClassImage = 11,
+    StorageClassStorageBuffer = 12,
+    StorageClassCallableDataNV = 5328,
+    StorageClassIncomingCallableDataNV = 5329,
+    StorageClassRayPayloadNV = 5338,
+    StorageClassHitAttributeNV = 5339,
+    StorageClassIncomingRayPayloadNV = 5342,
+    StorageClassShaderRecordBufferNV = 5343,
+    StorageClassPhysicalStorageBufferEXT = 5349,
+    StorageClassMax = 0x7fffffff,
 };
 
 enum Dim {
@@ -142,6 +189,7 @@ enum Dim {
     DimRect = 4,
     DimBuffer = 5,
     DimSubpassData = 6,
+    DimMax = 0x7fffffff,
 };
 
 enum SamplerAddressingMode {
@@ -150,11 +198,13 @@ enum SamplerAddressingMode {
     SamplerAddressingModeClamp = 2,
     SamplerAddressingModeRepeat = 3,
     SamplerAddressingModeRepeatMirrored = 4,
+    SamplerAddressingModeMax = 0x7fffffff,
 };
 
 enum SamplerFilterMode {
     SamplerFilterModeNearest = 0,
     SamplerFilterModeLinear = 1,
+    SamplerFilterModeMax = 0x7fffffff,
 };
 
 enum ImageFormat {
@@ -198,6 +248,7 @@ enum ImageFormat {
     ImageFormatRg8ui = 37,
     ImageFormatR16ui = 38,
     ImageFormatR8ui = 39,
+    ImageFormatMax = 0x7fffffff,
 };
 
 enum ImageChannelOrder {
@@ -220,6 +271,8 @@ enum ImageChannelOrder {
     ImageChannelOrdersRGBx = 16,
     ImageChannelOrdersRGBA = 17,
     ImageChannelOrdersBGRA = 18,
+    ImageChannelOrderABGR = 19,
+    ImageChannelOrderMax = 0x7fffffff,
 };
 
 enum ImageChannelDataType {
@@ -240,6 +293,7 @@ enum ImageChannelDataType {
     ImageChannelDataTypeFloat = 14,
     ImageChannelDataTypeUnormInt24 = 15,
     ImageChannelDataTypeUnormInt101010_2 = 16,
+    ImageChannelDataTypeMax = 0x7fffffff,
 };
 
 enum ImageOperandsShift {
@@ -251,6 +305,11 @@ enum ImageOperandsShift {
     ImageOperandsConstOffsetsShift = 5,
     ImageOperandsSampleShift = 6,
     ImageOperandsMinLodShift = 7,
+    ImageOperandsMakeTexelAvailableKHRShift = 8,
+    ImageOperandsMakeTexelVisibleKHRShift = 9,
+    ImageOperandsNonPrivateTexelKHRShift = 10,
+    ImageOperandsVolatileTexelKHRShift = 11,
+    ImageOperandsMax = 0x7fffffff,
 };
 
 enum ImageOperandsMask {
@@ -263,6 +322,10 @@ enum ImageOperandsMask {
     ImageOperandsConstOffsetsMask = 0x00000020,
     ImageOperandsSampleMask = 0x00000040,
     ImageOperandsMinLodMask = 0x00000080,
+    ImageOperandsMakeTexelAvailableKHRMask = 0x00000100,
+    ImageOperandsMakeTexelVisibleKHRMask = 0x00000200,
+    ImageOperandsNonPrivateTexelKHRMask = 0x00000400,
+    ImageOperandsVolatileTexelKHRMask = 0x00000800,
 };
 
 enum FPFastMathModeShift {
@@ -271,6 +334,7 @@ enum FPFastMathModeShift {
     FPFastMathModeNSZShift = 2,
     FPFastMathModeAllowRecipShift = 3,
     FPFastMathModeFastShift = 4,
+    FPFastMathModeMax = 0x7fffffff,
 };
 
 enum FPFastMathModeMask {
@@ -287,17 +351,20 @@ enum FPRoundingMode {
     FPRoundingModeRTZ = 1,
     FPRoundingModeRTP = 2,
     FPRoundingModeRTN = 3,
+    FPRoundingModeMax = 0x7fffffff,
 };
 
 enum LinkageType {
     LinkageTypeExport = 0,
     LinkageTypeImport = 1,
+    LinkageTypeMax = 0x7fffffff,
 };
 
 enum AccessQualifier {
     AccessQualifierReadOnly = 0,
     AccessQualifierWriteOnly = 1,
     AccessQualifierReadWrite = 2,
+    AccessQualifierMax = 0x7fffffff,
 };
 
 enum FunctionParameterAttribute {
@@ -309,6 +376,7 @@ enum FunctionParameterAttribute {
     FunctionParameterAttributeNoCapture = 5,
     FunctionParameterAttributeNoWrite = 6,
     FunctionParameterAttributeNoReadWrite = 7,
+    FunctionParameterAttributeMax = 0x7fffffff,
 };
 
 enum Decoration {
@@ -355,6 +423,26 @@ enum Decoration {
     DecorationNoContraction = 42,
     DecorationInputAttachmentIndex = 43,
     DecorationAlignment = 44,
+    DecorationMaxByteOffset = 45,
+    DecorationAlignmentId = 46,
+    DecorationMaxByteOffsetId = 47,
+    DecorationNoSignedWrap = 4469,
+    DecorationNoUnsignedWrap = 4470,
+    DecorationExplicitInterpAMD = 4999,
+    DecorationOverrideCoverageNV = 5248,
+    DecorationPassthroughNV = 5250,
+    DecorationViewportRelativeNV = 5252,
+    DecorationSecondaryViewportRelativeNV = 5256,
+    DecorationPerPrimitiveNV = 5271,
+    DecorationPerViewNV = 5272,
+    DecorationPerTaskNV = 5273,
+    DecorationPerVertexNV = 5285,
+    DecorationNonUniformEXT = 5300,
+    DecorationRestrictPointerEXT = 5355,
+    DecorationAliasedPointerEXT = 5356,
+    DecorationHlslCounterBufferGOOGLE = 5634,
+    DecorationHlslSemanticGOOGLE = 5635,
+    DecorationMax = 0x7fffffff,
 };
 
 enum BuiltIn {
@@ -399,11 +487,70 @@ enum BuiltIn {
     BuiltInSubgroupLocalInvocationId = 41,
     BuiltInVertexIndex = 42,
     BuiltInInstanceIndex = 43,
+    BuiltInSubgroupEqMask = 4416,
+    BuiltInSubgroupEqMaskKHR = 4416,
+    BuiltInSubgroupGeMask = 4417,
+    BuiltInSubgroupGeMaskKHR = 4417,
+    BuiltInSubgroupGtMask = 4418,
+    BuiltInSubgroupGtMaskKHR = 4418,
+    BuiltInSubgroupLeMask = 4419,
+    BuiltInSubgroupLeMaskKHR = 4419,
+    BuiltInSubgroupLtMask = 4420,
+    BuiltInSubgroupLtMaskKHR = 4420,
+    BuiltInBaseVertex = 4424,
+    BuiltInBaseInstance = 4425,
+    BuiltInDrawIndex = 4426,
+    BuiltInDeviceIndex = 4438,
+    BuiltInViewIndex = 4440,
+    BuiltInBaryCoordNoPerspAMD = 4992,
+    BuiltInBaryCoordNoPerspCentroidAMD = 4993,
+    BuiltInBaryCoordNoPerspSampleAMD = 4994,
+    BuiltInBaryCoordSmoothAMD = 4995,
+    BuiltInBaryCoordSmoothCentroidAMD = 4996,
+    BuiltInBaryCoordSmoothSampleAMD = 4997,
+    BuiltInBaryCoordPullModelAMD = 4998,
+    BuiltInFragStencilRefEXT = 5014,
+    BuiltInViewportMaskNV = 5253,
+    BuiltInSecondaryPositionNV = 5257,
+    BuiltInSecondaryViewportMaskNV = 5258,
+    BuiltInPositionPerViewNV = 5261,
+    BuiltInViewportMaskPerViewNV = 5262,
+    BuiltInFullyCoveredEXT = 5264,
+    BuiltInTaskCountNV = 5274,
+    BuiltInPrimitiveCountNV = 5275,
+    BuiltInPrimitiveIndicesNV = 5276,
+    BuiltInClipDistancePerViewNV = 5277,
+    BuiltInCullDistancePerViewNV = 5278,
+    BuiltInLayerPerViewNV = 5279,
+    BuiltInMeshViewCountNV = 5280,
+    BuiltInMeshViewIndicesNV = 5281,
+    BuiltInBaryCoordNV = 5286,
+    BuiltInBaryCoordNoPerspNV = 5287,
+    BuiltInFragSizeEXT = 5292,
+    BuiltInFragmentSizeNV = 5292,
+    BuiltInFragInvocationCountEXT = 5293,
+    BuiltInInvocationsPerPixelNV = 5293,
+    BuiltInLaunchIdNV = 5319,
+    BuiltInLaunchSizeNV = 5320,
+    BuiltInWorldRayOriginNV = 5321,
+    BuiltInWorldRayDirectionNV = 5322,
+    BuiltInObjectRayOriginNV = 5323,
+    BuiltInObjectRayDirectionNV = 5324,
+    BuiltInRayTminNV = 5325,
+    BuiltInRayTmaxNV = 5326,
+    BuiltInInstanceCustomIndexNV = 5327,
+    BuiltInObjectToWorldNV = 5330,
+    BuiltInWorldToObjectNV = 5331,
+    BuiltInHitTNV = 5332,
+    BuiltInHitKindNV = 5333,
+    BuiltInIncomingRayFlagsNV = 5351,
+    BuiltInMax = 0x7fffffff,
 };
 
 enum SelectionControlShift {
     SelectionControlFlattenShift = 0,
     SelectionControlDontFlattenShift = 1,
+    SelectionControlMax = 0x7fffffff,
 };
 
 enum SelectionControlMask {
@@ -415,12 +562,17 @@ enum SelectionControlMask {
 enum LoopControlShift {
     LoopControlUnrollShift = 0,
     LoopControlDontUnrollShift = 1,
+    LoopControlDependencyInfiniteShift = 2,
+    LoopControlDependencyLengthShift = 3,
+    LoopControlMax = 0x7fffffff,
 };
 
 enum LoopControlMask {
     LoopControlMaskNone = 0,
     LoopControlUnrollMask = 0x00000001,
     LoopControlDontUnrollMask = 0x00000002,
+    LoopControlDependencyInfiniteMask = 0x00000004,
+    LoopControlDependencyLengthMask = 0x00000008,
 };
 
 enum FunctionControlShift {
@@ -428,6 +580,7 @@ enum FunctionControlShift {
     FunctionControlDontInlineShift = 1,
     FunctionControlPureShift = 2,
     FunctionControlConstShift = 3,
+    FunctionControlMax = 0x7fffffff,
 };
 
 enum FunctionControlMask {
@@ -449,6 +602,10 @@ enum MemorySemanticsShift {
     MemorySemanticsCrossWorkgroupMemoryShift = 9,
     MemorySemanticsAtomicCounterMemoryShift = 10,
     MemorySemanticsImageMemoryShift = 11,
+    MemorySemanticsOutputMemoryKHRShift = 12,
+    MemorySemanticsMakeAvailableKHRShift = 13,
+    MemorySemanticsMakeVisibleKHRShift = 14,
+    MemorySemanticsMax = 0x7fffffff,
 };
 
 enum MemorySemanticsMask {
@@ -463,12 +620,19 @@ enum MemorySemanticsMask {
     MemorySemanticsCrossWorkgroupMemoryMask = 0x00000200,
     MemorySemanticsAtomicCounterMemoryMask = 0x00000400,
     MemorySemanticsImageMemoryMask = 0x00000800,
+    MemorySemanticsOutputMemoryKHRMask = 0x00001000,
+    MemorySemanticsMakeAvailableKHRMask = 0x00002000,
+    MemorySemanticsMakeVisibleKHRMask = 0x00004000,
 };
 
 enum MemoryAccessShift {
     MemoryAccessVolatileShift = 0,
     MemoryAccessAlignedShift = 1,
     MemoryAccessNontemporalShift = 2,
+    MemoryAccessMakePointerAvailableKHRShift = 3,
+    MemoryAccessMakePointerVisibleKHRShift = 4,
+    MemoryAccessNonPrivatePointerKHRShift = 5,
+    MemoryAccessMax = 0x7fffffff,
 };
 
 enum MemoryAccessMask {
@@ -476,6 +640,9 @@ enum MemoryAccessMask {
     MemoryAccessVolatileMask = 0x00000001,
     MemoryAccessAlignedMask = 0x00000002,
     MemoryAccessNontemporalMask = 0x00000004,
+    MemoryAccessMakePointerAvailableKHRMask = 0x00000008,
+    MemoryAccessMakePointerVisibleKHRMask = 0x00000010,
+    MemoryAccessNonPrivatePointerKHRMask = 0x00000020,
 };
 
 enum Scope {
@@ -484,22 +651,31 @@ enum Scope {
     ScopeWorkgroup = 2,
     ScopeSubgroup = 3,
     ScopeInvocation = 4,
+    ScopeQueueFamilyKHR = 5,
+    ScopeMax = 0x7fffffff,
 };
 
 enum GroupOperation {
     GroupOperationReduce = 0,
     GroupOperationInclusiveScan = 1,
     GroupOperationExclusiveScan = 2,
+    GroupOperationClusteredReduce = 3,
+    GroupOperationPartitionedReduceNV = 6,
+    GroupOperationPartitionedInclusiveScanNV = 7,
+    GroupOperationPartitionedExclusiveScanNV = 8,
+    GroupOperationMax = 0x7fffffff,
 };
 
 enum KernelEnqueueFlags {
     KernelEnqueueFlagsNoWait = 0,
     KernelEnqueueFlagsWaitKernel = 1,
     KernelEnqueueFlagsWaitWorkGroup = 2,
+    KernelEnqueueFlagsMax = 0x7fffffff,
 };
 
 enum KernelProfilingInfoShift {
     KernelProfilingInfoCmdExecTimeShift = 0,
+    KernelProfilingInfoMax = 0x7fffffff,
 };
 
 enum KernelProfilingInfoMask {
@@ -564,6 +740,81 @@ enum Capability {
     CapabilityStorageImageReadWithoutFormat = 55,
     CapabilityStorageImageWriteWithoutFormat = 56,
     CapabilityMultiViewport = 57,
+    CapabilitySubgroupDispatch = 58,
+    CapabilityNamedBarrier = 59,
+    CapabilityPipeStorage = 60,
+    CapabilityGroupNonUniform = 61,
+    CapabilityGroupNonUniformVote = 62,
+    CapabilityGroupNonUniformArithmetic = 63,
+    CapabilityGroupNonUniformBallot = 64,
+    CapabilityGroupNonUniformShuffle = 65,
+    CapabilityGroupNonUniformShuffleRelative = 66,
+    CapabilityGroupNonUniformClustered = 67,
+    CapabilityGroupNonUniformQuad = 68,
+    CapabilitySubgroupBallotKHR = 4423,
+    CapabilityDrawParameters = 4427,
+    CapabilitySubgroupVoteKHR = 4431,
+    CapabilityStorageBuffer16BitAccess = 4433,
+    CapabilityStorageUniformBufferBlock16 = 4433,
+    CapabilityStorageUniform16 = 4434,
+    CapabilityUniformAndStorageBuffer16BitAccess = 4434,
+    CapabilityStoragePushConstant16 = 4435,
+    CapabilityStorageInputOutput16 = 4436,
+    CapabilityDeviceGroup = 4437,
+    CapabilityMultiView = 4439,
+    CapabilityVariablePointersStorageBuffer = 4441,
+    CapabilityVariablePointers = 4442,
+    CapabilityAtomicStorageOps = 4445,
+    CapabilitySampleMaskPostDepthCoverage = 4447,
+    CapabilityStorageBuffer8BitAccess = 4448,
+    CapabilityUniformAndStorageBuffer8BitAccess = 4449,
+    CapabilityStoragePushConstant8 = 4450,
+    CapabilityDenormPreserve = 4464,
+    CapabilityDenormFlushToZero = 4465,
+    CapabilitySignedZeroInfNanPreserve = 4466,
+    CapabilityRoundingModeRTE = 4467,
+    CapabilityRoundingModeRTZ = 4468,
+    CapabilityFloat16ImageAMD = 5008,
+    CapabilityImageGatherBiasLodAMD = 5009,
+    CapabilityFragmentMaskAMD = 5010,
+    CapabilityStencilExportEXT = 5013,
+    CapabilityImageReadWriteLodAMD = 5015,
+    CapabilitySampleMaskOverrideCoverageNV = 5249,
+    CapabilityGeometryShaderPassthroughNV = 5251,
+    CapabilityShaderViewportIndexLayerEXT = 5254,
+    CapabilityShaderViewportIndexLayerNV = 5254,
+    CapabilityShaderViewportMaskNV = 5255,
+    CapabilityShaderStereoViewNV = 5259,
+    CapabilityPerViewAttributesNV = 5260,
+    CapabilityFragmentFullyCoveredEXT = 5265,
+    CapabilityMeshShadingNV = 5266,
+    CapabilityImageFootprintNV = 5282,
+    CapabilityFragmentBarycentricNV = 5284,
+    CapabilityComputeDerivativeGroupQuadsNV = 5288,
+    CapabilityFragmentDensityEXT = 5291,
+    CapabilityShadingRateNV = 5291,
+    CapabilityGroupNonUniformPartitionedNV = 5297,
+    CapabilityShaderNonUniformEXT = 5301,
+    CapabilityRuntimeDescriptorArrayEXT = 5302,
+    CapabilityInputAttachmentArrayDynamicIndexingEXT = 5303,
+    CapabilityUniformTexelBufferArrayDynamicIndexingEXT = 5304,
+    CapabilityStorageTexelBufferArrayDynamicIndexingEXT = 5305,
+    CapabilityUniformBufferArrayNonUniformIndexingEXT = 5306,
+    CapabilitySampledImageArrayNonUniformIndexingEXT = 5307,
+    CapabilityStorageBufferArrayNonUniformIndexingEXT = 5308,
+    CapabilityStorageImageArrayNonUniformIndexingEXT = 5309,
+    CapabilityInputAttachmentArrayNonUniformIndexingEXT = 5310,
+    CapabilityUniformTexelBufferArrayNonUniformIndexingEXT = 5311,
+    CapabilityStorageTexelBufferArrayNonUniformIndexingEXT = 5312,
+    CapabilityRayTracingNV = 5340,
+    CapabilityVulkanMemoryModelKHR = 5345,
+    CapabilityVulkanMemoryModelDeviceScopeKHR = 5346,
+    CapabilityPhysicalStorageBufferAddressesEXT = 5347,
+    CapabilityComputeDerivativeGroupLinearNV = 5350,
+    CapabilitySubgroupShuffleINTEL = 5568,
+    CapabilitySubgroupBufferBlockIOINTEL = 5569,
+    CapabilitySubgroupImageBlockIOINTEL = 5570,
+    CapabilityMax = 0x7fffffff,
 };
 
 enum Op {
@@ -861,6 +1112,88 @@ enum Op {
     OpAtomicFlagTestAndSet = 318,
     OpAtomicFlagClear = 319,
     OpImageSparseRead = 320,
+    OpSizeOf = 321,
+    OpTypePipeStorage = 322,
+    OpConstantPipeStorage = 323,
+    OpCreatePipeFromPipeStorage = 324,
+    OpGetKernelLocalSizeForSubgroupCount = 325,
+    OpGetKernelMaxNumSubgroups = 326,
+    OpTypeNamedBarrier = 327,
+    OpNamedBarrierInitialize = 328,
+    OpMemoryNamedBarrier = 329,
+    OpModuleProcessed = 330,
+    OpExecutionModeId = 331,
+    OpDecorateId = 332,
+    OpGroupNonUniformElect = 333,
+    OpGroupNonUniformAll = 334,
+    OpGroupNonUniformAny = 335,
+    OpGroupNonUniformAllEqual = 336,
+    OpGroupNonUniformBroadcast = 337,
+    OpGroupNonUniformBroadcastFirst = 338,
+    OpGroupNonUniformBallot = 339,
+    OpGroupNonUniformInverseBallot = 340,
+    OpGroupNonUniformBallotBitExtract = 341,
+    OpGroupNonUniformBallotBitCount = 342,
+    OpGroupNonUniformBallotFindLSB = 343,
+    OpGroupNonUniformBallotFindMSB = 344,
+    OpGroupNonUniformShuffle = 345,
+    OpGroupNonUniformShuffleXor = 346,
+    OpGroupNonUniformShuffleUp = 347,
+    OpGroupNonUniformShuffleDown = 348,
+    OpGroupNonUniformIAdd = 349,
+    OpGroupNonUniformFAdd = 350,
+    OpGroupNonUniformIMul = 351,
+    OpGroupNonUniformFMul = 352,
+    OpGroupNonUniformSMin = 353,
+    OpGroupNonUniformUMin = 354,
+    OpGroupNonUniformFMin = 355,
+    OpGroupNonUniformSMax = 356,
+    OpGroupNonUniformUMax = 357,
+    OpGroupNonUniformFMax = 358,
+    OpGroupNonUniformBitwiseAnd = 359,
+    OpGroupNonUniformBitwiseOr = 360,
+    OpGroupNonUniformBitwiseXor = 361,
+    OpGroupNonUniformLogicalAnd = 362,
+    OpGroupNonUniformLogicalOr = 363,
+    OpGroupNonUniformLogicalXor = 364,
+    OpGroupNonUniformQuadBroadcast = 365,
+    OpGroupNonUniformQuadSwap = 366,
+    OpSubgroupBallotKHR = 4421,
+    OpSubgroupFirstInvocationKHR = 4422,
+    OpSubgroupAllKHR = 4428,
+    OpSubgroupAnyKHR = 4429,
+    OpSubgroupAllEqualKHR = 4430,
+    OpSubgroupReadInvocationKHR = 4432,
+    OpGroupIAddNonUniformAMD = 5000,
+    OpGroupFAddNonUniformAMD = 5001,
+    OpGroupFMinNonUniformAMD = 5002,
+    OpGroupUMinNonUniformAMD = 5003,
+    OpGroupSMinNonUniformAMD = 5004,
+    OpGroupFMaxNonUniformAMD = 5005,
+    OpGroupUMaxNonUniformAMD = 5006,
+    OpGroupSMaxNonUniformAMD = 5007,
+    OpFragmentMaskFetchAMD = 5011,
+    OpFragmentFetchAMD = 5012,
+    OpImageSampleFootprintNV = 5283,
+    OpGroupNonUniformPartitionNV = 5296,
+    OpWritePackedPrimitiveIndices4x8NV = 5299,
+    OpReportIntersectionNV = 5334,
+    OpIgnoreIntersectionNV = 5335,
+    OpTerminateRayNV = 5336,
+    OpTraceNV = 5337,
+    OpTypeAccelerationStructureNV = 5341,
+    OpExecuteCallableNV = 5344,
+    OpSubgroupShuffleINTEL = 5571,
+    OpSubgroupShuffleDownINTEL = 5572,
+    OpSubgroupShuffleUpINTEL = 5573,
+    OpSubgroupShuffleXorINTEL = 5574,
+    OpSubgroupBlockReadINTEL = 5575,
+    OpSubgroupBlockWriteINTEL = 5576,
+    OpSubgroupImageBlockReadINTEL = 5577,
+    OpSubgroupImageBlockWriteINTEL = 5578,
+    OpDecorateStringGOOGLE = 5632,
+    OpMemberDecorateStringGOOGLE = 5633,
+    OpMax = 0x7fffffff,
 };
 
 // Overload operator| for mask bit combining
@@ -877,3 +1210,4 @@ inline KernelProfilingInfoMask operator|(KernelProfilingInfoMask a, KernelProfil
 }  // end namespace spv
 
 #endif  // #ifndef spirv_HPP
+

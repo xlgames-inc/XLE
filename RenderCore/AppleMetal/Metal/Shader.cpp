@@ -29,7 +29,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 {
     using ::Assets::ResChar;
 
-    class ShaderCompiler : public ShaderService::ILowLevelCompiler
+    class ShaderCompiler : public ILowLevelCompiler
     {
     public:
         virtual void AdaptShaderModel(
@@ -42,9 +42,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            const ShaderService::ResId& shaderPath,
+            const ILowLevelCompiler::ResId& shaderPath,
             StringSection<::Assets::ResChar> definesTable,
-            IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
+            IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -139,9 +139,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         /*out*/ Payload& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
+        const ILowLevelCompiler::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
     {
 #if defined(_DEBUG)
         std::stringstream variantLabel;
@@ -240,7 +240,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     ShaderCompiler::~ShaderCompiler()
     {}
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         // KenD -- Metal HACK -- holding on to a static Metal library for now.  We should cache it, but we might consider a different approach to construction
         auto* dev = (ImplAppleMetal::Device*)device.QueryInterface(typeid(ImplAppleMetal::Device).hash_code());

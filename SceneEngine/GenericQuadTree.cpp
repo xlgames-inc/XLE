@@ -5,14 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GenericQuadTree.h"
-#include "Assets/ChunkFileContainer.h"
-#include "Math/ProjectionMath.h"
-#include "Assets/BlockSerializer.h"
-#include "Utility/PtrUtils.h"
-#include "Utility/Streams/Serialization.h"
-#include "Utility/IteratorUtils.h"
-#include "Utility/MemoryUtils.h"
-#include "Core/Prefix.h"
+#include "../Assets/ChunkFileContainer.h"
+#include "../Math/ProjectionMath.h"
+#include "../Assets/BlockSerializer.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/Serialization.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Core/Prefix.h"
 #include <stack>
 #include <cfloat>
 

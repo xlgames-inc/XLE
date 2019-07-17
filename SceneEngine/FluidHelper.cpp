@@ -8,6 +8,7 @@
 
 #include "FluidHelper.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 
@@ -48,7 +49,7 @@ namespace SceneEngine
             method);
 
         if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+            Log(Verbose) << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations." << std::endl;
     }
 
     void DiffusionHelper::Execute(
@@ -70,7 +71,7 @@ namespace SceneEngine
             method);
 
         if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
+            Log(Verbose) << name << " diffusion took: (" << iterationsu << ") iterations." << std::endl;
     }
 
     DiffusionHelper::DiffusionHelper() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; _preparedWrapEdges = 0u; }
@@ -165,7 +166,7 @@ namespace SceneEngine
                 (*velField._v)[i] -= .5f*velFieldScale[1] * (qBuffer._u[i2] - qBuffer._u[i3]);
             }
 
-        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
+        Log(Verbose) << "EnforceIncompressibility took: " << iterations << " iterations." << std::endl;
     }
 
     void EnforceIncompressibility(
@@ -206,7 +207,7 @@ namespace SceneEngine
                     (*velField._w)[i] -= .5f*velFieldScale[2] * (q[i+dims[0]*dims[1]]   - q[i-dims[0]*dims[1]]);
                 }
 
-        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
+        Log(Verbose) << "EnforceIncompressibility took: " << iterations << " iterations." << std::endl;
     }
 
     
@@ -320,7 +321,6 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////s
     // for draw debugging...
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -331,12 +331,15 @@ namespace SceneEngine
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/RenderPassUtils.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 namespace SceneEngine
 {
     void RenderFluidDebugging2D(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
@@ -344,6 +347,10 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto& uploads = GetBufferUploads();
+
+			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1];
 
@@ -357,11 +364,11 @@ namespace SceneEngine
                 const auto* srcData = data.begin() + c;
                 auto pkt = BufferUploads::CreateBasicPacket((dx)*(dy)*sizeof(float), *srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
-                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->ShareUnderlying())));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
 
             float constants[4] = { minValue, maxValue, 0.f, 0.f };
-            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar) {
@@ -385,17 +392,18 @@ namespace SceneEngine
             };
 
             Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+            Metal::BoundUniforms uniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
                 
-            metalContext.BindPS(MakeResourceList(Techniques::CommonResources()._defaultSampler, Techniques::CommonResources()._linearClampSampler));
-            metalContext.Bind(inputLayout);
-            uniforms.Apply(metalContext, 
-                parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(Techniques::CommonResources()._defaultSampler, Techniques::CommonResources()._linearClampSampler));
+            uniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
             metalContext.Bind(shader);
 
-            metalContext.Bind(MakeResourceList(
-                Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
+			auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+			VertexBufferView vbvs[] = {vb};
+			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Topology::TriangleStrip);
             metalContext.Draw(4);
@@ -403,8 +411,8 @@ namespace SceneEngine
     }
 
     void RenderFluidDebugging3D(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
@@ -412,6 +420,10 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto& uploads = GetBufferUploads();
+
+			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1], dz = dimensions[2];
             auto pktSize = dx*dy*dz*sizeof(float);
@@ -427,11 +439,11 @@ namespace SceneEngine
                 const auto* srcData = data.begin() + c;
                 auto pkt = BufferUploads::CreateBasicPacket(pktSize, srcData, TexturePitches{(dx)*sizeof(float), (dy)*(dx)*sizeof(float)});
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
-                metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->ShareUnderlying())));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
 
             float constants[4] = { minValue, maxValue, 0.f, 0.f };
-            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";
@@ -450,19 +462,20 @@ namespace SceneEngine
             };
 
             Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+            Metal::BoundUniforms uniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
                 
-            metalContext.BindPS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 Techniques::CommonResources()._defaultSampler, 
                 Techniques::CommonResources()._linearClampSampler));
-            metalContext.Bind(inputLayout);
-            uniforms.Apply(metalContext, 
-                parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+            uniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
             metalContext.Bind(shader);
 
-            metalContext.Bind(MakeResourceList(
-                Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
+            auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+			VertexBufferView vbvs[] = {vb};
+			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Topology::TriangleStrip);
             metalContext.Draw(4);

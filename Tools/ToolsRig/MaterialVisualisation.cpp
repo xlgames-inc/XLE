@@ -5,32 +5,38 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
-#include "VisualisationUtils.h"
+#include "VisualisationUtils.h"		// for IVisContent
 #include "VisualisationGeo.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/LightingParser.h"
-#include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/PreparedScene.h"
 
+#include "../ShaderParser/ShaderPatcher.h"
+#include "../ShaderParser/ShaderInstantiation.h"
+
+#include "../../SceneEngine/SceneParser.h"
+
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/DrawableDelegates.h"
+#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/ShaderPatchCollection.h"
+#include "../../RenderCore/MinimalShaderSource.h"
 
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../../RenderCore/Assets/ModelImmutableData.h"
-#include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
+#include "../../RenderCore/UniformsStream.h"
+#include "../../RenderCore/BufferView.h"
+#include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ShaderService.h"
 
-#include "../../Assets/IFileSystem.h"
+#include "../../Math/Transformations.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
-
-#include "../../RenderCore/IThreadContext.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Math/Transformations.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Threading/Mutex.h"
 
 namespace ToolsRig
 {
@@ -43,8 +49,8 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        Metal::VertexBuffer _cubeBuffer;
-        Metal::VertexBuffer _sphereBuffer;
+        IResourcePtr _cubeBuffer;
+        IResourcePtr _sphereBuffer;
         unsigned _cubeVCount;
         unsigned _sphereVCount;
 
@@ -54,60 +60,55 @@ namespace ToolsRig
     CachedVisGeo::CachedVisGeo(const Desc&)
     {
         auto sphereGeometry = BuildGeodesicSphere();
-        _sphereBuffer = Metal::VertexBuffer(AsPointer(sphereGeometry.begin()), sphereGeometry.size() * sizeof(Internal::Vertex3D));
+        _sphereBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(sphereGeometry));
         _sphereVCount = unsigned(sphereGeometry.size());
         auto cubeGeometry = BuildCube();
-        _cubeBuffer = Metal::VertexBuffer(AsPointer(cubeGeometry.begin()), cubeGeometry.size() * sizeof(Internal::Vertex3D));
+        _cubeBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(cubeGeometry));
         _cubeVCount = unsigned(cubeGeometry.size());
     }
 
-    class MaterialSceneParser : public VisSceneParser
-    {
-    public:
-        void ExecuteScene(  
-            RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext,
-            const SceneEngine::SceneParseSettings& parseSettings,
-            SceneEngine::PreparedScene& preparedPackets,
-            unsigned techniqueIndex) const 
-        {
-            using BF = SceneEngine::SceneParseSettings::BatchFilter;
-            if (    parseSettings._batchFilter == BF::PreDepth
-                ||  parseSettings._batchFilter == BF::General
-                ||  parseSettings._batchFilter == BF::DMShadows) {
+	class MaterialSceneParserDrawable : public Techniques::Drawable
+	{
+	public:
+		Topology	_topology;
+		unsigned	_vertexCount;
 
-                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-                Draw(*metalContext, parserContext, techniqueIndex);
-            }
-        }
+		static void DrawFn(
+			Metal::DeviceContext& metalContext,
+			Techniques::ParsingContext& parserContext,
+			const MaterialSceneParserDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
+			const Metal::ShaderProgram&)
+		{
+			if (boundUniforms._boundUniformBufferSlots[3] != 0) {
+				ConstantBufferView cbvs[] = {
+					Techniques::MakeLocalTransformPacket(
+						Identity<Float4x4>(), 
+						ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
+				boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
+			}
 
-        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
-        {
-            using BF = SceneEngine::SceneParseSettings::BatchFilter;
-            return (    parseSettings._batchFilter == BF::PreDepth
-                ||      parseSettings._batchFilter == BF::General
-                ||      parseSettings._batchFilter == BF::DMShadows);
-        }
-
-        void Draw(  Metal::DeviceContext& metalContext, 
-                    SceneEngine::LightingParserContext& parserContext,
-                    unsigned techniqueIndex) const
-        {
-            if (techniqueIndex!=3)
-                metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
-
-                // disable blending to avoid problem when rendering single component stuff 
+				// disable blending to avoid problem when rendering single component stuff 
                 //  (ie, nodes that output "float", not "float4")
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-            
-            auto geoType = _settings->_geometryType;
-            if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout);
-                if (!shaderProgram) return;
+			assert(!drawable._geo->_ib);
+			metalContext.Bind(drawable._topology);
+			metalContext.Draw(drawable._vertexCount);
+		}
+	};
+
+    class MaterialVisualizationScene : public SceneEngine::IScene, public IVisContent
+    {
+    public:
+        void Draw(  IThreadContext& threadContext, 
+                    SceneEngine::SceneExecuteContext& executeContext,
+                    IteratorRange<Techniques::DrawablesPacket** const> pkts) const
+        {
+			auto usi = std::make_shared<UniformsStreamInterface>();
+			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
+
+            auto geoType = _settings._geometryType;
+            if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
                 const Internal::Vertex3D    vertices[] = 
                 {
@@ -117,363 +118,384 @@ namespace ToolsRig
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
-                Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-                metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex3D), 0);
-                metalContext.Bind(Topology::TriangleStrip);
-                metalContext.Draw(dimof(vertices));
-
-            } else if (geoType == MaterialVisSettings::GeometryType::Model) {
-
-                DrawModel(metalContext, parserContext, techniqueIndex);
+				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
+				drawable._material = RenderCore::Techniques::MakeDrawableMaterial(*_material, {});
+				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
+				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
+				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
+				drawable._geo->_vertexStreamCount = 1;
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._topology = Topology::TriangleStrip;
+				drawable._vertexCount = (unsigned)dimof(vertices);
+				drawable._uniformsInterface = usi;
 
             } else {
 
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout);
-                if (!shaderProgram) return;
-            
-                unsigned count;
+                unsigned count = 0;
                 const auto& cachedGeo = ConsoleRig::FindCachedBox2<CachedVisGeo>();
+				RenderCore::IResourcePtr vb;
                 if (geoType == MaterialVisSettings::GeometryType::Sphere) {
-                    metalContext.Bind(MakeResourceList(cachedGeo._sphereBuffer), sizeof(Internal::Vertex3D), 0);    
+					vb = cachedGeo._sphereBuffer;
                     count = cachedGeo._sphereVCount;
                 } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
-                    metalContext.Bind(MakeResourceList(cachedGeo._cubeBuffer), sizeof(Internal::Vertex3D), 0);    
+					vb = cachedGeo._cubeBuffer;
                     count = cachedGeo._cubeVCount;
                 } else return;
-                
-                metalContext.Bind(Topology::TriangleList);
-                metalContext.Draw(count);
+
+				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
+				drawable._material = Techniques::MakeDrawableMaterial(*_material.get(), {});
+				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
+				drawable._geo->_vertexStreams[0]._resource = vb;
+				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
+				drawable._geo->_vertexStreamCount = 1;
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._topology = Topology::TriangleList;
+				drawable._vertexCount = count;
+				drawable._uniformsInterface = usi;
 
             }
         }
 
-        void DrawModel(
-            Metal::DeviceContext& metalContext, 
-            SceneEngine::LightingParserContext& parserContext,
-            unsigned techniqueIndex) const;
+		virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			SceneEngine::SceneExecuteContext& executeContext) const
+		{
+			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
+				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+					pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
 
-        MaterialSceneParser(
-            const MaterialVisSettings& settings,
-            const VisEnvSettings& envSettings,
-            const MaterialVisObject& object)
-        : VisSceneParser(settings._camera, std::move(envSettings)), _settings(&settings), _object(&object) {}
+				Draw(threadContext, executeContext, MakeIteratorRange(pkts));
+			}
+		}
+
+		std::pair<Float3, Float3> GetBoundingBox() const 
+		{ 
+			return { Float3{-1.0f, 1.0f, 1.0f}, Float3{1.0f, 1.0f, 1.0f} };
+		}
+
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const
+		{
+			return { {}, {} };
+		}
+		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>& delegate) { return nullptr; }
+		void RenderSkeleton(
+			RenderCore::IThreadContext& context, 
+			RenderCore::Techniques::ParsingContext& parserContext, 
+			bool drawBoneNames) const {}
+		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
+		bool HasActiveAnimation() const { return false; }
+
+        MaterialVisualizationScene(
+			const MaterialVisSettings& settings,
+			const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
+        : _settings(settings), _material(material)
+		{
+			_depVal = std::make_shared<::Assets::DependencyValidation>();
+			if (!_material) {
+				_material = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
+				// XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+			}
+		}
+
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
     protected:
-        const MaterialVisSettings*  _settings;
-        const MaterialVisObject*    _object;
+        MaterialVisSettings  _settings;
+		std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> _material;
+		::Assets::DepValPtr _depVal;
     };
 
-    static void BindVertexBuffer(
-        Metal::DeviceContext& metalContext,
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::VertexData& vb, unsigned vertexStride)
-    {
-        auto buffer = std::make_unique<uint8[]>(vb._size);
-		scaffold.OpenLargeBlocks()->Read(buffer.get(), vb._size, 1);
-        Metal::VertexBuffer metalVB(buffer.get(), vb._size);
-        metalContext.Bind(MakeResourceList(metalVB), vertexStride);
-    }
-
-    static void BindVertexBuffer(
-        Metal::DeviceContext& metalContext,
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::VertexData& vb0, unsigned vertexStride0,
-        RenderCore::Assets::VertexData& vb1, unsigned vertexStride1)
-    {
-        auto buffer = std::make_unique<uint8[]>(vb0._size + vb1._size);
-        
-        {
-			auto inputFile = scaffold.OpenLargeBlocks();
-			auto largeBlocksOffset = inputFile->TellP();
-            inputFile->Seek(largeBlocksOffset + vb0._offset);
-            inputFile->Read(buffer.get(), vb0._size, 1);
-
-            inputFile->Seek(largeBlocksOffset + vb1._offset);
-            inputFile->Read(PtrAdd(buffer.get(), vb0._size), vb1._size, 1);
-        }
-
-        Metal::VertexBuffer metalVB(buffer.get(), vb0._size + vb1._size);
-        const Metal::VertexBuffer* vbs[] = { &metalVB, &metalVB };
-        const unsigned strides[] = { vertexStride0, vertexStride1 };
-        const unsigned offsets[] = { 0, vb0._size };
-        metalContext.Bind(0, dimof(vbs), vbs, strides, offsets);
-    }
-
-    static void BindIndexBuffer(
-        Metal::DeviceContext& metalContext,
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::IndexData& ib)
-    {
-        auto buffer = std::make_unique<uint8[]>(ib._size);
-        
-        {
-            auto inputFile = scaffold.OpenLargeBlocks();
-            inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
-            inputFile->Read(buffer.get(), ib._size, 1);
-        }
-
-        Metal::IndexBuffer metalIB(buffer.get(), ib._size);
-        metalContext.Bind(metalIB, ib._format);
-    }
-
-    void MaterialSceneParser::DrawModel(  
-        Metal::DeviceContext& metalContext, 
-        SceneEngine::LightingParserContext& parserContext,
-        unsigned techniqueIndex) const
-    {
-            // This mode is a little more complex than the others. We want to
-            // load the geometry data for a model and render all the parts of
-            // that model that match a certain material assignment.
-            // We're going to do this without a ModelRenderer object... So
-            // we have to parse the ModelScaffold data directly
-            //
-            // It's a little complex. But it's a good way to test the internals of
-            // the ModelScaffold class -- because we go through all the parts and
-            // use each aspect of the model pipeline. 
-        if (_object->_previewModelFile.empty()) return;
-
-        using namespace RenderCore::Assets;
-        const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
-        const uint64 boundMaterial = _object->_previewMaterialBinding;
-
-        auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
-		modelFuture->StallWhilePending();
-		auto& model = *modelFuture->Actualize();
-
-        // const auto& skeletonScaff = ::Assets::GetAssetComp<SkeletonScaffold>(modelFile);
-        // skeletonScaff.StallWhilePending();
-        // const auto& skeleton = skeletonScaff.GetTransformationMachine();
-        const auto& skeleton = model.EmbeddedSkeleton();
-
-        SkeletonBinding skelBinding(
-            skeleton.GetOutputInterface(),
-            model.CommandStream().GetInputInterface());
-
-        auto transformCount = skeleton.GetOutputMatrixCount();
-        auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
-        skeleton.GenerateOutputTransforms(skelTransforms.get(), transformCount, &skeleton.GetDefaultParameters());
-
-        const auto& cmdStream = model.CommandStream();
-        const auto& immData = model.ImmutableData();
-        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetGeoCall(c);
-            
-            auto& rawGeo = immData._geos[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (boundMaterial != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != boundMaterial)
-                    continue;
-
-                    // now we have at least once piece of geometry
-                    // that we want to render... We need to bind the material,
-                    // index buffer and vertex buffer and topology
-                    // then we just execute the draw command
-
-                InputElementDesc metalVertInput[16];
-                unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements);
-
-                IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
-                auto machineOutput = skelBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                if (machineOutput < transformCount) {
-                    sysContants._objectToWorld = skelTransforms[machineOutput];
-                } else {
-                    sysContants._objectToWorld = Identity<Float4x4>();
-                }
-
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, sysContants, 
-                    _object->_searchRules, std::make_pair(metalVertInput, eleCount));
-                if (!shaderProgram) return;
-
-                BindVertexBuffer(
-                    metalContext, model, 
-                    rawGeo._vb, rawGeo._vb._ia._vertexStride);
-                BindIndexBuffer(metalContext, model, rawGeo._ib);
-
-                metalContext.Bind(drawCall._topology);
-                metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
-            }
-        }
-
-        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetSkinCall(c);
-            
-            auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (boundMaterial != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != boundMaterial)
-                    continue;
-
-                    // now we have at least once piece of geometry
-                    // that we want to render... We need to bind the material,
-                    // index buffer and vertex buffer and topology
-                    // then we just execute the draw command
-
-                InputElementDesc metalVertInput[16];
-                unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements, 0);
-                eleCount += BuildLowLevelInputAssembly(
-                    metalVertInput + eleCount, dimof(metalVertInput) - eleCount,
-                    rawGeo._animatedVertexElements._ia._elements, 1);
-
-                IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
-                sysContants._objectToWorld = skelTransforms[
-                    skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
-
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, sysContants, 
-                    _object->_searchRules, std::make_pair(metalVertInput, eleCount));
-                if (!shaderProgram) return;
-
-                BindVertexBuffer(
-                    metalContext, model, 
-                    rawGeo._vb, rawGeo._vb._ia._vertexStride,
-                    rawGeo._animatedVertexElements, rawGeo._animatedVertexElements._ia._vertexStride);
-                BindIndexBuffer(metalContext, model, rawGeo._ib);
-
-                metalContext.Bind(drawCall._topology);
-                metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
-            }
-        }
-    }
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const MaterialVisSettings& visObject,
+		const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
+	{
+		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
+		::Assets::AutoConstructToFuture(*result, visObject, material);
+		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
+	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	{
+	public:
+		virtual RenderCore::Metal::ShaderProgram* GetShader(
+			RenderCore::Techniques::ParsingContext& context,
+			StringSection<::Assets::ResChar> techniqueCfgFile,
+			const ParameterBox* shaderSelectors[],
+			unsigned techniqueIndex)
+		{
+			if (_technique->GetDependencyValidation()->GetValidationIndex() != 0) {
+				auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
+				future->StallWhilePending();
+				_technique = future->Actualize();
+			}
 
-    bool MaterialVisLayer::Draw(
-        IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext,
-        const MaterialVisSettings& settings,
-        const VisEnvSettings& envSettings,
-        const MaterialVisObject& object)
-    {
-            // if we need to reset the camera, do so now...
-        if (settings._pendingCameraAlignToModel) {
-            if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
-                    // this is more tricky... when using a model, we have to get the bounding box for the model
-                using namespace RenderCore::Assets;
-                const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
-                modelFuture->StallWhilePending();
-				const auto& model = *modelFuture->Actualize();
-                *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
-            } else {
-                    // just reset camera to the default
-                *settings._camera = VisCameraSettings();
-                settings._camera->_position = Float3(-5.f, 0.f, 0.f);
-            }
+			/*const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
+			if (!shaderFuture) return nullptr;
+			// In this case we want invalid / pending shaders to get registered as such. So use the "throwing" version of
+			// the Actualize call
+			shaderFuture->OnFrameBarrier();		// hack -- we still need to invoke the OnFrameBarrier call, because the future is not registered with the asset manager
+			return shaderFuture->Actualize().get();*/
+			assert(0);
+			return nullptr;
+		}
 
-            settings._pendingCameraAlignToModel = false;
-        }
+		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(
+			StringSection<> psName, StringSection<> definesTable,
+			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
+			const std::string& psMainName,
+			const std::shared_ptr<MessageRelay>& logMessages,
+			RenderCore::ShaderService::IShaderSource& shaderSource)
+		{
+			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
+			TRY
+			{
+				enum class StructureType { DeferredPass, ColorFromWorldCoords };
+				StructureType structureType = StructureType::DeferredPass;
 
-        MaterialSceneParser sceneParser(settings, envSettings, object);
-        sceneParser.Prepare();
-        SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
+				auto sig = provider->FindSignature(psMainName);
+				if (sig.has_value()) {
+					const auto& sigValue = sig.value();
+					if (XlFindString(sigValue._signature.GetImplements(), "CoordinatesToColor"))
+						structureType = StructureType::ColorFromWorldCoords;
+				}
 
-        if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
-                
-            auto metalContext = Metal::DeviceContext::Get(context);
-            auto marker = SceneEngine::LightingParser_SetupScene(
-                *metalContext.get(), parserContext, 
-                &sceneParser);
-            SceneEngine::LightingParser_SetGlobalTransform(
-                *metalContext.get(), parserContext, 
-                SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
-            CATCH_ASSETS_BEGIN
-                SceneEngine::ReturnToSteadyState(*metalContext.get());
-                SceneEngine::SetFrameGlobalStates(*metalContext.get());
-            CATCH_ASSETS_END(parserContext)
-            sceneParser.Draw(*metalContext.get(), parserContext, 0);
-                
-        } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
-            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
-            SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, 
-                sceneParser, sceneParser.GetCameraDesc(), qualSettings);
-        } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
-            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-            SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
-        }
+				ShaderSourceParser::InstantiatedShader fragments;
 
-        return true;
-    }
+				auto psNameSplit = MakeFileNameSplitter(psName);
+				const char* entryPoint;
+				if (structureType == StructureType::DeferredPass) {
+					auto earlyRejection = ShaderSourceParser::InstantiationRequest_ArchiveName { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default", {} };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					overridePerPixel._customProvider = provider;
 
-    class MaterialVisLayer::Pimpl
-    {
-    public:
-        std::shared_ptr<MaterialVisSettings> _settings;
-        std::shared_ptr<VisEnvSettings> _envSettings;
-        std::shared_ptr<MaterialVisObject> _object;
-    };
+					ShaderSourceParser::InstantiationRequest instParams {
+						{ "rejectionTest", earlyRejection },
+						{ "perPixel", overridePerPixel }
+					};
+					entryPoint = "deferred_pass_main";
+					fragments = ShaderSourceParser::InstantiateShader(
+						psNameSplit.AllExceptParameters(), entryPoint,
+						instParams);
+				} else {
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					overridePerPixel._customProvider = provider;
 
-    auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-        { return nullptr; }
+					entryPoint = "deferred_pass_color_from_worldcoords";
+					fragments = ShaderSourceParser::InstantiateShader(
+						psNameSplit.AllExceptParameters(), entryPoint,
+						ShaderSourceParser::InstantiationRequest {
+							{ "perPixel", overridePerPixel }
+						});
+				}
 
-    void MaterialVisLayer::RenderToScene(
-        IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext)
-    {
-        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
-    }
+				fragments._sourceFragments.insert(fragments._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
 
-    void MaterialVisLayer::RenderWidgets(
-        IThreadContext& context, 
-        Techniques::ParsingContext& parsingContext)
-    {}
+				std::string mergedFragments;
+				size_t mergedSize = 0;
+				for (auto&f:fragments._sourceFragments)
+					mergedSize += f.size();
+				mergedFragments.reserve(mergedSize);
+				for (auto&f:fragments._sourceFragments)
+					mergedFragments.insert(mergedFragments.end(), f.begin(), f.end());
 
-    void MaterialVisLayer::SetActivationState(bool) {}
+				auto pendingCompile = shaderSource.CompileFromMemory(
+					mergedFragments, entryPoint, psNameSplit.Parameters(), definesTable);
 
-    MaterialVisLayer::MaterialVisLayer(
-        std::shared_ptr<MaterialVisSettings> settings,
-        std::shared_ptr<VisEnvSettings> envSettings,
-        std::shared_ptr<MaterialVisObject> object)
-    {
-        _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = std::move(settings);
-        _pimpl->_envSettings = std::move(envSettings);
-        _pimpl->_object = std::move(object);
-    }
+				future->SetPollingFunction(
+					[pendingCompile, logMessages, mergedFragments](::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>& thatFuture) -> bool {
+						auto state = pendingCompile->GetAssetState();
+						if (state == ::Assets::AssetState::Pending) return true;
 
-    MaterialVisLayer::~MaterialVisLayer()
-    {}
+						if (state == ::Assets::AssetState::Invalid) {
+							auto artifacts = pendingCompile->GetArtifacts();
+							if (!artifacts.empty()) {
+								auto blog = ::Assets::GetErrorMessage(*pendingCompile);
+								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), blog);
+								if (logMessages)
+									logMessages->AddMessage(std::string("Got error during shader compile:\n") + ::Assets::AsString(blog) + "\n");
+							} else {
+								thatFuture.SetInvalidAsset(nullptr, nullptr);
+							}
+							return false;
+						}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+						assert(state == ::Assets::AssetState::Ready);
+						auto& artifact = *pendingCompile->GetArtifacts()[0].second;
+						AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+						if (logMessages) {
+							std::stringstream str;
+							str << "Completed shader:\n" << std::endl;
+							str << mergedFragments << std::endl;
+							logMessages->AddMessage(str.str());
+						}
+						return false;
+					});
+			} CATCH (const ::Assets::Exceptions::ConstructionError& e) {
+				future->SetInvalidAsset(
+					e.GetDependencyValidation(),
+					e.GetActualizationLog());
+				if (logMessages)
+					logMessages->AddMessage(std::string("Got exception during shader construction:\n") + ::Assets::AsString(e.GetActualizationLog()) + "\n");
+			} CATCH (const std::exception& e) {
+				future->SetInvalidAsset(
+					std::make_shared<::Assets::DependencyValidation>(),
+					::Assets::AsBlob(e.what()));
+				if (logMessages)
+					logMessages->AddMessage(std::string("Got exception during shader construction:\n") + e.what() + "\n");
+			} CATCH_END
+			return future;
+		}
 
-    MaterialVisSettings::MaterialVisSettings()
-    {
-        _geometryType = GeometryType::Sphere;
-        _lightingType = LightingType::NoLightingParser;
-        _camera = std::make_shared<VisCameraSettings>();
-        _camera->_position = Float3(-5.f, 0.f, 0.f);
-        _pendingCameraAlignToModel = false;
-    }
+		static void TryRegisterDependency(
+			::Assets::DepValPtr& dst,
+			const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+		{
+			auto futureDepVal = future->GetDependencyValidation();
+			if (futureDepVal)
+				::Assets::RegisterAssetDependency(dst, futureDepVal);
+		}
 
-    MaterialVisObject::MaterialVisObject()
-    {
-        _previewMaterialBinding = 0;
-    }
+		GraphPreviewTechniqueDelegate(
+			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
+			const std::string& psMainName,
+			const std::shared_ptr<MessageRelay>& logMessages)
+		{
+			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
+			auto state = future->StallWhilePending();
+			if (state == ::Assets::AssetState::Ready) {
+				_technique = future->Actualize();
+			} else {
+				std::stringstream str;
+				str << "Failed loading technique file (" << s_techFile << ") with message (" << ::Assets::AsString(future->GetActualizationLog()) << ")";
+				logMessages->AddMessage(str.str());
+			}
 
-    MaterialVisObject::~MaterialVisObject()
-    {
-    }
+			auto shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+				RenderCore::Metal::CreateLowLevelShaderCompiler(RenderCore::Assets::Services::GetDevice()),
+				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
+
+			assert(0);
+			/*_resolvedShaders._creationFn = 
+				[provider, psMainName, logMessages, shaderSource](
+					StringSection<> vsName,
+					StringSection<> gsName,
+					StringSection<> psName,
+					StringSection<> defines)
+				{
+					auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vsName, defines);
+					assert(gsName.IsEmpty());
+					
+					::Assets::FuturePtr<CompiledShaderByteCode> psCode;
+					if (XlEqString(MakeFileNameSplitter(psName).Extension(), "graph")) {
+						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName, logMessages, *shaderSource);
+					} else {
+						psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(psName, defines);
+					}
+
+					auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("GraphPreviewTechniqueDelegate");
+					future->SetPollingFunction(
+						[vsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
+
+						auto vsActual = vsCode->TryActualize();
+						auto psActual = psCode->TryActualize();
+
+						if (!vsActual || !psActual) {
+							auto vsState = vsCode->GetAssetState();
+							auto psState = psCode->GetAssetState();
+							if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+								auto depVal = std::make_shared<::Assets::DependencyValidation>();
+								TryRegisterDependency(depVal, vsCode);
+								TryRegisterDependency(depVal, psCode);
+								thatFuture.SetInvalidAsset(depVal, nullptr);
+								return false;
+							}
+							return true;
+						}
+
+						auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+						thatFuture.SetAsset(std::move(newShaderProgram), {});
+						return false;
+					});
+
+					return future;
+				};*/
+		}
+	private:
+		std::shared_ptr<RenderCore::Techniques::Technique> _technique;
+		Techniques::UniqueShaderVariationSet _resolvedShaders;
+		static const char s_techFile[];
+	};
+
+	const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
+
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
+		const std::string& psMainName,
+		const std::shared_ptr<MessageRelay>& logMessages)
+	{
+		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName, logMessages);
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class MessageRelay::Pimpl
+	{
+	public:
+		std::vector<std::string> _messages;
+		Threading::RecursiveMutex _lock;
+
+		std::vector<std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>> _callbacks;
+		unsigned _nextCallbackId = 1;
+	};
+
+	std::string MessageRelay::GetMessages() const
+	{
+		ScopedLock(_pimpl->_lock);
+		size_t length = 0;
+		for (const auto&m:_pimpl->_messages)
+			length += m.size();
+		std::string result;
+		result.reserve(length);
+		for (const auto&m:_pimpl->_messages)
+			result.insert(result.end(), m.begin(), m.end());
+		return result;
+	}
+
+	unsigned MessageRelay::AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback)
+	{
+		ScopedLock(_pimpl->_lock);
+		_pimpl->_callbacks.push_back(std::make_pair(_pimpl->_nextCallbackId, callback));
+		return _pimpl->_nextCallbackId++;
+	}
+
+	void MessageRelay::RemoveCallback(unsigned id)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto i = std::find_if(
+			_pimpl->_callbacks.begin(), _pimpl->_callbacks.end(),
+			[id](const std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>& p) { return p.first == id; } );
+		_pimpl->_callbacks.erase(i);
+	}
+
+	void MessageRelay::AddMessage(const std::string& msg)
+	{
+		ScopedLock(_pimpl->_lock);
+		_pimpl->_messages.push_back(msg);
+		for (const auto&cb:_pimpl->_callbacks)
+			cb.second->OnChange();
+	}
+
+	MessageRelay::MessageRelay()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+
+	MessageRelay::~MessageRelay()
+	{}
 
 }
 

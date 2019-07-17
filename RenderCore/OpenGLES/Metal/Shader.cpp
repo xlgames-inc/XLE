@@ -28,7 +28,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     using ::Assets::ResChar;
 
-    class OGLESShaderCompiler : public ShaderService::ILowLevelCompiler
+    class OGLESShaderCompiler : public ILowLevelCompiler
     {
     public:
         virtual void AdaptShaderModel(
@@ -41,9 +41,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            const ShaderService::ResId& shaderPath,
+            const ResId& shaderPath,
             StringSection<::Assets::ResChar> definesTable,
-            IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
+            IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -79,7 +79,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     static std::vector<ErrorMessage> DecodeCompilerErrorLog(
         StringSection<> compilerLog,
         unsigned preambleLineCount,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers)
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers)
     {
         std::vector<ErrorMessage> errorMessages;
         const char* i = compilerLog.begin();
@@ -140,9 +140,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         /*out*/ Payload& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
+        const ILowLevelCompiler::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
     {
         ShaderType::Enum shaderType = ShaderType::FragmentShader;
         if (shaderPath._shaderModel[0] == 'v') {
@@ -336,7 +336,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     OGLESShaderCompiler::~OGLESShaderCompiler()
     {}
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         return std::make_shared<OGLESShaderCompiler>();
     }
@@ -575,6 +575,37 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         return stream;
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> gsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> gsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> hsName,
+        StringSection<::Assets::ResChar> dsName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
     }
 
 }}

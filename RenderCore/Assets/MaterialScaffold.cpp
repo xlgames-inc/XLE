@@ -5,13 +5,23 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialScaffold.h"
-#include "ModelImmutableData.h"     // for MaterialImmutableData
-#include "../Techniques/TechniqueMaterial.h"
+#include "ShaderPatchCollection.h"
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/BlockSerializer.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Utility/Streams/PathUtils.h"
+
+#include "../Techniques/DrawableMaterial.h"		// temp -- just for ShaderPatchCollectionRegistry
 
 namespace RenderCore { namespace Assets
 {
+	class MaterialImmutableData
+    {
+    public:
+        SerializableVector<std::pair<MaterialGuid, MaterialScaffold::Material>> _materials;
+        SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> _materialNames;
+    };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,10 +30,10 @@ namespace RenderCore { namespace Assets
 		return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
 	}
 
-	const Techniques::Material* MaterialScaffold::GetMaterial(MaterialGuid guid) const
+	auto MaterialScaffold::GetMaterial(MaterialGuid guid) const -> const Material*
 	{
 		const auto& data = ImmutableData();
-		auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, Techniques::Material>());
+		auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, Material>());
 		if (i != data._materials.end() && i->first == guid)
 			return &i->second;
 		return nullptr;
@@ -35,6 +45,14 @@ namespace RenderCore { namespace Assets
 		auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, SerializableVector<char>>());
 		if (i != data._materialNames.end() && i->first == guid)
 			return MakeStringSection(i->second.begin(), i->second.end());
+		return {};
+	}
+
+	const ShaderPatchCollection*	MaterialScaffold::GetShaderPatchCollection(uint64_t hash) const
+	{
+		auto i = std::lower_bound(_patchCollections.begin(), _patchCollections.end(), hash);
+		if (i != _patchCollections.end() && i->GetHash() == hash)
+			return AsPointer(i);
 		return nullptr;
 	}
 
@@ -43,26 +61,39 @@ namespace RenderCore { namespace Assets
 		::Assets::AssetChunkRequest{
 			"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
 			::Assets::AssetChunkRequest::DataType::BlockSerializer
+		},
+		::Assets::AssetChunkRequest{
+			"PatchCollections", ChunkType_PatchCollections, ResolvedMat_ExpectedVersion,
+			::Assets::AssetChunkRequest::DataType::Raw
 		}
 	};
 
 	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
-		assert(chunks.size() == 1);
+		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
+
+		InputStreamFormatter<utf8> formatter(
+			{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
+		_patchCollections = DeserializeShaderPatchCollectionSet(formatter);
+
+		for (const auto&p:_patchCollections)
+			Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(p);
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
 	: _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _depVal(moveFrom._depVal)
+	, _depVal(std::move(moveFrom._depVal))
+	, _patchCollections(std::move(moveFrom._patchCollections))
 	{}
 
 	MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
 	{
 		ImmutableData().~MaterialImmutableData();
 		_rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_depVal = moveFrom._depVal;
+		_depVal = std::move(moveFrom._depVal);
+		_patchCollections = std::move(moveFrom._patchCollections);
 		return *this;
 	}
 
@@ -71,16 +102,7 @@ namespace RenderCore { namespace Assets
 		ImmutableData().~MaterialImmutableData();
 	}
 
-
-	MaterialGuid MakeMaterialGuid(StringSection<utf8> name)
-	{
-		//  If the material name is just a number, then we will use that
-		//  as the guid. Otherwise we hash the name.
-		const char* parseEnd = nullptr;
-		uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
-		if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
-		return hashId;
-	}
+	
 
 }}
 

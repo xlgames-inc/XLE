@@ -115,6 +115,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-CGL", "", "" }; }
 
+        virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
         Device();
         ~Device();
 

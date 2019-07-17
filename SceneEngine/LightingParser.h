@@ -7,48 +7,45 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
+#include "../Math/Vector.h"
 #include "../Utility/IteratorUtils.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
-    using MetalContext = RenderCore::Metal::DeviceContext;
+	class LightingParserContext;
+    class IScene;
+    class PreparedScene;
+	class ILightingParserDelegate;
+	class ILightingParserPlugin;
 
     namespace ShaderLightDesc { class BasicEnvironment; }
 
-    class RenderingQualitySettings
+    class RenderSceneSettings
     {
     public:
-        VectorPattern<unsigned, 2>  _dimensions;
-        unsigned    _samplingCount, _samplingQuality;
-
         enum class LightingModel
         {
             Forward,
-            Deferred
+            Deferred,
+			Direct
         };
 
-        LightingModel _lightingModel;
+        LightingModel _lightingModel = LightingModel::Deferred;
 
-        RenderingQualitySettings();
-        RenderingQualitySettings(
-            VectorPattern<unsigned, 2> dimensions,
-            LightingModel lightingModel = LightingModel::Deferred,
-            unsigned samplingCount = 1,
-            unsigned samplingQuality = 0);
+		const ILightingParserDelegate* _lightingDelegate;
+		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
+
+		unsigned    _samplingCount = 1u;
+		unsigned	_samplingQuality = 0u;
     };
-
-    class LightingParserContext;
-    class SceneParseSettings;
-    class ISceneParser;
-    class AttachedSceneMarker;
-    class PreparedScene;
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
@@ -58,12 +55,6 @@ namespace SceneEngine
     /// perhaps there are times when multiple renders are required for a frame,
     /// maybe for reflections).
     ///
-    /// Note that the lighting parser will write the final result to the render
-    /// target that is currently bound to the given context! Often, this will
-    /// be the main back buffer. Usually, the width and height in "qualitySettings"
-    /// should be the same dimensions as this output buffer (but that doesn't 
-    /// always have to be the case).
-    ///
     /// The "qualitySettings" parameter allows the caller to define the resolution
     /// and sampling quality for rendering the scene. Be careful to select valid 
     /// settings for sampling quality.
@@ -72,89 +63,63 @@ namespace SceneEngine
     /// <code>
     ///     auto renderDevice = RenderCore::CreateDevice();
     ///     auto presentationChain = renderDevice->CreatePresentationChain(...);
-    ///     LightingParserContext lightingParserContext(...);
+    ///     RenderCore::Techniques::ParsingContext parsingContext(...);
+	///		std::shared_ptr<SceneEngine::ISceneParser> scene = ...;
     ///     renderDevice->BeginFrame(presentationChain.get());
     ///
-    ///     SceneEngine::RenderingQualitySettings qualitySettings;
     ///     auto presChainDesc = presentationChain->GetDesc();
-    ///     qualitySettings._width = presChainDesc._width;
-    ///     qualitySettings._height = presChainDesc._height;
-    ///     qualitySettings._samplingCount = 1; 
-    ///     qualitySettings._samplingQuality = 0;
-    ///
-    ///     auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(renderDevice.get());
-    ///     SceneEngine::LightingParser_Execute(context, lightingParserContext, qualitySettings);
+	///     SceneEngine::RenderSceneSettings qualitySettings {
+	///			UInt2(presChainDesc._width, presChainDesc._height) };
+	///
+    ///     auto lightingParserContext = SceneEngine::LightingParser_Execute(
+	///			renderDevice->GetImmediateContext(), 
+	///			parsingContext, *scene, qualitySettings);
     ///
     ///     presentationChain->Present();
     /// </code>
-    void LightingParser_ExecuteScene(
+    LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
-        ISceneParser& sceneParser,
+		const RenderCore::IResourcePtr& renderTarget,
+		RenderCore::Techniques::ParsingContext& parserContext,
+		IScene& scene,
         const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings);
+        const RenderSceneSettings& qualitySettings);
 
-    /// <summary>Executes the scene currently set to the parser context</summary>
-    /// The currently attached scene will be rendered.
-    /// Call LightingParser_SetupScene to attach a scene to the parser context before
-    /// calling this.
-    /// The other version of LightingParser_ExecuteScene is intended for most cases. But
-    /// this version can be used for special case purpose (for example, when a special
-    /// case projection matrix is required)
-    void LightingParser_ExecuteScene(
-        RenderCore::IThreadContext& metalContext, 
-        LightingParserContext& parserContext,
-        const RenderingQualitySettings& qualitySettings,
-        PreparedScene& preparedScene);
-
-    /// <summary>Initialise basic states for scene rendering</summary>
-    /// Some render operations don't want to use the full lighting parser structure.
-    /// In these cases, you can use LightingParser_SetupScene() to initialise the
-    /// global states that are normally managed by the lighting parser.
-    /// Note -- don't call this if you're using LightingParser_Execute.
-    /// <seealso cref="LightingParser_Execute"/>
-    auto LightingParser_SetupScene(
-        MetalContext& context,
-        LightingParserContext& parserContext,
-        ISceneParser* sceneParser = nullptr,
-        unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1)
-        -> AttachedSceneMarker;
-
-    /// <summary>Set camera related states after camera changes</summary>
-    /// Normally this is called automatically by the system.
-    /// But in cases where you need to change the camera settings, you can
-    /// manually force an update of the shader constants related to projection
-    /// with this call.
-    /// (for example, used by the vegetation spawn to temporarily reduce the
-    /// far clip distance)
-    /// <seealso cref="LightingParser_SetupScene"/>
-    void LightingParser_SetGlobalTransform( 
-        MetalContext& context, 
-        LightingParserContext& parserContext, 
-        const RenderCore::Techniques::ProjectionDesc& projDesc);
-
-    void LightingParser_Overlays(   
+    void LightingParser_Overlays(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext);
-
-    /// <summary>Build a projection desc with parameters from a standard camera</summary>
-    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
-        const RenderCore::Techniques::CameraDesc& sceneCamera,
-        VectorPattern<unsigned, 2> viewportDims, 
-        const Float4x4* specialProjectionMatrix = nullptr);
-
-    /// <summary>Build a projection desc for an orthogonal camera</summary>
-    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
-        const Float4x4& cameraToWorld,
-        float l, float t, float r, float b,
-        float nearClip, float farClip);
-
-    void SetFrameGlobalStates(MetalContext& context);
-    void ReturnToSteadyState(MetalContext& context);
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext);
 
         ///////////////////////////////////////////////////////////////////////////
 
-    class IMainTargets;
+	class ShadowProjectionDesc;
+	class GlobalLightingDesc;
+	class LightDesc;
+	class ToneMapSettings;
+	class MainTargets;
+
+	class ILightingParserDelegate
+	{
+	public:
+        using ProjectionDesc    = RenderCore::Techniques::ProjectionDesc;
+        using ShadowProjIndex   = unsigned;
+        using LightIndex        = unsigned;
+
+        virtual ShadowProjIndex GetShadowProjectionCount() const = 0;
+        virtual auto            GetShadowProjectionDesc(ShadowProjIndex index, const ProjectionDesc& mainSceneProj) const
+            -> ShadowProjectionDesc = 0;
+
+        virtual LightIndex  GetLightCount() const = 0;
+        virtual auto        GetLightDesc(LightIndex index) const -> const LightDesc& = 0;
+        virtual auto        GetGlobalLightingDesc() const -> GlobalLightingDesc = 0;
+        virtual auto        GetToneMapSettings() const -> ToneMapSettings = 0;
+
+        virtual float       GetTimeValue() const = 0;
+
+		virtual ~ILightingParserDelegate();
+    };
+
+		///////////////////////////////////////////////////////////////////////////
 
     /// <summary>The LightingResolveContext is used by lighting operations during the gbuffer resolve step</summary>
     /// Don't confuse with LightingParserContext. This is a different context object, representing
@@ -170,9 +135,8 @@ namespace SceneEngine
         Pass::Enum  GetCurrentPass() const;
         bool        UseMsaaSamplers() const;
         unsigned    GetSamplingCount() const;
-        IMainTargets& GetMainTargets() const;
 
-        typedef void ResolveFn(MetalContext*, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
+        typedef void ResolveFn(RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
         void        SetPass(Pass::Enum newPass);
 
@@ -180,19 +144,18 @@ namespace SceneEngine
             //  In this way, we can do the resolve for all of these effects in one step
             //  (rather than having to perform a bunch of separate passes)
             //  But it means we need some special case handling for these resources.
-        RenderCore::Metal::ShaderResourceView      _tiledLightingResult;
-        RenderCore::Metal::ShaderResourceView      _ambientOcclusionResult;
-        RenderCore::Metal::ShaderResourceView      _screenSpaceReflectionsResult;
+        RenderCore::Metal::ShaderResourceView		_tiledLightingResult;
+        RenderCore::Metal::ShaderResourceView		_ambientOcclusionResult;
+        RenderCore::Metal::ShaderResourceView		_screenSpaceReflectionsResult;
 
-        std::vector<std::function<ResolveFn>>       _queuedResolveFunctions;
+        std::vector<std::function<ResolveFn>>		_queuedResolveFunctions;
 
-        LightingResolveContext(IMainTargets& mainTargets);
+        LightingResolveContext(const LightingParserContext& lightingParserContext);
         ~LightingResolveContext();
     private:
         unsigned _samplingCount;
         bool _useMsaaSamplers;
         Pass::Enum _pass;
-        IMainTargets* _mainTargets;
     };
 
     /// <summary>Plug-in for the lighting parser</summary>
@@ -210,17 +173,21 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const;
 
         virtual void OnLightingResolvePrepare(
-            MetalContext&, LightingParserContext&, LightingResolveContext&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
-            MetalContext&, LightingParserContext&, 
-            const SceneParseSettings&, unsigned techniqueIndex) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
-            MetalContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			ShaderLightDesc::BasicEnvironment& env) const;
+
+		virtual ~ILightingParserPlugin();
     };
 }
 

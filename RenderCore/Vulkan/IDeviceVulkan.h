@@ -27,8 +27,6 @@ namespace RenderCore
 		virtual VkDevice	GetUnderlyingDevice() = 0;
 		virtual VkQueue     GetRenderingQueue() = 0;
 		virtual Metal_Vulkan::GlobalPools& GetGlobalPools() = 0;
-		virtual const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareGraphicsPipelineLayout() = 0;
-		virtual const std::shared_ptr<Metal_Vulkan::PipelineLayout>& ShareComputePipelineLayout() = 0;
 		~IDeviceVulkan();
     };
 

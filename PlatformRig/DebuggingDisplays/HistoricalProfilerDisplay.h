@@ -13,7 +13,7 @@ namespace PlatformRig { namespace Overlays
         typedef RenderOverlays::DebuggingDisplay::Layout Layout;
         typedef RenderOverlays::DebuggingDisplay::Interactables Interactables;
         typedef RenderOverlays::DebuggingDisplay::InterfaceState InterfaceState;
-        typedef RenderOverlays::DebuggingDisplay::InputSnapshot InputSnapshot;
+        typedef PlatformRig::InputSnapshot InputSnapshot;
 
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);

@@ -1,0 +1,14 @@
+
+import templates = "xleres/Nodes/Templates.sh"
+import output = "xleres/Nodes/Output.sh"
+import wood = "xleres/Objects/Example/ProcWood/Wood_04_G.graph"
+
+GBufferValues TestMaterial_Template(float3 coords, graph<templates::CoordinatesToColor> colorGenerator)
+{
+    return output::Output_PerPixel(diffuseAlbedo:colorGenerator(coords:coords).result).result;
+}
+
+GBufferValues TestMaterial(float3 coords) implements templates::CoordinatesToSurfaceProperties
+{
+    return TestMaterial_Template(coords:coords, colorGenerator:wood::Wood_04_G(color0:"float3(1,0,0)", color1:"float3(0,1,0)", color2:"float3(0,0,1)")).result;
+}

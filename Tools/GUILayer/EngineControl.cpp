@@ -9,19 +9,75 @@
 #include "EngineControl.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
-#include "IWindowRig.h"
+#include "WindowRigInternal.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../PlatformRig/InputTranslator.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/PtrUtils.h"
 
+using namespace System::Windows::Forms;
+
 namespace GUILayer 
 {
+	static msclr::auto_gcroot<System::Collections::Generic::List<System::WeakReference^>^> s_regularAnimationControls
+		= gcnew System::Collections::Generic::List<System::WeakReference^>();
+
+	bool EngineControl::HasRegularAnimationControls()
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;) {
+			if (!s_regularAnimationControls.get()[c]->IsAlive) {
+				s_regularAnimationControls->RemoveAt(c);
+			} else {
+				++c;
+			}
+		}
+		
+		for each(auto r in s_regularAnimationControls.get()) {
+			auto target = (EngineControl^)r->Target;
+			if (target && target->IsVisible())
+				return true;
+		}
+		return false;
+	}
+
+	void EngineControl::TickRegularAnimation()
+	{
+		array<System::WeakReference^>^ renderables = gcnew array<System::WeakReference^>(s_regularAnimationControls->Count);
+		s_regularAnimationControls->CopyTo(renderables);
+		for each(auto r in renderables) {
+			auto target = (EngineControl^)r->Target;
+			if (target)
+				target->Render();
+		}
+	}
+
+	static void AddRegularAnimation(EngineControl^ ctrl)
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;++c)
+			if (!s_regularAnimationControls.get()[c]->Target == (System::Object^)ctrl)
+				return;
+		s_regularAnimationControls->Add(gcnew System::WeakReference(ctrl));
+	}
+
+	static void RemoveRegularAnimation(EngineControl^ ctrl)
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;) {
+			if (!s_regularAnimationControls.get()[c]->IsAlive 
+				|| s_regularAnimationControls.get()[c]->Target == (System::Object^)ctrl) {
+				s_regularAnimationControls->RemoveAt(c);
+			} else {
+				++c;
+			}
+		}
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void EngineControl::OnPaint(Control^ ctrl, PaintEventArgs^ pe)
@@ -31,8 +87,12 @@ namespace GUILayer
         //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
         // __super::OnPaint(pe);
 
-        if (!Render())
-            ctrl->Invalidate();
+        bool res = Render();
+		if (!res) {
+			AddRegularAnimation(this);
+		} else {
+			RemoveRegularAnimation(this);
+		}
     }
 
     bool EngineControl::Render()
@@ -47,10 +107,24 @@ namespace GUILayer
         return result;
     }
 
+	void EngineControl::OnResize()
+    {
+	}
+
+	PlatformRig::InputContext EngineControl::MakeInputContext(System::Windows::Forms::Control^ control)
+	{
+		System::Drawing::Rectangle rect = control->ClientRectangle;
+		return PlatformRig::InputContext {
+			{ rect.Left, rect.Top },
+			{ rect.Right, rect.Bottom }
+		};
+	}
+
     void EngineControl::Evnt_Resize(Object^ sender, System::EventArgs^ e)
     {
         auto ctrl = dynamic_cast<Control^>(sender);
         if (!ctrl) return;
+		OnResize();
         _pimpl->_windowRig->OnResize(ctrl->Size.Width, ctrl->Size.Height);
     }
 
@@ -60,7 +134,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
 
-            _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, true); 
+            _pimpl->_inputTranslator->OnKeyChange(MakeInputContext(ctrl), e->KeyValue, true); 
             e->Handled = true;
             ctrl->Invalidate();
         }
@@ -72,7 +146,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
 
-            _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, false); 
+            _pimpl->_inputTranslator->OnKeyChange(MakeInputContext(ctrl), e->KeyValue, false); 
             e->Handled = true;
             ctrl->Invalidate();
         }
@@ -84,7 +158,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnChar(e->KeyChar);
+            _pimpl->_inputTranslator->OnChar(MakeInputContext(ctrl), e->KeyChar);
             e->Handled = true;
             ctrl->Invalidate();
         }
@@ -97,8 +171,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            PlatformRig::InputTranslator::s_hackWindowSize = UInt2(unsigned(ctrl->Size.Width), unsigned(ctrl->Size.Height));
-            _pimpl->_inputTranslator->OnMouseMove(e->Location.X, e->Location.Y);
+            _pimpl->_inputTranslator->OnMouseMove(MakeInputContext(ctrl), e->Location.X, e->Location.Y);
             ctrl->Invalidate();
         }
     }
@@ -119,7 +192,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
 
-            _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), true);
+            _pimpl->_inputTranslator->OnMouseButtonChange(MakeInputContext(ctrl), e->Location.X, e->Location.Y, AsIndex(e->Button), true);
             ctrl->Invalidate();
         }
     }
@@ -130,7 +203,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), false);
+            _pimpl->_inputTranslator->OnMouseButtonChange(MakeInputContext(ctrl), e->Location.X, e->Location.Y, AsIndex(e->Button), false);
             ctrl->Invalidate();
         }
     }
@@ -141,7 +214,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnMouseWheel(e->Delta);
+            _pimpl->_inputTranslator->OnMouseWheel(MakeInputContext(ctrl), e->Delta);
             ctrl->Invalidate();
         }
     }
@@ -152,7 +225,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
+            _pimpl->_inputTranslator->OnMouseButtonDblClk(MakeInputContext(ctrl), e->Location.X, e->Location.Y, AsIndex(e->Button));
             ctrl->Invalidate();
         }
     }
@@ -162,7 +235,8 @@ namespace GUILayer
         // when we've lost or gained the focus, we need to reset the input translator 
         //  (because we might miss key up/down message when not focused)
         if (_pimpl.get() && _pimpl->_inputTranslator.get()) {       // (this can sometimes be called after the dispose, which ends up with an invalid _pimpl)
-            _pimpl->_inputTranslator->OnFocusChange();
+			auto ctrl = dynamic_cast<Control^>(sender);
+            _pimpl->_inputTranslator->OnFocusChange(MakeInputContext(ctrl));
         }
     }
 
@@ -197,11 +271,31 @@ namespace GUILayer
         _pimpl.reset();
     }
 
+	bool EngineControl::IsVisible()
+	{
+		Control^ ctrl = (Control^)_attachedControl->Target;
+		if (ctrl)
+			return ctrl->Visible;
+		return false;
+	}
+
+	static std::unique_ptr<WindowRig> CreateWindowRig(EngineDevice^ engineDevice, const void* nativeWindowHandle)
+    {
+        auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
+
+        BufferUploads::IManager* bufferUploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploads();
+        result->GetFrameRig().AddPostPresentCallback(
+            [bufferUploads](RenderCore::IThreadContext& threadContext)
+            { bufferUploads->Update(threadContext, false); });
+
+        return std::move(result);
+    }
+
     EngineControl::EngineControl(Control^ control)
     {
         _pimpl.reset(new EngineControlPimpl);
         auto engineDevice = EngineDevice::GetInstance();
-        _pimpl->_windowRig = engineDevice->GetNative().CreateWindowRig(control->Handle.ToPointer());
+        _pimpl->_windowRig = CreateWindowRig(engineDevice, control->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
         _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
 
@@ -217,6 +311,8 @@ namespace GUILayer
         control->LostFocus  += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
         control->Resize     += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_Resize);
 
+		_attachedControl = gcnew System::WeakReference(control);
+
         // We can't guarantee when the destructor or finalizer will be called. But we need to make sure
         // that the native objects are released before the device is destroyed. The only way to do that
         // is to install a callback in the engine device itself, 
@@ -230,7 +326,9 @@ namespace GUILayer
 
     EngineControl::!EngineControl()
     {
-        _pimpl.reset();
+        if (_pimpl.get()) {
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of EngineControl");
+		}
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

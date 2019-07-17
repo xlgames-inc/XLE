@@ -22,8 +22,12 @@ namespace MaterialTool
 
             // We need to calculate the interface for the node graph and
             // find the variables from there...
-            var interf = ShaderPatcherLayer.NodeGraph.GetInterface(context.NodeGraph);
-            var sugg = interf.Variables.Select(x => x.Name);
+            IEnumerable<String> sugg = null;
+            foreach (var sg in _context.NodeGraphFile.SubGraphs)
+            {
+                var subSugg = sg.Value.Signature.Parameters.Where(x => x.Direction == GUILayer.NodeGraphSignature.ParameterDirection.In).Select(x => x.Name);
+                sugg = (sugg != null) ? sugg.Concat(subSugg) : subSugg;
+            }
 
             {
                 _variables.AutoGenerateColumns = false;
@@ -54,11 +58,11 @@ namespace MaterialTool
             }
 
             _variablesList = new BindingList<ControlsLibrary.StringPair>();
-            foreach (var i in _context.GraphContext.Variables)
+            foreach (var i in _context.GraphMetaData.Variables)
                 _variablesList.Add(new ControlsLibrary.StringPair { Key = i.Key, Value = i.Value });
             _variables.DataSource = _variablesList;
 
-            var diagContext = _context.GraphContext;
+            var diagContext = _context.GraphMetaData;
             _type.SelectedIndex = diagContext.HasTechniqueConfig ? 1 : 0;
             _needsWorldPosition.CheckState = CheckState.Unchecked;
             foreach (var i in diagContext.ShaderParameters)
@@ -72,11 +76,11 @@ namespace MaterialTool
         private void _okButton_Click(object sender, EventArgs e)
         {
             // commit the variables to the document
-            _context.GraphContext.Variables.Clear();
+            _context.GraphMetaData.Variables.Clear();
             foreach (var i in _variablesList)
-                _context.GraphContext.Variables.Add(i.Key ?? string.Empty, i.Value ?? string.Empty);
+                _context.GraphMetaData.Variables.Add(i.Key ?? string.Empty, i.Value ?? string.Empty);
 
-            var diagContext = _context.GraphContext;
+            var diagContext = _context.GraphMetaData;
             diagContext.HasTechniqueConfig = _type.SelectedIndex == 1;
             if (_needsWorldPosition.CheckState == CheckState.Checked)
                 diagContext.ShaderParameters["OUTPUT_WORLD_POSITION"] = "1";
@@ -85,7 +89,6 @@ namespace MaterialTool
 
             diagContext.PreviewModelFile = _previewModel.Text;
 
-            _context.Invalidate();
             DialogResult = DialogResult.OK;
         }
 

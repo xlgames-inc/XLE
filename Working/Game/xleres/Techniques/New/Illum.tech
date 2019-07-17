@@ -1,0 +1,13 @@
+
+
+~NoPatches
+    ~Inherit; ../Illum.tech:Deferred
+
+~PerPixel
+    ~Inherit; ../Illum.tech:Deferred
+    PixelShader=xleres/deferred/main.psh:frameworkEntry
+
+~PerPixelAndEarlyRejection
+    ~Inherit; ../Illum.tech:Deferred
+    PixelShader=xleres/deferred/main.psh:frameworkEntryWithEarlyRejection
+

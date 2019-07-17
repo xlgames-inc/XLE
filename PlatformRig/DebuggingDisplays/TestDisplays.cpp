@@ -7,6 +7,7 @@
 #define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
 
 #include "TestDisplays.h"
+#include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Format.h"
 #include "../../Math/Geometry.h"
 #include "../../Math/Vector.h"
@@ -98,7 +99,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    GridIteratorDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    GridIteratorDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsHeld_LButton()) {
             _currentMousePosition = input._mousePosition;
@@ -549,7 +550,7 @@ namespace PlatformRig { namespace Overlays
 
     }
 
-    bool    DualContouringTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    DualContouringTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }
@@ -645,7 +646,7 @@ namespace PlatformRig { namespace Overlays
         DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label);
+			GetDefaultFont(), TextStyle{}, formatting._foreground, TextAlignment::Center, label);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
@@ -702,7 +703,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    RectanglePackerTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    RectanglePackerTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsRelease_LButton() && interfaceState.TopMostId() == Hash64("Randomize")) {
             _pimpl->FillRandomly();
@@ -873,7 +874,7 @@ namespace PlatformRig { namespace Overlays
             //          earlier than main context is executable -- and insert some synchronization
             //          tests to ensure that it is ready by the time we get to this point.
             //      we can keep a list of "tributary" command lists in the main device context...?
-            metalContext->CommitCommandList(
+            metalContext->ExecuteCommandList(
                 *forkedContext->ResolveCommandList(),
                 true);
         }
@@ -947,7 +948,7 @@ namespace PlatformRig { namespace Overlays
 #endif
     }
 
-    bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

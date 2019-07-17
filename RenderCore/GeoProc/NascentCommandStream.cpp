@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NascentCommandStream.h"
-#include "SkeletonRegistry.h"
 #include "../Format.h"
 #include "../Assets/RawAnimationCurve.h"
 #include "../../Assets/BlockSerializer.h"
@@ -18,18 +17,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 { 
-    class NascentAnimationSet::Animation
-    {
-    public:
-        std::string     _name;
-        unsigned        _begin, _end;
-        unsigned        _constantBegin, _constantEnd;
-        float           _startTime, _endTime;
-        Animation() : _begin(0), _end(0), _constantBegin(0), _constantEnd(0), _startTime(0.f), _endTime(0.f) {}
-        Animation(const std::string& name, unsigned begin, unsigned end, unsigned constantBegin, unsigned constantEnd, float startTime, float endTime) 
-            : _name(name), _begin(begin), _end(end), _constantBegin(constantBegin), _constantEnd(constantEnd), _startTime(startTime), _endTime(endTime) {}
-    };
-
     void    NascentAnimationSet::AddConstantDriver( 
                                     const std::string&  parameterName, 
                                     const void*         constantValue, 
@@ -56,8 +43,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             (uint8*)constantValue, PtrAdd((uint8*)constantValue, valueSize),
             std::back_inserter(_constantData));
 
-        _constantDrivers.push_back(
-            ConstantDriver(dataOffset, (unsigned)parameterIndex, format, samplerType, samplerOffset));
+        _constantDrivers.push_back({dataOffset, (unsigned)parameterIndex, format, samplerType, samplerOffset});
     }
 
     void    NascentAnimationSet::AddAnimationDriver( 
@@ -74,8 +60,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             _parameterInterfaceDefinition.push_back(parameterName);
         }
 
-        _animationDrivers.push_back(
-            AnimationDriver(curveId, (unsigned)parameterIndex, samplerType, samplerOffset));
+        _animationDrivers.push_back({curveId, (unsigned)parameterIndex, samplerType, samplerOffset});
     }
 
     bool    NascentAnimationSet::HasAnimationDriver(const std::string&  parameterName) const
@@ -100,9 +85,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     }
 
     void    NascentAnimationSet::MergeAnimation(
-        const NascentAnimationSet& animation, const char name[],
-        const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
-        std::vector<Assets::RawAnimationCurve>& destinationCurves)
+        const NascentAnimationSet& animation, const std::string& name)
     {
             //
             //      Merge the animation drivers in the given input animation, and give 
@@ -112,8 +95,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
         for (auto i=animation._animationDrivers.cbegin(); i!=animation._animationDrivers.end(); ++i) {
-            if (i->_curveIndex >= sourceCurves.size()) continue;
-            const auto* animCurve = &sourceCurves[i->_curveIndex];
+            if (i->_curveIndex >= animation._curves.size()) continue;
+            const auto* animCurve = &animation._curves[i->_curveIndex];
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
@@ -121,9 +104,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 maxTime = std::max(maxTime, curveEnd);
 
                 const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
-                destinationCurves.push_back(Assets::RawAnimationCurve(*animCurve));
+                _curves.emplace_back(Assets::RawAnimationCurve(*animCurve));
                 AddAnimationDriver(
-                    pname, unsigned(destinationCurves.size()-1), 
+                    pname, unsigned(_curves.size()-1), 
                     i->_samplerType, i->_samplerOffset);
             }
         }
@@ -136,108 +119,126 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				i->_samplerType, i->_samplerOffset);
         }
 
-        _animations.push_back(Animation(name, 
-            (unsigned)startIndex, (unsigned)_animationDrivers.size(), 
-            (unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
-            minTime, maxTime));
+        _animations.push_back(
+			std::make_pair(
+				name,
+				Animation{
+					(unsigned)startIndex, (unsigned)_animationDrivers.size(), 
+					(unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
+					minTime, maxTime}));
     }
 
-    void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        ::Serialize(serializer, unsigned(_curveIndex));
-        ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, _samplerOffset);
-        ::Serialize(serializer, unsigned(_samplerType));
-    }
+	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name)
+	{
+		// Make an Animation record that covers all of the curves registered.
+		// This is intended for cases where there's only a single animation within the NascentAnimationSet
+		float minTime = FLT_MAX, maxTime = -FLT_MAX;
+		for (auto i=_animationDrivers.cbegin(); i!=_animationDrivers.end(); ++i) {
+            if (i->_curveIndex >= _curves.size()) continue;
+            const auto* animCurve = &_curves[i->_curveIndex];
+            if (animCurve) {
+                float curveStart = animCurve->StartTime();
+                float curveEnd = animCurve->EndTime();
+                minTime = std::min(minTime, curveStart);
+                maxTime = std::max(maxTime, curveEnd);
+			}
+		}
 
-    void NascentAnimationSet::ConstantDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        ::Serialize(serializer, _dataOffset);
-        ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, _samplerOffset);
-        ::Serialize(serializer, unsigned(_samplerType));
-    }
+		_animations.push_back(
+			std::make_pair(
+				name,
+				Animation{
+					(unsigned)0, (unsigned)_animationDrivers.size(), 
+					(unsigned)0, (unsigned)_constantDrivers.size(),
+					minTime, maxTime}));
+	}
 
-    struct AnimationDesc        // matches AnimationSet::Animation
-    {
-        uint64      _name;
-        unsigned    _beginDriver, _endDriver;
-        unsigned    _beginConstantDriver, _endConstantDriver;
-        float       _beginTime, _endTime; 
+	void	NascentAnimationSet::AddAnimation(
+			const std::string& name, 
+			unsigned driverBegin, unsigned driverEnd,
+			unsigned constantBegin, unsigned constantEnd,
+			float minTime, float maxTime)
+	{
+		_animations.push_back(
+			std::make_pair(
+				name,
+				Animation{
+					driverBegin, driverEnd, 
+					constantBegin, constantEnd,
+					minTime, maxTime}));
+	}
 
-        AnimationDesc() {}
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const
-        {
-            ::Serialize(serializer, _name);
-            ::Serialize(serializer, _beginDriver);
-            ::Serialize(serializer, _endDriver);
-            ::Serialize(serializer, _beginConstantDriver);
-            ::Serialize(serializer, _endConstantDriver);
-            ::Serialize(serializer, _beginTime);
-            ::Serialize(serializer, _endTime);
-        }
-    };
-
-    struct CompareAnimationName
-    {
-        bool operator()(const AnimationDesc& lhs, const AnimationDesc& rhs) const   { return lhs._name < rhs._name; }
-        bool operator()(const AnimationDesc& lhs, uint64 rhs) const                 { return lhs._name < rhs; }
-        bool operator()(uint64 lhs, const AnimationDesc& rhs) const                 { return lhs < rhs._name; }
-    };
+	unsigned NascentAnimationSet::AddCurve(RenderCore::Assets::RawAnimationCurve&& curve)
+	{
+		auto result = (unsigned)_curves.size();
+		_curves.emplace_back(std::move(curve));
+		return result;
+	}
 
     void NascentAnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        serializer.SerializeSubBlock(MakeIteratorRange(_animationDrivers));
-        serializer.SerializeValue(_animationDrivers.size());
-        serializer.SerializeSubBlock(MakeIteratorRange(_constantDrivers));
-        serializer.SerializeValue(_constantDrivers.size());
-        serializer.SerializeSubBlock(MakeIteratorRange(_constantData));
+		AnimationSet finalAnimationSet;
+		finalAnimationSet._animationDrivers.insert(finalAnimationSet._animationDrivers.begin(), _animationDrivers.begin(), _animationDrivers.end());
+		finalAnimationSet._constantDrivers.insert(finalAnimationSet._constantDrivers.begin(), _constantDrivers.begin(), _constantDrivers.end());
 
-            //      List of animations...
+		finalAnimationSet._animations.reserve(_animations.size());
+		for (const auto&a:_animations)
+			finalAnimationSet._animations.push_back(std::make_pair(Hash64(a.first), a.second));
+		std::sort(finalAnimationSet._animations.begin(), finalAnimationSet._animations.end(), CompareFirst<uint64_t, Animation>());
 
-        auto outputAnimations = std::make_unique<AnimationDesc[]>(_animations.size());
-        for (size_t c=0; c<_animations.size(); ++c) {
-            AnimationDesc&o = outputAnimations[c];
-            const Animation&i = _animations[c];
-            o._name = Hash64(AsPointer(i._name.begin()), AsPointer(i._name.end()));
-            o._beginDriver = i._begin; o._endDriver = i._end;
-            o._beginConstantDriver = i._constantBegin; o._endConstantDriver = i._constantEnd;
-            o._beginTime = i._startTime; o._endTime = i._endTime;
-        }
-        std::sort(outputAnimations.get(), &outputAnimations[_animations.size()], CompareAnimationName());
-        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)outputAnimations.get(), (const AnimationDesc*)&outputAnimations[_animations.size()]));
-        serializer.SerializeValue(_animations.size());
+		finalAnimationSet._outputInterface.reserve(_parameterInterfaceDefinition.size());
+		for (const auto&p:_parameterInterfaceDefinition)
+			finalAnimationSet._outputInterface.push_back(Hash64(p));
 
-            //      Output interface...
+		finalAnimationSet._constantData.insert(finalAnimationSet._constantData.begin(), _constantData.begin(), _constantData.end());
 
-        ConsoleRig::DebuggerOnlyWarning("Animation set output interface:\n");
-        auto parameterNameHashes = std::make_unique<uint64[]>(_parameterInterfaceDefinition.size());
-        for (size_t c=0; c<_parameterInterfaceDefinition.size(); ++c) {
-            ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", c, _parameterInterfaceDefinition[c].c_str());
-            parameterNameHashes[c] = Hash64(AsPointer(_parameterInterfaceDefinition[c].begin()), AsPointer(_parameterInterfaceDefinition[c].end()));
-        }
-        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)parameterNameHashes.get(), (const AnimationDesc*)&parameterNameHashes[_parameterInterfaceDefinition.size()]));
-        serializer.SerializeValue(_parameterInterfaceDefinition.size());
+		// Construct the string name block (note that we have write the names in their final sorted order)
+		for (const auto&a:finalAnimationSet._animations) {
+			std::string srcName;
+			for (const auto&src:_animations)
+				if (a.first == Hash64(src.first)) {
+					srcName = src.first;
+					break;
+				}
+			finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
+			finalAnimationSet._stringNameBlock.insert(finalAnimationSet._stringNameBlock.end(), srcName.begin(), srcName.end());
+		}
+		finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
+		
+		::Serialize(serializer, finalAnimationSet);
+
+		::Serialize(serializer, _curves);
     }
 
-    NascentAnimationSet::NascentAnimationSet() {}
-    NascentAnimationSet::~NascentAnimationSet() {}
-    NascentAnimationSet::NascentAnimationSet(NascentAnimationSet&& moveFrom)
-    :   _animationDrivers(std::move(moveFrom._animationDrivers))
-    ,   _constantDrivers(std::move(moveFrom._constantDrivers))
-    ,   _animations(std::move(moveFrom._animations))
-    ,   _parameterInterfaceDefinition(std::move(moveFrom._parameterInterfaceDefinition))
-    ,   _constantData(std::move(moveFrom._constantData))
-    {}
-    NascentAnimationSet& NascentAnimationSet::operator=(NascentAnimationSet&& moveFrom)
-    {
-        _animationDrivers = std::move(moveFrom._animationDrivers);
-        _constantDrivers = std::move(moveFrom._constantDrivers);
-        _animations = std::move(moveFrom._animations);
-        _parameterInterfaceDefinition = std::move(moveFrom._parameterInterfaceDefinition);
-        _constantData = std::move(moveFrom._constantData);
-        return *this;
-    }
+	std::ostream& StreamOperator(
+		std::ostream& stream, 
+		const NascentAnimationSet& animSet)
+	{
+		// write out some metrics / debugging information
+		stream << "--- Output animation parameters (" << animSet._parameterInterfaceDefinition.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._parameterInterfaceDefinition.size(); ++c)
+			stream << "[" << c << "] " << animSet._parameterInterfaceDefinition[c] << std::endl;
+
+		stream << "--- Animations (" << animSet._animations.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._animations.size(); ++c) {
+			auto& anim = animSet._animations[c];
+			stream << "[" << c << "] " << anim.first << " " << anim.second._beginTime << " to " << anim.second._endTime << std::endl;
+		}
+
+		stream << "--- Animations drivers (" << animSet._animationDrivers.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._animationDrivers.size(); ++c) {
+			auto& driver = animSet._animationDrivers[c];
+			stream << "[" << c << "] Curve index: " << driver._curveIndex << " Parameter index: " << driver._parameterIndex << " (" << animSet._parameterInterfaceDefinition[driver._parameterIndex] << ") with sampler: " << AsString(driver._samplerType) << " and sampler offset " << driver._samplerOffset << std::endl;
+		}
+
+		stream << "--- Constant drivers (" << animSet._constantDrivers.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._constantDrivers.size(); ++c) {
+			auto& driver = animSet._constantDrivers[c];
+			stream << "[" << c << "] Parameter index: " << driver._parameterIndex << " (" << animSet._parameterInterfaceDefinition[driver._parameterIndex] << ") with sampler: " << AsString(driver._samplerType) << " and sampler offset " << driver._samplerOffset << std::endl;
+		}
+
+		return stream;
+	}
 
 
 
@@ -246,28 +247,23 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         ::Serialize(serializer, _skeletonMachine);
-		::Serialize(serializer, _interface);
 		::Serialize(serializer, _defaultParameters);
     }
 
-    NascentSkeleton::NascentSkeleton() {}
-    NascentSkeleton::~NascentSkeleton() {}
 
 
 
 
-    unsigned NascentModelCommandStream::RegisterInputInterfaceMarker(const std::string& name)
+    unsigned NascentModelCommandStream::RegisterInputInterfaceMarker(const std::string& skeleton, const std::string& name)
     {
-		auto hash = Hash64(name);
-		auto existing = std::find(_inputInterface.begin(), _inputInterface.end(), hash);
-		if (existing != _inputInterface.end()) {
-			assert(_inputInterfaceNames[std::distance(_inputInterface.begin(), existing)] == name);
-			return (unsigned)std::distance(_inputInterface.begin(), existing);
+		auto j = std::make_pair(skeleton, name);
+		auto existing = std::find(_inputInterfaceNames.begin(), _inputInterfaceNames.end(), j);
+		if (existing != _inputInterfaceNames.end()) {
+			return (unsigned)std::distance(_inputInterfaceNames.begin(), existing);
 		}
 
         auto result = (unsigned)_inputInterfaceNames.size();
-		_inputInterface.push_back(hash);
-		_inputInterfaceNames.push_back(name);
+		_inputInterfaceNames.push_back({skeleton, name});
 		return result;
     }
 
@@ -285,10 +281,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         _skinControllerInstances.emplace_back(std::move(skinControllerInstance));
     }
-
-    NascentModelCommandStream::NascentModelCommandStream() {}
-    NascentModelCommandStream::~NascentModelCommandStream() {}
-
 
     void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
@@ -319,12 +311,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      Turn our list of input matrices into hash values, and write out the
             //      run-time input interface definition...
             //
-        ConsoleRig::DebuggerOnlyWarning("Command stream input interface:\n");
-        serializer.SerializeSubBlock(MakeIteratorRange(_inputInterface));
-        serializer.SerializeValue(_inputInterface.size());
+		auto hashedInterface = BuildHashedInputInterface();
+        serializer.SerializeSubBlock(MakeIteratorRange(hashedInterface));
+        serializer.SerializeValue(hashedInterface.size());
     }
 
-    std::vector<uint64> NascentModelCommandStream::GetInputInterface() const { return _inputInterface; }
+	std::vector<uint64_t> NascentModelCommandStream::BuildHashedInputInterface() const
+	{
+		std::vector<uint64_t> hashedInterface;
+		hashedInterface.reserve(_inputInterfaceNames.size());
+		for (const auto&j:_inputInterfaceNames) hashedInterface.push_back(HashCombine(Hash64(j.first), Hash64(j.second)));
+		return hashedInterface;
+	}
 
     unsigned NascentModelCommandStream::GetMaxLOD() const
     {
@@ -368,28 +366,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         stream << " --- Input interface:" << std::endl;
         c=0;
         for (const auto& i:cmdStream._inputInterfaceNames)
-            stream << "  [" << c++ << "] " << i << std::endl;
+            stream << "  [" << c++ << "] " << i.first << " : " << i.second  << std::endl;
         return stream;
     }
 
-	void RegisterNodeBindingNames(
-		NascentSkeleton& skeleton,
-		const SkeletonRegistry& registry)
-	{
-		for (const auto& nodeDesc:registry.GetImportantNodes()) {
-			uint32 outputMarker = 0u;
-			auto success = skeleton.GetInterface().TryRegisterJointName(
-				outputMarker, MakeStringSection(nodeDesc._bindingName));
-			if (!success)
-				LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
-		}
-	}
-
-	void RegisterNodeBindingNames(
-		NascentModelCommandStream& stream,
-		const SkeletonRegistry& registry)
-	{
-		for (const auto& nodeDesc:registry.GetImportantNodes())
-			stream.RegisterInputInterfaceMarker(nodeDesc._bindingName);
-	}
 }}}

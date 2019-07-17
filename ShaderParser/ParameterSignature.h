@@ -14,7 +14,7 @@
 
 namespace ShaderSourceParser
 {
-    class ParameterSignature
+    class UniformBufferSignature
     {
     public:
         struct Source { enum Enum { Material, System }; };
@@ -27,6 +27,6 @@ namespace ShaderSourceParser
         std::string     _default;
     };
 
-    ParameterSignature      LoadSignature(const char sourceCode[], size_t sourceCodeLength);
-    std::string             StoreSignature(const ParameterSignature& signature);
+    UniformBufferSignature	LoadSignature(const char sourceCode[], size_t sourceCodeLength);
+    std::string             StoreSignature(const UniformBufferSignature& signature);
 }

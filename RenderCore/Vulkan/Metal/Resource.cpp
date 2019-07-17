@@ -17,16 +17,19 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	static uint64_t s_nextResourceGUID = 1;
+
     static VkDevice ExtractUnderlyingDevice(IDevice& idev)
     {
         auto* vulkanDevice = (RenderCore::IDeviceVulkan*)idev.QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
-	static Resource& AsResource(IResource& input)
+	Resource& AsResource(IResource& res)
 	{
-		assert(input.QueryInterface(typeid(Resource).hash_code()));
-		return *(Resource*)&input;
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
 	}
 
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
@@ -39,6 +42,9 @@ namespace RenderCore { namespace Metal_Vulkan
         if (bindFlags & BindFlag::TransferSrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (bindFlags & BindFlag::TransferDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bindFlags & BindFlag::StructuredBuffer) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+		// from VK_EXT_transform_feedback
+		if (bindFlags & BindFlag::StreamOutput) result |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
 
 		// Other Vulkan flags:
 		// VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
@@ -223,7 +229,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         if (barrierCount) {
-            const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+            const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
             const VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             context.GetActiveCommandList().PipelineBarrier(
                 src_stages, dest_stages,
@@ -246,6 +252,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ObjectFactory& factory, const Desc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	: _desc(desc)
+	, _guid(s_nextResourceGUID++)
 	{
 		// Our resource can either be a linear buffer, or an image
 		// These correspond to the 2 types of Desc
@@ -384,7 +391,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     auto subResData = initData({0, 0});
 				    if (subResData._data.size()) {
 					    ResourceMap map(factory.GetDevice().get(), _mem.get());
-					    std::memcpy(map.GetData(), subResData._data.begin(), std::min(subResData._data.size(), (size_t)mem_reqs.size));
+					    std::memcpy(map.GetData().begin(), subResData._data.begin(), std::min(subResData._data.size(), (size_t)mem_reqs.size));
 				    }
                 } else {
                     // This is the staging texture path. Rather that getting the arrangement of subresources from
@@ -425,6 +432,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     Resource::Resource(VkImage image, const Desc& desc)
     : _desc(desc)
+	, _guid(s_nextResourceGUID++)
     {
         // do not destroy the image, even on the last release --
         //      this is used with the presentation chain images, which are only
@@ -432,7 +440,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _underlyingImage = VulkanSharedPtr<VkImage>(image, [](const VkImage) {});
     }
 
-	Resource::Resource() {}
+	Resource::Resource() : _guid(s_nextResourceGUID++) {}
 	Resource::~Resource() {}
 
 	void* Resource::QueryInterface(size_t guid)
@@ -456,7 +464,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
 	{
-		return res.ShareResource();
+		return res.GetResource();
 	}
 
     namespace Internal
@@ -788,7 +796,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (!layout.size) continue;	// couldn't find this subresource?
 
                 CopyMipLevel(
-                    PtrAdd(map.GetData(), layout.offset), size_t(layout.size),
+                    PtrAdd(map.GetData().begin(), layout.offset), size_t(layout.size),
                     TexturePitches{unsigned(layout.rowPitch), unsigned(layout.depthPitch), unsigned(layout.arrayPitch)},
                     mipDesc, subResData);
 			}
@@ -821,7 +829,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	ResourceMap::ResourceMap(
 		VkDevice dev, VkDeviceMemory memory,
 		VkDeviceSize offset, VkDeviceSize size)
-		: _dev(dev), _mem(memory)
+	: _dev(dev), _mem(memory)
 	{
 		// There are many restrictions on this call -- see the Vulkan docs.
 		// * we must ensure that the memory was allocated with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
@@ -839,11 +847,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ResourceMap::ResourceMap(
-		IDevice& idev, Resource& resource,
+		DeviceContext& context, Resource& resource,
+		Mode mapMode,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
 	{
-        auto dev = ExtractUnderlyingDevice(idev);
+        auto dev = context.GetUnderlyingDevice();
 
         VkDeviceSize finalOffset = offset, finalSize = size;
         _pitches = TexturePitches { unsigned(size), unsigned(size) };

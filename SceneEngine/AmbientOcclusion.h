@@ -15,6 +15,7 @@
 class GFSDK_SSAO_Context_D3D11;
 
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
 {
@@ -60,9 +61,8 @@ namespace SceneEngine
         ~AmbientOcclusionResources();
     };
 
-    class LightingParserContext;
     void AmbientOcclusion_Render(   RenderCore::Metal::DeviceContext* context,
-                                    LightingParserContext& parserContext,
+                                    RenderCore::Techniques::ParsingContext& parserContext,
                                     AmbientOcclusionResources& resources,
                                     const RenderCore::Metal::ShaderResourceView& depthBuffer,
                                     const RenderCore::Metal::ShaderResourceView* normalsBuffer,

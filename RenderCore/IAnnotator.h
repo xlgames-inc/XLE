@@ -14,7 +14,6 @@
 
 namespace RenderCore
 {
-
 	class IAnnotator
 	{
 	public:
@@ -38,8 +37,6 @@ namespace RenderCore
 
 		virtual ~IAnnotator();
 	};
-
-	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice&);
 
     class GPUProfilerBlock
     {

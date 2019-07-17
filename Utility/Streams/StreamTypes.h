@@ -81,6 +81,9 @@ namespace Utility
             StreamBuf(CharType* buffer, size_t bufferCharCount)
             : _buffer(buffer, bufferCharCount) {}
 
+		StreamBuf(StreamBuf&& moveFrom) : _buffer(std::move(moveFrom._buffer)) {}
+		StreamBuf& operator=(StreamBuf&& moveFrom) { _buffer = std::move(moveFrom._buffer); return *this; }
+
     protected:
         BufferType _buffer;
     };
@@ -102,6 +105,9 @@ namespace Utility
             }
             FixedMemoryBuffer2() {}
             ~FixedMemoryBuffer2() {}
+
+			FixedMemoryBuffer2(FixedMemoryBuffer2&& moveFrom) : std::basic_streambuf<CharType>(std::move(moveFrom)) {}
+			FixedMemoryBuffer2& operator=(FixedMemoryBuffer2&& moveFrom) { std::basic_streambuf<CharType>::operator=(std::move(moveFrom)); return *this; }
         };
 
         template<typename CharType>
@@ -119,6 +125,9 @@ namespace Utility
             {
                 assert(0);
             }
+
+			ResizeableMemoryBuffer(ResizeableMemoryBuffer&& moveFrom) : std::basic_stringbuf<CharType>(std::move(moveFrom)) {}
+			ResizeableMemoryBuffer& operator=(ResizeableMemoryBuffer&& moveFrom) { std::basic_stringbuf<CharType>::operator=(std::move(moveFrom)); return *this; }
         };
     }
 

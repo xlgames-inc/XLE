@@ -5,37 +5,26 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SkeletonScaffoldInternal.h"
-#include "ModelRunTime.h"
+#include "ModelScaffold.h"
 #include "ModelImmutableData.h"
 #include "RawAnimationCurve.h"
 #include "AssetUtils.h"
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/DeferredConstruction.h"
+#include "../../Math/Quaternion.h"
 #include "../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Assets
 {
-    template <typename Type>
-        void DestroyArray(const Type* begin, const Type* end)
-        {
-            for (auto i=begin; i!=end; ++i) { i->~Type(); }
-        }
-
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    struct CompareAnimationName
-    {
-        bool operator()(const AnimationSet::Animation& lhs, const AnimationSet::Animation& rhs) const { return lhs._name < rhs._name; }
-        bool operator()(const AnimationSet::Animation& lhs, uint64 rhs) const { return lhs._name < rhs; }
-        bool operator()(uint64 lhs, const AnimationSet::Animation& rhs) const { return lhs < rhs._name; }
-    };
+	Quaternion Decompress_36bit(const void* data);
 
     TransformationParameterSet      AnimationSet::BuildTransformationParameterSet(
         const AnimationState&           animState__,
-        const SkeletonMachine&    transformationMachine,
+        const SkeletonMachine&			transformationMachine,
         const AnimationSetBinding&      binding,
-        const RawAnimationCurve*        curves,
-        size_t                          curvesCount) const
+        IteratorRange<const RawAnimationCurve*>        curves) const
     {
         TransformationParameterSet result(transformationMachine.GetDefaultParameters());
         auto float1s	= result.GetFloat1Parameters();
@@ -45,17 +34,17 @@ namespace RenderCore { namespace Assets
 
         AnimationState animState = animState__;
 
-        size_t driverStart = 0, driverEnd = GetAnimationDriverCount();
-        size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDriverCount;
+        size_t driverStart = 0, driverEnd = 0;
+        size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDrivers.size();
         if (animState._animation!=0x0) {
-            auto end = &_animations[_animationCount];
-            auto i = std::lower_bound(_animations, end, animState._animation, CompareAnimationName());
-            if (i!=end && i->_name == animState._animation) {
-                driverStart = i->_beginDriver;
-                driverEnd = i->_endDriver;
-                constantDriverStartIndex = i->_beginConstantDriver;
-                constantDriverEndIndex = i->_endConstantDriver;
-                animState._time += i->_beginTime;
+            auto end = _animations.end();
+            auto i = std::lower_bound(_animations.begin(), end, animState._animation, CompareFirst<uint64_t, Animation>());
+            if (i!=end && i->first == animState._animation) {
+                driverStart = i->second._beginDriver;
+                driverEnd = i->second._endDriver;
+                constantDriverStartIndex = i->second._beginConstantDriver;
+                constantDriverEndIndex = i->second._endConstantDriver;
+                animState._time += i->second._beginTime;
             }
         }
 
@@ -71,17 +60,18 @@ namespace RenderCore { namespace Assets
             assert(transInputIndex < inputInterface._parameterCount);
             const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
+			assert(p._type != AnimSamplerType::Quaternion);	// a driver can have a quaternion sampler type, but not a parameter
 
             if (driver._samplerType == AnimSamplerType::Float4x4) {
-                if (driver._curveId < curvesCount) {
-                    const RawAnimationCurve& curve = curves[driver._curveId];
+                if (driver._curveIndex < curves.size()) {
+                    const RawAnimationCurve& curve = curves[driver._curveIndex];
                     assert(p._type == AnimSamplerType::Float4x4);
                     // assert(i->_index < float4x4s.size());
                     float4x4s[p._index] = curve.Calculate<Float4x4>(animState._time);
                 }
             } else if (driver._samplerType == AnimSamplerType::Float4) {
-                if (driver._curveId < curvesCount) {
-                    const RawAnimationCurve& curve = curves[driver._curveId];
+                if (driver._curveIndex < curves.size()) {
+                    const RawAnimationCurve& curve = curves[driver._curveIndex];
                     if (p._type == AnimSamplerType::Float4) {
                         float4s[p._index] = curve.Calculate<Float4>(animState._time);
                     } else if (p._type == AnimSamplerType::Float3) {
@@ -91,9 +81,16 @@ namespace RenderCore { namespace Assets
                         float1s[p._index] = curve.Calculate<Float4>(animState._time)[0];
                     }
                 }
+            } else if (driver._samplerType == AnimSamplerType::Quaternion) {
+                if (driver._curveIndex < curves.size()) {
+                    const RawAnimationCurve& curve = curves[driver._curveIndex];
+                    if (p._type == AnimSamplerType::Float4) {
+                        *(Quaternion*)&float4s[p._index] = curve.Calculate<Quaternion>(animState._time);
+                    }
+                }
             } else if (driver._samplerType == AnimSamplerType::Float3) {
-                if (driver._curveId < curvesCount) {
-                    const RawAnimationCurve& curve = curves[driver._curveId];
+                if (driver._curveIndex < curves.size()) {
+                    const RawAnimationCurve& curve = curves[driver._curveIndex];
                     if (p._type == AnimSamplerType::Float3) {
                         float3s[p._index] = curve.Calculate<Float3>(animState._time);
                     } else {
@@ -102,8 +99,8 @@ namespace RenderCore { namespace Assets
                     }
                 }
             } else if (driver._samplerType == AnimSamplerType::Float1) {
-                if (driver._curveId < curvesCount) {
-                    const RawAnimationCurve& curve = curves[driver._curveId];
+                if (driver._curveIndex < curves.size()) {
+                    const RawAnimationCurve& curve = curves[driver._curveIndex];
                     float curveresult = curve.Calculate<float>(animState._time);
                     if (p._type == AnimSamplerType::Float1) {
                         float1s[p._index] = curveresult;
@@ -128,8 +125,9 @@ namespace RenderCore { namespace Assets
             assert(transInputIndex < inputInterface._parameterCount);
             const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
+			assert(p._type != AnimSamplerType::Quaternion);	// a driver can have a quaternion sampler type, but not a parameter
 
-            const void* data    = PtrAdd(_constantData, driver._dataOffset);
+            const void* data    = PtrAdd(_constantData.begin(), driver._dataOffset);
             if (driver._samplerType == AnimSamplerType::Float4x4) {
                 assert(p._type == AnimSamplerType::Float4x4);
                 float4x4s[p._index] = *(const Float4x4*)data;
@@ -138,6 +136,15 @@ namespace RenderCore { namespace Assets
                     float4s[p._index] = *(const Float4*)data;
                 } else if (p._type == AnimSamplerType::Float3) {
                     float3s[p._index] = Truncate(*(const Float4*)data);
+                }
+			} else if (driver._samplerType == AnimSamplerType::Quaternion) {
+                if (p._type == AnimSamplerType::Float4) {
+					if (driver._format == Format::R12G12B12A4_SNORM) {
+						*(Quaternion*)&float4s[p._index] = Decompress_36bit(data);
+					} else {
+						assert(driver._format == Format::R32G32B32A32_FLOAT);
+						float4s[p._index] = *(const Float4*)data;
+					}
                 }
             } else if (driver._samplerType == AnimSamplerType::Float3) {
                 assert(p._type == AnimSamplerType::Float3);
@@ -160,13 +167,13 @@ namespace RenderCore { namespace Assets
 
     AnimationSet::Animation AnimationSet::FindAnimation(uint64 animation) const
     {
-        for (size_t c=0; c<_animationCount; ++c) {
-            if (_animations[c]._name == animation) {
-                return _animations[c];
-            }
-        }
+		auto i = std::lower_bound(
+			_animations.begin(), _animations.end(),
+			animation, CompareFirst<uint64_t, Animation>());
+		if (i!=_animations.end() && i->first == animation)
+			return i->second;
+
         Animation result;
-        result._name = 0ull;
         result._beginDriver = result._endDriver = 0;
         result._beginTime = result._endTime = 0.f;
         return result;
@@ -174,31 +181,50 @@ namespace RenderCore { namespace Assets
 
     unsigned                AnimationSet::FindParameter(uint64 parameterName) const
     {
-        for (size_t c=0; c<_outputInterface._parameterInterfaceCount; ++c) {
-            if (_outputInterface._parameterInterfaceDefinition[c] == parameterName) {
+        for (size_t c=0; c<_outputInterface.size(); ++c) {
+            if (_outputInterface[c] == parameterName) {
                 return unsigned(c);
             }
         }
         return ~unsigned(0x0);
     }
 
+	StringSection<>			AnimationSet::LookupStringName(uint64_t animation) const
+	{
+		auto i = std::lower_bound(
+			_animations.begin(), _animations.end(),
+			animation, CompareFirst<uint64_t, Animation>());
+		if (i==_animations.end() || i->first != animation)
+			return {};
+
+		auto idx = std::distance(_animations.begin(), i);
+		return MakeStringSection(
+			_stringNameBlock.begin() + _stringNameBlockOffsets[idx],
+			_stringNameBlock.begin() + _stringNameBlockOffsets[idx+1]);
+	}
+
     AnimationSet::AnimationSet() {}
-    AnimationSet::~AnimationSet()
-    {
-        DestroyArray(_animationDrivers,         &_animationDrivers[_animationDriverCount]);
-    }
+    AnimationSet::~AnimationSet() {}
+
+	void AnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
+	{
+		::Serialize(serializer, _animationDrivers);
+		::Serialize(serializer, _constantDrivers);
+		::Serialize(serializer, _constantData);
+		::Serialize(serializer, _animations);
+		::Serialize(serializer, _outputInterface);
+		::Serialize(serializer, _stringNameBlockOffsets);
+		::Serialize(serializer, _stringNameBlock);
+	}
 
     AnimationImmutableData::AnimationImmutableData() {}
-    AnimationImmutableData::~AnimationImmutableData()
-    {
-        DestroyArray(_curves, &_curves[_curvesCount]);
-    }
+    AnimationImmutableData::~AnimationImmutableData() {}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     AnimationSetBinding::AnimationSetBinding(
-            const AnimationSet::OutputInterface&            output,
-            const SkeletonMachine::InputInterface&    input)
+        const AnimationSet::OutputInterface&            output,
+        const SkeletonMachine::InputInterface&    input)
     {
             //
             //      for each animation set output value, match it with a 
@@ -208,9 +234,9 @@ namespace RenderCore { namespace Assets
             //      parameters (so it should be fairly quick)
             //
         std::vector<unsigned> result;
-        result.resize(output._parameterInterfaceCount);
-        for (size_t c=0; c<output._parameterInterfaceCount; ++c) {
-            uint64 parameterName = output._parameterInterfaceDefinition[c];
+        result.resize(output.size());
+        for (size_t c=0; c<output.size(); ++c) {
+            uint64 parameterName = output[c];
             result[c] = ~unsigned(0x0);
 
             for (size_t c2=0; c2<input._parameterCount; ++c2) {
@@ -222,7 +248,7 @@ namespace RenderCore { namespace Assets
 
             #if defined(_DEBUG)
                 if (result[c] == ~unsigned(0x0)) {
-                    LogWarning << "Animation driver output cannot be bound to transformation machine input";
+                    Log(Warning) << "Animation driver output cannot be bound to transformation machine input" << std::endl;
                 }
             #endif
         }
@@ -279,28 +305,20 @@ namespace RenderCore { namespace Assets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void SkeletonMachine::GenerateOutputTransforms(   
-        Float4x4 output[], unsigned outputCount,
+        IteratorRange<Float4x4*> output,
         const TransformationParameterSet*   parameterSet) const
     {
-        if (outputCount < _outputMatrixCount)
+        if (output.size() < _outputMatrixCount)
             Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
-        GenerateOutputTransformsFree(
-            output, outputCount, parameterSet, 
+        RenderCore::Assets::GenerateOutputTransforms(
+            output, parameterSet, 
             MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
     }
 
-    void SkeletonMachine::GenerateOutputTransforms(   
-        Float4x4 output[], unsigned outputCount,
-        const TransformationParameterSet*   parameterSet,
-        const DebugIterator& debugIterator) const
-    {
-        if (outputCount < _outputMatrixCount)
-            Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
-        GenerateOutputTransformsFree(
-            output, outputCount, parameterSet, 
-            MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize), 
-            debugIterator);
-    }
+	void SkeletonMachine::CalculateParentPointers(IteratorRange<unsigned*> output) const
+	{
+		RenderCore::Assets::CalculateParentPointers(output, MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
+	}
 
     SkeletonMachine::SkeletonMachine()
     {
@@ -405,6 +423,16 @@ namespace RenderCore { namespace Assets
 	{
 		if (_float4Parameters.size() < (index+1)) _float4Parameters.resize(index+1, Zero<Float4>());
 		_float4Parameters[index] = p;
+	}
+
+	void TransformationParameterSet::Set(uint32 index, Quaternion q)
+	{
+		// note that packing here must agree with how we unpack in TransformationCommands.cpp
+		// The "Order" parameter we use with cml::quaternion is significant. Here, we're assuming
+		// "scalar_first" mode
+		static_assert(std::is_same_v<Quaternion::order_type, cml::scalar_first>, "Unexpected quaternion ordering");
+		Float4 float4Form { q.real(), q.imaginary()[0], q.imaginary()[1], q.imaginary()[2] };
+		Set(index, float4Form);
 	}
 
 	void TransformationParameterSet::Set(uint32 index, const Float4x4& p)

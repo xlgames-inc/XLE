@@ -10,6 +10,7 @@
 #if GFXAPI_ACTIVE == GFXAPI_VULKAN
 
     #include "../PlatformInterface.h"
+	#include "../ResourceLocator.h"
     #include "../DataPacket.h"
 	#include "../../RenderCore/IThreadContext.h"
     #include "../../RenderCore/Metal/Resource.h"
@@ -34,6 +35,8 @@
             if (box == Box2D())
                 return Metal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *metalResource, data);
 
+			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+
             // When we have a box, we support writing to only a single subresource
             // We will iterate through the subresources an mip a single one
             auto dev = _renderCoreContext->GetDevice();
@@ -43,9 +46,9 @@
                     auto srd = data({mip, arrayLayer});
                     if (!srd._data.size()) continue;
 
-                    Metal::ResourceMap map(*dev, *metalResource, SubResourceId{mip, arrayLayer});
+                    Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{mip, arrayLayer});
                     copiedBytes += CopyMipLevel(
-                        map.GetData(), map.GetDataSize(), map.GetPitches(), 
+                        map.GetData().begin(), map.GetData().size(), map.GetPitches(), 
                         desc._textureDesc,
                         box, srd);
                 }
@@ -92,8 +95,8 @@
 			// So, we must change the layout immediate before and after the transfer.
 			{
 				Metal::LayoutTransition layoutTransitions[] = {
-					{*metalStaging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
-					{*metalFinal, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}};
+					{metalStaging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
+					{metalFinal, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}};
 				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
 			}
 
@@ -124,7 +127,7 @@
 			// image will soon be used by a shader.
 			{
 				Metal::LayoutTransition layoutTransitions[] = {
-					{*metalFinal, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}};
+					{metalFinal, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}};
 				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
 			}
 
@@ -143,10 +146,11 @@
 
             // note -- this is a direct, immediate map... There must be no contention while we map.
             assert(desc._type == BufferDesc::Type::LinearBuffer);
-            Metal::ResourceMap map(*_renderCoreContext->GetDevice(), *metalResource, SubResourceId{0,0}, offset);
-            auto copyAmount = std::min(map.GetDataSize(), dataSize);
+			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+            Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, offset);
+            auto copyAmount = std::min(map.GetData().size(), dataSize);
             if (copyAmount > 0)
-                XlCopyMemory(map.GetData(), data, copyAmount);
+                XlCopyMemory(map.GetData().begin(), data, copyAmount);
             return (unsigned)copyAmount;
         }
 
@@ -183,9 +187,59 @@
             metalContext->BeginCommandList();
         }
 
+		class RawDataPacket_ReadBack : public DataPacket
+		{
+		public:
+			void*           GetData(SubResourceId subRes);
+			size_t          GetDataSize(SubResourceId subRes) const;
+			TexturePitches  GetPitches(SubResourceId subRes) const;
+
+			std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
+
+			RawDataPacket_ReadBack(
+				Metal::DeviceContext& context,
+				Metal::Resource& resource, 
+				SubResourceId subResource);
+			~RawDataPacket_ReadBack();
+		protected:
+			Metal::ResourceMap _resourceMap;
+			SubResourceId _mappedSubResource;
+		};
+
+		void*           RawDataPacket_ReadBack::GetData(SubResourceId subRes)
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return _resourceMap.GetData().begin();
+		}
+
+		size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return _resourceMap.GetData().size();
+		}
+
+		TexturePitches  RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return TexturePitches { (unsigned)_resourceMap.GetData().size(), (unsigned)_resourceMap.GetData().size(), (unsigned)_resourceMap.GetData().size() };
+		}
+
+		RawDataPacket_ReadBack::RawDataPacket_ReadBack(
+			Metal::DeviceContext& context, Metal::Resource& resource, SubResourceId subResource)
+		: _resourceMap(context, resource, Metal::ResourceMap::Mode::Read, subResource)
+		, _mappedSubResource(subResource)
+		{
+		}
+
+		RawDataPacket_ReadBack::~RawDataPacket_ReadBack()
+		{}
+
         intrusive_ptr<DataPacket> UnderlyingDeviceContext::Readback(const ResourceLocator& locator)
         {
-            return nullptr;
+			auto* res = (Metal::Resource*)locator.GetUnderlying()->QueryInterface(typeid(Metal::Resource).hash_code());
+			assert(res);
+			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+			return make_intrusive<RawDataPacket_ReadBack>(std::ref(metalContext), std::ref(*res), SubResourceId{0,0});
         }
 
         // UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)

@@ -9,8 +9,8 @@
 #include "../Colour.h"		// (for LightingScale)
 
 Texture2D_MaybeMS<float4>	InputTexture BIND_NUMERIC_T0;
-RWTexture2D<float>			OutputLuminance UAV_DYNAMIC_0;
-RWTexture2D<float4>			OutputBrightPass UAV_DYNAMIC_1;
+RWTexture2D<float>			OutputLuminance BIND_NUMERIC_U0;
+RWTexture2D<float4>			OutputBrightPass BIND_NUMERIC_U1;
 
 struct LuminanceBufferStruct
 {
@@ -18,7 +18,7 @@ struct LuminanceBufferStruct
 	float	_prevLuminance;
 };
 
-RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_DYNAMIC_2;
+RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer BIND_NUMERIC_U2;
 
 	//		The "geometric mean" is slightly more expensive,
 	//		but might give a slightly nicer result
@@ -102,7 +102,7 @@ float CalculateLuminance(float3 colour)
 
 float3 BrightPassFilter(float3 colour)
 {
-	const float scale	= SceneKey / OutputLuminanceBuffer[0]._currentLuminance;
+	const float scale	= SceneKey / max(1e-4, OutputLuminanceBuffer[0]._currentLuminance);
 	float3 l			= scale * colour.rgb;
 
 	const float threshold = BloomThreshold;

@@ -14,15 +14,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void    Buffer::Update(DeviceContext& context, const void* data, size_t byteCount)
 	{
-        // hack to catch "LocalTransorm" buffer going through this path
-        if (byteCount == 80) {
-            context.GetActiveCommandList().PushConstants(
-                context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0, (uint32_t)byteCount, data);
-            return;
-        }
-
         // note --  there is a problem with vkCmdUpdateBuffer here... It can't normally
         //          be used during a render pass (but creating a new buffer and mapping
         //          it will work). However, creating a new buffer is still non ideal

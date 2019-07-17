@@ -11,11 +11,12 @@
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"   // for SetFrameGlobalStates
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../RenderCore/GeoProc/MeshDatabase.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -30,7 +31,6 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -43,14 +43,10 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 
 #include <queue>
-
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
 // #define GEN_AO_DEBUG
 #if defined(GEN_AO_DEBUG)
@@ -89,8 +85,8 @@ namespace ToolsRig
     using namespace RenderCore;
     using ModelScaffold = RenderCore::Assets::ModelScaffold;
     using MaterialScaffold = RenderCore::Assets::MaterialScaffold;
-    using ModelRenderer = RenderCore::Assets::ModelRenderer;
-    using SharedStateSet = RenderCore::Assets::SharedStateSet;
+    using ModelRenderer = FixedFunctionModel::ModelRenderer;
+    using SharedStateSet = FixedFunctionModel::SharedStateSet;
     using namespace RenderCore::Assets::GeoProc;
 
     class AoGen::Pimpl
@@ -121,8 +117,8 @@ namespace ToolsRig
     float AoGen::CalculateSkyDomeOcclusion(
         RenderCore::IThreadContext& threadContext,
         const ModelRenderer& renderer,
-        RenderCore::Assets::SharedStateSet& sharedStates,
-        const RenderCore::Assets::MeshToModel& meshToModel,
+        FixedFunctionModel::SharedStateSet& sharedStates,
+        const FixedFunctionModel::MeshToModel& meshToModel,
         const Float3& samplePoint)
     {
             //
@@ -177,10 +173,10 @@ namespace ToolsRig
         metalContext.Bind(commonRes._defaultRasterizer);
 
         Techniques::TechniqueContext techniqueContext;
-        techniqueContext._runtimeState.SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
-        techniqueContext._runtimeState.SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
-        techniqueContext._runtimeState.SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
         Techniques::ParsingContext parserContext(techniqueContext);
+		parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
+        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
+        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
 
         SceneEngine::SetFrameGlobalStates(metalContext);
 
@@ -192,18 +188,18 @@ namespace ToolsRig
 
             // Render the model onto our cube map surface
         {
-            auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+			auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), {});
             TRY {
-                RenderCore::Assets::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
+                FixedFunctionModel::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
                 renderer.Prepare(
                     delayedDraws, sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
 
                 ModelRenderer::Sort(delayedDraws);
-                for (unsigned c=0; c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
+                for (unsigned c=0; c<unsigned(FixedFunctionModel::DelayStep::Max); ++c)
                     ModelRenderer::RenderPrepared(
-                        RenderCore::Assets::ModelRendererContext(
+                        FixedFunctionModel::ModelRendererContext(
                             threadContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
-                        sharedStates, delayedDraws, RenderCore::Assets::DelayStep(c));
+                        sharedStates, delayedDraws, FixedFunctionModel::DelayStep(c));
 
             } CATCH(...) {
                 savedTargets.ResetToOldTargets(metalContext);
@@ -220,8 +216,8 @@ namespace ToolsRig
             // texture of floats
             //
 
-        metalContext.BindCS(MakeResourceList(_pimpl->_cubeSRV));
-        metalContext.BindCS(MakeResourceList(_pimpl->_miniUAV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_pimpl->_cubeSRV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_pimpl->_miniUAV));
 
         // metalContext.Bind(*_pimpl->_stepDownShader);
         metalContext.Bind(
@@ -229,8 +225,9 @@ namespace ToolsRig
                 "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*"));
         metalContext.Dispatch(1u);
 
-        metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
-        metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+		metalContext.GetNumericUniforms(ShaderStage::Compute).Reset();
+        // metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
+        // metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
@@ -312,8 +309,8 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->ShareUnderlying(), {dsvFormat});
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->ShareUnderlying(), {srvFormat});
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), {dsvFormat});
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), {srvFormat});
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 
@@ -321,7 +318,7 @@ namespace ToolsRig
                 0, GPUAccess::Write,
                 TextureDesc::Plain2D(4, 4, Format::R32_FLOAT, 1, cubeFaces),
                 "AoGenMini"));
-        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->ShareUnderlying());
+        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
 
         // _pimpl->_stepDownShader = &::Assets::GetAssetDep<Metal::ComputeShader>(
         //     "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");
@@ -448,7 +445,7 @@ namespace ToolsRig
             bufferUploads.Update(threadContext, false);     // (note -- render state can get reset here)
         }
 
-        RenderCore::Assets::MeshToModel meshToModel(model);
+        FixedFunctionModel::MeshToModel meshToModel(model);
 
             // We're going to be reading the vertex data directly from the
             // file on disk. We'll use a memory mapped file to access that
@@ -506,7 +503,7 @@ namespace ToolsRig
 
                 auto posElement = mesh.FindElement("POSITION");
                 if (posElement == ~0u) {
-                    LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
+                    Log(Warning) << "No vertex positions found in mesh! Cannot calculate AO for this mesh." << std::endl;
                     continue;
                 }
 
@@ -518,7 +515,7 @@ namespace ToolsRig
                 const auto& stream = mesh.GetStreams()[posElement];
                 std::vector<unsigned> remapping;
                 auto newSource = RemoveDuplicates(
-                    remapping, stream.GetSourceData(), 
+                    remapping, *stream.GetSourceData(), 
                     MakeIteratorRange(stream.GetVertexMap()), duplicatesThreshold);
 
                 mesh.RemoveStream(posElement);
@@ -526,7 +523,7 @@ namespace ToolsRig
 
                 auto nEle = mesh.FindElement("NORMAL");
                 if (nEle == ~0u) {
-                    LogWarning << "No vertex normals found in mesh! Cannot calculate AO for this mesh.";
+                    Log(Warning) << "No vertex normals found in mesh! Cannot calculate AO for this mesh." << std::endl;
                     continue;
                 }
 
@@ -543,7 +540,7 @@ namespace ToolsRig
 
                     // find the final sample points
                 std::vector<Float3> samplePoints;
-                samplePoints.resize(pStream.GetSourceData().GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+                samplePoints.resize(pStream.GetSourceData()->GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
 
                 for (auto p=pn.cbegin(); p!=pn.cend();) {
                     auto p2 = p+1;
@@ -551,9 +548,9 @@ namespace ToolsRig
 
                     auto n = Zero<Float3>();
                     for (auto q=p; q<p2; ++q)
-                        n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
+                        n += GetVertex<Float3>(*nStream.GetSourceData(), q->second);
                     n = Normalize(n);
-                    auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
+                    auto baseSamplePoint = GetVertex<Float3>(*pStream.GetSourceData(), p->first);
 
                         // transform through to model space...
                     baseSamplePoint = TransformPoint(toModel, baseSamplePoint);
@@ -571,7 +568,7 @@ namespace ToolsRig
                 std::vector<uint8> aoValues;
                 aoValues.reserve(samplePoints.size());
             
-                LogInfo << "Starting AO gen of " << samplePoints.size() << " pts";
+                Log(Verbose) << "Starting AO gen of " << samplePoints.size() << " pts" << std::endl;
                 for (size_t p=0; p!=samplePoints.size(); ++p) {
                     float skyDomeOcc;
 
@@ -602,9 +599,9 @@ namespace ToolsRig
                     aoValues.push_back(finalValue);
 
                     if ((p % 100)==0)
-                        LogInfo << "Generated " << p << "/" << samplePoints.size() << " AO sample points";
+                        Log(Verbose) << "Generated " << p << "/" << samplePoints.size() << " AO sample points" << std::endl;
                 }
-                LogInfo << "Finished AO gen";
+                Log(Verbose) << "Finished AO gen" << std::endl;
 
                     // Note that when we using the vertex map here, it should 
                     // guaranteed us a final VB that matches the vertices from the input
@@ -665,9 +662,10 @@ namespace ToolsRig
     
         {
             using namespace Serialization::ChunkFile;
+			auto libVersion = ConsoleRig::GetLibVersionDesc();
             SimpleChunkFileWriter file(
 				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
-                2, RenderCore::VersionString, RenderCore::BuildDateString);
+                2, libVersion._versionString, libVersion._buildDateString);
 
             file.BeginChunk(
                 RenderCore::Assets::ChunkType_ModelScaffold, 
@@ -726,7 +724,13 @@ namespace ToolsRig
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::unique_ptr<AoGen> _aoGen;
 
-        using CompileResult = ::Assets::CompilerHelper::CompileResult;
+		class CompileResult
+        {
+        public:
+            std::vector<::Assets::DependentFileState> _dependencies;
+            ::Assets::rstring _baseDir;
+        };
+
         CompileResult PerformCompile(
             StringSection<::Assets::ResChar> modelFilename, StringSection<::Assets::ResChar> materialFilename,
             StringSection<::Assets::ResChar> destinationFile);
@@ -765,7 +769,7 @@ namespace ToolsRig
     {
     public:
         Result::Enum Update();
-        using Op = ::Assets::CompileFuture;
+        using Op = ::Assets::ArtifactFuture;
         PollingOp(
 			std::shared_ptr<Pimpl> pimpl, std::shared_ptr<Op> queuedOp, 
 			const std::string& modelFilename,
@@ -803,7 +807,7 @@ namespace ToolsRig
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             return Result::KeepPolling;
         } CATCH(const std::exception& e) {
-            LogAlwaysError << "Got exception while compiling AO supplement. Exception details: " << e.what() << std::endl;
+            Log(Error) << "Got exception while compiling AO supplement. Exception details: " << e.what() << std::endl;
             _queuedOp->SetState(::Assets::AssetState::Invalid);
         } CATCH(...) {
             _queuedOp->SetState(::Assets::AssetState::Invalid);
@@ -814,7 +818,7 @@ namespace ToolsRig
 
     AOSupplementCompiler::PollingOp::PollingOp(
         std::shared_ptr<Pimpl> pimpl,
-        std::shared_ptr<::Assets::CompileFuture> queuedOp,
+        std::shared_ptr<::Assets::ArtifactFuture> queuedOp,
 		const std::string& modelFilename,
 		const std::string& materialFilename,
 		const std::string& destinationFilename,
@@ -831,11 +835,11 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class AOSupplementCompiler::Marker : public ::Assets::ICompileMarker
+    class AOSupplementCompiler::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -862,12 +866,12 @@ namespace ToolsRig
 		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> AOSupplementCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> AOSupplementCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-        using QueuedOp = ::Assets::CompileFuture;
+        using QueuedOp = ::Assets::ArtifactFuture;
 
             // Because the we're using the immediate context, we must run in a foreground
             // thread. We can't push into a background thread here...
@@ -910,17 +914,27 @@ namespace ToolsRig
     
     AOSupplementCompiler::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::ICompileMarker> 
-        AOSupplementCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::IArtifactCompileMarker> 
+        AOSupplementCompiler::Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& store)
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
+		if (typeCode != ToolsRig::AOSupplementCompiler::CompilerType) return nullptr;
         if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty()) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
         const auto modelFilename = initializers[0], materialFilename = initializers[1];
-        return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, store, shared_from_this());
+        return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
+
+	std::vector<uint64_t> AOSupplementCompiler::GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
+	std::vector<std::pair<std::string, std::string>> AOSupplementCompiler::GetExtensionsForType(uint64_t typeCode)
+	{
+		return {};
+	}
 
     void AOSupplementCompiler::StallOnPendingOperations(bool)
     {

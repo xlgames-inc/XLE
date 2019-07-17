@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Types_Forward.h"
+#include "../VertexUtil.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <utility>
@@ -49,7 +50,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             OutputType GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
         size_t GetUnifiedVertexCount() const { return _unifiedVertexCount; }
 
-        auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const   -> DynamicArray<uint8>;
+        auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const   -> std::vector<uint8_t>;
         auto    BuildUnifiedVertexIndexToPositionIndex() const                      -> std::unique_ptr<uint32[]>;
 
         unsigned    AddStream(
@@ -74,11 +75,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class Stream
         {
         public:
-            const IVertexSourceData& GetSourceData() const      { return *_sourceData; }
             const std::vector<unsigned>& GetVertexMap() const   { return _vertexMap; }
             const std::string& GetSemanticName() const          { return _semanticName; }
             const unsigned GetSemanticIndex() const             { return _semanticIndex; }
-			const std::shared_ptr<IVertexSourceData>& ShareSourceData() const { return _sourceData; }
+			const std::shared_ptr<IVertexSourceData>& GetSourceData() const { return _sourceData; }
 
 			void SetSemantic(const std::string& newName, unsigned semanticIndex) { _semanticName = newName; _semanticIndex = semanticIndex; }
 
@@ -116,8 +116,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class IVertexSourceData
     {
     public:
-        virtual const void* GetData() const = 0;
-        virtual size_t GetDataSize() const = 0;
+        virtual IteratorRange<const void*> GetData() const = 0;
         virtual Format GetFormat() const = 0;
 
         virtual size_t GetStride() const = 0;
@@ -157,6 +156,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             size_t count, size_t stride,
 			Format srcFormat);
 
+    IteratorRange<VertexElementIterator> MakeVertexIteratorRange(const IVertexSourceData& srcData);
+
     /// <summary>Remove duplicates from a stream</summary>
     /// Searches for duplicate elements in a stream, and combines them into
     /// one. Will generate a new vertex mapping in which the duplicates have been
@@ -182,13 +183,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::vector<unsigned>& outputMapping,
 		const MeshDatabase& input);
 
-    class NativeVBSettings
+    struct NativeVBSettings
     {
-    public:
-        bool    _use16BitFloats;
+        bool    _use16BitFloats = true;
     };
 
-    NativeVBLayout BuildDefaultLayout(MeshDatabase& mesh, const NativeVBSettings& settings);
+    NativeVBLayout BuildDefaultLayout(MeshDatabase& mesh, const NativeVBSettings& settings = {});
 
     /// <summary>Creates a triangle winding order for a convex polygon with the given number of points<summary>
     /// If we have a convex polygon, this can be used to convert it into a list of triangles.

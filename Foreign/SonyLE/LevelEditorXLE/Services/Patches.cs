@@ -288,5 +288,10 @@ namespace LevelEditorXLE
                 }
             }
         }
+
+        public static IOpaqueResourceFolder CreateRootResourceFolder(string preferencesPath)
+        {
+            return XLEBridgeUtils.ResourceFolderBridge.BeginFromRoot();
+        }
     }
 }

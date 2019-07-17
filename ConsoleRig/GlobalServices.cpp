@@ -5,17 +5,19 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GlobalServices.h"
-#include "AttachableInternal.h"
+#include "AttachablePtr.h"
 #include "Log.h"
 #include "Console.h"
 #include "ResourceBox.h"
 #include "IProgress.h"
+#include "Plugins.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/FileSystemMonitor.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
@@ -25,6 +27,9 @@
 #include <assert.h>
 #include <random>
 #include <typeinfo>
+
+extern "C" const char ConsoleRig_VersionString[];
+extern "C" const char ConsoleRig_BuildDateString[];
 
 namespace ConsoleRig
 {
@@ -56,8 +61,10 @@ namespace ConsoleRig
 	void DebugUtil_Startup();
 	void DebugUtil_Shutdown();
 
-    static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
+    static void MainRig_Startup(const StartupConfig& cfg)
     {
+		auto& serv = CrossModule::GetInstance()._services;
+
         std::string appNameString = cfg._applicationName;
         bool redirectCount = cfg._redirectCout;
         serv.Add<std::string()>(Fn_GetAppName, [appNameString](){ return appNameString; });
@@ -86,30 +93,9 @@ namespace ConsoleRig
         RawFS::CreateDirectoryRecursive("int");
     }
 
-    StartupConfig::StartupConfig()
-    {
-        _applicationName = "XLEApp";
-        _logConfigFile = "log.dat";
-        _setWorkingDir = true;
-        _redirectCout = true;
-        // Hack -- these thread pools are only useful/efficient on windows
-        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-            _longTaskThreadPoolCount = 4;
-            _shortTaskThreadPoolCount = 2;
-        #else
-            _longTaskThreadPoolCount = 0;
-            _shortTaskThreadPoolCount = 0;
-        #endif
-    }
-
-    StartupConfig::StartupConfig(const char applicationName[]) : StartupConfig()
-    {
-        _applicationName = applicationName;
-    }
-
     static void MainRig_Attach()
     {
-        auto& serv = GlobalServices::GetCrossModule()._services;
+        auto& serv = CrossModule::GetInstance()._services;
 
 		DebugUtil_Startup();
 
@@ -149,57 +135,78 @@ namespace ConsoleRig
     {
             // this will throw an exception if no module has successfully initialised
             // logging
-        auto& serv = GlobalServices::GetCrossModule()._services;
-        if (serv.Call<ModuleId>(Fn_ConsoleMainModule) == GetCurrentModuleId()) {
+        auto& serv = CrossModule::GetInstance()._services;
+		ModuleId mainModuleId = 0;
+        if (serv.TryCall(Fn_ConsoleMainModule, mainModuleId) && mainModuleId == GetCurrentModuleId()) {
             serv.Remove(Fn_GetConsole);
             serv.Remove(Fn_ConsoleMainModule);
-        } else {
-            Console::SetInstance(nullptr);
         }
+
+		serv.InvalidateCurrentModule();
+
+		Console::SetInstance(nullptr);
 
 		ResourceBoxes_Shutdown();
 		DebugUtil_Shutdown();
         ::Assets::MainFileSystem::Shutdown();
+		TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class GlobalServices::Pimpl
+	{
+	public:
+		AttachablePtr<LogCentralConfiguration> _logCfg;
+        std::unique_ptr<CompletionThreadPool> _shortTaskPool;
+        std::unique_ptr<CompletionThreadPool> _longTaskPool;
+		StartupConfig _cfg;
+		std::unique_ptr<PluginSet> _pluginSet;
+	};
 
     GlobalServices* GlobalServices::s_instance = nullptr;
 
     GlobalServices::GlobalServices(const StartupConfig& cfg)
     {
-        _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
-        _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+		_pimpl = std::make_unique<Pimpl>();
+        _pimpl->_shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
+        _pimpl->_longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+		_pimpl->_cfg = cfg;
 
-        _crossModule = std::make_shared<CrossModule>();
-        MainRig_Startup(cfg, _crossModule->_services);
-        _crossModule->Publish(*this);
-        AttachCurrentModule();
-
-        _logCfg = std::make_shared<LogCentralConfiguration>(cfg._logConfigFile);
-        _crossModule->Publish(*_logCfg);
-        _logCfg->AttachCurrentModule();
+        MainRig_Startup(cfg);
 
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
         const auto* cmdLine = XlGetCommandLine();
         if (cmdLine && XlFindString(cmdLine, "-nsight"))
-            _crossModule->_services.Add(Hash64("nsight"), []() { return true; });
+            CrossModule::GetInstance()._services.Add(Hash64("nsight"), []() { return true; });
     }
 
     GlobalServices::~GlobalServices() 
     {
-        _crossModule->Withhold(*_logCfg);
-        _crossModule->Withhold(*this);
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
     }
+
+	void GlobalServices::LoadDefaultPlugins()
+	{
+		if (!_pimpl->_pluginSet)
+			_pimpl->_pluginSet = std::make_unique<PluginSet>();
+	}
+
+	void GlobalServices::UnloadDefaultPlugins()
+	{
+		_pimpl->_pluginSet.reset();
+	}
 
     void GlobalServices::AttachCurrentModule()
     {
         assert(s_instance == nullptr);
         s_instance = this;
         MainRig_Attach();
+		_pimpl->_logCfg = GetAttachablePtr<LogCentralConfiguration>();
+		if (!_pimpl->_logCfg)
+			_pimpl->_logCfg = MakeAttachablePtr<LogCentralConfiguration>(_pimpl->_cfg._logConfigFile);
     }
 
     void GlobalServices::DetachCurrentModule()
@@ -208,6 +215,32 @@ namespace ConsoleRig
         assert(s_instance == this);
         s_instance = nullptr;
     }
+
+	CompletionThreadPool& GlobalServices::GetShortTaskThreadPool() { return *_pimpl->_shortTaskPool; }
+    CompletionThreadPool& GlobalServices::GetLongTaskThreadPool() { return *_pimpl->_longTaskPool; }
+
+	CrossModule* CrossModule::s_instance = nullptr;
+
+	CrossModule& CrossModule::GetInstance()
+	{
+		if (!s_instance) {
+			s_instance = new CrossModule();
+			std::atexit([]() { delete s_instance; s_instance = nullptr; });
+		}
+		return *s_instance;
+	}
+
+	void CrossModule::SetInstance(CrossModule& crossModule)
+	{
+		assert(!s_instance);
+		s_instance = &crossModule;
+	}
+
+	void CrossModule::ReleaseInstance()
+	{
+		assert(s_instance);
+		s_instance = nullptr;
+	}
 
 
     IStep::~IStep() {}
@@ -222,8 +255,37 @@ namespace ConsoleRig
 
 	void ResourceBoxes_Shutdown()
 	{
+		// Destroy the box tables in reverse order
+		while (!Internal::BoxTables.empty())
+			Internal::BoxTables.erase(Internal::BoxTables.end()-1);
 		Internal::BoxTables = std::vector<std::unique_ptr<Internal::IBoxTable>>();
 	}
 
+
+	StartupConfig::StartupConfig()
+    {
+        _applicationName = "XLEApp";
+        _logConfigFile = "log.dat";
+        _setWorkingDir = true;
+        _redirectCout = true;
+        // Hack -- these thread pools are only useful/efficient on windows
+        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+            _longTaskThreadPoolCount = 4;
+            _shortTaskThreadPoolCount = 2;
+        #else
+            _longTaskThreadPoolCount = 0;
+            _shortTaskThreadPoolCount = 0;
+        #endif
+    }
+
+    StartupConfig::StartupConfig(const char applicationName[]) : StartupConfig()
+    {
+        _applicationName = applicationName;
+    }
+
+	LibVersionDesc GetLibVersionDesc()
+	{
+		return LibVersionDesc { ConsoleRig_VersionString, ConsoleRig_BuildDateString };
+	}
 
 }

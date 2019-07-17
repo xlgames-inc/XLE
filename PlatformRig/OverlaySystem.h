@@ -13,28 +13,30 @@
 #include <memory>
 #include <vector>
 
-namespace SceneEngine { class LightingParserContext; }
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 
 namespace PlatformRig
 {
+	class IInputListener;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     class IOverlaySystem
     {
     public:
-        typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
+		virtual void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
+			RenderCore::Techniques::ParsingContext& parserContext) = 0; 
 
-        virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
+        virtual std::shared_ptr<IInputListener> GetInputListener();
+        virtual void SetActivationState(bool newState);
 
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) = 0; 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext) = 0;
-        virtual void SetActivationState(bool newState) = 0;
+		enum class RefreshMode { EventBased, RegularAnimation };
+		struct OverlayState
+		{
+			RefreshMode _refreshMode = RefreshMode::EventBased;
+		};
+		virtual OverlayState GetOverlayState() const;
 
         virtual ~IOverlaySystem();
     };
@@ -45,13 +47,12 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool newState);
+		OverlayState GetOverlayState() const;
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
 
@@ -72,15 +73,15 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool newState);
+		virtual OverlayState GetOverlayState() const;
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);
+		void RemoveSystem(IOverlaySystem& system);
 
         OverlaySystemSet();
         ~OverlaySystemSet();

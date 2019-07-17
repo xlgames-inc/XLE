@@ -9,8 +9,9 @@ using Sce.Atf.Applications;
 namespace MaterialTool
 {
     [Export(typeof(ControlsLibraryExt.Material.ActiveMaterialContext))]
+    [Export(typeof(NodeEditorCore.IPreviewMaterialContext))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext
+    public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext, NodeEditorCore.IPreviewMaterialContext
     {
         public override IEnumerable<string> AssignableTechniqueConfigs 
         {
@@ -23,19 +24,22 @@ namespace MaterialTool
                     var doc = d as DiagramDocument;
                     if (doc == null) continue;
 
-                    var gc = doc.UnderlyingDocument.GraphContext;
+                    var gc = doc.GraphMetaData;
                     if (gc.HasTechniqueConfig)
                     {
                         var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
                         var relTo = new Uri(cwd, "xleres/techniques/");
                         var t = relTo.MakeRelativeUri(doc.Uri).OriginalString;
-                        var e = t.LastIndexOf('.'); // we must remove the extension... Using simple string parsing
-                        if (e > 0) t = t.Substring(0, e);
                         yield return t;
                     }
                 }
             } 
         }
+
+        string NodeEditorCore.IPreviewMaterialContext.ActivePreviewMaterialNames {
+            get { return MaterialName; }
+        }
+         
 
         [Import] IDocumentRegistry _documentRegistry;
     }

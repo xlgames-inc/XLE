@@ -1,12 +1,12 @@
 #include "GenericGridPartitioning.h"
-#include "Assets/ChunkFileContainer.h"
-#include "Assets/BlockSerializer.h"
-#include "Math/ProjectionMath.h"
-#include "Utility/PtrUtils.h"
-#include "Utility/Streams/Serialization.h"
-#include "Utility/IteratorUtils.h"
-#include "Utility/MemoryUtils.h"
-#include "Core/Prefix.h"
+#include "../Assets/ChunkFileContainer.h"
+#include "../Assets/BlockSerializer.h"
+#include "../Math/ProjectionMath.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/Serialization.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Core/Prefix.h"
 #include <stack>
 #include <cfloat>
 

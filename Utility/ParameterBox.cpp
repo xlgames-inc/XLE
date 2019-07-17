@@ -106,10 +106,12 @@ namespace Utility
         }
 
         bool Cast(
-            void* dest, size_t destSize, TypeDesc destType,
-            const void* rawSrc, TypeDesc srcType)
+            IteratorRange<void*> dest, TypeDesc destType,
+            IteratorRange<const void*> rawSrc, TypeDesc srcType)
         {
-            const void *src = rawSrc;
+            assert(src.size() >= srcType.GetSize());
+            assert(dest.size() >= destType.GetSize());
+            const void *src = rawSrc.begin();
             if (destType._arrayCount <= 1) {
 #if defined(__arm__) && !defined(__aarch64__)
                 // Only 32-bit ARM, we may get unaligned access reading directly from rawSrc
@@ -137,17 +139,17 @@ namespace Utility
                 case TypeCat::Bool:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(bool*)dest = *(bool*)src; return true;
-                        case TypeCat::Int8: *(bool*)dest = !!*(int8*)src; return true;
-                        case TypeCat::UInt8: *(bool*)dest = !!*(uint8*)src; return true;
-                        case TypeCat::Int16: *(bool*)dest = !!*(int16*)src; return true;
-                        case TypeCat::UInt16: *(bool*)dest = !!*(uint16*)src; return true;
-                        case TypeCat::Int32: *(bool*)dest = !!*(int32*)src; return true;
-                        case TypeCat::UInt32: *(bool*)dest = !!*(uint32*)src; return true;
-                        case TypeCat::Int64: *(bool*)dest = !!*(int64*)src; return true;
-                        case TypeCat::UInt64: *(bool*)dest = !!*(uint64*)src; return true;
-                        case TypeCat::Float: *(bool*)dest = !!*(float*)src; return true;
-                        case TypeCat::Double: *(bool*)dest = !!*(double*)src; return true;
+                        case TypeCat::Bool: *(bool*)dest.begin() = *(bool*)src.begin(); return true;
+                        case TypeCat::Int8: *(bool*)dest.begin() = !!*(int8*)src.begin(); return true;
+                        case TypeCat::UInt8: *(bool*)dest.begin() = !!*(uint8*)src.begin(); return true;
+                        case TypeCat::Int16: *(bool*)dest.begin() = !!*(int16*)src.begin(); return true;
+                        case TypeCat::UInt16: *(bool*)dest.begin() = !!*(uint16*)src.begin(); return true;
+                        case TypeCat::Int32: *(bool*)dest.begin() = !!*(int32*)src.begin(); return true;
+                        case TypeCat::UInt32: *(bool*)dest.begin() = !!*(uint32*)src.begin(); return true;
+                        case TypeCat::Int64: *(bool*)dest.begin() = !!*(int64*)src.begin(); return true;
+                        case TypeCat::UInt64: *(bool*)dest.begin() = !!*(uint64*)src.begin(); return true;
+                        case TypeCat::Float: *(bool*)dest.begin() = !!*(float*)src.begin(); return true;
+                        case TypeCat::Double: *(bool*)dest.begin() = !!*(double*)src.begin(); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -156,17 +158,17 @@ namespace Utility
                 case TypeCat::Int8:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int8*)dest = int8(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int8*)dest = int8(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int8*)dest = int8(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int8*)dest = int8(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int8*)dest = int8(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int8*)dest = int8(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int8*)dest = int8(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int8*)dest = int8(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int8*)dest = int8(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int8*)dest = int8(*(float*)src); return true;
-                        case TypeCat::Double: *(int8*)dest = int8(*(double*)src); return true;
+                        case TypeCat::Bool: *(int8*)dest.begin() = int8(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int8*)dest.begin() = int8(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int8*)dest.begin() = int8(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int8*)dest.begin() = int8(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int8*)dest.begin() = int8(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int8*)dest.begin() = int8(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int8*)dest.begin() = int8(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int8*)dest.begin() = int8(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int8*)dest.begin() = int8(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int8*)dest.begin() = int8(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int8*)dest.begin() = int8(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -175,17 +177,17 @@ namespace Utility
                 case TypeCat::UInt8:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint8*)dest = uint8(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint8*)dest = uint8(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint8*)dest = uint8(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint8*)dest = uint8(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint8*)dest = uint8(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint8*)dest = uint8(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint8*)dest = uint8(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint8*)dest = uint8(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint8*)dest = uint8(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint8*)dest = uint8(*(float*)src); return true;
-                        case TypeCat::Double: *(uint8*)dest = uint8(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint8*)dest.begin() = uint8(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint8*)dest.begin() = uint8(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint8*)dest.begin() = uint8(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint8*)dest.begin() = uint8(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint8*)dest.begin() = uint8(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint8*)dest.begin() = uint8(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint8*)dest.begin() = uint8(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint8*)dest.begin() = uint8(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint8*)dest.begin() = uint8(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint8*)dest.begin() = uint8(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint8*)dest.begin() = uint8(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -194,17 +196,17 @@ namespace Utility
                 case TypeCat::Int16:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int16*)dest = int16(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int16*)dest = int16(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int16*)dest = int16(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int16*)dest = int16(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int16*)dest = int16(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int16*)dest = int16(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int16*)dest = int16(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int16*)dest = int16(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int16*)dest = int16(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int16*)dest = int16(*(float*)src); return true;
-                        case TypeCat::Double: *(int16*)dest = int16(*(double*)src); return true;
+                        case TypeCat::Bool: *(int16*)dest.begin() = int16(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int16*)dest.begin() = int16(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int16*)dest.begin() = int16(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int16*)dest.begin() = int16(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int16*)dest.begin() = int16(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int16*)dest.begin() = int16(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int16*)dest.begin() = int16(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int16*)dest.begin() = int16(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int16*)dest.begin() = int16(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int16*)dest.begin() = int16(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int16*)dest.begin() = int16(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -213,17 +215,17 @@ namespace Utility
                 case TypeCat::UInt16:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint16*)dest = uint16(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint16*)dest = uint16(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint16*)dest = uint16(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint16*)dest = uint16(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint16*)dest = uint16(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint16*)dest = uint16(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint16*)dest = uint16(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint16*)dest = uint16(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint16*)dest = uint16(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint16*)dest = uint16(*(float*)src); return true;
-                        case TypeCat::Double: *(uint16*)dest = uint16(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint16*)dest.begin() = uint16(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint16*)dest.begin() = uint16(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint16*)dest.begin() = uint16(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint16*)dest.begin() = uint16(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint16*)dest.begin() = uint16(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint16*)dest.begin() = uint16(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint16*)dest.begin() = uint16(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint16*)dest.begin() = uint16(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint16*)dest.begin() = uint16(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint16*)dest.begin() = uint16(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint16*)dest.begin() = uint16(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -232,17 +234,17 @@ namespace Utility
                 case TypeCat::Int32:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int32*)dest = int32(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int32*)dest = int32(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int32*)dest = int32(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int32*)dest = int32(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int32*)dest = int32(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int32*)dest = *(int32*)src; return true;
-                        case TypeCat::UInt32: *(int32*)dest = int32(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int32*)dest = int32(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int32*)dest = int32(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int32*)dest = int32(*(float*)src); return true;
-                        case TypeCat::Double: *(int32*)dest = int32(*(double*)src); return true;
+                        case TypeCat::Bool: *(int32*)dest.begin() = int32(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int32*)dest.begin() = int32(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int32*)dest.begin() = int32(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int32*)dest.begin() = int32(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int32*)dest.begin() = int32(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int32*)dest.begin() = *(int32*)src.begin(); return true;
+                        case TypeCat::UInt32: *(int32*)dest.begin() = int32(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int32*)dest.begin() = int32(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int32*)dest.begin() = int32(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int32*)dest.begin() = int32(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int32*)dest.begin() = int32(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -251,17 +253,17 @@ namespace Utility
                 case TypeCat::UInt32:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint32*)dest = uint32(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint32*)dest = uint32(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint32*)dest = uint32(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint32*)dest = uint32(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint32*)dest = uint32(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint32*)dest = uint32(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint32*)dest = *(uint32*)src; return true;
-                        case TypeCat::Int64: *(uint32*)dest = uint32(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint32*)dest = uint32(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint32*)dest = uint32(*(float*)src); return true;
-                        case TypeCat::Double: *(uint32*)dest = uint32(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint32*)dest.begin() = uint32(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint32*)dest.begin() = uint32(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint32*)dest.begin() = uint32(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint32*)dest.begin() = uint32(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint32*)dest.begin() = uint32(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint32*)dest.begin() = uint32(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint32*)dest.begin() = *(uint32*)src.begin(); return true;
+                        case TypeCat::Int64: *(uint32*)dest.begin() = uint32(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint32*)dest.begin() = uint32(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint32*)dest.begin() = uint32(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint32*)dest.begin() = uint32(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -270,17 +272,17 @@ namespace Utility
                 case TypeCat::Int64:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int64*)dest = int64(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int64*)dest = int64(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int64*)dest = int64(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int64*)dest = int64(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int64*)dest = int64(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int64*)dest = int64(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int64*)dest = int64(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int64*)dest = int64(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int64*)dest = int64(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int64*)dest = int64(*(float*)src); return true;
-                        case TypeCat::Double: *(int64*)dest = int64(*(double*)src); return true;
+                        case TypeCat::Bool: *(int64*)dest.begin() = int64(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int64*)dest.begin() = int64(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int64*)dest.begin() = int64(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int64*)dest.begin() = int64(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int64*)dest.begin() = int64(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int64*)dest.begin() = int64(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int64*)dest.begin() = int64(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int64*)dest.begin() = int64(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int64*)dest.begin() = int64(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int64*)dest.begin() = int64(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int64*)dest.begin() = int64(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -289,17 +291,17 @@ namespace Utility
                 case TypeCat::UInt64:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint64*)dest = uint64(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint64*)dest = uint64(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint64*)dest = uint64(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint64*)dest = uint64(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint64*)dest = uint64(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint64*)dest = uint64(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint64*)dest = uint64(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint64*)dest = uint64(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint64*)dest = uint64(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint64*)dest = uint64(*(float*)src); return true;
-                        case TypeCat::Double: *(uint64*)dest = uint64(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint64*)dest.begin() = uint64(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint64*)dest.begin() = uint64(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint64*)dest.begin() = uint64(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint64*)dest.begin() = uint64(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint64*)dest.begin() = uint64(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint64*)dest.begin() = uint64(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint64*)dest.begin() = uint64(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint64*)dest.begin() = uint64(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint64*)dest.begin() = uint64(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint64*)dest.begin() = uint64(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint64*)dest.begin() = uint64(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -308,17 +310,17 @@ namespace Utility
                 case TypeCat::Float:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(float*)dest = float(*(bool*)src); return true;
-                        case TypeCat::Int8: *(float*)dest = float(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(float*)dest = float(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(float*)dest = float(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(float*)dest = float(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(float*)dest = float(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(float*)dest = float(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(float*)dest = float(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(float*)dest = float(*(uint64*)src); return true;
-                        case TypeCat::Float: *(float*)dest = float(*(float*)src); return true;
-                        case TypeCat::Double: *(float*)dest = float(*(double*)src); return true;
+                        case TypeCat::Bool: *(float*)dest.begin() = float(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(float*)dest.begin() = float(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(float*)dest.begin() = float(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(float*)dest.begin() = float(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(float*)dest.begin() = float(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(float*)dest.begin() = float(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(float*)dest.begin() = float(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(float*)dest.begin() = float(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(float*)dest.begin() = float(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(float*)dest.begin() = float(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(float*)dest.begin() = float(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -327,17 +329,17 @@ namespace Utility
                 case TypeCat::Double:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(double*)dest = double(*(bool*)src); return true;
-                        case TypeCat::Int8: *(double*)dest = double(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(double*)dest = double(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(double*)dest = double(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(double*)dest = double(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(double*)dest = double(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(double*)dest = double(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(double*)dest = double(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(double*)dest = double(*(uint64*)src); return true;
-                        case TypeCat::Float: *(double*)dest = double(*(float*)src); return true;
-                        case TypeCat::Double: *(double*)dest = double(*(double*)src); return true;
+                        case TypeCat::Bool: *(double*)dest.begin() = double(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(double*)dest.begin() = double(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(double*)dest.begin() = double(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(double*)dest.begin() = double(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(double*)dest.begin() = double(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(double*)dest.begin() = double(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(double*)dest.begin() = double(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(double*)dest.begin() = double(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(double*)dest.begin() = double(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(double*)dest.begin() = double(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(double*)dest.begin() = double(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -351,36 +353,33 @@ namespace Utility
                     // First -- trival cases can be completed with a memcpy
                 if (    srcType._arrayCount == destType._arrayCount
                     &&  srcType._type == destType._type) {
-                    XlCopyMemory(dest, src, std::min(destSize, size_t(srcType.GetSize())));
+                    XlCopyMemory(dest.begin(), src.begin(), std::min(dest.size(), size_t(srcType.GetSize())));
                     return true;
                 }
                     
-                void* destIterator = dest;
-                const void* srcIterator = src;
-                auto sizeRemaining = destSize;
+                auto destIterator = dest;
+                auto srcIterator = src;
                 for (unsigned c=0; c<destType._arrayCount; ++c) {
-                    if (sizeRemaining < TypeDesc(destType._type).GetSize()) {
+                    if (destIterator.size() < TypeDesc(destType._type).GetSize()) {
                         return false;
                     }
                     if (c < srcType._arrayCount) {
-                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
+                        if (!Cast(destIterator, TypeDesc(destType._type),
                             srcIterator, TypeDesc(srcType._type))) {
                             return false;
                         }
 
-                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
-                        srcIterator = PtrAdd(srcIterator, TypeDesc(srcType._type).GetSize());
-                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
+                        srcIterator.first = PtrAdd(srcIterator.first, TypeDesc(srcType._type).GetSize());
                     } else {
                             // using HLSL rules for filling in blanks:
                             //  element 3 is 1, but others are 0
                         unsigned value = (c==3)?1:0;
-                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
-                            &value, TypeDesc(TypeCat::UInt32))) {
+                        if (!Cast(destIterator, TypeDesc(destType._type),
+                            AsOpaqueIteratorRange(value), TypeDesc(TypeCat::UInt32))) {
                             return false;
                         }
-                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
-                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
                     }
                 }
                 return true;
@@ -461,8 +460,7 @@ namespace Utility
         
         template<typename CharType>
             TypeDesc Parse(
-                const CharType expressionBegin[], 
-                const CharType expressionEnd[], 
+                StringSection<CharType> expression,
                 void* dest, size_t destSize)
         {
             if (!s_parsingChar) {
@@ -470,29 +468,29 @@ namespace Utility
             }
                 // parse string expression into native types.
                 // We'll write the native object into the buffer and return a type desc
-            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar->s_booleanTrue)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanTrue)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
                 return TypeDesc(TypeCat::Bool);
-            } else if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar->s_booleanFalse)) {
+            } else if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
                 return TypeDesc(TypeCat::Bool);
             }
 
             std::match_results<const CharType*> cm; 
-            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar->s_unsignedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_unsignedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
                 uint64 value;
-                auto len = expressionEnd - expressionBegin;
-                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                auto len = expression.size();
+                if (len > 2 && (expression.begin()[0] == '0' && expression.begin()[1] == 'x')) {
                         // hex form
-                    value = XlAtoUI64(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoUI64(&expression.begin()[2], nullptr, 16);
                 } else {
-                    value = XlAtoUI64(expressionBegin);
+                    value = XlAtoUI64(expression.begin());
                 }
 
                 if (precision == 8) {
@@ -516,18 +514,18 @@ namespace Utility
                 assert(0);
             }
 
-            if (std::regex_match(expressionBegin, expressionEnd, cm, s_parsingChar->s_signedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar->s_signedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
                 int64 value;
-                auto len = expressionEnd - expressionBegin;
-                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                auto len = expression.end() - expression.begin();
+                if (len > 2 && (expression.begin()[0] == '0' && expression.begin()[1] == 'x')) {
                         // hex form
-                    value = XlAtoI64(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoI64(&expression.begin()[2], nullptr, 16);
                 } else {
-                    value = XlAtoI64(expressionBegin);
+                    value = XlAtoI64(expression.begin());
                 }
 
                 if (precision == 8) {
@@ -551,7 +549,7 @@ namespace Utility
                 assert(0);
             }
 
-            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar->s_floatPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_floatPattern)) {
                 bool doublePrecision = false;
                 if (cm.size() >= 4 && cm[4].length() > 1) {
                     auto precision = XlAtoUI32(&cm[2].str()[1]);
@@ -560,11 +558,11 @@ namespace Utility
 
                 if (doublePrecision) {
                     assert(destSize >= sizeof(double));
-                    *(double*)dest = XlAtoF64(expressionBegin);
+                    *(double*)dest = Conversion::Convert<double>(expression);
                     return TypeDesc(TypeCat::Double);
                 } else {
                     assert(destSize >= sizeof(float));
-                    *(float*)dest = XlAtoF32(expressionBegin);
+                    *(float*)dest = Conversion::Convert<float>(expression);
                     return TypeDesc(TypeCat::Float);
                 }
             }
@@ -574,7 +572,7 @@ namespace Utility
                 // R"(^\{\s*[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]\s*(\s*,\s*([-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]))*\s*\}[vc]?$)"
 
                 // std::match_results<typename std::basic_string<CharType>::const_iterator> cm;
-                if (std::regex_match(expressionBegin, expressionEnd, cm, s_parsingChar->s_arrayPattern)) {
+                if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar->s_arrayPattern)) {
                     const auto& subMatch = cm[1];
                     std::regex_iterator<const CharType*> rit(
                         subMatch.first, subMatch.second,
@@ -593,7 +591,7 @@ namespace Utility
                         const auto& eleMatch = (*rit)[1];
 
                         auto subType = Parse(
-                            eleMatch.first, eleMatch.second,
+                            MakeStringSection(eleMatch.first, eleMatch.second),
                             dstIterator, dstIteratorSize);
 
                         assert(subType._arrayCount <= 1);
@@ -613,16 +611,14 @@ namespace Utility
                         const auto& eleMatch = (*rit)[1];
 
                         auto subType = Parse(
-                            eleMatch.first, eleMatch.second,
+                            MakeStringSection(eleMatch.first, eleMatch.second),
                             dstIterator, dstIteratorSize);
 
                         if (CastType(subType._type, cat) != CastType::Narrowing) {
                             bool castSuccess = Cast(   
-                                dstIterator, size_t(dstIteratorSize), TypeDesc(cat),
-                                dstIterator, subType);
+                                { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, TypeDesc(cat),
+                                { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType);
                             (void)castSuccess;
-                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
-                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
                             subType._type = cat;
                         } else {
                             // If the cast would narrow the type, we would corrupt the input
@@ -639,7 +635,9 @@ namespace Utility
                             assert(ptrdiff_t(destSize) - dstIteratorSize == ptrdiff_t(cpySize));
                             dstIteratorSize = ptrdiff_t(destSize);
                             for (auto redoIt = startIt; redoIt != rit; ++redoIt) {
-                                bool castSuccess = Cast(dstIterator, size_t(dstIteratorSize), subType, tempCpyIterator, catType);
+                                bool castSuccess = Cast(
+                                    { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType, 
+                                    { tempCpyIterator, PtrAdd(tempCpyIterator, catType.GetSize()) }, catType);
                                 assert(castSuccess);
                                 (void)castSuccess;
                                 
@@ -671,31 +669,39 @@ namespace Utility
             return TypeDesc(TypeCat::Void);
         }
 
-        template <typename Type> std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd) 
+		template<>
+            TypeDesc Parse(
+                StringSection<utf8> expression,
+                void* dest, size_t destSize)
+		{
+			return Parse(expression.Cast<char>(), dest, destSize);
+		}
+
+        template <typename Type> std::pair<bool, Type> Parse(StringSection<char> expression) 
         {
             char buffer[NativeRepMaxSize];
-            auto parseType = Parse(expressionBegin, expressionEnd, buffer, sizeof(buffer));
+            auto parseType = Parse(expression, buffer, sizeof(buffer));
             if (parseType == TypeOf<Type>()) {
                 return std::make_pair(true, *(Type*)buffer);
             } else {
                 Type casted;
-                if (Cast(&casted, sizeof(casted), TypeOf<Type>(),
-                    buffer, parseType)) {
+                if (Cast(AsOpaqueIteratorRange(casted), TypeOf<Type>(),
+                    MakeIteratorRange(buffer), parseType)) {
                     return std::make_pair(true, casted);
                 }
             }
             return std::make_pair(false, Type());
         }
 
-        template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
+        /*template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
         {
-            return Parse<Type>(expression, XlStringEnd(expression));
-        }
+            return Parse<Type>(MakeStringSection(expression));
+        }*/
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const utf8* expressionBegin, const utf8* expressionEnd)
+            std::pair<bool, Type> Parse(StringSection<utf8> expression)
         {
-            return Parse<Type>((const char*)expressionBegin, (const char*)expressionEnd);
+            return Parse<Type>(expression.Cast<char>());
         }
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
@@ -767,108 +773,114 @@ namespace Utility
             return result.str();
         }
 
-        void Cleanup()
+        std::string AsString(IteratorRange<const void*> data, const TypeDesc& type, bool strongTyping)
         {
+            return AsString(data.begin(), data.size(), type, strongTyping);
+		}
+
+		void Cleanup()
+		{
             s_parsingChar.reset();
         }
 
-        template std::pair<bool, bool> Parse(const char[]);
-        template std::pair<bool, bool> Parse(const char[], const char[]);
-        template std::pair<bool, unsigned> Parse(const char[]);
-        template std::pair<bool, signed> Parse(const char[]);
-        template std::pair<bool, uint64> Parse(const char[]);
-        template std::pair<bool, int64> Parse(const char[]);
-        template std::pair<bool, float> Parse(const char[]);
-	template std::pair<bool, double> Parse(const char[]);
-        #if defined(HAS_XLE_MATH)
-            template std::pair<bool, Float2> Parse(const char[]);
-            template std::pair<bool, Float3> Parse(const char[]);
-            template std::pair<bool, Float4> Parse(const char[]);
-            template std::pair<bool, Float3x3> Parse(const char[]);
-            template std::pair<bool, Float3x4> Parse(const char[]);
-            template std::pair<bool, Float4x4> Parse(const char[]);
-            template std::pair<bool, UInt2> Parse(const char[]);
-            template std::pair<bool, UInt3> Parse(const char[]);
-            template std::pair<bool, UInt4> Parse(const char[]);
-            template std::pair<bool, Int2> Parse(const char[]);
-            template std::pair<bool, Int3> Parse(const char[]);
-            template std::pair<bool, Int4> Parse(const char[]);
-        #endif
 
-        template std::pair<bool, bool> Parse(const utf8*, const utf8*);
-        template std::pair<bool, unsigned> Parse(const utf8*, const utf8*);
-        template std::pair<bool, signed> Parse(const utf8*, const utf8*);
-        template std::pair<bool, uint64> Parse(const utf8*, const utf8*);
-        template std::pair<bool, int64> Parse(const utf8*, const utf8*);
-        template std::pair<bool, float> Parse(const utf8*, const utf8*);
-	template std::pair<bool, double> Parse(const utf8*, const utf8*);
+        template std::pair<bool, bool> Parse(StringSection<utf8>);
+        template std::pair<bool, unsigned> Parse(StringSection<utf8>);
+        template std::pair<bool, signed> Parse(StringSection<utf8>);
+        template std::pair<bool, uint64> Parse(StringSection<utf8>);
+        template std::pair<bool, int64> Parse(StringSection<utf8>);
+        template std::pair<bool, float> Parse(StringSection<utf8>);
+		template std::pair<bool, double> Parse(StringSection<utf8>);
         #if defined(HAS_XLE_MATH)
-            template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3x3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3x4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float4x4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float2> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3> Parse(StringSection<utf8>);
+            template std::pair<bool, Float4> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3x3> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3x4> Parse(StringSection<utf8>);
+            template std::pair<bool, Float4x4> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt2> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt3> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt4> Parse(StringSection<utf8>);
+            template std::pair<bool, Int2> Parse(StringSection<utf8>);
+            template std::pair<bool, Int3> Parse(StringSection<utf8>);
+            template std::pair<bool, Int4> Parse(StringSection<utf8>);
         #endif
 
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
+	ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
     {
-        return Hash64(name.begin(), name.end());
+        return MakeParameterNameHash(name.Cast<char>());
     }
 
     ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<char> name)
     {
+		// If the variable name has array indexor syntax, we strip off that syntax and use
+        // the indexor as a offset for the hash value. This makes it possible to store arrays,
+		// and has a couple of interesting side effects.
+		//		- array elements always get stored subsequentially
+		//		- only single dimensional arrays are supported, because this syntax has no hints for how to arrange multi dimensional arrays in the hash space
+		//		- "something[0]" and "something" evaluate to the same hash value
+		//		- only positive integer array indexors are supported, but octal or hex numbers can be used
+        if (name.size() >= 2 && *(name.end()-1) == ']') {
+            auto i = &name[name.size()-2];
+            while (i > name.begin() && ((*i >= '0' && *i <= '9') || *i == 'x' || *i == '+')) --i;
+			if (*i == '[') {
+				char* end = nullptr;
+				auto indexor = strtoul(i+1, &end, 0);
+				if (end == name.end()-1) {
+					// successful parse, we can use the array syntax interpretation
+					return MakeParameterNameHash(MakeStringSection(name.begin(), i)) + indexor;
+				}
+			}
+        }
+
         return Hash64(name.begin(), name.end());
     }
 
-    void ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd)
+    void ParameterBox::SetParameter(StringSection<utf8> name, StringSection<char> stringData)
     {
         using namespace ImpliedTyping;
-        if (!stringDataBegin || stringDataBegin == stringDataEnd) {
+        if (stringData.IsEmpty()) {
                 // null values or empty strings become "void" type parameters
-            SetParameter(name, nullptr, TypeDesc(TypeCat::Void, 0));
+			SetParameter(name, {}, TypeDesc(TypeCat::Void, 0));
             return;
         }
 
         uint8 buffer[NativeRepMaxSize];
-        auto typeDesc = Parse(stringDataBegin, stringDataEnd, buffer, sizeof(buffer));
+		assert(stringData.size() < NativeRepMaxSize);
+        auto typeDesc = Parse(stringData, buffer, sizeof(buffer));
         if (typeDesc._type != TypeCat::Void) {
-            SetParameter(name, buffer, typeDesc);
+			SetParameter(name, {buffer, PtrAdd(buffer, std::min(sizeof(buffer), (size_t)typeDesc.GetSize()))}, typeDesc);
         } else {
             // no conversion... just store a string
             SetParameter(
-                name, stringDataBegin,
-                TypeDesc(TypeCat::UInt8, (uint16)(stringDataEnd-stringDataBegin), TypeHint::String));
+				name, MakeIteratorRange(stringData.begin(), stringData.end()),
+                TypeDesc(TypeCat::UInt8, (uint16)(stringData.size()), TypeHint::String));
         }
     }
 
-    void     ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin)
+	template<>
+        void ParameterBox::SetParameter(StringSection<utf8> name, const char* value)
     {
-        SetParameter(name, stringDataBegin, stringDataBegin ? XlStringEnd(stringDataBegin) : nullptr);
+		SetParameter(name, value ? MakeStringSection(value) : StringSection<>{});
     }
 
-    void     ParameterBox::SetParameter(const utf8 name[], const std::string& stringData)
+	template<>
+        void ParameterBox::SetParameter(StringSection<utf8> name, const utf8* value)
     {
-        SetParameter(name, AsPointer(stringData.cbegin()), AsPointer(stringData.cend()));
+        SetParameter(name, MakeStringSection((const char*)value));
     }
 
     template<typename Type>
-        void ParameterBox::SetParameter(const utf8 name[], Type value)
+        void ParameterBox::SetParameter(StringSection<utf8> name, Type value)
     {
         const auto insertType = ImpliedTyping::TypeOf<Type>();
         auto size = insertType.GetSize();
         assert(size == sizeof(Type)); (void)size;
-        SetParameter(name, &value, insertType);
+        SetParameter(name, AsOpaqueIteratorRange(value), insertType);
     }
 
     static uint8* ValueTableOffset(SerializableVector<uint8>& values, size_t offset)
@@ -882,7 +894,7 @@ namespace Utility
     }
 
     void ParameterBox::SetParameter(
-        const utf8 name[], const void* value, 
+        StringSection<utf8> name, IteratorRange<const void*> value, 
         const ImpliedTyping::TypeDesc& insertType)
     {
         SetParameter(MakeParameterNameHash(name), name, value, insertType);
@@ -890,11 +902,11 @@ namespace Utility
 
     void ParameterBox::SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type)
     {
-        SetParameter(nameHash, nullptr, data.begin(), type);
+        SetParameter(nameHash, {}, data, type);
     }
 
     void ParameterBox::SetParameter(
-        ParameterNameHash hash, const utf8 name[], const void* value,
+        ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
         const ImpliedTyping::TypeDesc& insertType)
     {
         SetParameterHint(
@@ -905,10 +917,10 @@ namespace Utility
 
     auto ParameterBox::SetParameterHint(
         SerializableVector<ParameterNameHash>::const_iterator i,
-        ParameterNameHash hash, const utf8 name[], const void* value,
+        ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
         const ImpliedTyping::TypeDesc& insertType) -> SerializableVector<ParameterNameHash>::const_iterator
     {
-        const auto valueSize = insertType.GetSize();
+		assert(value.size() == insertType.GetSize());
         if (i==_hashNames.cend()) {
                 // push new value onto the end (including name & type info)
             _hashNames.push_back(hash);
@@ -916,16 +928,13 @@ namespace Utility
             auto valueOffset = _values.size();
             auto nameOffset = _names.size();
             
-            _values.insert(_values.end(), (const uint8*)value, (const uint8*)PtrAdd(value, valueSize));
+            _values.insert(_values.end(), (const uint8*)value.begin(), (const uint8*)value.end());
 
-            if (name) {
-                auto nameLength = XlStringLen(name)+1;
-                _names.insert(_names.end(), name, &name[nameLength]);
-            } else {
-                _names.push_back(0);
-            }
+            if (!name.IsEmpty())
+                _names.insert(_names.end(), name.begin(), name.end());
+            _names.push_back(0);
 
-            _offsets.push_back(std::make_pair(unsigned(nameOffset), unsigned(valueOffset)));
+			_offsets.push_back(OffsetsEntry{unsigned(nameOffset), unsigned(valueOffset), unsigned(name.size()), unsigned(value.size())});
             _types.push_back(insertType);
 
             _cachedHash = 0;
@@ -938,25 +947,23 @@ namespace Utility
                 // insert new value in the middle somewhere
             i = _hashNames.insert(i, hash);
 
-            const auto nameLength = (name?XlStringLen(name):0)+1;
+            const auto nameLength = name.size()+1;
             auto dstOffsets = _offsets[index];
+			dstOffsets._nameSize = (unsigned)name.size();
+			dstOffsets._valueSize = (unsigned)value.size();
 
             _offsets.insert(_offsets.begin()+index, dstOffsets);
             for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
-                i2->first += unsigned(nameLength);
-                i2->second += valueSize;
+                i2->_nameBegin += unsigned(nameLength);
+                i2->_valueBegin += unsigned(value.size());
             }
 
             _values.insert(
-                _values.cbegin()+dstOffsets.second, 
-                (uint8*)value, (uint8*)PtrAdd(value, valueSize));
-            if (name) {
-                _names.insert(
-                    _names.cbegin()+dstOffsets.first,
-                    name, &name[nameLength]);
-            } else {
-                _names.insert(_names.cbegin()+dstOffsets.first, 0);
-            }
+                _values.cbegin()+dstOffsets._valueBegin, 
+                (uint8*)value.begin(), (uint8*)value.end());
+            if (!name.IsEmpty())
+                _names.insert(_names.cbegin()+dstOffsets._nameBegin, name.begin(), name.end());
+            _names.insert(_names.cbegin()+dstOffsets._nameBegin+name.size(), 0);
             _types.insert(_types.begin() + index, insertType);
 
             _cachedHash = 0;
@@ -966,33 +973,34 @@ namespace Utility
 
             // just update the value
         const auto offset = _offsets[index];
-        const auto& existingType = _types[index];
 
-        assert(!name || !XlCompareString(&_names[offset.first], name));
+        assert(name.IsEmpty()|| !XlCompareString(&_names[offset._nameBegin], name));
 
-        if (existingType.GetSize() == valueSize) {
+        if (offset._valueSize == value.size()) {
 
                 // same type, or type with the same size...
-            XlCopyMemory(ValueTableOffset(_values, offset.second), (uint8*)value, valueSize);
+            XlCopyMemory(ValueTableOffset(_values, offset._valueBegin), (uint8*)value.begin(), value.size());
             _types[index] = insertType;
 
         } else {
 
                 // if the size of the type changes, we need to adjust the values table a bit
                 // hopefully this should be an uncommon case
+			auto prevSize = _offsets[index]._valueSize;
+            signed sizeChange = signed(value.size()) - signed(prevSize);
+			_offsets[index]._valueSize = (unsigned)value.size();
             auto dstOffsets = _offsets[index];
-            signed sizeChange = signed(valueSize) - signed(existingType.GetSize());
 
             for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
-                i2->second += sizeChange;
+                i2->_valueBegin += sizeChange;
             }
 
             _values.erase(
-                _values.cbegin()+dstOffsets.second,
-                _values.cbegin()+dstOffsets.second+existingType.GetSize());
+                _values.cbegin()+dstOffsets._valueBegin,
+                _values.cbegin()+dstOffsets._valueBegin+prevSize);
             _values.insert(
-                _values.cbegin()+dstOffsets.second, 
-                (uint8*)value, (uint8*)PtrAdd(value, valueSize));
+                _values.cbegin()+dstOffsets._valueBegin, 
+                (uint8*)value.begin(), (uint8*)value.end());
             _types[index] = insertType;
 
         }
@@ -1001,8 +1009,43 @@ namespace Utility
         return i;
     }
 
+	void ParameterBox::RemoveParameter(ParameterName name)
+	{
+		auto i = std::lower_bound(_hashNames.begin(), _hashNames.end(), name._hash);
+        if (i==_hashNames.end() || *i != name._hash)
+			return;
+
+		auto index = std::distance(_hashNames.begin(), i);
+
+		{
+			auto prevSize = _offsets[index]._valueSize;
+			_values.erase(
+                _values.cbegin() + _offsets[index]._valueBegin,
+                _values.cbegin() + _offsets[index]._valueBegin + prevSize);
+
+            signed sizeChange = 0 - signed(prevSize);
+            for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2)
+                i2->_valueBegin += sizeChange;
+        }
+
+		{
+			auto prevSize = _offsets[index]._nameSize;
+			_names.erase(
+                _names.cbegin() + _offsets[index]._nameBegin,
+                _names.cbegin() + _offsets[index]._nameBegin + prevSize);
+
+            signed sizeChange = 0 - signed(prevSize);
+			for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2)
+                i2->_nameBegin += sizeChange;
+        }
+
+		_hashNames.erase(_hashNames.begin() + index);
+		_offsets.erase(_offsets.begin() + index);
+		_types.erase(_types.begin() + index);
+	}
+
     template<typename Type>
-        std::pair<bool, Type> ParameterBox::GetParameter(ParameterName name) const
+        std::optional<Type> ParameterBox::GetParameter(ParameterName name) const
     {
         auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
         if (i!=_hashNames.cend() && *i == name._hash) {
@@ -1010,17 +1053,18 @@ namespace Utility
             auto offset = _offsets[index];
 
             if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
-                return std::make_pair(true, *(Type*)&_values[offset.second]);
+                return *(Type*)&_values[offset._valueBegin];
             } else {
                 Type result;
                 if (ImpliedTyping::Cast(
-                    &result, sizeof(result), ImpliedTyping::TypeOf<Type>(),
-                    ValueTableOffset(_values, offset.second), _types[index])) {
-                    return std::make_pair(true, result);
+                    AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
+                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
+                    _types[index])) {
+					return result;
                 }
             }
         }
-        return std::make_pair(false, Type());
+		return {};
     }
     
     bool ParameterBox::GetParameter(ParameterName name, void* dest, const ImpliedTyping::TypeDesc& destType) const
@@ -1031,13 +1075,14 @@ namespace Utility
             auto offset = _offsets[index];
 
             if (_types[index] == destType) {
-                XlCopyMemory(dest, ValueTableOffset(_values, offset.second), destType.GetSize());
+                XlCopyMemory(dest, ValueTableOffset(_values, offset._valueBegin), offset._valueSize);
                 return true;
             }
             else {
                 return ImpliedTyping::Cast(
-                    dest, destType.GetSize(), destType,
-                    ValueTableOffset(_values, offset.second), _types[index]);
+                    { dest, PtrAdd(dest, destType.GetSize()) }, destType,
+                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
+                    _types[index]);
             }
         }
         return false;
@@ -1058,15 +1103,15 @@ namespace Utility
         return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0);
     }
 
-	const void* ParameterBox::GetParameterRawValue(ParameterName name) const
+	IteratorRange<const void*> ParameterBox::GetParameterRawValue(ParameterName name) const
 	{
 		auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
 		if (i != _hashNames.cend() && *i == name._hash) {
 			size_t index = std::distance(_hashNames.cbegin(), i);
 			auto offset = _offsets[index];
-			return ValueTableOffset(_values, offset.second);
+			return {ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize)};
 		}
-		return nullptr;
+		return {};
 	}
 
     template<typename CharType> std::basic_string<CharType> ParameterBox::GetString(ParameterName name) const
@@ -1121,66 +1166,66 @@ namespace Utility
         return false;
     }
 
-    template void ParameterBox::SetParameter(const utf8 name[], uint32 value);
-    template std::pair<bool, uint32> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, uint32 value);
+    template std::optional<uint32> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], int32 value);
-    template std::pair<bool, int32> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, int32 value);
+    template std::optional<int32> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], uint64 value);
-    template std::pair<bool, uint64> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, uint64 value);
+    template std::optional<uint64> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], int64 value);
-    template std::pair<bool, int64> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, int64 value);
+    template std::optional<int64> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], bool value);
-    template std::pair<bool, bool> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, bool value);
+    template std::optional<bool> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], float value);
-    template std::pair<bool, float> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, float value);
+    template std::optional<float> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], double value);
-    template std::pair<bool, double> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, double value);
+    template std::optional<double> ParameterBox::GetParameter(ParameterName name) const;
 
 
-    template void ParameterBox::SetParameter(const utf8 name[], Float2 value);
-    template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float2 value);
+    template std::optional<Float2> ParameterBox::GetParameter(ParameterName name) const;
     
-    template void ParameterBox::SetParameter(const utf8 name[], Float3 value);
-    template std::pair<bool, Float3> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3 value);
+    template std::optional<Float3> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], Float4 value);
-    template std::pair<bool, Float4> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float4 value);
+    template std::optional<Float4> ParameterBox::GetParameter(ParameterName name) const;
 
 
-    template void ParameterBox::SetParameter(const utf8 name[], Float3x3 value);
-    template std::pair<bool, Float3x3> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x3 value);
+    template std::optional<Float3x3> ParameterBox::GetParameter(ParameterName name) const;
     
-    template void ParameterBox::SetParameter(const utf8 name[], Float3x4 value);
-    template std::pair<bool, Float3x4> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x4 value);
+    template std::optional<Float3x4> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], Float4x4 value);
-    template std::pair<bool, Float4x4> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Float4x4 value);
+    template std::optional<Float4x4> ParameterBox::GetParameter(ParameterName name) const;
 
 
-    template void ParameterBox::SetParameter(const utf8 name[], UInt2 value);
-    template std::pair<bool, UInt2> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt2 value);
+    template std::optional<UInt2> ParameterBox::GetParameter(ParameterName name) const;
     
-    template void ParameterBox::SetParameter(const utf8 name[], UInt3 value);
-    template std::pair<bool, UInt3> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt3 value);
+    template std::optional<UInt3> ParameterBox::GetParameter(ParameterName name) const;
 
-    template void ParameterBox::SetParameter(const utf8 name[], UInt4 value);
-    template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt4 value);
+    template std::optional<UInt4> ParameterBox::GetParameter(ParameterName name) const;
     
     
-    template void ParameterBox::SetParameter(const utf8 name[], Int2 value);
-    template std::pair<bool, Int2> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Int2 value);
+    template std::optional<Int2> ParameterBox::GetParameter(ParameterName name) const;
     
-    template void ParameterBox::SetParameter(const utf8 name[], Int3 value);
-    template std::pair<bool, Int3> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Int3 value);
+    template std::optional<Int3> ParameterBox::GetParameter(ParameterName name) const;
     
-    template void ParameterBox::SetParameter(const utf8 name[], Int4 value);
-    template std::pair<bool, Int4> ParameterBox::GetParameter(ParameterName name) const;
+    template void ParameterBox::SetParameter(StringSection<utf8> name, Int4 value);
+    template std::optional<Int4> ParameterBox::GetParameter(ParameterName name) const;
     
     
     template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;
@@ -1198,25 +1243,14 @@ namespace Utility
     uint64      ParameterBox::CalculateParameterNamesHash() const
     {
             //  Note that the parameter names are always in the same order (unless 
-            //  two names resolve to the same 32 bit hash value). So, even though
-            //  though the xor operation here doesn't depend on order, it should be
-            //  ok -- because if the same parameter names appear in two different
-            //  parameter boxes, they should have the same order.
-        return Hash64(AsPointer(_names.cbegin()), AsPointer(_names.cend()));
+            //  two different names resolve to the same 32 hash value). So we should be
+			//	ok if the same parameter names are added in 2 different orders.
+        return Hash64(AsPointer(_hashNames.cbegin()), AsPointer(_hashNames.cend()));
     }
 
     uint64      ParameterBox::CalculateHash() const
     {
         return Hash64(AsPointer(_values.cbegin()), AsPointer(_values.cend()));
-    }
-
-    const void* ParameterBox::GetValue(size_t index) const
-    {
-        if (index < _offsets.size()) {
-            auto offset = _offsets[index].second;
-            return ValueTableOffset(_values, offset);
-        }
-        return 0;    
     }
 
     size_t ParameterBox::GetCount() const
@@ -1257,22 +1291,23 @@ namespace Utility
             if (*i < *i2)       { ++i; } 
             else if (*i > *i2)  { ++i2; } 
             else if (*i == *i2) {
-                auto offsetDest = _offsets[std::distance(_hashNames.cbegin(), i)].second;
+                auto offsetDest = _offsets[std::distance(_hashNames.cbegin(), i)]._valueBegin;
                 auto typeDest   = _types[std::distance(_hashNames.cbegin(), i)];
-                auto offsetSrc  = source._offsets[std::distance(source._hashNames.cbegin(), i2)].second;
+                auto offsetSrc  = source._offsets[std::distance(source._hashNames.cbegin(), i2)];
                 auto typeSrc    = source._types[std::distance(source._hashNames.cbegin(), i2)];
                 
                 if (typeDest == typeSrc) {
                     XlCopyMemory(
                         PtrAdd(temporaryValues, offsetDest), 
-                        ValueTableOffset(source._values, offsetSrc),
-                        typeDest.GetSize());
+                        ValueTableOffset(source._values, offsetSrc._valueBegin),
+                        offsetSrc._valueSize);
                 } else {
                         // sometimes we get trival casting situations (like "unsigned int" to "int")
                         //  -- even in those cases, we execute the casting function, which will effect performance
                     bool castSuccess = ImpliedTyping::Cast(
-                        PtrAdd(temporaryValues, offsetDest), sizeof(temporaryValues)-offsetDest, typeDest,
-                        ValueTableOffset(source._values, offsetSrc), typeSrc);
+                        { PtrAdd(temporaryValues, offsetDest), PtrAdd(temporaryValues, sizeof(temporaryValues)) }, typeDest,
+                        { ValueTableOffset(source._values, offsetSrc._valueBegin), ValueTableOffset(source._values, offsetSrc._valueBegin+offsetSrc._valueSize) },
+                        typeSrc);
 
                     assert(castSuccess);  // type mis-match when attempting to build filtered hash value
                     (void)castSuccess;
@@ -1332,8 +1367,8 @@ namespace Utility
             hashNameI = SetParameterHint(
                 hashNameI,
                 *srcHashNameI,
-                (!name || !name[0]) ? nullptr : name, // SetParameterHint validates against empty strings
-                PtrAdd(source._values.begin(), srcOffsets.second),
+                { PtrAdd(source._names.begin(), srcOffsets._nameBegin), PtrAdd(source._names.begin(), srcOffsets._nameBegin+srcOffsets._nameSize) },
+                { ValueTableOffset(source._values, srcOffsets._valueBegin), ValueTableOffset(source._values, srcOffsets._valueBegin+srcOffsets._valueSize) },
                 source._types[srcIdx]);
             ++srcHashNameI;
             ++hashNameI;
@@ -1354,11 +1389,11 @@ namespace Utility
         std::vector<CharType> nameBuffer;
 
         for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
-            const auto* name = &_names[i->first];
-            const void* value = ValueTableOffset(_values, i->second);
+            const auto* name = &_names[i->_nameBegin];
+            const void* value = ValueTableOffset(_values, i->_valueBegin);
             const auto& type = _types[std::distance(_offsets.begin(), i)];
 
-            auto nameLen = XlStringLen(name);
+            auto nameLen = i->_nameSize;
             nameBuffer.resize((nameLen*2)+1);     // (note; we're assuming this stl implementation won't reallocate when resizing to smaller size)
             auto finalNameLen = Conversion::Convert(
                 AsPointer(nameBuffer.begin()), nameBuffer.size(),
@@ -1406,7 +1441,7 @@ namespace Utility
                 continue;
             }
 
-            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type, true);
+            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->_valueBegin, type, true);
             auto convertedString = Conversion::Convert<std::basic_string<CharType>>(stringFormat);
             stream.WriteAttribute(
                 AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
@@ -1430,7 +1465,7 @@ namespace Utility
     template<typename CharType>
         ParameterBox::ParameterBox(
             InputStreamFormatter<CharType>& stream, 
-            const void* defaultValue, const ImpliedTyping::TypeDesc& defaultValueType)
+            IteratorRange<const void*> defaultValue, const ImpliedTyping::TypeDesc& defaultValueType)
     {
         using namespace ImpliedTyping;
 
@@ -1450,8 +1485,8 @@ namespace Utility
             if (!success)
                 Throw(::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization"));
 
-            {
-                auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+            auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+			{
                 nameBuffer.resize(nameLen*2+1);
                 
                 auto nameConvResult = Conversion::Convert(
@@ -1461,7 +1496,8 @@ namespace Utility
                 if (nameConvResult <= 0)
                     Throw(::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization"));
 
-                nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
+				nameLen = std::min(nameBuffer.size()-1, (size_t)nameConvResult);
+                nameBuffer[nameLen] = '\0';
             }
 
             if (!value._start || !value._end) {
@@ -1475,8 +1511,7 @@ namespace Utility
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
 
                 nativeType = Parse(
-                    (const char*)value._start,
-                    (const char*)value._end,
+                    MakeStringSection((const char*)value._start, (const char*)value._end),
                     nativeTypeBuffer, sizeof(nativeTypeBuffer));
 
             } else {
@@ -1489,19 +1524,22 @@ namespace Utility
                 // a failed conversion here is valid, but it means we must treat the value as a string
                 if (valueLen>=0) {
                     nativeType = Parse(
-                        AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen,
+                        MakeStringSection(AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen),
                         nativeTypeBuffer, sizeof(nativeTypeBuffer));
                 }
 
             }
 
             if (nativeType._type != TypeCat::Void) {
-                SetParameter(AsPointer(nameBuffer.cbegin()), nativeTypeBuffer, nativeType);
+                SetParameter(
+					MakeStringSection(AsPointer(nameBuffer.cbegin()), PtrAdd(AsPointer(nameBuffer.cbegin()), nameLen)), 
+					MakeIteratorRange(nativeTypeBuffer, PtrAdd(nativeTypeBuffer, nativeType.GetSize())), 
+					nativeType);
             } else {
                     // this is just a string. We should store it as a string, in whatever character set it came in
                 SetParameter(
-                    AsPointer(nameBuffer.cbegin()),
-                    value._start, 
+                    MakeStringSection(AsPointer(nameBuffer.cbegin()), PtrAdd(AsPointer(nameBuffer.cbegin()), nameLen)),
+                    MakeIteratorRange(value.begin(), value.end()), 
                     TypeDesc(TypeOf<CharType>()._type, uint16(value._end - value._start), TypeHint::String));
             }
         }
@@ -1538,44 +1576,44 @@ namespace Utility
     template void ParameterBox::Serialize<ucs2>(OutputStreamFormatter& stream) const;
     template void ParameterBox::Serialize<ucs4>(OutputStreamFormatter& stream) const;
 
-    template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream, const void*, const ImpliedTyping::TypeDesc&);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream, const void*, const ImpliedTyping::TypeDesc&);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream, const void*, const ImpliedTyping::TypeDesc&);
+    template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void BuildStringTable(StringTable& defines, const ParameterBox& box)
     {
-        for (auto i=box.Begin(); !i.IsEnd(); ++i) {
-            const auto* name = i.Name();
-            const void* value = i.RawValue();
+        for (const auto&i:box) {
+            const auto name = i.Name();
+            auto value = i.RawValue();
             const auto& type = i.Type();
             auto stringFormat = ImpliedTyping::AsString(
-                value, size_t(i.ValueTableEnd()) - size_t(value), type);
+                value.begin(), value.size(), type);
 
             auto insertPosition = std::lower_bound(
-                defines.begin(), defines.end(), name, StringTableComparison());
+                defines.begin(), defines.end(), name.begin(), StringTableComparison());
             if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
                 insertPosition->second = stringFormat;
             } else {
-                defines.insert(insertPosition, std::make_pair(name, stringFormat));
+                defines.insert(insertPosition, std::make_pair(name.begin(), stringFormat));
             }
         }
     }
 
     void OverrideStringTable(StringTable& defines, const ParameterBox& box)
     {
-        for (auto i=box.Begin(); !i.IsEnd(); ++i) {
-            const auto* name = i.Name();
-            const void* value = i.RawValue();
+        for (const auto&i:box) {
+            const auto name = i.Name();
+            auto value = i.RawValue();
             const auto& type = i.Type();
 
             auto insertPosition = std::lower_bound(
-                defines.begin(), defines.end(), name, StringTableComparison());
+                defines.begin(), defines.end(), name.begin(), StringTableComparison());
 
             if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
                 insertPosition->second = ImpliedTyping::AsString(
-                    value, size_t(i.ValueTableEnd()) - size_t(value), type);
+                    value.begin(), value.size(), type);
             }
         }
     }
@@ -1602,14 +1640,10 @@ namespace Utility
         return combinedStrings;
     }
 
-    const void* ParameterBox::Iterator::RawValue() const
+    IteratorRange<const void*> ParameterBox::Iterator::Value::RawValue() const
     {
-        return ValueTableOffset(_box->_values, _box->_offsets[_index].second);
-    }
-
-    const void* ParameterBox::Iterator::ValueTableEnd() const
-    {
-        return AsPointer(_box->_values.end());
+		const auto& offsets = _box->_offsets[_index];
+		return {ValueTableOffset(_box->_values, offsets._valueBegin), ValueTableOffset(_box->_values, offsets._valueBegin + offsets._valueSize)};
     }
 
 }

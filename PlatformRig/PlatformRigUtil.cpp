@@ -20,7 +20,6 @@
 namespace PlatformRig
 {
 
-#if 0
     void GlobalTechniqueContext::SetInteger(const char name[], uint32 value)
     {
         _globalEnvironmentState.SetParameter((const utf8*)name, value);
@@ -44,7 +43,6 @@ namespace PlatformRig
         lua_pushnil(luaState);
         lua_setglobal(luaState, "TechContext");
     }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -466,9 +464,9 @@ namespace PlatformRig
         }
 
         if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
-            result._windingCull = ShadowProjectionDesc::WindingCull::FrontFaces;
+            result._cullMode = RenderCore::CullMode::Front;
         } else {
-            result._windingCull = ShadowProjectionDesc::WindingCull::BackFaces;
+            result._cullMode = RenderCore::CullMode::Back;
         }
 
         result._slopeScaledBias = settings._slopeScaledBias;

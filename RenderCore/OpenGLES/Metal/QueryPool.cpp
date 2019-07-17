@@ -3,31 +3,32 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "QueryPool.h"
+#include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    auto QueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
+    auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
     { 
         return QueryId_Invalid; 
     }
 
-    auto QueryPool::BeginFrame(DeviceContext& context) -> FrameId
+    auto TimeStampQueryPool::BeginFrame(DeviceContext& context) -> FrameId
     { 
         return FrameId_Invalid;
     }
 
-    void QueryPool::EndFrame(DeviceContext& context, FrameId frame)
+    void TimeStampQueryPool::EndFrame(DeviceContext& context, FrameId frame)
     {}
 
-    auto QueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
+    auto TimeStampQueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
     {
         return FrameResults { false, false, nullptr, nullptr, 0ull };
     }
 
-    QueryPool::QueryPool(ObjectFactory& factory) {}
-    QueryPool::~QueryPool() {}
+    TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory) {}
+    TimeStampQueryPool::~TimeStampQueryPool() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,14 +91,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     #if defined(GPUANNOTATIONS_ENABLE)
 
-        /*
-        #if GL_EXT_debug_marker
-            GLvoid glInsertEventMarkerEXT(GLsizei length, const GLchar *marker);
-            GLvoid glPushGroupMarkerEXT(GLsizei length, const GLchar *marker);
-            GLvoid glPopGroupMarkerEXT(void);
-        #endif
-        */
-
         void GPUAnnotation::Begin(DeviceContext& context, const char annotationName[])
         {
             #if GL_EXT_debug_marker
@@ -125,5 +118,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
     #endif
+
+    void	Annotator::Frame_Begin(IThreadContext& primaryContext, unsigned frameID) {}
+    void	Annotator::Frame_End(IThreadContext& primaryContext) {}
+
+    void	Annotator::Event(IThreadContext& context, const char name[], EventTypes::BitField types)
+    {
+        if (types & EventTypes::Flags::MarkerBegin) {
+            GPUAnnotation::Begin(*DeviceContext::Get(context), name);
+        } else if (types & EventTypes::Flags::MarkerEnd) {
+            GPUAnnotation::End(*DeviceContext::Get(context));
+        }
+    }
+
+    unsigned	Annotator::AddEventListener(const EventListener& callback) { return 0; }
+    void		Annotator::RemoveEventListener(unsigned listenerId) {}
+
+    Annotator::Annotator() {}
+    Annotator::~Annotator() {}
 
 }}

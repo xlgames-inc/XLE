@@ -10,6 +10,7 @@
 #include "../IThreadContext.h"
 #include "IDeviceDX11.h"
 #include "Metal/DX11.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11 { class DeviceContext; class ObjectFactory; } }
@@ -29,6 +30,7 @@ namespace RenderCore { namespace ImplDX11
         void                AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory);
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+		ResourcePtr GetPresentationResource();
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
@@ -37,6 +39,9 @@ namespace RenderCore { namespace ImplDX11
         const void*                             _attachedWindow;
         intrusive_ptr<ID3D::Texture2D>          _defaultDepthTarget;
         std::shared_ptr<PresentationChainDesc>  _desc;
+
+		intrusive_ptr<ID3D::Texture2D> _lastBackBuffer;
+		std::shared_ptr<RenderCore::IResource> _lastBackBufferResource;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +85,7 @@ namespace RenderCore { namespace ImplDX11
     class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;
+        std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc) /*override*/;
 
         DeviceDesc     GetDesc();
 
@@ -91,7 +96,11 @@ namespace RenderCore { namespace ImplDX11
 			const ResourceDesc& desc,
 			const std::function<SubResourceInitData(SubResourceId)>&);
 
+		FormatCapability		QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+
         ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
+
+		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
 
         Device();
         ~Device();
@@ -104,7 +113,7 @@ namespace RenderCore { namespace ImplDX11
         std::shared_ptr<ThreadContextDX11>  _immediateThreadContext;
 
         intrusive_ptr<IDXGI::Factory>       GetDXGIFactory();
-        std::unique_ptr<Metal_DX11::ObjectFactory> _mainFactory;
+        ConsoleRig::AttachablePtr<Metal_DX11::ObjectFactory> _mainFactory;
     };
 
     class DeviceDX11 : public Device, public IDeviceDX11

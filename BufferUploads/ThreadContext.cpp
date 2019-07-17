@@ -11,6 +11,10 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
 
+#if defined(WIN32) || defined(WIN64)
+	#include "../Core/WinAPI/IncludeWindows.h"
+#endif
+
 #pragma warning(disable:4127) // conditional expression is constant
 
 namespace BufferUploads
@@ -105,7 +109,7 @@ namespace BufferUploads
 
                     commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
                     if (commandList->_deviceCommandList) {
-                        immContext->CommitCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
+                        immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
                     }
                     commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);

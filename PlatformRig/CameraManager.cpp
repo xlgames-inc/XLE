@@ -13,7 +13,7 @@
 namespace PlatformRig { namespace Camera
 {
     static void UpdateCamera_Slew(  RenderCore::Techniques::CameraDesc& camera, float dt, 
-                                    const RenderOverlays::DebuggingDisplay::InputSnapshot& input)
+                                    const InputSnapshot& input)
     {
             // (Derived from Archeage/x2standalone camera mode)
         const float cl_sensitivity = 20.f;
@@ -38,7 +38,6 @@ namespace PlatformRig { namespace Camera
             //      *	-Z into the screen
             //
 
-        using namespace RenderOverlays::DebuggingDisplay;
         static const KeyId shift        = KeyId_Make("shift");
         static const KeyId ctrl         = KeyId_Make("control");
         static const KeyId forward      = KeyId_Make("w");
@@ -110,13 +109,12 @@ namespace PlatformRig { namespace Camera
     }
 
     static void UpdateCamera_Orbit( RenderCore::Techniques::CameraDesc& camera, float dt, Float3& focusPoint,
-                                    const RenderOverlays::DebuggingDisplay::InputSnapshot& input)
+                                    const InputSnapshot& input)
     {
         const float cl_sensitivity   = 20.f;
         const float fr_fspeed_scale  = 1.f;
         const float fr_speed_scale   = 1.f/3.f;
 
-        using namespace RenderOverlays::DebuggingDisplay;
         static const KeyId shift        = KeyId_Make("shift");
         static const KeyId forward      = KeyId_Make("w");
         static const KeyId back         = KeyId_Make("s");
@@ -175,7 +173,9 @@ namespace PlatformRig { namespace Camera
         camera._cameraToWorld = cameraToWorld;
     }
 
-    bool    CameraInputHandler::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    CameraInputHandler::OnInputEvent(
+		const InputContext& context, 
+		const InputSnapshot& evnt)
     {
         _accumulatedState.Accumulate(evnt, _prevAccumulatedState);
         return false;
@@ -185,7 +185,6 @@ namespace PlatformRig { namespace Camera
     {
         // UpdateCamera_Orbit(*_camera, dt, _accumulatedState);
 
-        using namespace RenderOverlays::DebuggingDisplay;
         const KeyId shift = KeyId_Make("shift");
         const KeyId tab = KeyId_Make("tab");
 

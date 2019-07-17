@@ -24,50 +24,21 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
-        VkRenderPass GetLayout() const { return _layout; }
+        VkRenderPass GetLayout() const { return _layout.get(); }
+
+		unsigned GetSubpassCount() const { return _subpassCount; }
 
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const FrameBufferProperties& props,
-            VkRenderPass layout,
             const INamedAttachments& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
 		VulkanSharedPtr<VkFramebuffer> _underlying;
-        VkRenderPass _layout;
+        VulkanSharedPtr<VkRenderPass> _layout;
+		unsigned _subpassCount;
 	};
-
-    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
-    /// Client code typically just wants to define the size and formats of frame buffers, without
-    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
-    /// of RenderPassInstance.
-    ///
-    /// This helper class allows client code to simply declare what it needs and the actual management 
-    /// of the device objects will be handled within the cache.
-    class FrameBufferPool
-    {
-    public:
-        std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-			const ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            const FrameBufferProperties& props,
-            const INamedAttachments& namedResources,
-            uint64 hashName);
-
-        VkRenderPass BuildFrameBufferLayout(
-            const ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            const INamedAttachments& namedResources,
-            const TextureSamples& samples);
-
-        FrameBufferPool();
-        ~FrameBufferPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
 
     void BeginRenderPass(
         DeviceContext& context,
@@ -77,5 +48,8 @@ namespace RenderCore { namespace Metal_Vulkan
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
+	unsigned GetCurrentSubpassIndex(DeviceContext& context);
+
 }}

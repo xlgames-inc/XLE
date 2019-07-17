@@ -6,95 +6,79 @@
 
 #pragma once
 
-#include "FontPrimitives.h"
-#include "../RenderCore/IDevice_Forward.h"
+#include "OverlayPrimitives.h"
 #include "../RenderCore/IThreadContext_Forward.h"
-#include "../BufferUploads/IBufferUploads_Forward.h"
+#include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
+#include <utility>
 
 namespace RenderOverlays
 {
-
-    struct FontChar {
-        int ch;
-        float u0, v0;
-        float u1, v1;
-        float left, top;
-        float width, height;
-        float xAdvance;
-
-        int offsetX, offsetY;
-
-        float usedTime;
-        bool needTexUpdate;
-
-        FontChar(int ich=0);
-    };
-
-    class FontTexture2D;
-
-    // font
-    #define FONT_IMAGE_TABLE_SIZE 16
-
-    class Font : public std::enable_shared_from_this<Font>
+    class Font
     {
     public:
-        Font();
-        virtual ~Font();
+		struct FontProperties
+		{
+			float _descender = 0.f, _ascender = 0.f;
+			float _ascenderExcludingAccent = 0.f;
+			float _lineHeight = 0.f;
+			float _maxAdvance = 0.f;
+		};
 
-        int GetSize()           { return _size; }
-        const char* GetPath()   { return _path; }
+		struct GlyphProperties
+		{
+			float _xAdvance = 0.f;
+		};
 
-        virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const = 0;
-        float StringWidth(      const ucs4* text,
-                                int maxLen           = -1,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        int CharCountFromWidth( const ucs4* text, 
-                                float width, 
-                                int maxLen           = -1,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        float StringEllipsis(   const ucs4* inText,
-                                ucs4* outText, 
-                                size_t outTextSize,
-                                float width,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        float CharWidth(ucs4 ch, ucs4 prev) const;
+		struct Bitmap
+		{
+			GlyphProperties _glyph;
+			signed _bitmapOffsetX = 0, _bitmapOffsetY = 0;
+			UInt2 _topLeft = UInt2{0u,0u};				// coordinates in the texture manager
+			UInt2 _bottomRight = UInt2{0u,0u};			// coordinates in the texture manager
+			FontBitmapId _textureId = FontBitmapId_Invalid;
+		};
 
-        virtual FT_Face     GetFace()                   { return nullptr; }
-        virtual FT_Face     GetFace(ucs4 /*ch*/)     { return nullptr; }
-        virtual void        TouchFontChar(const FontChar*)       {}
+		virtual FontProperties		GetFontProperties() const = 0;
+		virtual GlyphProperties		GetGlyphProperties(ucs4 ch) const = 0;
+		virtual Bitmap				GetBitmap(ucs4 ch) const = 0;
 
-        virtual float       Descent() const = 0;
-        virtual float       Ascent(bool includeAccent) const = 0;
-        virtual float       LineHeight() const = 0;
-        virtual FontTexKind GetTexKind() = 0;
-        virtual Float2     GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
+		virtual Float2		GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
+		virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
 
-        virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
-        virtual bool        IsMultiFontAdapter() const;
-
-    protected:
-        virtual FontCharID  CreateFontChar(ucs4 ch) const = 0;
-        virtual void        DeleteFontChar(FontCharID fc) = 0;
-        virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
-    
-        char    _path[MaxPath];
-        int     _size;
+		virtual ~Font();
     };
 
-    bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads);
-    void CleanupFontSystem();
-    void CheckResetFontSystem();
-    int GetFontCount(FontTexKind kind);
-    int GetFontFileCount();
+	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
+	std::shared_ptr<Font> GetDefaultFont(unsigned points=16);
 
-    std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind = FTK_GENERAL);
+	float CharWidth(		const Font& font, ucs4 ch, ucs4 prev);
+
+	template<typename CharType>
+		float StringWidth(      const Font& font,
+								StringSection<CharType> text,
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
+
+    template<typename CharType>
+		int CharCountFromWidth( const Font& font,
+								StringSection<CharType> text, 
+								float width, 
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
+
+    template<typename CharType>
+		float StringEllipsis(   const Font& font,
+								StringSection<CharType> inText,
+								CharType* outText, 
+								size_t outTextSize,
+								float width,
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
 
     struct DrawTextOptions 
     {
@@ -120,48 +104,20 @@ namespace RenderOverlays
         }
     };
 
-    enum UiAlign 
-    {
-        UIALIGN_TOP_LEFT = 0,
-        UIALIGN_TOP = 1,
-        UIALIGN_TOP_RIGHT = 2,
-        UIALIGN_LEFT = 3,
-        UIALIGN_CENTER = 4,
-        UIALIGN_RIGHT = 5,
-        UIALIGN_BOTTOM_LEFT = 6,
-        UIALIGN_BOTTOM = 7,
-        UIALIGN_BOTTOM_RIGHT = 8,
-    };
-
-    enum UI_TEXT_STATE {
-        UI_TEXT_STATE_NORMAL = 0, 
-        UI_TEXT_STATE_REVERSE, 
-        UI_TEXT_STATE_INACTIVE_REVERSE, 
-    };
-
     class TextStyle
     {
     public:
-        DrawTextOptions			_options;
-        // std::shared_ptr<Font>	_font;
-        unsigned                _pointSize;
+		DrawTextOptions			_options;
+	};
+        
+    float       Draw(   RenderCore::IThreadContext& threadContext,
+						const Font& font, const TextStyle& style,
+                        float x, float y, StringSection<ucs4> text,
+                        float spaceExtra, float scale, float mx, float depth,
+                        unsigned colorARGB, bool applyDescender, Quad* q);
 
-        TextStyle(const std::shared_ptr<Font>&, const DrawTextOptions& options = DrawTextOptions());
-        TextStyle(unsigned pointSize, const DrawTextOptions& options = DrawTextOptions());
-        ~TextStyle();
-
-        float       Draw(   RenderCore::IThreadContext& threadContext, 
-                            float x, float y, const ucs4 text[], int maxLen,
-                            float spaceExtra, float scale, float mx, float depth,
-                            unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const;
-
-        Float2     AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen = -1);
-        Float2     AlignText(const Quad& q, UiAlign align, float width, float indent);
-        float       StringWidth(const ucs4* text, int maxlen = -1);
-        int         CharCountFromWidth(const ucs4* text, float width);
-        float       SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width);
-        float       CharWidth(ucs4 ch, ucs4 prev);
-    };
+    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, StringSection<ucs4> text);
+    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, float width, float indent);
 
 }
 

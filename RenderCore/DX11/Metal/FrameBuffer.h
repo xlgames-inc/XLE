@@ -23,8 +23,10 @@ namespace RenderCore { namespace Metal_DX11
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+		unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
 		FrameBuffer(
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const INamedAttachments& namedResources);
 		FrameBuffer();
@@ -45,34 +47,8 @@ namespace RenderCore { namespace Metal_DX11
 			LoadStore _dsvLoad;
 			unsigned _dsvClearValue;
         };
-        Subpass     _subpasses[s_maxSubpasses];
-        unsigned    _subpassCount;
+        std::vector<Subpass> _subpasses;
 	};
-
-    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
-    /// Client code typically just wants to define the size and formats of frame buffers, without
-    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
-    /// of RenderPassInstance.
-    ///
-    /// This helper class allows client code to simply declare what it needs and the actual management 
-    /// of the device objects will be handled within the cache.
-    class FrameBufferPool
-    {
-    public:
-        std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-			const ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            const FrameBufferProperties& props,
-            const INamedAttachments& namedResources,
-            uint64 hashName);
-
-        FrameBufferPool();
-        ~FrameBufferPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-
 
     void BeginRenderPass(
         DeviceContext& context,
@@ -82,6 +58,8 @@ namespace RenderCore { namespace Metal_DX11
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
+	unsigned GetCurrentSubpassIndex(DeviceContext& context);
 
 }}

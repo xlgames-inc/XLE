@@ -43,10 +43,33 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalDependencies>dxguid.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Shared\AnimationDecisionTree.cpp" />
@@ -96,6 +119,12 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\SceneEngine\Project\SceneEngine.vcxproj">
       <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
+      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Tools\EntityInterface\Project\EntityInterface.vcxproj">
+      <Project>{a3ec21db-3586-490f-b30b-5da403d908b5}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Tools\ToolsRig\Project\ToolsRig.vcxproj">
       <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>

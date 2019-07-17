@@ -15,33 +15,14 @@ namespace Assets
 	class DependentFileState;
 	class DependencyValidation;
 	class IAssetCompiler;
-	class ICompileMarker;
+	class IArtifactCompileMarker;
 	class IFileInterface;
 }
 
-namespace Utility { class OutputStream; }
+namespace Utility { class OutputStream; class BasicFile; }
 
 namespace Assets { namespace IntermediateAssets
 {
-	class Store;
-
-	class CompilerSet
-	{
-	public:
-		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
-        void RemoveCompiler(uint64_t typeCode);
-		std::shared_ptr<ICompileMarker> PrepareAsset(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-			Store& store);
-		void StallOnPendingOperations(bool cancelAll);
-
-		CompilerSet();
-		~CompilerSet();
-	protected:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
-	};
-
 	/// <summary>Archive of compiled intermediate assets</summary>
 	/// When compile operations succeed, the resulting artifacts are cached in an IntermediateAssets::Store,
 	/// which is typically in permanent memory (ie, on disk).
@@ -90,8 +71,18 @@ namespace Assets { namespace IntermediateAssets
 		Store& operator=(const Store&) = delete;
 
 	protected:
-		std::string _baseDirectory;
-		std::unique_ptr<OutputStream> _markerFile;
+		mutable std::string _resolvedBaseDirectory;
+		mutable std::unique_ptr<BasicFile> _markerFile;
+
+		struct ConstructorOptions
+		{
+			::Assets::rstring _baseDir;
+			::Assets::rstring _versionString;
+			::Assets::rstring _configString;
+		};
+		ConstructorOptions _constructorOptions;
+
+		void ResolveBaseDirectory() const;
 	};
 }}
 

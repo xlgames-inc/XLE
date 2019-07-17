@@ -9,7 +9,6 @@
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include "../../../Utility/Threading/Mutex.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -90,7 +89,8 @@ namespace RenderCore { namespace Metal_DX11
         ObjectFactory(const ObjectFactory&) = delete;
     private:
         ID3D::Device* _device;
-		mutable Threading::Mutex _creationLock;
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
     };
 
 	ObjectFactory& GetObjectFactory(IDevice& device);

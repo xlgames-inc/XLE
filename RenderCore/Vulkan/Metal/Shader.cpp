@@ -6,6 +6,9 @@
 
 #include "Shader.h"
 #include "ObjectFactory.h"
+#include "DeviceContext.h"
+#include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"		// (just to get depval)
 #include "../../ShaderService.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
@@ -18,6 +21,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     using ::Assets::ResChar;
 
+	static CompiledShaderByteCode s_null;
+
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,69 +30,93 @@ namespace RenderCore { namespace Metal_Vulkan
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& ps)
     {
+		_validationCallback = std::make_shared<Assets::DependencyValidation>();
+
 		if (vs.GetStage() != ShaderStage::Null) {
 			assert(vs.GetStage() == ShaderStage::Vertex);
             _modules[(unsigned)ShaderStage::Vertex] = factory.CreateShaderModule(vs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Vertex] = vs;
+			assert(_modules[(unsigned)ShaderStage::Vertex]);
+			Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
 		}
 
 		if (ps.GetStage() != ShaderStage::Null) {
 			assert(ps.GetStage() == ShaderStage::Pixel);
             _modules[(unsigned)ShaderStage::Pixel] = factory.CreateShaderModule(ps.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Pixel] = ps;
+			assert(_modules[(unsigned)ShaderStage::Pixel]);
+			Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
 		}
 
-		assert(_modules[(unsigned)ShaderStage::Vertex]);
-		assert(_modules[(unsigned)ShaderStage::Pixel]);
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
+		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
+		Assets::RegisterAssetDependency(_validationCallback, globals._graphicsRootSignatureFile->GetDependencyValidation());
+		_pipelineLayoutConfig = globals._mainGraphicsConfig;
     }
     
-    ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
+    ShaderProgram::ShaderProgram(   ObjectFactory& factory,
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
-									const CompiledShaderByteCode& ps)
+									const CompiledShaderByteCode& ps,
+									StreamOutputInitializers so)
     :   ShaderProgram(factory, vs, ps)
     {
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
             _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(gs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
+			assert(_modules[(unsigned)ShaderStage::Geometry]);
+			Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
 		}
-
-        Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
     }
 
-    ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
+    ShaderProgram::ShaderProgram(   ObjectFactory& factory,
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
 									const CompiledShaderByteCode& ps,
 									const CompiledShaderByteCode& hs,
-									const CompiledShaderByteCode& ds)
-    :   ShaderProgram(factory, vs, gs, ps)
+									const CompiledShaderByteCode& ds,
+									StreamOutputInitializers so)
+    :   ShaderProgram(factory, vs, gs, ps, so)
     {
 		if (hs.GetStage() != ShaderStage::Null) {
 			assert(hs.GetStage() == ShaderStage::Hull);
             _modules[(unsigned)ShaderStage::Hull] = factory.CreateShaderModule(hs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Hull] = hs;
+			assert(_modules[(unsigned)ShaderStage::Hull]);
+			Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
 		}
 
 		if (ds.GetStage() != ShaderStage::Null) {
 			assert(ds.GetStage() == ShaderStage::Domain);
             _modules[(unsigned)ShaderStage::Domain] = factory.CreateShaderModule(ds.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Domain] = ds;
+			assert(_modules[(unsigned)ShaderStage::Domain]);
+			Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
 		}
-
-        Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
-		Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
     }
 
 	ShaderProgram::ShaderProgram() {}
     ShaderProgram::~ShaderProgram() {}
 
     bool ShaderProgram::DynamicLinkingEnabled() const { return false; }
+
+	void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline) const
+    {
+        if (pipeline._shaderProgram != this) {
+            pipeline._shaderProgram = this;
+			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
+            pipeline._pipelineStale = true;
+        }
+    }
+
+	void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const
+	{
+		if (pipeline._shaderProgram != this) {
+            pipeline._shaderProgram = this;
+			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
+            pipeline._pipelineStale = true;
+        }
+	}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -101,6 +130,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
+
+		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
+		Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
+		_pipelineLayoutConfig = globals._mainComputeConfig;
     }
 
     ComputeShader::ComputeShader() {}
@@ -256,6 +289,35 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
+	}
+
+	void ComputeShader::ConstructToFuture(
+		::Assets::AssetFuture<ComputeShader>& future,
+		StringSection<::Assets::ResChar> codeName,
+		StringSection<::Assets::ResChar> definesTable)
+	{
+		auto code = MakeByteCodeFuture(ShaderStage::Compute, codeName, definesTable);
+
+		future.SetPollingFunction(
+			[code](::Assets::AssetFuture<ComputeShader>& thatFuture) -> bool {
+
+			auto codeActual = code->TryActualize();
+
+			if (!codeActual) {
+				auto codeState = code->GetAssetState();
+				if (codeState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, code);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShader = std::make_shared<ComputeShader>(GetObjectFactory(), *codeActual);
+			thatFuture.SetAsset(std::move(newShader), {});
 			return false;
 		});
 	}

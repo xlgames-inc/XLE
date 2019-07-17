@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include "LightingParser.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"       // for DelayStep
+#include "../FixedFunctionModel/DelayedDrawCall.h"       // for DelayStep
 #include "../Assets/AssetsCore.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/UTFUtils.h"
 
-namespace RenderCore { namespace Assets { class ModelCache; }}
+namespace FixedFunctionModel { class ModelCache; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace Utility
 {
     template<typename Type> class InputStreamFormatter;
@@ -79,32 +79,31 @@ namespace SceneEngine
 		::Assets::DepValPtr _depVal;
     };
 
+#if 0
     class LightingParserContext;
     class VegetationSpawnResources;
     class PreparedScene;
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& resources);
 
-    bool VegetationSpawn_DrawInstances(
-        RenderCore::Metal::DeviceContext* context,
-        VegetationSpawnResources& resources,
-        unsigned instanceId, unsigned indexCount, 
-        unsigned startIndexLocation, unsigned baseVertexLocation);
+	class ILightingParserPlugin;
 
     class VegetationSpawnManager
     {
     public:
         void Render(
-            RenderCore::Metal::DeviceContext& context, 
-            LightingParserContext& lightingParserContext,
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parsingContext,
             unsigned techniqueIndex,
-            RenderCore::Assets::DelayStep delayStep);
-        bool HasContent(RenderCore::Assets::DelayStep delayStep) const;
+            FixedFunctionModel::DelayStep delayStep);
+        bool HasContent(FixedFunctionModel::DelayStep delayStep) const;
 
         std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
 
@@ -114,12 +113,26 @@ namespace SceneEngine
         const VegetationSpawnConfig& GetConfig() const;
 
         VegetationSpawnManager(
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~VegetationSpawnManager();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
         friend class VegetationSpawnPlugin;
     };
+#else
+	class ILightingParserPlugin;
+	class VegetationSpawnManager
+    {
+	public:
+		const VegetationSpawnConfig& GetConfig() const;
+		std::shared_ptr<ILightingParserPlugin> GetParserPlugin() { return nullptr; }
+		VegetationSpawnManager(
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+        ~VegetationSpawnManager();
+	};
+#endif
+
+
 }
 

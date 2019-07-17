@@ -11,7 +11,7 @@
 #include "../RenderCore/Types_Forward.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
+#include "../FixedFunctionModel/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
 	#include "../RenderCore/DX11/Metal/DX11.h"
@@ -24,6 +24,7 @@
 namespace RenderOverlays { class Font; }
 namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; class IResource; }
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { namespace Techniques { class RenderPassInstance; class ParsingContext; }}
 
 namespace Utility
 {
@@ -32,6 +33,9 @@ namespace Utility
 
 namespace SceneEngine
 {
+	void SetFrameGlobalStates(RenderCore::Metal::DeviceContext& context);
+    void ReturnToSteadyState(RenderCore::Metal::DeviceContext& context);
+
         // todo -- avoid D3D11 specific types here
 #if GFXAPI_ACTIVE == GFXAPI_DX11
     class SavedTargets
@@ -135,15 +139,18 @@ namespace SceneEngine
 
     void CheckSpecularIBLMipMapCount(const RenderCore::Metal::ShaderResourceView& srv);
 
-    class LightingParserContext;
     void DrawPendingResources(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font);
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font);
+	void DrawString(   
+        RenderCore::IThreadContext& context, 
+		const std::shared_ptr<RenderOverlays::Font>& font,
+		StringSection<> string);
 
     class FormatStack
     {
@@ -210,8 +217,7 @@ namespace SceneEngine
         ;
     }
 
-    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
-        SceneParseSettings::BatchFilter filter);
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(RenderCore::Techniques::BatchFilter filter);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -303,6 +309,10 @@ namespace SceneEngine
         std::pair<UInt2, UInt2> source,
         CopyFilter filter = CopyFilter::Bilinear,
         ProtectState::States::BitField protectStates = ~0u);
+
+	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size);
+	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size);
+	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

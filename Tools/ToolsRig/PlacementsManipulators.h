@@ -12,15 +12,14 @@
 #include "../../Core/Types.h"
 #include <memory>
 
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
+namespace PlatformRig { class IInputListener; }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class TechniqueContext; } }
 
 namespace SceneEngine
 {
     class TerrainManager;
     class PlacementsManager;
     class PlacementsRenderer;
-    class IntersectionTestContext;
     class LightingParserContext;
     class PlacementsEditor;
     class PlacementCellSet;
@@ -30,6 +29,8 @@ namespace SceneEngine
 
 namespace ToolsRig
 {
+	class VisCameraSettings;
+
     /// <summary>Basic tools for placing and arranging objects<summary>
     /// To author a world, we need to be able to select, move and place
     /// objects. Normally this kind of work would be done in a complex
@@ -43,15 +44,16 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& projectionDesc);
         void RenderToScene(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputLister();
+        std::shared_ptr<PlatformRig::IInputListener> GetInputLister();
 
         PlacementsManipulatorsManager(
-            std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placementCellSet,
-            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext);
+            const std::shared_ptr<SceneEngine::PlacementsManager>& placementsManager,
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCellSet,
+            const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+            const std::shared_ptr<VisCameraSettings>& camera,
+			const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~PlacementsManipulatorsManager();
     protected:
         class Pimpl;

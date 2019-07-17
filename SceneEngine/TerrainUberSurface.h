@@ -23,11 +23,11 @@
 namespace Utility { class MemoryMappedFile; }
 namespace ConsoleRig { class IProgress; }
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
     template <typename Type> class TerrainUberSurface;
-    class LightingParserContext;
 
     typedef std::pair<uint16, uint16> ShadowSample;
     typedef TerrainUberSurface<float> TerrainUberHeightsSurface;
@@ -100,7 +100,7 @@ namespace SceneEngine
             unsigned width, unsigned height, 
             const ImpliedTyping::TypeDesc& type);
 
-        void    RenderDebugging(RenderCore::IThreadContext& threadContext, SceneEngine::LightingParserContext& context);
+        void    RenderDebugging(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& context);
 
 		std::pair<UInt2, UInt2> GetLock() const;
         void    FlushLockToDisk(ConsoleRig::IProgress* progress = nullptr);
@@ -149,7 +149,7 @@ namespace SceneEngine
         bool    Erosion_IsPrepared() const;
         void    Erosion_RenderDebugging(
             RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             const TerrainCoordinateSystem& coords);
 
         TerrainUberHeightsSurface* GetUberSurface();

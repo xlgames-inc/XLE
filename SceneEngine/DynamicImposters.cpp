@@ -18,10 +18,11 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
-#include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
-#include "../RenderCore/Assets/SharedStateSet.h"
-#include "../RenderCore/Assets/ShaderVariationSet.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
+#include "../FixedFunctionModel/ModelRunTime.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
+#include "../FixedFunctionModel/SharedStateSet.h"
+#include "../FixedFunctionModel/PreboundShaders.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -215,10 +216,10 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        RenderCore::Assets::ShaderVariationSet   _material;
+        FixedFunctionModel::SimpleShaderVariationManager   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
-        std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
+        std::shared_ptr<Techniques::IRenderStateDelegate> _stateRes;
 
             //// //// //// //// Metrics //// //// //// ////
         unsigned    _overflowCounter;
@@ -503,19 +504,17 @@ namespace SceneEngine
 
             // bind the atlas textures to the find slots (eg, over DiffuseTexture, NormalsTexture, etc)
         for (unsigned c=0; c<_pimpl->_atlas._layers.size(); ++c)
-            context.BindPS(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
 
         // shader.Apply(context, parserContext, {std::move(spriteTable)});
-        const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
-        shader._shader._boundUniforms->Apply(
-            context, 
-            parserContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
-        context.Bind(*shader._shader._boundLayout);
+        ConstantBufferView cbs[] = {&_pimpl->_spriteTableCB};
+        shader._shader._boundUniforms->Apply(context, 0, parserContext.GetGlobalUniformsStream());
+		shader._shader._boundUniforms->Apply(context, 1, UniformsStream{MakeIteratorRange(cbs)});
         context.Bind(*shader._shader._shaderProgram);
         
-        Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
-        context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
+        auto tempvb = MakeMetalVB(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
+		VertexBufferView vbv[] = { &tempvb };
+		shader._shader._boundLayout->Apply(context, MakeIteratorRange(vbv));
         context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
@@ -726,17 +725,16 @@ namespace SceneEngine
         }
     }
 
-    class CustomStateResolver : public Techniques::IStateSetResolver
+    class CustomStateResolver : public Techniques::IRenderStateDelegate
     {
     public:
         auto Resolve(
-            const Techniques::RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
+            const RenderCore::Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> Techniques::CompiledRenderStateSet
         {
-            return Techniques::CompiledRenderStateSet(
+            return Techniques::CompiledRenderStateSet{
                 Metal::BlendState(_blendState), 
-                Techniques::BuildDefaultRastizerState(states));
+				Techniques::BuildDefaultRastizerState(states)};
         }
 
         virtual uint64 GetHash() { return typeid(CustomStateResolver).hash_code(); }
@@ -776,7 +774,7 @@ namespace SceneEngine
         
         context.Bind(
             ResourceList<Metal::RenderTargetView, dimof(rtvs)>(
-                std::initializer_list<const Metal::RenderTargetView>(rtvs, &rtvs[(unsigned)layerCount])), 
+                std::initializer_list<Metal::RenderTargetView>(rtvs, &rtvs[(unsigned)layerCount])), 
             &_atlas._tempDSV.DSV());
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);
@@ -819,7 +817,7 @@ namespace SceneEngine
                 parserContext.SetGlobalCB(
                     context, Techniques::TechniqueContext::CB_GlobalTransform,
                     &globalTransform, sizeof(globalTransform));
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 0u);
+                parserContext.GetSubframeShaderSelectors().SetParameter(u("DECAL_BLEND"), 0u);
             });
 
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -829,22 +827,22 @@ namespace SceneEngine
 
             // We need to use the "DECAL_BLEND" mode.
             // This writes the blending alpha to the destination target
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 1u);
+        parserContext.GetSubframeShaderSelectors().SetParameter(u("DECAL_BLEND"), 1u);
 
             // Now we can just render the object.
             // Let's use a temporary DelayedDrawCallSet
             // todo -- it might be ideal to use an MSAA target for this step
 
-        RenderCore::Assets::DelayedDrawCallSet drawCalls(typeid(ModelRenderer).hash_code());
+        FixedFunctionModel::DelayedDrawCallSet drawCalls(typeid(FixedFunctionModel::ModelRenderer).hash_code());
         ob._renderer->Prepare(
             drawCalls, *_sharedStateSet,
-            modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
-        ModelRenderer::Sort(drawCalls);
+            modelToWorld, FixedFunctionModel::MeshToModel(*ob._scaffold));
+        FixedFunctionModel::ModelRenderer::Sort(drawCalls);
 
         auto marker = _sharedStateSet->CaptureState(context, _stateRes, nullptr);
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::OpaqueRender);
 
             // We also have to render the rest of the geometry (using the same technique)
             // otherwise this geometry will never be rendered.
@@ -853,12 +851,12 @@ namespace SceneEngine
 
         context.Bind(Techniques::CommonResources()._dssReadOnly);
 
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::PostDeferred);
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::SortedBlending);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::PostDeferred);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::SortedBlending);
     }
 
     void DynamicImposters::Reset()
@@ -1005,12 +1003,12 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = RenderCore::Assets::ShaderVariationSet(
-            InputLayout(s_inputLayout, dimof(s_inputLayout)),
+        _pimpl->_material = FixedFunctionModel::SimpleShaderVariationManager(
+            MakeIteratorRange(s_inputLayout),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
 
-        _pimpl->_spriteTableCB = Metal::ConstantBuffer(nullptr, sizeof(UInt4)*2048);
+        _pimpl->_spriteTableCB = MakeMetalCB(nullptr, sizeof(UInt4)*2048);
     }
 
     DynamicImposters::~DynamicImposters() {}

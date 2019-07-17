@@ -1,9 +1,11 @@
 #pragma once
 
+#include "DepVal.h"
+#if !defined(__CLR_VER)
 #include "AssetFuture.h"
 #include "DeferredConstruction.h"
-#include "DepVal.h"
 #include "../Utility/Threading/Mutex.h"
+#endif
 #include <memory>
 
 namespace Assets
@@ -37,6 +39,7 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(__CLR_VER)
 	template<typename AssetType>
 		class DefaultAssetHeap : public IDefaultAssetHeap
 	{
@@ -117,7 +120,7 @@ namespace Assets
 		if (shadowing != _shadowingAssets.end() && shadowing->first == hash) {
 			shadowing->second->SimulateChange(); 
 			if (newShadowingAsset) {
-				shadowing->second->SetAsset(std::move(newShadowingAsset), nullptr);
+				shadowing->second->SetAssetForeground(std::move(newShadowingAsset), nullptr);
 			} else {
 				_shadowingAssets.erase(shadowing);
 			}
@@ -127,7 +130,7 @@ namespace Assets
 		if (newShadowingAsset) {
 			auto stringInitializer = Internal::AsString(initialisers...);	// (used for tracking/debugging purposes)
 			auto newShadowingFuture = std::make_shared<AssetFuture<AssetType>>(stringInitializer);
-			newShadowingFuture->SetAsset(std::move(newShadowingAsset), nullptr);
+			newShadowingFuture->SetAssetForeground(std::move(newShadowingAsset), nullptr);
 			_shadowingAssets.emplace(shadowing, std::make_pair(hash, std::move(newShadowingFuture)));
 		}
 
@@ -187,5 +190,7 @@ namespace Assets
 		{
 			return typeid(AssetType).name();
 		}
+
+#endif
 
 }

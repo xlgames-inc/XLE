@@ -108,6 +108,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EGL", "", "" }; }
 
+        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
         EGLDisplay GetDisplay() const { return _display; };
         EGLConfig GetRootContextConfig() const { return _rootContextConfig; }
         unsigned GetGLESVersion() const;

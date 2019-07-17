@@ -21,6 +21,8 @@ namespace Assets
 	class IFileInterface;
 	using IFileMonitor = Utility::OnChangeCallback;
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
+	using FileSystemId = unsigned;
+	static const FileSystemId FileSystemId_Invalid = ~0u;
 
 	static const FileShareMode::BitField FileShareMode_Default = FileShareMode::Read;
 
@@ -75,6 +77,103 @@ namespace Assets
 		virtual	IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) = 0;
 		virtual	FileDesc	TryGetDesc(const Marker& marker) = 0;
 		virtual				~IFileSystem();
+	};
+
+	class ISearchableFileSystem
+	{
+	public:
+		virtual std::vector<IFileSystem::Marker> FindFiles(
+			StringSection<utf8> baseDirectory,
+			StringSection<utf8> regexMatchPattern) = 0;
+		virtual std::vector<std::basic_string<utf8>> FindSubDirectories(
+			StringSection<utf8> baseDirectory) = 0;
+		virtual ~ISearchableFileSystem();
+	};
+
+	class FileSystemWalker
+	{
+	public:
+		class DirectoryIterator 
+		{
+		public:
+			FileSystemWalker get() const;
+			FileSystemWalker operator*() const { return get(); }
+			std::basic_string<utf8> Name() const;
+			friend bool operator==(const DirectoryIterator& lhs, const DirectoryIterator& rhs)
+			{
+				assert(lhs._helper == rhs._helper);
+				return lhs._idx == rhs._idx;
+			}
+			friend bool operator!=(const DirectoryIterator& lhs, const DirectoryIterator& rhs)
+			{
+				return !operator==(lhs, rhs);
+			}
+			void operator++() { ++_idx; }
+			void operator++(int) { ++_idx; }
+		private:
+			DirectoryIterator(const FileSystemWalker* helper, unsigned idx);
+			friend class FileSystemWalker;
+			const FileSystemWalker* _helper;
+			unsigned _idx;
+		};
+
+		class FileIterator
+		{
+		public:
+			struct Value
+			{
+				IFileSystem::Marker _marker;
+				FileSystemId _fs;
+			};
+			Value get() const;
+			Value operator*() const { return get(); }
+			FileDesc Desc() const;
+			friend bool operator==(const FileIterator& lhs, const FileIterator& rhs)
+			{
+				assert(lhs._helper == rhs._helper);
+				return lhs._idx == rhs._idx;
+			}
+			friend bool operator!=(const FileIterator& lhs, const FileIterator& rhs)
+			{
+				return !operator==(lhs, rhs);
+			}
+			void operator++() { ++_idx; }
+			void operator++(int) { ++_idx; }
+		private:
+			FileIterator(const FileSystemWalker* helper, unsigned idx);
+			friend class FileSystemWalker;
+			const FileSystemWalker* _helper;
+			unsigned _idx;
+		};
+		
+		DirectoryIterator begin_directories() const;
+		DirectoryIterator end_directories() const;
+
+		FileIterator begin_files() const;
+		FileIterator end_files() const;
+
+		FileSystemWalker RecurseTo(const std::basic_string<utf8>& subDirectory) const;
+
+		FileSystemWalker();
+		~FileSystemWalker();
+		FileSystemWalker(FileSystemWalker&&);
+		FileSystemWalker& operator=(FileSystemWalker&&);
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+
+		struct StartingFS
+		{
+			std::basic_string<utf8> _pendingDirectories;
+			std::basic_string<utf8> _internalPoint;
+			std::shared_ptr<ISearchableFileSystem> _fs;
+			FileSystemId _fsId = FileSystemId_Invalid;
+		};
+
+		FileSystemWalker(std::vector<StartingFS>&& fileSystems);
+
+		friend class MountingTree;
+		friend FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 	};
 
 	/// <summary>Description of a file object within a filesystem</summary>
@@ -146,10 +245,13 @@ namespace Assets
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
+		static IFileSystem* GetFileSystem(FileSystemId id);
+
+		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory = u(""));
+
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);
         static void Shutdown();
-
 
 		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<char> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default)
 			{ return TryOpen(result, MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), openMode, shareMode); }
@@ -174,6 +276,7 @@ namespace Assets
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 	T1(CharType) IFileSystem::IOReason TryMonitor(IFileSystem& fs, StringSection<CharType> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
+	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
 	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);

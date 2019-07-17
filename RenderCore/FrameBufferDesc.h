@@ -46,8 +46,6 @@ namespace RenderCore
         float _width = 1.0f, _height = 1.0f;
         unsigned _arrayLayerCount = 0u;
 
-        TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::UndefinedAspect;
-
         enum class DimensionsMode
         {
             Absolute,                   ///< _width and _height define absolute pixel values
@@ -59,11 +57,12 @@ namespace RenderCore
         {
             enum Enum
             {
-                Multisampled    = 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
-                ShaderResource  = 1<<1,     ///< allow binding as a shader resource after the render pass has finished
-                TransferSource  = 1<<2,     ///< allow binding as a transfer source after the render pass has finished
-                RenderTarget    = 1<<3,
-                DepthStencil    = 1<<4
+                Multisampled		= 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
+                ShaderResource		= 1<<1,     ///< allow binding as a shader resource after the render pass has finished
+                TransferSource		= 1<<2,     ///< allow binding as a transfer source after the render pass has finished
+                RenderTarget		= 1<<3,
+                DepthStencil		= 1<<4,
+				PresentationSource	= 1<<5
             };
             using BitField = unsigned;
         };
@@ -154,6 +153,8 @@ namespace RenderCore
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
+		static FrameBufferDesc s_empty;
+
 	private:
         std::vector<Attachment>         _attachments;
         std::vector<SubpassDesc>        _subpasses;
@@ -185,8 +186,11 @@ namespace RenderCore
 	public:
 		virtual IResourcePtr GetResource(AttachmentName resName) const = 0;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
+		virtual const FrameBufferProperties& GetFrameBufferProperties() const = 0;
 		virtual ~INamedAttachments();
 	};
+
+	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect = TextureViewDesc::Aspect::UndefinedAspect);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

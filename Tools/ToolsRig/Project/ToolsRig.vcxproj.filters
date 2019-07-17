@@ -5,7 +5,6 @@
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
     <ClCompile Include="..\VisualisationUtils.cpp" />
-    <ClCompile Include="..\MaterialBinder.cpp" />
     <ClCompile Include="..\TerrainConversion.cpp">
       <Filter>Terrain</Filter>
     </ClCompile>
@@ -38,13 +37,13 @@
     </ClCompile>
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\DivergentAsset.cpp" />
+    <ClCompile Include="..\MaterialOverridesDelegate.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\VisualisationUtils.h" />
     <ClInclude Include="..\VisualisationGeo.h" />
-    <ClInclude Include="..\MaterialBinder.h" />
     <ClInclude Include="..\TerrainConversion.h">
       <Filter>Terrain</Filter>
     </ClInclude>
@@ -83,6 +82,7 @@
     </ClInclude>
     <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\DivergentAsset.h" />
+    <ClInclude Include="..\MaterialOverridesDelegate.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Terrain">

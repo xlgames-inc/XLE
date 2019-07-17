@@ -382,7 +382,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return intrusive_ptr<CommandList>();
     }
 
-    void                            DeviceContext::CommitCommandList(CommandList& commandList)
+    void                            DeviceContext::ExecuteCommandList(CommandList& commandList)
     {
 
     }

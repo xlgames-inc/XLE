@@ -6,14 +6,12 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; class IMaterialDelegate; } }
 namespace SceneEngine 
 {
-    class IntersectionTestContext; 
     class IntersectionTestScene; 
     class TerrainManager;
     class PlacementsEditor;
@@ -23,7 +21,7 @@ namespace SceneEngine
 }
 
 namespace ConsoleRig { class IProgress; }
-namespace Assets { class DirectorySearchRules; }
+namespace ToolsRig { class MessageRelay; }
 
 namespace GUILayer
 {
@@ -32,6 +30,14 @@ namespace GUILayer
 	public:
 		static System::String^ MakeAssetName(System::String^ input);
 		static System::UInt64 HashID(System::String^ string);
+
+		ref struct AssetExtension
+		{
+			System::String^ Extension;
+			System::String^ Description;
+		};
+		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetModelExtensions();
+		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetAnimationSetExtensions();
 	};
 
     public ref class TechniqueContextWrapper
@@ -39,19 +45,46 @@ namespace GUILayer
     public:
         clix::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 
-        TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        TechniqueContextWrapper(const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~TechniqueContextWrapper();
     };
 
-    public ref class IntersectionTestContextWrapper
-    {
-    public:
-        clix::shared_ptr<SceneEngine::IntersectionTestContext> _context;
+	public ref class TechniqueDelegateWrapper
+	{
+	public:
+		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 
-		SceneEngine::IntersectionTestContext& GetNative();
-        IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
-        ~IntersectionTestContextWrapper();
-    };
+        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
+		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
+        ~TechniqueDelegateWrapper();
+	};
+
+	public ref class MaterialDelegateWrapper
+	{
+	public:
+		clix::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
+
+		MaterialDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& materialDelegate);
+		MaterialDelegateWrapper(RenderCore::Techniques::IMaterialDelegate* materialDelegate);
+		~MaterialDelegateWrapper();
+	};
+
+	public ref class MessageRelayWrapper
+	{
+	public:
+		property System::String^ Messages { System::String^ get(); };
+
+		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
+		property OnChangeEventHandler^ OnChangeEvent;
+
+		clix::shared_ptr<ToolsRig::MessageRelay> _native;
+		unsigned _callbackId;
+
+		MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate);
+		MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate);
+		MessageRelayWrapper();
+        ~MessageRelayWrapper();
+	};
 
 	public ref class IntersectionTestSceneWrapper
 	{
@@ -59,11 +92,12 @@ namespace GUILayer
 		clix::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
 
 		SceneEngine::IntersectionTestScene& GetNative();
-		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+		IntersectionTestSceneWrapper(
+			const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene);
         IntersectionTestSceneWrapper(
-            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placements,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+            const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
+            const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();
@@ -107,21 +141,5 @@ namespace GUILayer
         typedef std::unique_ptr<ConsoleRig::IProgress, std::function<void(ConsoleRig::IProgress*)>> ProgressPtr;
         static ProgressPtr CreateNative(IProgress^ managed);
         static void DeleteNative(ConsoleRig::IProgress* native);
-    };
-
-	public ref class DirectorySearchRules
-    {
-    public:
-        clix::shared_ptr<::Assets::DirectorySearchRules> _searchRules;
-
-		System::String^ ResolveFile(System::String^ baseName);
-		void AddSearchDirectory(System::String^ dirName);
-
-		const ::Assets::DirectorySearchRules& GetNative();
-
-        DirectorySearchRules(std::shared_ptr<::Assets::DirectorySearchRules> searchRules);
-		DirectorySearchRules(const ::Assets::DirectorySearchRules& searchRules);
-		DirectorySearchRules();
-        ~DirectorySearchRules();
     };
 }

@@ -35,9 +35,6 @@
     <ClCompile Include="..\UITypesBinding.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
-    <ClCompile Include="..\TestControl.cpp">
-      <Filter>BasicControls</Filter>
-    </ClCompile>
     <ClCompile Include="..\ManipulatorsLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
@@ -57,6 +54,25 @@
       <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\Exceptions.cpp" />
+    <ClCompile Include="..\VisLayerController.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TypeRules.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShaderGenerator.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NodeGraph.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PreviewRenderManager.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShaderFragment.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\AssetsLayer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -93,14 +109,8 @@
     <ClInclude Include="..\WindowRigInternal.h">
       <Filter>BasicControls</Filter>
     </ClInclude>
-    <ClInclude Include="..\MaterialVisualisation.h">
-      <Filter>Vis</Filter>
-    </ClInclude>
     <ClInclude Include="..\UITypesBinding.h">
       <Filter>Vis</Filter>
-    </ClInclude>
-    <ClInclude Include="..\TestControl.h">
-      <Filter>BasicControls</Filter>
     </ClInclude>
     <ClInclude Include="..\IOverlaySystem.h">
       <Filter>BasicControls</Filter>
@@ -124,6 +134,19 @@
       <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\Exceptions.h" />
+    <ClInclude Include="..\VisLayerController.h">
+      <Filter>Vis</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TypeRules.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShaderGenerator.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NodeGraph.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetsLayer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">
@@ -141,8 +164,8 @@
     <Filter Include="IterativeSystem">
       <UniqueIdentifier>{0211ba0a-2698-4e77-bf68-bfda5c419e32}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resources">
-      <UniqueIdentifier>{2eb2f1ef-b552-4d2a-bb05-1baa7d7fa9a8}</UniqueIdentifier>
+    <Filter Include="GraphLanguage">
+      <UniqueIdentifier>{16f7c3c6-e130-422e-8d21-27afe0d6a8a4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

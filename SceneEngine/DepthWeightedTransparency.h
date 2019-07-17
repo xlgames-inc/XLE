@@ -8,9 +8,10 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+
 namespace SceneEngine
 {
-    class LightingParserContext;
     class DepthWeightedTransparencyBox;
 
     class DepthWeightedTransparencyOp
@@ -21,15 +22,15 @@ namespace SceneEngine
 
         DepthWeightedTransparencyOp(
             RenderCore::Metal::DeviceContext& context, 
-            LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
         ~DepthWeightedTransparencyOp();
 
         DepthWeightedTransparencyOp(const DepthWeightedTransparencyOp&) = delete;
         DepthWeightedTransparencyOp& operator=(const DepthWeightedTransparencyOp&) = delete;
     protected:
-        DepthWeightedTransparencyBox*       _box;
-        RenderCore::Metal::DeviceContext*   _context;
-        LightingParserContext*              _parserContext;
+        DepthWeightedTransparencyBox*			_box;
+        RenderCore::Metal::DeviceContext*		_context;
+        RenderCore::Techniques::ParsingContext*	_parserContext;
     };
 }
 

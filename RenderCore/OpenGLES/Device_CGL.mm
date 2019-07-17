@@ -3,7 +3,8 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Resource.h"
-#include "../IAnnotator.h"
+#include "Metal/QueryPool.h"
+#include "Metal/Shader.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -131,6 +132,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
     }
 
+    std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
+    {
+        return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -156,8 +162,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc)
+    PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& pDesc)
     {
+        auto desc = pDesc;
+        desc._format = Format::R8G8B8A8_UNORM_SRGB; // we can't get the actual format from the _CGL device easily, so just put in a dummy value here
         auto textureDesc = TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 0, desc._samples);
         if (desc._bindFlags & BindFlag::ShaderResource) {
             _backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
@@ -361,7 +369,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            _annotator = RenderCore::CreateAnnotator(*d);
+            _annotator = std::make_unique<Metal_OpenGLES::Annotator>();
         }
         return *_annotator;
     }

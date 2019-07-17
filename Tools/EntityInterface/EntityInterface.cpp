@@ -11,6 +11,8 @@ namespace EntityInterface
 {
     IEntityInterface::~IEntityInterface() {}
 
+	void IEntityInterface::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const {}
+
     IEntityInterface* Switch::GetInterface(
         Identifier& translatedId, 
         const Identifier& inputId) const
@@ -69,6 +71,17 @@ namespace EntityInterface
                 return 1+(ObjectTypeId)(_knownObjectTypes.size()-1);
             }
         }
+		{
+			auto id = _defaultType->GetTypeId(name);
+            if (id != 0) {
+                KnownType t;
+                t._owner = _defaultType;
+                t._mappedTypeId = id;
+                t._name = name;
+                _knownObjectTypes.push_back(std::move(t));
+                return 1+(ObjectTypeId)(_knownObjectTypes.size()-1);
+            }
+		}
         return 0;
     }
 
@@ -90,6 +103,17 @@ namespace EntityInterface
                 return 1+(ObjectTypeId)(_knownDocumentTypes.size()-1);
             }
         }
+		{
+			auto id = _defaultType->GetDocumentTypeId(name);
+            if (id != 0) {
+                KnownType t;
+                t._owner = _defaultType;
+                t._mappedTypeId = id;
+                t._name = name;
+                _knownDocumentTypes.push_back(std::move(t));
+                return 1+(ObjectTypeId)(_knownDocumentTypes.size()-1);
+            }
+		}
         return 0;
     }
 
@@ -119,10 +143,31 @@ namespace EntityInterface
         return 0;
     }
 
-    void Switch::RegisterType(std::shared_ptr<IEntityInterface> type)
+    void Switch::RegisterInterface(const std::shared_ptr<IEntityInterface>& type)
     {
-        _types.push_back(std::move(type));
+        _types.push_back(type);
     }
+
+	void Switch::UnregisterInterface(const std::shared_ptr<IEntityInterface>& type)
+	{
+		for (auto i=_types.begin(); i!=_types.end(); ++i)
+			if (*i == type) {
+				_types.erase(i);
+				return;
+			}
+	}
+
+	void Switch::RegisterDefaultInterface(const std::shared_ptr<IEntityInterface>& type)
+	{
+		_defaultType = type;
+	}
+
+	void Switch::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		for (const auto&t : _types)
+			t->PrintDocument(stream, doc, indent);
+		_defaultType->PrintDocument(stream, doc, indent);
+	}
 
     Switch::Switch() : _nextObjectId(1) {}
     Switch::~Switch() {}

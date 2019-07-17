@@ -6,75 +6,33 @@
 
 #pragma once
 
-#include "../RenderCore/GeoProc/NascentCommandStream.h"
-#include "../RenderCore/GeoProc/NascentObjectGuid.h"
+#include "Scaffold.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace RenderCore { namespace Assets { namespace GeoProc
-{ 
-	class NascentSkeleton;
-	class NascentGeometryObjects;
-	class NascentModelCommandStream;
-	class SkeletonRegistry;
-}}}
+namespace RenderCore { namespace Assets { namespace GeoProc { class NascentSkeleton; }}}
 
 namespace ColladaConversion
 {
-	using namespace RenderCore::Assets::GeoProc;
-	class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController;
-    class ImportConfiguration;
+	class Node; class URIResolveContext;
 
-    void BuildSkeleton(
-        NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& sceneRoot,
-        StringSection<utf8> rootNode,
-        SkeletonRegistry& skeletonReferences,
-        bool fullSkeleton);
+	void BuildSkeleton(RenderCore::Assets::GeoProc::NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName = {});
 
-	struct InstantiatedGeo
-	{
-		unsigned _geoId;
-		std::vector<NascentModelCommandStream::MaterialGuid> _materials;
-	};
+	auto BuildMaterialTableStrings(
+        IteratorRange<const InstanceGeometry::MaterialBinding*> bindings, 
+        const std::vector<uint64_t>& rawGeoBindingSymbols,
+        const URIResolveContext& resolveContext) -> std::vector<std::string>;
 
-	InstantiatedGeo InstantiateGeometry(
-        const ::ColladaConversion::InstanceGeometry& instGeo,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-		const Float4x4& mergedTransform,
-        NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg);
+	std::string SkeletonBindingName(const Node& node);
 
-	using JointToTransformMarker = std::function<unsigned(const NascentObjectGuid&)>;
-
-	InstantiatedGeo InstantiateController(
-        const ::ColladaConversion::InstanceController& instGeo,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-		const JointToTransformMarker& jointToTransformMarker,
-		NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg);
-
-    class ReferencedGeometries
+	struct LODDesc
     {
     public:
-        class AttachedObject
-        {
-        public:
-            NascentObjectGuid	_nodeGuid;
-            unsigned			_objectIndex;
-            unsigned			_levelOfDetail;
-        };
-        std::vector<AttachedObject>   _meshes;
-        std::vector<AttachedObject>   _skinControllers;
-
-        bool Gather(const ::ColladaConversion::Node& sceneRoot, StringSection<utf8> rootNode, SkeletonRegistry& nodeRefs);
-
-        void FindSkinJoints(
-            const ::ColladaConversion::VisualScene& scene, 
-            const ::ColladaConversion::URIResolveContext& resolveContext, 
-            SkeletonRegistry& nodeRefs);
-
-    private:
-        void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
+        unsigned                _lod;
+        bool                    _isLODRoot;
+        StringSection<utf8>     _remainingName;
     };
+
+    LODDesc GetLevelOfDetail(const ::ColladaConversion::Node& node);
 }

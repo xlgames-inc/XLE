@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ModelRunTime.h"
+#include "ModelScaffold.h"
 #include "ModelScaffoldInternal.h"
 #include "ModelImmutableData.h"
 #include "AssetUtils.h"
@@ -44,9 +44,7 @@ namespace RenderCore { namespace Assets
         DestroyArray(_boundSkinnedControllers, &_boundSkinnedControllers[_boundSkinnedControllerCount]);
     }
 
-        ////////////////////////////////////////////////////////////
-
-    uint64 GeoInputAssembly::BuildHash() const
+    uint64_t GeoInputAssembly::BuildHash() const
     {
             //  Build a hash for this object.
             //  Note that we should be careful that we don't get an
@@ -54,39 +52,9 @@ namespace RenderCore { namespace Assets
             //  semantic names. Do to this right, we should make sure
             //  that left over space has no effect.
         auto elementsHash = Hash64(AsPointer(_elements.cbegin()), AsPointer(_elements.cend()));
-        elementsHash ^= uint64(_vertexStride);
+        elementsHash ^= uint64_t(_vertexStride);
         return elementsHash;
     }
-
-    GeoInputAssembly::GeoInputAssembly() { _vertexStride = 0; }
-    GeoInputAssembly::GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws
-    :   _elements(std::move(moveFrom._elements))
-    ,   _vertexStride(moveFrom._vertexStride)
-    {}
-    GeoInputAssembly& GeoInputAssembly::operator=(GeoInputAssembly&& moveFrom) never_throws
-    {
-        _elements = std::move(moveFrom._elements);
-        _vertexStride = moveFrom._vertexStride;
-        return *this;
-    }
-    GeoInputAssembly::~GeoInputAssembly() {}
-
-    RawGeometry::RawGeometry() {}
-    RawGeometry::RawGeometry(RawGeometry&& geo) never_throws
-    : _vb(std::move(geo._vb))
-    , _ib(std::move(geo._ib))
-    , _drawCalls(std::move(geo._drawCalls))
-    {}
-
-    RawGeometry& RawGeometry::operator=(RawGeometry&& geo) never_throws
-    {
-        _vb = std::move(geo._vb);
-        _ib = std::move(geo._ib);
-        _drawCalls = std::move(geo._drawCalls);
-        return *this;
-    }
-
-    RawGeometry::~RawGeometry() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -217,5 +185,39 @@ namespace RenderCore { namespace Assets
         return std::move(result);
     }
 
+	unsigned BuildLowLevelInputAssembly(
+        IteratorRange<InputElementDesc*> dst,
+        IteratorRange<const RenderCore::Assets::VertexElement*> source,
+        unsigned lowLevelSlot)
+    {
+        unsigned vertexElementCount = 0;
+        for (unsigned i=0; i<source.size(); ++i) {
+            auto& sourceElement = source[i];
+            assert((vertexElementCount+1) <= dst.size());
+            if ((vertexElementCount+1) <= dst.size()) {
+                    // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
+                    //  should be one after another in the vb (that is, not interleaved)
+                dst[vertexElementCount++] = InputElementDesc(
+                    sourceElement._semanticName, sourceElement._semanticIndex,
+                    sourceElement._nativeFormat, lowLevelSlot, sourceElement._alignedByteOffset);
+            }
+        }
+        return vertexElementCount;
+    }
 
+	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(IteratorRange<const RenderCore::Assets::VertexElement*> source)
+	{
+		std::vector<MiniInputElementDesc> result;
+		result.reserve(source.size());
+		for (unsigned i=0; i<source.size(); ++i) {
+            auto& sourceElement = source[i];
+			#if defined(_DEBUG)
+				auto expectedOffset = CalculateVertexStride(MakeIteratorRange(result), false);
+				assert(expectedOffset == sourceElement._alignedByteOffset);
+			#endif
+			result.push_back(
+				MiniInputElementDesc{Hash64(sourceElement._semanticName) + sourceElement._semanticIndex, sourceElement._nativeFormat});
+		}
+		return result;
+	}
 }}

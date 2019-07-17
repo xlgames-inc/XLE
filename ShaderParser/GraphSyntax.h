@@ -5,13 +5,15 @@
 #pragma once
 
 #include "ShaderPatcher.h"
+#include "NodeGraph.h"
+#include "NodeGraphProvider.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
 #include <unordered_map>
 
 namespace Assets { class DirectorySearchRules; }
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	class GraphSyntaxFile
 	{
@@ -25,12 +27,19 @@ namespace ShaderPatcher
 
 		std::unordered_map<std::string, SubGraph> _subGraphs;
 		std::unordered_map<std::string, std::string> _imports;
+		std::unordered_map<std::string, AttributeTable> _attributeTables;
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
+	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile);
 
-	class ISignatureProvider;
-	std::shared_ptr<ISignatureProvider> MakeGraphSyntaxSignatureProvider(
-		const GraphSyntaxFile& parsedGraphFile,
-		const ::Assets::DirectorySearchRules& searchRules);
+	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
+		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules,
+		const ::Assets::DepValPtr& dependencyValidation);
+
+	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
+
+	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name);
+	std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true, bool includeTemplateParameters = false);
 }
 

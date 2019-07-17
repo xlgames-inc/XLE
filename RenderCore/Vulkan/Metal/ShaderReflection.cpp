@@ -10,6 +10,7 @@
 #if defined(HAS_SPIRV_HEADERS)
 
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/StringFormat.h"
 
 // Vulkan SDK includes -- 
 #pragma push_macro("new")
@@ -189,10 +190,10 @@ namespace RenderCore { namespace Metal_Vulkan
         // Our tables should be in near-sorted order, but are not guaranteed to be sorted.
         // So we have to sort here. Since they are near-sorted, quick sort is not ideal, but
         // 
-        std::sort(_basicTypes.begin(), _basicTypes.end(), CompareFirst<uint64, BasicType>());
-        std::sort(_vectorTypes.begin(), _vectorTypes.end(), CompareFirst<uint64, VectorType>());
-        std::sort(_pointerTypes.begin(), _pointerTypes.end(), CompareFirst<uint64, PointerType>());
-        std::sort(_variables.begin(), _variables.end(), CompareFirst<uint64, Variable>());
+        std::sort(_basicTypes.begin(), _basicTypes.end(), CompareFirst<uint64_t, BasicType>());
+        std::sort(_vectorTypes.begin(), _vectorTypes.end(), CompareFirst<uint64_t, VectorType>());
+        std::sort(_pointerTypes.begin(), _pointerTypes.end(), CompareFirst<uint64_t, PointerType>());
+        std::sort(_variables.begin(), _variables.end(), CompareFirst<uint64_t, Variable>());
 
         // build the quick lookup table, which matches hash names to binding values
         for (auto& b:_bindings) {
@@ -234,7 +235,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         std::sort(
             _uniformQuickLookup.begin(), _uniformQuickLookup.end(),
-            CompareFirst<uint64, Binding>());
+            CompareFirst<uint64_t, Binding>());
 
         // build the quick lookup table for the input interface
         for (auto i:_entryPoint._interface) {
@@ -288,23 +289,179 @@ namespace RenderCore { namespace Metal_Vulkan
 
             _inputInterfaceQuickLookup.push_back(
                 std::make_pair(
-                    Hash64(nameStart, nameEnd, DefaultSeed64 + index),
+                    Hash64(nameStart, nameEnd) + index,
                     InputInterfaceElement{v->second._type, b->second._location}));
         }
 
         std::sort(
             _inputInterfaceQuickLookup.begin(), _inputInterfaceQuickLookup.end(),
-            CompareFirst<uint64, InputInterfaceElement>());
+            CompareFirst<uint64_t, InputInterfaceElement>());
 
-        // std::stringstream disassem;
-        // std::vector<unsigned> spirv(byteCode.begin(), byteCode.end());
-        // spv::Disassemble(disassem, spirv);
-        // auto d = disassem.str();
-        // (void)d;
+		// build the quick lookup table for push constants
+		for (unsigned vi=0; vi<_variables.size(); ++vi) {
+			if (_variables[vi].second._storage != StorageType::PushConstant)
+				continue;
+
+			// We don't have a way to get the offset from the top of push constant
+			// memory yet. We'll have to assume that all constants sit at the top
+			// of the push constant memory
+
+			PushConstantsVariable var;
+			var._variable = vi;
+			var._type = _variables[vi].second._type;
+
+			// Similar to above, we must be able to bind against either the type name or
+			// the variable name.
+
+			auto n = LowerBound(_names, _variables[vi].first);
+			if (n != _names.end() && n->first == _variables[vi].first)
+				if (!n->second.IsEmpty())
+					_pushConstantsQuickLookup.push_back({Hash64(n->second), var});
+
+            auto type = _variables[vi].second._type;
+            auto ptr = LowerBound(_pointerTypes, type);
+            if (ptr != _pointerTypes.end() && ptr->first == type)
+                type = ptr->second._targetType;
+                
+            n = LowerBound(_names, type);
+            if (n != _names.end() && n->first == type)
+				if (!n->second.IsEmpty())
+					_pushConstantsQuickLookup.push_back({Hash64(n->second), var});
+		}
+
+		std::sort(
+			_pushConstantsQuickLookup.begin(), _pushConstantsQuickLookup.end(),
+			CompareFirst<uint64_t, PushConstantsVariable>());
     }
 
     SPIRVReflection::SPIRVReflection() {}
     SPIRVReflection::~SPIRVReflection() {}
+
+	std::ostream& operator<<(std::ostream& str, const SPIRVReflection::Binding& binding)
+	{
+		bool pendingComma = false;
+		if (binding._location != ~0u) {
+			str << "loc: " << binding._location;
+			pendingComma = true;
+		}
+
+		if (binding._bindingPoint != ~0u) {
+			if (pendingComma) str << ", ";
+			str << "binding: " << binding._bindingPoint;
+			pendingComma = true;
+		}
+
+		if (binding._offset != ~0u) {
+			if (pendingComma) str << ", ";
+			str << "offset: " << binding._offset;
+		}
+		return str;
+	}
+
+	std::ostream& SPIRVReflection::DescribeVariable(std::ostream& str, ObjectId variable) const
+	{
+		auto n = LowerBound(_names, variable);
+		if (n != _names.end() && n->first == variable) {
+			str << n->second;
+		} else {
+			str << "<<unnamed>>";
+		}
+
+		auto v = LowerBound(_variables, variable);
+		if (v != _variables.end() && v->first == variable) {
+			auto type = v->second._type;
+
+			StringSection<> variableType;
+			auto ptr = LowerBound(_pointerTypes, type);
+            if (ptr != _pointerTypes.end() && ptr->first == type)
+                type = ptr->second._targetType;
+                
+            n = LowerBound(_names, type);
+            if (n != _names.end() && n->first == type)
+				variableType = n->second;
+
+			str << " (";
+			if (!variableType.IsEmpty()) str << "type: " << variableType << ", ";
+			str << "storage: " << (unsigned)v->second._storage << ")";
+		}
+
+		return str;
+	}
+
+	static const std::string s_unnamed = "<<unnamed>>";
+
+	StringSection<> SPIRVReflection::GetName(ObjectId objectId) const
+	{
+		auto n = LowerBound(_names, objectId);
+		if (n != _names.end() && n->first == objectId)
+			return n->second;
+		return s_unnamed;
+	}
+
+	std::ostream& operator<<(std::ostream& str, const SPIRVReflection& refl)
+	{
+		str << "SPIR Reflection entry point [" << refl._entryPoint._name << "]" << std::endl;
+
+		const unsigned maxDescriptorSet = 16;
+		for (unsigned descriptorSet=0; descriptorSet<maxDescriptorSet; ++descriptorSet) {
+			bool wroteHeader = false;
+			for (auto&i:refl._bindings) {
+				if (i.second._descriptorSet != descriptorSet)
+					continue;
+				
+				if (!wroteHeader)
+					str << "Descriptor set [" << descriptorSet << "]" << std::endl;
+				wroteHeader = true;
+
+				str << "\t[" << i.second << "]: ";
+				refl.DescribeVariable(str, i.first);
+
+				str << std::endl;
+			}
+
+			for (auto&i:refl._memberBindings) {
+				if (i.second._descriptorSet != descriptorSet)
+					continue;
+				
+				if (!wroteHeader)
+					str << "Descriptor set [" << descriptorSet << "]" << std::endl;
+				wroteHeader = true;
+
+				auto n = LowerBound(refl._memberNames, i.first);
+				if (n != refl._memberNames.end() && n->first == i.first) {
+					str << "\t[" << n->second << "](member " << i.first.second << ") ";
+				} else {
+					str << "\t[Unnamed](member " << i.first.second << ") ";
+				}
+
+				str << i.second;
+
+				auto v = LowerBound(refl._variables, i.first.first);
+				if (v != refl._variables.end() && v->first == i.first.first) {
+					str << " (type: " << v->second._type << ", storage: " << (unsigned)v->second._storage << ")";
+				}
+
+				str << std::endl;
+			}
+		}
+
+		for (auto v:refl._variables) {
+			if (v.second._storage != SPIRVReflection::StorageType::PushConstant)
+				continue;
+			
+			str << "\tPush Constants: ";
+			refl.DescribeVariable(str, v.first);
+			str << std::endl;
+		}
+
+		// std::stringstream disassem;
+        // std::vector<unsigned> spirv(byteCode.begin(), byteCode.end());
+        // spv::Disassemble(disassem, spirv);
+        // auto d = disassem.str();
+        // (void)d;
+		
+		return str;
+	}
 
 }}
 

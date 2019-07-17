@@ -60,19 +60,20 @@
     <ClInclude Include="..\ChunkFileContainer.h" />
     <ClInclude Include="..\CompilationThread.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
-    <ClInclude Include="..\CompilerHelper.h" />
-    <ClInclude Include="..\CompilerLibrary.h" />
+    <ClInclude Include="..\ICompileOperation.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\AssetServices.h" />
+    <ClInclude Include="..\GeneralCompiler.h" />
     <ClInclude Include="..\GenericFuture.h" />
-    <ClInclude Include="..\IAssetCompiler.h" />
+    <ClInclude Include="..\IArtifact.h" />
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\NascentChunk.h" />
     <ClInclude Include="..\OSFileSystem.h" />
+    <ClInclude Include="..\RawFileAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ArchiveCache.cpp" />
@@ -81,6 +82,7 @@
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
+    <ClCompile Include="..\RawFileAsset.cpp" />
     <ClInclude Include="..\AsyncMarkerGroup.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
@@ -90,6 +92,7 @@
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
+    <ClCompile Include="..\GeneralCompiler.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />

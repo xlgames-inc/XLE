@@ -28,7 +28,7 @@ namespace GUILayer
             for each(auto i in initializers) {
                 PropertyInitializer n;
                 n._prop = i._prop;
-                n._src = i._src;
+				n._src = { i._srcBegin, i._srcEnd };
                 n._elementType = i._elementType;
                 n._arrayCount = i._arrayCount;
                 n._isString = i._isString;
@@ -88,7 +88,9 @@ namespace GUILayer
     bool EntityLayer::SetObjectParent(
         DocumentId doc, 
         ObjectId childId, ObjectTypeId childTypeId, 
-        ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
+        ObjectId parentId, ObjectTypeId parentTypeId, 
+		ChildListId childList,
+		int insertionPosition)
     {
         Identifier child, parent;
         auto intrfChild = _switch->GetInterface(
@@ -97,7 +99,7 @@ namespace GUILayer
             parent, Identifier(doc, parentId, parentTypeId));
 
         if (intrfChild && intrfChild == intrfParent)
-            return intrfChild->SetParent(child, parent, insertionPosition);
+            return intrfChild->SetParent(child, parent, childList, insertionPosition);
         return false;
     }
 

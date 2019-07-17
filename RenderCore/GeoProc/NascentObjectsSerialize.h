@@ -4,30 +4,26 @@
 
 #pragma once
 
-#include "../Assets/NascentChunk.h"
-#include "../../Utility/IteratorUtils.h"
-
-namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
+#include "../Assets/ICompileOperation.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	class NascentGeometryObjects;
-	class NascentModelCommandStream;
+	class NascentModel;
 	class NascentSkeleton;
 	class NascentAnimationSet;
+	struct NativeVBSettings;
 
-	::Assets::NascentChunkArray SerializeSkinToChunks(
-		const char name[], 
-		NascentGeometryObjects& geoObjects, 
-		NascentModelCommandStream& cmdStream, 
-		NascentSkeleton& skeleton);
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(
+		const std::string& name,
+		const NascentModel& model,
+		const NascentSkeleton& embeddedSkeleton,
+		const NativeVBSettings& nativeSettings);
 
-	::Assets::NascentChunkArray SerializeSkeletonToChunks(
-		const char name[], 
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
+		const std::string& name,
 		const NascentSkeleton& skeleton);
 
-	::Assets::NascentChunkArray SerializeAnimationsToChunks(
-		const char name[],
-		const NascentAnimationSet& animationSet,
-		IteratorRange<const RawAnimationCurve*> curves);
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
+		const std::string& name,
+		const NascentAnimationSet& animationSet);
 }}}

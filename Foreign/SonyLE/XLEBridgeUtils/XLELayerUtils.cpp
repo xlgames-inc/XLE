@@ -1,4 +1,3 @@
-
 // Copyright 2015 XLGAMES Inc.
 //
 // Distributed under the MIT License (See
@@ -12,6 +11,8 @@
 #include "../../Tools/GuiLayer/NativeEngineDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/LogStartup.h"
 #include "../../ConsoleRig/GlobalServices.h"
 
@@ -31,7 +32,7 @@ namespace XLEBridgeUtils
 	public:
 		void OnAddToDocument(INativeDocumentAdapter^ doc);
 		void OnRemoveFromDocument(INativeDocumentAdapter^ doc);
-		void OnSetParent(INativeObjectAdapter^ newParent, int insertionPosition);
+		void OnSetParent(INativeObjectAdapter^ newParent, uint childListId, int insertionPosition);
 	};
 
     GUILayer::CameraDescWrapper^ Utils::AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
@@ -43,18 +44,6 @@ namespace XLEBridgeUtils
         visCam._nearClip = camera->NearZ;
         visCam._farClip = camera->FarZ;
         return gcnew GUILayer::CameraDescWrapper(visCam);
-    }
-
-    GUILayer::IntersectionTestContextWrapper^
-        Utils::CreateIntersectionTestContext(
-            GUILayer::EngineDevice^ engineDevice,
-            GUILayer::TechniqueContextWrapper^ techniqueContext,
-            GUILayer::CameraDescWrapper^ camera,
-            unsigned viewportWidth, unsigned viewportHeight)
-    {
-        return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-            engineDevice, techniqueContext, 
-            camera, viewportWidth, viewportHeight);
     }
 
     Sce::Atf::VectorMath::Matrix4F^ Utils::MakeFrustumMatrix(
@@ -123,10 +112,10 @@ namespace XLEBridgeUtils
         OnActiveContextChanged(sender);
     }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace Internal 
+#if 0
+	namespace Internal 
     { 
         static Sce::Atf::OutputMessageType AsOutputMessageType(ConsoleRig::LogLevel level)
         {
@@ -203,29 +192,33 @@ namespace XLEBridgeUtils
             gcroot<System::Threading::SynchronizationContext^> _context;
         };
     }
+#endif
 
     LoggingRedirect::LoggingRedirect()
     {
-        _helper = std::make_shared<Internal::LoggingRedirectHelper>();
-        _helper->Enable();
+        // _helper = std::make_shared<Internal::LoggingRedirectHelper>();
+        // _helper->Enable();
     }
 
     LoggingRedirect::~LoggingRedirect() {}
     LoggingRedirect::!LoggingRedirect() {}
 
 
-    static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+	ConsoleRig::AttachablePtr<::ConsoleRig::GlobalServices> s_attachRef;
+	ConsoleRig::AttachablePtr<::Assets::Services> s_attachRef1;
 
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {
-        if (!s_attachRef) {
-            s_attachRef = device->GetNative().GetGlobalServices()->Attach();
-        }
+		ConsoleRig::CrossModule::SetInstance(*device->GetNative().GetCrossModule());
+		s_attachRef = ConsoleRig::GetAttachablePtr<::ConsoleRig::GlobalServices>();
+		s_attachRef1 = ConsoleRig::GetAttachablePtr<::Assets::Services>();
     }
 
-    void Utils::DetachLibrary()
+    void Utils::DetachLibrary(GUILayer::EngineDevice^ device)
     {
-        s_attachRef.Detach();
+		s_attachRef1.reset();
+		s_attachRef.reset();
+		ConsoleRig::CrossModule::ReleaseInstance();
     }
 
 }

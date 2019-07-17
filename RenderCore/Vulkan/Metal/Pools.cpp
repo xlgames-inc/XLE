@@ -277,7 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ResourceMap map(
 			device, buffer.GetMemory(),
 			startPt, data.size());
-		std::memcpy(map.GetData(), data.begin(), data.size());
+		std::memcpy(map.GetData().begin(), data.begin(), data.size());
 	}
 
 	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(IteratorRange<const void*> data)
@@ -359,7 +359,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& b = _pimpl->_cb;
 		if (b._lastBarrierContext != &context) {
 			if (b._lastBarrierContext != nullptr)
-				LogWarning << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better";
+				Log(Warning) << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better" << std::endl;
 
 			// full barrier
 			startRegion = 0;
@@ -526,7 +526,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         VkDescriptorPoolSize type_count[] = 
         {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 256},
@@ -621,7 +620,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _blankSrv(factory, _blankTexture)
     , _blankUavImage(factory, _blankUAVImageRes)
     , _blankUavBuffer(factory, _blankUAVBufferRes)
-    , _blankSampler(std::make_unique<SamplerState>())
+    , _blankSampler(std::make_unique<SamplerState>(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp))
     {
         uint8 blankData[4096];
         std::memset(blankData, 0, sizeof(blankData));

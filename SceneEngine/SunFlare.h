@@ -8,13 +8,17 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-    class LightingParserContext;
+	class LightDesc;
 
     void SunFlare_Execute(
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
-        const RenderCore::Metal::ShaderResourceView& depthsSRV);
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& depthsSRV,
+		const LightDesc& sunDesc);
 }
 

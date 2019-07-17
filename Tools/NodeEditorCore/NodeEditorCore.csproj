@@ -11,7 +11,8 @@
     <AssemblyName>NodeEditorCore</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -63,28 +64,33 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GraphControl\GraphControl.cs" />
-    <Compile Include="GraphControl\InterfaceParameterControl.cs">
+    <Compile Include="InterfaceParameterControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="GraphControl\InterfaceParameterControl.Designer.cs">
+    <Compile Include="InterfaceParameterControl.Designer.cs">
       <DependentUpon>InterfaceParameterControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="GraphControl\InterfaceParameterForm.cs">
+    <Compile Include="InterfaceParameterForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GraphControl\InterfaceParameterForm.Designer.cs">
+    <Compile Include="InterfaceParameterForm.Designer.cs">
       <DependentUpon>InterfaceParameterForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="GraphControl\ModelConversion.cs" />
+    <Compile Include="ModelConversion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="GraphControl\ShaderFragmentNodes.cs" />
+    <Compile Include="NodeFactory.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="ShaderTree\ShaderFragmentArchiveModel.cs" />
+    <Compile Include="ShaderFragmentArchive.cs" />
+    <Compile Include="SubGraphPropertiesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubGraphPropertiesForm.Designer.cs">
+      <DependentUpon>SubGraphPropertiesForm.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
@@ -103,31 +109,31 @@
       <Project>{e4cc63d8-127d-4bc9-80e0-ccb3e9da06dc}</Project>
       <Name>HyperGraph</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
-      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
-      <Name>ShaderFragmentArchive</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\icon_triangle.png" />
-    <None Include="Resources\icon_hexagon.png" />
-    <None Include="Resources\icon_oval.png" />
-    <None Include="Resources\icon_circle.png" />
-    <None Include="Resources\icon_square.png" />
-    <None Include="Resources\icon_roundedrect.png" />
-    <None Include="Resources\icon_paper.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="GraphControl\InterfaceParameterControl.resx">
+    <EmbeddedResource Include="InterfaceParameterControl.resx">
       <DependentUpon>InterfaceParameterControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GraphControl\InterfaceParameterForm.resx">
+    <EmbeddedResource Include="InterfaceParameterForm.resx">
       <DependentUpon>InterfaceParameterForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="SubGraphPropertiesForm.resx">
+      <DependentUpon>SubGraphPropertiesForm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\icon_circle.png" />
+    <Content Include="Resources\icon_hexagon.png" />
+    <Content Include="Resources\icon_oval.png" />
+    <Content Include="Resources\icon_paper.png" />
+    <Content Include="Resources\icon_roundedrect.png" />
+    <Content Include="Resources\icon_square.png" />
+    <Content Include="Resources\icon_triangle.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

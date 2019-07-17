@@ -6,14 +6,34 @@
 
 #pragma once
 
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../RenderCore/Assets/SimpleModelRenderer.h"
+#include "../../PlatformRig/OverlaySystem.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
+#include "../../Utility/Optional.h"
+#include <string>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace RenderCore { namespace Techniques { 
+	class CameraDesc; class TechniqueContext; class Technique; 
+	class IMaterialDelegate; class ITechniqueDelegate; class IRenderStateDelegate;
+}}
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
+namespace RenderOverlays { class IOverlayContext; }
+namespace RenderOverlays { namespace DebuggingDisplay { struct Rect; }}
+namespace Utility { class OnChangeCallback; }
+namespace SceneEngine { class IScene; }
 
 namespace ToolsRig
 {
+	class ChangeEvent
+    {
+    public:
+        std::vector<std::shared_ptr<Utility::OnChangeCallback>> _callbacks;
+        void Invoke();
+        ~ChangeEvent();
+    };
+
     class VisCameraSettings
     {
     public:
@@ -38,37 +58,187 @@ namespace ToolsRig
         float verticalFieldOfView, 
         const std::pair<Float3, Float3>& boxIn);
 
-    class VisEnvSettings
-    {
-    public:
-        PlatformRig::EnvironmentSettings _activeSetting;
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+	RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
 
-        VisEnvSettings();
-        VisEnvSettings(StringSection<::Assets::ResChar> filename);
-        ~VisEnvSettings();
-    protected:
-        ::Assets::DepValPtr _depVal;
+	class VisEnvSettings
+    {
+	public:
+		std::string _envConfigFile;
+
+		enum class LightingType { Deferred, Forward, Direct };
+		LightingType _lightingType;
+
+		VisEnvSettings();
+		VisEnvSettings(const std::string& envConfigFile);
+	};
+
+	class VisOverlaySettings
+	{
+	public:
+        unsigned		_colourByMaterial = 0;
+		unsigned		_skeletonMode = 0;
+        bool			_drawNormals = false;
+        bool			_drawWireframe = false;
     };
 
-    RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
-
-    class VisSceneParser : public PlatformRig::BasicSceneParser
+    class VisMouseOver
     {
     public:
-        RenderCore::Techniques::CameraDesc  GetCameraDesc() const;
-        float GetTimeValue() const;
-        void Prepare();
-
-        VisSceneParser(
-            std::shared_ptr<VisCameraSettings> settings, 
-            const VisEnvSettings& envSettings);
-        ~VisSceneParser();
-    protected:
-        std::shared_ptr<VisCameraSettings> _settings;
-        const VisEnvSettings* _envSettings;
-        virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
+        bool			_hasMouseOver = false;
+        Float3			_intersectionPt = Zero<Float3>();
+        unsigned		_drawCallIndex = 0u;
+        uint64			_materialGuid = 0;
+        ChangeEvent		_changeEvent;
     };
+
+	class VisAnimationState
+	{
+	public:
+		struct AnimationDetails
+		{
+			std::string _name;
+			float _beginTime, _endTime;
+		};
+		std::vector<AnimationDetails> _animationList;
+		std::string _activeAnimation;
+		float _animationTime = 0.f;
+		unsigned _anchorTime = 0;
+		enum class State { Stopped, Playing, BindPose };
+		State _state = State::Stopped;
+
+		ChangeEvent _changeEvent;
+	};
+
+	class IVisContent
+	{
+	public:
+		virtual std::pair<Float3, Float3> GetBoundingBox() const = 0;
+
+		virtual std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
+		virtual void RenderSkeleton(
+			RenderCore::IThreadContext& context, 
+			RenderCore::Techniques::ParsingContext& parserContext, 
+			bool drawBoneNames) const = 0;
+
+		struct DrawCallDetails { std::string _modelName, _materialName; };
+		virtual DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const = 0;
+
+		virtual void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) = 0;
+		virtual bool HasActiveAnimation() const = 0;
+
+		virtual ~IVisContent();
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class ModelVisLayer : public PlatformRig::IOverlaySystem
+    {
+    public:
+        virtual void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override;
+
+        void Set(const VisEnvSettings& envSettings);
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+
+		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>&);
+		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>&);
+		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>&);
+
+		const std::shared_ptr<VisCameraSettings>& GetCamera();
+		void ResetCamera();
+
+        ModelVisLayer();
+        ~ModelVisLayer();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+	class VisualisationOverlay : public PlatformRig::IOverlaySystem
+    {
+    public:
+        virtual void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext);
+		virtual OverlayState GetOverlayState() const;
+
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+		void Set(const std::shared_ptr<VisCameraSettings>&);
+		void Set(const VisOverlaySettings& overlaySettings);
+		void Set(const std::shared_ptr<VisAnimationState>&);
+
+		const VisOverlaySettings& GetOverlaySettings() const;
+
+        VisualisationOverlay(
+			const VisOverlaySettings& overlaySettings,
+            std::shared_ptr<VisMouseOver> mouseOver);
+        ~VisualisationOverlay();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+	class MouseOverTrackingListener;
+
+    class MouseOverTrackingOverlay : public PlatformRig::IOverlaySystem
+    {
+    public:
+        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
+
+        virtual void Render(
+            RenderCore::IThreadContext& context, 
+			const RenderCore::IResourcePtr& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext);
+
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+
+        using OverlayFn = std::function<
+			void(
+				RenderOverlays::IOverlayContext&,
+				const RenderOverlays::DebuggingDisplay::Rect&,
+				const ToolsRig::VisMouseOver&, 
+				const SceneEngine::IScene& scene)>;
+
+        MouseOverTrackingOverlay(
+            const std::shared_ptr<VisMouseOver>& mouseOver,
+            const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+            const std::shared_ptr<VisCameraSettings>& camera,
+            OverlayFn&& overlayFn);
+        ~MouseOverTrackingOverlay();
+    protected:
+        std::shared_ptr<MouseOverTrackingListener> _inputListener;
+        std::shared_ptr<VisCameraSettings> _camera;
+        std::shared_ptr<VisMouseOver> _mouseOver;
+        OverlayFn _overlayFn;
+    };
+
+	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(
+		const std::shared_ptr<PlatformRig::IInputListener>& listener);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	enum class DrawPreviewResult
+    {
+        Error,
+        Pending,
+        Success
+    };
+
+	std::pair<DrawPreviewResult, std::string> DrawPreview(
+        RenderCore::IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		VisCameraSettings& cameraSettings,
+		VisEnvSettings& envSettings,
+		SceneEngine::IScene& scene);
+
+	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
+	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline VisCameraSettings::VisCameraSettings()
     {

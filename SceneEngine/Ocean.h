@@ -10,18 +10,21 @@
 #include "../Math/Matrix.h"
 
 namespace Utility { class ParameterBox; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     class DeepOceanSimSettings;
     class OceanLightingSettings;
+	class ILightingParserDelegate;
 
     /// Entry point for ocean rendering
     /// Draws the surface of the ocean, according to the given settings.
     void Ocean_Execute(
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        const ILightingParserDelegate& lightingPaserContext,
         const DeepOceanSimSettings& settings,
         const OceanLightingSettings& lightingSettings,
         const RenderCore::Metal::ShaderResourceView& depthBufferSRV);

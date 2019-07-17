@@ -16,42 +16,42 @@
 
 namespace ToolsRig
 {
-    using RenderOverlays::DebuggingDisplay::InputSnapshot;
-
     class CameraMovementManipulator : public IManipulator
     {
     public:
         bool OnInputEvent(
-            const InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
         std::string GetStatusText() const;
 
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
-        void SetActivationState(bool newState);
+        IteratorRange<const FloatParameter*>  GetFloatParameters() const { return {}; }
+        IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
+		void SetActivationState(bool newState) {}
 
         CameraMovementManipulator(
-            std::shared_ptr<VisCameraSettings> visCameraSettings);
+            const std::shared_ptr<VisCameraSettings>& visCameraSettings,
+			CameraManipulatorMode mode);
         ~CameraMovementManipulator();
 
     protected:
         std::shared_ptr<VisCameraSettings> _visCameraSettings;
         float _translateSpeed, _orbitRotationSpeed, _wheelTranslateSpeed;
+		CameraManipulatorMode _mode;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool CameraMovementManipulator::OnInputEvent(
-        const InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
             //  This is a simple camera manipulator
             //  It should operate when the middle mouse button is down.
@@ -73,82 +73,85 @@ namespace ToolsRig
             //  directed to the camera when the middle mouse button is down.
         if (!_visCameraSettings) { return false; }
 
-        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
-        if (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) {
-
-            if (!&hitTestContext || !&hitTestScene) return false;
-
+		bool gotSomething = false;
+        static auto ctrl = PlatformRig::KeyId_Make("control");
+        if (evnt.IsHeld(ctrl) && evnt.IsPress_LButton() && hitTestScene) {
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
-                AsCameraDesc(*_visCameraSettings), evnt._mousePosition, hitTestContext.GetViewportSize());
+				AsCameraDesc(*_visCameraSettings), evnt._mousePosition, hitTestContext._viewportMins, hitTestContext._viewportMaxs);
 
-            auto intr = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
-            if (intr._type != 0) {
+            auto intr = hitTestScene->FirstRayIntersection(hitTestContext, worldSpaceRay);
+            if (intr._type != 0)
                 _visCameraSettings->_focus = intr._worldSpaceCollision;
-            }
-
-            return false;
+			gotSomething = true;
         }
-
-            // cancel manipulator when the middle mouse button is released
-        if (evnt.IsRelease_MButton()) { return false; }
-
-        static auto alt = RenderOverlays::DebuggingDisplay::KeyId_Make("alt");
-        static auto shift = RenderOverlays::DebuggingDisplay::KeyId_Make("shift");
-        enum ModifierMode
-        {
-            Translate, Orbit
-        };
-        ModifierMode modifierMode = evnt.IsHeld(alt) ? Orbit : Translate;
 
         auto cameraToWorld = MakeCameraToWorld(
-            Normalize(_visCameraSettings->_focus -_visCameraSettings->_position),
-            Float3(0.f, 0.f, 1.f), _visCameraSettings->_position);
-        auto up = ExtractUp_Cam(cameraToWorld);
-        auto right = ExtractRight_Cam(cameraToWorld);
-        auto forward = ExtractForward_Cam(cameraToWorld);
+			Normalize(_visCameraSettings->_focus -_visCameraSettings->_position),
+			Float3(0.f, 0.f, 1.f), _visCameraSettings->_position);
+		auto up = ExtractUp_Cam(cameraToWorld);
+		auto right = ExtractRight_Cam(cameraToWorld);
+		auto forward = ExtractForward_Cam(cameraToWorld);
+
+		unsigned mainMouseButton = (_mode == CameraManipulatorMode::Max_MiddleButton) ? 2 : 1;
+		if (evnt.IsHeld_MouseButton(mainMouseButton)) {
+			static auto alt = PlatformRig::KeyId_Make("alt");
+			static auto shift = PlatformRig::KeyId_Make("shift");
+			enum ModifierMode
+			{
+				Translate, Orbit
+			};
+			ModifierMode modifierMode = Orbit;
+
+			if (_mode == CameraManipulatorMode::Max_MiddleButton) {
+				modifierMode = evnt.IsHeld(alt) ? Orbit : Translate;
+			} else if (_mode == CameraManipulatorMode::Blender_RightButton) {
+				modifierMode = evnt.IsHeld(shift) ? Translate : Orbit;
+			}
                 
-        if (evnt._mouseDelta[0] || evnt._mouseDelta[1]) {
-            if (modifierMode == Translate) {
+			if (evnt._mouseDelta[0] || evnt._mouseDelta[1]) {
+				if (modifierMode == Translate) {
 
-                float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
-                float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
+					float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
+					float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
 
-                    //  Translate the camera, but don't change forward direction
-                    //  Speed should be related to the distance to the focus point -- so that
-                    //  it works ok for both small models and large models.
-                Float3 translation
-                    =   (speedScale * _translateSpeed *  evnt._mouseDelta[1]) * up
-                    +   (speedScale * _translateSpeed * -evnt._mouseDelta[0]) * right;
+						//  Translate the camera, but don't change forward direction
+						//  Speed should be related to the distance to the focus point -- so that
+						//  it works ok for both small models and large models.
+					Float3 translation
+						=   (speedScale * _translateSpeed *  evnt._mouseDelta[1]) * up
+						+   (speedScale * _translateSpeed * -evnt._mouseDelta[0]) * right;
 
-                _visCameraSettings->_position += translation;
-                _visCameraSettings->_focus += translation;
+					_visCameraSettings->_position += translation;
+					_visCameraSettings->_focus += translation;
 
-            } else if (modifierMode == Orbit) {
+				} else if (modifierMode == Orbit) {
 
-                    //  We're going to orbit around the "focus" point marked in the
-                    //  camera settings. Let's assume it's a reasonable point to orbit
-                    //  about.
-                    //
-                    //  We could also attempt to recalculate an orbit point based
-                    //  on a collision test against the scene.
-                    //
-                    //  Let's do the rotation using Spherical coordinates. This allows us
-                    //  to clamp the maximum pitch.
-                    //
+						//  We're going to orbit around the "focus" point marked in the
+						//  camera settings. Let's assume it's a reasonable point to orbit
+						//  about.
+						//
+						//  We could also attempt to recalculate an orbit point based
+						//  on a collision test against the scene.
+						//
+						//  Let's do the rotation using Spherical coordinates. This allows us
+						//  to clamp the maximum pitch.
+						//
 
-                // Float4 plane = Expand(Float3(_visCameraSettings->_focus - _visCameraSettings->_position), 0.f);
-                // float t = RayVsPlane(_visCameraSettings->_position, _visCameraSettings->_focus, plane);
+					// Float4 plane = Expand(Float3(_visCameraSettings->_focus - _visCameraSettings->_position), 0.f);
+					// float t = RayVsPlane(_visCameraSettings->_position, _visCameraSettings->_focus, plane);
 
-                Float3 orbitCenter = _visCameraSettings->_focus; // _visCameraSettings->_position + t * (_visCameraSettings->_focus - _visCameraSettings->_position);
-                auto spherical = CartesianToSpherical(orbitCenter - _visCameraSettings->_position);
-                spherical[0] += evnt._mouseDelta[1] * _orbitRotationSpeed;
-                spherical[0] = Clamp(spherical[0], gPI * 0.02f, gPI * 0.98f);
-                spherical[1] -= evnt._mouseDelta[0] * _orbitRotationSpeed;
-                _visCameraSettings->_position = orbitCenter - SphericalToCartesian(spherical);
-                _visCameraSettings->_focus = orbitCenter;
+					Float3 orbitCenter = _visCameraSettings->_focus; // _visCameraSettings->_position + t * (_visCameraSettings->_focus - _visCameraSettings->_position);
+					auto spherical = CartesianToSpherical(orbitCenter - _visCameraSettings->_position);
+					spherical[0] += evnt._mouseDelta[1] * _orbitRotationSpeed;
+					spherical[0] = Clamp(spherical[0], gPI * 0.02f, gPI * 0.98f);
+					spherical[1] -= evnt._mouseDelta[0] * _orbitRotationSpeed;
+					_visCameraSettings->_position = orbitCenter - SphericalToCartesian(spherical);
+					_visCameraSettings->_focus = orbitCenter;
 
-            }
-        }
+				}
+			}
+			gotSomething = true;
+		}
 
         if (evnt._wheelDelta) {
             float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
@@ -158,14 +161,15 @@ namespace ToolsRig
 
             Float3 translation = movement * forward;
             _visCameraSettings->_position += translation;
+			gotSomething = true;
         }
 
-        return true;
+        return gotSomething;
     }
 
     void CameraMovementManipulator::Render(
         RenderCore::IThreadContext&, 
-        SceneEngine::LightingParserContext&)
+        RenderCore::Techniques::ParsingContext&)
     {
         // we could draw some movement widgets here
     }
@@ -173,16 +177,14 @@ namespace ToolsRig
     const char* CameraMovementManipulator::GetName() const { return "Camera Movement"; }
     std::string CameraMovementManipulator::GetStatusText() const { return std::string(); }
 
-    auto CameraMovementManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t> { return std::make_pair(nullptr, 0); }
-    auto CameraMovementManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t> { return std::make_pair(nullptr, 0); }
-    void CameraMovementManipulator::SetActivationState(bool) {}
-
     CameraMovementManipulator::CameraMovementManipulator(
-        std::shared_ptr<VisCameraSettings> visCameraSettings)
+        const std::shared_ptr<VisCameraSettings>& visCameraSettings,
+		CameraManipulatorMode mode)
     : _visCameraSettings(visCameraSettings)
+	, _mode(mode)
     {
-        _translateSpeed = 0.002f;
-        _orbitRotationSpeed = .01f * gPI;
+        _translateSpeed = (1.f / 512.f);
+        _orbitRotationSpeed = (1.f / 768.f) * gPI;
         _wheelTranslateSpeed = _translateSpeed;
     }
 
@@ -192,40 +194,38 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::shared_ptr<IManipulator> CreateCameraManipulator(
-        std::shared_ptr<VisCameraSettings> visCameraSettings)
+        const std::shared_ptr<VisCameraSettings>& visCameraSettings,
+		CameraManipulatorMode mode)
     {
-        return std::make_shared<CameraMovementManipulator>(visCameraSettings);
+        return std::make_shared<CameraMovementManipulator>(visCameraSettings, mode);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    ManipulatorStack::OnInputEvent(
+		const PlatformRig::InputContext& context,
+		const PlatformRig::InputSnapshot& evnt)
     {
-        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
-        if (evnt.IsPress_MButton() || evnt.IsRelease_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) || evnt._wheelDelta) {
-            auto i = LowerBound(_registeredManipulators, CameraManipulator);
-            if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {
-                    // remove this manipulator if it already is on the active manipulators list...
-                auto e = std::find(_activeManipulators.begin(), _activeManipulators.end(), i->second);
-                if (e!=_activeManipulators.end()) { _activeManipulators.erase(e); }
-
-                _activeManipulators.push_back(i->second);
-            }
-        }
+		SceneEngine::IntersectionTestContext intersectionContext {
+			AsCameraDesc(*_camera),
+			context._viewMins, context._viewMaxs,
+			_techniqueContext };
 
         if (!_activeManipulators.empty()) {
             bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
-                evnt, *_intrContext, *_intrScene);
-
-            if (!r) { 
+                evnt, intersectionContext, _intersectionScene.get());
+            if (!r)
                 _activeManipulators.erase(_activeManipulators.begin() + (_activeManipulators.size()-1));
-            }
-        }
+        } else {
+			auto i = LowerBound(_registeredManipulators, CameraManipulator);
+			if (i!=_registeredManipulators.end() && i->first == CameraManipulator)
+				i->second->OnInputEvent(evnt, intersectionContext, _intersectionScene.get());
+		}
 
         return false;
     }
 
-    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
+    void    ManipulatorStack::Register(uint64_t id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
     {
         auto i = LowerBound(_registeredManipulators, id);
         if (i!=_registeredManipulators.end() && i->first == id) {
@@ -235,10 +235,16 @@ namespace ToolsRig
         }
     }
 
+	void	ManipulatorStack::Set(const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionScene)
+	{
+		_intersectionScene = intersectionScene;
+	}
+
     ManipulatorStack::ManipulatorStack(
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene)
-    : _intrContext(intrContext), _intrScene(intrScene)
+        const std::shared_ptr<VisCameraSettings>& camera,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+    : _camera(camera)
+	, _techniqueContext(techniqueContext)
     {}
     ManipulatorStack::~ManipulatorStack()
     {}

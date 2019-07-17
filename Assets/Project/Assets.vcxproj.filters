@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="..\AssetUtils.h" />
@@ -37,12 +37,6 @@
     <ClInclude Include="..\CompileAndAsyncManager.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
-    <ClInclude Include="..\CompilerHelper.h">
-      <Filter>CompileAndAsync</Filter>
-    </ClInclude>
-    <ClInclude Include="..\CompilerLibrary.h">
-      <Filter>CompileAndAsync</Filter>
-    </ClInclude>
     <ClInclude Include="..\CompilationThread.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
@@ -65,10 +59,18 @@
       <Filter>FileSystems</Filter>
     </ClInclude>
     <ClInclude Include="..\NascentChunk.h" />
-    <ClInclude Include="..\IAssetCompiler.h">
+    <ClInclude Include="..\GenericFuture.h" />
+    <ClInclude Include="..\IArtifact.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
-    <ClInclude Include="..\GenericFuture.h" />
+    <ClInclude Include="..\GeneralCompiler.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ICompileOperation.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AsyncMarkerGroup.cpp" />
+    <ClInclude Include="..\RawFileAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />
@@ -88,9 +90,6 @@
     </ClCompile>
     <ClCompile Include="..\AssetTraits.cpp">
       <Filter>AssetHeaps</Filter>
-    </ClCompile>
-    <ClCompile Include="..\AsyncMarkerGroup.cpp">
-      <Filter>CompileAndAsync</Filter>
     </ClCompile>
     <ClCompile Include="..\CompileAndAsyncManager.cpp">
       <Filter>CompileAndAsync</Filter>
@@ -114,6 +113,10 @@
       <Filter>FileSystems</Filter>
     </ClCompile>
     <ClCompile Include="..\NascentChunk.cpp" />
+    <ClCompile Include="..\GeneralCompiler.cpp">
+      <Filter>CompileAndAsync</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RawFileAsset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="AssetHeaps">

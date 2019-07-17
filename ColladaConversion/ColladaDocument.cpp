@@ -33,7 +33,7 @@ namespace ColladaConversion
             return result;
 
         } else {
-            LogWarning << "Expecting vector data at " << formatter.GetLocation();
+            Log(Warning) << "Expecting vector data at " << formatter.GetLocation() << std::endl;
             return def;
         }
     }
@@ -45,7 +45,7 @@ namespace ColladaConversion
         if (formatter.TryCharacterData(cdata)) {
             return Parse<Type>(cdata, def);
         } else {
-            LogWarning << "Expecting scalar data at " << formatter.GetLocation();
+            Log(Warning) << "Expecting scalar data at " << formatter.GetLocation() << std::endl;
             return def;
         }
     }
@@ -203,7 +203,7 @@ namespace ColladaConversion
                             found = TryParseAssetDescElement(_rootAsset, formatter, ele);
 
                         if (!found) {
-                            LogWarning << "Skipping element " << ele << " at " << formatter.GetLocation();
+                            Log(Warning) << "Skipping element " << ele << " at " << formatter.GetLocation() << std::endl;
                             formatter.SkipElement();
                         }
                     }
@@ -312,12 +312,12 @@ namespace ColladaConversion
             } else if (Is(eleName, u("extra"))) {
                 _extra = SubDoc(formatter);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
         ON_ATTRIBUTE
-            LogWarning << "<sampler> elements should not have any attributes. At " << formatter.GetLocation();
+            Log(Warning) << "<sampler> elements should not have any attributes. At " << formatter.GetLocation() << std::endl;
         PARSE_END
     }
 
@@ -340,7 +340,7 @@ namespace ColladaConversion
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -355,7 +355,7 @@ namespace ColladaConversion
 
         ON_ELEMENT
             if (Is(eleName, u("annotate")) || Is(eleName, u("semantic")) || Is(eleName, u("modifier"))) {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
                 if (BeginsWith(eleName, u("sampler"))) {
@@ -368,7 +368,7 @@ namespace ColladaConversion
                     _surfaceParameters.push_back(SurfaceParameter(formatter, sid, eleName));
 
                 } else if (Is(eleName, u("array")) || Is(eleName, u("usertype")) || Is(eleName, u("string")) || Is(eleName, u("enum"))) {
-                    LogWarning << "<array>, <usertype>, <string> and <enum> params not supported (depreciated in Collada 1.5). At: " << formatter.GetLocation();
+                    Log(Warning) << "<array>, <usertype>, <string> and <enum> params not supported (depreciated in Collada 1.5). At: " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 } else {
                         // this is a basic parameter, typically a scalar, vector or matrix
@@ -378,7 +378,7 @@ namespace ColladaConversion
                     if (formatter.TryCharacterData(cdata)) {
                         _parameters.push_back(BasicParameter{sid, eleName, cdata});
                     } else {
-                        LogWarning << "Expecting element with parameter data at: " << formatter.GetLocation();
+                        Log(Warning) << "Expecting element with parameter data at: " << formatter.GetLocation() << std::endl;
                         formatter.SkipElement();
                     }
                 }
@@ -420,7 +420,7 @@ namespace ColladaConversion
                 ParseTechnique(formatter);
             } else {
                 // asset
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -463,13 +463,13 @@ namespace ColladaConversion
             if (Is(eleName, u("extra"))) {
                 _techniqueExtra = SubDoc(formatter);
             } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else if (Is(eleName, u("newparam"))) {
                     // the Collada 1.5 docs don't mention <newparam> inside of <technique>. But some of the
                     // files in the Collada test kit have it. We must skip it, so that it's not interpreted
                     // as a shader type
-                LogWarning << "<newparam> is not supported within <technique>. Ignoring.";
+                Log(Warning) << "<newparam> is not supported within <technique>. Ignoring." << std::endl;
                 formatter.SkipElement();
             } else {
                 // Any other elements are seen as a shader definition
@@ -518,7 +518,7 @@ namespace ColladaConversion
                 ParseXMLList(&_value[0], 4, cdata);
                 _type = Type::Color;
             } else
-                LogWarning << "no data in color value at " << formatter.GetLocation();
+                Log(Warning) << "no data in color value at " << formatter.GetLocation() << std::endl;
 
         } else if (Is(eleName, u("texture"))) {
 
@@ -531,7 +531,7 @@ namespace ColladaConversion
                     {
                         Formatter::InteriorSection name;
                         formatter.TryBeginElement(name);
-                        LogWarning << "Skipping (" << name << ") in technique <texture> at " << formatter.GetLocation();
+                        Log(Warning) << "Skipping (" << name << ") in technique <texture> at " << formatter.GetLocation() << std::endl;
                         formatter.SkipElement();
                         formatter.TryEndElement();
                         continue;
@@ -543,7 +543,7 @@ namespace ColladaConversion
                         formatter.TryAttribute(name, value);
                         if (Is(name, u("texture"))) _reference = value;
                         else if (Is(name, u("texcoord"))) _texCoord = value;
-                        else LogWarning << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation();
+                        else Log(Warning) << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation() << std::endl;
                         continue;
                     }
 
@@ -557,7 +557,7 @@ namespace ColladaConversion
 
             Formatter::InteriorSection name, value; 
             if (!formatter.TryAttribute(name, value) || !Is(name, u("ref"))) {
-                LogWarning << "Expecting ref attribute in param technique value at " << formatter.GetLocation();
+                Log(Warning) << "Expecting ref attribute in param technique value at " << formatter.GetLocation() << std::endl;
             } else {
                 _reference = value;
                 _type = Type::Param;
@@ -609,7 +609,7 @@ namespace ColladaConversion
                 _extra = SubDoc(formatter);
             } else {
                 // asset, annotate
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -645,7 +645,7 @@ namespace ColladaConversion
                 _effects.push_back(Effect(formatter));
             } else {
                     // "annotate", "asset" and "extra" are also valid
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -660,7 +660,7 @@ namespace ColladaConversion
                 _animations.push_back(Animation(formatter, *this));
             } else {
                     // "asset" and "extra" are also valid
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -728,7 +728,7 @@ namespace ColladaConversion
                     }
 
                 } else {
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 }
 
@@ -748,7 +748,7 @@ namespace ColladaConversion
 
             if (_paramCount==0) {
                 if (unnamedParamCount > 1)
-                    LogWarning << "Found multiple unnamed parameters in an accessor with no nammed params. This is invalid because there's no way to distinguish between the parameters. Using only the last one.";
+                    Log(Warning) << "Found multiple unnamed parameters in an accessor with no nammed params. This is invalid because there's no way to distinguish between the parameters. Using only the last one." << std::endl;
                 _params[_paramCount++] = unnamedParam;
             }
 
@@ -850,7 +850,7 @@ namespace ColladaConversion
                     if (formatter.TryCharacterData(cdata)) {
                         _arrayData = cdata;
                     } else {
-                        LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
+                        Log(Warning) << "Data source contains no data! At: " << formatter.GetLocation() << std::endl;
                     }
 
                 } else if (BeginsWith(eleName, u("technique"))) {
@@ -859,7 +859,7 @@ namespace ColladaConversion
 
                 } else {
                         // "asset" also valid
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 }
 
@@ -882,7 +882,7 @@ namespace ColladaConversion
                     ++_accessorsCount;
                 } else {
                         // documentation doesn't clearly specify what is valid here
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 }
 
@@ -1008,7 +1008,7 @@ namespace ColladaConversion
 
             } else {
                     // ph and extra (and maybe others) are possible
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1088,11 +1088,11 @@ namespace ColladaConversion
                 ParseMesh(formatter, pub);
 
             } else if (Is(eleName, u("convex_mesh")) || Is(eleName, u("spline")) || Is(eleName, u("brep"))) {
-                LogWarning << "convex_mesh, spline and brep geometries are not supported. At: " << formatter.GetLocation();
+                Log(Warning) << "convex_mesh, spline and brep geometries are not supported. At: " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
                     // "asset" and "extra" are also valid, but it's unlikely that they would be present here
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1128,7 +1128,7 @@ namespace ColladaConversion
                 _vertexInputs.push_back(DataFlow::InputUnshared(formatter));
             } else {
                     // extra is possible
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1168,7 +1168,7 @@ namespace ColladaConversion
                 _geometries.push_back(MeshGeometry(formatter, *this));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1199,7 +1199,7 @@ namespace ColladaConversion
             } else if (Is(eleName, u("extra"))) {
                 _extra = SubDoc(formatter);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1220,7 +1220,7 @@ namespace ColladaConversion
             } else if (Is(eleName, u("input"))) {
                 _influenceInputs.push_back(DataFlow::Input(formatter));
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();        // <extra> is possible
             }
 
@@ -1294,17 +1294,17 @@ namespace ColladaConversion
                             inController = true;
                             eatEndElement = false;
                         } else {
-                            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                            Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                             formatter.SkipElement();    // <asset> and <extra> possible
                         }
                     } else {
                         if (Is(eleName, u("skin"))) {
                             _skinControllers.push_back(SkinController(formatter, controllerId, controllerName, *this));
                         } else if (Is(eleName, u("morph"))) {
-                            LogWarning << "<morph> controllers not supported";
+                            Log(Warning) << "<morph> controllers not supported" << std::endl;
                             formatter.SkipElement();
                         } else {
-                            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                            Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                             formatter.SkipElement();    // <asset> and <extra> possible
                         }
                     }
@@ -1347,7 +1347,7 @@ namespace ColladaConversion
             if (Is(eleName, u("instance_effect"))) {
                 ParseInstanceEffect(formatter);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();        // <asset> and <extra> is possible
             }
 
@@ -1361,10 +1361,10 @@ namespace ColladaConversion
     {
         ON_ELEMENT
             if (Is(eleName, u("setparam")) || Is(eleName, u("technique_hint"))) {
-                LogWarning << "<setparam> and/or <technique_hint> not supported in <instance_effect>. At: " << formatter.GetLocation();
+                Log(Warning) << "<setparam> and/or <technique_hint> not supported in <instance_effect>. At: " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();        // <asset> and <extra> is possible
             }
 
@@ -1380,7 +1380,7 @@ namespace ColladaConversion
             if (Is(eleName, u("material"))) {
                 _materials.push_back(Material(formatter));
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();        // <asset> and <extra> is possible
             }
 
@@ -1397,7 +1397,7 @@ namespace ColladaConversion
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement(); // many elements possible
             }
 
@@ -1431,7 +1431,7 @@ namespace ColladaConversion
             if (Is(eleName, u("image"))) {
                 _images.push_back(Image(formatter));
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1644,7 +1644,7 @@ namespace ColladaConversion
             if (Is(eleName, u("bind_material"))) {
                 ParseBindMaterial(formatter);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1662,11 +1662,11 @@ namespace ColladaConversion
             } else {
                 if (Is(eleName, u("param"))) {
                     // support for <param> might be useful for animating material parameters
-                    LogWarning << "Element " << eleName << " is not currently supported in <instance_geometry>";
+                    Log(Warning) << "Element " << eleName << " is not currently supported in <instance_geometry>" << std::endl;
                     formatter.SkipElement();
                 } else {
                     // <extra> and <param> also possible
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 }
             }
@@ -1683,7 +1683,7 @@ namespace ColladaConversion
             if (Is(eleName, u("instance_material"))) {
                 _matBindings.push_back(MaterialBinding(formatter, techniqueProfile));
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1702,10 +1702,10 @@ namespace ColladaConversion
                 // currently.
                 // also, <extra> is possible
             if (Is(eleName, u("bind")) || Is(eleName, u("bind_vertex_input"))) {
-                LogWarning << "Element " << eleName << " is not currently supported in <instance_material>";
+                Log(Warning) << "Element " << eleName << " is not currently supported in <instance_material>" << std::endl;
                 formatter.SkipElement();
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1740,7 +1740,7 @@ namespace ColladaConversion
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_skeleton);
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -1766,7 +1766,7 @@ namespace ColladaConversion
     {
     public:
         DocScopeId _id;
-        Section _sid;
+        DocScopeId _sid;
         Section _name;
 
         IndexIntoNodes _parent;
@@ -1868,7 +1868,7 @@ namespace ColladaConversion
                     } else {
 
                             // "asset" and "evaluate_scene" are also valid, but uninteresting
-                        LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                        Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                         formatter.SkipElement();
 
                     }
@@ -2002,7 +2002,7 @@ namespace ColladaConversion
     Channel::Channel(Formatter& formatter)
     {
         ON_ELEMENT
-            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+            Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
             formatter.SkipElement();
         ON_ATTRIBUTE
             if (Is(name, u("source"))) _source = value;
@@ -2029,7 +2029,7 @@ namespace ColladaConversion
             if (Is(eleName, u("input"))) {
                 _inputs.Add(DataFlow::InputUnshared(formatter));
             } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -2077,7 +2077,7 @@ namespace ColladaConversion
                 _extra = SubDoc(formatter);
             } else {
                 // asset also possible
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -2114,7 +2114,7 @@ namespace ColladaConversion
                 _visualScenes.push_back(VisualScene(formatter));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
 
@@ -2134,7 +2134,7 @@ namespace ColladaConversion
                 _kinematicsScene = ExtractSingleAttribute(formatter, u("url"));
             } else {
                 // <extra> also possible
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             }
         ON_ATTRIBUTE
@@ -2236,7 +2236,7 @@ namespace ColladaConversion
             if (r) return r;
         }
 
-        return Node();
+		return Node {};
     }
 
     Node                    DocumentScaffold::FindNode(uint64 guid) const
@@ -2248,8 +2248,29 @@ namespace ColladaConversion
             auto r = SearchForNode(vs.GetRootNode(), guid);
             if (r) return r;
         }
-        return Node();
+		return Node {};
     }
+
+	static Node SearchForNodeBySid(Node n, uint64 guid)
+    {
+        if (n.GetSid().GetHash() == guid) return n;
+
+        for (auto child = n.GetFirstChild(); child; child = child.GetNextSibling()) {
+            auto r = SearchForNodeBySid(child, guid);
+            if (r) return r;
+        }
+
+		return Node {};
+    }
+
+	Node                    DocumentScaffold::FindNodeBySid(uint64 guid) const
+	{
+		for (const auto& vs:_visualScenes) {
+            auto r = SearchForNodeBySid(vs.GetRootNode(), guid);
+            if (r) return r;
+        }
+		return Node {};
+	}
 
     const Sampler*          DocumentScaffold::FindSampler(uint64 guid) const
     {
@@ -2355,7 +2376,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._id;
     }
 
-    Section Node::GetSid() const
+    const DocScopeId& Node::GetSid() const
     {
         assert(_index != VisualScene::IndexIntoNodes_Invalid);
         return _scene->_nodes[_index]._sid;

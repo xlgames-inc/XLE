@@ -25,21 +25,21 @@ namespace RenderOverlays
     class ImmediateOverlayContext : public IOverlayContext
     {
     public:
-        void    DrawPoint      (ProjectionMode::Enum proj, const Float3& v,     const ColorB& col,      uint8 size);
-        void    DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size);
-        void    DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size);
+        void    DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8 size);
+        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size);
+        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size);
 
-        void    DrawLine       (ProjectionMode::Enum proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness);
-        void    DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness);
-        void    DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   float thickness);
+        void    DrawLine       (ProjectionMode proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness);
+        void    DrawLines      (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness);
+        void    DrawLines      (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   float thickness);
 
-        void    DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col);
-        void    DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[]);
+        void    DrawTriangles  (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col);
+        void    DrawTriangles  (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[]);
 
-        void    DrawTriangle   (ProjectionMode::Enum proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     
+        void    DrawTriangle   (ProjectionMode proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     
                                 const ColorB& colV1, const Float3& v2,       const ColorB& colV2);
 
-        void    DrawQuad       (ProjectionMode::Enum proj, 
+        void    DrawQuad       (ProjectionMode proj, 
                                 const Float3& mins, const Float3& maxs, 
                                 ColorB color0, ColorB color1,
                                 const Float2& minTex0, const Float2& maxTex0, 
@@ -47,20 +47,18 @@ namespace RenderOverlays
 								StringSection<char> pixelShader);
 
         void    DrawQuad(
-            ProjectionMode::Enum proj, 
+            ProjectionMode proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
             StringSection<char> pixelShader);
 
         void    DrawTexturedQuad(
-            ProjectionMode::Enum proj, 
+            ProjectionMode proj, 
             const Float3& mins, const Float3& maxs, 
             const std::string& texture,
             ColorB color, const Float2& minTex0, const Float2& maxTex0);
 
-        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char> text);
-        float   StringWidth    (float scale, TextStyle* textStyle, StringSection<char> text);
-        float   TextHeight     (TextStyle* textStyle);
+        float   DrawText       (const std::tuple<Float3, Float3>& quad, const std::shared_ptr<Font>& font, const TextStyle& textStyle, ColorB col, TextAlignment alignment, StringSection<char> text);
 
         void CaptureState();
         void ReleaseState();
@@ -86,7 +84,7 @@ namespace RenderOverlays
 		unsigned					_workingBufferSize;
 		unsigned					_writePointer;
 
-        TextStyle               _defaultTextStyle;
+        std::shared_ptr<Font>		_defaultFont;
 
         RenderCore::SharedPkt _viewportConstantBuffer;
         RenderCore::SharedPkt _globalTransformConstantBuffer;
@@ -104,10 +102,10 @@ namespace RenderOverlays
             VertexFormat			_vertexFormat;
             std::string				_pixelShaderName;
             std::string				_textureName;
-            ProjectionMode::Enum	_projMode;
+            ProjectionMode	_projMode;
 
             DrawCall(   RenderCore::Topology topology, unsigned vertexOffset, 
-                        unsigned vertexCount, VertexFormat format, ProjectionMode::Enum projMode, 
+                        unsigned vertexCount, VertexFormat format, ProjectionMode projMode, 
                         const std::string& pixelShaderName = std::string(),
                         const std::string& textureName = std::string()) 
                 : _topology(topology), _vertexOffset(vertexOffset), _vertexCount(vertexCount)
@@ -117,7 +115,7 @@ namespace RenderOverlays
 
         std::vector<DrawCall>   _drawCalls;
         void                    Flush();
-        void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName, IteratorRange<const RenderCore::VertexBufferView*> vertexBuffers);
+        void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName, IteratorRange<const RenderCore::VertexBufferView*> vertexBuffers);
 
         template<typename Type> VertexFormat AsVertexFormat() const;
         unsigned                VertexSize(VertexFormat format);

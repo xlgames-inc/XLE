@@ -36,7 +36,7 @@ namespace Sample
 
         void PrepareScene(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             SceneEngine::PreparedScene& preparedPackets) const;
         void ExecuteScene(
             RenderCore::IThreadContext& context,

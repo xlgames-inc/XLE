@@ -15,6 +15,7 @@ namespace RenderCore { namespace Techniques
     namespace ObjectCB
     {
         static const auto LocalTransform = Hash64("LocalTransform");
+		static const auto DrawCallProperties = Hash64("DrawCallProperties");
         static const auto BasicMaterialConstants = Hash64("BasicMaterialConstants");
         static const auto Globals = Hash64("$Globals");
     }
@@ -53,7 +54,7 @@ namespace RenderCore { namespace Techniques
         const uint64_t ColorHDR         = ConstHash64<'prer', 'esco', 'lor'>::Value;
         const uint64_t Depth            = ConstHash64<'dept', 'h'>::Value;
 
-        const uint64_t ShadowDepthMap    = ConstHash64<'shad', 'owdm'>::Value;
-    }
+		const uint64_t ShadowDepthMap	= ConstHash64<'shad', 'owdm'>::Value;
+	}
 }}
 

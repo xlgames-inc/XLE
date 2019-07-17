@@ -51,7 +51,7 @@ namespace UnitTests
                 auto queryFn = (VersionQueryFn*)(*Windows::Fn_GetProcAddress)(library, VersionInformationName);
                 if (queryFn) {
 					auto version = (*queryFn)();
-					LogInfo << "Attached test DLL version: (" << version.first << "), (" << version.second << ")";
+					Log(Verbose) << "Attached test DLL version: (" << version.first << "), (" << version.second << ")" << std::endl;
                 }
 
 				(*shutdownFn)();

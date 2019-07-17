@@ -166,9 +166,9 @@ namespace PlatformRig { namespace Overlays
         Float3* divingLinesIterator = dividingLines;
 
         auto& res = ConsoleRig::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
-        TextStyle leftStyle(res._leftFont); leftStyle._options.shadow = 0;
-        TextStyle middleStyle(res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
-        TextStyle rightStyle(res._rightFont);
+        TextStyle leftStyle; leftStyle._options.shadow = 0;
+        TextStyle middleStyle; middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
+        TextStyle rightStyle;
 
         while (!items.empty()) {
             unsigned treeDepth = items.top().second;
@@ -210,11 +210,11 @@ namespace PlatformRig { namespace Overlays
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(leftPart._topLeft), AsPixelCoords(Coord2(leftPart._bottomRight - Coord2(treeDepth * 16, 0)))),
-                &leftStyle, settings._leftColor, TextAlignment::Right, evnt._label);
+                res._leftFont, leftStyle, settings._leftColor, TextAlignment::Right, evnt._label);
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(middlePart._topLeft), AsPixelCoords(middlePart._bottomRight)),
-                &middleStyle, settings._middleColor, TextAlignment::Center,
+                res._middleFont, middleStyle, settings._middleColor, TextAlignment::Center,
                 StringMeld<32>() << std::setprecision(settings._precision) << std::fixed << AsMilliseconds(evnt._inclusiveTime));
 
             StringMeld<64> workingBuffer;
@@ -232,7 +232,7 @@ namespace PlatformRig { namespace Overlays
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(rightPart._topLeft), AsPixelCoords(rightPart._bottomRight)),
-                &rightStyle, settings._rightColor, TextAlignment::Left,
+                res._rightFont, rightStyle, settings._rightColor, TextAlignment::Left,
                 workingBuffer);
 
             if ((divingLinesIterator+2) <= &dividingLines[dimof(dividingLines)]) {
@@ -292,28 +292,26 @@ namespace PlatformRig { namespace Overlays
         }
 
 	    {
-		    TextStyle fpsStyle{64};
 		    context.DrawText(
 			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1])),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
-			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
+				GetDefaultFont(64), TextStyle{}, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
 			    StringMeld<64>() << std::setprecision(3) << g_fpsDisplay);
 	    }
 
 	    if (g_loadDisplay != 0.f) {
-		    TextStyle fpsStyle{32};
 		    context.DrawText(
 			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
-			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
+				GetDefaultFont(32), TextStyle{}, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
 			    StringMeld<64>() << std::setprecision(3) << g_loadDisplay * 100.f << "%");
 	    }
     }
 
     bool HierarchicalProfilerDisplay::ProcessInput(
-        InterfaceState& interfaceState, const InputSnapshot& input)
+        InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsPress_LButton() || input.IsRelease_LButton()) {
             auto topId = interfaceState.TopMostWidget()._id;
@@ -330,7 +328,6 @@ namespace PlatformRig { namespace Overlays
                 return true;
             }
         }
-        using RenderOverlays::DebuggingDisplay::KeyId_Make;
         for (const auto& b:input._activeButtons) {
             if (b._name == KeyId_Make("up") && b._transition && b._state) {
                 _pimpl->_rowOffset = std::max(0, _pimpl->_rowOffset-1);

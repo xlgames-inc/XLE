@@ -7,10 +7,10 @@
 #include "IntersectionTest.h"
 #include "RayVsModel.h"
 #include "LightingParser.h"
-#include "LightingParserContext.h"
 #include "Terrain.h"
 #include "PlacementsManager.h"
 #include "SceneParser.h"
+#include "LightingParserContext.h"
 
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -18,11 +18,15 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/Techniques.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/BitUtils.h"
+
+#pragma warning(disable:4505)
 
 namespace SceneEngine
 {
@@ -31,15 +35,15 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        RenderCore::Metal::DeviceContext* devContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
         CATCH_ASSETS_BEGIN
             TerrainManager::IntersectionResult intersections[8];
             unsigned intersectionCount = terrainManager.CalculateIntersections(
-                intersections, dimof(intersections), worldSpaceRay, devContext, parserContext);
+                intersections, dimof(intersections), worldSpaceRay, context, parserContext);
 
             if (intersectionCount > 0)
                 return std::make_pair(intersections[0]._intersectionPoint, true);
@@ -50,29 +54,31 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        RenderCore::Metal::DeviceContext* devContext,
-        const IntersectionTestContext& context,
+        const IntersectionTestContext& intersectionContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
             //  create a new device context and lighting parser context, and use
             //  this to find an accurate terrain collision.
-        auto viewportDims = context.GetViewportSize();
-        RenderCore::Metal::ViewportDesc newViewport(
-            0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
-        devContext->Bind(newViewport);
-
-        LightingParserContext parserContext(context.GetTechniqueContext());
-        auto marker = LightingParser_SetupScene(*devContext, parserContext);
-        LightingParser_SetGlobalTransform(
-            *devContext, parserContext,
-            BuildProjectionDesc(context.GetCameraDesc(), viewportDims));
-
-        return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);
+        RenderCore::Metal::ViewportDesc newViewport {
+            float(intersectionContext._viewportMins[0]), float(intersectionContext._viewportMins[1]),
+			float(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]),
+			float(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1]),
+			0.f, 1.f };
+		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+        RenderCore::Metal::DeviceContext::Get(threadContext)->Bind(newViewport);
+		// We need to set the camera to get correct culling and lodding of the terrain during intersection tests
+		parsingContext.GetProjectionDesc() = RenderCore::Techniques::BuildProjectionDesc(
+			intersectionContext._cameraDesc,
+			UInt2{unsigned(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]), unsigned(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1])});
+		return FindTerrainIntersection(threadContext, parsingContext, terrainManager, worldSpaceRay);
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
-        RenderCore::Metal::DeviceContext& metalContext, ModelIntersectionStateContext& stateContext,
+        RenderCore::Metal::DeviceContext& metalContext, 
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		ModelIntersectionStateContext& stateContext,
         SceneEngine::PlacementsRenderer& placementsRenderer, SceneEngine::PlacementCellSet& cellSet,
         SceneEngine::PlacementGUID object)
     {
@@ -90,7 +96,7 @@ namespace SceneEngine
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
         placementsRenderer.RenderFiltered(
-            metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
+            metalContext, parsingContext, RenderCore::Techniques::TechniqueIndex::RayTest,		// <-- ray test technique is no longer required with the new drawable delegate based intersection system. But placements don't support that yet
             cellSet, &object, &object+1);
         return stateContext.GetResults();
     }
@@ -104,11 +110,13 @@ namespace SceneEngine
     {
         Result result;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+		RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
-                metalContext.get(), context, *_terrainManager.get(), worldSpaceRay);
+                context, parsingContext, *_terrainManager.get(), worldSpaceRay);
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {
@@ -138,12 +146,10 @@ namespace SceneEngine
                 TRY
                 {
                     float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-
-                    auto cam = context.GetCameraDesc();
-                    ModelIntersectionStateContext stateContext(
+                    ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::RayTest,
-                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
-                    stateContext.SetRay(worldSpaceRay);
+                        threadContext, parsingContext, &context._cameraDesc);
+                    intersectionContext.SetRay(worldSpaceRay);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -152,7 +158,7 @@ namespace SceneEngine
                     for (unsigned c=0; c<count; ++c) {
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
-                            *metalContext.get(), stateContext, 
+                            metalContext, parsingContext, intersectionContext, 
                             *_placementsEditor->GetManager()->GetRenderer(), *_placements,
                             guid);
 
@@ -216,7 +222,8 @@ namespace SceneEngine
     {
         std::vector<Result> result;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+        auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         if ((filter & Type::Placement) && _placements && _placementsEditor) {
             auto intersections = _placementsEditor->GetManager()->GetIntersections();
@@ -234,11 +241,11 @@ namespace SceneEngine
 
                 TRY
                 {
-                    auto cam = context.GetCameraDesc();
-                    ModelIntersectionStateContext stateContext(
+					RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
+                    ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::FrustumTest,
-                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
-                    stateContext.SetFrustum(worldToProjection);
+                        threadContext, parsingContext, &context._cameraDesc);
+                    intersectionContext.SetFrustum(worldToProjection);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -260,7 +267,7 @@ namespace SceneEngine
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
                             auto results = PlacementsIntersection(
-                                *metalContext.get(), stateContext, 
+                                metalContext, parsingContext, intersectionContext, 
                                 *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid);
                             isInside = !results.empty();
                         }
@@ -327,8 +334,10 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(
         const RenderCore::Techniques::CameraDesc& sceneCamera,
-        Int2 screenCoord, UInt2 viewportDims)
+        Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs)
     {
+		UInt2 viewportDims = viewMaxs - viewMins;
+		assert(viewportDims[0] > 0 && viewportDims[1] > 0);	// expecting a non-empty viewport here, otherwise we'll get a divide by zero below
         auto worldToProjection = CalculateWorldToProjection(sceneCamera, viewportDims[0] / float(viewportDims[1]));
 
         Float3 frustumCorners[8];
@@ -338,65 +347,26 @@ namespace SceneEngine
         return BuildRayUnderCursor(
             screenCoord, frustumCorners, cameraPosition, 
             sceneCamera._nearClip, sceneCamera._farClip,
-            std::make_pair(Float2(0.f, 0.f), Float2(float(viewportDims[0]), float(viewportDims[1]))));
+            std::make_pair(viewMins, viewMaxs));
     }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-        return CalculateWorldSpaceRay(GetCameraDesc(), screenCoord, GetViewportSize());
+		return CalculateWorldSpaceRay(_cameraDesc, screenCoord, _viewportMins, _viewportMaxs);
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
     {
-        auto viewport = GetViewportSize();
-        auto worldToProjection = CalculateWorldToProjection(GetCameraDesc(), viewport[0] / float(viewport[1]));
+        Int2 viewport = _viewportMaxs - _viewportMins;
+        auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));
         auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
 
         return Float2(
-            (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * float(viewport[0]),
-            (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
+            _viewportMins[0] + (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * float(viewport[0]),
+            _viewportMins[1] + (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
     }
-
-    UInt2 IntersectionTestContext::GetViewportSize() const
-    {
-        return UInt2(_viewportContext->_width, _viewportContext->_height);
-    }
-
-    const std::shared_ptr<RenderCore::IThreadContext>& IntersectionTestContext::GetThreadContext() const
-    {
-        return _threadContext;
-    }
-
-    RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
-    {
-        if (_sceneParser)
-            return _sceneParser->GetCameraDesc();
-        return _cameraDesc;
-    }
-
-    IntersectionTestContext::IntersectionTestContext(
-        std::shared_ptr<RenderCore::IThreadContext> threadContext,
-        const RenderCore::Techniques::CameraDesc& cameraDesc,
-        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    : _threadContext(threadContext)
-    , _cameraDesc(cameraDesc)
-    , _techniqueContext(std::move(techniqueContext))
-    , _viewportContext(std::move(viewportContext))
-    {}
-
-    IntersectionTestContext::IntersectionTestContext(
-        std::shared_ptr<RenderCore::IThreadContext> threadContext,
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    : _threadContext(threadContext)
-    , _sceneParser(sceneParser)
-    , _techniqueContext(std::move(techniqueContext))
-    , _viewportContext(std::move(viewportContext))
-    {}
-
-    IntersectionTestContext::~IntersectionTestContext() {}
 
 }
 

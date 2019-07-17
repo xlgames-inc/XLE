@@ -459,7 +459,6 @@
     <ClCompile Include="src\antlr3commontreenodestream.c" />
     <ClCompile Include="src\antlr3convertutf.c" />
     <ClCompile Include="src\antlr3cyclicdfa.c" />
-    <ClCompile Include="src\antlr3debughandlers.c" />
     <ClCompile Include="src\antlr3encodings.c" />
     <ClCompile Include="src\antlr3exception.c" />
     <ClCompile Include="src\antlr3filestream.c" />

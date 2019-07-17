@@ -41,9 +41,15 @@ namespace LevelEditorCore
         #endregion
 
         private void resourceLister_SelectionChanged(object sender, EventArgs e)
-        {            
-            Uri resUri = m_resourceLister.LastSelected;
-            object[] mdatadata = m_resourceMetadataService.GetMetadata(m_resourceLister.Selection).ToArray();
+        {
+            var uris = new System.Collections.Generic.List<Uri>();
+            foreach(var o in m_resourceLister.Selection)
+            {
+                var desc = resourceQueryService.GetDesc(o);
+                if (!desc.HasValue) continue;
+                uris.Add(new Uri(desc.Value.NaturalName, UriKind.Relative));
+            }
+            object[] mdatadata = m_resourceMetadataService.GetMetadata(uris).ToArray();
             m_propertyGrid.Bind(mdatadata);            
         }
 
@@ -52,6 +58,9 @@ namespace LevelEditorCore
 
         [Import(AllowDefault = true)]
         private IResourceMetadataService m_resourceMetadataService = null;
+
+        [Import(AllowDefault = true)]
+        private IResourceQueryService resourceQueryService = null;
 
         [Import(AllowDefault = false)]
         private ControlHostService m_controlHostService = null;

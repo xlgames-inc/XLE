@@ -9,11 +9,11 @@
 
 #include "Binding.h"
 
-SamplerState	DefaultSampler          BIND_SEQ_S0;
-SamplerState	ClampingSampler         BIND_SEQ_S1;
-SamplerState    AnisotropicSampler      BIND_SEQ_S2;
-SamplerState    PointClampSampler       BIND_SEQ_S3;
-SamplerState    WrapUSampler            BIND_SEQ_S6;
+SamplerState	DefaultSampler          BIND_NUMERIC_S0;
+SamplerState	ClampingSampler         BIND_NUMERIC_S1;
+SamplerState    AnisotropicSampler      BIND_NUMERIC_S2;
+SamplerState    PointClampSampler       BIND_NUMERIC_S3;
+SamplerState    WrapUSampler            BIND_NUMERIC_S6;
 
 #if !defined(PREFER_ANISOTROPIC) || PREFER_ANISOTROPIC==0
     #define MaybeAnisotropicSampler   DefaultSampler

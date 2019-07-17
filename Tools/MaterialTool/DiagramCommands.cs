@@ -13,6 +13,7 @@ using System.Text;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using Sce.Atf.Input;
+using Sce.Atf.Controls.Adaptable;
 
 namespace MaterialTool
 {
@@ -28,6 +29,7 @@ namespace MaterialTool
             switch ((Command)commandTag)
             {
                 case Command.DiagramSettings:
+                case Command.ShowInPreviewer:
                     return _contextRegistry.GetActiveContext<DiagramEditingContext>() != null;
             }
 
@@ -41,10 +43,71 @@ namespace MaterialTool
                 switch ((Command)commandTag)
                 {
                     case Command.DiagramSettings:
-                        var context = _contextRegistry.GetActiveContext<DiagramDocument>();
-                        if (context != null)
                         {
-                            (new DiagramSettings(context.UnderlyingDocument)).ShowDialog();
+                            var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
+                            if (context != null)
+                            {
+                                (new DiagramSettings(context.Document)).ShowDialog();
+                            }
+                        }
+                        break;
+
+                    case Command.ShowInPreviewer:
+                        {
+                            var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
+                            if (context != null && context.Document.NodeGraphFile.SubGraphs.Count != 0)
+                            {
+                                ControlsLibraryExt.ModelView.PreviewerContext previewerContext = null;
+                                Controls.ActualizationMessagesWindow msgsWindow = null;
+
+                                foreach (var control in _controlHostService.Controls)
+                                {
+                                    var adaptableControl = control.Control as AdaptableControl;
+                                    if (adaptableControl != null) {
+                                        var c = adaptableControl.ContextAs<ControlsLibraryExt.ModelView.PreviewerContext>();
+                                        if (c != null) previewerContext = c;
+                                    }
+
+                                    var mw = control.Control as Controls.ActualizationMessagesWindow;
+                                    if (mw != null)
+                                        msgsWindow = mw;
+                                }
+
+                                if (previewerContext != null)
+                                {
+                                    var actualizationMsgs = new GUILayer.MessageRelayWrapper();
+                                    previewerContext.TechniqueOverrides =
+                                        GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(
+                                            context.Document.NodeGraphFile,
+                                            context.Document.NodeGraphFile.SubGraphs.First().Key,
+                                            actualizationMsgs);
+
+                                    {
+                                        var config = new GUILayer.NodeGraphPreviewConfiguration
+                                        {
+                                            _nodeGraph = context.Document.NodeGraphFile,
+                                            _subGraphName = context.Document.NodeGraphFile.SubGraphs.First().Key as string,
+                                            _previewNodeId = ~0u,
+                                            _settings = null,
+                                            _variableRestrictions = context.Document.GraphMetaData.Variables
+                                        };
+
+                                        GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                                        context.Document.GraphMetaData.Material.MergeInto(rawMaterial);
+                                        if (rawMaterial != null)
+                                        {
+                                            previewerContext.MaterialOverrides = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
+                                        }
+                                        else
+                                        {
+                                            previewerContext.MaterialOverrides = null;
+                                        }
+                                    }
+
+                                    if (msgsWindow!=null)
+                                        msgsWindow.SetContext(actualizationMsgs);
+                                }
+                            }
                         }
                         break;
                 }
@@ -66,11 +129,23 @@ namespace MaterialTool
                     null,
                     CommandVisibility.Menu),
                 this);
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.ShowInPreviewer,
+                    StandardMenu.Edit,
+                    "ShowInPreviewer",
+                    "Show In Previewer".Localize(),
+                    "Show this shader diagram in the previewer".Localize(),
+                    Keys.P,
+                    null,
+                    CommandVisibility.Menu),
+                this);
         }
 
         private enum Command
         {
-            DiagramSettings
+            DiagramSettings,
+            ShowInPreviewer
         }
 
         [Import(AllowDefault = false)]
@@ -78,5 +153,8 @@ namespace MaterialTool
 
         [Import(AllowDefault = false)]
         private IContextRegistry _contextRegistry;
+
+        [Import(AllowDefault = false)]
+        private IControlHostService _controlHostService;
     }
 }

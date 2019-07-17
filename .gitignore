@@ -14,6 +14,7 @@
 GeneratedDocumentation/
 ArchivedStuff/
 Foreign/OpenCOLLADA/COLLADASaxFrameworkLoader/lib
+Foreign/Antlr-3.4/libantlr3c-3.4/x64/*
 PluginNonDist/
 CMakeBuild/
 Solutions/CMake/Assets
@@ -27,6 +28,8 @@ Solutions/CMake/Samples
 Solutions/CMake/ShaderParser
 Solutions/CMake/Utility
 Solutions/CMake/cmake_install.cmake
+Solutions/CMake/Debug
+Solutions/CMake/x64
 RenderCore/CMake*
 
 
@@ -42,6 +45,8 @@ BuildLog.htm
 *.nvuser
 *.VC.db
 *.VC.opendb
+**/.vs/*
+*.orig
 
 /Foreign/freetype-2.5.0.1/objs/
 /ForeignNonDist/

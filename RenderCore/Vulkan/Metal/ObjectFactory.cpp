@@ -309,7 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkFenceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         createInfo.pNext = nullptr;
-        createInfo.flags = flags;
+        createInfo.flags = flags;		// can onlt be 0 or VK_FENCE_CREATE_SIGNALED_BIT
 
         auto d = _destruction.get();
         VkFence rawFence = nullptr;
@@ -539,7 +539,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// because this function is frequently called from a smart pointer destructor -- which could be triggered
 		// during stack unwinding, or some other case that is not safe for exceptions
 		if (!success) {
-			LogAlwaysError << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation";
+			Log(Error) << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation" << std::endl;
 			std::terminate();
 		}
 

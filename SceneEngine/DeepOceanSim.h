@@ -13,11 +13,10 @@
 
 namespace BufferUploads { class ResourceLocator; }
 namespace Utility { class ParameterBox; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class DeepOceanSimSettings
     {
     public:
@@ -63,13 +62,13 @@ namespace SceneEngine
         using MetalContext = RenderCore::Metal::DeviceContext;
 
         void Update(
-            MetalContext* context, LightingParserContext& parserContext, 
+            MetalContext* context, RenderCore::Techniques::ParsingContext& parserContext, 
             const DeepOceanSimSettings& oceanSettings,
             unsigned bufferCounter);
 
         void DrawDebugging(   
             MetalContext& context, 
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             const DeepOceanSimSettings& oceanSettings);
 
         DeepOceanSim(const Desc& desc);

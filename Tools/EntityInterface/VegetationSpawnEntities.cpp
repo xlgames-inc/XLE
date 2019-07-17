@@ -4,12 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "VegetationSpawnEntities.h"
 #include "RetainedEntities.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace EntityInterface
 {
+#if 0
     static void UpdateVegetationSpawn(
         const RetainedEntities& sys, const RetainedEntity& obj,
         SceneEngine::VegetationSpawnManager& mgr)
@@ -22,7 +24,7 @@ namespace EntityInterface
             const auto* child = sys.GetEntity(obj._doc, cid);
             if (!child) continue;
 
-            auto material = CreateFromParameters<VegetationSpawnConfig::Material>(child->_properties);
+            auto material = CreateFromParameters<VegetationSpawnConfig::ScaffoldMaterial>(child->_properties);
 
             for (auto cid2:child->_children) {
                 const auto* objType = sys.GetEntity(obj._doc, cid2);
@@ -57,11 +59,13 @@ namespace EntityInterface
 
         mgr.Load(cfg);
     }
+#endif
 
     void RegisterVegetationSpawnFlexObjects(
         RetainedEntities& flexSys, 
         std::shared_ptr<SceneEngine::VegetationSpawnManager> spawnManager)
     {
+#if 0
         std::weak_ptr<SceneEngine::VegetationSpawnManager> weakPtrToManager = spawnManager;
         flexSys.RegisterCallback(
             flexSys.GetTypeId((const utf8*)"VegetationSpawnConfig"),
@@ -82,6 +86,7 @@ namespace EntityInterface
                     UpdateVegetationSpawn(flexSys, *object, *mgr);
             }
         );
+#endif
     }
 }
 

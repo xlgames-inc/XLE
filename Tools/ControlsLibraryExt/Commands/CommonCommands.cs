@@ -27,7 +27,8 @@ namespace ControlsLibraryExt.Commands
             switch ((Command)commandTag)
             {
                 case Command.SaveModifiedAssets:
-                    return GUILayer.PendingSaveList.HasModifiedAssets();
+                    return GUILayer.PendingSaveList.HasModifiedAssets()
+                        || (_docRegistry != null && ModifiedDocumentPendingSaveList.HasModifiedDocuments(_docRegistry));
 
                 case Command.ViewInvalidAssets:
                     return GUILayer.InvalidAssetList.HasInvalidAssets();
@@ -96,17 +97,37 @@ namespace ControlsLibraryExt.Commands
 
         private void PerformSaveModifiedAssets()
         {
-            var pendingAssetList = GUILayer.PendingSaveList.Create();
             using (var dialog = new ControlsLibrary.ModifiedAssetsDialog())
             {
-                dialog.BuildAssetList(pendingAssetList);
+                var pendingNativeAssetList = GUILayer.PendingSaveList.Create();
+                Aga.Controls.Tree.ITreeModel assetList = new GUILayer.DivergentAssetList(
+                    GUILayer.EngineDevice.GetInstance(), pendingNativeAssetList);
+
+                ModifiedDocumentPendingSaveList pendingDocSaveList = null;
+                if (_docRegistry != null && _docService != null)
+                {
+                    pendingDocSaveList = new ModifiedDocumentPendingSaveList(_docRegistry, _docService);
+                    var docsList = new ModifiedDocumentList(_docRegistry, pendingDocSaveList);
+                    var mergedList = new MergedDocumentList(new Aga.Controls.Tree.ITreeModel []{ assetList, docsList});
+                    assetList = mergedList;
+                }
+
+                dialog.AssetList = assetList;
+
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    var cmtResult = pendingAssetList.Commit();
+                    var cmtResult = pendingNativeAssetList.Commit();
 
                     // if we got some error messages during the commit; display them here...
                     if (!String.IsNullOrEmpty(cmtResult.ErrorMessages))
                         ControlsLibrary.BasicControls.TextWindow.ShowModal(cmtResult.ErrorMessages);
+
+                    if (pendingDocSaveList != null)
+                    {
+                        cmtResult = pendingDocSaveList.Commit();
+                        if (!String.IsNullOrEmpty(cmtResult.ErrorMessages))
+                            ControlsLibrary.BasicControls.TextWindow.ShowModal(cmtResult.ErrorMessages);
+                    }
                 }
             }
         }
@@ -121,5 +142,11 @@ namespace ControlsLibraryExt.Commands
 
         [Import(AllowDefault = false)]
         private ICommandService m_commandService;
+
+        [Import(AllowDefault = true)]
+        private Sce.Atf.Applications.IDocumentRegistry _docRegistry;
+
+        [Import(AllowDefault = true)]
+        private Sce.Atf.Applications.IDocumentService _docService;
     }
 }

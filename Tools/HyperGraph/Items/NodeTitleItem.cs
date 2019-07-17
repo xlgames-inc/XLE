@@ -29,58 +29,40 @@ using System.Drawing;
 
 namespace HyperGraph.Items
 {
-	internal sealed class NodeTitleItem : NodeItem
+	public sealed class NodeTitleItem : NodeItem
 	{
-		#region Text
-		string			internalTitle = string.Empty;
-		public string	Title		
-		{
-			get { return internalTitle; }
-			set
-			{
-				if (internalTitle == value)
-					return;
-				internalTitle = value;
-				ForceResize();
-			}
-		}
-		#endregion
+		public string	Title { get; set; }
 
-		internal void ForceResize() { TextSize = Size.Empty; }
-		internal SizeF				TextSize;
-
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Title))
 			{
-				if (this.TextSize.IsEmpty)
-				{
-					var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
-					this.TextSize			= graphics.MeasureString(this.Title, SystemFonts.CaptionFont, size, GraphConstants.TitleMeasureStringFormat);
+				var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
+				var texSize = graphics.MeasureString(this.Title, GraphConstants.TitleFont, size, GraphConstants.TitleMeasureStringFormat);
 
-					this.TextSize.Width		= Math.Max(size.Width,  this.TextSize.Width + (GraphConstants.CornerSize * 2));
-					this.TextSize.Height	= Math.Max(size.Height, this.TextSize.Height);
-				}
-				return this.TextSize;
+                texSize.Width   = Math.Max(size.Width, texSize.Width + (GraphConstants.CornerSize * 2));
+                texSize.Height	= Math.Max(size.Height, texSize.Height);
+				return texSize;
 			} else
 			{
 				return new SizeF(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
+            if (Node.Layout == Node.LayoutType.Circular)
+            {
+                var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
+                graphics.FillPath(BackgroundBrush, path);
+            }
 
-            var rect = new RectangleF(location, size);
             if ((state & RenderState.Hover) == RenderState.Hover)
-				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, rect, GraphConstants.TitleStringFormat);
+				graphics.DrawString(this.Title, GraphConstants.TitleFont, Brushes.White, boundary, GraphConstants.TitleStringFormat);
 			else
-                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.LightGray, rect, GraphConstants.TitleStringFormat);
+                graphics.DrawString(this.Title, GraphConstants.TitleFont, Brushes.LightGray, boundary, GraphConstants.TitleStringFormat);
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

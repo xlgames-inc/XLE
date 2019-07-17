@@ -9,9 +9,10 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/ShaderService.h"
-#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/BufferView.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
@@ -96,7 +97,7 @@ namespace TextureTransform
             inputPacket.get());
 
         if (_resLocator) {
-            _desc = Metal::ExtractDesc(_resLocator->GetUnderlying())._textureDesc;
+            _desc = _resLocator->GetUnderlying()->GetDesc()._textureDesc;
 
             auto format = (Format)_desc._format;
             if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
@@ -119,7 +120,7 @@ namespace TextureTransform
                 FormatCompressionType::None,
                 GetComponents(input),
                 GetComponentType(input),
-                GetDecompressedComponentPrecision(input));
+                GetCompressionParameters(input)._decompressionPrecision);
         }
         return input;
     }
@@ -173,7 +174,7 @@ namespace TextureTransform
         }
 
         auto dimsParam = parameters.GetParameter<UInt2>(ParameterBox::MakeParameterNameHash("Dims"));
-        if (dimsParam.first) viewDims = dimsParam.second;
+        if (dimsParam.has_value()) viewDims = dimsParam.value();
 
         auto formatParam = parameters.GetString<char>(ParameterBox::MakeParameterNameHash("Format"));
         if (!formatParam.empty())
@@ -206,20 +207,26 @@ namespace TextureTransform
             auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
             auto vsByteCode = LoadShaderImmediate("xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
 
-            Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
-            Metal::BoundUniforms uniforms(shaderProg);
-            uniforms.BindConstantBuffers(1, {"Material", "SubResourceId"});
-
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("Material")});
+			usi.BindConstantBuffer(1, {Hash64("SubResourceId")});
             for (unsigned c = 0; c<inputResources.size(); ++c)
-                uniforms.BindShaderResource(inputResources[c]._bindingHash, c, 1);
+                usi.BindShaderResource(c, inputResources[c]._bindingHash);
 
-            Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
+			Metal::ShaderProgram shaderProg(Metal::GetObjectFactory(), vsByteCode, psByteCode);
+            Metal::BoundUniforms uniforms(
+				shaderProg,
+				Metal::PipelineLayoutConfig{},
+				UniformsStreamInterface{},
+				usi);
+
+            RenderCore::Assets::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
 
             auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
             auto dstTexture = uploads.Transaction_Immediate(
                 CreateDesc(
-                    BindFlag::RenderTarget,
-                    0, GPUAccess::Write,
+                    RenderCore::BindFlag::RenderTarget,
+                    0, RenderCore::GPUAccess::Write,
                     dstDesc, 
                     "TextureProcessOutput"));
 
@@ -227,11 +234,10 @@ namespace TextureTransform
             auto& commonRes = Techniques::CommonResources();
             metalContext->Bind(commonRes._cullDisable);
             metalContext->Bind(commonRes._dssDisable);
-            metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
+            metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(commonRes._defaultSampler));
             metalContext->Bind(shaderProg);
             metalContext->Bind(Topology::TriangleStrip);
-            metalContext->Unbind<Metal::VertexBuffer>();
-            metalContext->Unbind<Metal::BoundInputLayout>();
+            metalContext->UnbindInputLayout();
 
             for (unsigned m=0; m<mipCount; ++m)
                 for (unsigned a=0; a<arrayCount; ++a) {
@@ -239,10 +245,10 @@ namespace TextureTransform
                     metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
                     Metal::RenderTargetView rtv(
                         dstTexture->GetUnderlying(),
-                        TextureViewDesc(
-							rtFormat, RenderCore::TextureDesc::Dimensionality::Undefined,
+                        TextureViewDesc{
+							rtFormat,
 							RenderCore::TextureViewDesc::SubResourceRange{m, 1},
-							RenderCore::TextureViewDesc::SubResourceRange{a, 1}));
+							RenderCore::TextureViewDesc::SubResourceRange{a, 1}});
                     metalContext->Bind(MakeResourceList(rtv), nullptr);
 
                     for (unsigned p=0; p<passCount; ++p) {
@@ -255,15 +261,15 @@ namespace TextureTransform
                             unsigned _passIndex, _passCount;
                         } subResId = { a, m, p, passCount };
 
-                        SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters), MakeSharedPkt(subResId) };
+                        ConstantBufferView cbvs[] = { cbLayout.BuildCBDataAsPkt(parameters), MakeSharedPkt(subResId) };
                         std::vector<const Metal::ShaderResourceView*> srvs;
                         for (const auto&i:inputResources) srvs.push_back(&i._srv);
 
                         uniforms.Apply(
-                            *metalContext, Metal::UniformsStream(),
-                            Metal::UniformsStream(
-                                cbs, nullptr, dimof(cbs),
-                                AsPointer(srvs.begin()), srvs.size()));
+                            *metalContext, 1,
+                            UniformsStream{
+                                MakeIteratorRange(cbvs),
+								UniformsStream::MakeResources(MakeIteratorRange(srvs))});
         
                         metalContext->Draw(4);
 

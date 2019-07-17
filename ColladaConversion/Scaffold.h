@@ -525,7 +525,7 @@ namespace ColladaConversion
             // ------------ ID --------------
         Section             GetName() const;
         const DocScopeId&   GetId() const;
-        Section             GetSid() const;
+        const DocScopeId&	GetSid() const;
         VisualScene::IndexIntoNodes GetIndex() const    { return _index; }
 
         const VisualScene& GetScene() const             { return *_scene; }
@@ -635,6 +635,7 @@ namespace ColladaConversion
         virtual const Image*            FindImage(uint64 guid) const = 0;
         virtual const SkinController*   FindSkinController(uint64 guid) const = 0;
         virtual Node                    FindNode(uint64 guid) const = 0;
+		virtual Node                    FindNodeBySid(uint64 guid) const = 0;
         virtual const Sampler*          FindSampler(uint64 guid) const = 0;
         virtual ~IDocScopeIdResolver();
     };
@@ -695,6 +696,7 @@ namespace ColladaConversion
         const Image*            FindImage(uint64 guid) const;
         const SkinController*   FindSkinController(uint64 guid) const;
         Node                    FindNode(uint64 guid) const;
+		Node                    FindNodeBySid(uint64 guid) const;
         const Sampler*          FindSampler(uint64 guid) const;
 
         Section GetMainVisualScene() const { return _visualScene; }

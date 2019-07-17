@@ -50,16 +50,16 @@ namespace EntityInterface
 
     namespace EntityTypeName
     {
-        static const auto* EnvSettings = (const utf8*)"EnvSettings";
-        static const auto* AmbientSettings = (const utf8*)"AmbientSettings";
-        static const auto* DirectionalLight = (const utf8*)"DirectionalLight";
-        static const auto* AreaLight = (const utf8*)"AreaLight";
-        static const auto* ToneMapSettings = (const utf8*)"ToneMapSettings";
-        static const auto* ShadowFrustumSettings = (const utf8*)"ShadowFrustumSettings";
+        static const auto* EnvSettings = "EnvSettings";
+        static const auto* AmbientSettings = "AmbientSettings";
+        static const auto* DirectionalLight = "DirectionalLight";
+        static const auto* AreaLight = "AreaLight";
+        static const auto* ToneMapSettings = "ToneMapSettings";
+        static const auto* ShadowFrustumSettings = "ShadowFrustumSettings";
 
-        static const auto* OceanLightingSettings = (const utf8*)"OceanLightingSettings";
-        static const auto* OceanSettings = (const utf8*)"OceanSettings";
-        static const auto* FogVolumeRenderer = (const utf8*)"FogVolumeRenderer";
+        static const auto* OceanLightingSettings = "OceanLightingSettings";
+        static const auto* OceanSettings = "OceanSettings";
+        static const auto* FogVolumeRenderer = "FogVolumeRenderer";
     }
     
     namespace Attribute
@@ -86,7 +86,7 @@ namespace EntityInterface
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         for (const auto& cid : obj._children) {
-            const auto* child = flexGobInterface.GetEntity(obj._doc, cid);
+            const auto* child = flexGobInterface.GetEntity(obj._doc, cid.second);
             if (!child) continue;
 
             if (child->_type == typeAmbient) {
@@ -108,7 +108,7 @@ namespace EntityInterface
                     auto fsRef = props.GetString<char>(Attribute::Name);
                     if (!fsRef.empty()) {
                         for (const auto& cid2 : obj._children) {
-                            const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2);
+                            const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2.second);
                             if (!fsSetObj || fsSetObj->_type != typeShadowFrustumSettings) continue;
                             
                             auto attachedLight = fsSetObj->_properties.GetString<char>(Attribute::AttachedLight);
@@ -159,7 +159,7 @@ namespace EntityInterface
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
-            const auto* child = entities.GetEntity(obj._doc, *c);
+            const auto* child = entities.GetEntity(obj._doc, c->second);
             if (child)
                 Serialize<CharType>(formatter, *child, entities);
         }
@@ -236,7 +236,7 @@ namespace EntityInterface
     void EnvEntitiesManager::RegisterEnvironmentFlexObjects()
     {
         _flexSys->RegisterCallback(
-            _flexSys->GetTypeId((const utf8*)"OceanSettings"),
+            _flexSys->GetTypeId("OceanSettings"),
             [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
                 if (changeType != RetainedEntities::ChangeType::Delete) {
@@ -249,7 +249,7 @@ namespace EntityInterface
             });
 
         _flexSys->RegisterCallback(
-            _flexSys->GetTypeId((const utf8*)"OceanLightingSettings"),
+            _flexSys->GetTypeId("OceanLightingSettings"),
             [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
                 if (changeType != RetainedEntities::ChangeType::Delete) {
@@ -270,14 +270,14 @@ namespace EntityInterface
         using namespace SceneEngine;
         VolumetricFogConfig cfg;
 
-        const auto volumeType = sys.GetTypeId((const utf8*)"FogVolume");
+        const auto volumeType = sys.GetTypeId("FogVolume");
         auto volumes = sys.FindEntitiesOfType(volumeType);
         for (auto v:volumes) {
             const auto& props = v->_properties;
             cfg._volumes.push_back(VolumetricFogConfig::FogVolume(props));
         }
 
-        const auto rendererConfigType = sys.GetTypeId((const utf8*)"FogVolumeRenderer");
+        const auto rendererConfigType = sys.GetTypeId("FogVolumeRenderer");
         auto renderers = sys.FindEntitiesOfType(rendererConfigType);
         if (!renderers.empty())
             cfg._renderer = VolumetricFogConfig::Renderer(renderers[0]->_properties);
@@ -289,7 +289,7 @@ namespace EntityInterface
         std::shared_ptr<SceneEngine::VolumetricFogManager> manager)
     {
         std::weak_ptr<SceneEngine::VolumetricFogManager> weakPtrToManager = manager;
-        const utf8* types[] = { (const utf8*)"FogVolume", (const utf8*)"FogVolumeRenderer" };
+        const char* types[] = { "FogVolume", "FogVolumeRenderer" };
         for (unsigned c=0; c<dimof(types); ++c) {
             _flexSys->RegisterCallback(
                 _flexSys->GetTypeId(types[c]),
@@ -310,11 +310,11 @@ namespace EntityInterface
         ParamName(Translation);
 
         auto xform = obj._properties.GetParameter<Float4x4>(Transform);
-        if (xform.first) return Transpose(xform.second);
+        if (xform.has_value()) return Transpose(xform.value());
 
         auto transl = obj._properties.GetParameter<Float3>(Translation);
-        if (transl.first) {
-            return AsFloat4x4(transl.second);
+        if (transl.has_value()) {
+            return AsFloat4x4(transl.value());
         }
         return Identity<Float4x4>();
     }
@@ -340,7 +340,7 @@ namespace EntityInterface
 
         auto vbData = std::make_unique<Float3[]>(chld.size());
         for (size_t c=0; c<chld.size(); ++c) {
-            const auto* e = sys.GetEntity(obj._doc, chld[c]);
+            const auto* e = sys.GetEntity(obj._doc, chld[c].second);
             if (e) {
                 vbData[c] = ExtractTranslation(GetTransform(*e));
             } else {
@@ -369,8 +369,8 @@ namespace EntityInterface
 
         mgr.Clear();
 
-        const auto surfaceType = sys.GetTypeId((const utf8*)"ShallowSurface");
-        const auto markerType = sys.GetTypeId((const utf8*)"TriMeshMarker");
+        const auto surfaceType = sys.GetTypeId("ShallowSurface");
+        const auto markerType = sys.GetTypeId("TriMeshMarker");
 
             // Create new surface objects for all of the "ShallowSurface" objects
         auto surfaces = sys.FindEntitiesOfType(surfaceType);
@@ -415,7 +415,7 @@ namespace EntityInterface
         _shallowWaterManager = manager;
 
         std::weak_ptr<EnvEntitiesManager> weakPtrToThis = shared_from_this();
-        const utf8* types[] = { (const utf8*)"ShallowSurface", (const utf8*)"TriMeshMarker" };
+        const char* types[] = { "ShallowSurface", "TriMeshMarker" };
         for (unsigned c=0; c<dimof(types); ++c) {
             _flexSys->RegisterCallback(
                 _flexSys->GetTypeId(types[c]),

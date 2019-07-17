@@ -227,11 +227,9 @@ namespace PlatformRig { namespace Overlays
                 interactables.Register(Interactables::Widget(dropDownRect, hash));
             }
 
-            TextStyle style(
-                ConsoleRig::FindCachedBox2<FontBox>()._font,
-                DrawTextOptions(false, true));
+            TextStyle style{DrawTextOptions{false, true}};
             context->DrawText(
-                AsPixelCoords(rect), &style, text, 
+                AsPixelCoords(rect), ConsoleRig::FindCachedBox2<FontBox>()._font, style, text, 
                 TextAlignment::Center, g.first);
 
             interactables.Register(Interactables::Widget(rect, hash));
@@ -252,11 +250,9 @@ namespace PlatformRig { namespace Overlays
                 if (interfaceState.HasMouseOver(hash))
                     col = ColorB::White;
 
-                TextStyle style(
-                    ConsoleRig::FindCachedBox2<FontBox>()._smallFont,
-                    DrawTextOptions(false, true));
+				TextStyle style{DrawTextOptions{false, true}};
                 context->DrawText(
-                    AsPixelCoords(rect), &style, col, 
+                    AsPixelCoords(rect), ConsoleRig::FindCachedBox2<FontBox>()._smallFont, style, col, 
                     TextAlignment::Left, name);
 
                 if ((c+1) != dropDown->size())
@@ -367,19 +363,19 @@ namespace PlatformRig { namespace Overlays
 
             if (graphCount == UploadDataType::Max) {
                 context->DrawText(
-                    AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
+					AsPixelCoords(labelRect), GetDefaultFont(), TextStyle{}, ColorB(0xffffffffu), 
                     TextAlignment::Left,
                     StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")");
             } else {
                 context->DrawText(
-                    AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
+                    AsPixelCoords(labelRect), GetDefaultFont(), TextStyle{}, ColorB(0xffffffffu), 
                     TextAlignment::Left,
                     GraphTabs::Names[_graphsMode]);
             }
 
 			if (valuesCount2 > 0) {
 				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount2];
-				context->DrawText(AsPixelCoords(historyRect), nullptr, ColorB(0xffffffffu), 
+				context->DrawText(AsPixelCoords(historyRect), GetDefaultFont(), TextStyle{}, ColorB(0xffffffffu), 
                     TextAlignment::Top,
                     XlDynFormatString("%6.3f", mostRecentValue).c_str());
 			}
@@ -641,7 +637,7 @@ namespace PlatformRig { namespace Overlays
         DrawMenuBar(&context, menuBar, interactables, interfaceState);
     }
 
-    bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {
@@ -939,7 +935,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    ResourcePoolDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ResourcePoolDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {
@@ -1115,7 +1111,7 @@ namespace PlatformRig { namespace Overlays
         return false;
     }
 
-    bool    BatchingDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    BatchingDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

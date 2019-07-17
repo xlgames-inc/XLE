@@ -5,10 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SunFlare.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -18,6 +18,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -82,10 +83,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
             (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
 
-        _commitUniforms = Metal::BoundUniforms(*_commitShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_commitUniforms);
-        _commitUniforms.BindConstantBuffers(1, {"Settings"});
-        _commitUniforms.BindShaderResources(1, {desc._rowsOptimisation ? "InputRowsTexture" : "InputTexture"});
+		UniformsStreamInterface commitUsi;
+        commitUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        commitUsi.BindShaderResource(0, desc._rowsOptimisation ? Hash64("InputRowsTexture") : Hash64("InputTexture"));
+		_commitUniforms = Metal::BoundUniforms(
+			*_commitShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			commitUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -97,10 +102,14 @@ namespace SceneEngine
                 << ";ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)
                 << ";OUTPUT_ROWS=" << int(desc._res[1])).get());
 
-        _blurUniforms = Metal::BoundUniforms(*_blurShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_blurUniforms);
-        _blurUniforms.BindConstantBuffers(1, {"Settings"});
-        _blurUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface blurUsi;
+        blurUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        blurUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_blurUniforms = Metal::BoundUniforms(
+			*_blurShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			blurUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -108,10 +117,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
             "xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
 
-        _toRadialUniforms = Metal::BoundUniforms(*_toRadialShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_toRadialUniforms);
-        _toRadialUniforms.BindConstantBuffers(1, {"Settings"});
-        _toRadialUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface toRadialUsi;
+        toRadialUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        toRadialUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_toRadialUniforms = Metal::BoundUniforms(
+			*_toRadialShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			toRadialUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -119,10 +132,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
             "xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
 
-        _directBlurUniforms = Metal::BoundUniforms(*_directBlurShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_directBlurUniforms);
-        _directBlurUniforms.BindConstantBuffers(1, {"Settings"});
-        _directBlurUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface directBlurUsi;
+        directBlurUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        directBlurUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_directBlurUniforms = Metal::BoundUniforms(
+			*_directBlurShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			directBlurUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -138,18 +155,18 @@ namespace SceneEngine
                         TextureDesc::Plain1D(desc._res[0], Format::R8_UNORM),
                         "SunFlareTemp");
                 auto offscreen = GetBufferUploads().Transaction_Immediate(descRows);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
             } else {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
             }
 
             if (!desc._singlePass) {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[1] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[1] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[1] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[1] = Metal::RenderTargetView(offscreen->GetUnderlying());
             }
         }
 
@@ -163,17 +180,18 @@ namespace SceneEngine
     }
 
     void SunFlare_Execute(
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
-        const RenderCore::Metal::ShaderResourceView& depthsSRV)
+        RenderCore::IThreadContext& threadContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& depthsSRV,
+		const LightDesc& sunDesc)
     {
         using namespace RenderCore;
 
-        if (!parserContext.GetSceneParser() || !parserContext.GetSceneParser()->GetLightCount())
+        /*if (!parserContext.GetSceneParser() || !parserContext.GetSceneParser()->GetLightCount())
             return;
 
             // avoid completely if we're facing away
-        const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);
+        const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);*/
         const auto& projDesc = parserContext.GetProjectionDesc();
         if (Dot(ExtractForward_Cam(projDesc._cameraToWorld), sunDesc._position) < 0.f)
             return;
@@ -203,8 +221,9 @@ namespace SceneEngine
             ||  (vAngle - flareAngle) >  .5f * projDesc._verticalFov)
             return;
 
-        SavedTargets savedTargets(*context);
-        Metal::ViewportDesc savedViewport(*context);
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
+        SavedTargets savedTargets(context);
+        Metal::ViewportDesc savedViewport(context);
         
         CATCH_ASSETS_BEGIN
 
@@ -225,10 +244,9 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-            context->Bind(Topology::TriangleStrip);
-            context->Bind(Techniques::CommonResources()._dssDisable);
-            context->Unbind<Metal::VertexBuffer>();
-            context->Unbind<Metal::BoundInputLayout>();
+            context.Bind(Topology::TriangleStrip);
+            context.Bind(Techniques::CommonResources()._dssDisable);
+            context.UnbindInputLayout();
 
             const bool doDirectBlur = Tweakable("SunFlareDirectBlur", false);
             const bool singlePass = Tweakable("SunFlareSinglePass", false);
@@ -238,92 +256,96 @@ namespace SceneEngine
 
             const auto& res = ConsoleRig::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
             if (!doDirectBlur) {
-                context->Bind(Techniques::CommonResources()._blendOpaque);
-                context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
+                context.Bind(Techniques::CommonResources()._blendOpaque);
+                context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
 
                 if (!singlePass) {
-                    context->Bind(MakeResourceList(res._tempRTV[1]), nullptr);
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    context.Bind(MakeResourceList(res._tempRTV[1]), nullptr);
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._toRadialUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(constants, srvs));
+                    res._toRadialUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._toRadialUniforms.Apply(context, 1, 
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                 
-                    context->Bind(*res._toRadialShader);
-                    context->Draw(4);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    context.Bind(*res._toRadialShader);
+                    context.Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
                 if (rowsOptimisation)
-                    context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
+                    context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
 
                 {
-                    context->Bind(MakeResourceList(res._tempRTV[0]), nullptr);
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    context.Bind(MakeResourceList(res._tempRTV[0]), nullptr);
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &res._tempSRV[1] };
-                    res._blurUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(constants, srvs));
+                    res._blurUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._blurUniforms.Apply(context, 1, 
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._blurShader);
-                    context->Draw(4);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    context.Bind(*res._blurShader);
+                    context.Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
                 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-                context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+                context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
-                context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                context.Bind(savedViewport);
+                context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &res._tempSRV[0] };
-                    res._commitUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(constants, srvs));
+                    res._commitUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._commitUniforms.Apply(context, 1, 
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._commitShader);
-                    context->Bind(Topology::TriangleList);
-                    context->Draw(64*3);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    context.Bind(*res._commitShader);
+                    context.Bind(Topology::TriangleList);
+                    context.Draw(64*3);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
             } else {
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-                context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+                context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
-                context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                context.Bind(savedViewport);
+                context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._directBlurUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(constants, srvs));
+                    res._directBlurUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._directBlurUniforms.Apply(context, 1, 
+                        UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._directBlurShader);
-                    context->Bind(Topology::TriangleList);
-                    context->Draw(64*3);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    context.Bind(*res._directBlurShader);
+                    context.Bind(Topology::TriangleList);
+                    context.Draw(64*3);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
                 
             }
 
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(Topology::TriangleList);
-        context->Bind(Techniques::CommonResources()._dssReadWrite);
-        savedTargets.ResetToOldTargets(*context);
-        context->Bind(savedViewport);
+        context.Bind(Topology::TriangleList);
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        savedTargets.ResetToOldTargets(context);
+        context.Bind(savedViewport);
     }
 }
 

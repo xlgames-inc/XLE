@@ -75,6 +75,9 @@
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
+      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
@@ -84,7 +87,7 @@
     <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\GenerateAO.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
-    <ClCompile Include="..\MaterialBinder.cpp" />
+    <ClCompile Include="..\MaterialOverridesDelegate.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
@@ -105,7 +108,7 @@
     <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />
     <ClInclude Include="..\ManipulatorsUtil.h" />
-    <ClInclude Include="..\MaterialBinder.h" />
+    <ClInclude Include="..\MaterialOverridesDelegate.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />

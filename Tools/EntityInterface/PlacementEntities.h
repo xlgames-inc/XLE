@@ -28,7 +28,7 @@ namespace EntityInterface
         bool DeleteObject(const Identifier& id);
         bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount);
         bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const;
-        bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition);
+        bool SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition);
 
         ObjectTypeId GetTypeId(const char name[]) const;
         DocumentTypeId GetDocumentTypeId(const char name[]) const;

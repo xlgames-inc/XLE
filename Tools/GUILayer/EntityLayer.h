@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../EntityInterface/EntityInterface.h"
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 
 using namespace System::Collections::Generic;
@@ -33,13 +32,13 @@ namespace GUILayer
         value struct PropertyInitializer
         {
             PropertyId _prop;
-            const void* _src;
+            const void* _srcBegin, *_srcEnd;
             unsigned _elementType;
             unsigned _arrayCount;
             bool _isString;
 
-            PropertyInitializer(PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount, bool isString)
-                : _prop(prop), _src(src), _elementType(elementType), _arrayCount(arrayCount), _isString(isString) {}
+            PropertyInitializer(PropertyId prop, const void* srcBegin, const void* srcEnd, unsigned elementType, unsigned arrayCount, bool isString)
+                : _prop(prop), _srcBegin(srcBegin), _srcEnd(srcEnd), _elementType(elementType), _arrayCount(arrayCount), _isString(isString) {}
         };
 
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);
@@ -50,7 +49,9 @@ namespace GUILayer
 
         bool SetObjectParent(DocumentId doc, 
             ObjectId childId, ObjectTypeId childTypeId, 
-            ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition);
+            ObjectId parentId, ObjectTypeId parentTypeId,
+			ChildListId childList,
+			int insertionPosition);
 
         ObjectTypeId GetTypeId(System::String^ name);
         DocumentTypeId GetDocumentTypeId(System::String^ name);

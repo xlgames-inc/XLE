@@ -6,8 +6,9 @@
 
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -46,10 +47,10 @@ namespace SceneEngine
         auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc);
         auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->ShareUnderlying());
-        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->ShareUnderlying());
-        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->ShareUnderlying());
-        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->ShareUnderlying());
+        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying());
+        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying());
+        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying());
+        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying());
 
         _refractionsTexture[0] = std::move(_refractionsTexture0);
         _refractionsTexture[1] = std::move(_refractionsTexture1);
@@ -65,7 +66,7 @@ namespace SceneEngine
 
     void RefractionsBuffer::Build(
         RenderCore::Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         float standardDeviationForBlur)
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -77,14 +78,14 @@ namespace SceneEngine
             metalContext.Bind(newViewport);
 
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-            metalContext.UnbindPS<Metal::ShaderResourceView>(12, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 12, 1);
 
             auto res = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetRenderTargets()[0]);
-            Metal::ShaderResourceView sourceSRV(res.get());
+            Metal::ShaderResourceView sourceSRV(Metal::AsResourcePtr(res.get()));
             Metal::TextureDesc2D textureDesc(res.get());
                         
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
-            metalContext.BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
             SetupVertexGeneratorShader(metalContext);
             
             bool needStepDown = 
@@ -98,13 +99,13 @@ namespace SceneEngine
                 metalContext.Draw(4);
 
                 metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
-                metalContext.BindPS(MakeResourceList(_refractionsFrontSRV));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsFrontSRV));
             }
 
             float filteringWeights[8];
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
             BuildGaussianFilteringWeights(filteringWeights, standardDeviationForBlur, 7);
-            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(filteringWeights, sizeof(filteringWeights))));
 
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
             metalContext.Bind(
@@ -113,17 +114,18 @@ namespace SceneEngine
                     "xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
             metalContext.Draw(4);
 
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);
+			metalContext.GetNumericUniforms(ShaderStage::Pixel).Reset();
 
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
-            metalContext.BindPS(MakeResourceList(_refractionsBackSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsBackSRV));
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "xleres/basic2D.vsh:fullscreen:vs_*", 
                     "xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
             metalContext.Draw(4);
                         
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);
             oldTargets.ResetToOldTargets(metalContext);
         
         CATCH_ASSETS_END(parserContext)
@@ -170,7 +172,7 @@ namespace SceneEngine
 
         auto texture = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::ShaderResourceView srv(texture->ShareUnderlying(), {AsResolvableFormat(desc._format)});
+        Metal::ShaderResourceView srv(texture->GetUnderlying(), {AsResolvableFormat(desc._format)});
 
         _srv = std::move(srv);
         _resource = std::move(texture);
@@ -186,7 +188,7 @@ namespace SceneEngine
             // todo --  should we create a non-msaa depth buffer even when the input is MSAA?
             //          it might be simplier for the shader pipeline. And we don't normally need
             //          MSAA in our duplicated depth buffers;
-		auto desc = Metal::ExtractDesc(&sourceDepthBuffer);
+		auto desc = sourceDepthBuffer.GetDesc();
 
         const bool resolveMSAA = true;
         if (desc._textureDesc._samples._sampleCount > 1 && resolveMSAA) {
@@ -199,7 +201,8 @@ namespace SceneEngine
             auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
 			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
 				context->GetUnderlying()->ResolveSubresource(
-					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, Metal::UnderlyingResourcePtr(&sourceDepthBuffer).get(), 0,
+					Metal::AsResource(*box._resource->GetUnderlying()).GetUnderlying().get(), 0, 
+					Metal::AsResource(sourceDepthBuffer).GetUnderlying().get(), 0,
 					Metal::AsDXGIFormat(AsResolvableFormat(d._format)));
 			#endif
             return box._srv;
@@ -212,7 +215,7 @@ namespace SceneEngine
 
                 //  Copy into the new buffer
             auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
-            Metal::Copy(*context, box._resource->GetUnderlying(), &sourceDepthBuffer);
+            Metal::Copy(*context, Metal::AsResource(*box._resource->GetUnderlying()), Metal::AsResource(sourceDepthBuffer));
             return box._srv;
 
         }

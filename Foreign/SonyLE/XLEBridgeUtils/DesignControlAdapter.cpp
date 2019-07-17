@@ -9,9 +9,8 @@
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
-#include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../SceneEngine/LightingParserContext.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/IDevice.h"
 #include <msclr\auto_handle.h>
 #include <memory>
@@ -26,6 +25,8 @@ using namespace Sce::Atf::Adaptation;
 using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Dom;
 using namespace Sce::Atf::VectorMath;
+
+namespace GUILayer { class RenderTargetWrapper; }
 
 namespace XLEBridgeUtils
 {
@@ -42,9 +43,10 @@ namespace XLEBridgeUtils
     private ref class DesignControlAdapterOverlay : public GUILayer::IOverlaySystem
     {
     public:
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) override
+        virtual void Render(
+            RenderCore::IThreadContext& device,
+			const GUILayer::RenderTargetWrapper& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override
         {
             auto context = gcnew GUILayer::SimpleRenderingContext(&device, RetainedResources, &parserContext);
             try
@@ -56,11 +58,6 @@ namespace XLEBridgeUtils
                 delete context;
             }
         }
-
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext) override {}
-        virtual void SetActivationState(bool) override {}
 
         event RenderCallback^ OnRender;
         property GUILayer::RetainedRenderResources^ RetainedResources;
@@ -258,17 +255,13 @@ namespace XLEBridgeUtils
 
             ICollection<GUILayer::HitRecord>^ results = nullptr;
             {
-                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
-                    Utils::CreateIntersectionTestContext(
-                        device, techniqueContext, camera, 
-                        (unsigned)viewportSize.Width, (unsigned)viewportSize.Height));
-
                 msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
                     sceneManager->GetIntersectionScene());
 
                 cli::pin_ptr<float> ptr = &pickingFrustum->M11;
                 results = GUILayer::EditorInterfaceUtils::FrustumIntersection(
-                    scene.get(), context.get(), ptr, (uint)flags);
+					camera, techniqueContext,
+                    scene.get(), ptr, (uint)flags);
             }
 
             if (results == nullptr) { return nullptr; }
@@ -312,16 +305,12 @@ namespace XLEBridgeUtils
             auto endPt = ray.Origin + camera->_native->_farClip * ray.Direction;
 
             {
-                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
-                    Utils::CreateIntersectionTestContext(
-                        device, techniqueContext, camera, 
-                        (uint)viewportSize.Width, (uint)viewportSize.Height));
-
                 msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
                     sceneManager->GetIntersectionScene());
 
                 results = GUILayer::EditorInterfaceUtils::RayIntersection(
-                    scene.get(), context.get(),
+					camera, techniqueContext,
+                    scene.get(),
                     Utils::AsVector3(ray.Origin),
                     Utils::AsVector3(endPt), (uint)flags);
             }

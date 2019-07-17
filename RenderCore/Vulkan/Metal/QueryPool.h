@@ -6,16 +6,19 @@
 
 #include "VulkanCore.h"
 #include "../../../Core/Types.h"
+#include "../../../Utility/IteratorUtils.h"
 #include <memory>
 
 #define GPUANNOTATIONS_ENABLE
+
+namespace RenderCore { class IDevice; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class DeviceContext;
 	class ObjectFactory;
 
-	class QueryPool
+	class TimeStampQueryPool
 	{
 	public:
 		using QueryId = unsigned;
@@ -39,11 +42,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 		FrameResults GetFrameResults(DeviceContext& context, FrameId id);
 
-		QueryPool(ObjectFactory& factory);
-		~QueryPool();
+		TimeStampQueryPool(ObjectFactory& factory);
+		~TimeStampQueryPool();
 
-		QueryPool(const QueryPool&) = delete;
-		QueryPool& operator=(const QueryPool&) = delete;
+		TimeStampQueryPool(const TimeStampQueryPool&) = delete;
+		TimeStampQueryPool& operator=(const TimeStampQueryPool&) = delete;
 	private:
 		static const unsigned s_bufferCount = 3u;
 		VulkanUniquePtr<VkQueryPool> _timeStamps;
@@ -68,6 +71,38 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned	_queryCount;
 		uint64		_frequency;
 		std::unique_ptr<uint64[]> _timestampsBuffer;
+	};
+
+	class QueryPool
+	{
+	public:
+		enum class QueryType
+		{
+			StreamOutput_Stream0
+		};
+
+		struct QueryResult_StreamOutput
+		{
+			unsigned _primitivesWritten;
+			unsigned _primitivesNeeded;
+		};
+
+		using QueryId = unsigned;
+		QueryId Begin(DeviceContext& context);
+		void End(DeviceContext& context, QueryId);
+
+		bool GetResults_Stall(DeviceContext& context, QueryId query, IteratorRange<void*> dst);
+
+		QueryPool(ObjectFactory& factory, QueryType type, unsigned count);
+		~QueryPool();
+	private:
+		VulkanUniquePtr<VkQueryPool> _underlying;
+
+		enum class QueryState { PendingReset, Reset, Inflight, Ended };
+		std::vector<QueryState> _queryStates;
+		unsigned _nextAllocation = 0;
+
+		QueryType _type;
 	};
 
     #if defined(GPUANNOTATIONS_ENABLE)

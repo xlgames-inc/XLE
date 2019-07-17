@@ -27,6 +27,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.cpp" />
+    <ClCompile Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\..\..\RenderCore\Assets\ShaderPatchCollection.cpp" />
     <ClCompile Include="..\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +51,11 @@
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\RenderCore\Assets\LocalCompiledShaderSource.h" />
+    <ClInclude Include="..\..\..\RenderCore\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\..\..\RenderCore\Assets\ShaderPatchCollection.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <RootNamespace>ShaderScan</RootNamespace>
@@ -105,6 +113,7 @@
     <Link />
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>dxguid.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)../../../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

@@ -34,6 +34,8 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return (UnderlyingType)_underlying.get(); }
         bool                        IsGood() const { return _underlying.get() != nullptr; }
+
+		virtual void*			QueryInterface(size_t guid);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

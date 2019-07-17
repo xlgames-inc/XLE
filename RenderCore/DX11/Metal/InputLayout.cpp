@@ -21,6 +21,7 @@
 #include "../../UniformsStream.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/ParameterBox.h"
 #include <D3D11Shader.h>
 
 namespace RenderCore { namespace Metal_DX11
@@ -48,10 +49,13 @@ namespace RenderCore { namespace Metal_DX11
 	static std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> GetInputParameters(ID3D::ShaderReflection& reflection)
 	{
 		std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> result;
-		unsigned paramCount = reflection.GetNumInterfaceSlots();
-		for (unsigned p=0;p<paramCount; ++p) {
+		D3D11_SHADER_DESC shaderDesc;
+		auto hresult = reflection.GetDesc(&shaderDesc);
+		assert(SUCCEEDED(hresult));
+
+		for (unsigned p=0;p<shaderDesc.InputParameters; ++p) {
 			D3D11_SIGNATURE_PARAMETER_DESC desc;
-			auto hresult = reflection.GetInputParameterDesc(p, &desc);
+			hresult = reflection.GetInputParameterDesc(p, &desc);
 			assert(SUCCEEDED(hresult));
 			if (!desc.SemanticName) continue;
 			auto hash = Hash64(desc.SemanticName) + desc.SemanticIndex;
@@ -61,41 +65,52 @@ namespace RenderCore { namespace Metal_DX11
 		return result;
 	}
 
-	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const BoundInputLayout::SlotBinding*> layouts, const CompiledShaderByteCode& shader)
 	{
 		auto byteCode = shader.GetByteCode();
 		auto reflection = CreateReflection(shader);
 		auto inputParameters = GetInputParameters(*reflection);
 
-		UINT accumulatingOffset = 0; 
-
 		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
-			// We have to lookup the name of an input parameter that matches the hash,
-			// because CreateInputLayout requires the full semantic name
-			auto i = LowerBound(inputParameters, layout[c]._semanticHash);
-			if (i==inputParameters.end() || i->first == layout[c]._semanticHash)
-				continue;
+		unsigned c=0;
+		for (unsigned slot=0; slot<layouts.size(); ++slot) {
+			UINT accumulatingOffset = 0;
+			for (unsigned e=0; e<layouts[slot]._elements.size() && c<D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++e) {
 
-			nativeLayout[c].SemanticName = i->second.first;
-			nativeLayout[c].SemanticIndex = i->second.second;
-			nativeLayout[c].Format = AsDXGIFormat(layout.first[c]._nativeFormat);
-			nativeLayout[c].InputSlot = 0;
-			nativeLayout[c].AlignedByteOffset = accumulatingOffset;
-			nativeLayout[c].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			nativeLayout[c].InstanceDataStepRate = 0;
+				// We have to lookup the name of an input parameter that matches the hash,
+				// because CreateInputLayout requires the full semantic name
+				const auto& ele = layouts[slot]._elements[e];
+				auto i = LowerBound(inputParameters, ele._semanticHash);
+				if (i == inputParameters.end() || i->first != ele._semanticHash) {
+					accumulatingOffset += BitsPerPixel(ele._nativeFormat) / 8;
+					continue;
+				}
 
-			accumulatingOffset += BitsPerPixel(layout.first[c]._nativeFormat) / 8;
+				nativeLayout[c].SemanticName = i->second.first;
+				nativeLayout[c].SemanticIndex = i->second.second;
+				nativeLayout[c].Format = AsDXGIFormat(ele._nativeFormat);
+				nativeLayout[c].InputSlot = slot;
+				nativeLayout[c].AlignedByteOffset = accumulatingOffset;
+				nativeLayout[c].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+				nativeLayout[c].InstanceDataStepRate = layouts[slot]._instanceStepDataRate;
+				++c;
+
+				accumulatingOffset += BitsPerPixel(ele._nativeFormat) / 8;
+			}
 		}
 
 		return GetObjectFactory().CreateInputLayout(
-			nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()),
+			nativeLayout, c,
 			byteCode.begin(), byteCode.size());
 	}
 
-	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const MiniInputElementDesc*> layout)
+	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const BoundInputLayout::SlotBinding*> layouts)
 	{
-		return std::vector<unsigned> { RenderCore::CalculateVertexStride(layout) };
+		std::vector<unsigned> result;
+		result.reserve(layouts.size());
+		for (const auto&l:layouts)
+			result.push_back(RenderCore::CalculateVertexStride(l._elements));
+		return result;
 	}
 
 	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -131,17 +146,11 @@ namespace RenderCore { namespace Metal_DX11
 		_vertexStrides = CalculateVertexStrides(layout);
     }
 
-	BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader)
+	BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& shader)
     {
             // need constructor deferring!
-        _underlying = BuildInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex));
-		_vertexStrides = CalculateVertexStrides(layout);
-    }
-
-    BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
-    {
-        _underlying = BuildInputLayout(layout, shader);
-		_vertexStrides = CalculateVertexStrides(layout);
+        _underlying = BuildInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex));
+		_vertexStrides = CalculateVertexStrides(layouts);
     }
 
     BoundInputLayout::BoundInputLayout(DeviceContext& context)
@@ -211,6 +220,41 @@ namespace RenderCore { namespace Metal_DX11
 			}
 		}
     }
+
+	BoundUniforms::BoundUniforms(
+        const ComputeShader& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	{
+		for (unsigned c=0; c<4; ++c)
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+
+		intrusive_ptr<ID3D::ShaderReflection> reflections[(unsigned)ShaderStage::Max];
+		reflections[(unsigned)ShaderStage::Compute] = CreateReflection(shader.GetCompiledCode());
+
+		const UniformsStreamInterface* streams[] = { &interface0, &interface1, &interface2, &interface3 };
+		for (unsigned streamIdx=0; streamIdx<dimof(streams); ++streamIdx) {
+			const auto& stream = *streams[streamIdx];
+			for (unsigned slot=0; slot<(unsigned)stream._cbBindings.size(); ++slot) {
+				auto bound = BindConstantBuffer(
+					MakeIteratorRange(reflections),
+					stream._cbBindings[slot]._hashName, slot, streamIdx,
+					MakeIteratorRange(stream._cbBindings[slot]._elements));
+				if (bound)
+					_boundUniformBufferSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+			for (unsigned slot=0; slot<(unsigned)stream._srvBindings.size(); ++slot) {
+				auto bound = BindShaderResource(
+					MakeIteratorRange(reflections),
+					stream._srvBindings[slot], slot, streamIdx);
+				if (bound)
+					_boundResourceSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+		}
+	}
 
     BoundUniforms::BoundUniforms() 
 	{
@@ -322,7 +366,9 @@ namespace RenderCore { namespace Metal_DX11
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 					hresult = reflections[s]->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
+						// To bind correctly, we must use the same name hashing as the parameter box -- so we might as well just
+						// go ahead and call that here
+						const uint64 hash = ParameterBox::MakeParameterNameHash(MakeStringSection(bindingDesc.Name, XlStringEnd(bindingDesc.Name)));
 						if (hash == hashName) {
 							StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
 							_stageBindings[s]._shaderResourceBindings.push_back(newBinding);
@@ -341,10 +387,7 @@ namespace RenderCore { namespace Metal_DX11
         unsigned streamIdx,
         const UniformsStream& stream) const
     {
-        typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffers)(UINT, UINT, ID3D::Buffer *const *);
-        typedef void (__stdcall ID3D::DeviceContext::*SetShaderResources)(UINT, UINT, ID3D11ShaderResourceView *const *);
-
-        SetConstantBuffers scb[(unsigned)ShaderStage::Max] = 
+        Internal::SetConstantBuffersFn scb[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetConstantBuffers,
             &ID3D::DeviceContext::PSSetConstantBuffers,
@@ -354,7 +397,7 @@ namespace RenderCore { namespace Metal_DX11
             &ID3D::DeviceContext::CSSetConstantBuffers,
         };
 
-        SetShaderResources scr[(unsigned)ShaderStage::Max] = 
+        Internal::SetShaderResourcesFn scr[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetShaderResources,
             &ID3D::DeviceContext::PSSetShaderResources,
@@ -416,7 +459,7 @@ namespace RenderCore { namespace Metal_DX11
                         if (!(setMask & (1<<c)))
                             currentCBS[c] = nullptr;
 
-                    SetConstantBuffers fn = scb[s];
+                    Internal::SetConstantBuffersFn fn = scb[s];
                     (context.GetUnderlying()->*fn)(lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1, &currentCBS[lowestShaderSlot]);
                 }
             }
@@ -446,7 +489,7 @@ namespace RenderCore { namespace Metal_DX11
                         if (!(setMask & (1<<c)))
                             currentSRVs[c] = nullptr;
 
-                    SetShaderResources fn = scr[s];
+                    Internal::SetShaderResourcesFn fn = scr[s];
                     (context.GetUnderlying()->*fn)(
                         lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
                         &currentSRVs[lowestShaderSlot]);
@@ -457,30 +500,31 @@ namespace RenderCore { namespace Metal_DX11
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
     {
+		ID3D::ShaderResourceView* srv = nullptr;
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Vertex]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindVS<ShaderResourceView>(b._shaderSlot, 1);
+				context.GetUnderlying()->VSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Vertex][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Pixel]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindPS<ShaderResourceView>(b._shaderSlot, 1);
+				context.GetUnderlying()->PSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Pixel][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Geometry]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindGS<ShaderResourceView>(b._shaderSlot, 1);
+                context.GetUnderlying()->GSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Geometry][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Compute]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindCS<ShaderResourceView>(b._shaderSlot, 1);
+                context.GetUnderlying()->CSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Compute][b._shaderSlot] = nullptr;
             }
         }
@@ -611,6 +655,69 @@ namespace RenderCore { namespace Metal_DX11
 		_linkage = copyFrom._linkage;
 		_classInstanceArray = copyFrom._classInstanceArray;
 		return *this;
+	}
+
+	void NumericUniformsInterface::Reset() {}
+
+	NumericUniformsInterface::NumericUniformsInterface(DeviceContext& context, ShaderStage shaderStage)
+	: _context(&context)
+	, _stage(shaderStage)
+	{
+		_setUnorderedAccessViews = nullptr;
+		switch (shaderStage)
+		{
+		case ShaderStage::Vertex:
+			_setShaderResources = &ID3D::DeviceContext::VSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::VSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::VSSetConstantBuffers;
+			break;
+		case ShaderStage::Pixel:
+			_setShaderResources = &ID3D::DeviceContext::PSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::PSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::PSSetConstantBuffers;
+			break;
+		case ShaderStage::Geometry:
+			_setShaderResources = &ID3D::DeviceContext::GSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::GSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::GSSetConstantBuffers;
+			break;
+		case ShaderStage::Hull:
+			_setShaderResources = &ID3D::DeviceContext::HSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::HSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::HSSetConstantBuffers;
+			break;
+		case ShaderStage::Domain:
+			_setShaderResources = &ID3D::DeviceContext::DSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::DSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::DSSetConstantBuffers;
+			break;
+		case ShaderStage::Compute:
+			_setShaderResources = &ID3D::DeviceContext::CSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::CSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::CSSetConstantBuffers;
+			_setUnorderedAccessViews = &ID3D::DeviceContext::CSSetUnorderedAccessViews;
+			break;
+		default:
+			assert(0);
+			_setShaderResources = nullptr;
+			_setSamplers = nullptr;
+			_setConstantBuffers = nullptr;
+			break;
+		}
+	}
+
+	NumericUniformsInterface::NumericUniformsInterface()
+	{
+		_context = nullptr;
+		_stage = ShaderStage::Null;
+		_setShaderResources = nullptr;
+		_setSamplers = nullptr;
+		_setConstantBuffers = nullptr;
+		_setUnorderedAccessViews = nullptr;
+	}
+
+    NumericUniformsInterface::~NumericUniformsInterface()
+	{
 	}
 
 #if 0

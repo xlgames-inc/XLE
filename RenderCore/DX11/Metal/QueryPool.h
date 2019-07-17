@@ -8,6 +8,7 @@
 
 #include "DX11.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Types.h"
 #include <algorithm>
 #include <memory>
@@ -19,7 +20,7 @@ namespace RenderCore { namespace Metal_DX11
 	class DeviceContext;
 	class ObjectFactory;
 
-	class QueryPool
+	class TimeStampQueryPool
 	{
 	public:
 		using QueryId = unsigned;
@@ -43,8 +44,8 @@ namespace RenderCore { namespace Metal_DX11
 		};
 		FrameResults GetFrameResults(DeviceContext& context, FrameId id);
 
-		QueryPool(ObjectFactory& factory);
-		~QueryPool();
+		TimeStampQueryPool(ObjectFactory& factory);
+		~TimeStampQueryPool();
 	private:
 		std::unique_ptr<intrusive_ptr<ID3D::Query>[]> _timeStamps;
 		unsigned _nextAllocation;
@@ -70,6 +71,41 @@ namespace RenderCore { namespace Metal_DX11
 		std::unique_ptr<uint64[]> _timestampsBuffer;
 
 		void    FlushFinishedQueries(DeviceContext& context);
+	};
+
+	class QueryPool
+	{
+	public:
+		enum class QueryType
+		{
+			StreamOutput_Stream0
+		};
+
+		struct QueryResult_StreamOutput
+		{
+			unsigned _primitivesWritten;
+			unsigned _primitivesNeeded;
+		};
+
+		using QueryId = unsigned;
+		QueryId Begin(DeviceContext& context);
+		void End(DeviceContext& context, QueryId);
+
+		bool GetResults_Stall(DeviceContext& context, QueryId query, IteratorRange<void*> dst);
+
+		QueryPool(ObjectFactory& factory, QueryType type, unsigned count);
+		~QueryPool();
+	private:
+		enum class QueryState { Reset, Inflight, Ended };
+		struct Query
+		{
+			QueryState _state;
+			intrusive_ptr<ID3D::Query> _underlying;
+		};
+		std::vector<Query> _queries;
+		unsigned _nextAllocation = 0;
+
+		QueryType _type;
 	};
 
     #if defined(GPUANNOTATIONS_ENABLE)

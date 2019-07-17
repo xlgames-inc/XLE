@@ -1,0 +1,35 @@
+// CompoundDocument:1
+import basic = "xleres/nodes/basic.sh"
+import texture = "xleres/nodes/texture.sh"
+
+void WoodGnarlGrainStain(out float grain, out float3 gnarledCoords, float stain, float gnarlDensity, float3 coords, float gnarlStrength, float grainStrength, float grainDensity)
+{
+	node node_0 = [[visualNode4]]texture::NoiseTexture3(scale:gnarlDensity, detail:"4", distortion:"5", position:coords);
+	node node_1 = [[visualNode5]]basic::Multiply3(lhs:[[visualNode6]]basic::Add3(rhs:[[visualNode7]]basic::Multiply3Scalar(lhs:[[visualNode8]]basic::Subtract3(lhs:node_0.result, rhs:"float3(0.5, 0.5, 0.5)").result, rhs:gnarlStrength).result, lhs:coords).result, rhs:"float3(.1, 2, 2)");
+	grain = [[visualNode0]]basic::Multiply1(lhs:[[visualNode1]]basic::Add1(lhs:[[visualNode2]]basic::Subtract1(lhs:[[visualNode9]]basic::Multiply1(lhs:[[visualNode10]]texture::NoiseTexture3(position:node_1.result, detail:"2.0f", scale:grainDensity, distortion:"0.0f").fac, rhs:grainStrength).result, rhs:[[visualNode11]]basic::Subtract1(lhs:[[visualNode12]]basic::Multiply1(lhs:grainStrength, rhs:".5").result, rhs:".5").result).result, rhs:[[visualNode13]]basic::Subtract1(lhs:[[visualNode3]]basic::Multiply1(lhs:node_0.fac, rhs:stain).result, rhs:[[visualNode14]]basic::Subtract1(lhs:[[visualNode15]]basic::Multiply1(rhs:".5", lhs:stain).result, rhs:".5").result).result).result, rhs:".5").result;
+	gnarledCoords = node_1.result;
+}
+attributes visualNode8(PreviewGeometry:"sphere", X:"411", Y:"131", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"sphere", X:"2852", Y:"442", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"sphere", X:"2596", Y:"481", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"sphere", X:"2313", Y:"387", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"sphere", X:"321", Y:"441", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"plane2d", X:"-31", Y:"161", State:"Normal", OutputToVisualize:"");
+attributes visualNode5(PreviewGeometry:"sphere", X:"1461", Y:"145", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode6(PreviewGeometry:"plane2d", X:"1060", Y:"87", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode7(PreviewGeometry:"sphere", X:"689", Y:"40", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode9(PreviewGeometry:"sphere", X:"2051", Y:"285", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode10(PreviewGeometry:"plane2d", X:"1728", Y:"229", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode11(PreviewGeometry:"sphere", X:"2038", Y:"412", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode12(PreviewGeometry:"sphere", X:"1744", Y:"425", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode13(PreviewGeometry:"plane2d", X:"682.8907", Y:"517.2711", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode14(PreviewGeometry:"sphere", X:"318", Y:"603", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode15(PreviewGeometry:"sphere", X:"-86", Y:"623", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:WoodGnarlGrainStain>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+</NodeGraphMetaData>
+)-- */

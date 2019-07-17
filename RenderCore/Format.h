@@ -32,6 +32,7 @@ namespace RenderCore
         Matrix3x4 = 151,
 
 		R10G10B10A10_SNORM = 152,		// (5 byte, 4 component 10 bit signed normalized value; often used for quaternions)
+		R12G12B12A4_SNORM = 153,		// (5 byte, 3 component signed values with implied forth; another format for quaternions)
 
         Max
     };

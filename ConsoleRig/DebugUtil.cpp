@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "OutputStream.h"
 #include "GlobalServices.h"
+#include "AttachablePtr.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/Streams/Stream.h"
@@ -52,7 +53,8 @@ namespace ConsoleRig
 
             virtual std::streamsize xsputn(const CharType* s, std::streamsize count);
             virtual int sync();
-			virtual typename std::basic_streambuf<CharType>::int_type overflow(typename std::basic_streambuf<CharType>::int_type ch);
+			using StreamIntType = typename std::basic_streambuf<CharType>::int_type;
+			virtual StreamIntType overflow(StreamIntType ch);
         };
 
         template <typename CharType>
@@ -69,7 +71,7 @@ namespace ConsoleRig
         }
 
 		template <typename CharType>
-			auto StdCToXLEStreamAdapter<CharType>::overflow(typename std::basic_streambuf<CharType>::int_type ch) -> typename std::basic_streambuf<CharType>::int_type
+			auto StdCToXLEStreamAdapter<CharType>::overflow(StreamIntType ch) -> StreamIntType
 		{
 			// For some reason, std::endl always invokes "overflow" instead of "xsputn"
 			using Traits = std::char_traits<CharType>;
@@ -93,7 +95,7 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel&);
+    static void SendExceptionToLogger(const ::Exceptions::CustomReportableException&);
 
     void DebugUtil_Startup()
     {
@@ -104,7 +106,7 @@ namespace ConsoleRig
         #if defined(REDIRECT_COUT)
 
             auto currentModule = GetCurrentModuleId();
-            auto& serv = GlobalServices::GetCrossModule()._services;
+            auto& serv = CrossModule::GetInstance()._services;
             
             bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
             if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
@@ -137,7 +139,7 @@ namespace ConsoleRig
     void DebugUtil_Shutdown()
     {
         #if defined(REDIRECT_COUT)
-            auto& serv = GlobalServices::GetCrossModule()._services;
+            auto& serv = CrossModule::GetInstance()._services;
             auto currentModule = GetCurrentModuleId();
 
             ModuleId testModule = 0;
@@ -179,7 +181,7 @@ namespace ConsoleRig
         };
     #endif
 
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel& e)
+    static void SendExceptionToLogger(const ::Exceptions::CustomReportableException& e)
     {
         TRY
         {

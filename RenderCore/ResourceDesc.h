@@ -223,8 +223,8 @@ namespace RenderCore
     class SubResourceId 
     { 
     public:
-        unsigned _mip;
-        unsigned _arrayLayer;
+        unsigned _mip = 0;
+        unsigned _arrayLayer = 0;
     };
 
     class PresentationChainDesc
@@ -236,6 +236,7 @@ namespace RenderCore
         BindFlag::BitField _bindFlags;
 
         PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create()), _bindFlags(BindFlag::RenderTarget) {}
+        bool _mainColorIsReadable;
 
         PresentationChainDesc(unsigned width, unsigned height, Format format = Format(0), TextureSamples samples = TextureSamples::Create(), BindFlag::BitField bindFlags = BindFlag::RenderTarget)
         : _width(width), _height(height), _format(format), _samples(samples), _bindFlags(bindFlags) {}
@@ -366,16 +367,17 @@ namespace RenderCore
 	public:
 		IteratorRange<const void*>  _data;
 		TexturePitches              _pitches = {};
+
+		SubResourceInitData() {}
+		SubResourceInitData(IteratorRange<const void*> data) : _data(data) {}
+		SubResourceInitData(IteratorRange<const void*> data, TexturePitches pitches) : _data(data), _pitches(pitches) {}
 	};
 
     class Box2D
     {
     public:
-        signed _left, _top, _right, _bottom;
-
-        Box2D() : _left(0), _top(0), _right(0), _bottom(0) {}
-        Box2D(signed left, signed top, signed right, signed bottom) 
-            : _left(left), _top(top), _right(right), _bottom(bottom) {}
+        signed _left = 0, _top = 0;
+		signed _right = 0, _bottom = 0;
     };
 
     bool operator==(const Box2D& lhs, const Box2D& rhs);

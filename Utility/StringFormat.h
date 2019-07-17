@@ -176,6 +176,18 @@ namespace Utility
             uint8* Begin() { return (uint8*)this->pbase(); }
         };
 
+        template<typename CharType = char>
+			class MoveableOStream : public std::basic_ostream<CharType>
+        {
+        public:
+            MoveableOStream() {}
+            explicit MoveableOStream(std::basic_streambuf<CharType, typename std::basic_ostream<CharType>::traits_type>* sb) : std::basic_ostream<CharType>(sb) {}
+
+              // note that the move behaviour of std::basic_ostream is wierd, because the rdbuf() value is not moved
+            MoveableOStream(MoveableOStream && moveFrom) : std::basic_ostream<CharType>(moveFrom) {}
+            MoveableOStream& operator=(MoveableOStream && moveFrom) { std::basic_ostream<CharType>::operator=(std::move(moveFrom)); return *this; }
+        };
+
         /// <summary>Dynamic string formatting utility<summary>
         /// This version of StringMeld can work on an externally allocated buffer. It's useful
         /// when appending some formatted text onto an existing string (often it's an effective
@@ -192,7 +204,7 @@ namespace Utility
         {
         public:
 			using DemotedType = typename Internal::DemoteCharType<CharType>::Value;
-            mutable std::basic_ostream<DemotedType> _stream;
+            mutable MoveableOStream<DemotedType> _stream;
 
             operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
             const CharType* get() const         { return (const CharType*)_buffer._buffer; }
@@ -208,13 +220,16 @@ namespace Utility
             ~StringMeldInPlace() {}
 
             StringMeldInPlace(StringMeldInPlace&& moveFrom) never_throws
-            : _stream(std::move(moveFrom._stream))
+            : _stream(&_buffer)
             , _buffer(std::move(moveFrom._buffer))
-            {}
+            {
+                // note that the move behaviour of std::basic_ostream is wierd, because the rdbuf() value is not moved
+                _stream = std::move(moveFrom._stream);
+            }
 
             StringMeldInPlace& operator=(StringMeldInPlace&& moveFrom)
             {
-                _stream = std::move(moveFrom._stream);
+                _stream = std::move(moveFrom._stream);  // note that the move behaviour of std::basic_ostream is wierd, because the rdbuf() value is not moved
                 _buffer = std::move(moveFrom._buffer);
                 return *this;
             }

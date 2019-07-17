@@ -5,11 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LocalCompiledShaderSource.h"
-#include "../Metal/Shader.h"
 
 #include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ArchiveCache.h"
@@ -33,24 +32,30 @@
 
 namespace RenderCore { namespace Assets 
 {
-    static const bool CompileInBackground = false;
+    static const bool CompileInBackground = true;
     using ::Assets::ResChar;
-    using ResId = ShaderService::ResId;
+    using ResId = ILowLevelCompiler::ResId;
 
         ////////////////////////////////////////////////////////////
 
     class ShaderCacheSet
     {
     public:
-        std::shared_ptr<::Assets::ArchiveCache> GetArchive(
-            const char shaderBaseFilename[], 
-            const ::Assets::IntermediateAssets::Store& intermediateStore);
+        std::shared_ptr<::Assets::ArchiveCache> GetArchive(StringSection<> shaderBaseFilename);
+		std::shared_ptr<::Assets::DependencyValidation> MakeDependencyValidation(StringSection<> shaderBaseFilename) const;
+		void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<> firstInitializer) const;
 
-        void LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore);
+		void CommitToArchive(
+			StringSection<ResChar> shaderBaseFilename, uint64_t archiveId,
+			StringSection<ResChar> depName,
+			const ::Assets::Blob& payload,
+			const std::string& attachedStringName, const std::string& attachedString,
+			IteratorRange<const ::Assets::DependentFileState*> deps);
 
+        void LogStats();
         void Clear();
         
-        ShaderCacheSet(const DeviceDesc& devDesc);
+        ShaderCacheSet(const DeviceDesc& devDesc, const std::shared_ptr<::Assets::IntermediateAssets::Store>& intermediateStore);
         ~ShaderCacheSet();
     protected:
         typedef std::pair<uint64, std::shared_ptr<::Assets::ArchiveCache>> Archive;
@@ -59,11 +64,10 @@ namespace RenderCore { namespace Assets
         std::string             _baseFolderName;
         std::string             _versionString;
         std::string             _buildDateString;
+		std::shared_ptr<::Assets::IntermediateAssets::Store> _intermediateStore;
     };
 
-    std::shared_ptr<::Assets::ArchiveCache> ShaderCacheSet::GetArchive(
-        const char shaderBaseFilename[],
-        const ::Assets::IntermediateAssets::Store& intermediateStore)
+    std::shared_ptr<::Assets::ArchiveCache> ShaderCacheSet::GetArchive(StringSection<> shaderBaseFilename)
     {
         auto hashedName = Hash64(shaderBaseFilename);
 
@@ -76,20 +80,68 @@ namespace RenderCore { namespace Assets
         char intName[MaxPath];
         XlCopyString(intName, _baseFolderName.c_str());
         XlCatString(intName, shaderBaseFilename);
-        intermediateStore.MakeIntermediateName(intName, dimof(intName), intName);
+        _intermediateStore->MakeIntermediateName(intName, dimof(intName), intName);
         auto newArchive = std::make_shared<::Assets::ArchiveCache>(intName, _versionString.c_str(), _buildDateString.c_str());
         _archives.insert(existing, std::make_pair(hashedName, newArchive));
         return newArchive;
     }
 
-    void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)
+	std::shared_ptr<::Assets::DependencyValidation> ShaderCacheSet::MakeDependencyValidation(StringSection<> shaderBaseFilename) const
+	{
+		char intName[MaxPath];
+        XlCopyString(intName, _baseFolderName.c_str());
+        XlCatString(intName, shaderBaseFilename);
+		return _intermediateStore->MakeDependencyValidation(intName);
+	}
+
+	void    ShaderCacheSet::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<> shaderBaseFilename) const
+	{
+		char intName[MaxPath];
+        XlCopyString(intName, _baseFolderName.c_str());
+        XlCatString(intName, shaderBaseFilename);
+		return _intermediateStore->MakeIntermediateName(buffer, bufferMaxCount, intName);
+	}
+
+	void ShaderCacheSet::CommitToArchive(
+		StringSection<ResChar> shaderBaseFilename, uint64_t archiveId,
+		StringSection<ResChar> depName,
+		const ::Assets::Blob& payload,
+		const std::string& attachedStringName, const std::string& attachedString,
+		IteratorRange<const ::Assets::DependentFileState*> deps)
+	{
+		std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
+
+		char intName[MaxPath];
+        XlCopyString(intName, _baseFolderName.c_str());
+        XlCatString(intName, depName);
+		std::string depNameAsString = intName;
+
+		auto archive = GetArchive(shaderBaseFilename);
+		auto store = _intermediateStore;
+		archive->Commit(
+			archiveId, payload,
+			attachedStringName, attachedString,
+
+					// on flush, we need to write out the dependencies file
+					// note that delaying the call to WriteDependencies requires
+					// many small annoying allocations! It's much simplier if we
+					// can just write them now -- but it causes problems if we a
+					// crash or use End Debugging before we flush the archive
+			[depsAsVector, depNameAsString, store]() {
+				store->WriteDependencies(
+					depNameAsString, {},
+					MakeIteratorRange(depsAsVector), false); 
+			});
+	}
+
+    void ShaderCacheSet::LogStats()
     {
             // log statistics information for all shaders in all archive caches
         uint64 totalShaderSize = 0; // in bytes
         uint64 totalAllocationSpace = 0;
 
         char baseDir[MaxPath];
-        intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), MakeStringSection(_baseFolderName));
+        _intermediateStore->MakeIntermediateName(baseDir, dimof(baseDir), MakeStringSection(_baseFolderName));
         auto baseDirLen = XlStringLen(baseDir);
         assert(&baseDir[baseDirLen] == XlStringEnd(baseDir));
         std::deque<std::string> dirs;
@@ -140,7 +192,7 @@ namespace RenderCore { namespace Assets
             }
             SplitPath<char>(buffer).Simplify().Rebuild(buffer, dimof(buffer));
 
-            auto metrics = GetArchive(buffer, intermediateStore)->GetMetrics();
+            auto metrics = GetArchive(buffer)->GetMetrics();
             totalShaderSize += metrics._usedSpace;
             totalAllocationSpace += metrics._allocatedFileSize;
 
@@ -204,7 +256,8 @@ namespace RenderCore { namespace Assets
         _archives.clear();
     }
     
-    ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)
+    ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc, const std::shared_ptr<::Assets::IntermediateAssets::Store>& intermediateStore)
+	: _intermediateStore(intermediateStore)
     {
         _baseFolderName = std::string(devDesc._underlyingAPI) + "/";
         _versionString = devDesc._buildVersion;
@@ -253,70 +306,69 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class LocalCompiledShaderSource::Marker : public ::Assets::ICompileMarker
+    class LocalCompiledShaderSource::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
             StringSection<::Assets::ResChar> initializer, 
-            const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
-            const ::Assets::IntermediateAssets::Store& store,
+            const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
             std::shared_ptr<LocalCompiledShaderSource> compiler);
         ~Marker();
     protected:
-        ShaderService::ResId _res;
+        ILowLevelCompiler::ResId _res;
         ::Assets::rstring _definesTable;
         ::Assets::rstring _initializer;
         std::weak_ptr<LocalCompiledShaderSource> _compiler;
-        const ::Assets::IntermediateAssets::Store* _store;
     };
 
     static uint64 GetTarget(
-		const ShaderService::ResId& res, const ::Assets::rstring& definesTable,
+		const ILowLevelCompiler::ResId& res, const ::Assets::rstring& definesTable,
         /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
-        /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
+        /*out*/ ::Assets::ResChar depName[], size_t depNameCount,
+		/*out*/ ::Assets::ResChar entryName[] = nullptr, size_t entryNameCount = 0)
     {
         snprintf(archiveName, archiveNameCount * sizeof(::Assets::ResChar), "%s-%s", res._filename, res._shaderModel);
-        auto archiveId = HashCombine(Hash64(res._entryPoint), Hash64(definesTable));
-        snprintf(depName, depNameCount * sizeof(::Assets::ResChar), "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
-		return archiveId;
+        auto entryId = HashCombine(HashCombine(Hash64(res._entryPoint), Hash64(definesTable)), Hash64(res._shaderModel));
+        snprintf(depName, depNameCount * sizeof(::Assets::ResChar), "%s-%08x%08x", archiveName, uint32(entryId>>32ull), uint32(entryId));
+		if (entryName)
+			snprintf(entryName, entryNameCount * sizeof(::Assets::ResChar), "%s[%s] (%s)", res._entryPoint, definesTable.c_str(), res._shaderModel);
+		return entryId;
     }
 
     std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
-		return nullptr;
-
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
 		if (XlEqString(_res._filename, "null"))
 			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
 
-        ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-        auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
+        ::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
+        auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName), entryName, dimof(entryName));
 
         return std::make_shared<ArchivedFileArtifact>(
-			c->_shaderCacheSet->GetArchive(archiveName, *_store), archiveId, 
-			_store->MakeDependencyValidation(depName),
+			c->_shaderCacheSet->GetArchive(archiveName), archiveId, 
+			c->_shaderCacheSet->MakeDependencyValidation(depName),
             nullptr, nullptr);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
         if (!_compiler.lock()) return nullptr;
 
-        auto futureRes = std::make_shared<::Assets::CompileFuture>();
+        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
 
-        auto store = _store;
         auto compiler = _compiler;
         auto definesTable = _definesTable;
         auto resId = _res;
+		assert(resId._filename[0] != '\0');		// empty filenames will result in a crash in the async function below, so catch here
 
-        std::function<void(::Assets::CompileFuture&)> operation =
-            [store, compiler, definesTable, resId] (::Assets::CompileFuture& future) {
+        std::function<void(::Assets::ArtifactFuture&)> operation =
+            [compiler, definesTable, resId] (::Assets::ArtifactFuture& future) {
 
             auto c = compiler.lock();
             if (!c)
@@ -338,7 +390,7 @@ namespace RenderCore { namespace Assets
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
-						definesTable.c_str(),
+						definesTable,
                         MakeIteratorRange(preprocessedOutput._lineMarkers));
 
 				} else {
@@ -358,7 +410,7 @@ namespace RenderCore { namespace Assets
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						fileData.get(), fileSize, resId,
-						definesTable.c_str());
+						definesTable);
 				}
 			}
 				// embue any exceptions with the dependency validation
@@ -372,58 +424,28 @@ namespace RenderCore { namespace Assets
 			}
 			CATCH_END
 
-                // before we can finish the "complete" step, we need to commit
-                // to archive output
-            ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-            auto archiveId = GetTarget(
-                resId, definesTable,
-                archiveName, dimof(archiveName),
-                depName, dimof(depName));
-            auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
-
+            // before we can finish the "complete" step, we need to commit
+            // to archive output
 			// payload will be empty on compile error, so don't write it out
             if (payload && !payload->empty()) {
-				#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-					auto metricsString =
-						c->_compiler->MakeShaderMetricsString(
-							AsPointer(payload->cbegin()), payload->size());
-				#endif
+				::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
+				auto archiveId = GetTarget(
+					resId, definesTable,
+					archiveName, dimof(archiveName),
+					depName, dimof(depName),
+					entryName, dimof(entryName));
 
-				std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
-				auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
-				auto depNameAsString = std::string(depName);
-
-				#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-						//  When we have archive attachments enabled, we can write
-						//  some information to help identify this shader object
-						//  We'll start with something to define the object...
-					std::stringstream builder;
-					builder
-						<< "[" << resId._filename
-						<< ":" << resId._entryPoint
-						<< ":" << resId._shaderModel
-						<< "] [" << definesTable << "]";
-					auto archiveCacheAttachment = builder.str();
-				#endif
-
-				archive->Commit(
-					archiveId, payload,
+				c->_shaderCacheSet->CommitToArchive(
+					archiveName, archiveId, depName,
+					payload,
 					#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-						(archiveCacheAttachment + " [" + metricsString + "]"),
+						entryName,
+						c->_compiler->MakeShaderMetricsString(
+							AsPointer(payload->cbegin()), payload->size()),
 					#else
-						std::string(),
+						{}, {},
 					#endif
-
-							// on flush, we need to write out the dependencies file
-							// note that delaying the call to WriteDependencies requires
-							// many small annoying allocations! It's much simplier if we
-							// can just write them now -- but it causes problems if we a
-							// crash or use End Debugging before we flush the archive
-					[depsAsVector, depNameAsString, baseDirAsString, store]()
-					{ store->WriteDependencies(
-						depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString),
-						MakeIteratorRange(depsAsVector), false); });
-				(void)archiveCacheAttachment;
+					MakeIteratorRange(deps));
 			}
 
                 // Commit errors to disk if enabled
@@ -433,7 +455,7 @@ namespace RenderCore { namespace Assets
                 auto splitter = MakeFileNameSplitter(resId._filename);
                 logFileName << "shader_error/ShaderCompileError_" << splitter.File().AsString() << "_" << splitter.Extension().AsString() << "_" << std::hex << hash << ".txt";
                 char finalLogFileName[MaxPath];
-                store->MakeIntermediateName(finalLogFileName, logFileName.AsStringSection());
+                c->_shaderCacheSet->MakeIntermediateName(finalLogFileName, dimof(finalLogFileName), logFileName.AsStringSection());
                 RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(finalLogFileName).DriveAndPath());
                 auto file = ::Assets::MainFileSystem::OpenFileInterface(finalLogFileName, "wb");
                 file->Write(errors->data(), errors->size());
@@ -447,7 +469,7 @@ namespace RenderCore { namespace Assets
             future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
             future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
 
-                // give the CompileFuture object the same state
+                // give the ArtifactFuture object the same state
             assert(future.GetArtifacts().size() != 0);
             future.SetState(newState);
         };
@@ -467,17 +489,15 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::Marker::Marker(
-        StringSection<::Assets::ResChar> initializer, const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
-        const ::Assets::IntermediateAssets::Store& store,
+        StringSection<::Assets::ResChar> initializer, const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
         std::shared_ptr<LocalCompiledShaderSource> compiler)
-    : _initializer(initializer.AsString()), _res(res), _definesTable(definesTable.AsString()), _compiler(std::move(compiler)), _store(&store)
+    : _initializer(initializer.AsString()), _res(res), _definesTable(definesTable.AsString()), _compiler(std::move(compiler))
     {}
 
     LocalCompiledShaderSource::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::ICompileMarker> LocalCompiledShaderSource::PrepareAsset(
-        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+    std::shared_ptr<::Assets::IArtifactCompileMarker> LocalCompiledShaderSource::Prepare(
+        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
             //  Execute an offline compile. This should happen in the background
             //  When it's complete, we'll write the result into the appropriate
@@ -505,15 +525,27 @@ namespace RenderCore { namespace Assets
             //  We just have to be careful about multiple threads or multiple processes accessing the
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
+		if (typeCode != _associatedCompileProcessType) return nullptr;
 
+		assert(initializerCount >= 1 && !initializers[0].IsEmpty());
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
-        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
+        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, shared_from_this());
     }
+
+	std::vector<uint64_t> LocalCompiledShaderSource::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
+	std::vector<std::pair<std::string, std::string>> LocalCompiledShaderSource::GetExtensionsForType(uint64_t typeCode)
+	{
+		return {};
+	}
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
@@ -524,17 +556,69 @@ namespace RenderCore { namespace Assets
     }
             
     auto LocalCompiledShaderSource::CompileFromMemory(
-        StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<char> pShaderInMemory, StringSection<char> pEntryPoint, 
+        StringSection<char> pShaderModel, StringSection<ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
-        /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
-        compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
-        return compileHelper;*/
-        assert(0);
-        return nullptr;
+        std::weak_ptr<ILowLevelCompiler> compiler = _compiler;
+        std::string shaderInMemory = pShaderInMemory.AsString();
+		std::string entryPoint = pEntryPoint.AsString();
+		std::string shaderModel = pShaderModel.AsString();
+		std::string definesTable = pDefinesTable.AsString();
+
+        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
+		std::function<void(::Assets::ArtifactFuture&)> operation =
+            [compiler, shaderInMemory, entryPoint, shaderModel, definesTable] (::Assets::ArtifactFuture& future) {
+
+            auto c = compiler.lock();
+            if (!c)
+                Throw(std::runtime_error("Low level shader compiler has been destroyed before compile operation completed"));
+
+			std::vector<::Assets::DependentFileState> deps;
+			Blob errors, payload;
+			bool success = false;
+
+			TRY
+			{
+				ResId resId { "", entryPoint, shaderModel };
+				success = c->DoLowLevelCompile(
+					payload, errors, deps,
+					shaderInMemory.data(), shaderInMemory.size(), resId,
+					definesTable);
+			}
+				// embue any exceptions with the dependency validation
+			CATCH(const ::Assets::Exceptions::ConstructionError& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH(const std::exception& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH_END
+
+                // Create the artifact and add it to the compile marker
+			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+
+            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
+            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+
+                // give the ArtifactFuture object the same state
+            assert(future.GetArtifacts().size() != 0);
+            future.SetState(newState);
+        };
+
+        if (CompileInBackground) {
+            ::Assets::QueueCompileOperation(futureRes, std::move(operation));
+        } else {
+            operation(*futureRes);
+        }
+
+        return futureRes;
     }
 
-    void LocalCompiledShaderSource::ClearCaches() {
+    void LocalCompiledShaderSource::ClearCaches() 
+	{
         _shaderCacheSet->Clear();
     }
     
@@ -543,13 +627,15 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::LocalCompiledShaderSource(
-        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        std::shared_ptr<ILowLevelCompiler> compiler,
         std::shared_ptr<ISourceCodePreprocessor> preprocessor,
-        const DeviceDesc& devDesc)
+        const DeviceDesc& devDesc,
+		uint64_t associatedCompileProcessType)
     : _compiler(std::move(compiler))
     , _preprocessor(std::move(preprocessor))
+	, _associatedCompileProcessType(associatedCompileProcessType)
     {
-        _shaderCacheSet = std::make_unique<ShaderCacheSet>(devDesc);
+        _shaderCacheSet = std::make_shared<ShaderCacheSet>(devDesc, ::Assets::Services::GetAsyncMan().GetIntermediateStore());
     }
 
     LocalCompiledShaderSource::~LocalCompiledShaderSource()

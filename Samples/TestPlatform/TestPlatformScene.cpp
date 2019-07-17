@@ -12,9 +12,11 @@
 #include "../../SceneEngine/DualContour.h"
 #include "../../SceneEngine/DualContourRender.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 
+#include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
@@ -130,7 +132,7 @@ namespace Sample
 
         DualContourTest::DualContourTest(const Desc& desc)
         {
-            _mesh = DualContourMesh_Build(desc._gridDims, TestDensityFunction());
+			_mesh = DualContourMesh_Build({desc._gridDims, desc._gridDims, desc._gridDims}, TestDensityFunction());
             _renderer = std::make_unique<DualContourRenderer>(std::ref(_mesh));
             
             _dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
@@ -142,7 +144,8 @@ namespace Sample
 
     void TestPlatformSceneParser::ExecuteScene(   
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext, 
         const SceneParseSettings& parseSettings,
         SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
@@ -152,40 +155,40 @@ namespace Sample
         bool renderAsCloud = Tweakable("RenderAsCloud", false);
         auto& box = ConsoleRig::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
+        if (    parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::General
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::RayTracedShadows) {
 
             if (!renderAsCloud)
-                box._renderer->Render(metalContext.get(), parserContext, techniqueIndex);
+                box._renderer->Render(&metalContext, parserContext, techniqueIndex);
         }
 
-        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent) {
+        if (parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::Transparent) {
             if (renderAsCloud)
-                box._renderer->RenderAsCloud(metalContext.get(), parserContext);
+                box._renderer->RenderAsCloud(&metalContext, parserContext);
             if (Tweakable("TerrainWireframe", false))
-                box._renderer->RenderUnsortedTrans(metalContext.get(), parserContext, 8);
+                box._renderer->RenderUnsortedTrans(&metalContext, parserContext, 8);
         }
     }
 
     void TestPlatformSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
     }
 
     bool TestPlatformSceneParser::HasContent(const SceneParseSettings& parseSettings) const
     {
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows)
+        if (    parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::General
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::RayTracedShadows)
             return true;
-        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent)
+        if (parseSettings._batchFilter == RenderCore::Techniques::BatchFilter::Transparent)
             return true;
         return false;
     }

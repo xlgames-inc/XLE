@@ -121,7 +121,8 @@ namespace ToolsRig
             *_destinationCopy = std::move(*_transactionCopy);
 			_state = State::Committed;
 
-            const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
+			if (triggerDepVal)
+				const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
 			return 0u; // newId
 		}
 		return ~0u;
@@ -193,7 +194,8 @@ namespace ToolsRig
 		auto triggerDepVal = _workingCopy->GetDependencyValidation();
 		*_workingCopy = std::move(*_pristineCopy);
 
-		const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
+		if (triggerDepVal)
+			const_cast<::Assets::DependencyValidation*>(triggerDepVal.get())->OnChange();
 		return 0u; // newId;
 	}
 

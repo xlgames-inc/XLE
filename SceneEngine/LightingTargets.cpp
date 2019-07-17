@@ -5,20 +5,25 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LightingTargets.h"
-#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
+#include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Resource.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
+
+#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 namespace SceneEngine
 {
@@ -60,8 +65,8 @@ namespace SceneEngine
             if (desc._gbufferFormats[c]._resourceFormat != Format::Unknown) {
                 bufferUploadsDesc._textureDesc._format = desc._gbufferFormats[c]._resourceFormat;
                 gbufferTextures[c] = CreateResourceImmediate(bufferUploadsDesc);
-                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->ShareUnderlying(), desc._gbufferFormats[c]._writeFormat);
-                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->ShareUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
+                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._writeFormat);
+                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
             }
         }
 
@@ -75,10 +80,10 @@ namespace SceneEngine
             "MainDepth");
         auto msaaDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
         auto secondaryDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -127,11 +132,11 @@ namespace SceneEngine
 
             /////////
 
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
 
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -176,9 +181,9 @@ namespace SceneEngine
         auto lightingResolveCopy = CreateResourceImmediate(bufferUploadsDesc);
         bufferUploadsDesc._textureDesc._samples = TextureSamples::Create();
 
-        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->ShareUnderlying(), desc._lightingResolveFormat._writeFormat);
-        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->ShareUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
-        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->ShareUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._writeFormat);
+        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
 
         _lightingResolveTexture = std::move(lightingResolveTexture);
         _lightingResolveRTV = std::move(lightingResolveTarget);
@@ -334,21 +339,25 @@ namespace SceneEngine
             // attempt to resolve this shader...
             if (dest._shader && !dest._hasBeenResolved) {
                 using namespace RenderCore;
-                dest._uniforms = Metal::BoundUniforms(*dest._shader);
 
-                Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
-                dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                CB::LightBuffer, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           CB::ShadowParam, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   CB::ScreenToShadow, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("DebuggingGlobals"),           CB::Debugging, 1);
-                dest._uniforms.BindShaderResource(Hash64("ShadowTextures"),             SR::DMShadow, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
+				UniformsStreamInterface usi;
+				usi.BindConstantBuffer(CB::ShadowProj_Arbit, {Hash64("ArbitraryShadowProjection")});
+                usi.BindConstantBuffer(CB::LightBuffer, {Hash64("LightBuffer")});
+                usi.BindConstantBuffer(CB::ShadowParam, {Hash64("ShadowParameters")});
+                usi.BindConstantBuffer(CB::ScreenToShadow, {Hash64("ScreenToShadowProjection")});
+                usi.BindConstantBuffer(CB::ShadowProj_Ortho, {Hash64("OrthogonalShadowProjection")});
+                usi.BindConstantBuffer(CB::ShadowResolveParam, {Hash64("ShadowResolveParameters")});
+                usi.BindConstantBuffer(CB::ScreenToRTShadow, {Hash64("ScreenToRTShadowProjection")});
+                usi.BindConstantBuffer(CB::Debugging, {Hash64("DebuggingGlobals")});
+                usi.BindShaderResource(SR::DMShadow, {Hash64("ShadowTextures")});
+                usi.BindShaderResource(SR::RTShadow_ListHead, Hash64("RTSListsHead"));
+                usi.BindShaderResource(SR::RTShadow_LinkedLists, Hash64("RTSLinkedLists"));
+                usi.BindShaderResource(SR::RTShadow_Triangles, Hash64("RTSTriangles"));
+
+				dest._uniforms = Metal::BoundUniforms(
+					*dest._shader, Metal::PipelineLayoutConfig{}, 
+					Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+					usi);
 
                 if (_dynamicLinking==2) {
                     dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
@@ -480,9 +489,12 @@ namespace SceneEngine
             "xleres/deferred/resolveambient.psh:ResolveAmbient:ps_*",
             definesTable.get());
 
-        auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*ambientLight));
-        Techniques::TechniqueContext::BindGlobalUniforms(*ambientLightUniforms);
-        ambientLightUniforms->BindConstantBuffer(Hash64("AmbientLightBuffer"), 0, 1);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("AmbientLightBuffer")});
+		auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(
+			std::ref(*ambientLight), Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, ambientLight->GetDependencyValidation());
@@ -498,38 +510,37 @@ namespace SceneEngine
 
 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets)
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, const MainTargets& mainTargets)
         {
-            #if 0
-                using namespace BufferUploads;
-                BufferDesc stagingDesc[3];
-                for (unsigned c=0; c<3; ++c) {
-                    stagingDesc[c]._type = BufferDesc::Type::Texture;
-                    stagingDesc[c]._bindFlags = 0;
-                    stagingDesc[c]._cpuAccess = CPUAccess::Read;
-                    stagingDesc[c]._gpuAccess = 0;
-                    stagingDesc[c]._allocationRules = 0;
-                    stagingDesc[c]._textureDesc = BufferUploads::TextureDesc::Plain2D(
-                        mainTargets._desc._width, mainTargets._desc._height,
-                        mainTargets._desc._gbufferFormats[c]._shaderReadFormat, 1, 0, 
-                        mainTargets._desc._sampling);
-                }
+			const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
+			uint64_t semantics[] = { 
+				RenderCore::Techniques::AttachmentSemantics::GBufferDiffuse,
+				RenderCore::Techniques::AttachmentSemantics::GBufferNormal,
+				RenderCore::Techniques::AttachmentSemantics::GBufferParameter };
 
-                const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
-                auto& bufferUploads = *GetBufferUploads();
-                for (unsigned c=0; c<3; ++c) {
-                    if (mainTargets._gbufferTextures[c]) {
-                        auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c])->AdoptUnderlying();
-                        Metal::Copy(*context, mainTargets._gbufferTextures[c].get());
-                        D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
-                    }
-                }
-            #endif
+            auto& bufferUploads = GetBufferUploads();
+            for (unsigned c=0; c<3; ++c) {
+				auto srcDesc = mainTargets.GetResource(parserContext, semantics[c])->GetDesc();
+				RenderCore::ResourceDesc stagingDesc;
+                stagingDesc._type = RenderCore::ResourceDesc::Type::Texture;
+                stagingDesc._bindFlags = 0;
+                stagingDesc._cpuAccess = RenderCore::CPUAccess::Read;
+                stagingDesc._gpuAccess = 0;
+                stagingDesc._allocationRules = 0;
+                stagingDesc._textureDesc = srcDesc._textureDesc;
+
+                auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc)->AdoptUnderlying();
+                RenderCore::Metal::Copy(context, *checked_cast<RenderCore::Metal::Resource*>(stagingTexture.get()), *checked_cast<RenderCore::Metal::Resource*>(mainTargets.GetResource(parserContext, semantics[c]).get()));
+				assert(0); // todo -- need a texture write function
+                // D3DX11SaveTextureToFile(context.GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+            }
         }
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType)
+    void Deferred_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+		MainTargets mainTargets, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 
@@ -557,13 +568,20 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
-        auto& namedRes = parserContext.GetNamedResources();
-        context.BindPS(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
+		bool precisionTargets = Tweakable("PrecisionTargets", false);
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
+
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(
+			MakeResourceList(5, 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse, {diffuseAspect}), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);
 
-        context.UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 4);
+		MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(context, 5, 4);
     }
 
 }

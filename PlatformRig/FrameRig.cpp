@@ -16,6 +16,8 @@
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/RenderPassUtils.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 
 #include "../RenderOverlays/OverlayContext.h"
 
@@ -36,6 +38,7 @@
 #include "../Core/Types.h"
 
 #include <tuple>
+#include <iomanip>
 
 #include "../ConsoleRig/IncludeLUA.h"
 
@@ -63,7 +66,7 @@ namespace PlatformRig
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         FrameRigDisplay(
             std::shared_ptr<DebugScreensSystem> debugSystem,
@@ -90,6 +93,7 @@ namespace PlatformRig
         bool        _updateAsyncMan;
 
         std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
+		std::shared_ptr<OverlaySystemSet> _debugScreenOverlaySystem;
         std::shared_ptr<DebugScreensSystem> _debugSystem;
         std::vector<PostPresentCallback> _postPresentCallbacks;
 
@@ -140,16 +144,14 @@ namespace PlatformRig
 
         std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
 
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext) {}
-
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
@@ -171,8 +173,8 @@ namespace PlatformRig
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
-        HierarchicalCPUProfiler* cpuProfiler,
-        const FrameRenderFunction& renderFunction) -> FrameResult
+		RenderCore::Techniques::ParsingContext& parserContext,
+        HierarchicalCPUProfiler* cpuProfiler) -> FrameResult
     {
         CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", cpuProfiler);
 
@@ -193,12 +195,13 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);
 
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
 
 		auto presentationTarget = context.BeginFrame(*presChain);
+
+		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
@@ -207,7 +210,8 @@ namespace PlatformRig
 
         ////////////////////////////////
 
-        auto renderRes = renderFunction(context, presentationTarget);
+		_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
+		_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
 
         ////////////////////////////////
 
@@ -228,6 +232,8 @@ namespace PlatformRig
                 }
             }
         }
+
+		parserContext.GetNamedResources().UnbindAll();
 
         {
             CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
@@ -250,7 +256,9 @@ namespace PlatformRig
             _pimpl->_prevFrameAllocationCount = accAlloc->GetAndClear();
         }
 
-        if (renderRes._hasPendingResources) {
+		PlatformRig::FrameRig::RenderResult renderResult { parserContext.HasPendingAssets() };
+
+        if (renderResult._hasPendingResources) {
             ::Threading::Sleep(16);  // slow down while we're building pending resources
         } else {
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
@@ -260,7 +268,7 @@ namespace PlatformRig
 
         FrameResult result;
         result._elapsedTime = frameElapsedTime;
-        result._renderResult = renderRes;
+        result._renderResult = renderResult._hasPendingResources;
         return result;
     }
 
@@ -275,8 +283,9 @@ namespace PlatformRig
         _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
     }
 
-    std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
+    const std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
+	const std::shared_ptr<OverlaySystemSet>& FrameRig::GetDebugScreensOverlaySystem() { return _pimpl->_debugScreenOverlaySystem; }
+    const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
     void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
 
     FrameRig::FrameRig(bool isMainFrameRig)
@@ -284,6 +293,7 @@ namespace PlatformRig
         _pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_mainOverlaySys = std::make_shared<OverlaySystemSet>();
+		_pimpl->_debugScreenOverlaySystem = std::make_shared<OverlaySystemSet>();
         _pimpl->_updateAsyncMan = isMainFrameRig;   // only the main frame rig should update the async man (in gui tools the async man update happens in a background thread)
 
         {
@@ -294,17 +304,17 @@ namespace PlatformRig
                     "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
-        _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
+        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();
             if (acc._allocationCount)
-                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
+                Log(Verbose) << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
             auto metrics = accAlloc->GetCurrentHeapMetrics();
             if (metrics._blockCount)
-                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
+                Log(Verbose) << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
         }
 
         if (isMainFrameRig) {
@@ -402,9 +412,9 @@ namespace PlatformRig
         static Coord rectWidth = 175;
         static Coord padding = 12;
         static Coord margin = 8;
-        const auto bigLineHeight = Coord(res._frameRateFont->LineHeight());
-        const auto smallLineHeight = Coord(res._smallFrameRateFont->LineHeight());
-        const auto tabHeadingLineHeight = Coord(res._tabHeadingFont->LineHeight());
+        const auto bigLineHeight = Coord(res._frameRateFont->GetFontProperties()._lineHeight);
+        const auto smallLineHeight = Coord(res._smallFrameRateFont->GetFontProperties()._lineHeight);
+        const auto tabHeadingLineHeight = Coord(res._tabHeadingFont->GetFontProperties()._lineHeight);
         const Coord rectHeight = bigLineHeight + 3 * margin + smallLineHeight;
         Rect displayRect(
             Coord2(outerRect._bottomRight[0] - rectWidth - padding, outerRect._topLeft[1] + padding),
@@ -427,15 +437,17 @@ namespace PlatformRig
 
         auto f = _frameRate->GetPerformanceStats();
 
-        TextStyle bigStyle(res._frameRateFont);
-        DrawFormatText(
-            &context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
-            &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
+		TextStyle bigStyle{};
+        context.DrawText(
+            AsPixelCoords(innerLayout.Allocate(Coord2(80, bigLineHeight))),
+            res._frameRateFont, bigStyle, ColorB(0xffffffff), TextAlignment::Left,
+			StringMeld<64>() << std::setprecision(1) << std::fixed << 1000.f / std::get<0>(f));
 
-        TextStyle smallStyle(res._smallFrameRateFont);
-        DrawFormatText(
-            &context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
-            &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
+		TextStyle smallStyle{};
+        context.DrawText(
+            AsPixelCoords(innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2))),
+            res._smallFrameRateFont, smallStyle, ColorB(0xffffffff), TextAlignment::Left,
+			StringMeld<64>() << std::setprecision(1) << std::fixed << (1000.f / std::get<2>(f)) << "-" << (1000.f / std::get<1>(f)));
 
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;
@@ -447,7 +459,7 @@ namespace PlatformRig
 
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
 
-        TextStyle tabHeader(res._tabHeadingFont);
+		TextStyle tabHeader{};
         // tabHeader._options.shadow = 0;
         // tabHeader._options.outline = 1;
 
@@ -469,10 +481,10 @@ namespace PlatformRig
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
 
                             //  Draw the text name for this icon under the icon
-                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c]);
+                        Coord nameWidth = (Coord)StringWidth(*res._tabHeadingFont, MakeStringSection(categories[c]));
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
-                            pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
+                            pt + Coord2(0, Coord(iconSize[1] + res._tabHeadingFont->GetFontProperties()._lineHeight)));
 
                         auto iconLeft = Coord((rect._topLeft[0] + rect._bottomRight[0] - iconSize[0]) / 2.f);
                         Coord2 iconTopLeft(iconLeft, rect._topLeft[1]);
@@ -516,7 +528,7 @@ namespace PlatformRig
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, MakeStringSection(i->_name));
+                        unsigned width = (unsigned)StringWidth(*res._tabHeadingFont, MakeStringSection(i->_name));
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
 
@@ -541,7 +553,7 @@ namespace PlatformRig
         }
     }
 
-    bool    FrameRigDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    FrameRigDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         auto topMost = interfaceState.TopMostWidget();
         if (input.IsPress_LButton() || input.IsRelease_LButton()) {

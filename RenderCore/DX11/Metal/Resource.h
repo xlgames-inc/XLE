@@ -12,6 +12,8 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/IteratorUtils.h"
 
+#include "IncludeDX11.h"
+
 namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Metal_DX11
 {
@@ -40,14 +42,60 @@ namespace RenderCore { namespace Metal_DX11
 	class Resource : public IResource
 	{
 	public:
-		UnderlyingResourcePtr _underlying;
+		intrusive_ptr<ID3D::Resource> _underlying;
+
+		const intrusive_ptr<ID3D::Resource>& GetUnderlying() const { return _underlying; }
 
 		virtual void*			QueryInterface(size_t guid);
 		virtual ResourceDesc	GetDesc() const;
+		virtual uint64_t        GetGUID() const;
 
-		Resource() {}
-		explicit Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying) {}
-		explicit Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)) {}
+		Resource();
+		explicit Resource(const intrusive_ptr<ID3D::Resource>& underlying);
+		explicit Resource(intrusive_ptr<ID3D::Resource>&& underlying);
+
+	private:
+		uint64_t _guid;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      M E M O R Y   M A P       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>Locks a resource's memory for access from the CPU</summary>
+    /// This is a low level mapping operation that happens immediately. The GPU must not
+    /// be using the resource at the same time. If the GPU attempts to read while the CPU
+    /// is written, the results will be undefined.
+    /// A resource cannot be mapped more than once at the same time. However, multiple 
+    /// subresources can be mapped in a single mapping operation.
+    /// The caller is responsible for ensuring that the map is safe.
+	class ResourceMap
+	{
+	public:
+		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
+        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
+		TexturePitches				GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
+
+		enum class Mode { Read, WriteDiscardPrevious };
+
+		ResourceMap(
+			DeviceContext& context, Resource& resource,
+			Mode mapMode,
+			SubResourceId subResource = {});
+		ResourceMap();
+		~ResourceMap();
+
+		ResourceMap(const ResourceMap&) = delete;
+		ResourceMap& operator=(const ResourceMap&) = delete;
+		ResourceMap(ResourceMap&&) never_throws;
+		ResourceMap& operator=(ResourceMap&&) never_throws;
+
+	private:
+		D3D11_MAPPED_SUBRESOURCE _map;
+		intrusive_ptr<ID3D::Resource> _underlyingResource;
+		intrusive_ptr<ID3D::DeviceContext> _devContext;
+
+		void TryUnmap();
 	};
 
     class DeviceContext;
@@ -61,7 +109,7 @@ namespace RenderCore { namespace Metal_DX11
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Copy(
-		DeviceContext&, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
+		DeviceContext&, Resource& dst, Resource& src, 
 		ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
     using UInt3Pattern = VectorPattern<unsigned, 3>;
@@ -69,29 +117,29 @@ namespace RenderCore { namespace Metal_DX11
     class CopyPartial_Dest
     {
     public:
-        ID3D::Resource* _resource;
+        Resource*		_resource;
         SubResourceId   _subResource;
         UInt3Pattern    _leftTopFront;
 
         CopyPartial_Dest(
-            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            Resource& dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern())
-        : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
+        : _resource(&dst), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
     class CopyPartial_Src
     {
     public:
-        ID3D::Resource* _resource;
+        Resource*		_resource;
         SubResourceId   _subResource;
         UInt3Pattern    _leftTopFront;
         UInt3Pattern    _rightBottomBack;
 
         CopyPartial_Src(
-            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            Resource& dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
             const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
-        : _resource(dst.get()), _subResource(subres)
+        : _resource(&dst), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };
@@ -100,22 +148,18 @@ namespace RenderCore { namespace Metal_DX11
         DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src,
         ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource);
+    intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, intrusive_ptr<ID3D::Resource> inputResource);
+	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      G E T   D E S C       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ResourceDesc ExtractDesc(const UnderlyingResourcePtr& res);
-	ResourceDesc ExtractDesc(const IResource& res);
+    ResourceDesc ExtractDesc(const intrusive_ptr<ID3D::Resource>& res);
 	ResourceDesc ExtractDesc(const ShaderResourceView& res);
 	ResourceDesc ExtractDesc(const RenderTargetView& res);
     ResourceDesc ExtractDesc(const DepthStencilView& res);
     ResourceDesc ExtractDesc(const UnorderedAccessView& res);
-    std::shared_ptr<IResource> ExtractResource(const ShaderResourceView&);
-	std::shared_ptr<IResource> ExtractResource(const RenderTargetView&);
-	std::shared_ptr<IResource> ExtractResource(const DepthStencilView&);
-    std::shared_ptr<IResource> ExtractResource(const UnorderedAccessView&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      U T I L S       //
@@ -124,14 +168,9 @@ namespace RenderCore { namespace Metal_DX11
     class LayoutTransition
     {
     public:
-        UnderlyingResourcePtr _res;
-		ImageLayout _oldLayout, _newLayout;
-
-        LayoutTransition(
-            UnderlyingResourcePtr res = nullptr, 
-            ImageLayout oldLayout = ImageLayout::Undefined,
-            ImageLayout newLayout = ImageLayout::Undefined) 
-            : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+        Resource* _res = nullptr;
+		ImageLayout _oldLayout = ImageLayout::Undefined;
+		ImageLayout _newLayout = ImageLayout::Undefined;
     };
     inline void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes) {}
 
@@ -152,6 +191,7 @@ namespace RenderCore { namespace Metal_DX11
 	ID3D::Resource* AsID3DResource(IResource&);
 	std::shared_ptr<IResource> AsResourcePtr(ID3D::Resource*);
 	std::shared_ptr<IResource> AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
+	Resource& AsResource(IResource& res);
 }}
 
 #pragma warning(push)

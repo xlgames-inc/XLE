@@ -18,29 +18,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
-    <ClCompile Include="..\Assets\DelayedDrawCall.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
-    <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\MaterialCompiler.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\ModelRunTime.cpp">
-      <Filter>Assets\Model</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
       <Filter>Assets\Anim</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\SkinningRunTime.cpp">
-      <Filter>Assets\Anim</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\ModelUtils.cpp">
-      <Filter>Assets\Model</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\TransformationCommands.cpp">
       <Filter>Assets\Anim</Filter>
@@ -51,16 +36,10 @@
     <ClCompile Include="..\Assets\SkinningScaffold.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
-    <ClCompile Include="..\GeoProc\NascentGeometryObjects.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\GeoProc\MeshDatabase.cpp">
@@ -72,17 +51,11 @@
     <ClCompile Include="..\GeoProc\NascentCommandStream.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\GeoProc\SkeletonRegistry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\ModelCompiler.cpp">
-      <Filter>Assets\Model</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\RawMaterial.cpp">
       <Filter>Assets\Material</Filter>
@@ -90,23 +63,32 @@
     <ClCompile Include="..\Assets\MaterialScaffold.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\ShaderVariationSet.cpp" />
+    <ClCompile Include="..\Assets\SimpleModelRenderer.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\SimpleModelDeform.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\SkinDeformer.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentModel.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentSkeletonMachine.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\Assets\ShaderPatchCollection.cpp">
+      <Filter>Assets\Material</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\DeferredShaderResource.h" />
-    <ClInclude Include="..\Assets\DelayedDrawCall.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
-    <ClInclude Include="..\Assets\ModelCache.h" />
     <ClInclude Include="..\Assets\MaterialCompiler.h">
       <Filter>Assets\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ModelRunTime.h">
-      <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ModelScaffoldInternal.h">
       <Filter>Assets\Model</Filter>
@@ -123,28 +105,13 @@
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h">
       <Filter>Assets\Anim</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\ModelRendererInternal.h">
-      <Filter>Assets\Model</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\ModelImmutableData.h">
       <Filter>Assets\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ModelUtils.h">
-      <Filter>Assets\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentGeometryObjects.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentMaterial.h">
-      <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentRawGeometry.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentTransformationMachine.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\MeshDatabase.h">
@@ -159,17 +126,11 @@
     <ClInclude Include="..\GeoProc\NascentObjectGuid.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\GeoProc\SkeletonRegistry.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\GeoProcUtil.h">
       <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ModelCompiler.h">
-      <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\RawMaterial.h">
       <Filter>Assets\Material</Filter>
@@ -177,6 +138,27 @@
     <ClInclude Include="..\Assets\MaterialScaffold.h">
       <Filter>Assets\Material</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\ShaderVariationSet.h" />
+    <ClInclude Include="..\Assets\SimpleModelRenderer.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\SimpleModelDeform.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelScaffold.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\SkinDeformer.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentModel.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentSkeletonMachine.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\Assets\ShaderPatchCollection.h">
+      <Filter>Assets\Material</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -13,7 +13,7 @@ namespace EntityInterface
 {
     namespace EntityTypeName
     {
-        static const auto* GameObjectFolder = (const utf8*)"GameObjectFolder";
+        static const auto* GameObjectFolder = "GameObjectFolder";
     }
 
     template<typename CharType>
@@ -28,7 +28,7 @@ namespace EntityInterface
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
-            const auto* child = entities.GetEntity(obj._doc, *c);
+            const auto* child = entities.GetEntity(obj._doc, c->second);
             if (child)
                 Serialize<CharType>(formatter, *child, entities);
         }

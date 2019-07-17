@@ -557,8 +557,16 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
         const auto* pathStart = rawString._start;
 
+		// Since we use a colon for both the parameters divider and after the drive name on Windows,
+		// there can be some ambiguity. We can solve that by putting some restrictons on how we use
+		// drive names
+		//  - drive names can't have dots or slashes
+		//  - when ':' is used as a drive name separator, it must immediately be followed by a slash
+		//		ie, "c:\something" style paths are supported, but "c:something" paths are not. The
+		//		second form is a idiosyncracy of dos/windows, anyway, any probably not useful in our context
 		auto firstColon = std::find(rawString._start, rawString._end, ':');
-		if (firstColon < std::find_first_of(rawString._start, rawString._end, sepsAndDot, ArrayEnd(sepsAndDot))) {
+		if (firstColon < std::find_first_of(rawString._start, rawString._end, sepsAndDot, ArrayEnd(sepsAndDot))
+			&& (firstColon+1) < rawString.end() && (*(firstColon+1) == '\\' || *(firstColon+1) == '/')) {
     		_drive = Section(rawString._start, firstColon+1);
             pathStart = firstColon+1;
         } else {
@@ -771,6 +779,13 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     , _endsWithSeparator(endsWithSeparator)
     , _drive(drive)
 	{}
+
+	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections)
+	: _sections(std::move(sections))
+	, _beginsWithSeparator(false)
+    , _endsWithSeparator(false)
+	{
+	}
 
     TC SplitPath<CharType>::~SplitPath() {}
 

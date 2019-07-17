@@ -5,7 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
-#include "../../PlatformRig/OverlaySystem.h"
+
+#include "NativeEngineDevice.h"
+#include <memory>
+
+namespace RenderCore { class IThreadContext; class IResource; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace GUILayer 
 {
@@ -22,13 +27,11 @@ namespace GUILayer
         // typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
         // virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
 
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) = 0; 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext) = 0;
-        virtual void SetActivationState(bool newState) = 0;
+        virtual void Render(
+            RenderCore::IThreadContext& threadContext, 
+			const RenderTargetWrapper& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) = 0; 
+		virtual void SetActivationState(bool newState) {}
 
         virtual ~IOverlaySystem() {}
     };

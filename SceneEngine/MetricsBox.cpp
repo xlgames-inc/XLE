@@ -6,13 +6,13 @@
 
 #include "MetricsBox.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
@@ -33,8 +33,8 @@ namespace SceneEngine
         metricsBufferDesc._linearBufferDesc._sizeInBytes = metricsBufferDesc._linearBufferDesc._structureByteSize;
         auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc);
 
-        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->ShareUnderlying());
-        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->ShareUnderlying());
+        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->GetUnderlying());
+        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->GetUnderlying());
     }
 
     MetricsBox::~MetricsBox() {}
@@ -42,7 +42,8 @@ namespace SceneEngine
 
     void RenderGPUMetrics(
         RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parsingContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
+		const MetricsBox& metricBox,
         const ::Assets::ResChar shaderName[],
         std::initializer_list<const ::Assets::ResChar*> valueSources,
         unsigned protectStates)
@@ -73,23 +74,29 @@ namespace SceneEngine
         context.Bind(shader, boundInterfaces);
 
         const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
-        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(metricsDigits)->Actualize()->GetShaderResource()));
 
-        Metal::BoundUniforms uniforms(shader);
-        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-        uniforms.BindConstantBuffers(1, {"$Globals"});
-        uniforms.BindShaderResources(1, {"MetricsObject"});
+		UniformsStreamInterface usi;
+        usi.BindConstantBuffer(0, {Hash64("$Globals")});
+        usi.BindShaderResource(0, Hash64("MetricsObject"));
+		Metal::BoundUniforms uniforms(
+			shader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         Metal::ViewportDesc viewport(context);
         unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
-        uniforms.Apply(
-            context, parsingContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(
-                { MakeSharedPkt(globalCB) }, 
-                { &parsingContext.GetMetricsBox()->_metricsBufferSRV }));
+        uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+		ConstantBufferView cbvs[] = { MakeSharedPkt(globalCB) };
+		const Metal::ShaderResourceView* srvs[] = { &metricBox._metricsBufferSRV };
+		uniforms.Apply(
+			context, 1, 
+            UniformsStream{
+                MakeIteratorRange(cbvs), 
+				UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-        context.Unbind<Metal::VertexBuffer>();
-        context.Unbind<Metal::BoundInputLayout>();
+        context.UnbindInputLayout();
         context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         context.Bind(Techniques::CommonResources()._dssDisable);

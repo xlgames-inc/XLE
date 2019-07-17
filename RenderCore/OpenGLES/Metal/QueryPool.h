@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../../IAnnotator.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
 #include <algorithm>
@@ -21,7 +22,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 	class DeviceContext;
 	class ObjectFactory;
 
-	class QueryPool
+	class TimeStampQueryPool
 	{
 	public:
 		using QueryId = unsigned;
@@ -45,8 +46,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 		};
 		FrameResults GetFrameResults(DeviceContext& context, FrameId id);
 
-		QueryPool(ObjectFactory& factory);
-		~QueryPool();
+		TimeStampQueryPool(ObjectFactory& factory);
+		~TimeStampQueryPool();
 	private:
 	};
 
@@ -103,5 +104,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
 
     #endif
+
+	class Annotator : public IAnnotator
+	{
+	public:
+		virtual void	Frame_Begin(IThreadContext& primaryContext, unsigned frameID);
+		virtual void	Frame_End(IThreadContext& primaryContext);
+
+		virtual void	Event(IThreadContext& context, const char name[], EventTypes::BitField types);
+
+		virtual unsigned	AddEventListener(const EventListener& callback);
+		virtual void		RemoveEventListener(unsigned listenerId);
+
+		Annotator();
+		virtual ~Annotator();
+	};
+
 }}
 

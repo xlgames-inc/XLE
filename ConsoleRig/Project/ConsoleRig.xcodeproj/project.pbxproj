@@ -9,6 +9,18 @@
 /* Begin PBXBuildFile section */
 		8F030D7820322416007ACBB2 /* DebugUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F030D7720322416007ACBB2 /* DebugUtil.cpp */; };
 		8F030D79203225F6007ACBB2 /* DebugUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F030D7720322416007ACBB2 /* DebugUtil.cpp */; };
+		8F4A08B622446F29009D8927 /* LogStartup.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4A08B222446F29009D8927 /* LogStartup.h */; };
+		8F4A08B722446F29009D8927 /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08B322446F29009D8927 /* Log.cpp */; };
+		8F4A08B822446F29009D8927 /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08B322446F29009D8927 /* Log.cpp */; };
+		8F4A08B922446F29009D8927 /* LogUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4A08B422446F29009D8927 /* LogUtil.h */; };
+		8F4A08BA22446F29009D8927 /* Log.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4A08B522446F29009D8927 /* Log.h */; };
+		8F4A08BD22446F41009D8927 /* Plugins.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08BB22446F41009D8927 /* Plugins.cpp */; };
+		8F4A08BE22446F41009D8927 /* Plugins.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08BB22446F41009D8927 /* Plugins.cpp */; };
+		8F4A08BF22446F41009D8927 /* Plugins.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4A08BC22446F41009D8927 /* Plugins.h */; };
+		8F4A08C122446F5B009D8927 /* Version.in.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08C022446F5B009D8927 /* Version.in.cpp */; };
+		8F4A08C222446F5B009D8927 /* Version.in.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08C022446F5B009D8927 /* Version.in.cpp */; };
+		8F4A08C42244701D009D8927 /* AttachableLibrary_Stub.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08C32244701D009D8927 /* AttachableLibrary_Stub.cpp */; };
+		8F4A08C52244701D009D8927 /* AttachableLibrary_Stub.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4A08C32244701D009D8927 /* AttachableLibrary_Stub.cpp */; };
 		8FA52DCA1FD9D48A0039B229 /* IncludeLUA.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */; };
 		8FA52DCB1FD9D48A0039B229 /* GlobalServices.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBD1FD9D4890039B229 /* GlobalServices.h */; };
 		8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */; };
@@ -16,7 +28,6 @@
 		8FA52DD31FD9D48A0039B229 /* GlobalServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */; };
 		8FA52DD41FD9D48A0039B229 /* GlobalServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */; };
 		8FA52DD61FD9D48A0039B229 /* OutputStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC41FD9D48A0039B229 /* OutputStream.h */; };
-		8FA52DD81FD9D48A0039B229 /* AttachableInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */; };
 		8FA52DDB1FD9D48A0039B229 /* IProgress.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DC81FD9D48A0039B229 /* IProgress.h */; };
 		8FA52DE51FD9DC580039B229 /* Console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DE31FD9DC580039B229 /* Console.cpp */; };
 		8FA52DE61FD9DC580039B229 /* Console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DE31FD9DC580039B229 /* Console.cpp */; };
@@ -37,6 +48,14 @@
 
 /* Begin PBXFileReference section */
 		8F030D7720322416007ACBB2 /* DebugUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DebugUtil.cpp; path = ../DebugUtil.cpp; sourceTree = "<group>"; };
+		8F4A08B222446F29009D8927 /* LogStartup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogStartup.h; path = ../LogStartup.h; sourceTree = "<group>"; };
+		8F4A08B322446F29009D8927 /* Log.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Log.cpp; path = ../Log.cpp; sourceTree = "<group>"; };
+		8F4A08B422446F29009D8927 /* LogUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogUtil.h; path = ../LogUtil.h; sourceTree = "<group>"; };
+		8F4A08B522446F29009D8927 /* Log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Log.h; path = ../Log.h; sourceTree = "<group>"; };
+		8F4A08BB22446F41009D8927 /* Plugins.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Plugins.cpp; path = ../Plugins.cpp; sourceTree = "<group>"; };
+		8F4A08BC22446F41009D8927 /* Plugins.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Plugins.h; path = ../Plugins.h; sourceTree = "<group>"; };
+		8F4A08C022446F5B009D8927 /* Version.in.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Version.in.cpp; path = ../Version.in.cpp; sourceTree = "<group>"; };
+		8F4A08C32244701D009D8927 /* AttachableLibrary_Stub.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AttachableLibrary_Stub.cpp; path = ../AttachableLibrary_Stub.cpp; sourceTree = "<group>"; };
 		8FA52D861FD9D3900039B229 /* libConsoleRigIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libConsoleRigIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
 		8FA52DB11FD9D3CB0039B229 /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
@@ -48,7 +67,6 @@
 		8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OutputStream.cpp; path = ../OutputStream.cpp; sourceTree = "<group>"; };
 		8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GlobalServices.cpp; path = ../GlobalServices.cpp; sourceTree = "<group>"; };
 		8FA52DC41FD9D48A0039B229 /* OutputStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OutputStream.h; path = ../OutputStream.h; sourceTree = "<group>"; };
-		8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AttachableInternal.h; path = ../AttachableInternal.h; sourceTree = "<group>"; };
 		8FA52DC81FD9D48A0039B229 /* IProgress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IProgress.h; path = ../IProgress.h; sourceTree = "<group>"; };
 		8FA52DE31FD9DC580039B229 /* Console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Console.cpp; path = ../Console.cpp; sourceTree = "<group>"; };
 		8FA52DE41FD9DC580039B229 /* Console.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Console.h; path = ../Console.h; sourceTree = "<group>"; };
@@ -75,7 +93,7 @@
 		8FA52D7D1FD9D3900039B229 = {
 			isa = PBXGroup;
 			children = (
-				8FA52DC61FD9D48A0039B229 /* AttachableInternal.h */,
+				8F4A08C32244701D009D8927 /* AttachableLibrary_Stub.cpp */,
 				8FA52DAF1FD9D3C10039B229 /* Config */,
 				8FA52DE31FD9DC580039B229 /* Console.cpp */,
 				8FA52DE41FD9DC580039B229 /* Console.h */,
@@ -84,9 +102,16 @@
 				8FA52DBD1FD9D4890039B229 /* GlobalServices.h */,
 				8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */,
 				8FA52DC81FD9D48A0039B229 /* IProgress.h */,
+				8F4A08B322446F29009D8927 /* Log.cpp */,
+				8F4A08B522446F29009D8927 /* Log.h */,
+				8F4A08B222446F29009D8927 /* LogStartup.h */,
+				8F4A08B422446F29009D8927 /* LogUtil.h */,
 				8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */,
 				8FA52DC41FD9D48A0039B229 /* OutputStream.h */,
+				8F4A08BB22446F41009D8927 /* Plugins.cpp */,
+				8F4A08BC22446F41009D8927 /* Plugins.h */,
 				8FA52D871FD9D3900039B229 /* Products */,
+				8F4A08C022446F5B009D8927 /* Version.in.cpp */,
 			);
 			sourceTree = "<group>";
 		};
@@ -117,12 +142,15 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8FA52DD81FD9D48A0039B229 /* AttachableInternal.h in Headers */,
+				8F4A08BA22446F29009D8927 /* Log.h in Headers */,
+				8F4A08B622446F29009D8927 /* LogStartup.h in Headers */,
 				8FA52DCA1FD9D48A0039B229 /* IncludeLUA.h in Headers */,
+				8F4A08BF22446F41009D8927 /* Plugins.h in Headers */,
 				8FA52DCB1FD9D48A0039B229 /* GlobalServices.h in Headers */,
 				8FA52DD61FD9D48A0039B229 /* OutputStream.h in Headers */,
 				8FA52DE71FD9DC580039B229 /* Console.h in Headers */,
 				8FA52DDB1FD9D48A0039B229 /* IProgress.h in Headers */,
+				8F4A08B922446F29009D8927 /* LogUtil.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,8 +233,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				8FA52DE61FD9DC580039B229 /* Console.cpp in Sources */,
+				8F4A08B822446F29009D8927 /* Log.cpp in Sources */,
+				8F4A08BE22446F41009D8927 /* Plugins.cpp in Sources */,
 				8FA52DD41FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
 				8FA52DD01FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+				8F4A08C222446F5B009D8927 /* Version.in.cpp in Sources */,
+				8F4A08C52244701D009D8927 /* AttachableLibrary_Stub.cpp in Sources */,
 				8F030D79203225F6007ACBB2 /* DebugUtil.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -216,8 +248,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				8FA52DE51FD9DC580039B229 /* Console.cpp in Sources */,
+				8F4A08B722446F29009D8927 /* Log.cpp in Sources */,
+				8F4A08BD22446F41009D8927 /* Plugins.cpp in Sources */,
 				8FA52DD31FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
 				8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+				8F4A08C122446F5B009D8927 /* Version.in.cpp in Sources */,
+				8F4A08C42244701D009D8927 /* AttachableLibrary_Stub.cpp in Sources */,
 				8F030D7820322416007ACBB2 /* DebugUtil.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

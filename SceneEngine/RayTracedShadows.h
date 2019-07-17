@@ -6,26 +6,32 @@
 
 #pragma once
 
+#include "RenderStep.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/Drawables.h"
+
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
-    class IMainTargets;
     class PreparedScene;
+	class LightingParserContext;
+	class ILightingParserDelegate;
+	class MainTargets;
+
+	class ViewDelegate_Shadow;
 
     PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::IThreadContext& context, 
-        RenderCore::Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
-        PreparedScene& preparedScene,
-        const ShadowProjectionDesc& frustum,
-        unsigned shadowFrustumIndex);
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
+        ViewDelegate_Shadow& executedScene);
 
     void RTShadows_DrawMetrics(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        IMainTargets& mainTargets);
+        RenderCore::Metal::DeviceContext& context,
+		RenderCore::Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext);
 }

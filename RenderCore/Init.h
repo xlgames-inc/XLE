@@ -13,9 +13,14 @@ namespace RenderCore
 {
     enum class UnderlyingAPI
     {
-        DX11, Vulkan, OpenGLES
+        DX11, Vulkan, OpenGLES, AppleMetal
     };
 
     std::shared_ptr<IDevice>    CreateDevice(UnderlyingAPI api);
+
+	using DeviceCreationFunction = std::shared_ptr<IDevice>();
+	void RegisterDeviceCreationFunction(
+		UnderlyingAPI api,
+		DeviceCreationFunction* fn);
 }
 

@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace RenderOverlays { namespace DebuggingDisplay { class IWidget; class DebugScreensSystem; } }
 namespace Utility { class HierarchicalCPUProfiler; }
 
@@ -35,23 +36,21 @@ namespace PlatformRig
             RenderResult _renderResult;
         };
 
-        typedef std::function<RenderResult(RenderCore::IThreadContext&, const RenderCore::ResourcePtr&)>
-            FrameRenderFunction;
-
         FrameResult ExecuteFrame(
             RenderCore::IThreadContext& context,
             RenderCore::IPresentationChain* presChain,
-            Utility::HierarchicalCPUProfiler* profiler,
-            const FrameRenderFunction& renderFunction);
+			RenderCore::Techniques::ParsingContext& parserContext,
+            Utility::HierarchicalCPUProfiler* profiler);
 
         void SetFrameLimiter(unsigned maxFPS);
         void SetUpdateAsyncMan(bool updateAsyncMan);
 
-        typedef std::function<void(RenderCore::IThreadContext&)> PostPresentCallback;
+        using PostPresentCallback = std::function<void(RenderCore::IThreadContext&)>;
         virtual void AddPostPresentCallback(const PostPresentCallback&);
 
-        std::shared_ptr<OverlaySystemSet>& GetMainOverlaySystem();
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
+        const std::shared_ptr<OverlaySystemSet>& GetMainOverlaySystem();
+		const std::shared_ptr<OverlaySystemSet>& GetDebugScreensOverlaySystem();
+        const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
 
         FrameRig(bool isMainFrameRig = true);
         ~FrameRig();

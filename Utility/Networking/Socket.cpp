@@ -2,6 +2,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "Socket.h"
 
 #include <stdlib.h>
@@ -104,7 +106,7 @@ namespace Utility { namespace Networking
 
         struct sockaddr_in serverAddr = CreateSocketAddress(address.c_str(), port);
 
-        if ((_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((_fd = (int)socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             int errnoValue = errno;
             Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
@@ -159,7 +161,7 @@ namespace Utility { namespace Networking
         #ifdef MSG_NOSIGNAL
             flags |= MSG_NOSIGNAL;
         #endif
-        send(_fd, (const char *)data.begin(), data.size(), flags);
+        send(_fd, (const char *)data.begin(), (int)data.size(), flags);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +172,7 @@ namespace Utility { namespace Networking
 
         struct sockaddr_in serverAddr = CreateSocketAddress("127.0.0.1", port);
 
-        if ((_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((_fd = (int)socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             int errnoValue = errno;
             Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
         }
@@ -224,7 +226,7 @@ namespace Utility { namespace Networking
 
         struct sockaddr_in clientAddr;
         socklen_t clilen = sizeof(clientAddr);
-        int acceptedFD = accept(_fd, (struct sockaddr *)&clientAddr, &clilen);
+        int acceptedFD = (int)accept(_fd, (struct sockaddr *)&clientAddr, &clilen);
         if (acceptedFD < 0) {
             int errnoValue = errno;
             Throw(SocketException(SocketException::ErrorCode::bad_connection, errnoValue));

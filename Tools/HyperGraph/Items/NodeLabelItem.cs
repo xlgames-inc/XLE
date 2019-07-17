@@ -31,14 +31,10 @@ namespace HyperGraph.Items
 {
 	public sealed class NodeLabelItem : NodeItem
 	{
-		public NodeLabelItem(string text, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeLabelItem(string text)
 		{
 			this.Text = text;
 		}
-
-		public NodeLabelItem(string text) :
-			this(text, false, false) { }
 
 		#region Text
 		string internalText = string.Empty;
@@ -58,23 +54,14 @@ namespace HyperGraph.Items
 		internal SizeF TextSize;
 
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Text))
 			{
 				if (this.TextSize.IsEmpty)
 				{
 					var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
-
-					if (this.Input.Enabled != this.Output.Enabled)
-					{
-						if (this.Input.Enabled)
-							this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.LeftMeasureTextStringFormat);
-						else
-							this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.RightMeasureTextStringFormat);
-					} else
-						this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.CenterMeasureTextStringFormat);
-
+					this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.CenterMeasureTextStringFormat);
 					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width);
 					this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height);
 				}
@@ -85,22 +72,9 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
-
-			if (this.Input.Enabled != this.Output.Enabled)
-			{
-				if (this.Input.Enabled)
-					graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
-				else
-					graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.RightTextStringFormat);
-			} else
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.CenterTextStringFormat);
+			graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, boundary, GraphConstants.CenterTextStringFormat);
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     enum class FluidDebuggingMode
     {
         Density, Velocity, Temperature, Vapor, Divergence
@@ -38,8 +38,8 @@ namespace SceneEngine
         UInt2 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& context,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         ReferenceFluidSolver2D(UInt2 dimensions);
@@ -87,8 +87,8 @@ namespace SceneEngine
         UInt2 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& context,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         FluidSolver2D(UInt2 dimensions);
@@ -130,8 +130,8 @@ namespace SceneEngine
         UInt3 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& metalContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         FluidSolver3D(UInt3 dimensions);

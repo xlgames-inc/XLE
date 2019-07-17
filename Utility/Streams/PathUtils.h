@@ -102,6 +102,7 @@ namespace Utility
 		Section     DriveAndPath() const			{ return Section(_drive._start, _path._end); }
 		Section	    FileAndExtension() const        { return Section(_file._start, _extension._end); }
         Section     AllExceptParameters() const     { return Section(_drive._start, _parameters._start); }
+		Section		DrivePathAndFilename() const	{ return Section(_drive._start, _file._end); }
 
         Section     FullFilename() const            { return _fullFilename; }
 
@@ -163,6 +164,7 @@ namespace Utility
 		explicit SplitPath(const String& path);
 		explicit SplitPath(const CharType path[]);
         explicit SplitPath(Section path);
+		explicit SplitPath(std::vector<Section>&& sections);
         SplitPath();
         
         SplitPath(SplitPath&& moveFrom) never_throws;

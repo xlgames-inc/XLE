@@ -35,6 +35,29 @@ namespace RenderCore { namespace Metal_OpenGLES
         mutable std::shared_ptr<ShaderProgramCapturedState> _capturedState;
 
         friend std::ostream& operator<<(std::ostream&, const ShaderProgram&);
+
+        // Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable = {});
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable);
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> hsName,
+			StringSection<::Assets::ResChar> dsName,
+			StringSection<::Assets::ResChar> definesTable);
     private:
         intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
         ::Assets::DepValPtr                     _depVal;
@@ -45,5 +68,5 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
     };
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 }}

@@ -85,6 +85,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\DX11\Device.h" />
+    <ClInclude Include="..\DX11\IDeviceDX11.h" />
     <ClInclude Include="..\DX11\Metal\Buffer.h" />
     <ClInclude Include="..\DX11\Metal\DeviceContext.h" />
     <ClInclude Include="..\DX11\Metal\DeviceContextImpl.h" />
@@ -94,6 +96,7 @@
     <ClInclude Include="..\DX11\Metal\Format.h" />
     <ClInclude Include="..\DX11\Metal\Forward.h" />
     <ClInclude Include="..\DX11\Metal\FrameBuffer.h" />
+    <ClInclude Include="..\DX11\Metal\PipelineLayout.h" />
     <ClInclude Include="..\DX11\Metal\QueryPool.h" />
     <ClInclude Include="..\DX11\Metal\IncludeDX11.h" />
     <ClInclude Include="..\DX11\Metal\InputLayout.h" />
@@ -105,12 +108,15 @@
     <ClInclude Include="..\DX11\Metal\Types.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\DX11\Annotator.cpp" />
+    <ClCompile Include="..\DX11\Device.cpp" />
     <ClCompile Include="..\DX11\Metal\Buffer.cpp" />
     <ClCompile Include="..\DX11\Metal\CompiledShaderByteCode.cpp" />
     <ClCompile Include="..\DX11\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\DX11\Metal\DX11Utils.cpp" />
     <ClCompile Include="..\DX11\Metal\Format.cpp" />
     <ClCompile Include="..\DX11\Metal\FrameBuffer.cpp" />
+    <ClCompile Include="..\DX11\Metal\PipelineLayout.cpp" />
     <ClCompile Include="..\DX11\Metal\QueryPool.cpp" />
     <ClCompile Include="..\DX11\Metal\InputLayout.cpp" />
     <ClCompile Include="..\DX11\Metal\ObjectFactory.cpp" />

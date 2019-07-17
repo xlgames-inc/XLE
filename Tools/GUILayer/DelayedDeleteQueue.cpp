@@ -6,39 +6,50 @@
 
 #include "DelayedDeleteQueue.h"
 #include "../../ConsoleRig/Log.h"
-#include <msclr\lock.h>
+#include <msclr/lock.h>
+#include <msclr/auto_gcroot.h>
 
 namespace GUILayer
 {
-    void DelayedDeleteQueue::Add(void* ptr, DeletionCallback^ callback)
+	using DeletablePtr = System::Tuple<System::IntPtr, DeletionCallback^>;
+    using DeletablePtrList = System::Collections::Generic::List<DeletablePtr^>;
+
+	static bool static_hasQueue = false;
+	class QueueContainer
+	{
+	public:
+		msclr::auto_gcroot<DeletablePtrList^> _queue = gcnew DeletablePtrList;
+		QueueContainer() { static_hasQueue = true; }
+		~QueueContainer() { static_hasQueue = false; }
+	};
+
+	static QueueContainer static_queue;
+
+    void DelayedDeleteQueue::Add(System::IntPtr ptr, DeletionCallback^ callback)
     {
-        msclr::lock l(_queue);
-        _queue->Add(gcnew DeletablePtr(System::IntPtr(ptr), callback));
+		if (static_hasQueue) {
+			msclr::lock l(static_queue._queue.get());
+			static_queue._queue->Add(gcnew DeletablePtr(ptr, callback));
+		} else {
+			callback(ptr);
+		}
     }
 
     void DelayedDeleteQueue::FlushQueue()
     {
         // swap with a new list, so the list doesn't get modified by another thread as we're deleting items
-        auto flip = gcnew DeletablePtrList;
+        msclr::auto_gcroot<DeletablePtrList^> flip = gcnew DeletablePtrList;
         {
-            msclr::lock l(_queue);
-            auto t = _queue;
-            _queue = flip;
-            flip = t;
+            msclr::lock l(static_queue._queue.get());
+            static_queue._queue.swap(flip);
         }
 
         auto count = flip->Count;
         if (count > 0) {
             Log(Verbose) << "Destroying native objects that were released indeterministically from cli code: " << count << std::endl;
-            for each(auto i in flip)
-                (i->Item2)(i->Item1.ToPointer());
+            for each(auto i in flip.get())
+                (i->Item2)(i->Item1);
             flip->Clear();
         }
     }
-
-    static DelayedDeleteQueue::DelayedDeleteQueue()
-    {
-        _queue = gcnew DeletablePtrList;
-    }
 }
-

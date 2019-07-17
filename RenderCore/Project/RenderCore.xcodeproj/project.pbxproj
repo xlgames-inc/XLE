@@ -25,8 +25,6 @@
 		8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */; };
 		8F2D1B031FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
 		8F2D1B041FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
-		8F2D1B071FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
-		8F2D1B081FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
 		8F2D1B091FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
 		8F2D1B0A1FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
 		8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE31FD61B060028A531 /* IAnnotator.h */; };
@@ -82,7 +80,6 @@
 		8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MinimalShaderSource.cpp; path = ../MinimalShaderSource.cpp; sourceTree = "<group>"; };
 		8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator_Forward.h; path = ../IAnnotator_Forward.h; sourceTree = "<group>"; };
 		8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderUtils.cpp; path = ../RenderUtils.cpp; sourceTree = "<group>"; };
-		8F2D1AE11FD61B060028A531 /* Annotator.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = Annotator.cpp; path = ../Annotator.cpp; sourceTree = "<group>"; };
 		8F2D1AE21FD61B060028A531 /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Format.cpp; path = ../Format.cpp; sourceTree = "<group>"; };
 		8F2D1AE31FD61B060028A531 /* IAnnotator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator.h; path = ../IAnnotator.h; sourceTree = "<group>"; };
 		8F2D1AE51FD61B060028A531 /* ShaderService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderService.h; path = ../ShaderService.h; sourceTree = "<group>"; };
@@ -140,7 +137,6 @@
 		8F2D1AAA1FD619910028A531 = {
 			isa = PBXGroup;
 			children = (
-				8F2D1AE11FD61B060028A531 /* Annotator.cpp */,
 				8F6177D01FF5A75C008515DE /* BufferView.h */,
 				8F2D1AC51FD619E60028A531 /* Config */,
 				8F2D1AD51FD61B050028A531 /* Documentation.h */,
@@ -340,7 +336,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F2D1B191FD61B080028A531 /* FrameBufferDesc.cpp in Sources */,
-				8F2D1B081FD61B080028A531 /* Annotator.cpp in Sources */,
 				8F2D1AFD1FD61B080028A531 /* ResourceUtils.cpp in Sources */,
 				8F2D1B0F1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */,
 				8F2D1AFB1FD61B080028A531 /* ShaderService.cpp in Sources */,
@@ -357,7 +352,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F2D1B181FD61B080028A531 /* FrameBufferDesc.cpp in Sources */,
-				8F2D1B071FD61B080028A531 /* Annotator.cpp in Sources */,
 				8F2D1AFC1FD61B080028A531 /* ResourceUtils.cpp in Sources */,
 				8F2D1B0E1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */,
 				8F2D1AFA1FD61B080028A531 /* ShaderService.cpp in Sources */,

@@ -5,6 +5,8 @@
 #include "Device_EGL.h"
 #include "EGLUtils.h"
 #include "Metal/DeviceContext.h"
+#include "Metal/QueryPool.h"
+#include "Metal/Shader.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
 #include "../../ConsoleRig/Log.h"
@@ -12,6 +14,7 @@
 #include "../../Utility/Optional.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
+#include <sstream>
 #include <assert.h>
 #include "Metal/IncludeGLES.h"
 
@@ -410,6 +413,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
     }
 
+    std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
+	{
+		return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
+	}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -464,6 +472,24 @@ namespace RenderCore { namespace ImplOpenGLES
             _surface = eglCreateWindowSurface(display, sharedContextCfg, EGLNativeWindowType(platformValue), surfaceAttribList);
             if (_surface == EGL_NO_SURFACE)
                 Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
+
+			bool useFakeBackBuffer = _desc->_bindFlags & BindFlag::ShaderResource;
+			if (!useFakeBackBuffer || _desc->_format == Format::Unknown) {
+				// In fake back buffer mode, the caller must give us the format they want explicitly
+				// Otherwise, we'll try to extract it from what the driver created
+				// We can't get the color depth of the true texture, just the number of components & a color space flag
+				EGLint colorSpace, textureFormat;
+				bool success = eglQuerySurface(display, _surface, EGL_GL_COLORSPACE, &colorSpace);
+				success &= eglQuerySurface(display, _surface, EGL_TEXTURE_FORMAT, &textureFormat);
+				if (success) {
+					if (textureFormat == EGL_TEXTURE_RGB) {
+						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8_UNORM_SRGB : Format::R8G8B8_UNORM;
+					} else if (textureFormat != EGL_NO_TEXTURE) {
+						// should normally be expecting EGL_TEXTURE_RGBA here, but some drivers returning wierd stuff
+						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
+					}
+				}
+			}
         }
     }
 
@@ -496,7 +522,6 @@ namespace RenderCore { namespace ImplOpenGLES
             auto textureDesc = TextureDesc::Plain2D(_desc->_width, _desc->_height, _desc->_format, 1, 0, _desc->_samples);
 
             bool useFakeBackBuffer = false;
-
             if (_desc->_bindFlags & BindFlag::ShaderResource) {
                 backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
                 useFakeBackBuffer = true; // use fake buffer mode if ShaderResource bindable main color buffer is requested
@@ -550,7 +575,8 @@ namespace RenderCore { namespace ImplOpenGLES
             _temporaryFramebuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
 
-            if (_activeTargetRenderbuffer->GetDesc()._bindFlags & BindFlag::ShaderResource) {
+            const bool mainColorIsReadable = (_activeTargetRenderbuffer->GetDesc()._bindFlags & BindFlag::ShaderResource);
+            if (mainColorIsReadable) {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _activeTargetRenderbuffer->GetTexture()->AsRawGLHandle(), 0);
             } else {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
@@ -589,7 +615,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            _annotator = CreateAnnotator(*d);
+            _annotator = std::make_unique<Metal_OpenGLES::Annotator>();
         }
         return *_annotator;
     }

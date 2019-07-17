@@ -29,12 +29,6 @@
     <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h">
       <Filter>Metal\Detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\DX11\IDeviceDX11.h">
-      <Filter>DX11</Filter>
-    </ClInclude>
-    <ClInclude Include="..\DX11\Device.h">
-      <Filter>DX11</Filter>
-    </ClInclude>
     <ClInclude Include="..\IDevice_Forward.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\Metal\DeviceContextImpl.h">
@@ -54,12 +48,6 @@
     </ClInclude>
     <ClInclude Include="..\MinimalShaderSource.h">
       <Filter>Util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Vulkan\Device.h">
-      <Filter>Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Vulkan\IDeviceVulkan.h">
-      <Filter>Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="..\Metal\ObjectFactory.h">
       <Filter>Metal</Filter>
@@ -97,13 +85,13 @@
     <ClInclude Include="..\UniformsStream.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\VertexUtil.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
       <UniqueIdentifier>{5f155892-f1c2-4102-b583-3426992e62da}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="DX11">
-      <UniqueIdentifier>{4e702656-778c-4255-9120-fcc8001bd006}</UniqueIdentifier>
     </Filter>
     <Filter Include="Metal">
       <UniqueIdentifier>{54aa57dc-39a3-45ec-a541-8dc67cc6527f}</UniqueIdentifier>
@@ -111,15 +99,8 @@
     <Filter Include="Metal\Detail">
       <UniqueIdentifier>{6b339f69-4f39-44fe-9925-0689009f20ed}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Vulkan">
-      <UniqueIdentifier>{c75fd630-3325-40e0-bbf7-65bdba530035}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\DX11\Device.cpp">
-      <Filter>DX11</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\RenderUtils.cpp">
       <Filter>Util</Filter>
     </ClCompile>
@@ -129,9 +110,6 @@
     </ClCompile>
     <ClCompile Include="..\MinimalShaderSource.cpp">
       <Filter>Util</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Vulkan\DeviceVulkan.cpp">
-      <Filter>Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="..\Format.cpp">
       <Filter>Util</Filter>
@@ -143,7 +121,6 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="..\Init.cpp" />
-    <ClCompile Include="..\Annotator.cpp" />
     <ClCompile Include="..\UniformsStream.cpp">
       <Filter>Util</Filter>
     </ClCompile>

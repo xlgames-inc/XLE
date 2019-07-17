@@ -22,8 +22,7 @@ namespace ControlsLibrary.MaterialEditor
             if (disposing)
             {
                 if (components != null) components.Dispose();
-                visSettings.Dispose();
-                visLayer.Dispose();
+                layerController.Dispose();
                 _preview.Dispose();
             }
             base.Dispose(disposing);
@@ -101,8 +100,6 @@ namespace ControlsLibrary.MaterialEditor
             // 
             // MaterialPreview
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this._environment);
             this.Controls.Add(this._resetCamera);
             this.Controls.Add(this._preview);

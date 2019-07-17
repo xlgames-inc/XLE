@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
+#include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderOverlays/OverlayContext.h"
 #include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
 #include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -18,7 +20,7 @@ namespace Sample
 
     class TerrainManipulators
         : public PlatformRig::IOverlaySystem
-        , public RenderOverlays::DebuggingDisplay::IInputListener
+        , public PlatformRig::IInputListener
         , public std::enable_shared_from_this<TerrainManipulators>
     {
     public:
@@ -35,20 +37,22 @@ namespace Sample
             _screens->Register(_terrainManipulators, "Terrain", DebugScreensSystem::SystemDisplay);
         }
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputListener()
+        std::shared_ptr<PlatformRig::IInputListener> GetInputListener()
         {
             return shared_from_this();
         }
 
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        bool OnInputEvent(
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt)
         {
-            return  _screens->OnInputEvent(evnt)
-                ||  _manipInputListener->OnInputEvent(evnt);
+            return  _screens->OnInputEvent(context, evnt)
+                ||  _manipInputListener->OnInputEvent(context, evnt);
         }
 
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext)
+            RenderCore::Techniques::ParsingContext& parserContext)
         {
             _manipulatorsInterface->Render(devContext, parserContext);
         }
@@ -57,7 +61,9 @@ namespace Sample
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _screens->Render(device, nullptr, parserContext.GetProjectionDesc());
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+            _screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
         void SetActivationState(bool) {}
@@ -66,7 +72,7 @@ namespace Sample
         std::shared_ptr<::ToolsRig::ManipulatorsInterface> _manipulatorsInterface;
         std::shared_ptr<::ToolsRig::ManipulatorsDisplay> _terrainManipulators;
         std::shared_ptr<DebugScreensSystem> _screens;
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> _manipInputListener;
+        std::shared_ptr<PlatformRig::IInputListener> _manipInputListener;
         std::shared_ptr<::ToolsRig::TerrainManipulatorContext> _terrainManipulatorContext;
     };
 

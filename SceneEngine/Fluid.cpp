@@ -78,8 +78,8 @@ namespace SceneEngine
     }
 
     void ReferenceFluidSolver2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
@@ -315,28 +315,28 @@ namespace SceneEngine
     }
 
     void FluidSolver2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_density[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data() });
             break;
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_temperature[1].data() });
             break;
@@ -563,21 +563,21 @@ namespace SceneEngine
     }
 
     void FluidSolver3D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging3D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_density[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging3D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data(), _pimpl->_velW[1].data() });
             break;
@@ -601,7 +601,7 @@ namespace SceneEngine
             *_densityDiffusion,
             AsScalarField1D(_density[0]), 
             (PoissonSolver::Method)settings._diffusionMethod);
-        LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
+        Log(Verbose) << "Density diffusion took: (" << iterations << ") iterations." << std::endl;
     }
 
     void FluidSolver3D::Pimpl::VelocityDiffusion(float deltaTime, const Settings& settings)
@@ -617,7 +617,7 @@ namespace SceneEngine
         auto iterationsv = _poissonSolver.Solve(
             AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
             (PoissonSolver::Method)settings._diffusionMethod);
-        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+        Log(Verbose) << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations." << std::endl;
     }
 
     UInt3 FluidSolver3D::GetDimensions() const { return _pimpl->_dimsWithoutBorder; }

@@ -30,7 +30,7 @@ namespace ToolsRig
         IManipulator& manipulator, const char title[]);
 
     bool HandleManipulatorsControls(
-        InterfaceState& interfaceState, const InputSnapshot& input, 
+        InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input, 
         IManipulator& manipulator);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

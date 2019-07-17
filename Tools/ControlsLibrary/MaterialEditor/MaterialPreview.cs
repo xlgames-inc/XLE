@@ -20,10 +20,10 @@ namespace ControlsLibrary.MaterialEditor
         public MaterialPreview()
         {
             InitializeComponent();
-            visSettings = GUILayer.MaterialVisSettings.CreateDefault();
-            visLayer = new GUILayer.MaterialVisLayer(visSettings);
-            _preview.Underlying.AddSystem(visLayer);
-            _preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
+            layerController = new GUILayer.VisLayerController();
+            visSettings = new GUILayer.MaterialVisSettings();
+            ApplyVisSettings();
+            layerController.AttachToView(_preview.Underlying);
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
             _geoType.SelectedItem = visSettings.Geometry;
@@ -38,7 +38,7 @@ namespace ControlsLibrary.MaterialEditor
 
         public string Object
         {
-            set 
+            set
             {
                 foreach (var m in _attachedMaterials) {
                     m.MaterialParameterBox.ListChanged -= ListChangedCallback;
@@ -55,9 +55,7 @@ namespace ControlsLibrary.MaterialEditor
                     _attachedMaterials.Add(m);
                 }
 
-                string model = ""; ulong binding = 0;
-                if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
-                visLayer.SetConfig(_attachedMaterials, model, binding);
+                ApplyVisSettings();
                 InvalidatePreview();
             }
         }
@@ -69,7 +67,7 @@ namespace ControlsLibrary.MaterialEditor
 
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
-            set 
+            set
             {
                 envSettings = value;
                 _environment.DataSource = value.Names;
@@ -85,28 +83,58 @@ namespace ControlsLibrary.MaterialEditor
         private void ComboBoxSelectedIndexChanged(object sender, System.EventArgs e)
         {
             GUILayer.MaterialVisSettings.GeometryType newGeometry;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.GeometryType>(_geoType.SelectedValue.ToString(), out newGeometry))
+            if (Enum.TryParse(_geoType.SelectedValue.ToString(), out newGeometry))
             {
                 visSettings.Geometry = newGeometry;
             }
 
             GUILayer.MaterialVisSettings.LightingType newLighting;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.LightingType>(_lightingType.SelectedValue.ToString(), out newLighting))
+            if (Enum.TryParse(_lightingType.SelectedValue.ToString(), out newLighting))
             {
                 visSettings.Lighting = newLighting;
             }
+            ApplyVisSettings();
             InvalidatePreview();
+        }
+
+        private void ApplyVisSettings()
+        {
+            if (visSettings.Geometry != GUILayer.MaterialVisSettings.GeometryType.Model)
+            {
+                layerController.SetMaterialVisSettings(visSettings);
+            }
+            else if (previewModel != null && previewModel.Item1 != null)
+            {
+                var modelSettings = new GUILayer.ModelVisSettings
+                {
+                    ModelName = previewModel.Item1,
+                    MaterialBindingFilter = previewModel.Item2
+                };
+                layerController.SetModelSettings(modelSettings);
+            }
+            else 
+            {
+                layerController.SetMaterialVisSettings(new GUILayer.MaterialVisSettings());
+            }
         }
 
         private void SelectedEnvironmentChanged(object sender, System.EventArgs e)
         {
-            visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
+            // visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
             InvalidatePreview();
         }
 
         public void InvalidatePreview() { _preview.Invalidate(); }
 
-        protected GUILayer.MaterialVisLayer visLayer;
+        public IEnumerable<GUILayer.RawMaterial> RawMaterialList
+        {
+            set
+            {
+                layerController.SetMaterialOverrides(value);
+            }
+        }
+
+        protected GUILayer.VisLayerController layerController;
         protected GUILayer.MaterialVisSettings visSettings;
         protected GUILayer.EnvironmentSettingsSet envSettings;
         protected Tuple<string, ulong> previewModel = null;
@@ -115,8 +143,7 @@ namespace ControlsLibrary.MaterialEditor
 
         private void _resetCamera_Click(object sender, EventArgs e)
         {
-            visSettings.ResetCamera = true;
-            _preview.Invalidate();
+            System.Diagnostics.Debug.Assert(false);
         }
     }
 }

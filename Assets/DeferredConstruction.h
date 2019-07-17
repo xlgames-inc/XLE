@@ -7,14 +7,15 @@
 #include "AssetsInternal.h"
 #include "AssetFuture.h"
 #include "AssetTraits.h"
-#include "IAssetCompiler.h"
+#include "IArtifact.h"
+#include "../ConsoleRig/Log.h"
 #include <memory>
 
 namespace Assets
 {
 	namespace Internal 
 	{
-		std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 	}
 
 	namespace Internal
@@ -22,14 +23,14 @@ namespace Assets
 		// Note -- here's a useful pattern that can turn any expression in a SFINAE condition
 		// Taken from stack overflow -- https://stackoverflow.com/questions/257288/is-it-possible-to-write-a-template-to-check-for-a-functions-existence
 		// If the expression in the first decltype() is invalid, we will trigger SFINAE and fall back to std::false_type
-		template<typename T, typename... Params>
-			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(AutoConstructAsset<T>(std::declval<Params>()...), std::true_type{});
+		template<typename AssetType, typename... Params>
+			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(AutoConstructAsset<AssetType>(std::declval<Params>()...), std::true_type{});
 
 		template<typename...>
 			static auto HasDirectAutoConstructAsset_Helper(...) -> std::false_type;
 
-		template<typename... Params>
-			struct HasDirectAutoConstructAsset : decltype(HasDirectAutoConstructAsset_Helper<Params...>(0)) {};
+		template<typename AssetType, typename... Params>
+			struct HasDirectAutoConstructAsset : decltype(HasDirectAutoConstructAsset_Helper<AssetType, Params...>(0)) {};
 
 
 		template<typename AssetType, typename... Params>
@@ -61,8 +62,11 @@ namespace Assets
 			future.SetAsset(std::move(asset), {});
 		} CATCH (const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const Exceptions::InvalidAsset& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 		} CATCH (const std::exception& e) {
-			future.SetInvalidAsset(nullptr, AsBlob(e));
+			Log(Warning) << "No dependency validation associated with asset after construction failure. Hot reloading will not function for this asset." << std::endl;
+			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 		} CATCH_END
 	}
 
@@ -76,20 +80,21 @@ namespace Assets
 		// Our deferred constructor will wait for the completion of that compilation operation,
 		// and then construct the final asset from the result
 
-		auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
-		// std::basic_string<ResChar> init0 = initializers[0].AsString();
-
-		// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
-		// version number is bad). We could attempt to push this into a background thread, also
-
-		auto existingArtifact = marker->GetExistingAsset();
-		if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
-			bool doRecompile = false;
-			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
-			if (!doRecompile) return;
-		}
-
 		TRY { 
+			auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
+			// std::basic_string<ResChar> init0 = initializers[0].AsString();
+
+			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
+			// version number is bad). We could attempt to push this into a background thread, also
+
+			auto existingArtifact = marker->GetExistingAsset();
+			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
+				bool doRecompile = false;
+				auto asset = AutoConstructAsset<AssetType>(existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
+				future.SetAsset(std::move(asset), {});
+				if (!doRecompile) return;
+			}
+		
 			auto pendingCompile = marker->InvokeCompile();
 
 			// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
@@ -102,16 +107,7 @@ namespace Assets
 					if (state == AssetState::Invalid) {
 						auto artifacts = pendingCompile->GetArtifacts();
 						if (!artifacts.empty()) {
-							// try to find an artifact named "log". If it doesn't exist, just drop back to the first one
-							IArtifact* logArtifact = nullptr;
-							for (const auto& e:artifacts)
-								if (e.first == "log") {
-									logArtifact = e.second.get();
-									break;
-								}
-							if (!logArtifact)
-								logArtifact = artifacts[0].second.get();
-							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
+							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), GetErrorMessage(*pendingCompile));
 						} else {
 							thatFuture.SetInvalidAsset(nullptr, nullptr);
 						}
@@ -125,8 +121,12 @@ namespace Assets
 				});
 		} CATCH(const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const Exceptions::InvalidAsset& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+			throw;	// Have to rethrow InvalidAsset, otherwise we loose our dependency validation. This can occur when the AutoConstructAsset function itself loads some other asset
 		} CATCH(const std::exception& e) {
-			future.SetInvalidAsset(nullptr, AsBlob(e));
+			Log(Warning) << "No dependency validation associated with asset (" << (initializerCount ? initializers[0].AsString() : "<<empty initializers>>") << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
+			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 		} CATCH_END
 	}
 

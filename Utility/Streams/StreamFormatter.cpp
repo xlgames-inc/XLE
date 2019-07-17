@@ -24,10 +24,9 @@ namespace Utility
         _end = end;
     }
 
-	MemoryMappedInputStream::MemoryMappedInputStream(IteratorRange<const void*> range)
-	: MemoryMappedInputStream(range.begin(), range.end())
-	{
-	}
+	MemoryMappedInputStream::MemoryMappedInputStream(const char* nullTerminatedStr)
+	: MemoryMappedInputStream(nullTerminatedStr, XlStringEnd(nullTerminatedStr))
+	{}
 
     MemoryMappedInputStream::~MemoryMappedInputStream() {}
 

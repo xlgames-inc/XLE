@@ -46,6 +46,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return float(unormValue) / 255.f;
     }
 
+	static float UNormAsFloat32(uint16_t unormValue)
+    {
+        return float(unormValue) / 65535.f;
+    }
+
+	static float SNormAsFloat32(int16_t unormValue)
+    {
+        return float(unormValue) / 32767.f;
+    }
+
     static float Float16AsFloat32(unsigned short input)
     {
         return half_float::detail::half2float(input);
@@ -81,6 +91,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         case Format::R8_UNORM:              return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), 0.f, 0.f, 1.f);
         
         case Format::B8G8R8X8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), 1.f);
+
+		case Format::R16G16B16A16_UNORM:	return Float4(UNormAsFloat32(((const uint16_t*)rawData)[0]), UNormAsFloat32(((const uint16_t*)rawData)[1]), UNormAsFloat32(((const uint16_t*)rawData)[2]), UNormAsFloat32(((const uint16_t*)rawData)[3]));
+		case Format::R16G16B16A16_SNORM:	return Float4(SNormAsFloat32(((const int16_t*)rawData)[0]), SNormAsFloat32(((const int16_t*)rawData)[1]), SNormAsFloat32(((const int16_t*)rawData)[2]), SNormAsFloat32(((const int16_t*)rawData)[3]));
             
         default:
                 assert(0);

@@ -8,16 +8,16 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "MaterialScaffold.h"   // just for MaterialScaffold::CompileProcessType
-#include "ModelCompiler.h"
-#include "../Metal/Metal.h"
-#include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
+#include "SkinDeformer.h"
+#include "ShaderPatchCollection.h"
 #include "../IDevice.h"
 #include "../Init.h"
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../Assets/GeneralCompiler.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 namespace RenderCore { namespace Assets
@@ -30,17 +30,16 @@ namespace RenderCore { namespace Assets
         _shaderService = std::make_unique<ShaderService>();
 
         auto shaderSource = std::make_shared<LocalCompiledShaderSource>(
-            Metal::CreateLowLevelShaderCompiler(*device),
+            device->CreateShaderCompiler(),
 			nullptr,
             device->GetDesc());
         _shaderService->AddShaderSource(shaderSource);
 
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        asyncMan.GetIntermediateCompilers().AddCompiler(
-            CompiledShaderByteCode::CompileProcessType, shaderSource);
+        asyncMan.GetIntermediateCompilers().AddCompiler(shaderSource);
 
         if (device) {
-            BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
+            BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
             _bufferUploads = BufferUploads::CreateManager(*device);
         }
 
@@ -53,12 +52,10 @@ namespace RenderCore { namespace Assets
 
             // Setup required compilers.
             //  * material scaffold compiler
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-        compilers.AddCompiler(
-            RenderCore::Assets::MaterialScaffold::CompileProcessType,
-            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
+        asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
 
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
+		_deformOpsFactory = std::make_unique<RenderCore::Assets::DeformOperationFactory>();
+		RenderCore::Assets::SkinDeformer::Register();
     }
 
     Services::~Services()
@@ -66,28 +63,36 @@ namespace RenderCore { namespace Assets
             // attempt to flush out all background operations current being performed
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().StallOnPendingOperations(true);
+		ShutdownModelCompilers();
 
         if (_bufferUploads) {
             _bufferUploads.reset();
             BufferUploads::DetachLibrary();
         }
-
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }
 
     void Services::InitModelCompilers()
     {
+		if (_modelCompilers) return;		// (already loaded)
+
             // attach the collada compilers to the assert services
             // this is optional -- not all applications will need these compilers
-        auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        auto& compilers = asyncMan.GetIntermediateCompilers();
+		auto compileOps = ::Assets::DiscoverCompileOperations("*Conversion.dll");
+		if (compileOps.empty()) return;
 
-        auto modelCompiler = std::make_shared<RenderCore::Assets::ModelCompiler>();
-        compilers.AddCompiler(ModelCompiler::Type_Model, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_AnimationSet, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_Skeleton, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_RawMat, modelCompiler);
+		_modelCompilers = std::make_shared<::Assets::GeneralCompiler>(
+			MakeIteratorRange(compileOps),
+			::Assets::Services::GetAsyncMan().GetIntermediateStore());
+		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(_modelCompilers);
     }
+
+	void Services::ShutdownModelCompilers()
+	{
+		if (_modelCompilers) {
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().RemoveCompiler(*_modelCompilers);
+			_modelCompilers.reset();
+		}
+	}
 
     void Services::AttachCurrentModule()
     {
@@ -101,15 +106,6 @@ namespace RenderCore { namespace Assets
         assert(s_instance==this);
         ShaderService::SetInstance(nullptr);
         s_instance = nullptr;
-    }
-
-    UnderlyingAPI Services::GetTargetAPI()
-    {
-        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
-            return RenderCore::UnderlyingAPI::Vulkan;
-        #else
-            return RenderCore::UnderlyingAPI::DX11;
-        #endif
     }
 
 }}

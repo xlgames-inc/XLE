@@ -32,8 +32,7 @@ namespace HyperGraph.Items
 {
 	public sealed class NodeCheckboxItem : NodeItem
 	{
-		public NodeCheckboxItem(string text, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeCheckboxItem(string text)
 		{
 			this.Text = text;
 		}
@@ -79,7 +78,7 @@ namespace HyperGraph.Items
 		internal SizeF TextSize;
 
 
-        public override SizeF Measure(Graphics graphics)
+        public override SizeF Measure(Graphics graphics, object context)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Text))
 			{
@@ -100,15 +99,10 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
-			
-			using (var path = GraphRenderer.CreateRoundedRectangle(size, location))
+			using (var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location))
 			{
-				var rect = new RectangleF(location, size);
 				if (this.Checked)
 				{
 					using (var brush = new SolidBrush(Color.FromArgb(128+32, Color.White)))
@@ -122,7 +116,7 @@ namespace HyperGraph.Items
 						graphics.FillPath(brush, path);
 					}
 				}
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, rect, GraphConstants.CenterTextStringFormat);
+				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, boundary, GraphConstants.CenterTextStringFormat);
 
 				if ((state & RenderState.Hover) != 0)
 					graphics.DrawPath(Pens.White, path);
@@ -130,7 +124,5 @@ namespace HyperGraph.Items
 					graphics.DrawPath(Pens.Black, path);
 			}
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

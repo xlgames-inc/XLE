@@ -77,8 +77,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveMaterialContext.cs" />
-    <Compile Include="Controls\DiagramControl.cs" />
+    <Compile Include="AdaptiveNodes\AdaptiveMaterialEditing.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="AdaptiveNodes\RawMaterialStorage.cs" />
+    <Compile Include="AdaptiveNodes\SchemaCaptureEditor.cs" />
+    <Compile Include="AdaptiveNodes\SchemaSource.cs" />
+    <Compile Include="Controls\ActualizationMessagesWindow.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\DiagramControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\DiagramLister.cs" />
+    <Compile Include="Controls\SchemaSourceArchiveControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="DiagramCommands.cs" />
     <Compile Include="DiagramControlRegistry.cs" />
     <Compile Include="DiagramEditingContext.cs" />
@@ -130,6 +144,10 @@
       <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
       <Name>Aga.Controls</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\yoga\csharp\Yoga\Yoga.vcxproj">
+      <Project>{0446c86b-f47b-4c46-b673-c7ae0cff35d5}</Project>
+      <Name>yoga</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ControlsLibraryExt\ControlsLibraryExt.csproj">
       <Project>{75aed629-a689-4eea-8276-df6f0fb0f94b}</Project>
       <Name>ControlsLibraryExt</Name>
@@ -150,11 +168,10 @@
       <Project>{788b1d28-29dd-4f5c-bf04-4a8d5866cde5}</Project>
       <Name>NodeEditorCore</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
-      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
-      <Name>ShaderFragmentArchive</Name>
-    </ProjectReference>
   </ItemGroup>
+  <Import Project="..\HyperGraphAdapter\HyperGraphAdapter.projitems" Label="Shared" />
+  <Import Project="..\AuthoringConcept\AuthoringConcept.projitems" Label="Shared" />
+  <Import Project="..\..\Foreign\yoga\csharp\Facebook.Yoga\Facebook.Yoga.Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -81,17 +81,17 @@ namespace Overlays
         }
     }
 
-    bool    OceanSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    OceanSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
-                if (_scrollers[c].ProcessInput(interfaceState, input))
+                if (_scrollers[c].ProcessInput(interfaceState, inputContext, input))
                     return true;
                 break;
             }
 
         for (unsigned c=0; c<dimof(_scrollers); ++c) {
-            if (_scrollers[c].ProcessInput(interfaceState, input)) {
+            if (_scrollers[c].ProcessInput(interfaceState, inputContext, input)) {
                 return true;
             }
         }
@@ -199,17 +199,17 @@ namespace Overlays
         }
     }
 
-    bool    OceanLightingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    OceanLightingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
-                if (_scrollers[c].ProcessInput(interfaceState, input))
+                if (_scrollers[c].ProcessInput(interfaceState, inputContext, input))
                     return true;
                 break;
             }
 
         for (unsigned c=0; c<dimof(_scrollers); ++c) {
-            if (_scrollers[c].ProcessInput(interfaceState, input)) {
+            if (_scrollers[c].ProcessInput(interfaceState, inputContext, input)) {
                 return true;
             }
         }

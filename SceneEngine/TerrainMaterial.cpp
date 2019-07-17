@@ -49,20 +49,19 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     static bool init = false;
     if (!init) {
         props.Add("MaterialId",  DefaultGet(Obj, _id),   DefaultSet(Obj, _id));
-		assert(0);
-        /*
-			removed because this style of array not supported
-		props.Add(
-            "Texture",
-            DefaultGetArray(Obj, _texture),
-            DefaultSetArray(Obj, _texture),
-            dimof(std::declval<Obj>()._texture));
-        props.Add(
-            "Mapping", 
-            DefaultGetArray(Obj, _mappingConstant),
-            DefaultSetArray(Obj, _mappingConstant),
-            dimof(std::declval<Obj>()._texture));
-		*/
+
+		props.Add("Texture0", DefaultGetArray(Obj, _texture, 0), DefaultSetArray(Obj, _texture, 0));
+		props.Add("Texture1", DefaultGetArray(Obj, _texture, 1), DefaultSetArray(Obj, _texture, 1));
+		props.Add("Texture2", DefaultGetArray(Obj, _texture, 2), DefaultSetArray(Obj, _texture, 2));
+		props.Add("Texture3", DefaultGetArray(Obj, _texture, 3), DefaultSetArray(Obj, _texture, 3));
+		props.Add("Texture4", DefaultGetArray(Obj, _texture, 4), DefaultSetArray(Obj, _texture, 4));
+
+		props.Add("Mapping0", DefaultGetArray(Obj, _mappingConstant, 0), DefaultSetArray(Obj, _mappingConstant, 0));
+		props.Add("Mapping1", DefaultGetArray(Obj, _mappingConstant, 1), DefaultSetArray(Obj, _mappingConstant, 1));
+		props.Add("Mapping2", DefaultGetArray(Obj, _mappingConstant, 2), DefaultSetArray(Obj, _mappingConstant, 2));
+		props.Add("Mapping3", DefaultGetArray(Obj, _mappingConstant, 3), DefaultSetArray(Obj, _mappingConstant, 3));
+		props.Add("Mapping4", DefaultGetArray(Obj, _mappingConstant, 4), DefaultSetArray(Obj, _mappingConstant, 4));
+
         props.Add(
             "Key", 
             [](const Obj& mat) { return mat._id; },
@@ -80,15 +79,11 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     static bool init = false;
     if (!init) {
         props.Add("Name", DefaultGet(Obj, _name), DefaultSet(Obj, _name));
-		assert(0);
-		/*
-		props.Add(
-            "Texture",
-            DefaultGetArray(Obj, _texture),
-            DefaultSetArray(Obj, _texture),
-            dimof(std::declval<Obj>()._texture));
-		*/
-        props.Add("HGrid", DefaultGet(Obj, _hgrid), DefaultSet(Obj, _hgrid));
+
+		props.Add("Texture0", DefaultGetArray(Obj, _texture, 0), DefaultSetArray(Obj, _texture, 0));
+		props.Add("Texture1", DefaultGetArray(Obj, _texture, 1), DefaultSetArray(Obj, _texture, 1));
+
+		props.Add("HGrid", DefaultGet(Obj, _hgrid), DefaultSet(Obj, _hgrid));
         props.Add("Gain", DefaultGet(Obj, _gain), DefaultSet(Obj, _gain));
         init = true;
     }
@@ -218,12 +213,12 @@ namespace SceneEngine
                 char buffer[512];
                 auto mappingAttr = matCfg.Attribute(u("Mapping")).Value();
                 auto parsedType = ImpliedTyping::Parse(
-                    (const char*)AsPointer(mappingAttr.begin()), (const char*)AsPointer(mappingAttr.end()),
+                    mappingAttr,
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(
-                    mat._mappingConstant, sizeof(mat._mappingConstant), 
+                    MakeIteratorRange(mat._mappingConstant), 
                     ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)),
-                    buffer, parsedType);
+                    MakeIteratorRange(buffer), parsedType);
                 
                 _gradFlagMaterials.push_back(mat);
 

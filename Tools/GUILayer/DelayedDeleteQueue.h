@@ -6,21 +6,23 @@
 
 #pragma once
 
+// Since DelayedDeleteQueue is a ref class, we can't include the declaration in modules other than GUILayer.
+// They will reference the class via the import table of GUILayer; a declaration here ends up causing a 
+// duplicate symbol error.
+#if defined(COMPILING_GUILAYER)
+
+#include <msclr/gcroot.h>
+
 namespace GUILayer
 {
-    public ref class DelayedDeleteQueue
+	public delegate void DeletionCallback(System::IntPtr);
+
+    public ref class DelayedDeleteQueue sealed
     {
     public:
-        delegate void DeletionCallback(void*);
-
-        static void Add(void* ptr, DeletionCallback^ callback);
+        static void Add(System::IntPtr ptr, DeletionCallback^ callback);
         static void FlushQueue();
-
-    private:
-        using DeletablePtr = System::Tuple<System::IntPtr, DeletionCallback^>;
-        using DeletablePtrList = System::Collections::Generic::List<DeletablePtr^>;
-        static DeletablePtrList^ _queue;
-        static DelayedDeleteQueue();
     };
 }
 
+#endif

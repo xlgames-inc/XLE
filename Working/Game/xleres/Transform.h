@@ -23,7 +23,6 @@ cbuffer LocalTransform BIND_MAT_B1
 {
 	row_major float3x4 LocalToWorld;
 	float3 LocalSpaceView;
-	uint2 MaterialGuid;
 }
 
 cbuffer GlobalState BIND_SEQ_B2

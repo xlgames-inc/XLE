@@ -24,15 +24,42 @@ namespace RenderCore { namespace Techniques
             return;
         }
 
-        if (!_globalCBs[index]->IsGood()) {
-            *_globalCBs[index] = Metal::MakeConstantBuffer(
-				Metal::GetObjectFactory(), 
-				MakeIteratorRange(newData, PtrAdd(newData, dataSize)),
-				false);
-        } else {
-            _globalCBs[index]->Update(context, newData, dataSize);
-        }
+		if (!_globalCBs[index]) {
+			_globalCBs[index] = std::make_shared<Metal::Buffer>(
+				Metal::GetObjectFactory(),
+				CreateDesc(
+					BindFlag::ConstantBuffer,
+					CPUAccess::WriteDynamic,
+					GPUAccess::Read,
+					LinearBufferDesc::Create(unsigned(dataSize)),
+					"GlobalCB"),
+				MakeIteratorRange(newData, PtrAdd(newData, dataSize)));
+
+			_globalCBVs[index] = { _globalCBs[index].get() };
+		} else {
+			auto* buffer = (Metal::Buffer*)_globalCBs[index]->QueryInterface(typeid(Metal::Buffer).hash_code());
+			if (buffer)
+				buffer->Update(context, newData, dataSize);
+		}
     }
+
+	Metal::Buffer&			ParsingContext::GetGlobalTransformCB()
+	{
+		assert(_globalCBs[0]);
+		return *(Metal::Buffer*)_globalCBs[0]->QueryInterface(typeid(Metal::Buffer).hash_code());
+	}
+
+    Metal::Buffer&			ParsingContext::GetGlobalStateCB()
+	{
+		assert(_globalCBs[1]);
+		return *(Metal::Buffer*)_globalCBs[1]->QueryInterface(typeid(Metal::Buffer).hash_code());
+	}
+
+	const std::shared_ptr<IResource>& ParsingContext::GetGlobalCB(unsigned index)
+	{
+		assert(index < dimof(_globalCBs));
+		return _globalCBs[index];
+	}
 
     void ParsingContext::Process(const ::Assets::Exceptions::RetrievalError& e)
     {
@@ -54,40 +81,83 @@ namespace RenderCore { namespace Techniques
             dimof(_stringHelpers->_pendingAssets) == dimof(_stringHelpers->_invalidAssets),
             "Assuming pending and invalid asset buffers are the same length");
 
-        if (!XlFindStringI(bufferStart, id))
+        if (!XlFindStringI(bufferStart, id)) {
             StringMeldAppend(bufferStart, bufferStart + dimof(_stringHelpers->_pendingAssets)) << "," << id;
+
+			if (e.State() == ::Assets::AssetState::Invalid) {
+				// Writing the exception string into "_errorString" here can help to pass shader error message 
+				// back to the PreviewRenderManager for the material tool
+				StringMeldAppend(_stringHelpers->_errorString, ArrayEnd(_stringHelpers->_errorString)) << e.what() << "\n";
+			}
+		}
     }
 
-    std::shared_ptr<IStateSetResolver> ParsingContext::SetStateSetResolver(
-        std::shared_ptr<IStateSetResolver> stateSetResolver)
+    std::shared_ptr<IRenderStateDelegate> ParsingContext::SetRenderStateDelegate(
+        const std::shared_ptr<IRenderStateDelegate>& stateSetResolver)
     {
-        std::shared_ptr<IStateSetResolver> oldResolver = std::move(_stateSetResolver);
-        _stateSetResolver = std::move(stateSetResolver);
+        std::shared_ptr<IRenderStateDelegate> oldResolver = std::move(_renderStateDelegate);
+        _renderStateDelegate = std::move(stateSetResolver);
         return std::move(oldResolver);
     }
 
-    const std::shared_ptr<Utility::ParameterBox>& ParsingContext::GetStateSetEnvironment()
+	std::shared_ptr<ITechniqueDelegate> ParsingContext::SetTechniqueDelegate(
+        const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate)
     {
-        return _techniqueContext->_stateSetEnvironment;
+        std::shared_ptr<ITechniqueDelegate> oldDelegate = std::move(_techniqueDelegate);
+        _techniqueDelegate = std::move(techniqueDelegate);
+        return std::move(oldDelegate);
     }
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources)
+	std::shared_ptr<IMaterialDelegate> ParsingContext::SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate)
+	{
+		std::shared_ptr<IMaterialDelegate> oldDelegate = std::move(_materialDelegate);
+        _materialDelegate = std::move(materialDelegate);
+        return std::move(oldDelegate);
+	}
+
+	void ParsingContext::AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>& dele)
+	{
+		for (auto&d:_uniformDelegates)
+			if (d.first == binding) {
+				d.second = dele;
+				return;
+			}
+		_uniformDelegates.push_back(std::make_pair(binding, dele));
+	}
+
+	void ParsingContext::RemoveUniformDelegate(uint64_t binding)
+	{
+		_uniformDelegates.erase(
+			std::remove_if(
+				_uniformDelegates.begin(), _uniformDelegates.end(),
+				[binding](const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>& p) { return p.first == binding; }),
+			_uniformDelegates.end());
+	}
+
+	void ParsingContext::RemoveUniformDelegate(IUniformBufferDelegate& dele)
+	{
+		_uniformDelegates.erase(
+			std::remove_if(
+				_uniformDelegates.begin(), _uniformDelegates.end(),
+				[&dele](const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>& p) { return p.second.get() == &dele; }),
+			_uniformDelegates.end());
+	}
+
+    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
-        _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
+        _renderStateDelegate = _techniqueContext->_defaultRenderStateDelegate;
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
+		_frameBufferPool = frameBufferPool;
 
-        for (unsigned c=0; c<dimof(_globalCBs); ++c)
-            _globalCBs[c] = std::make_unique<Metal::ConstantBuffer>();
+		for (unsigned c=0; c<dimof(_globalCBs); ++c)
+			_globalCBs[c] = nullptr;
 
-        _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
-        #pragma push_macro("new")
-        #undef new
-            new(_projectionDesc.get()) ProjectionDesc();
-        #pragma pop_macro("new")
+        _projectionDesc = std::make_unique<ProjectionDesc>();
+        assert(size_t(_projectionDesc.get()) % 16 == 0);
 
-        static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
+		static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBVs[c] = { _globalCBs[c].get() };
     }

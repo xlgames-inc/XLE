@@ -10,7 +10,11 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/ProjectionMath.h"
+#include "../../Utility/IteratorUtils.h"
 
+namespace Utility { class ParameterBox; }
+
+namespace RenderCore { class InputElementDesc; class MiniInputElementDesc; }
 namespace RenderCore { namespace Techniques
 {
 
@@ -48,7 +52,10 @@ namespace RenderCore { namespace Techniques
 
         ProjectionDesc();
 
-        void* operator new(size_t);
+		#pragma push_macro("new")
+		#undef new
+			void* operator new(size_t);
+		#pragma pop_macro("new")
 		void operator delete(void*);
     };
 
@@ -69,8 +76,6 @@ namespace RenderCore { namespace Techniques
         Float3x4    _localToWorld;
         Float3      _localSpaceView;
         unsigned    _dummy0;
-        uint64      _materialGuid;
-        unsigned    _dummy1[2];
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,5 +96,16 @@ namespace RenderCore { namespace Techniques
 
     bool HasHandinessFlip(const ProjectionDesc& projDesc);
 
+	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const InputElementDesc*> ia);
+	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const MiniInputElementDesc*> ia);
+
+	/// <summary>Build a projection desc with parameters from a standard camera</summary>
+	ProjectionDesc BuildProjectionDesc(const CameraDesc& sceneCamera, UInt2 viewportDims);
+
+	/// <summary>Build a projection desc for an orthogonal camera</summary>
+    ProjectionDesc BuildOrthogonalProjectionDesc(
+        const Float4x4& cameraToWorld,
+        float l, float t, float r, float b,
+        float nearClip, float farClip);
 }}
 

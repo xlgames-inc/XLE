@@ -6,10 +6,11 @@
 
 #pragma once
 
-#include "LightingParserContext.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 #include <vector>
+
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -54,13 +55,13 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             unsigned skyProjType, bool refractionsEnable);
 
         void UpdateSimulation(
             RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             ISurfaceHeightsProvider* surfaceHeights);
 
         ShallowSurface(
@@ -82,6 +83,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class GlobalLightingDesc;
+
     class ShallowSurfaceManager
     {
     public:
@@ -90,9 +93,10 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
-            ISurfaceHeightsProvider* surfaceHeights);
+            ISurfaceHeightsProvider* surfaceHeights,
+			const GlobalLightingDesc& globalLightingDesc);
 
         ShallowSurfaceManager();
         ~ShallowSurfaceManager();

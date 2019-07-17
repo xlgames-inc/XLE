@@ -46,7 +46,7 @@ namespace LevelEditorXLE.Placements
                     {
                         var target = _resLister.ContextMenuTarget;
                         if (target == null) return false;
-                        var ext = System.IO.Path.GetExtension(target.LocalPath);
+                        var ext = System.IO.Path.GetExtension(target);
 
                         // we can only do this for model files, or model bookmarks
                         return IsModelExtension(ext) || IsModelBookmarkExtension(ext);
@@ -72,19 +72,19 @@ namespace LevelEditorXLE.Placements
                         // note --  we could use the IResourceService to do the type resolution here by
                         //          calling IResourceService.Load... However, if the load operation is
                         //          expensive, we might not always want to do it.
-                        var ext = System.IO.Path.GetExtension(target.LocalPath);
+                        var ext = System.IO.Path.GetExtension(target);
                         if (IsModelExtension(ext))
                         {
-                            predicate = XLEPlacementObject.CreateSearchPredicate(target);
+                            predicate = XLEPlacementObject.CreateSearchPredicate(new Uri(target, UriKind.Relative));
                         }
                         else if (IsModelBookmarkExtension(ext))
                         {
                             // todo -- we could load the bookmark via the resource service, as so -- 
                             // var res = IResourceService.Load(target);
                             // if (res == null) break;
-                            var bookmark = XLEPlacementObject.LoadBookmark(target);
+                            var bookmark = XLEPlacementObject.LoadBookmark(new Uri(target, UriKind.Relative));
                             if (bookmark == null) break;
-                            predicate = XLEPlacementObject.CreateSearchPredicate(bookmark, target);
+                            predicate = XLEPlacementObject.CreateSearchPredicate(bookmark, new Uri(target, UriKind.Relative));
                         }
 
                         if (predicate != null)
@@ -107,7 +107,7 @@ namespace LevelEditorXLE.Placements
 
         public void UpdateCommand(object commandTag, CommandState state) {}
 
-        public System.Collections.Generic.IEnumerable<object> GetCommands(System.Uri focusUri)
+        public System.Collections.Generic.IEnumerable<object> GetCommands(string focusUri)
         {
             return new System.Collections.Generic.List<object>{ Command.SearchForPlacements };
         }

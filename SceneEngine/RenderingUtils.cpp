@@ -5,9 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RenderingUtils.h"
-#include "LightingParserContext.h"
+#include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -19,7 +20,7 @@
 
 namespace SceneEngine
 {
-    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext, const Float3& offset)
+    void DrawBasisAxes(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, const Float3& offset)
     {
         CATCH_ASSETS_BEGIN
 
@@ -52,31 +53,36 @@ namespace SceneEngine
                 InputElementDesc( "COLOR", 0, Format::R8G8B8A8_UNORM )
             };
 
-            VertexBuffer vertexBuffer(vertices, sizeof(vertices));
+            auto vertexBuffer = MakeMetalVB(vertices, sizeof(vertices));
 
             using namespace RenderCore::Metal;
             using namespace RenderCore::Techniques;
-            ConstantBufferPacket constantBufferPackets[2];
+            ConstantBufferView constantBufferPackets[2];
             constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+
+			auto& metalContext = *Metal::DeviceContext::Get(context);
 
             const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
                 "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
                 "xleres/forward/illum.psh:main", 
                 "GEO_HAS_COLOUR=1");
-            BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-            context->Bind(boundVertexInputLayout);
-            context->Bind(shaderProgram);
-            context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
+            BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
+			VertexBufferView vbvs[] = {&vertexBuffer};
+			boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+            metalContext.Bind(shaderProgram);
 
-            BoundUniforms boundLayout(shaderProgram);
-            boundLayout.BindConstantBuffer(ObjectCB::LocalTransform, 0, 1);
-            TechniqueContext::BindGlobalUniforms(boundLayout);
-            boundLayout.Apply(*context, 
-                parserContext.GetGlobalUniformsStream(),
-                UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {ObjectCB::LocalTransform});
+			BoundUniforms boundLayout(
+				shaderProgram,
+				Metal::PipelineLayoutConfig{},
+				TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+            boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+			boundLayout.Apply(metalContext, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
 
-            context->Bind(Topology::LineList);
-            context->Draw(dimof(vertices));
+            metalContext.Bind(Topology::LineList);
+            metalContext.Draw(dimof(vertices));
 
         CATCH_ASSETS_END(parserContext)
     }

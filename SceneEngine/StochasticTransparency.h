@@ -8,29 +8,31 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-    class LightingParserContext;
     class StochasticTransparencyBox;
+	class MetricsBox;
 
     class StochasticTransparencyOp
     {
     public:
         void PrepareFirstPass(const RenderCore::Metal::ShaderResourceView& mainDSV);
-        void PrepareSecondPass(RenderCore::Metal::DepthStencilView& mainDSV);
+        void PrepareSecondPass(RenderCore::Metal::DepthStencilView& mainDSV, const MetricsBox& metricsBox);
         void Resolve();
 
         StochasticTransparencyOp(
             RenderCore::Metal::DeviceContext& context, 
-            LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
         ~StochasticTransparencyOp();
 
         StochasticTransparencyOp(const StochasticTransparencyOp&) = delete;
         StochasticTransparencyOp& operator=(const StochasticTransparencyOp&) = delete;
 
     protected:
-        StochasticTransparencyBox*          _box;
-        RenderCore::Metal::DeviceContext*   _context;
-        LightingParserContext*              _parserContext;
+        StochasticTransparencyBox*				_box;
+        RenderCore::Metal::DeviceContext*		_context;
+        RenderCore::Techniques::ParsingContext*	_parserContext;
     };
 }

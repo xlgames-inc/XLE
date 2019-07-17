@@ -10,15 +10,18 @@
 #include "Format.h"
 #include "ObjectFactory.h"
 #include "TextureView.h"
+#include "../IDeviceDX11.h"
+
+#pragma warning(disable:4505) // 'RenderCore::Metal_DX11::GetSubResourceIndex': unreferenced local function has been removed
 
 namespace RenderCore { namespace Metal_DX11
 {
 	void Copy(
 		DeviceContext& context, 
-		UnderlyingResourcePtr dst, UnderlyingResourcePtr src,
+		Resource& dst, Resource& src,
 		ImageLayout, ImageLayout)
 	{
-		context.GetUnderlying()->CopyResource(dst.get(), src.get());
+		context.GetUnderlying()->CopyResource(dst.GetUnderlying().get(), src.GetUnderlying().get());
 	}
 
     static unsigned GetMipLayers(ID3D::Resource* resource)
@@ -42,6 +45,15 @@ namespace RenderCore { namespace Metal_DX11
         return D3D11CalcSubresource(id._mip, id._arrayLayer, GetMipLayers(resource));
     }
 
+	static unsigned GetSubResourceIndex(Resource& resource, SubResourceId id)
+    {
+		if (id._arrayLayer == 0)
+            return id._mip;
+		assert(resource.GetDesc()._type == ResourceDesc::Type::Texture);
+		auto mipLayers = resource.GetDesc()._textureDesc._mipCount;
+		return D3D11CalcSubresource(id._mip, id._arrayLayer, mipLayers);
+	}
+
     void CopyPartial(
         DeviceContext& context, 
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
@@ -58,9 +70,9 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         context.GetUnderlying()->CopySubresourceRegion(
-            dst._resource, GetSubResourceIndex(dst._resource, dst._subResource),
+            dst._resource->GetUnderlying().get(), GetSubResourceIndex(*dst._resource, dst._subResource),
             dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2],
-            src._resource, GetSubResourceIndex(src._resource, src._subResource),
+            src._resource->GetUnderlying().get(), GetSubResourceIndex(*src._resource, src._subResource),
             useSrcBox ? &srcBox : nullptr);
     }
 
@@ -68,6 +80,12 @@ namespace RenderCore { namespace Metal_DX11
     {
         return DuplicateResource(context.GetUnderlying(), inputResource.get());
     }
+
+	ResourcePtr Duplicate(DeviceContext& context, Resource& inputResource)
+	{
+		auto res = DuplicateResource(context.GetUnderlying(), inputResource.GetUnderlying().get());
+		return AsResourcePtr(std::move(res));
+	}
 
 	void*       Resource::QueryInterface(size_t guid)
 	{
@@ -80,6 +98,81 @@ namespace RenderCore { namespace Metal_DX11
 	{
 		if (!_underlying) return {};
 		return ExtractDesc(_underlying);
+	}
+
+	uint64_t        Resource::GetGUID() const
+	{
+		return _guid;
+	}
+
+	static uint64_t s_nextResourceGUID = 1;
+
+	Resource::Resource() : _guid(s_nextResourceGUID++) {}
+	Resource::Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying), _guid(s_nextResourceGUID++) {}
+	Resource::Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)), _guid(s_nextResourceGUID++) {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ResourceMap::ResourceMap(
+		DeviceContext& context, Resource& resource,
+		Mode mapMode,
+        SubResourceId subResource)
+	{
+		assert(subResource._mip == 0 && subResource._arrayLayer == 0);
+
+		_devContext = context.GetUnderlying();
+		_underlyingResource = resource.GetUnderlying();
+		_map = {};
+
+		auto underlyingMapMap = (mapMode == Mode::Read) ? D3D11_MAP_READ : D3D11_MAP_WRITE_DISCARD;
+
+		D3D11_MAPPED_SUBRESOURCE result;
+        HRESULT hresult = _devContext->Map(_underlyingResource.get(), 0, underlyingMapMap, 0, &result);
+        if (SUCCEEDED(hresult) && result.pData) {
+			_map = result;
+		} else {
+			_devContext.reset();
+			_underlyingResource.reset();
+		}
+	}
+
+	ResourceMap::ResourceMap()
+	{
+		_map = {};
+	}
+
+	ResourceMap::~ResourceMap()
+	{
+		TryUnmap();
+	}
+
+	ResourceMap::ResourceMap(ResourceMap&& moveFrom) never_throws
+	: _underlyingResource(std::move(moveFrom._underlyingResource))
+	, _devContext(std::move(moveFrom._devContext))
+	{
+		_map = moveFrom._map;
+		moveFrom._map = {};
+	}
+
+	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom) never_throws
+	{
+		TryUnmap();
+
+		_underlyingResource = std::move(moveFrom._underlyingResource);
+		_devContext = std::move(moveFrom._devContext);
+		_map = moveFrom._map;
+		moveFrom._map = {};
+
+		return *this;
+	}
+
+	void ResourceMap::TryUnmap()
+	{
+		if (_underlyingResource && _devContext)
+			_devContext->Unmap(_underlyingResource.get(), 0);
+		_underlyingResource.reset();
+		_devContext.reset();
+		_map = {};
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +334,7 @@ namespace RenderCore { namespace Metal_DX11
 				if (hasInitData) {
                     auto top = init({0,0});
 					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data.begin(), UINT(top._data.size()), UINT(top._data.size())};
-					hasInitData = top._data.size();
+					hasInitData = !top._data.empty();
 				}
 
 				D3D11_BUFFER_DESC d3dDesc;
@@ -376,54 +469,24 @@ namespace RenderCore { namespace Metal_DX11
         return desc;
     }
 
-	ResourceDesc ExtractDesc(const IResource& res)
-	{
-		auto* d3dres = (Resource*)const_cast<IResource&>(res).QueryInterface(typeid(Resource).hash_code());
-		if (d3dres)
-			return ExtractDesc(d3dres->_underlying);
-		ResourceDesc desc = {};
-		desc._type = ResourceDesc::Type::Unknown;
-		return desc;
-	}
-
     ResourceDesc ExtractDesc(const ShaderResourceView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+        return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
 	ResourceDesc ExtractDesc(const RenderTargetView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
     ResourceDesc ExtractDesc(const DepthStencilView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
     ResourceDesc ExtractDesc(const UnorderedAccessView& res)
     {
-        return ExtractDesc(res.GetResource().get());
-    }
-
-    ResourcePtr ExtractResource(const ShaderResourceView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-	ResourcePtr ExtractResource(const RenderTargetView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-	ResourcePtr ExtractResource(const DepthStencilView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-    ResourcePtr ExtractResource(const UnorderedAccessView& view)
-    {
-        return AsResourcePtr(view.GetResource());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr res)
@@ -446,5 +509,12 @@ namespace RenderCore { namespace Metal_DX11
 	ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
 	{
 		return std::make_shared<Resource>(std::move(ptr));
+	}
+
+	Resource& AsResource(IResource& res)
+	{
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
 	}
 }}

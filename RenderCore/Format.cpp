@@ -149,6 +149,7 @@ namespace RenderCore
             case Format::S8_UINT: input = UINT; break;
             case Format::Matrix4x4: input = FLOAT; break;
             case Format::Matrix3x4: input = FLOAT; break;
+			case Format::R12G12B12A4_SNORM:
 			case Format::R10G10B10A10_SNORM: return FormatComponentType::SNorm;
             default: input = TYPELESS; break;
         }
@@ -181,6 +182,7 @@ namespace RenderCore
         case Format::S8_UINT: return 8;
         case Format::Matrix4x4: return 16 * sizeof(float) * 8;
         case Format::Matrix3x4: return 12 * sizeof(float) * 8;
+		case Format::R12G12B12A4_SNORM:
 		case Format::R10G10B10A10_SNORM: return 40;
         default: return 0;
         }
@@ -752,11 +754,14 @@ namespace RenderCore
                 #include "Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
         case Format::D24_UNORM_S8_UINT: return "D24_UNORM_S8_UINT";
+		case Format::R24_UNORM_X8_TYPELESS: return "R24_UNORM_X8_TYPELESS";
+		case Format::X24_TYPELESS_G8_UINT: return "X24_TYPELESS_G8_UINT";
         case Format::D32_SFLOAT_S8_UINT: return "D32_FLOAT_S8_UINT";
         case Format::S8_UINT: return "S8_UINT";
         case Format::Matrix4x4: return "Matrix4x4";
         case Format::Matrix3x4: return "Matrix3x4";
 		case Format::R10G10B10A10_SNORM: return "R10G10B10A10_SNORM";
+		case Format::R12G12B12A4_SNORM: return "R12G12B12A4_SNORM";
         default: return "Unknown";
         }
     }
@@ -768,11 +773,14 @@ namespace RenderCore
         #undef _EXP
 
         if (!XlEqStringI(name, "D24_UNORM_S8_UINT")) return Format::D24_UNORM_S8_UINT;
+		if (!XlEqStringI(name, "R24_UNORM_X8_TYPELESS")) return Format::R24_UNORM_X8_TYPELESS;
+		if (!XlEqStringI(name, "X24_TYPELESS_G8_UINT")) return Format::X24_TYPELESS_G8_UINT;
         if (!XlEqStringI(name, "D32_FLOAT_S8_UINT")) return Format::D32_SFLOAT_S8_UINT;
         if (!XlEqStringI(name, "S8_UINT")) return Format::S8_UINT;
         if (!XlEqStringI(name, "Matrix4x4")) return Format::Matrix4x4;
         if (!XlEqStringI(name, "Matrix3x4")) return Format::Matrix3x4;
 		if (!XlEqStringI(name, "R10G10B10A10_SNORM")) return Format::R10G10B10A10_SNORM;
+		if (!XlEqStringI(name, "R12G12B12A4_SNORM")) return Format::R12G12B12A4_SNORM;
         return Format::Unknown;
     }
 

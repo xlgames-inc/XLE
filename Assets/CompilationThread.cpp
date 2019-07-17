@@ -21,8 +21,8 @@ namespace Assets
     }
     
     void CompilationThread::Push(
-		std::shared_ptr<::Assets::CompileFuture> future,
-		std::function<void(::Assets::CompileFuture&)> operation)
+		std::shared_ptr<::Assets::ArtifactFuture> future,
+		std::function<void(::Assets::ArtifactFuture&)> operation)
     {
         if (!_workerQuit) {
 			_queue.push_overflow(Element{future, std::move(operation)});
@@ -135,16 +135,16 @@ namespace Assets
     }
 
 	void QueueCompileOperation(
-		const std::shared_ptr<::Assets::CompileFuture>& future,
-		std::function<void(::Assets::CompileFuture&)>&& operation)
+		const std::shared_ptr<::Assets::ArtifactFuture>& future,
+		std::function<void(::Assets::ArtifactFuture&)>&& operation)
 	{
-        if (!ConsoleRig::GlobalServices::GetLongTaskThreadPool().IsGood()) {
+        if (!ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().IsGood()) {
             operation(*future);
             return;
         }
 
 		auto fn = std::move(operation);
-		ConsoleRig::GlobalServices::GetLongTaskThreadPool().EnqueueBasic(
+		ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().EnqueueBasic(
 			[future, fn]() {
 				TRY
 				{
@@ -167,6 +167,7 @@ namespace Assets
 					future->SetState(::Assets::AssetState::Invalid);
 				}
 				CATCH_END
+				assert(future->GetAssetState() != ::Assets::AssetState::Pending);	// if it is still marked "pending" at this stage, it will never change state
 		});
 	}
 

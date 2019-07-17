@@ -10,6 +10,7 @@
 #include "../Core/Types.h"
 #include "UTFUtils.h"
 #include "PtrUtils.h"	// for AsPointer
+#include "Optional.h"
 #include <string>
 #include <cstring>
 #include <algorithm>
@@ -90,6 +91,9 @@ namespace Utility
         bool IsEmpty() const                            { return _end <= _start; }
         std::basic_string<CharType> AsString() const    { return std::basic_string<CharType>(_start, _end); }
 
+		template<typename OtherCharType>
+			StringSection<OtherCharType> Cast() const { return StringSection<OtherCharType>((const OtherCharType*)_start, (const OtherCharType*)_end); }
+
         const CharType* begin() const   { return _start; }
         const CharType* end() const     { return _end; }
 		size_t size() const				{ return Length(); }
@@ -99,12 +103,10 @@ namespace Utility
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
         StringSection(const CharType* nullTerm) : _start(nullTerm), _end(XlStringEnd(_start)) {}
+        StringSection(nullptr_t) = delete;      // prevent construction from nullptr constant (tends to be a common error)
         
 		template<typename CT, typename A>
 			StringSection(const std::basic_string<CharType, CT, A>& str) : _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
-
-        template<typename OtherChar>
-            StringSection<OtherChar> Cast() const { return StringSection<OtherChar>((const OtherChar*)_start, (const OtherChar*)_end); }
     };
 
     template<typename Iterator>
@@ -356,6 +358,9 @@ namespace Utility
 
     XL_UTILITY_API bool     XlToHexStr(const char* x, size_t xlen, char* y, size_t ylen);
     XL_UTILITY_API bool     XlHexStrToBin(const char* x, char* y);
+
+	template<typename Type>
+		std::optional<Type> ParseInteger(StringSection<> input, int radix = 10);
 
         ////////////   H E L P E R S   ////////////
     template <int Count, typename CharType>

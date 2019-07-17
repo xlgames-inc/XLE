@@ -7,6 +7,9 @@
     <Filter Include="Generated">
       <UniqueIdentifier>{ccd89a30-03ab-452b-824f-ed9a59d94ad7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{5cd64ff3-6130-4368-a26f-39c2d6c070e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Grammar\ShaderLexer.c">
@@ -15,11 +18,7 @@
     <ClCompile Include="..\Grammar\ShaderParser.c">
       <Filter>Generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\InterfaceSignature.cpp" />
-    <ClCompile Include="..\ParameterSignature.cpp" />
-    <ClCompile Include="..\ShaderPatcher.cpp" />
     <ClCompile Include="..\AntlrHelper.cpp" />
-    <ClCompile Include="..\GraphSyntax.cpp" />
     <ClCompile Include="..\Grammar\GraphSyntaxLexer.c">
       <Filter>Generated</Filter>
     </ClCompile>
@@ -29,11 +28,29 @@
     <ClCompile Include="..\Grammar\GraphSyntaxEval.c">
       <Filter>Generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\StructureForPreview.cpp" />
     <ClCompile Include="..\Grammar\ShaderTreeWalk.c">
       <Filter>Generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\SignatureProvider.cpp" />
+    <ClCompile Include="..\NodeGraphProvider.cpp" />
+    <ClCompile Include="..\ShaderSignatureParser.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShaderInstantiation.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\StructureForPreview.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NodeGraph.cpp" />
+    <ClCompile Include="..\NodeGraphSignature.cpp" />
+    <ClCompile Include="..\GraphSyntaxParse.cpp" />
+    <ClCompile Include="..\GraphSyntaxInstantiate.cpp" />
+    <ClCompile Include="..\ShaderPatcher.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DescriptorSetInstantiation.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -42,9 +59,6 @@
     <ClInclude Include="..\Grammar\ShaderParser.h">
       <Filter>Generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\InterfaceSignature.h" />
-    <ClInclude Include="..\ParameterSignature.h" />
-    <ClInclude Include="..\ShaderPatcher.h" />
     <ClInclude Include="..\AntlrHelper.h" />
     <ClInclude Include="..\Exceptions.h" />
     <ClInclude Include="..\GraphSyntax.h" />
@@ -57,11 +71,24 @@
     <ClInclude Include="..\Grammar\GraphSyntaxEval.h">
       <Filter>Generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\ShaderPatcher_Internal.h" />
     <ClInclude Include="..\Grammar\ShaderTreeWalk.h">
       <Filter>Generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\SignatureProvider.h" />
+    <ClInclude Include="..\NodeGraphProvider.h" />
+    <ClInclude Include="..\ShaderSignatureParser.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShaderInstantiation.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NodeGraph.h" />
+    <ClInclude Include="..\NodeGraphSignature.h" />
+    <ClInclude Include="..\ShaderPatcher.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DescriptorSetInstantiation.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">

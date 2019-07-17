@@ -64,9 +64,6 @@
     <ClCompile Include="..\Ocean.cpp">
       <Filter>Objects\Water</Filter>
     </ClCompile>
-    <ClCompile Include="..\SceneEngineUtils.cpp">
-      <Filter>Fundamentals</Filter>
-    </ClCompile>
     <ClCompile Include="..\Terrain.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
@@ -155,6 +152,17 @@
     <ClCompile Include="..\DepthWeightedTransparency.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\MetalStubs.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SceneEngineUtils.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RenderStep_GBuffer.cpp" />
+    <ClCompile Include="..\RenderStep_ResolveHDR.cpp" />
+    <ClCompile Include="..\RenderStep_Forward.cpp" />
+    <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
+    <ClCompile Include="..\RenderStepUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -223,9 +231,6 @@
     </ClInclude>
     <ClInclude Include="..\SurfaceHeightsProvider.h">
       <Filter>Objects\Terrain</Filter>
-    </ClInclude>
-    <ClInclude Include="..\SceneEngineUtils.h">
-      <Filter>Fundamentals</Filter>
     </ClInclude>
     <ClInclude Include="..\Terrain.h">
       <Filter>Objects\Terrain</Filter>
@@ -329,6 +334,14 @@
     <ClInclude Include="..\DepthWeightedTransparency.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
+    <ClInclude Include="..\MetalStubs.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SceneEngineUtils.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RenderStep.h" />
+    <ClInclude Include="..\RenderStepUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

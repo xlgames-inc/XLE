@@ -4,12 +4,15 @@
 
 #pragma once
 
-#include "../Techniques/RenderStateResolver.h"
+#include "MaterialScaffold.h"
+#include "ShaderPatchCollection.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
+#include <vector>
+#include <string>
 
 namespace Assets 
 { 
@@ -18,10 +21,10 @@ namespace Assets
 }
 namespace Utility { class Data; }
 
-namespace RenderCore { namespace Techniques { class Material;  } }
-
 namespace RenderCore { namespace Assets
 {
+	RenderStateSet Merge(RenderStateSet underride, RenderStateSet override);
+
     /// <summary>Pre-resolved material settings</summary>
     /// Materials are a hierachical set of properties. Each RawMaterial
     /// object can inherit from sub RawMaterials -- and it can either
@@ -39,13 +42,14 @@ namespace RenderCore { namespace Assets
         
         ParameterBox	_resourceBindings;
         ParameterBox	_matParamBox;
-        Techniques::RenderStateSet _stateSet;
+        RenderStateSet	_stateSet;
         ParameterBox	_constants;
-        AssetName		_techniqueConfig;
+        
+		ShaderPatchCollection _patchCollection;
 
         std::vector<AssetName> _inherit;
 
-		void					MergeInto(Techniques::Material& dest) const; 
+		void					MergeInto(RawMaterial& dest) const; 
 		std::vector<AssetName>	ResolveInherited(const ::Assets::DirectorySearchRules& searchRules) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>&	GetDependencyValidation() const { return _depVal; }
@@ -60,28 +64,53 @@ namespace RenderCore { namespace Assets
 			const ::Assets::DepValPtr& depVal);
         ~RawMaterial();
 
-		static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+		static void ConstructToFuture(
+			::Assets::AssetFuture<RawMaterial>&,
+			StringSection<::Assets::ResChar> initializer);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 		::Assets::DirectorySearchRules _searchRules;
     };
 
+	class RawMatConfigurations
+    {
+    public:
+        std::vector<std::basic_string<utf8>> _configurations;
+
+		RawMatConfigurations(
+			const ::Assets::Blob& locator,
+			const ::Assets::DepValPtr& depVal,
+			StringSection<::Assets::ResChar> requestParameters);
+
+        static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+
+        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
+    };
+
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName);
 
+	MaterialGuid MakeMaterialGuid(StringSection<utf8> name);
+
+	void MergeInto(MaterialScaffoldMaterial& dest, ShaderPatchCollection& patchCollectionResult, const RawMaterial& source); 
 
 	void MergeIn_Stall(
-		Techniques::Material& result,
+		MaterialScaffoldMaterial& result,
+		ShaderPatchCollection& patchCollectionResult,
 		StringSection<> sourceMaterialName,
 		const ::Assets::DirectorySearchRules& searchRules,
 		std::vector<::Assets::DependentFileState>& deps);
 
 	void MergeIn_Stall(
-		RenderCore::Techniques::Material& result,
-		const RenderCore::Assets::RawMaterial& src,
+		MaterialScaffoldMaterial& result,
+		ShaderPatchCollection& patchCollectionResult,
+		const RawMaterial& src,
 		const ::Assets::DirectorySearchRules& searchRules);
+
 
 }}
 

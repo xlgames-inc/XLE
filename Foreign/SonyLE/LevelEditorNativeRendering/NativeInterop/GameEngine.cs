@@ -164,7 +164,7 @@ namespace RenderingInterop
 
             s_loggingRedirect.Dispose();
             s_loggingRedirect = null;
-            XLEBridgeUtils.Utils.DetachLibrary();
+            XLEBridgeUtils.Utils.DetachLibrary(s_engineDevice);
             Util3D.Shutdown();
             XLEBridgeUtils.Utils.GlobalSceneManager = null;
             s_entityInterface = null;
@@ -256,10 +256,10 @@ namespace RenderingInterop
             return propId;
         }
 
-        public static PropertyInitializer CreateInitializer(uint prop, void* ptr, Type elementType, uint arrayCount, bool isString)
+        public static PropertyInitializer CreateInitializer(uint prop, void* ptrBegin, void* ptrEnd, Type elementType, uint arrayCount, bool isString)
         {
             return new PropertyInitializer(
-                prop, ptr, 
+                prop, ptrBegin, ptrEnd,
                 GUILayer.EditorInterfaceUtils.AsTypeId(elementType), arrayCount, isString);
         }
 
@@ -325,11 +325,12 @@ namespace RenderingInterop
         public static void SetObjectParent(
             ulong documentId, ulong childInstanceId, uint childTypeId,
             ulong parentInstanceId, uint parentTypeId,
-            int insertionPosition)
+            uint childListId, int insertionPosition)
         {
             s_entityInterface.SetObjectParent(documentId, 
                 childInstanceId, childTypeId,
-                parentInstanceId, parentTypeId, insertionPosition);
+                parentInstanceId, parentTypeId,
+                childListId, insertionPosition);
         }
 
         private static GCHandle s_savedBoundingBoxHandle;

@@ -73,7 +73,7 @@ namespace PlatformRig
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings,
+        const RenderSceneSettings& qualitySettings,
         UInt2 sampleCount,
         Format format, bool interleavedTiles)
     {
@@ -374,10 +374,10 @@ namespace PlatformRig
 
     void TiledScreenshot(
         IThreadContext& context,
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings,
+        const RenderSceneSettings& qualitySettings,
         UInt2 sampleCount)
     {
         auto preFilterFormat = Format::R16G16B16A16_FLOAT;
@@ -430,10 +430,10 @@ namespace PlatformRig
 {
     void TiledScreenshot(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext,
-        SceneEngine::ISceneParser& sceneParser,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::IScene& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const SceneEngine::RenderingQualitySettings& qualitySettings,
+        const SceneEngine::RenderSceneSettings& qualitySettings,
         UInt2 sampleCount) {}
 }
 

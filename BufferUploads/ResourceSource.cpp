@@ -419,7 +419,7 @@ namespace BufferUploads
                         deviceCreation = false;
                         assert((allocation+size)<=RenderCore::ByteCount(_prototype));
                         return make_intrusive<ResourceLocator>(
-                            bestHeap->_heapResource->ShareUnderlying(), 
+                            bestHeap->_heapResource->GetUnderlying(), 
                             allocation, size, 
                             shared_from_this());
                     }
@@ -439,7 +439,7 @@ namespace BufferUploads
         assert(allocation != ~unsigned(0x0));
 
         auto result = make_intrusive<ResourceLocator>(
-            newHeap->_heapResource->ShareUnderlying(), allocation, size, shared_from_this());
+            newHeap->_heapResource->GetUnderlying(), allocation, size, shared_from_this());
         ScopedModifyLock(_lock);
         _heaps.push_back(std::move(newHeap));
         return result;
@@ -453,11 +453,11 @@ namespace BufferUploads
 
         ScopedReadLock(_lock);
         HeapedResource* heap = NULL;
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying() == resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying().get() == resource) {
             heap = _activeDefrag->GetHeap();
         } else {
             for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-                if ((*i)->_heapResource->GetUnderlying() == resource) {
+                if ((*i)->_heapResource->GetUnderlying().get() == resource) {
                     heap = i->get();
                     break;
                 }
@@ -479,11 +479,11 @@ namespace BufferUploads
 
         ScopedReadLock(_lock);
         HeapedResource* heap = NULL;
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying() == resource.get()) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying().get() == resource.get()) {
             heap = _activeDefrag->GetHeap();
         } else {
             for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-                if ((*i)->_heapResource->GetUnderlying() == resource.get()) {
+                if ((*i)->_heapResource->GetUnderlying().get() == resource.get()) {
                     heap = i->get();
                     break;
                 }
@@ -513,11 +513,11 @@ namespace BufferUploads
         UnderlyingResource* resource) const
     {
         ScopedReadLock(_lock);
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying() == resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource->GetUnderlying().get() == resource) {
             return ResultFlags::IsBatched;
         }
         for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-            if ((*i)->_heapResource->GetUnderlying() == resource) {
+            if ((*i)->_heapResource->GetUnderlying().get() == resource) {
                 return ResultFlags::IsBatched|(i->get()==_activeDefragHeap?ResultFlags::IsCurrentlyDefragging:0);
             }
         }
@@ -683,7 +683,7 @@ namespace BufferUploads
                     --_temporaryCopyBufferCountDown;
                 } else {
                     const bool useTemporaryCopyBuffer = PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground;
-                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer->ShareUnderlying():_activeDefragHeap->_heapResource->ShareUnderlying());
+                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer->GetUnderlying():_activeDefragHeap->_heapResource->GetUnderlying());
                     if (existingActiveDefrag->IsCompleted(processedEventList, context)) {
 
                             //
@@ -884,9 +884,9 @@ namespace BufferUploads
                 // -----<   Copy from the old resource into the new resource   >----- //
             if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
                 context.GetCommitStepUnderConstruction().Add(
-                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource->ShareUnderlying(), sourceResource, _steps));
+                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource->GetUnderlying(), sourceResource, _steps));
             } else {
-                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource->ShareUnderlying(), sourceResource, _steps);
+                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource->GetUnderlying(), sourceResource, _steps);
             }
             _doneResourceCopy = true;
         }
@@ -894,7 +894,7 @@ namespace BufferUploads
         if (_doneResourceCopy && !_eventId && context.CommandList_GetCommittedToImmediate() >= _initialCommandListID) {
             Event_ResourceReposition result;
             result._originalResource = sourceResource;
-            result._newResource      = GetHeap()->_heapResource->ShareUnderlying();
+            result._newResource      = GetHeap()->_heapResource->GetUnderlying();
             result._defragSteps      = _steps;
             _eventId = context.EventList_Push(result);
         }
@@ -1052,7 +1052,7 @@ namespace BufferUploads
     {
         const bool mightBeBatched = UsePooling(desc) && UseBatching(desc);
         if (mightBeBatched) {
-            return _batchedIndexBuffers->IsBatchedResource(locator.GetUnderlying());
+            return _batchedIndexBuffers->IsBatchedResource(locator.GetUnderlying().get());
         }
         return 0;
     }
@@ -1076,9 +1076,9 @@ namespace BufferUploads
     {
         ScopedLock(_flushDelayedReleasesLock);
 
-        const auto currentThread = XlGetCurrentThreadId();
+        const auto currentThread = Threading::CurrentThreadId();
         if (!duringDestructor) {
-            assert(!_flushThread || _flushThread == currentThread);         // we should only be flushing from one thread
+            assert(!_flushThread.has_value() || _flushThread.value() == currentThread);         // we should only be flushing from one thread
             _flushThread = currentThread;
         }
 
@@ -1145,7 +1145,6 @@ namespace BufferUploads
     ResourceSource::ResourceSource(RenderCore::IDevice& device)
     :   _underlyingDevice(&device)
     {
-        _flushThread = 0;
         _frameID = 0;
 
         auto stagingBufferPool = std::make_shared<ResourcesPool<BufferDesc>>(device, 5*60);

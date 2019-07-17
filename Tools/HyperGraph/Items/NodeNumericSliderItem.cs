@@ -41,7 +41,7 @@ namespace HyperGraph.Items
 		/// <param name="defaultValue">The value the slider should start with.</param>
 		/// <param name="inputEnabled">Does the item accept an input to be connected?</param>
 		/// <param name="outputEnabled">Does the item accept an output to be connected?</param>
-		public NodeNumericSliderItem( string text, float sliderSize, float textSize, float minValue, float maxValue, float defaultValue, bool inputEnabled, bool outputEnabled ) : base( text, sliderSize, textSize, minValue, maxValue, defaultValue, inputEnabled, outputEnabled ) {}
+		public NodeNumericSliderItem( string text, float sliderSize, float textSize, float minValue, float maxValue, float defaultValue ) : base( text, sliderSize, textSize, minValue, maxValue, defaultValue ) {}
 
 		/// <summary>
 		/// Render the slider.
@@ -49,18 +49,14 @@ namespace HyperGraph.Items
 		/// <param name="graphics">The <see cref="Graphics"/> instance that should be used for drawing.</param>
 		/// <param name="minimumSize">The smallest size the slider has to fit into.</param>
 		/// <param name="location">Where the slider should be drawn.</param>
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
-
 			var sliderOffset	= Spacing + this.textSize.Width;
-			var sliderWidth		= size.Width - sliderOffset	;
+			var sliderWidth		= boundary.Width - sliderOffset	;
 
-			var textRect	= new RectangleF(location, size);
-			var sliderBox	= new RectangleF(location, size);
-			var sliderRect	= new RectangleF(location, size);
+			var textRect	= boundary;
+			var sliderBox	= boundary;
+			var sliderRect	= boundary;
 			
 			// Calculate bounds for outer rectangle
 			sliderRect.X		= sliderRect.Right - sliderWidth;

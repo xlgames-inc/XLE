@@ -12,11 +12,13 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/MemoryUtils.h"
-#include "../../Core/Types.h"
+#include "../../Utility/StringUtils.h"
+
+namespace RenderCore { class MiniInputElementDesc; }
 
 namespace RenderCore { namespace Assets 
 {
-    typedef uint64 MaterialGuid;
+    typedef uint64_t MaterialGuid;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -43,7 +45,7 @@ namespace RenderCore { namespace Assets
         class InputInterface
         {
         public:
-            uint64*     _jointNames;
+            uint64_t*	_jointNames;
             size_t      _jointCount;
         };
 
@@ -82,12 +84,6 @@ namespace RenderCore { namespace Assets
         unsigned    _firstVertex;
         unsigned    _subMaterialIndex;
         Topology	_topology;
-
-        DrawCallDesc(
-            unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned subMaterialIndex, 
-			Topology topology)
-        : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex)
-        , _subMaterialIndex(subMaterialIndex), _topology(topology) {}
     };
 
     class VertexElement
@@ -99,6 +95,7 @@ namespace RenderCore { namespace Assets
         unsigned        _alignedByteOffset;
 
         VertexElement();
+		VertexElement(const char name[], unsigned semanticIndex, Format nativeFormat, unsigned offset);
         VertexElement(const VertexElement&) never_throws;
         VertexElement& operator=(const VertexElement&) never_throws;
     };
@@ -107,19 +104,9 @@ namespace RenderCore { namespace Assets
     {
     public:
         SerializableVector<VertexElement>   _elements;
-        unsigned                            _vertexStride;
+        unsigned                            _vertexStride = 0;
 
-        uint64 BuildHash() const;
-
-        GeoInputAssembly();
-        GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws;
-        GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom) never_throws;
-        ~GeoInputAssembly();
-
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			GeoInputAssembly(const GeoInputAssembly&) = default;
-			GeoInputAssembly& operator=(const GeoInputAssembly&) = default;
-		#endif
+        uint64_t BuildHash() const;
     };
 
     class VertexData
@@ -144,11 +131,6 @@ namespace RenderCore { namespace Assets
         VertexData  _vb;
         IndexData   _ib;
         SerializableVector<DrawCallDesc>   _drawCalls;
-
-        RawGeometry();
-        RawGeometry(RawGeometry&&) never_throws;
-        RawGeometry& operator=(RawGeometry&&) never_throws;
-        ~RawGeometry();
     };
 
     class BoundSkinnedGeometry : public RawGeometry
@@ -161,13 +143,10 @@ namespace RenderCore { namespace Assets
         VertexData      _animatedVertexElements;
         VertexData      _skeletonBinding;
 
-        Float4x4*       _inverseBindMatrices;
-        size_t          _inverseBindMatrixCount;
-        Float4x4*       _inverseBindByBindShapeMatrices;
-        size_t          _inverseBindByBindShapeMatrixCount;
+        Float4x4*       _bindShapeByInverseBindMatrices;
+        size_t          _bindShapeByInverseBindMatrixCount;
         uint16*         _jointMatrices;         // (uint16 or uint8 for this array)
         size_t          _jointMatrixCount;
-        Float4x4        _bindShapeMatrix;
 
         DrawCallDesc*   _preskinningDrawCalls;
         size_t          _preskinningDrawCallCount;
@@ -186,6 +165,14 @@ namespace RenderCore { namespace Assets
         VertexData  _vb;
     };
 
+	unsigned BuildLowLevelInputAssembly(
+        IteratorRange<InputElementDesc*> dst,
+        IteratorRange<const VertexElement*> source,
+        unsigned lowLevelSlot = 0);
+
+	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(
+		IteratorRange<const VertexElement*> source);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #pragma pack(pop)
@@ -194,6 +181,15 @@ namespace RenderCore { namespace Assets
 	{
 		_nativeFormat = Format(0); _alignedByteOffset = 0; _semanticIndex = 0;
 		XlZeroMemory(_semanticName);
+	}
+
+	inline VertexElement::VertexElement(const char name[], unsigned semanticIndex, Format nativeFormat, unsigned offset)
+	{
+		XlZeroMemory(_semanticName);
+		XlCopyString(_semanticName, name);
+		_semanticIndex = semanticIndex;
+		_nativeFormat = nativeFormat;
+		_alignedByteOffset = offset;
 	}
 
 	inline VertexElement::VertexElement(const VertexElement& ele) never_throws

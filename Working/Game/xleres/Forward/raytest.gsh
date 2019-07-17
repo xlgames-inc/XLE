@@ -11,12 +11,10 @@
 
 struct GSOutput
 {
-	float	intersectionDepth : INTERSECTIONDEPTH;
 	float4	triangleA : POINT0;
 	float4	triangleB : POINT1;
 	float4	triangleC : POINT2;
-	uint	drawCallIndex : DRAWCALLINDEX;
-	uint2	materialGuid : MATERIALGUID;
+	uint4	properties : PROPERTIES;
 };
 
 cbuffer RayDefinition : register(b8)
@@ -31,8 +29,9 @@ cbuffer IntersectionFrustumDefinition : register(b9)
 	row_major float4x4 IntersectionFrustum;
 }
 
-cbuffer SystemConstants : register(b0)
+cbuffer DrawCallProperties
 {
+	uint2 MaterialGuid;
 	uint CurrentDrawCallIndex;
 }
 
@@ -120,10 +119,7 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 			RayStart, RayDirection,
 			input[0].worldPosition, input[1].worldPosition, input[2].worldPosition);
 	if (intersectionResult.x > 0.f && intersectionResult.x < RayLength) {
-		GSOutput result;
-		result.intersectionDepth = intersectionResult.x;
 		float3 barycentric = float3(1.f - intersectionResult.y - intersectionResult.z, intersectionResult.yz);
-
 		bool isOpaquePart = true;
 
 		// If this is alpha test geometry, we need to check the texture
@@ -141,11 +137,13 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 		#endif
 
 		if (isOpaquePart) {
+			GSOutput result;
 			result.triangleA = float4(input[0].worldPosition, barycentric.x);
 			result.triangleB = float4(input[1].worldPosition, barycentric.y);
 			result.triangleC = float4(input[2].worldPosition, barycentric.z);
-			result.drawCallIndex = CurrentDrawCallIndex;
-			result.materialGuid = MaterialGuid;
+			result.properties.x = asuint(intersectionResult.x);
+			result.properties.y = CurrentDrawCallIndex;
+			result.properties.zw = MaterialGuid;
 			outputStream.Append(result);
 		}
 	}
@@ -160,9 +158,9 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 		result.triangleA = float4(input[0].worldPosition, 0.f);
 		result.triangleB = float4(input[1].worldPosition, 0.f);
 		result.triangleC = float4(input[2].worldPosition, 0.f);
-		result.drawCallIndex = CurrentDrawCallIndex;
-		result.materialGuid = MaterialGuid;
-		result.intersectionDepth = 1.f;
+		result.properties.x = asuint(1.f);
+		result.properties.y = CurrentDrawCallIndex;
+		result.properties.zw = MaterialGuid;
 		outputStream.Append(result);
 	}
 

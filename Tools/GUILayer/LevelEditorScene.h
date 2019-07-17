@@ -8,7 +8,6 @@
 
 #include "EntityLayer.h"
 #include "MathLayer.h"      // (for Vector3)
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../EntityInterface/EntityInterface.h"
 #include "ManipulatorsLayer.h"      // for TerrainManipulators::Context
@@ -21,7 +20,7 @@ namespace SceneEngine
 {
     class PlacementsManager; class PlacementsEditor; 
     class TerrainManager;
-    class ISceneParser; class IntersectionTestScene; 
+    class IntersectionTestScene; 
     class VegetationSpawnManager;
     class VolumetricFogManager;
     class ShallowSurfaceManager;
@@ -42,7 +41,6 @@ namespace EntityInterface
 namespace GUILayer
 {
     ref class VisCameraSettings;
-    ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
     ref class PlacementsRendererWrapper;

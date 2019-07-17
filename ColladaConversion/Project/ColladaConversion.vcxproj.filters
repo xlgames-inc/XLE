@@ -19,28 +19,16 @@
     <ClCompile Include="..\SRawGeometry.cpp">
       <Filter>ObjectConversion</Filter>
     </ClCompile>
-    <ClCompile Include="..\STransformationMachine.cpp">
-      <Filter>ObjectConversion</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentCommandStream.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\SkeletonRegistry.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp">
@@ -65,7 +53,6 @@
     <ClCompile Include="..\ConversionConfig.cpp">
       <Filter>ObjectConversion</Filter>
     </ClCompile>
-    <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
@@ -73,6 +60,19 @@
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentModel.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ColladaConversion.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\PredefinedCBLayout.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -98,19 +98,10 @@
     <ClInclude Include="..\SRawGeometry.h">
       <Filter>ObjectConversion</Filter>
     </ClInclude>
-    <ClInclude Include="..\STransformationMachine.h">
-      <Filter>ObjectConversion</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h">
@@ -120,12 +111,6 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h">
@@ -150,6 +135,19 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentModel.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ColladaConversion.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\PredefinedCBLayout.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

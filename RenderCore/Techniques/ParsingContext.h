@@ -11,17 +11,24 @@
 #include "../BufferView.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/ParameterBox.h"
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
+namespace RenderCore { class IResource; }
 
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
-    class IStateSetResolver;
+    class IRenderStateDelegate;
+	class ITechniqueDelegate;
+	class IMaterialDelegate;
+	class IUniformBufferDelegate;
     class AttachmentPool;
+	class FrameBufferPool;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -42,18 +49,38 @@ namespace RenderCore { namespace Techniques
         const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
 
             //  ----------------- Working technique context -----------------
-        TechniqueContext&               GetTechniqueContext()               { return *_techniqueContext.get(); }
-		UniformsStream					GetGlobalUniformsStream() const;
-        Metal::ConstantBuffer&          GetGlobalTransformCB()              { return *_globalCBs[0]; }
-        Metal::ConstantBuffer&          GetGlobalStateCB()                  { return *_globalCBs[1]; }
+        TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
+		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
+		UniformsStream			GetGlobalUniformsStream() const;
+        
+        std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(const std::shared_ptr<IRenderStateDelegate>& stateSetDelegate);
+        const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
+
+		std::shared_ptr<ITechniqueDelegate> SetTechniqueDelegate(const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate);
+        const std::shared_ptr<ITechniqueDelegate>& GetTechniqueDelegate()            { return _techniqueDelegate; }
+
+		std::shared_ptr<IMaterialDelegate> SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate);
+        const std::shared_ptr<IMaterialDelegate>& GetMaterialDelegate()            { return _materialDelegate; }
+
+		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
+		void RemoveUniformDelegate(uint64_t binding);
+		void RemoveUniformDelegate(IUniformBufferDelegate&);
+		IteratorRange<const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>*> GetUniformDelegates() { return MakeIteratorRange(_uniformDelegates); }
+
+        AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
+		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
+
+			//  ----------------- Legacy "global" CBs -----------------
+		Metal::Buffer&			GetGlobalTransformCB();
+        Metal::Buffer&			GetGlobalStateCB();
         void    SetGlobalCB(
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
-        std::shared_ptr<IStateSetResolver> SetStateSetResolver(
-            std::shared_ptr<IStateSetResolver> stateSetResolver);
-        const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
-        const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
-        AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
+		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
+
+			//  ----------------- Overlays for late rendering -----------------
+        typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
+        std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Exception reporting -----------------
         class StringHelpers
@@ -72,21 +99,29 @@ namespace RenderCore { namespace Techniques
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
-        ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources = nullptr);
+        ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources = nullptr, FrameBufferPool* frameBufferPool = nullptr);
         ~ParsingContext();
 
         ParsingContext& operator=(const ParsingContext&) = delete;
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        std::unique_ptr<Metal::ConstantBuffer>      _globalCBs[5];
+        std::shared_ptr<IResource>					_globalCBs[5];
 		ConstantBufferView							_globalCBVs[5];
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
-        AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
-        std::shared_ptr<IStateSetResolver>          _stateSetResolver;
+        std::unique_ptr<ProjectionDesc>             _projectionDesc;
+
+        std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
+		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
+		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
+
+		ParameterBox								_subframeShaderSelectors;
 
         AttachmentPool*     _namedResources;
+		FrameBufferPool*	_frameBufferPool;
+
+		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>

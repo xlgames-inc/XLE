@@ -4,9 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "GeneralCompiler.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
@@ -14,7 +14,8 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
-#include "../../RenderCore/Assets/Services.h"
+#include "../../Assets/IArtifact.h"
+#include "../../Assets/GeneralCompiler.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -47,15 +48,15 @@ namespace Converter
         auto inputFile = doc.Attribute("i").Value();
 
         if (inputFile.IsEmpty()) {
-            LogAlwaysError << "At least an input file is required on the command line (with the syntax i=<filename>)";
-            LogAlwaysError << "Cmdline: " << cmdLine.AsString().c_str();
+            Log(Error) << "At least an input file is required on the command line (with the syntax i=<filename>)" << std::endl;
+            Log(Error) << "Cmdline: " << cmdLine.AsString().c_str() << std::endl;
             return -1;
         }
 
 		if (outputDirectory.empty())
 			outputDirectory = MakeFileNameSplitter(inputFile).File().AsString() + ".rgns";
 
-		ConsoleRig::GlobalServices::GetCrossModule()._services.Add(
+		ConsoleRig::CrossModule::GetInstance()._services.Add(
 			ConstHash64<'comp', 'iler', 'cfg'>::Value,
 			[&doc]() -> Document<InputStreamFormatter<char>>& { return doc; });
 
@@ -65,14 +66,16 @@ namespace Converter
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });
        
-		auto aservices = std::make_shared<::Assets::Services>(0);
+		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-		auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-		auto generalCompiler = std::make_shared<GeneralCompiler>(GeneralCompiler::ArtifactType::Blob);
-		compilers.AddCompiler(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, generalCompiler);
+		auto discoveredOperations = ::Assets::DiscoverCompileOperations("*Conversion.dll");
+		auto generalCompiler = std::make_shared<::Assets::GeneralCompiler>(
+			MakeIteratorRange(discoveredOperations),
+			nullptr);
+		compilers.AddCompiler(generalCompiler);
 
 		const StringSection<char> inits[] = { inputFile };
-		auto marker = compilers.PrepareAsset(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits), store);
+		auto marker = compilers.Prepare(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits));
 
 		auto pendingCompile = marker->InvokeCompile();
 		auto finalState = pendingCompile->StallWhilePending();
@@ -108,13 +111,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 {
     ConsoleRig::StartupConfig cfg("converter");
     cfg._setWorkingDir = false;
-    ConsoleRig::GlobalServices services(cfg);
+	auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
 
     TRY {
         return Converter::Execute(lpCmdLine);
     } CATCH (const std::exception& e) {
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
+        Log(Error) << e.what() << std::endl;
         return -1;
     } CATCH_END
 }
@@ -123,7 +126,7 @@ int main(int argc, char* argv[])
 {
     ConsoleRig::StartupConfig cfg("converter");
     cfg._setWorkingDir = false;
-    ConsoleRig::GlobalServices services(cfg);
+	auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
 
 	std::string cmdLine;
 	for (int c=1; c<argc; ++c) {
@@ -134,8 +137,8 @@ int main(int argc, char* argv[])
     TRY {
         return Converter::Execute(MakeStringSection(cmdLine));
     } CATCH (const std::exception& e) {
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
+        Log(Error) << e.what() << std::endl;
         return -1;
     } CATCH_END
 }

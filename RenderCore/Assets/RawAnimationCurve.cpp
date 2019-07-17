@@ -26,7 +26,8 @@ namespace RenderCore { namespace Assets
 			CurveElementDecompressor(Format fmt);
 		};
 
-	CurveElementDecompressor<float>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<float>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::R32_FLOAT
 			|| fmt == Format::R32G32_FLOAT
@@ -34,13 +35,15 @@ namespace RenderCore { namespace Assets
 			|| fmt == Format::R32G32B32A32_FLOAT);
 	}
 
-	CurveElementDecompressor<Float3>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<Float3>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::R32G32B32_FLOAT
 			|| fmt == Format::R32G32B32A32_FLOAT);
 	}
 
-	CurveElementDecompressor<Float4x4>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<Float4x4>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::Matrix4x4);
 	}
@@ -77,6 +80,60 @@ namespace RenderCore { namespace Assets
 			Format _fmt;
 		};
 
+	Quaternion Decompress_36bit(const void* data)
+	{
+		// Decompress quaternions stored in a 36bit 12/12/12 form.
+		// The final element is implied by the fact that we want to end up with a 
+		// normalized quaternion.
+
+		class CompressedQuaternion
+		{
+		public:
+			uint8_t a, b, c, d, e;
+		};
+		auto&v = *(const CompressedQuaternion*)data;
+
+		uint32_t A = uint32_t(v.a) | (uint32_t(v.b)&0xf)<<8;
+		uint32_t B = uint32_t(v.b)>>4 | uint32_t(v.c)<<4;
+		uint32_t C = uint32_t(v.d) | (uint32_t(v.e)&0xf)<<8;
+		float a = (int32_t(A) - 2048) / 2048.0f;	// not 100% if we're using two-complement or just wrapping around zero
+		float b = (int32_t(B) - 2048) / 2048.0f;
+		float c = (int32_t(C) - 2048) / 2048.0f;
+
+		// 2047 seems to come up a lot in the data, suggesting it might be zero
+		// The constant here, 2895.f, is based on comparing some of the fixed values in animation
+		// files to the default parameters on skeletons. It's not clear why we're not using the full
+		// range here; and the constant might not be perfectly accurate.
+		a = (int32_t(A) - 2047) / 2895.f;
+		b = (int32_t(B) - 2047) / 2895.f;
+		c = (int32_t(C) - 2047) / 2895.f;
+
+		float t = a*a + b*b + c*c;
+		assert(t<=1.0f);
+		t = std::min(t, 1.0f);
+		float reconstructed = std::sqrtf(1.0f - t);
+
+		// We have one bit to represent the sign of the reconstructed element.
+		// But could we not just negate the other elements so that the reconstructed
+		// element is always positive? Or would that cause problems in interpolation somehow.
+		if (v.e&0x40) reconstructed = -reconstructed;
+		assert(!(v.e&0x80));	// unused bit?
+
+		switch ((v.e>>4)&0x3) {
+		case 0:
+			return { c, reconstructed, a, b };
+		case 1:
+			return { c, a, reconstructed, b };
+		case 2:
+			return { c, a, b, reconstructed };
+		case 3:
+			return { reconstructed, a, b, c };
+		}
+
+		assert(0);	// compiler doesn't seem to be realize it's impossible to get here
+		return {0.f, 0.f, 0.f, 0.f};
+	}
+
 	template<>
 		class CurveElementDecompressor<Quaternion>
 		{
@@ -99,6 +156,8 @@ namespace RenderCore { namespace Assets
 					// point, possibly after an interpolation) then it won't matter too much -- because the magnitude is only
 					// meaningful in relation to the magnitudes of other quaternions in the same form.
 					return Quaternion(q.w/float(0x200), q.x/float(0x200), q.y/float(0x200), q.z/float(200));
+				} else if (_fmt == Format::R12G12B12A4_SNORM) {
+					return Decompress_36bit(data);
 				} else {
 					return *(const Quaternion*)data;		// (note -- expecting w, x, y, z order here)
 				}
@@ -106,7 +165,7 @@ namespace RenderCore { namespace Assets
 
 			CurveElementDecompressor(Format fmt) : _fmt(fmt)
 			{
-				assert(fmt == Format::R10G10B10A10_SNORM || fmt == Format::R32G32B32A32_FLOAT);
+				assert(fmt == Format::R10G10B10A10_SNORM || fmt == Format::R32G32B32A32_FLOAT || fmt == Format::R12G12B12A4_SNORM);
 			}
 		private:
 			Format _fmt;
@@ -192,7 +251,8 @@ namespace RenderCore { namespace Assets
 		if (key == timeMarkers.end())
 			return decomp(keyData.begin());
 
-		--key;	// (back one, to the first key that is smaller)
+		if (key != timeMarkers.begin())	// (this can happen when evalTime is exactly equal to the first key, often 0.f)
+			--key;	// (back one, to the first key that is smaller)
 		auto keyIndex = key-timeMarkers.begin();
 		auto alpha = LerpParameter(key[0], key[1], evalTime);
 		auto keyCount = keyData.size() / keyDataDesc._elementStride;
@@ -307,8 +367,8 @@ namespace RenderCore { namespace Assets
     template Float4x4   RawAnimationCurve::Calculate(float inputTime) const never_throws;
 	template Quaternion RawAnimationCurve::Calculate(float inputTime) const never_throws;
 
-    RawAnimationCurve::RawAnimationCurve(   DynamicArray<float>&&	timeMarkers, 
-											DynamicArray<uint8>&&   keyData,
+    RawAnimationCurve::RawAnimationCurve(   SerializableVector<float>&&	timeMarkers, 
+											SerializableVector<uint8>&&   keyData,
 											const CurveKeyDataDesc&	keyDataDesc,
 											CurveInterpolationType	interpolationType)
     :       _timeMarkers(std::move(timeMarkers))
@@ -320,16 +380,16 @@ namespace RenderCore { namespace Assets
 	RawAnimationCurve::~RawAnimationCurve() {}
 
 	RawAnimationCurve::RawAnimationCurve(const RawAnimationCurve& copyFrom)
-	: _timeMarkers(decltype(_timeMarkers)::Copy(copyFrom._timeMarkers))
-	, _keyData(decltype(_keyData)::Copy(copyFrom._keyData))
+	: _timeMarkers(copyFrom._timeMarkers)
+	, _keyData(copyFrom._keyData)
 	, _keyDataDesc(copyFrom._keyDataDesc)
 	, _interpolationType(copyFrom._interpolationType) 
 	{}
 
 	RawAnimationCurve& RawAnimationCurve::operator=(const RawAnimationCurve& copyFrom) 
 	{
-		_timeMarkers = decltype(_timeMarkers)::Copy(copyFrom._timeMarkers);
-		_keyData = decltype(_keyData)::Copy(copyFrom._keyData);
+		_timeMarkers = copyFrom._timeMarkers;
+		_keyData = copyFrom._keyData;
 		_keyDataDesc = copyFrom._keyDataDesc;
 		_interpolationType = copyFrom._interpolationType;
 		return *this;

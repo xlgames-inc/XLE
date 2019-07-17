@@ -246,6 +246,24 @@ namespace Utility
         return (size&(~((1<<4)-1)))+((size&((1<<4)-1))?(1<<4):0); 
     }
 
+	template <>
+        inline unsigned MarkerHeap<unsigned>::ToInternalSize(unsigned size)
+    {
+        return size;
+    }
+
+    template <>
+        inline unsigned MarkerHeap<unsigned>::ToExternalSize(unsigned size)      
+    {
+        return size;
+    }
+
+    template <>
+        inline unsigned MarkerHeap<unsigned>::AlignSize(unsigned size)
+    {
+        return size;
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	namespace Internal

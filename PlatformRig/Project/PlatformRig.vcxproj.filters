@@ -1,12 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\Android\AndroidStartup.cpp">
-      <Filter>Android</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Android\android_native_app_glue.cpp">
-      <Filter>Android</Filter>
-    </ClCompile>
     <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
@@ -28,7 +22,6 @@
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp">
       <Filter>WinAPI</Filter>
     </ClCompile>
-    <ClCompile Include="..\InputTranslator.cpp" />
     <ClCompile Include="..\CameraManager.cpp" />
     <ClCompile Include="..\FrameRig.cpp" />
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp">
@@ -46,22 +39,24 @@
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
     <ClCompile Include="..\Screenshot.cpp" />
+    <ClCompile Include="..\WinAPI\InputTranslator.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\InputListener.cpp" />
+    <ClCompile Include="..\DebugHotKeys.cpp" />
+    <ClCompile Include="..\WinAPI\RunLoop_WinAPI.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
       <UniqueIdentifier>{39caec9c-78ac-4a06-bb00-baa7925243e9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Android">
-      <UniqueIdentifier>{3854a6ac-c366-4f20-bdf9-dab7ae2e0bba}</UniqueIdentifier>
     </Filter>
     <Filter Include="DebuggingDisplays">
       <UniqueIdentifier>{098c1dee-3664-4b79-8185-90241d5cb3ee}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Android\android_native_app_glue.h">
-      <Filter>Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
@@ -96,5 +91,10 @@
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
     <ClInclude Include="..\Screenshot.h" />
+    <ClInclude Include="..\InputListener.h" />
+    <ClInclude Include="..\DebugHotKeys.h" />
+    <ClInclude Include="..\WinAPI\RunLoop_WinAPI.h">
+      <Filter>WinAPI</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

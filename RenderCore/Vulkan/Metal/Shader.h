@@ -7,6 +7,7 @@
 #pragma once
 
 #include "VulkanCore.h"
+#include "PipelineLayout.h"
 #include "../../Types.h"
 #include "../../ShaderService.h"
 #include "../../../Assets/AssetsCore.h"
@@ -17,7 +18,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;
 	class BoundClassInterfaces;
-	class DeviceContext;
+	class GraphicsPipelineBuilder;
+	class PipelineLayoutSignatureFile;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,22 +33,28 @@ namespace RenderCore { namespace Metal_Vulkan
         ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
-						const CompiledShaderByteCode& ps);
+						const CompiledShaderByteCode& ps,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
 						const CompiledShaderByteCode& ps,
 						const CompiledShaderByteCode& hs,
-						const CompiledShaderByteCode& ds);
+						const CompiledShaderByteCode& ds,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram();
         ~ShaderProgram();
 
-		const CompiledShaderByteCode&			GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
-		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		const CompiledShaderByteCode&				GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
+		const VulkanSharedPtr<VkShaderModule>&		GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;
+
+		void Apply(GraphicsPipelineBuilder& pipeline) const;
+		void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -76,12 +84,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
-    protected:
-		CompiledShaderByteCode _compiledCode[ShaderStage::Max];
-		VulkanSharedPtr<VkShaderModule> _modules[ShaderStage::Max];
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
 
+    protected:
+		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
+		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
+		std::shared_ptr<PipelineLayoutSignatureFile> _descriptorSetSignatureFile;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
+
+	using DeepShaderProgram = ShaderProgram;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,19 +101,33 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
 		const VulkanSharedPtr<VkShaderModule>&	GetModule() const { return _module; }
+		const CompiledShaderByteCode& GetCompiledShaderByteCode() const { return _compiledCode; }
 
         ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& byteCode);
         ComputeShader();
         ~ComputeShader();
 
+		ComputeShader& operator=(ComputeShader&& moveFrom) = default;
+		ComputeShader(ComputeShader&& moveFrom) = default;
+
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+
+		// Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ComputeShader>&,
+			StringSection<::Assets::ResChar> codeName,
+			StringSection<::Assets::ResChar> definesTable = {});
+
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
+
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
+		std::shared_ptr<PipelineLayoutSignatureFile>			_descriptorSetSignatureFile;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 }}
