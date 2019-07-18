@@ -145,7 +145,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* For the current draw */
         MTLPrimitiveType _primitiveType;
         MTLIndexType _indexType;
-        unsigned    _indexFormatBytes;
+        unsigned _indexFormatBytes;
         TBC::OCPtr<id> _indexBuffer; // MTLBuffer
         MTLViewport _viewport;
 
@@ -471,11 +471,14 @@ namespace RenderCore { namespace Metal_AppleMetal
                  * This hack is incomplete and should take into account all arrays of textures;
                  * currently, the only used array of textures is s_cc3Texture2Ds.
                  */
+                /*
+                METAL_TODO: verify removing this special case
                 if (arg.type == MTLArgumentTypeTexture) {
                     if ([arg.name rangeOfString:@"s_cc3Texture2Ds"].location == NSNotFound) {
                         argHash = Hash64(argName);
                     }
                 }
+                */
                 ReflectionInformation::MappingType argType = AsReflectionMappingType(arg.type);
                 riMap->emplace_back(
                     ReflectionInformation::Mapping{argHash,

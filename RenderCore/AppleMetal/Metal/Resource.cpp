@@ -89,7 +89,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (textureDesc.pixelFormat == MTLPixelFormatInvalid) {
                 // Some formats, like three-byte formats, cannot be handled
                 [textureDesc release];
-                return;
+                Throw(::Exceptions::BasicLabel("Cannot create texture resource because format is not supported by Apple Metal: (%s)", AsString(desc._textureDesc._format)));
             }
             assert(textureDesc.pixelFormat != MTLPixelFormatInvalid);
 
