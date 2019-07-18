@@ -70,7 +70,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     static std::pair<std::string, unsigned> FindTranslatedSourceLine(
         unsigned inputLineNumber,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers,
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers,
         unsigned preambleLineCount)
     {
         if (inputLineNumber < preambleLineCount)
@@ -90,7 +90,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     static std::string TranslateErrorMsgs(
         StringSection<> inputErrorMsgs,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers,
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers,
         unsigned preambleLineCount)
     {
         std::regex translateableContent(R"--([^:]+:(\d+):(\d+):(.*))--");

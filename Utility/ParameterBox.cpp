@@ -109,9 +109,9 @@ namespace Utility
             IteratorRange<void*> dest, TypeDesc destType,
             IteratorRange<const void*> rawSrc, TypeDesc srcType)
         {
-            assert(src.size() >= srcType.GetSize());
+            assert(rawSrc.size() >= srcType.GetSize());
             assert(dest.size() >= destType.GetSize());
-            const void *src = rawSrc.begin();
+            IteratorRange<const void*> src = rawSrc;
             if (destType._arrayCount <= 1) {
 #if defined(__arm__) && !defined(__aarch64__)
                 // Only 32-bit ARM, we may get unaligned access reading directly from rawSrc
@@ -130,7 +130,7 @@ namespace Utility
                     // If unaligned, copy to the srcBuffer (memcpy is safe to do unaligned access)
                     memcpy(&srcBuffer[0], src, srcSize);
                     // Set src to the srcBuffer
-                    src = &srcBuffer[0];
+                    src = { &srcBuffer[0], &srcBuffer[srcSize] };
                 }
 #endif
                     // casting single element. Will we read the first element
@@ -1363,7 +1363,6 @@ namespace Utility
 
             auto srcIdx = std::distance(source._hashNames.cbegin(), srcHashNameI);
             auto srcOffsets = source._offsets[srcIdx];
-            const utf8* name = PtrAdd(source._names.begin(), srcOffsets.first);
             hashNameI = SetParameterHint(
                 hashNameI,
                 *srcHashNameI,

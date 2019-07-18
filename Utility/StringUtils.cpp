@@ -1690,7 +1690,7 @@ template<typename Type>
 	// Check for sign
 	bool neg = false;
 	(void)neg;
-	if constexpr (std::is_signed<Type>::value) {
+	if (constant_expression<std::is_signed<Type>::value>::result()) {
 		if ((neg = *s == '-') || *s == '+') {
 			++s;
 		}
@@ -1714,7 +1714,7 @@ template<typename Type>
 	if (s != se)
 		return {};		// did not parse all the way to the end
 
-	if constexpr (std::is_signed<Type>::value)
+	if (constant_expression<std::is_signed<Type>::value>::result())
 		if (neg)
 			return (Type)-result;
 	return result;

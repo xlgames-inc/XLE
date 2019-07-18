@@ -22,7 +22,6 @@
 namespace Assets
 {
     static const uint64_t ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;
-    static const uint64_t ChunkType_ArchiveAttachments = ConstHash64<'Arch', 'ive', 'Attc'>::Value;
 
     class ArchiveDirectoryBlock 
     {

@@ -170,7 +170,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    HistoricalProfilerDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    HistoricalProfilerDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {

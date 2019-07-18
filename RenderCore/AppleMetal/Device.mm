@@ -9,6 +9,7 @@
 #include "Metal/IncludeAppleMetal.h"
 #include "Metal/Format.h"
 #include "Metal/DeviceContext.h" // for ObjectFactory
+#include "Metal/QueryPool.h"
 #include <QuartzCore/CAMetalLayer.h>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
@@ -70,8 +71,7 @@ namespace RenderCore { namespace ImplAppleMetal
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            assert(0);
-            // _annotator = CreateAnnotator(*d);         DavidJ -- update to new IAnnotator interface
+            _annotator = std::make_unique<Metal_AppleMetal::Annotator>();
         }
         return *_annotator;
     }

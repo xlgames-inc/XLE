@@ -227,7 +227,7 @@ namespace PlatformRig { namespace Overlays
     }
 
     bool HierarchicalSpikesDisplay::ProcessInput(
-        InterfaceState& interfaceState, const InputSnapshot& input)
+        InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

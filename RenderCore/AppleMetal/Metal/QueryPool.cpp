@@ -71,4 +71,23 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     #endif
 
+    void    Annotator::Frame_Begin(IThreadContext& primaryContext, unsigned frameID) {}
+    void    Annotator::Frame_End(IThreadContext& primaryContext) {}
+
+    void    Annotator::Event(IThreadContext& context, const char name[], EventTypes::BitField types)
+    {
+        if (types & EventTypes::Flags::MarkerBegin) {
+            GPUAnnotation::Begin(*DeviceContext::Get(context), name);
+        } else if (types & EventTypes::Flags::MarkerEnd) {
+            GPUAnnotation::End(*DeviceContext::Get(context));
+        }
+    }
+
+    unsigned    Annotator::AddEventListener(const EventListener& callback) { return 0; }
+    void        Annotator::RemoveEventListener(unsigned listenerId) {}
+
+    Annotator::Annotator() {}
+    Annotator::~Annotator() {}
+
+
 }}

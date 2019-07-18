@@ -524,7 +524,7 @@ namespace RenderCore { namespace Assets
 
             uint8 buffer0[256], buffer1[256];
             auto defaultType = ImpliedTyping::Parse(
-                value,
+                MakeStringSection(value),
                 buffer0, dimof(buffer0));
 
             if (!(defaultType == e._type)) {
@@ -535,14 +535,16 @@ namespace RenderCore { namespace Assets
                     MakeIteratorRange(buffer1), e._type,
                     MakeIteratorRange(buffer0), defaultType);
                 if (castSuccess) {
-                    cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer1, e._type);
+                    auto* end = &buffer1[std::min(dimof(buffer1), (size_t)defaultType.GetSize())];
+                    cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), MakeIteratorRange(buffer1, end), e._type);
                 } else {
                     Throw(FormatException(
                         "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: ",
                         startLocation));
                 }
             } else {
-                cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), buffer0, defaultType);
+                auto* end = &buffer0[std::min(dimof(buffer0), (size_t)defaultType.GetSize())];
+                cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), MakeIteratorRange(buffer0, end), defaultType);
             }
         } else {
             auto token = streamIterator.GetNextToken();
@@ -640,11 +642,8 @@ namespace RenderCore { namespace Assets
 
                 auto defaultType = _defaults.GetParameterType(newE._hash);
                 if (defaultType._type != ImpliedTyping::TypeCat::Void) {
-                    const void* rawValue = _defaults.GetParameterRawValue(newE._hash);
-                    result._defaults.SetParameter(
-                        e._hash,
-                        MakeIteratorRange(rawValue, PtrAdd(rawValue, defaultType.GetSize())),
-                        defaultType);
+                    auto rawValue = _defaults.GetParameterRawValue(newE._hash);
+                    result._defaults.SetParameter(e._hash, rawValue, defaultType);
                 }
             }
         }

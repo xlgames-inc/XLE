@@ -6,9 +6,6 @@
 
 #include "TechniqueUtils.h"
 #include "DrawableDelegates.h"
-#include "../../RenderCore/Metal/Forward.h"
-#include "../../RenderCore/Metal/State.h"			// (required for Metal::SamplerState size)
-#include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Types.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"

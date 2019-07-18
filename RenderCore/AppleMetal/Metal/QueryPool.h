@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../../IAnnotator.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
 #include <algorithm>
@@ -99,5 +100,20 @@ namespace RenderCore { namespace Metal_AppleMetal
         };
 
     #endif
+
+    class Annotator : public IAnnotator
+    {
+    public:
+        virtual void    Frame_Begin(IThreadContext& primaryContext, unsigned frameID);
+        virtual void    Frame_End(IThreadContext& primaryContext);
+
+        virtual void    Event(IThreadContext& context, const char name[], EventTypes::BitField types);
+
+        virtual unsigned    AddEventListener(const EventListener& callback);
+        virtual void        RemoveEventListener(unsigned listenerId);
+
+        Annotator();
+        virtual ~Annotator();
+    };
 }}
 

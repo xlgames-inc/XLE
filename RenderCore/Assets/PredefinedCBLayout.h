@@ -32,6 +32,7 @@ namespace RenderCore { namespace Assets
             ImpliedTyping::TypeDesc _type;
             unsigned _arrayElementCount;            // set to zero if this parameter is not actually an array
             unsigned _arrayElementStride;
+            std::string _name;
             std::string _conditions;
 
             // Offsets according to the alignment rules for different shader languages
