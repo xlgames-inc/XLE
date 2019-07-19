@@ -570,6 +570,44 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto location = glGetUniformLocation(shaderProgram.GetUnderlying()->AsRawGLHandle(), buffer);
                     stream << location;
                 }
+
+                #if defined(GL_ES_VERSION_3_0)
+                    GLint secondType = 0, secondSize = 0, blockIndex = 0, offset = 0, arrayStride = 0, matrixStride = 0, isRowMajor = 0;
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_TYPE, &secondType);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_SIZE, &secondSize);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_BLOCK_INDEX, &blockIndex);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_OFFSET, &offset);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_ARRAY_STRIDE, &arrayStride);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_MATRIX_STRIDE, &matrixStride);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_IS_ROW_MAJOR, &isRowMajor);
+
+                    stream
+                        << ", glGetActiveUniformsiv <type: " << GLenumAsString(secondType) << ", size: " << size 
+                        << ", blockIndex: " << blockIndex << ", offset: " << offset << ", arrayStride: " << arrayStride
+                        << ", matrixStride: " << matrixStride << ", isRowMajor: " << isRowMajor << ">";
+                #endif
+
                 stream << std::endl;
             }
         }

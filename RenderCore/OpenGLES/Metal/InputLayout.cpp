@@ -28,6 +28,8 @@
 #include <unordered_set>
 #include <cctype>
 
+// #define EXTRA_INPUT_LAYOUT_LOGGING
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     std::unordered_set<std::string> g_whitelistedAttributesForBinding;
@@ -620,7 +622,21 @@ namespace RenderCore { namespace Metal_OpenGLES
             return GL_TEXTURE_2D;
 
         case GL_SAMPLER_CUBE:
+        case GL_SAMPLER_CUBE_SHADOW:
+        case GL_INT_SAMPLER_CUBE:
+        case GL_UNSIGNED_INT_SAMPLER_CUBE:
             return GL_TEXTURE_CUBE_MAP;
+
+        // array types:
+        // case GL_SAMPLER_2D_ARRAY:
+        // case GL_SAMPLER_2D_ARRAY_SHADOW:
+        // case GL_INT_SAMPLER_2D_ARRAY:
+        // case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+
+        // 3D texture types:
+        case GL_SAMPLER_3D:
+        case GL_INT_SAMPLER_3D:
+        case GL_UNSIGNED_INT_SAMPLER_3D:
 
         default:
             return GL_NONE;
@@ -693,7 +709,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned textureUnitAccumulator = 0;
 
         struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
-        std::vector<UniformSet> uniformSets;
+        std::vector<UniformSet> srvUniformSets;
 
         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::set<uint64_t> boundGlobalUniforms;
@@ -778,13 +794,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                         });
 
                     #if defined(_DEBUG) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
-                        Log(Verbose) << "Selecting texunit (" << textureUnit << ") for uniform " << AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount) << " in stream " << s << ", slot " << slot << std::endl;
+                        Log(Verbose)
+                            << "Selecting texunit (" << textureUnit << ") for uniform "
+                            << AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount) << " in stream " << s << ", slot " << slot
+                            << std::endl;
                     #endif
 
                     // Record the command to set the uniform. Note that this
                     // is made a little more complicated due to array uniforms.
                     assert((binding - uniform._bindingName) < uniform._elementCount);
-                    uniformSets.push_back({uniform._location, elementIndex, textureUnit, uniform._type, uniform._elementCount});
+                    srvUniformSets.push_back({uniform._location, elementIndex, textureUnit, uniform._type, uniform._elementCount});
 
                     _boundResourceSlots[s] |= (1ull << uint64_t(slot));
                 }
@@ -797,6 +816,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (boundGlobalUniforms.find(u._bindingName) == boundGlobalUniforms.end()) {
                     Log(Verbose) << "Didn't get binding for global uniform (" << u._name << ") in BoundUniforms constructor" << std::endl;
                     _unboundUniforms.push_back(u);
+
+                    /*if (DimensionalityForUniformType(u._type) != GL_NONE) {
+                        auto textureUnit = pipelineLayout.GetFlexibleTextureUnit(textureUnitAccumulator);
+                        textureUnitAccumulator++;
+                        srvUniformSets.push_back({u._location, 0, textureUnit, u._type, u._elementCount});
+                    }*/
                 }
             }
             for (auto s:introspection.GetStructs()) {
@@ -809,7 +834,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         // sort the uniform sets to collect up sequential sets on the same uniforms
         std::sort(
-            uniformSets.begin(), uniformSets.end(),
+            srvUniformSets.begin(), srvUniformSets.end(),
             [](const UniformSet& lhs, const UniformSet& rhs) {
                 if (lhs._location < rhs._location) return true;
                 if (lhs._location > rhs._location) return false;
@@ -817,17 +842,17 @@ namespace RenderCore { namespace Metal_OpenGLES
             });
 
         #if defined(_DEBUG) // ensure that we are not writing to the same uniform more than once
-            if (!uniformSets.empty()) {
-                for (auto i=uniformSets.begin(); (i+1)!=uniformSets.end(); ++i) {
+            if (!srvUniformSets.empty()) {
+                for (auto i=srvUniformSets.begin(); (i+1)!=srvUniformSets.end(); ++i) {
                     assert(i->_location != (i+1)->_location || i->_index != (i+1)->_index);
                 }
             }
         #endif
 
         // Now generate the set commands that will assign the uniforms as required
-        for (auto i = uniformSets.begin(); i!=uniformSets.end();) {
+        for (auto i = srvUniformSets.begin(); i!=srvUniformSets.end();) {
             auto i2 = i+1;
-            while (i2 != uniformSets.end() && i2->_location == i->_location) { ++i2; };
+            while (i2 != srvUniformSets.end() && i2->_location == i->_location) { ++i2; };
 
             // unsigned maxIndex = (i2-1)->_index;
             unsigned elementCount = i->_elementCount;
