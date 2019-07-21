@@ -370,6 +370,8 @@ namespace SceneEngine
 		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
 		MainTargets mainTargets, bool useMsaaSamplers, unsigned debuggingType)
     {
+		// Note -- this requires "mainTargets" to have been configured in LightingParser_ExecuteScene
+
         using namespace RenderCore;
 
         const auto* ps = "xleres/deferred/debugging.pixel.hlsl:GBufferDebugging:ps_*";

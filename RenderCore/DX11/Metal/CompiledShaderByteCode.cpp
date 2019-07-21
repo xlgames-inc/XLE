@@ -209,8 +209,10 @@ namespace RenderCore { namespace Metal_DX11
                     timeMarker._timeMarker = desc._modificationTime;
 
                     file = std::make_unique<uint8[]>(size);
-                    auto blocksRead = fileInterface->Read(file.get(), size);
-                    assert(blocksRead == 1); (void)blocksRead;
+					if (size) {
+						auto blocksRead = fileInterface->Read(file.get(), size);
+						assert(blocksRead == 1); (void)blocksRead;
+					}
                 }
             }
 
