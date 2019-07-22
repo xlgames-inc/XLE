@@ -6,12 +6,14 @@
 
 #pragma once
 
+#include "../../Core/SelectConfiguration.h"
+
 /**************************************************/
 /* Uncomment the following to use Metal as gfx api -- tryMetal */
-//#define SELECT_APPLEMETAL
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
+    #define SELECT_APPLEMETAL
+#endif
 /**************************************************/
-
-#include "../../Core/SelectConfiguration.h"
 
 #define GFXAPI_DX11         1
 #define GFXAPI_DX9          2
