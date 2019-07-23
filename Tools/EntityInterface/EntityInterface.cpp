@@ -10,6 +10,7 @@
 namespace EntityInterface
 {
     IEntityInterface::~IEntityInterface() {}
+    IEnumerableEntityInterface::~IEnumerableEntityInterface() {}
 
 	void IEntityInterface::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const {}
 
