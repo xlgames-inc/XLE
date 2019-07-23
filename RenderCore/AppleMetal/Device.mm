@@ -214,11 +214,6 @@ namespace RenderCore { namespace ImplAppleMetal
 
         _desc = std::make_shared<PresentationChainDesc>(desc);
 
-        /* KenD -- Metal Hack -- a bit of a hack to double the width and height for higher resolation (mimics retina displays);
-         * tried changing the contentsScale of the CAMetalLayer, but that didn't have a noticeable effect. */
-        _desc->_width *= 2.0;
-        _desc->_height *= 2.0;
-
         auto* metalLayer = (CAMetalLayer*)view.layer;
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm; /* Metal TODO -- Currently fixed to using LDR format */
         metalLayer.framebufferOnly = YES;
