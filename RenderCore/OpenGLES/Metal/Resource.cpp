@@ -2,6 +2,7 @@
 #include "Resource.h"
 #include "Format.h"
 #include "../../ResourceUtils.h"
+#include "../../../ConsoleRig/Log.h"
 #include "IncludeGLES.h"
 #include <sstream>
 
@@ -74,6 +75,106 @@ namespace RenderCore { namespace Metal_OpenGLES
     uint64_t Resource::GetGUID() const
     {
         return _guid;
+    }
+
+    std::vector<uint8_t> Resource::ReadBack(SubResourceId subRes) const
+    {
+        if (_underlyingBuffer) {
+            auto bindTarget = GetDesc()._type != ResourceDesc::Type::Unknown ? AsBufferTarget(GetDesc()._bindFlags) : GL_ARRAY_BUFFER;
+            glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
+
+            GLint bufferSize = 0;
+            glGetBufferParameteriv(bindTarget, GL_BUFFER_SIZE, &bufferSize);
+
+            void* mappedData = glMapBufferRange(bindTarget, 0, bufferSize, GL_MAP_READ_BIT);
+            std::vector<uint8_t> result(bufferSize);
+            std::memcpy(result.data(), mappedData, bufferSize);
+            glUnmapBuffer(bindTarget);
+
+            return result;
+        } else if (_underlyingRenderBuffer || _underlyingTexture) {
+
+            if (subRes._arrayLayer != 0 || subRes._mip != 0)
+                Throw(std::runtime_error("Can only get the first subresource from a renderbuffer in OpenGLES"));
+
+            if (    _desc._textureDesc._dimensionality != TextureDesc::Dimensionality::T2D
+                &&  _desc._textureDesc._dimensionality != TextureDesc::Dimensionality::T1D)
+                Throw(std::runtime_error("Only 1D and 2D textures supported in readback operations in OpenGLES"));
+
+            //
+            // In OpenGLES, glReadPixels transforms the format of the texture into some simpler
+            // format. However the Resource::ReadBack() interface is designed to return the same
+            // pixel format as the format that was used when the resource was created. For simplicity,
+            // let's only allow some fixed set of formats, where we know the conversion behaviour
+            // in glReadPixels isn't going to actually change the pixels.
+            //
+            auto pixFmt = AsTexelFormatType(_desc._textureDesc._format);
+            if (pixFmt._format != GL_RGBA && pixFmt._format != GL_RGBA_INTEGER)
+                Throw(std::runtime_error("Can only read back from textures with simple pixel formats in OpenGLES"));
+
+            if (pixFmt._type != GL_UNSIGNED_BYTE && pixFmt._type != GL_UNSIGNED_INT && pixFmt._type != GL_INT && pixFmt._type != GL_FLOAT)
+                Throw(std::runtime_error("Can only read back from textures with simple pixel formats in OpenGLES"));
+
+            std::vector<uint8_t> result(_desc._textureDesc._width * _desc._textureDesc._height * BitsPerPixel(_desc._textureDesc._format) / 8);
+
+            GLint prevFrameBuffer;
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFrameBuffer);
+
+            auto& factory = GetObjectFactory();
+            auto fb = factory.CreateFrameBuffer();
+            glBindFramebuffer(GL_FRAMEBUFFER, fb->AsRawGLHandle());
+            if (_underlyingRenderBuffer) {
+                glFramebufferRenderbuffer(
+                    GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0,
+                    GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle());
+            } else {
+                if (_desc._textureDesc._arrayCount > 1u) {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0,
+                        _underlyingTexture->AsRawGLHandle(),
+                        0,
+                        0);
+                } else {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D,
+                        _underlyingTexture->AsRawGLHandle(),
+                        0);
+                }
+            }
+
+            GLenum b[] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE };
+            glDrawBuffers(dimof(b), b);
+            glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+            #if defined(_DEBUG)
+                auto fbComplete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+                if (fbComplete != GL_FRAMEBUFFER_COMPLETE) {
+                    Log(Warning) << "glCheckFramebufferStatus check failed in Resource ReadBack operation: " << CheckFramebufferStatusToString(fbComplete) << std::endl;
+                    assert(fbComplete == GL_FRAMEBUFFER_COMPLETE);
+                }
+            #endif
+
+            GLint packAlignment, packRowLength;
+            glGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
+            glGetIntegerv(GL_PACK_ROW_LENGTH, &packRowLength);
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+
+            glReadPixels(
+                0, 0, _desc._textureDesc._width, _desc._textureDesc._height,
+                pixFmt._format, pixFmt._type,
+                result.data());
+
+            glPixelStorei(GL_PACK_ROW_LENGTH, packRowLength);
+            glPixelStorei(GL_PACK_ALIGNMENT, packAlignment);
+            glBindFramebuffer(GL_FRAMEBUFFER, prevFrameBuffer);
+
+            CheckGLError("After resource readback");
+            return result;
+
+        }
+
+        return _constantBuffer;
     }
 
     static uint64_t s_nextResourceGUID = 1;

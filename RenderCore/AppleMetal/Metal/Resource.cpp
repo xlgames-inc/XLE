@@ -28,6 +28,52 @@ namespace RenderCore { namespace Metal_AppleMetal
         return nullptr;
     }
 
+    std::vector<uint8_t> Resource::ReadBack(SubResourceId subRes) const
+    {
+        if (_underlyingTexture) {
+
+            auto mipmapDesc = CalculateMipMapDesc(_desc._textureDesc, subRes._mip);
+            auto pitches = MakeTexturePitches(mipmapDesc);
+            MTLRegion region;
+            if (_desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
+                region = MTLRegionMake1D(0, _desc._textureDesc._width);
+            } else if (_desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
+                region = MTLRegionMake2D(
+                    0, 0,
+                    _desc._textureDesc._width, _desc._textureDesc._height);
+            } else if (_desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+                region = MTLRegionMake3D(
+                    0, 0, 0,
+                    _desc._textureDesc._width, _desc._textureDesc._height, _desc._textureDesc._depth);
+            }
+
+            std::vector<uint8_t> result(pitches._slicePitch);
+            [_underlyingTexture.get() getBytes:result.data()
+                                   bytesPerRow:pitches._rowPitch
+                                 bytesPerImage:pitches._slicePitch
+                                    fromRegion:region
+                                   mipmapLevel:subRes._mip
+                                         slice:subRes._arrayLayer];
+
+            return result;
+
+        } else if (_underlyingBuffer) {
+
+            auto* contents = _underlyingBuffer.get().contents;
+            if (!contents)
+                Throw(std::runtime_error("Could not read back data from buffer object, either because it's empty or not marked for CPU read access"));
+
+            auto length = _underlyingBuffer.get().length;
+            std::vector<uint8_t> result(length);
+            std::memcpy(result.data(), contents, length);
+
+            return result;
+
+        }
+
+        return {};
+    }
+
     uint64_t Resource::GetGUID() const
     {
         return _guid;

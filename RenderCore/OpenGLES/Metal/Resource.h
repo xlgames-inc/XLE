@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using Desc = ResourceDesc;
 
-        Desc GetDesc() const         { return _desc; }
+        Desc GetDesc() const override        { return _desc; }
 
         const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const { return _underlyingBuffer; }
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }
@@ -27,8 +27,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         IteratorRange<const void*> GetConstantBuffer() const { return MakeIteratorRange(_constantBuffer); }
         const bool IsBackBuffer() { return _isBackBuffer; }
 
-        virtual void*       QueryInterface(size_t guid);
-        virtual uint64_t    GetGUID() const;
+        virtual void*       QueryInterface(size_t guid) override;
+        virtual uint64_t    GetGUID() const override;
+        virtual std::vector<uint8_t> ReadBack(SubResourceId subRes) const override;
 
         Resource(
             ObjectFactory& factory, const Desc& desc,

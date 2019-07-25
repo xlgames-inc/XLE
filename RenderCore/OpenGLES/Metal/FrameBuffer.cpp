@@ -114,32 +114,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         return bindingPoint;
     }
-
-    static const char* CheckFramebufferStatusToString(GLenum value)
-    {
-        switch (value) {
-        case GL_FRAMEBUFFER_COMPLETE: return "complete";
-        case GL_FRAMEBUFFER_UNDEFINED: return "undefined";
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "incomplete-attachment";
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "incomplete-missing-attachment";
-        case GL_FRAMEBUFFER_UNSUPPORTED: return "unsupported";
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "incomplete-multisample";
-        
-        // Desktop GL problems
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)
-            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "incomplete-layer-targets";
-        #endif
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)
-            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "incomplete-draw-buffer";
-        #endif
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)
-            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "incomplete-read-buffer";
-        #endif
-        }
-
-        return "<<error>>";
-    }
-
+    
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,

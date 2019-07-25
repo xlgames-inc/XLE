@@ -33,22 +33,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    std::vector<uint8_t> Buffer::Readback()
-    {
-        auto bindTarget = GetDesc()._type != ResourceDesc::Type::Unknown ? AsBufferTarget(GetDesc()._bindFlags) : GL_ARRAY_BUFFER;
-        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
-
-        GLint bufferSize = 0;
-        glGetBufferParameteriv(bindTarget, GL_BUFFER_SIZE, &bufferSize);
-
-        void* mappedData = glMapBufferRange(bindTarget, 0, bufferSize, GL_MAP_READ_BIT);
-        std::vector<uint8_t> result(bufferSize);
-        std::memcpy(result.data(), mappedData, bufferSize);
-        glUnmapBuffer(bindTarget);
-
-        return result;
-    }
-
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
                     IteratorRange<const void*> initData)
     : Resource(factory, desc, SubResourceInitData { initData, {0u, 0u, 0u} })

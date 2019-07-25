@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         using Desc = ResourceDesc;
 
-        Desc GetDesc() const         { return _desc; }
+        Desc GetDesc() const override        { return _desc; }
 
         TBC::OCPtr<AplMtlTexture> GetTexture() const { return _underlyingTexture; }; // <MTLTexture>
         TBC::OCPtr<AplMtlBuffer> GetBuffer() const { return _underlyingBuffer; }; // <MTLBuffer>
@@ -33,8 +33,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         const bool IsBackBuffer() { return false; }
 
-        virtual void*       QueryInterface(size_t guid);
-        virtual uint64_t    GetGUID() const;
+        virtual void*       QueryInterface(size_t guid) override;
+        virtual uint64_t    GetGUID() const override;
+        virtual std::vector<uint8_t>    ReadBack(SubResourceId subRes) const override;
 
         Resource(
             ObjectFactory& factory, const Desc& desc,
