@@ -14,6 +14,7 @@
 #include "../../Format.h"
 #include "../../BufferView.h"
 #include "../../../ConsoleRig/Log.h"
+#include "../../../ConsoleRig/LogUtil.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"
@@ -63,7 +64,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
 #if DEBUG
-    void PrintMissingVertexAttribute(uint64 missingSemanticHash)
+    NSString* DeHashVertexAttribute(uint64 semanticHash)
     {
         static NSMutableDictionary* knownAttrs = nil;
         if (!knownAttrs) {
@@ -94,7 +95,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             knownAttrs[@(Hash64("a_cc3TexCoord"))] = @"a_cc3TexCoord";
         }
 
-        NSLog(@"==================> Missing %@ (%llu)", knownAttrs[@(missingSemanticHash)], missingSemanticHash);
+        id res = knownAttrs[@(semanticHash)];
+        if (res)
+            return (NSString*)res;
+        return [NSString stringWithFormat:@"Unknown semantic hash: 0x%llx", semanticHash];
     }
 
     void PrintMissingTextureBinding(uint64 missingSemanticHash)
@@ -136,40 +140,38 @@ namespace RenderCore { namespace Metal_AppleMetal
          * match the offset of the corresponding elements in the shader arguments.
          */
 
-        // Map each vertex attribute's semantic hash to its attribute index
-        id<MTLFunction> vf = program._vf.get();
-        std::map<uint64_t, unsigned> hashToLocation;
-        for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
-            hashToLocation[BuildSemanticHash(vertexAttribute.name.UTF8String)] = (unsigned)vertexAttribute.attributeIndex;
-        }
-
         // Create a MTLVertexDescriptor to describe the input format for vertices
         _vertexDescriptor = TBC::OCPtr<MTLVertexDescriptor>(TBC::moveptr([[MTLVertexDescriptor alloc] init]));
         auto* desc = _vertexDescriptor.get();
 
-        for (unsigned l=0; l < layouts.size(); ++l) {
-            // Populate MTLVertexAttributeDescriptorArray
-            for (const auto& e : layouts[l]._elements) {
-                auto found = hashToLocation.find(e._semanticHash);
-                if (found == hashToLocation.end()) {
-                    /* There may be some data that is provided or specified in the layout that the shader will not use,
-                     * such as bitangents or normals.
-                     * That's okay - the shader is relatively simple compared to the vertex.
-                     * However, it is a problem if the shader expects an attribute that is not provided by the input.
-                     */
-                    #if DEBUG
-                        //PrintMissingVertexAttribute(e._semanticHash);
-                    #endif
-                    continue;
-                }
+        // Map each vertex attribute's semantic hash to its attribute index
+        id<MTLFunction> vf = program._vf.get();
 
-                unsigned attributeLoc = found->second;
-                desc.attributes[attributeLoc].bufferIndex = l;
-                desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
-                desc.attributes[attributeLoc].offset = CalculateVertexStride(MakeIteratorRange(layouts[l]._elements.begin(), &e), false);
+        std::map<uint64_t, unsigned> hashToLocation;
+        for (unsigned a=0; a<vf.vertexAttributes.count; ++a) {
+            auto hash = BuildSemanticHash(vf.vertexAttributes[a].name.UTF8String);
+
+            bool foundBinding = false;
+            for (unsigned l=0; l < layouts.size() && !foundBinding; ++l) {
+                for (const auto& e : layouts[l]._elements) {
+                    if (e._semanticHash != hash)
+                        continue;
+
+                    auto attributeIdx = vf.vertexAttributes[a].attributeIndex;
+                    desc.attributes[attributeIdx].bufferIndex = l;
+                    desc.attributes[attributeIdx].format = AsMTLVertexFormat(e._nativeFormat);
+                    desc.attributes[attributeIdx].offset = CalculateVertexStride(MakeIteratorRange(layouts[l]._elements.begin(), &e), false);
+                    foundBinding = true;
+                    break;
+                }
             }
 
-            // Populate MTLVertexBufferLayoutDescriptorArray
+            if (!foundBinding) {
+                _allAttributesBound = false;
+            }
+        }
+
+        for (unsigned l=0; l < layouts.size(); ++l) {
             desc.layouts[l].stride = CalculateVertexStride(layouts[l]._elements, false);
             if (layouts[l]._instanceStepDataRate == 0) {
                 desc.layouts[l].stepFunction = MTLVertexStepFunctionPerVertex;
@@ -178,6 +180,22 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.layouts[l].stepRate = layouts[l]._instanceStepDataRate;
             }
         }
+
+        #if defined(_DEBUG)
+            if (!_allAttributesBound) {
+                Log(Warning) << "Some attributes not bound for vertex shader:" << [program._vf.get() label] << std::endl;
+                Log(Warning) << "Attributes on shader: " << std::endl;
+                for (unsigned a=0; a<vf.vertexAttributes.count; ++a) {
+                    Log(Warning) << "  [" << vf.vertexAttributes[a].attributeIndex << "] " << vf.vertexAttributes[a].name << std::endl;
+                }
+                Log(Warning) << "Attributes on provided from input layout: " << std::endl;
+                for (unsigned l=0; l < layouts.size(); ++l) {
+                    for (unsigned e=0; e < layouts[l]._elements.size(); ++e) {
+                        Log(Warning) << "  [" << l << ", " << e << "] " << DeHashVertexAttribute(layouts[l]._elements[e]._semanticHash) << std::endl;
+                    }
+                }
+            }
+        #endif
     }
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
@@ -191,6 +209,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned maxSlot = 0;
         for (const auto& e:layout)
             maxSlot = std::max(maxSlot, e._inputSlot);
+
+        std::vector<unsigned> boundAttributes;
+        boundAttributes.reserve(layout.size());
 
         // Populate MTLVertexAttributeDescriptorArray
         for (unsigned slot=0; slot<maxSlot+1; ++slot) {
@@ -230,6 +251,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
                     desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
                     desc.attributes[attributeLoc].offset = e._alignedByteOffset;
+
+                    assert(std::find(boundAttributes.begin(), boundAttributes.end(), attributeLoc) == boundAttributes.end());
                 }
 
                 workingStride = alignedOffset + BitsPerPixel(e._nativeFormat);
@@ -254,6 +277,27 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.layouts[slot].stepRate = inputDataRate;
             }
         }
+
+        for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
+            if (std::find(boundAttributes.begin(), boundAttributes.end(), vertexAttribute.attributeIndex) == boundAttributes.end()) {
+                _allAttributesBound = false;
+                break;
+            }
+        }
+
+        #if defined(_DEBUG)
+            if (!_allAttributesBound) {
+                Log(Warning) << "Some attributes not bound for vertex shader:" << [program._vf.get() label] << std::endl;
+                Log(Warning) << "Attributes on shader: " << std::endl;
+                for (unsigned a=0; a<vf.vertexAttributes.count; ++a) {
+                    Log(Warning) << "  [" << vf.vertexAttributes[a].attributeIndex << "] " << vf.vertexAttributes[a].name << std::endl;
+                }
+                Log(Warning) << "Attributes on provided from input layout: " << std::endl;
+                for (const auto&e:layout) {
+                    Log(Warning) << "  [" << e._inputSlot << "] " << e._semanticName << " (" << e._semanticIndex << ")" << std::endl;
+                }
+            }
+        #endif
     }
 
     BoundInputLayout::BoundInputLayout() {}
