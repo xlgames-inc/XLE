@@ -148,7 +148,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLFunction> vf = program._vf.get();
 
         std::map<uint64_t, unsigned> hashToLocation;
+        _allAttributesBound = true;
         for (unsigned a=0; a<vf.vertexAttributes.count; ++a) {
+            if (!vf.vertexAttributes[a].active)
+                continue;
+
             auto hash = BuildSemanticHash(vf.vertexAttributes[a].name.UTF8String);
 
             bool foundBinding = false;
@@ -213,6 +217,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::vector<unsigned> boundAttributes;
         boundAttributes.reserve(layout.size());
 
+        std::vector<uint64_t> attributeHashes;
+        attributeHashes.reserve(vf.vertexAttributes.count);
+        for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes)
+            attributeHashes.push_back(BuildSemanticHash(vertexAttribute.name.UTF8String));
+
         // Populate MTLVertexAttributeDescriptorArray
         for (unsigned slot=0; slot<maxSlot+1; ++slot) {
             unsigned workingStride = 0;
@@ -228,31 +237,21 @@ namespace RenderCore { namespace Metal_AppleMetal
                     alignedOffset = workingStride;
                 }
 
-                std::string numberedSemantic = e._semanticName + std::to_string(e._semanticIndex);
-                MTLVertexAttribute* matchingAttribute = nullptr;
-                for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
-                    if (XlEqString(numberedSemantic, vertexAttribute.name.UTF8String)) {
-                        matchingAttribute = vertexAttribute;
-                        break;
+                auto hash = BuildSemanticHash(e._semanticName.c_str()) + e._semanticIndex;
+
+                auto i = std::find(attributeHashes.begin(), attributeHashes.end(), hash);
+                if (i != attributeHashes.end()) {
+                    auto* matchingAttribute = vf.vertexAttributes[std::distance(attributeHashes.begin(), i)];
+                    if (matchingAttribute.active) {
+                        auto attributeLoc = matchingAttribute.attributeIndex;
+                        desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
+                        desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
+                        desc.attributes[attributeLoc].offset = e._alignedByteOffset;
+
+                        // You will hit this assert if we attempt to bind the same attribute more
+                        // than once
+                        assert(std::find(boundAttributes.begin(), boundAttributes.end(), attributeLoc) == boundAttributes.end());
                     }
-                }
-
-                if (e._semanticIndex == 0 && !matchingAttribute) {
-                    for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
-                        if (XlEqString(e._semanticName, vertexAttribute.name.UTF8String)) {
-                            matchingAttribute = vertexAttribute;
-                            break;
-                        }
-                    }
-                }
-
-                if (matchingAttribute) {
-                    auto attributeLoc = matchingAttribute.attributeIndex;
-                    desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
-                    desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
-                    desc.attributes[attributeLoc].offset = e._alignedByteOffset;
-
-                    assert(std::find(boundAttributes.begin(), boundAttributes.end(), attributeLoc) == boundAttributes.end());
                 }
 
                 workingStride = alignedOffset + BitsPerPixel(e._nativeFormat);
@@ -278,7 +277,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
+        _allAttributesBound = true;
         for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
+            if (!vertexAttribute.active)
+                continue;
+
             if (std::find(boundAttributes.begin(), boundAttributes.end(), vertexAttribute.attributeIndex) == boundAttributes.end()) {
                 _allAttributesBound = false;
                 break;
