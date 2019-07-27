@@ -5,19 +5,13 @@
 #include "../Foreign/fmt/ostream.h"
 
 #if defined(__OBJC__)
-    #include "Externals/Misc/OCPtr.h"
-
+    #include <Foundation/NSObject.h>
+    #include <Foundation/NSString.h>
+    
     inline std::ostream& operator<<(std::ostream& stream, NSObject* objcObj)
     {
         if (!objcObj) return stream << "<<nil>>";
         return stream << objcObj.description.UTF8String;
-    }
-
-    template<typename T>
-        inline std::ostream& operator<<(std::ostream& stream, const TBC::OCPtr<T>& objcObj)
-    {
-        if (!objcObj) return stream << "<<nil>>";
-        return stream << objcObj.get().description.UTF8String;
     }
 
     struct ObjC { NSObject* _obj; };
