@@ -48,7 +48,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     class Device;
 
-    class ThreadContext : public Base_ThreadContext, public IThreadContextAppleMetal
+    class ThreadContext : public IThreadContext, public IThreadContextAppleMetal
     {
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
@@ -56,6 +56,7 @@ namespace RenderCore { namespace ImplAppleMetal
         
         void        BeginHeadlessFrame();
         void        EndHeadlessFrame();
+        void        WaitUntilQueueCompleted();
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
@@ -67,6 +68,8 @@ namespace RenderCore { namespace ImplAppleMetal
         IAnnotator&                 GetAnnotator();
 
         const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  GetDeviceContext();
+
+        id<MTLCommandBuffer> GetCurrentCommandBuffer() { return (id<MTLCommandBuffer>)_commandBuffer.get(); }
 
         ThreadContext(
             id<MTLCommandQueue> immediateCommandQueue,
@@ -90,7 +93,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
+    class Device :  public IDevice, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(

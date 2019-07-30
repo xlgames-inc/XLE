@@ -77,7 +77,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return _guid;
     }
 
-    std::vector<uint8_t> Resource::ReadBack(SubResourceId subRes) const
+    std::vector<uint8_t> Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
     {
         if (_underlyingBuffer) {
             auto bindTarget = GetDesc()._type != ResourceDesc::Type::Unknown ? AsBufferTarget(GetDesc()._bindFlags) : GL_ARRAY_BUFFER;
@@ -108,7 +108,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // let's only allow some fixed set of formats, where we know the conversion behaviour
             // in glReadPixels isn't going to actually change the pixels.
             //
-            auto pixFmt = AsTexelFormatType(_desc._textureDesc._format);
+            auto pixFmt = AsTexelFormatType(AsLinearFormat(_desc._textureDesc._format));
             if (pixFmt._format != GL_RGBA && pixFmt._format != GL_RGBA_INTEGER)
                 Throw(std::runtime_error("Can only read back from textures with simple pixel formats in OpenGLES"));
 
@@ -172,6 +172,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             CheckGLError("After resource readback");
             return result;
 
+        } else if (_isBackBuffer) {
+            Throw(std::runtime_error("Cannot read back from the back buffer in OpenGLES using Resource::ReadBack"));
         }
 
         return _constantBuffer;

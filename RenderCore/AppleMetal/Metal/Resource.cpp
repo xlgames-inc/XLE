@@ -4,6 +4,9 @@
 
 #include "Resource.h"
 #include "Format.h"
+#include "DeviceContext.h"
+#include "../Device.h"
+#include "../../IThreadContext.h"
 #include "../../ResourceUtils.h"
 #include "../../../ConsoleRig/Log.h"
 
@@ -28,9 +31,41 @@ namespace RenderCore { namespace Metal_AppleMetal
         return nullptr;
     }
 
-    std::vector<uint8_t> Resource::ReadBack(SubResourceId subRes) const
+    std::vector<uint8_t> Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
     {
+        // We must synchronize with the GPU. Since the GPU is working asychronously, we must ensure
+        // that all operations that might effect this resource have been completed. Since we don't
+        // know exactly what operations effect the resource, we must wait for all!
+        auto* metalContext = (ImplAppleMetal::ThreadContext*)context.QueryInterface(typeid(ImplAppleMetal::ThreadContext).hash_code());
+        if (!metalContext)
+            Throw(std::runtime_error("Incorrect thread context passed to Apple Metal Resource::ReadBack implementation"));
+
+        #if PLATFORMOS_TARGET == PLATFORMOS_OSX
+            // With "shared mode" textures, we can go straight to the main texture and
+            // get the data directly.
+            // With "managed mode", we must call synchronizeResource
+            //
+            if (_underlyingTexture && _underlyingTexture.get().storageMode == MTLStorageModeManaged) {
+                @autoreleasepool {
+                    id<MTLBlitCommandEncoder> blitEncoder = [metalContext->GetCurrentCommandBuffer() blitCommandEncoder];
+                    [blitEncoder synchronizeResource:_underlyingTexture.get()];
+                }
+            } else if (_underlyingBuffer && _underlyingBuffer.get().storageMode == MTLStorageModeManaged) {
+                @autoreleasepool {
+                    id<MTLBlitCommandEncoder> blitEncoder = [metalContext->GetCurrentCommandBuffer() blitCommandEncoder];
+                    [blitEncoder synchronizeResource:_underlyingBuffer.get()];
+                }
+            }
+        #endif
+
+        metalContext->WaitUntilQueueCompleted();
+
         if (_underlyingTexture) {
+
+            #if PLATFORMOS_TARGET == PLATFORMOS_IOS
+                if (_underlyingTexture.get().framebufferOnly)
+                    Throw(std::runtime_error("Cannot use Resource::ReadBack on a framebuffer only resource on IOS. You must readback through a CPU accessable copy of this textuer."));
+            #endif
 
             auto mipmapDesc = CalculateMipMapDesc(_desc._textureDesc, subRes._mip);
             auto pitches = MakeTexturePitches(mipmapDesc);

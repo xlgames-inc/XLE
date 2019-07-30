@@ -68,6 +68,26 @@ namespace RenderCore { namespace ImplAppleMetal
         _commandBuffer = nullptr;
     }
 
+    void        ThreadContext::WaitUntilQueueCompleted()
+    {
+        // METAL_TODO -- this only stalls waiting for the current command list to be completed
+        // We actually need to wait until all queued command lists have finished. To do that
+        // we need to keep some low-overhead scheme for checking on the status of specific
+        // command lists, and use that to determine what command lists are in an uncertain state.
+        // Then we should call waitUntilCompleted on all of them.
+
+        if (_commandBuffer.get()) {
+            [_commandBuffer.get() commit];
+            [_commandBuffer.get() waitUntilCompleted];
+
+            GetDeviceContext()->ReleaseCommandBuffer();
+            _commandBuffer = nullptr;
+
+            _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+            GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
+        }
+    }
+
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
     std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
@@ -88,6 +108,8 @@ namespace RenderCore { namespace ImplAppleMetal
     {
         if (guid == typeid(IThreadContextAppleMetal).hash_code())
             return (IThreadContextAppleMetal*)this;
+        if (guid == typeid(ThreadContext).hash_code())
+            return (ThreadContext*)this;
         return nullptr;
     }
 

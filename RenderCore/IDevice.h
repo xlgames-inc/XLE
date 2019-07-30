@@ -183,7 +183,7 @@ namespace RenderCore
 		virtual ResourceDesc	        GetDesc() const = 0;
         virtual void*			        QueryInterface(size_t guid) = 0;
         virtual uint64_t                GetGUID() const = 0;
-        virtual std::vector<uint8_t>    ReadBack(SubResourceId subRes = {}) const = 0;
+        virtual std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes = {}) const = 0;
         ~IResource();
     };
 
