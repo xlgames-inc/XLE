@@ -23,23 +23,16 @@ namespace RenderCore { namespace ImplAppleMetal
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
-        assert(!_activeFrameDrawable);
-        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
         _activeFrameDrawable = nullptr;
+        
+        BeginHeadlessFrame();
 
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
 
         // note -- nextDrawable can stall if the CPU is running too fast
         id<CAMetalDrawable> nextDrawable = [presChain.GetUnderlyingLayer() nextDrawable];
-
         id<MTLTexture> texture = nextDrawable.texture;
-
         _activeFrameDrawable = nextDrawable;
-
-        // Each thread will have its own command buffer, which is provided to the device context to create command encoders
-        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
-
-        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
 
         // KenD -- This is constructing a RenderBuffer, but we don't really differentiate between RenderBuffer and Texture really.  The binding is specified as RenderTarget.
         return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture));
@@ -47,16 +40,31 @@ namespace RenderCore { namespace ImplAppleMetal
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
     {
-        assert(_commandBuffer);
-        assert(_immediateCommandQueue);
         if (_activeFrameDrawable) {
             [_commandBuffer.get() presentDrawable:_activeFrameDrawable.get()];
         }
-        [_commandBuffer.get() commit];
-
-        GetDeviceContext()->ReleaseCommandBuffer();
-
         _activeFrameDrawable = nullptr;
+        
+        EndHeadlessFrame();
+    }
+    
+    void        ThreadContext::BeginHeadlessFrame()
+    {
+        assert(!_activeFrameDrawable);
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
+        
+        // Each thread will have its own command buffer, which is provided to the device context to create command encoders
+        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
+    }
+    
+    void        ThreadContext::EndHeadlessFrame()
+    {
+        assert(_commandBuffer);
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
+        
+        [_commandBuffer.get() commit];
+        GetDeviceContext()->ReleaseCommandBuffer();
         _commandBuffer = nullptr;
     }
 

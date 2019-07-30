@@ -53,6 +53,9 @@ namespace RenderCore { namespace ImplAppleMetal
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
+        
+        void        BeginHeadlessFrame();
+        void        EndHeadlessFrame();
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
