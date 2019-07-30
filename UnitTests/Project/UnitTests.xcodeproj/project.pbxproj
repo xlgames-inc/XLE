@@ -1,0 +1,747 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8F4964B022EF9DBC00BE5E4D /* libAssetsMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647E22EF9D2C00BE5E4D /* libAssetsMac.a */; };
+		8F4964B122EF9DBC00BE5E4D /* libConsoleRigMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646C22EF9D1300BE5E4D /* libConsoleRigMac.a */; };
+		8F4964B222EF9DBC00BE5E4D /* libMathMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49648722EF9D3500BE5E4D /* libMathMac.a */; };
+		8F4964B322EF9DBC00BE5E4D /* libRenderCoreAppleMetalMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646322EF9D0500BE5E4D /* libRenderCoreAppleMetalMac.a */; };
+		8F4964B422EF9DBC00BE5E4D /* libRenderCoreMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */; };
+		8F4964B522EF9DBC00BE5E4D /* libRenderCoreOGLESMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645A22EF9D0500BE5E4D /* libRenderCoreOGLESMac.a */; };
+		8F4964B622EF9DBC00BE5E4D /* libUtilityMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649022EF9D4100BE5E4D /* libUtilityMac.a */; };
+		8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */; };
+		8F4964B822EF9DCD00BE5E4D /* libfreetype-mac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647522EF9D2200BE5E4D /* libfreetype-mac.a */; };
+		8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */; };
+		8F4964BC22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8F49645022EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2D1ACE1FD61A920028A531;
+			remoteInfo = RenderCoreMac;
+		};
+		8F49645222EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2D1AB31FD619910028A531;
+			remoteInfo = RenderCoreIOS;
+		};
+		8F49645922EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2D1B5A1FD628E10028A531;
+			remoteInfo = RenderCoreOGLESMac;
+		};
+		8F49645B22EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2D1B3F1FD628270028A531;
+			remoteInfo = RenderCoreOGLESIOS;
+		};
+		8F49646222EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F7B6C59202129EF006D0079;
+			remoteInfo = RenderCoreAppleMetalMac;
+		};
+		8F49646422EF9D0500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F7B6C6520212A51006D0079;
+			remoteInfo = RenderCoreAppleMetalIOS;
+		};
+		8F49646B22EF9D1300BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA52DB81FD9D42E0039B229;
+			remoteInfo = ConsoleRigMac;
+		};
+		8F49646D22EF9D1300BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA52D861FD9D3900039B229;
+			remoteInfo = ConsoleRigIOS;
+		};
+		8F49647422EF9D2200BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = AE058C48B1394AD7B9C73CAD;
+			remoteInfo = "freetype-mac";
+		};
+		8F49647622EF9D2200BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = AF31768B20A41897005F4F91;
+			remoteInfo = "freetype-ios";
+		};
+		8F49647D22EF9D2C00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F044BB11EA6B0890074D6A4;
+			remoteInfo = AssetsMac;
+		};
+		8F49647F22EF9D2C00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA3F7731EDD16E3003EF623;
+			remoteInfo = AssetsIOS;
+		};
+		8F49648622EF9D3500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F044B6A1EA695590074D6A4;
+			remoteInfo = MathMac;
+		};
+		8F49648822EF9D3500BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA3F7DA1EDD17F1003EF623;
+			remoteInfo = MathIOS;
+		};
+		8F49648F22EF9D4100BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FD85CF81EA6872D009BD9B0;
+			remoteInfo = UtilityMac;
+		};
+		8F49649122EF9D4100BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA3F7B01EDD178B003EF623;
+			remoteInfo = UtilityIOS;
+		};
+		8F49649822EF9D5300BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F707B5B1EA6C41F00DEC600;
+			remoteInfo = XLESubsetMac;
+		};
+		8F49649A22EF9D5300BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8FA3F7321EDD14E4003EF623;
+			remoteInfo = XLESubsetIOS;
+		};
+		8F49649D22EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F044BB01EA6B0890074D6A4;
+			remoteInfo = AssetsMac;
+		};
+		8F49649F22EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA52DB71FD9D42E0039B229;
+			remoteInfo = ConsoleRigMac;
+		};
+		8F4964A122EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 0B427040DAF64EC3B5394E42;
+			remoteInfo = "freetype-mac";
+		};
+		8F4964A322EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F044B691EA695590074D6A4;
+			remoteInfo = MathMac;
+		};
+		8F4964A522EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F7B6C58202129EF006D0079;
+			remoteInfo = RenderCoreAppleMetalMac;
+		};
+		8F4964A722EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1B591FD628E10028A531;
+			remoteInfo = RenderCoreOGLESMac;
+		};
+		8F4964A922EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1AB21FD619910028A531;
+			remoteInfo = RenderCoreIOS;
+		};
+		8F4964AB22EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FD85CF71EA6872D009BD9B0;
+			remoteInfo = UtilityMac;
+		};
+		8F4964AD22EF9D8E00BE5E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F707B5A1EA6C41F00DEC600;
+			remoteInfo = XLESubsetMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		8F49643A22EF9BAB00BE5E4D /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8F49643B22EF9BAB00BE5E4D /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8F49643C22EF9BAB00BE5E4D /* CoreDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8F49643D22EF9BAB00BE5E4D /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsMac.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F49644722EF9C0F00BE5E4D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore.xcodeproj; path = ../../RenderCore/Project/RenderCore.xcodeproj; sourceTree = "<group>"; };
+		8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore_OpenGLES.xcodeproj; path = ../../RenderCore/Project/RenderCore_OpenGLES.xcodeproj; sourceTree = "<group>"; };
+		8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore_AppleMetal.xcodeproj; path = ../../RenderCore/Project/RenderCore_AppleMetal.xcodeproj; sourceTree = "<group>"; };
+		8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ConsoleRig.xcodeproj; path = ../../ConsoleRig/Project/ConsoleRig.xcodeproj; sourceTree = "<group>"; };
+		8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = freetype.xcodeproj; path = ../../Foreign/FreeType/xcode/freetype.xcodeproj; sourceTree = "<group>"; };
+		8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Assets.xcodeproj; path = ../../Assets/Project/Assets.xcodeproj; sourceTree = "<group>"; };
+		8F49648122EF9D3500BE5E4D /* Math.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Math.xcodeproj; path = ../../Math/Project/Math.xcodeproj; sourceTree = "<group>"; };
+		8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Utility.xcodeproj; path = ../../Utility/Project/Utility.xcodeproj; sourceTree = "<group>"; };
+		8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XLESubset.xcodeproj; path = ../../Subset/Project/XLESubset.xcodeproj; sourceTree = "<group>"; };
+		8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_BasicMath.mm; path = ../Wrapper_BasicMath.mm; sourceTree = "<group>"; };
+		8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_CBLayoutTests.mm; path = ../Wrapper_CBLayoutTests.mm; sourceTree = "<group>"; };
+		8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = XCTestAdapter.h; path = ../XCTestAdapter.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8F49643F22EF9C0F00BE5E4D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F4964B822EF9DCD00BE5E4D /* libfreetype-mac.a in Frameworks */,
+				8F4964B022EF9DBC00BE5E4D /* libAssetsMac.a in Frameworks */,
+				8F4964B122EF9DBC00BE5E4D /* libConsoleRigMac.a in Frameworks */,
+				8F4964B222EF9DBC00BE5E4D /* libMathMac.a in Frameworks */,
+				8F4964B322EF9DBC00BE5E4D /* libRenderCoreAppleMetalMac.a in Frameworks */,
+				8F4964B422EF9DBC00BE5E4D /* libRenderCoreMac.a in Frameworks */,
+				8F4964B522EF9DBC00BE5E4D /* libRenderCoreOGLESMac.a in Frameworks */,
+				8F4964B622EF9DBC00BE5E4D /* libUtilityMac.a in Frameworks */,
+				8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8F49642C22EF9B4600BE5E4D = {
+			isa = PBXGroup;
+			children = (
+				8F49643922EF9BA300BE5E4D /* Config */,
+				8F49649C22EF9D5800BE5E4D /* Dependencies */,
+				8F49644722EF9C0F00BE5E4D /* Info.plist */,
+				8F49644322EF9C0F00BE5E4D /* Products */,
+				8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */,
+				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
+				8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */,
+			);
+			sourceTree = "<group>";
+		};
+		8F49643922EF9BA300BE5E4D /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8F49643B22EF9BAB00BE5E4D /* Core.xcconfig */,
+				8F49643C22EF9BAB00BE5E4D /* CoreDebug.xcconfig */,
+				8F49643A22EF9BAB00BE5E4D /* CoreRelease.xcconfig */,
+				8F49643D22EF9BAB00BE5E4D /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+		8F49644322EF9C0F00BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49644C22EF9D0500BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */,
+				8F49645322EF9D0500BE5E4D /* libRenderCoreIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49645522EF9D0500BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49645A22EF9D0500BE5E4D /* libRenderCoreOGLESMac.a */,
+				8F49645C22EF9D0500BE5E4D /* libRenderCoreOGLESIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49645E22EF9D0500BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49646322EF9D0500BE5E4D /* libRenderCoreAppleMetalMac.a */,
+				8F49646522EF9D0500BE5E4D /* libRenderCoreAppleMetalIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49646722EF9D1300BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49646C22EF9D1300BE5E4D /* libConsoleRigMac.a */,
+				8F49646E22EF9D1300BE5E4D /* libConsoleRigIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49647022EF9D2200BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49647522EF9D2200BE5E4D /* libfreetype-mac.a */,
+				8F49647722EF9D2200BE5E4D /* libfreetype-ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49647922EF9D2C00BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49647E22EF9D2C00BE5E4D /* libAssetsMac.a */,
+				8F49648022EF9D2C00BE5E4D /* libAssetsIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49648222EF9D3500BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49648722EF9D3500BE5E4D /* libMathMac.a */,
+				8F49648922EF9D3500BE5E4D /* libMathIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49648B22EF9D4100BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49649022EF9D4100BE5E4D /* libUtilityMac.a */,
+				8F49649222EF9D4100BE5E4D /* libUtilityIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49649422EF9D5300BE5E4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */,
+				8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8F49649C22EF9D5800BE5E4D /* Dependencies */ = {
+			isa = PBXGroup;
+			children = (
+				8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */,
+				8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */,
+				8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */,
+				8F49648122EF9D3500BE5E4D /* Math.xcodeproj */,
+				8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */,
+				8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */,
+				8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */,
+				8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */,
+				8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */,
+			);
+			name = Dependencies;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac" */;
+			buildPhases = (
+				8F49643E22EF9C0F00BE5E4D /* Sources */,
+				8F49643F22EF9C0F00BE5E4D /* Frameworks */,
+				8F49644022EF9C0F00BE5E4D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8F49649E22EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964A022EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964A222EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964A422EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964A622EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964A822EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964AA22EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964AC22EF9D8E00BE5E4D /* PBXTargetDependency */,
+				8F4964AE22EF9D8E00BE5E4D /* PBXTargetDependency */,
+			);
+			name = XLEUnitTestsMac;
+			productName = XLEUnitTests;
+			productReference = 8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8F49642D22EF9B4600BE5E4D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				DefaultBuildSystemTypeForWorkspace = Original;
+				LastUpgradeCheck = 1030;
+				TargetAttributes = {
+					8F49644122EF9C0F00BE5E4D = {
+						CreatedOnToolsVersion = 10.3;
+					};
+				};
+			};
+			buildConfigurationList = 8F49643022EF9B4600BE5E4D /* Build configuration list for PBXProject "UnitTests" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 8F49642C22EF9B4600BE5E4D;
+			productRefGroup = 8F49644322EF9C0F00BE5E4D /* Products */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 8F49647922EF9D2C00BE5E4D /* Products */;
+					ProjectRef = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49646722EF9D1300BE5E4D /* Products */;
+					ProjectRef = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49647022EF9D2200BE5E4D /* Products */;
+					ProjectRef = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49648222EF9D3500BE5E4D /* Products */;
+					ProjectRef = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49644C22EF9D0500BE5E4D /* Products */;
+					ProjectRef = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49645E22EF9D0500BE5E4D /* Products */;
+					ProjectRef = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49645522EF9D0500BE5E4D /* Products */;
+					ProjectRef = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49648B22EF9D4100BE5E4D /* Products */;
+					ProjectRef = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+				},
+				{
+					ProductGroup = 8F49649422EF9D5300BE5E4D /* Products */;
+					ProjectRef = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreMac.a;
+			remoteRef = 8F49645022EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49645322EF9D0500BE5E4D /* libRenderCoreIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreIOS.a;
+			remoteRef = 8F49645222EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49645A22EF9D0500BE5E4D /* libRenderCoreOGLESMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreOGLESMac.a;
+			remoteRef = 8F49645922EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49645C22EF9D0500BE5E4D /* libRenderCoreOGLESIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreOGLESIOS.a;
+			remoteRef = 8F49645B22EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49646322EF9D0500BE5E4D /* libRenderCoreAppleMetalMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreAppleMetalMac.a;
+			remoteRef = 8F49646222EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49646522EF9D0500BE5E4D /* libRenderCoreAppleMetalIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRenderCoreAppleMetalIOS.a;
+			remoteRef = 8F49646422EF9D0500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49646C22EF9D1300BE5E4D /* libConsoleRigMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libConsoleRigMac.a;
+			remoteRef = 8F49646B22EF9D1300BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49646E22EF9D1300BE5E4D /* libConsoleRigIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libConsoleRigIOS.a;
+			remoteRef = 8F49646D22EF9D1300BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49647522EF9D2200BE5E4D /* libfreetype-mac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libfreetype-mac.a";
+			remoteRef = 8F49647422EF9D2200BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49647722EF9D2200BE5E4D /* libfreetype-ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libfreetype-ios.a";
+			remoteRef = 8F49647622EF9D2200BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49647E22EF9D2C00BE5E4D /* libAssetsMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libAssetsMac.a;
+			remoteRef = 8F49647D22EF9D2C00BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49648022EF9D2C00BE5E4D /* libAssetsIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libAssetsIOS.a;
+			remoteRef = 8F49647F22EF9D2C00BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49648722EF9D3500BE5E4D /* libMathMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libMathMac.a;
+			remoteRef = 8F49648622EF9D3500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49648922EF9D3500BE5E4D /* libMathIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libMathIOS.a;
+			remoteRef = 8F49648822EF9D3500BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49649022EF9D4100BE5E4D /* libUtilityMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libUtilityMac.a;
+			remoteRef = 8F49648F22EF9D4100BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49649222EF9D4100BE5E4D /* libUtilityIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libUtilityIOS.a;
+			remoteRef = 8F49649122EF9D4100BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libXLESubsetMac.a;
+			remoteRef = 8F49649822EF9D5300BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libXLESubsetIOS.a;
+			remoteRef = 8F49649A22EF9D5300BE5E4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8F49644022EF9C0F00BE5E4D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8F49643E22EF9C0F00BE5E4D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F4964BC22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm in Sources */,
+				8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8F49649E22EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = AssetsMac;
+			targetProxy = 8F49649D22EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964A022EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ConsoleRigMac;
+			targetProxy = 8F49649F22EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964A222EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "freetype-mac";
+			targetProxy = 8F4964A122EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964A422EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MathMac;
+			targetProxy = 8F4964A322EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964A622EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreAppleMetalMac;
+			targetProxy = 8F4964A522EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964A822EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreOGLESMac;
+			targetProxy = 8F4964A722EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964AA22EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreIOS;
+			targetProxy = 8F4964A922EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964AC22EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = UtilityMac;
+			targetProxy = 8F4964AB22EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+		8F4964AE22EF9D8E00BE5E4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = XLESubsetMac;
+			targetProxy = 8F4964AD22EF9D8E00BE5E4D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		8F49643122EF9B4600BE5E4D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F49643C22EF9BAB00BE5E4D /* CoreDebug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8F49643222EF9B4600BE5E4D /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F49643A22EF9BAB00BE5E4D /* CoreRelease.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		8F49644922EF9C0F00BE5E4D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		8F49644A22EF9C0F00BE5E4D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F49643022EF9B4600BE5E4D /* Build configuration list for PBXProject "UnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F49643122EF9B4600BE5E4D /* Debug */,
+				8F49643222EF9B4600BE5E4D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F49644922EF9C0F00BE5E4D /* Debug */,
+				8F49644A22EF9C0F00BE5E4D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8F49642D22EF9B4600BE5E4D /* Project object */;
+}

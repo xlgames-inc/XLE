@@ -7,10 +7,12 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
-#include <CppUnitTest.h>
 #include <random>
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+#if !defined(XC_TEST_ADAPTER)
+    #include <CppUnitTest.h>
+    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+#endif
 
 namespace UnitTests
 {

@@ -23,6 +23,8 @@
 		8F3A64BD22DFD32D00DA8E73 /* InputListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F3A64BA22DFD32D00DA8E73 /* InputListener.h */; };
 		8F3A64C522DFD44100DA8E73 /* Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F3A64C422DFD44100DA8E73 /* Stubs.cpp */; };
 		8F3A64C622DFD44100DA8E73 /* Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F3A64C422DFD44100DA8E73 /* Stubs.cpp */; };
+		8F4964C022EFAC0200BE5E4D /* format.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BF22EFAC0200BE5E4D /* format.cc */; };
+		8F4964C122EFAC0200BE5E4D /* format.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BF22EFAC0200BE5E4D /* format.cc */; };
 		8F4D188422BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
 		8F4D188522BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
 		8F4D188622BC1DFD00E48517 /* catch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188022BC1DFD00E48517 /* catch.cpp */; };
@@ -216,6 +218,7 @@
 		8F3A64B922DFD32D00DA8E73 /* InputListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = InputListener.cpp; path = ../../PlatformRig/InputListener.cpp; sourceTree = "<group>"; };
 		8F3A64BA22DFD32D00DA8E73 /* InputListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = InputListener.h; path = ../../PlatformRig/InputListener.h; sourceTree = "<group>"; };
 		8F3A64C422DFD44100DA8E73 /* Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Stubs.cpp; path = ../Stubs.cpp; sourceTree = "<group>"; };
+		8F4964BF22EFAC0200BE5E4D /* format.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = format.cc; path = ../../../Foreign/fmt/format.cc; sourceTree = "<group>"; };
 		8F4D187F22BC1DFD00E48517 /* containers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = containers.cpp; path = ../../../Foreign/cparse/containers.cpp; sourceTree = "<group>"; };
 		8F4D188022BC1DFD00E48517 /* catch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = catch.cpp; path = ../../../Foreign/cparse/catch.cpp; sourceTree = "<group>"; };
 		8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "shunting-yard.cpp"; path = "../../../Foreign/cparse/shunting-yard.cpp"; sourceTree = "<group>"; };
@@ -364,6 +367,14 @@
 				8F2DB6222017F894009F52AB /* LogUtil.h */,
 			);
 			name = ConsoleRig;
+			sourceTree = "<group>";
+		};
+		8F4964BE22EFABFA00BE5E4D /* fmt */ = {
+			isa = PBXGroup;
+			children = (
+				8F4964BF22EFAC0200BE5E4D /* format.cc */,
+			);
+			path = fmt;
 			sourceTree = "<group>";
 		};
 		8F4D187E22BC1DCC00E48517 /* cparse */ = {
@@ -528,6 +539,7 @@
 		8F707BDE1EA6CAB200DEC600 /* Foreign */ = {
 			isa = PBXGroup;
 			children = (
+				8F4964BE22EFABFA00BE5E4D /* fmt */,
 				8F4D187E22BC1DCC00E48517 /* cparse */,
 				8F707BDF1EA6CB0A00DEC600 /* Hash */,
 				8F9417BB1FDA01C000DADA27 /* Lua */,
@@ -787,6 +799,7 @@
 				8F94180E1FDA01DC00DADA27 /* lmem.c in Sources */,
 				8F3A647A22DFAA9B00DA8E73 /* PredefinedCBLayout.cpp in Sources */,
 				8F94184A1FDA01DC00DADA27 /* lopcodes.c in Sources */,
+				8F4964C022EFAC0200BE5E4D /* format.cc in Sources */,
 				8F707B811EA6C5D500DEC600 /* DualContour.cpp in Sources */,
 				8F9417F91FDA01DC00DADA27 /* ltm.c in Sources */,
 				8F9417FB1FDA01DC00DADA27 /* lbitlib.c in Sources */,
@@ -855,6 +868,7 @@
 				8F94180F1FDA01DC00DADA27 /* lmem.c in Sources */,
 				8F3A647C22DFAA9E00DA8E73 /* PredefinedCBLayout.cpp in Sources */,
 				8F94184B1FDA01DC00DADA27 /* lopcodes.c in Sources */,
+				8F4964C122EFAC0200BE5E4D /* format.cc in Sources */,
 				8FA3F73B1EDD157B003EF623 /* MurmurHash2.cpp in Sources */,
 				8F9417FA1FDA01DC00DADA27 /* ltm.c in Sources */,
 				8F9417FC1FDA01DC00DADA27 /* lbitlib.c in Sources */,
