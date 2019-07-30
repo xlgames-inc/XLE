@@ -38,7 +38,7 @@ namespace RenderCore { namespace Assets
             // Offsets according to the alignment rules for different shader languages
             unsigned _offsetsByLanguage[AlignmentRules_Max];
         };
-        std::vector<Element> _elements;		// note -- we hash this memory, so make this convenient, we should avoid having any pointers here
+        std::vector<Element> _elements;
         ParameterBox _defaults;
 
         std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters, ShaderLanguage lang) const;
@@ -49,8 +49,9 @@ namespace RenderCore { namespace Assets
 		// Reorder the given elements to try to find an ordering that will minimize the
 		// size of the final constant buffer. This accounts for ordering rules such as
 		// preventing vectors from crossing 16 byte boundaries.
-		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 1; };
-		static void OptimizeElementOrder(IteratorRange<NameAndType*> elements);
+		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 1; std::string _conditions = {}; };
+		static void OptimizeElementOrder(IteratorRange<NameAndType*> elements, ShaderLanguage lang);
+        std::vector<NameAndType> GetNamesAndTypes();
 
         uint64_t CalculateHash() const;
 

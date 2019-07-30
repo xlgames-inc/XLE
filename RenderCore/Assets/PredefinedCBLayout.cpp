@@ -452,12 +452,9 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static bool ParseStatement(PredefinedCBLayout& cbLayout, Tokenizer& streamIterator, unsigned cbIterator[PredefinedCBLayout::AlignmentRules_Max])
+    static PredefinedCBLayout::NameAndType ParseStatement(Tokenizer& streamIterator, ParameterBox& defaults)
     {
         auto type = streamIterator.GetNextToken();
-        if (type._value.IsEmpty())
-            return false;
-
         auto cond = streamIterator._preprocessorContext.GetCurrentConditionString();
 
         auto name = streamIterator.GetNextToken();
@@ -478,14 +475,12 @@ namespace RenderCore { namespace Assets
                 Throw(FormatException("Expecting closing array brace", token._start));
         }
 
-        PredefinedCBLayout::Element e;
-        e._name = name._value.AsString();
-        e._hash = ParameterBox::MakeParameterNameHash(e._name);
-        e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
-        e._type = ShaderLangTypeNameAsTypeDesc(type._value);
-        e._conditions = cond;
+        PredefinedCBLayout::NameAndType result;
+        result._name = name._value.AsString();
+        result._type = ShaderLangTypeNameAsTypeDesc(type._value);
+        result._conditions = cond;
 
-        auto size = e._type.GetSize();
+        auto size = result._type.GetSize();
         if (!size) {
             Throw(FormatException(
                 StringMeld<256>() << "Problem parsing type (" << type._value << ") in PredefinedCBLayout. Type size is: " << size,
@@ -496,12 +491,7 @@ namespace RenderCore { namespace Assets
         if (!arrayCount.IsEmpty()) {
             arrayElementCount = Conversion::Convert<unsigned>(arrayCount);
         }
-        e._arrayElementCount = arrayElementCount;
-
-        for (unsigned c=0; c<PredefinedCBLayout::AlignmentRules_Max; ++c)
-            e._offsetsByLanguage[c] = CalculateElementOffset(cbIterator[c], e._arrayElementStride, e._type, e._arrayElementCount, (PredefinedCBLayout::AlignmentRules)c);
-
-        cbLayout._elements.push_back(e);
+        result._arrayElementCount = arrayElementCount;
 
         if (XlEqString(streamIterator.PeekNextToken()._value, "=")) {
             auto equalsToken = streamIterator.GetNextToken();      // skip the one we peeked
@@ -527,16 +517,16 @@ namespace RenderCore { namespace Assets
                 MakeStringSection(value),
                 buffer0, dimof(buffer0));
 
-            if (!(defaultType == e._type)) {
+            if (!(defaultType == result._type)) {
                     //  The initialiser isn't exactly the same type as the
                     //  defined variable. Let's try a casting operation.
                     //  Sometimes we can get int defaults for floats variables, etc.
                 bool castSuccess = ImpliedTyping::Cast(
-                    MakeIteratorRange(buffer1), e._type,
+                    MakeIteratorRange(buffer1), result._type,
                     MakeIteratorRange(buffer0), defaultType);
                 if (castSuccess) {
                     auto* end = &buffer1[std::min(dimof(buffer1), (size_t)defaultType.GetSize())];
-                    cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), MakeIteratorRange(buffer1, end), e._type);
+                    defaults.SetParameter((const utf8*)result._name.c_str(), MakeIteratorRange(buffer1, end), result._type);
                 } else {
                     Throw(FormatException(
                         "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: ",
@@ -544,7 +534,7 @@ namespace RenderCore { namespace Assets
                 }
             } else {
                 auto* end = &buffer0[std::min(dimof(buffer0), (size_t)defaultType.GetSize())];
-                cbLayout._defaults.SetParameter((const utf8*)e._name.c_str(), MakeIteratorRange(buffer0, end), defaultType);
+                defaults.SetParameter((const utf8*)result._name.c_str(), MakeIteratorRange(buffer0, end), defaultType);
             }
         } else {
             auto token = streamIterator.GetNextToken();
@@ -552,15 +542,33 @@ namespace RenderCore { namespace Assets
                 Throw(FormatException("Expecting ';' to finish statement", token._start));
         }
 
-        return true;
+        return result;
+    }
+
+    static void AppendElement(PredefinedCBLayout& cbLayout, const PredefinedCBLayout::NameAndType& input, unsigned cbIterator[PredefinedCBLayout::AlignmentRules_Max])
+    {
+        PredefinedCBLayout::Element e;
+        e._name = input._name;
+        e._hash = ParameterBox::MakeParameterNameHash(e._name);
+        e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
+        e._type = input._type;
+        e._conditions = input._conditions;
+        e._arrayElementCount = input._arrayElementCount;
+        for (unsigned c=0; c<PredefinedCBLayout::AlignmentRules_Max; ++c)
+            e._offsetsByLanguage[c] = CalculateElementOffset(cbIterator[c], e._arrayElementStride, e._type, e._arrayElementCount, (PredefinedCBLayout::AlignmentRules)c);
+        cbLayout._elements.push_back(e);
     }
 
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
         Tokenizer si { source };
         unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
-        while (ParseStatement(*this, si, cbIterator)) {
-            /**/
+        for (;;) {
+            if (si.PeekNextToken()._value.IsEmpty())
+                break;
+
+            auto parsed = ParseStatement(si, _defaults);
+            AppendElement(*this, parsed, cbIterator);
         }
 
         for (unsigned c=0; c<dimof(cbIterator); ++c)
@@ -601,7 +609,15 @@ namespace RenderCore { namespace Assets
     
     uint64_t PredefinedCBLayout::CalculateHash() const
     {
-        return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
+        uint64_t result = DefaultSeed64;
+        for (const auto&e:_elements) {
+            // note -- we have to carefully hash only the elements that meaningfully effect the
+            //
+            result = HashCombine(e._hash64, result);
+            result = Hash64(&e._type, &e._arrayElementStride+1, result);
+            result = HashCombine(Hash64(e._conditions), result);
+        }
+        return result;
     }
     
     auto PredefinedCBLayout::MakeConstantBufferElements(ShaderLanguage lang) const -> std::vector<ConstantBufferElementDesc>
@@ -653,12 +669,98 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
+    PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements)
+    {
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
+
+        for (auto&e:elements)
+            AppendElement(*this, e, cbIterator);
+
+        for (unsigned c=0; c<dimof(cbIterator); ++c)
+            _cbSizeByLanguage[c] = CeilToMultiplePow2(cbIterator[c], 16);
+    }
+
     PredefinedCBLayout::PredefinedCBLayout()
     {
         for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
             _cbSizeByLanguage[c] = 0;
     }
+
     PredefinedCBLayout::~PredefinedCBLayout() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static PredefinedCBLayout::NameAndType* FindAlignmentGap(IteratorRange<PredefinedCBLayout::NameAndType*> elements, size_t requestSize)
+    {
+        // HLSL / GLSL implementation --
+
+        unsigned cbIterator = 0;
+
+        auto i = elements.begin();
+        for(;i!=elements.end(); ++i) {
+            auto newCBIterator = cbIterator;
+            if (FloorToMultiplePow2(newCBIterator, 16) != FloorToMultiplePow2(newCBIterator + std::min(16u, i->_type.GetSize()) - 1, 16)) {
+                newCBIterator = CeilToMultiplePow2(newCBIterator, 16);
+
+                auto paddingSpace = newCBIterator - cbIterator;
+                // If the paddingSpace equals or exceeds the space we're looking for, then let's use this space
+                // We return the current iterator, which means the space can be found immediately before this element
+                if (paddingSpace >= requestSize)
+                    return i;
+            }
+
+            auto eleSize = i->_type.GetSize();
+            auto arrayElementStride = (i->_arrayElementCount > 1) ? CeilToMultiplePow2(eleSize, 16) : eleSize;
+            if (i->_arrayElementCount != 0)
+                cbIterator += (i->_arrayElementCount - 1) * arrayElementStride + eleSize;
+        }
+
+        return i;
+    }
+
+    void PredefinedCBLayout::OptimizeElementOrder(IteratorRange<NameAndType*> elements, ShaderLanguage lang)
+    {
+        // Order optimization not implemented for MSL yet (only GLSL/HLSL, which use the same rules)
+        assert(lang != ShaderLanguage::MetalShaderLanguage);
+
+        // Optimize ordering in 2 steps:
+        //  1) order by type size (largest first) -- using a stable sort to maintain the original ordering as much as possible
+        //    2) move any elements that can be squeezed into gaps in earlier parts of the ordering
+        std::stable_sort(
+            elements.begin(), elements.end(),
+            [](const NameAndType& lhs, const NameAndType& rhs) {
+                if (lhs._arrayElementCount > rhs._arrayElementCount) return true;
+                if (lhs._arrayElementCount < rhs._arrayElementCount) return false;
+                return lhs._type.GetSize() > rhs._type.GetSize();
+            });
+
+        for (auto i=elements.begin(); i!=elements.end(); ++i) {
+            if (i->_arrayElementCount != 1 || i->_type.GetSize() >= 16) continue;
+
+            // Find the best gap to squeeze this into
+            // (note that since "elements" is ordered from largest to smallest, we will always
+            // find and occupy the large alignment gaps first)
+            auto insertionPoint = FindAlignmentGap(MakeIteratorRange(elements.begin(), i), i->_type.GetSize());
+            if (insertionPoint == i) continue;    // no better location found
+
+            // we can insert this object immediate before 'insertionPoint'. To do that, we should
+            // move all elements from i-1 up to (and including) insertionPoint forward on element
+            auto elementToInsert = *i;
+            for (auto i2=i; (i2-1)>=insertionPoint; i2--)
+                *i2 = *(i2-1);
+            *insertionPoint = elementToInsert;
+        }
+    }
+
+    auto PredefinedCBLayout::GetNamesAndTypes() -> std::vector<NameAndType>
+    {
+        std::vector<NameAndType> result;
+        result.reserve(_elements.size());
+        for (const auto&e:_elements) {
+            result.push_back(NameAndType{e._name, e._type, e._arrayElementCount, e._conditions});
+        }
+        return result;
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -724,7 +826,9 @@ namespace RenderCore { namespace Assets
 
             if (!currentLayout)
                 currentLayout = std::make_shared<PredefinedCBLayout>();
-            ParseStatement(*currentLayout, iterator, currentLayoutCBIterator);
+
+            auto parsed = ParseStatement(iterator, currentLayout->_defaults);
+            AppendElement(*currentLayout, parsed, currentLayoutCBIterator);
         }
 
         if (currentLayout) {
