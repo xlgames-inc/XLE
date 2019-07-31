@@ -11,6 +11,8 @@
 
 #define TEST_CLASS(X) class X
 #define TEST_METHOD(X) void X(XCTestCase* self)
+#define TEST_CLASS_INITIALIZE(X) void Init_##X()
+#define TEST_CLASS_CLEANUP(X) void Cleanup_##X()
 
 #define IsTrue(...) IsTrue_(self, __VA_ARGS__)
 #define AreEqual(...) AreEqual_(self, __VA_ARGS__)
