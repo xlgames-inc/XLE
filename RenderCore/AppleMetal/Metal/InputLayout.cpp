@@ -246,7 +246,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                         auto attributeLoc = matchingAttribute.attributeIndex;
                         desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
                         desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
-                        desc.attributes[attributeLoc].offset = e._alignedByteOffset;
+                        desc.attributes[attributeLoc].offset = alignedOffset;
 
                         // You will hit this assert if we attempt to bind the same attribute more
                         // than once
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     }
                 }
 
-                workingStride = alignedOffset + BitsPerPixel(e._nativeFormat);
+                workingStride = alignedOffset + BitsPerPixel(e._nativeFormat) / 8;
 
                 if (inputDataRate != ~unsigned(0x0) && e._instanceDataStepRate != inputDataRate)
                     Throw(std::runtime_error("Cannot create InputLayout because step rate not consistant across input slot"));

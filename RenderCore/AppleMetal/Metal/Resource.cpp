@@ -49,11 +49,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                 @autoreleasepool {
                     id<MTLBlitCommandEncoder> blitEncoder = [metalContext->GetCurrentCommandBuffer() blitCommandEncoder];
                     [blitEncoder synchronizeResource:_underlyingTexture.get()];
+                    [blitEncoder endEncoding];
                 }
             } else if (_underlyingBuffer && _underlyingBuffer.get().storageMode == MTLStorageModeManaged) {
                 @autoreleasepool {
                     id<MTLBlitCommandEncoder> blitEncoder = [metalContext->GetCurrentCommandBuffer() blitCommandEncoder];
                     [blitEncoder synchronizeResource:_underlyingBuffer.get()];
+                    [blitEncoder endEncoding];
                 }
             }
         #endif

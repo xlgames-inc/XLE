@@ -78,14 +78,16 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         inputLineNumber -= preambleLineCount;
 
-        auto m = sourceLineMarkers.end()-1;
-        while (m >= sourceLineMarkers.begin()) {
-            if (m->_processedSourceLine <= inputLineNumber)
-                return { m->_sourceName, unsigned(inputLineNumber - m->_processedSourceLine + m->_sourceLine) };
-            --m;
+        if (!sourceLineMarkers.empty()) {
+            auto m = sourceLineMarkers.end()-1;
+            while (m >= sourceLineMarkers.begin()) {
+                if (m->_processedSourceLine <= inputLineNumber)
+                    return { m->_sourceName, unsigned(inputLineNumber - m->_processedSourceLine + m->_sourceLine) };
+                --m;
+            }
         }
 
-        return {{}, 0};
+        return {{}, inputLineNumber};
     }
 
     static std::string TranslateErrorMsgs(
