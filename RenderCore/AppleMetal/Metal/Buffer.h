@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,
-                const void* initData = nullptr, size_t initDataSize = 0);
+                IteratorRange<const void*> initData);
         ~Buffer();
     };
 

@@ -21,8 +21,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
-                    const void* initData, size_t initDataSize)
-    : Resource(factory, desc, SubResourceInitData { {initData, PtrAdd(initData, initDataSize)}, {0u, 0u, 0u} })
+                    IteratorRange<const void*> initData)
+    : Resource(factory, desc, SubResourceInitData { initData, {0u, 0u, 0u} })
     {}
 
     Buffer::Buffer() {}
@@ -45,8 +45,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         return Buffer(
             factory,
             BuildDesc(BindFlag::VertexBuffer, data.size(), true),
-            data.begin(),
-            data.size());
+            data);
     }
     
     Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)

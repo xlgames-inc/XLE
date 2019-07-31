@@ -25,6 +25,12 @@
 		8F3A64C622DFD44100DA8E73 /* Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F3A64C422DFD44100DA8E73 /* Stubs.cpp */; };
 		8F4964C022EFAC0200BE5E4D /* format.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BF22EFAC0200BE5E4D /* format.cc */; };
 		8F4964C122EFAC0200BE5E4D /* format.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BF22EFAC0200BE5E4D /* format.cc */; };
+		8F4BFA5922F0EAE60049AE5E /* RenderPassUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA5722F0EAE60049AE5E /* RenderPassUtils.cpp */; };
+		8F4BFA5A22F0EAE60049AE5E /* RenderPassUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA5722F0EAE60049AE5E /* RenderPassUtils.cpp */; };
+		8F4BFA5B22F0EAE60049AE5E /* RenderPassUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4BFA5822F0EAE60049AE5E /* RenderPassUtils.h */; };
+		8F4BFA5E22F0EB550049AE5E /* ParsingContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA5C22F0EB540049AE5E /* ParsingContext.cpp */; };
+		8F4BFA5F22F0EB550049AE5E /* ParsingContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA5C22F0EB540049AE5E /* ParsingContext.cpp */; };
+		8F4BFA6022F0EB550049AE5E /* ParsingContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4BFA5D22F0EB550049AE5E /* ParsingContext.h */; };
 		8F4D188422BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
 		8F4D188522BC1DFD00E48517 /* containers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D187F22BC1DFD00E48517 /* containers.cpp */; };
 		8F4D188622BC1DFD00E48517 /* catch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D188022BC1DFD00E48517 /* catch.cpp */; };
@@ -219,6 +225,10 @@
 		8F3A64BA22DFD32D00DA8E73 /* InputListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = InputListener.h; path = ../../PlatformRig/InputListener.h; sourceTree = "<group>"; };
 		8F3A64C422DFD44100DA8E73 /* Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Stubs.cpp; path = ../Stubs.cpp; sourceTree = "<group>"; };
 		8F4964BF22EFAC0200BE5E4D /* format.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = format.cc; path = ../../../Foreign/fmt/format.cc; sourceTree = "<group>"; };
+		8F4BFA5722F0EAE60049AE5E /* RenderPassUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderPassUtils.cpp; path = ../../RenderCore/Techniques/RenderPassUtils.cpp; sourceTree = "<group>"; };
+		8F4BFA5822F0EAE60049AE5E /* RenderPassUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderPassUtils.h; path = ../../RenderCore/Techniques/RenderPassUtils.h; sourceTree = "<group>"; };
+		8F4BFA5C22F0EB540049AE5E /* ParsingContext.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ParsingContext.cpp; path = ../../RenderCore/Techniques/ParsingContext.cpp; sourceTree = "<group>"; };
+		8F4BFA5D22F0EB550049AE5E /* ParsingContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ParsingContext.h; path = ../../RenderCore/Techniques/ParsingContext.h; sourceTree = "<group>"; };
 		8F4D187F22BC1DFD00E48517 /* containers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = containers.cpp; path = ../../../Foreign/cparse/containers.cpp; sourceTree = "<group>"; };
 		8F4D188022BC1DFD00E48517 /* catch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = catch.cpp; path = ../../../Foreign/cparse/catch.cpp; sourceTree = "<group>"; };
 		8F4D188122BC1DFD00E48517 /* shunting-yard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "shunting-yard.cpp"; path = "../../../Foreign/cparse/shunting-yard.cpp"; sourceTree = "<group>"; };
@@ -527,11 +537,15 @@
 		8F707B8D1EA6C72D00DEC600 /* Techniques */ = {
 			isa = PBXGroup;
 			children = (
-				8FABD39A2191207000835E06 /* TechniqueUtils.cpp */,
-				8FABD39B2191207000835E06 /* TechniqueUtils.h */,
+				8F4BFA5C22F0EB540049AE5E /* ParsingContext.cpp */,
+				8F4BFA5D22F0EB550049AE5E /* ParsingContext.h */,
 				8F5DCB882023E5920022BA7E /* RenderPass.cpp */,
 				8F5DCB872023E5920022BA7E /* RenderPass.h */,
+				8F4BFA5722F0EAE60049AE5E /* RenderPassUtils.cpp */,
+				8F4BFA5822F0EAE60049AE5E /* RenderPassUtils.h */,
 				8F707BB21EA6C78400DEC600 /* RenderStateResolver.h */,
+				8FABD39A2191207000835E06 /* TechniqueUtils.cpp */,
+				8FABD39B2191207000835E06 /* TechniqueUtils.h */,
 			);
 			name = Techniques;
 			sourceTree = "<group>";
@@ -666,6 +680,7 @@
 				8F707B751EA6C59100DEC600 /* IOverlayContext_Forward.h in Headers */,
 				8F94182B1FDA01DC00DADA27 /* lctype.h in Headers */,
 				8F4D189D22BC1EC400E48517 /* catch.hpp in Headers */,
+				8F4BFA6022F0EB550049AE5E /* ParsingContext.h in Headers */,
 				8F94183C1FDA01DC00DADA27 /* lopcodes.h in Headers */,
 				8F9417FD1FDA01DC00DADA27 /* llimits.h in Headers */,
 				8F4D189922BC1EC400E48517 /* shunting-yard-exceptions.h in Headers */,
@@ -678,6 +693,7 @@
 				8F94181A1FDA01DC00DADA27 /* lparser.h in Headers */,
 				8F707B821EA6C5D500DEC600 /* DualContour.h in Headers */,
 				8F4D189C22BC1EC400E48517 /* functions.h in Headers */,
+				8F4BFA5B22F0EAE60049AE5E /* RenderPassUtils.h in Headers */,
 				8FABD39D2191207000835E06 /* TechniqueUtils.h in Headers */,
 				8F9418041FDA01DC00DADA27 /* lobject.h in Headers */,
 				8F4D189A22BC1EC400E48517 /* shunting-yard.h in Headers */,
@@ -853,6 +869,8 @@
 				8F94184F1FDA01DC00DADA27 /* lzio.c in Sources */,
 				8F9418011FDA01DC00DADA27 /* lmathlib.c in Sources */,
 				8F707C7D1EA6D25700DEC600 /* GeometryAlgorithm.cpp in Sources */,
+				8F4BFA5E22F0EB550049AE5E /* ParsingContext.cpp in Sources */,
+				8F4BFA5922F0EAE60049AE5E /* RenderPassUtils.cpp in Sources */,
 				8F707BAA1EA6C75C00DEC600 /* RawMaterial.cpp in Sources */,
 				8F707BE71EA6CB0A00DEC600 /* MurmurHash3.cpp in Sources */,
 			);
@@ -922,6 +940,8 @@
 				8F9418501FDA01DC00DADA27 /* lzio.c in Sources */,
 				8F9418021FDA01DC00DADA27 /* lmathlib.c in Sources */,
 				8FA3F7621EDD157B003EF623 /* FiniteResourceHeap.cpp in Sources */,
+				8F4BFA5F22F0EB550049AE5E /* ParsingContext.cpp in Sources */,
+				8F4BFA5A22F0EAE60049AE5E /* RenderPassUtils.cpp in Sources */,
 				8FA3F7641EDD157B003EF623 /* GenericGridPartitioning.cpp in Sources */,
 				8FA3F7661EDD157B003EF623 /* GenericQuadTree.cpp in Sources */,
 			);
