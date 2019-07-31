@@ -4,12 +4,15 @@
 
 #include "Device.h"
 #include "../IAnnotator.h"
+#include "../Init.h"
+#include "../../Utility/FunctionUtils.h"
 #include <assert.h>
 
 #include "Metal/IncludeAppleMetal.h"
 #include "Metal/Format.h"
 #include "Metal/DeviceContext.h" // for ObjectFactory
 #include "Metal/QueryPool.h"
+#include "Metal/Shader.h"
 #include <QuartzCore/CAMetalLayer.h>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
@@ -17,6 +20,8 @@
 #else
     #include <UIKit/UIView.h>
 #endif
+
+#pragma GCC diagnostic ignored "-Wunused-value"
 
 namespace RenderCore { namespace ImplAppleMetal
 {
@@ -191,8 +196,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
     {
-        assert(0);      // DavidJ -- unimplemented
-        return nullptr;
+        return Metal_AppleMetal::CreateLowLevelShaderCompiler(*this);
     }
 
     DeviceDesc Device::GetDesc()
@@ -276,6 +280,12 @@ namespace RenderCore { namespace ImplAppleMetal
         if (!underlyingDevice)
             return nullptr;
         return std::make_shared<Device>(underlyingDevice);
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::AppleMetal, &TryCreateDevice);
     }
 
 }}
