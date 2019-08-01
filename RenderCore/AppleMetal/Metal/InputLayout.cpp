@@ -251,6 +251,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                         // You will hit this assert if we attempt to bind the same attribute more
                         // than once
                         assert(std::find(boundAttributes.begin(), boundAttributes.end(), attributeLoc) == boundAttributes.end());
+                        boundAttributes.push_back((unsigned)attributeLoc);
                     }
                 }
 
