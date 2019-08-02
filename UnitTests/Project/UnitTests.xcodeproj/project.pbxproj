@@ -38,6 +38,7 @@
 		8F4BFA4422F0CD470049AE5E /* MetalUnitTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */; };
 		8F4BFA4822F0DA610049AE5E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA4722F0DA610049AE5E /* Cocoa.framework */; };
 		8F4BFA5622F0DD070049AE5E /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */; };
+		8F8573E622F2533B00175F69 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F8573E422F2533B00175F69 /* OpenGL.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -328,6 +329,7 @@
 		8F4BFA4C22F0DAB80049AE5E /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		8F4BFA4F22F0DAFF0049AE5E /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
 		8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		8F8573E422F2533B00175F69 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -353,6 +355,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F8573E622F2533B00175F69 /* OpenGL.framework in Frameworks */,
 				8F4BFA5622F0DD070049AE5E /* QuartzCore.framework in Frameworks */,
 				8F4BFA4822F0DA610049AE5E /* Cocoa.framework in Frameworks */,
 				8F4BFA4222F0CD1A0049AE5E /* Metal.framework in Frameworks */,
@@ -508,6 +511,7 @@
 		8F4BFA4022F0CD1A0049AE5E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				8F8573E422F2533B00175F69 /* OpenGL.framework */,
 				8F49159922F2292400869AB7 /* MetalKit.framework */,
 				8F49159722F20C5F00869AB7 /* Metal.framework */,
 				8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */,
