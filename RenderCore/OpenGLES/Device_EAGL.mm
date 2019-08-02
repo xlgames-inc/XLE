@@ -6,9 +6,11 @@
 #include "Metal/Format.h"
 #include "Metal/QueryPool.h"
 #include "Metal/Shader.h"
+#include "../Init.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <iostream>
@@ -17,6 +19,8 @@
 
 #include <OpenGLES/EAGL.h>
 #include <UIKit/UIView.h>
+
+#pragma GCC diagnostic ignored "-Wunused-value"
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -324,6 +328,12 @@ namespace RenderCore { namespace ImplOpenGLES
     render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
         return std::make_shared<DeviceOpenGLES>();
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::OpenGLES, &CreateDevice);
     }
 
 } }
