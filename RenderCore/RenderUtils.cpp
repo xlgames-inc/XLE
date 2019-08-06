@@ -66,6 +66,8 @@ namespace RenderCore
         // for enabled, 4 for disabled (and doesn't set METAL_DEBUG_MODE).
         if (debugErrorMode && atoi(debugErrorMode) != 4) {
             appleMetalAPIValidationEnabled = 1;
+        } else {
+            appleMetalAPIValidationEnabled = 0;
         }
     }
 
