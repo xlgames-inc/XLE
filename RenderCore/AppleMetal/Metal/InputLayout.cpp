@@ -525,11 +525,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             for (unsigned slot = 0; slot < interface._cbBindings.size(); ++slot) {
                 const auto& cbBinding = interface._cbBindings[slot];
 
-                // Skip binding if there are no elements (the interface may have non-contiguous bound slots; there's no need to keep track of them in the BoundUniforms)
-                if (cbBinding._elements.size() == 0) {
-                    continue;
-                }
-
                 // Skip if future binding should take precedence
                 if (HasCBBinding(MakeIteratorRange(&interfaces[s+1], &interfaces[streamCount]), cbBinding._hashName)) {
                     continue;
