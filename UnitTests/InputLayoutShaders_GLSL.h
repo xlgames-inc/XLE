@@ -11,13 +11,22 @@ namespace UnitTests
 
             #if __VERSION__ >= 300
                 #define ATTRIBUTE in     /** legacy **/
-                #define VARYING_IN in
-                #define VARYING_OUT out
+                #if defined(FRAGMENT_SHADER)
+                    #define VARYING in
+                #else
+                    #define VARYING out
+                #endif
             #else
                 #define ATTRIBUTE attribute     /** legacy **/
-                #define VARYING_IN varying
-                #define VARYING_OUT varying
+                #define VARYING varying
             #endif
+
+            int fakeMod(int lhs, int rhs)
+            {
+                // only valid for positive values
+                float A = float(lhs) / float(rhs);
+                return int((A - floor(A)) * float(rhs));
+            }
         )"
 
     #define InputVertexPC R"(
@@ -31,7 +40,11 @@ namespace UnitTests
         )"
 
     #define VaryingsC R"(
-            VARYING_OUT vec4 a_color;
+            VARYING vec4 a_color;
+        )"
+
+    #define VaryingsT R"(
+            VARYING vec2 a_texCoord;
         )"
 
     #define VaryingsBasic R"(
@@ -56,8 +69,8 @@ namespace UnitTests
         R"(
             void main()
             {
-                gl_Position.x = (position.x / 1024.0) *  2.0 - 1.0;
-                gl_Position.y = (position.y / 1024.0) * -2.0 + 1.0;
+                gl_Position.x = (position.x / 1024.0) * 2.0 - 1.0;
+                gl_Position.y = (position.y / 1024.0) * 2.0 - 1.0;
                 gl_Position.zw = vec2(0.0, 1.0);
                 a_color = color;
             }
@@ -74,8 +87,8 @@ namespace UnitTests
         R"(
             void main()
             {
-                gl_Position.x = ((position.x + instanceOffset.x) / 1024.0) *  2.0 - 1.0;
-                gl_Position.y = ((position.y + instanceOffset.y) / 1024.0) * -2.0 + 1.0;
+                gl_Position.x = ((position.x + instanceOffset.x) / 1024.0) * 2.0 - 1.0;
+                gl_Position.y = ((position.y + instanceOffset.y) / 1024.0) * 2.0 - 1.0;
                 gl_Position.zw = vec2(0.0, 1.0);
                 a_color = color;
             }
@@ -83,18 +96,44 @@ namespace UnitTests
 
     static const char vsText_FullViewport[] =
         GLSLPrefix
+        VaryingsT
         R"(
             void main()
             {
                 #if __VERSION__ >= 300
-                    gl_Position = vec4(
-                        (gl_VertexID&1)        ? -1.0 :  1.0,
-                        ((gl_VertexID>>1)&1)   ?  1.0 : -1.0,
-                        0.0, 1.0
-                    );
+                    int in_vertexID = gl_VertexID;
                 #else
-                    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+                    int in_vertexID = 0;
+                    #error Vertex Generator shaders not supported in this version of GLSL
                 #endif
+
+                a_texCoord = vec2(
+                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0f :  1.0f,
+                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0f :  1.0f);
+                gl_Position = vec4(
+                    a_texCoord.x *  2.0f + 1.0f,
+                    a_texCoord.y *  2.0f + 1.0f,
+                    0.0, 1.0
+                );
+            }
+        )";
+
+    static const char vsText_FullViewport2[] =
+        GLSLPrefix
+        VaryingsT
+        R"(
+            ATTRIBUTE float vertexID;
+            void main()
+            {
+                int in_vertexID = int(vertexID);
+                a_texCoord = vec2(
+                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0f :  1.0f,
+                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0f :  1.0f);
+                gl_Position = vec4(
+                    a_texCoord.x *  2.0f - 1.0f,
+                    a_texCoord.y *  2.0f - 1.0f,
+                    0.0, 1.0
+                );
             }
         )";
 
@@ -120,6 +159,17 @@ namespace UnitTests
             void main()
             {
                 gl_FragColor = vec4(Values.A, Values.B, Values.vA.x, Values.vA.y);
+            }
+        )";
+
+    static const char psText_TextureBinding[] = 
+        GLSLPrefix
+        VaryingsT
+        R"(
+            uniform sampler2D Texture;
+            void main()
+            {
+                gl_FragColor = texture2D(Texture, a_texCoord);
             }
         )";
 }

@@ -46,19 +46,41 @@
 }
 
 - (void)testBasicBinding_Uniforms {
-    _underlying->BasicBinding_Uniforms(self);
+    #if GFXAPI_TARGET != GFXAPI_OPENGLES
+        _underlying->BasicBinding_Uniforms(self);
+    #endif
+}
+
+- (void)testBasicBinding_TextureBinding {
+    _underlying->BasicBinding_TextureBinding(self);
 }
 
 //
-// DavidJ -- note -- these cases do not work currently
+// DavidJ -- note -- Apple Metal fails these test cases currently
 //
-//- (void)testBindAttributeToGeneratorShader {
-//    _underlying->BasicBinding_BindAttributeToGeneratorShader(self);
-//}
-//
-//- (void)testBasicBinding_BindMissingAttribute {
-//    _underlying->BasicBinding_BindMissingAttribute(self);
-//}
+- (void)testBindAttributeToGeneratorShader {
+    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL && GFXAPI_TARGET != GFXAPI_OPENGLES
+        _underlying->BasicBinding_BindAttributeToGeneratorShader(self);
+    #else
+        XCTFail(@"Not supported or failing on this GFX API");
+    #endif
+}
+
+- (void)testBasicBinding_BindMissingAttribute {
+    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
+        _underlying->BasicBinding_BindMissingAttribute(self);
+    #else
+        XCTFail(@"Not supported or failing on this GFX API");
+    #endif
+}
+
+- (void)testBasicBinding_IncorrectUniformBinding {
+    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
+        _underlying->BasicBinding_IncorrectUniformBinding(self);
+    #else
+        XCTFail(@"Not supported or failing on this GFX API");
+    #endif
+}
 
 @end
 

@@ -91,6 +91,12 @@ namespace UnitTests
         fixedColors[3], fixedColors[3], fixedColors[3], fixedColors[3], fixedColors[3], fixedColors[3]
     };
 
+    static RenderCore::InputElementDesc inputEleVIdx[] = {
+        RenderCore::InputElementDesc { "vertexID", 0, RenderCore::Format::R32_SINT }
+    };
+
+    static unsigned vertices_vIdx[] = { 0, 1, 2, 3 };
+
     struct Values
     {
         float A, B, C;
@@ -269,6 +275,7 @@ namespace UnitTests
 
             auto colorBreakdown = fbHelper.GetColorBreakdown();
             Assert::AreEqual(colorBreakdown._otherPixels, 0u);
+            (void)colorBreakdown;
 		}
 
         TEST_METHOD(BasicBinding_ShortForm)
@@ -311,6 +318,7 @@ namespace UnitTests
 
             auto colorBreakdown = fbHelper.GetColorBreakdown();
             Assert::AreEqual(colorBreakdown._otherPixels, 0u);
+            (void)colorBreakdown;
         }
 
         TEST_METHOD(BasicBinding_2VBs)
@@ -461,6 +469,7 @@ namespace UnitTests
             Assert::AreEqual(colorBreakdown._coloredPixels[2], boxesSize);
             Assert::AreEqual(colorBreakdown._coloredPixels[3], boxesSize);
             Assert::AreEqual(colorBreakdown._blackPixels, targetDesc._textureDesc._width * targetDesc._textureDesc._height - 4 * boxesSize);
+            (void)colorBreakdown;
         }
 
         TEST_METHOD(BasicBinding_BindAttributeToGeneratorShader)
@@ -589,6 +598,171 @@ namespace UnitTests
             Assert::AreEqual(colorBreakdown.size(), (size_t)1);
             Assert::AreEqual(colorBreakdown.begin()->first, 0xffccb219);
             Assert::AreEqual(colorBreakdown.begin()->second, targetDesc._textureDesc._width * targetDesc._textureDesc._height);
+        }
+
+        TEST_METHOD(BasicBinding_IncorrectUniformBinding)
+        {
+            // -------------------------------------------------------------------------------------
+            // Bind uniform buffers using the BoundUniforms interface with various error conditions
+            // (such as incorrect arrangement of uniform buffer elements, missing values, etc)
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_Uniforms);
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                "temporary-out");
+
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
+            metalContext.Bind(shaderProgram);
+
+            {
+                const ConstantBufferElementDesc ConstantBufferElementDesc_IncorrectBinding[] {
+                    ConstantBufferElementDesc { Hash64("A"), Format::R32_FLOAT, sizeof(Values) - sizeof(Values::A) - offsetof(Values, A) },
+                    ConstantBufferElementDesc { Hash64("B"), Format::R32_FLOAT, sizeof(Values) - sizeof(Values::A) - offsetof(Values, B) },
+                    ConstantBufferElementDesc { Hash64("C"), Format::R32_FLOAT, sizeof(Values) - sizeof(Values::A) - offsetof(Values, C) },
+                    ConstantBufferElementDesc { Hash64("vA"), Format::R32G32B32A32_FLOAT, sizeof(Values) - sizeof(Values::vA) - offsetof(Values, vA) }
+                };
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectBinding) });
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+                (void)uniforms;
+            }
+
+            {
+                const ConstantBufferElementDesc ConstantBufferElementDesc_MissingValues[] {
+                    RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32_FLOAT, offsetof(Values, A) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("vA"), RenderCore::Format::R32G32B32A32_FLOAT, offsetof(Values, vA) }
+                };
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_MissingValues) });
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+                (void)uniforms;
+            }
+
+            {
+                const ConstantBufferElementDesc ConstantBufferElementDesc_IncorrectFormats[] {
+                    RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, A) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("C"), RenderCore::Format::R8G8B8A8_UNORM, offsetof(Values, C) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("vA"), RenderCore::Format::R32G32B32_FLOAT, offsetof(Values, vA) }
+                };
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectFormats) });
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+                (void)uniforms;
+            }
+
+            {
+                const ConstantBufferElementDesc ConstantBufferElementDesc_OverlappingValues[] {
+                    RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, A) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("B"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, B) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("C"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, C) },
+                    RenderCore::ConstantBufferElementDesc { Hash64("vA"), RenderCore::Format::R32G32B32A32_FLOAT, offsetof(Values, vA) }
+                };
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_OverlappingValues) });
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+                (void)uniforms;
+            }
+
+            {
+                // missing CB binding
+                UniformsStreamInterface usi;
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+                (void)uniforms;
+            }
+
+            rpi = {};     // end RPI
+        }
+
+        TEST_METHOD(BasicBinding_TextureBinding)
+        {
+            // -------------------------------------------------------------------------------------
+            // Bind some geometry and bind a texture using the BoundUniforms interface
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_TextureBinding);
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                "temporary-out");
+
+            auto inputTextureDesc = CreateDesc(
+                BindFlag::ShaderResource, 0, GPUAccess::Read,
+                TextureDesc::Plain2D(16, 16, Format::R8G8B8A8_UNORM),
+                "input-tex");
+            std::vector<unsigned> initData;
+            for (unsigned y=0; y<16; ++y)
+                for (unsigned x=0; x<16; ++x)
+                    initData.push_back(((x+y)&1) ? 0xff7f7f7f : 0xffcfcfcf);
+            auto texResource = _testHelper->_device->CreateResource(
+                inputTextureDesc,
+                [&initData](SubResourceId subResId) {
+                    assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+                    return SubResourceInitData { MakeIteratorRange(initData) };
+                });
+
+            // -------------------------------------------------------------------------------------
+
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            {
+                auto vertexBuffer0 = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_vIdx));
+                Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
+                Assert::IsTrue(inputLayout.AllAttributesBound());
+                VertexBufferView vbvs[] = { vertexBuffer0.get() };
+                inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+
+                // NOTE -- special case in AppleMetal implementation -- the shader must be bound
+                // here first, before we get to the uniform binding
+                metalContext.Bind(shaderProgram);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Texture"));
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), texResource };
+                Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
+
+                UniformsStream uniformsStream;
+                const Metal::ShaderResourceView* srvs[] = { &srv };
+                const Metal::SamplerState* samplers[] = { &pointSampler };
+                uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
+                uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
+                uniforms.Apply(metalContext, 0, uniformsStream);
+
+                metalContext.Bind(Topology::TriangleStrip);
+                metalContext.Draw(4);
+            }
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            rpi = {};     // end RPI
+
+            // We're expecting the output texture to directly match the input, just scaled up by
+            // the dimensional difference. Since we're using point sampling, there should be no
+            // filtering applied
+            auto data = fbHelper._target->ReadBack(*threadContext);
+            assert(data.size() == (size_t)RenderCore::ByteCount(targetDesc));
+            auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
+
+            for (unsigned y=0; y<targetDesc._textureDesc._height; ++y)
+                for (unsigned x=0; x<targetDesc._textureDesc._width; ++x) {
+                    unsigned inputX = x * 16 / targetDesc._textureDesc._width;
+                    unsigned inputY = y * 16 / targetDesc._textureDesc._height;
+                    Assert::AreEqual(pixels[y*targetDesc._textureDesc._width+x], initData[inputY*16+inputX]);
+                }
         }
 
         // error cases we could try:
