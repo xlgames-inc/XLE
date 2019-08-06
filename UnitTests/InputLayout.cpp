@@ -765,6 +765,75 @@ namespace UnitTests
                 }
         }
 
+        TEST_METHOD(BasicBinding_TextureSampling)
+        {
+            // -------------------------------------------------------------------------------------
+            // Bind some geometry and sample a texture using a filtering sampler
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_TextureBinding);
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                "temporary-out");
+
+            auto inputTextureDesc = CreateDesc(
+                BindFlag::ShaderResource, 0, GPUAccess::Read,
+                TextureDesc::Plain2D(16, 16, Format::R8G8B8A8_UNORM),
+                "input-tex");
+            std::vector<unsigned> initData;
+            for (unsigned y=0; y<16; ++y)
+                for (unsigned x=0; x<16; ++x)
+                    initData.push_back(((x+y)&1) ? 0xff7f7f7f : 0xffcfcfcf);
+            auto texResource = _testHelper->_device->CreateResource(
+                inputTextureDesc,
+                [&initData](SubResourceId subResId) {
+                    assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+                    return SubResourceInitData { MakeIteratorRange(initData) };
+                });
+
+            // -------------------------------------------------------------------------------------
+
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            {
+                auto vertexBuffer0 = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_vIdx));
+                Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
+                Assert::IsTrue(inputLayout.AllAttributesBound());
+                VertexBufferView vbvs[] = { vertexBuffer0.get() };
+                inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+
+                metalContext.Bind(shaderProgram);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Texture"));
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), texResource };
+                Metal::SamplerState linearSampler { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
+
+                UniformsStream uniformsStream;
+                const Metal::ShaderResourceView* srvs[] = { &srv };
+                const Metal::SamplerState* samplers[] = { &linearSampler };
+                uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
+                uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
+                uniforms.Apply(metalContext, 0, uniformsStream);
+
+                metalContext.Bind(Topology::TriangleStrip);
+                metalContext.Draw(4);
+            }
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            rpi = {};     // end RPI
+
+            auto breakdown = fbHelper.GetFullColorBreakdown();
+            Assert::IsTrue(breakdown.size() > 2);       // if filtering is working, we will get a large variety of colors
+        }
+
         // error cases we could try:
         //      * not binding all attributes
         //      * refering to a vertex buffer in the InputElementDesc, and then not providing it

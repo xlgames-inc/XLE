@@ -55,6 +55,10 @@
     _underlying->BasicBinding_TextureBinding(self);
 }
 
+- (void)testBasicBinding_TextureSampling {
+    _underlying->BasicBinding_TextureSampling(self);
+}
+
 //
 // DavidJ -- note -- Apple Metal fails these test cases currently
 //
