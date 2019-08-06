@@ -45,6 +45,21 @@
     _underlying->BasicBinding_DataRate(self);
 }
 
+- (void)testBasicBinding_Uniforms {
+    _underlying->BasicBinding_Uniforms(self);
+}
+
+//
+// DavidJ -- note -- these cases do not work currently
+//
+//- (void)testBindAttributeToGeneratorShader {
+//    _underlying->BasicBinding_BindAttributeToGeneratorShader(self);
+//}
+//
+//- (void)testBasicBinding_BindMissingAttribute {
+//    _underlying->BasicBinding_BindMissingAttribute(self);
+//}
+
 @end
 
 #include "../RenderCore/OpenGLES/Metal/GLWrappers.h"
