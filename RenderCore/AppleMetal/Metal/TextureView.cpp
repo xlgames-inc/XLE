@@ -17,16 +17,13 @@ namespace RenderCore { namespace Metal_AppleMetal
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, const IResourcePtr& resource, const TextureViewDesc& window)
-    {
-        assert(0);
-    }
-
-    ShaderResourceView::ShaderResourceView(const IResourcePtr& resource, const TextureViewDesc& window)
-    : _resource(AsResource(resource)),
-    _window(window)
+    : _resource(AsResource(resource)), _window(window)
     {
         _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount > 1;
     }
+
+    ShaderResourceView::ShaderResourceView(const IResourcePtr& resource, const TextureViewDesc& window)
+    : ShaderResourceView(GetObjectFactory(), resource, window) {}
 
     ShaderResourceView::ShaderResourceView()
     : _hasMipMaps(false)
