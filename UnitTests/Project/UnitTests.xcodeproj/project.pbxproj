@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
+		8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F49155922F20AB000869AB7 /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
 		8F49155A22F20AB000869AB7 /* MetalUnitTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */; };
 		8F49155B22F20AB000869AB7 /* Wrapper_InputLayout.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */; };
@@ -297,6 +299,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_QueryPool.mm; path = ../Wrapper_QueryPool.mm; sourceTree = "<group>"; };
 		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsIOS.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = XLEUnitTestsIOS.plist; path = /Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS.plist; sourceTree = "<absolute>"; };
 		8F49158E22F20C0D00869AB7 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.4.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
@@ -322,7 +325,7 @@
 		8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = XCTestAdapter.h; path = ../XCTestAdapter.h; sourceTree = "<group>"; };
 		8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_InputLayout.mm; path = ../Wrapper_InputLayout.mm; sourceTree = "<group>"; };
 		8F4BFA4122F0CD1A0049AE5E /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
-		8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MetalUnitTest.cpp; path = ../MetalUnitTest.cpp; sourceTree = "<group>"; };
+		8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = MetalUnitTest.cpp; path = ../MetalUnitTest.cpp; sourceTree = "<group>"; };
 		8F4BFA4522F0DA330049AE5E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		8F4BFA4722F0DA610049AE5E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		8F4BFA4A22F0DA8C0049AE5E /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -386,6 +389,7 @@
 				8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */,
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
 				8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */,
+				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
 				8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */,
 				8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */,
 			);
@@ -806,6 +810,7 @@
 				8F49155A22F20AB000869AB7 /* MetalUnitTest.cpp in Sources */,
 				8F49155B22F20AB000869AB7 /* Wrapper_InputLayout.mm in Sources */,
 				8F49155C22F20AB000869AB7 /* Wrapper_BasicMath.mm in Sources */,
+				8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -817,6 +822,7 @@
 				8F4BFA4422F0CD470049AE5E /* MetalUnitTest.cpp in Sources */,
 				8F4BFA3622F0CB310049AE5E /* Wrapper_InputLayout.mm in Sources */,
 				8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */,
+				8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -62,6 +62,23 @@ namespace UnitTests
             }
         )";
 
+    static const char vsText_clipInputTransform[] = 
+        GLSLPrefix
+        InputVertexPC
+        VaryingsC
+        R"(
+            uniform struct
+            {
+                mat4 inputToClip;
+            } Transform;
+
+            void main()
+            {
+                gl_Position = transpose(Transform.inputToClip) * position;
+                a_color = color;
+            }
+        )";
+
     static const char vsText[] = 
         GLSLPrefix
         InputVertexPI2C

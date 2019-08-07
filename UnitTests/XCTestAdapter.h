@@ -16,6 +16,7 @@
 
 #define IsTrue(...) IsTrue_(self, __VA_ARGS__)
 #define AreEqual(...) AreEqual_(self, __VA_ARGS__)
+#define AreNotEqual(...) AreNotEqual_(self, __VA_ARGS__)
 
 namespace Assert
 {
@@ -51,5 +52,29 @@ namespace Assert
         static void AreEqual_(XCTestCase* self, Type lhs, Type rhs, Type tolerance, const wchar_t msg[])
     {
         XCTAssertEqualWithAccuracy(lhs, rhs, tolerance);
+    }
+
+    template<typename Type>
+        static void AreNotEqual_(XCTestCase* self, Type lhs, Type rhs)
+    {
+        XCTAssertNotEqual(lhs, rhs);
+    }
+
+    template<typename Type>
+        static void AreNotEqual_(XCTestCase* self, Type lhs, Type rhs, const wchar_t msg[])
+    {
+        XCTAssertNotEqual(lhs, rhs);
+    }
+
+    template<typename Type>
+        static void AreNotEqual_(XCTestCase* self, Type lhs, Type rhs, Type tolerance)
+    {
+        XCTAssertNotEqualWithAccuracy(lhs, rhs, tolerance);
+    }
+
+    template<typename Type>
+        static void AreNotEqual_(XCTestCase* self, Type lhs, Type rhs, Type tolerance, const wchar_t msg[])
+    {
+        XCTAssertNotEqualWithAccuracy(lhs, rhs, tolerance);
     }
 }

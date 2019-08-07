@@ -56,6 +56,24 @@ namespace UnitTests
             }
         )";
 
+    static const char vsText_clipInputTransform[] =
+        InputVertexPC
+        VaryingsC
+        R"(
+            struct TransformStruct
+            {
+                metal::float4x4 inputToClip;
+            };
+            
+            vertex RasterizerData vertexShader(AAPLVertex v_in [[stage_in]], constant TransformStruct* Transform [[buffer(1)]])
+            {
+                RasterizerData out;
+                out.clipSpacePosition = transpose(Transform->inputToClip) * v_in.position;
+                out.color = v_in.color;
+                return out;
+            }
+        )";
+
     static const char vsText[] =
         InputVertexPI2C
         VaryingsC
