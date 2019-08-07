@@ -441,7 +441,10 @@ namespace RenderCore
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
             auto& services = ConsoleRig::CrossModule::GetInstance()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
-                auto newMiniHeap = std::make_shared<MiniHeap>();
+                MiniHeap** storedPtr = &MainHeap;
+                auto newMiniHeap = std::shared_ptr<MiniHeap>(
+                    new MiniHeap,
+                    [storedPtr](MiniHeap* heap) { assert(heap == *storedPtr); delete heap; *storedPtr = nullptr; });
                 services.Add(Fn_GetStorage,
                     [newMiniHeap]() { return newMiniHeap.get(); });
                 MainHeap = newMiniHeap.get();
