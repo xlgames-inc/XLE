@@ -7,26 +7,26 @@
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
-    auto QueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
+    auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
     { 
         return QueryId_Invalid; 
     }
 
-    auto QueryPool::BeginFrame(DeviceContext& context) -> FrameId
+    auto TimeStampQueryPool::BeginFrame(DeviceContext& context) -> FrameId
     { 
         return FrameId_Invalid;
     }
 
-    void QueryPool::EndFrame(DeviceContext& context, FrameId frame)
+    void TimeStampQueryPool::EndFrame(DeviceContext& context, FrameId frame)
     {}
 
-    auto QueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
+    auto TimeStampQueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
     {
         return FrameResults { false, false, nullptr, nullptr, 0ull };
     }
 
-    QueryPool::QueryPool(ObjectFactory& factory) {}
-    QueryPool::~QueryPool() {}
+    TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory) {}
+    TimeStampQueryPool::~TimeStampQueryPool() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 	class DeviceContext;
 	class ObjectFactory;
 
-	class QueryPool
+	class TimeStampQueryPool
 	{
 	public:
 		using QueryId = unsigned;
@@ -43,8 +43,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 		};
 		FrameResults GetFrameResults(DeviceContext& context, FrameId id);
 
-		QueryPool(ObjectFactory& factory);
-		~QueryPool();
+		TimeStampQueryPool(ObjectFactory& factory);
+		~TimeStampQueryPool();
 	private:
 	};
 
