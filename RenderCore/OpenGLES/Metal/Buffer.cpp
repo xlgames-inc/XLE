@@ -15,21 +15,27 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
-        auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
-        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
+        if (GetBuffer()) {
+            auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
+            glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
 
-        #if !APPORTABLE
-            if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
-                auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-                if (flags & UpdateFlags::UnsynchronizedWrite)
-                    glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
-                void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
-                std::memcpy(mappedData, data, dataSize);
-                glUnmapBuffer(bindTarget);
-            } else
-		#endif
-        {
-            glBufferSubData(bindTarget, 0, dataSize, data);
+            #if !APPORTABLE
+                if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
+                    auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+                    if (flags & UpdateFlags::UnsynchronizedWrite)
+                        glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
+                    void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
+                    std::memcpy(mappedData, data, dataSize);
+                    glUnmapBuffer(bindTarget);
+                } else
+            #endif
+            {
+                glBufferSubData(bindTarget, 0, dataSize, data);
+            }
+        } else {
+            auto size = std::min(ptrdiff_t(_constantBuffer.size()) - ptrdiff_t(writeOffset), ptrdiff_t(dataSize));
+            if (size > 0)
+                std::copy((const uint8_t*)data, (const uint8_t*)data + size, _constantBuffer.begin() + writeOffset);
         }
     }
 

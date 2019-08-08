@@ -16,11 +16,11 @@
 @end
 
 @implementation UnitTests_QueryPool {
-    std::unique_ptr<UnitTests::InputLayout> _underlying;
+    std::unique_ptr<UnitTests::QueryPool> _underlying;
 }
 
 - (void)setUp {
-    _underlying = std::make_unique<UnitTests::InputLayout>();
+    _underlying = std::make_unique<UnitTests::QueryPool>();
     _underlying->Init_Startup();
 }
 

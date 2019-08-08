@@ -222,7 +222,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             if ((desc._bindFlags & BindFlag::ConstantBuffer) && !supportsUniformBuffers) {
                 // If we request a constant buffer on a device that doesn't support uniform
                 // buffers; we just use a basic data array.
-                _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
+                auto size = std::min(initData._data.size(), (size_t)desc._linearBufferDesc._sizeInBytes);
+                _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.begin() + size);
+                if (size < desc._linearBufferDesc._sizeInBytes)
+                    _constantBuffer.resize(desc._linearBufferDesc._sizeInBytes, 0);
             } else {
                 _underlyingBuffer = factory.CreateBuffer();
                 assert(_underlyingBuffer->AsRawGLHandle() != 0); // "Failed to allocate buffer name in Magnesium::Buffer::Buffer");

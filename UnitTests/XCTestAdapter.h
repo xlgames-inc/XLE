@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <exception>
+#include <functional>
+
 #define XC_TEST_ADAPTER
 
 #define TEST_CLASS(X) class X
@@ -17,6 +20,18 @@
 #define IsTrue(...) IsTrue_(self, __VA_ARGS__)
 #define AreEqual(...) AreEqual_(self, __VA_ARGS__)
 #define AreNotEqual(...) AreNotEqual_(self, __VA_ARGS__)
+#define ThrowsException(...) ThrowsException_(self, __VA_ARGS__)
+
+@interface NSException (ForCppException)
+@end
+
+@implementation NSException (ForCppException)
+- (id)initWithCppException:(const std::exception&)cppException
+{
+    NSString* description = [NSString stringWithUTF8String:cppException.what()];
+    return [self initWithName:@"cppException" reason:description userInfo:nil];
+}
+@end
 
 namespace Assert
 {
@@ -76,5 +91,21 @@ namespace Assert
         static void AreNotEqual_(XCTestCase* self, Type lhs, Type rhs, Type tolerance, const wchar_t msg[])
     {
         XCTAssertNotEqualWithAccuracy(lhs, rhs, tolerance);
+    }
+
+    static void ThrowsException_(XCTestCase* self, const std::function<void()>& fn)
+    {
+        auto wrappedBlock = ^{
+            try
+            {
+                fn();
+            }
+            catch(const std::exception& e)
+            {
+                @throw [[NSException alloc] initWithCppException:e];
+            }
+        };
+
+        XCTAssertThrows(wrappedBlock());
     }
 }

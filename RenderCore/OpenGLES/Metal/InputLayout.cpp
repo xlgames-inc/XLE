@@ -490,7 +490,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         // have to spend so much time searching through for the right bindings
         for (const auto&cb:_cbs) {
             if (cb._stream != streamIdx) continue;
-            assert(cb._slot < stream._constantBuffers.size());
+
+            #if defined(_DEBUG)
+                if (cb._slot >= stream._constantBuffers.size())
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%u). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", cb._slot, cb._stream, stream._constantBuffers.size()));
+            #endif
+
             assert(!cb._commandGroup._commands.empty());
 
             const auto& cbv = stream._constantBuffers[cb._slot];
@@ -522,7 +527,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         for (const auto&srv:_srvs) {
             if (srv._stream != streamIdx) continue;
-            assert(srv._slot < stream._resources.size());
+
+            #if defined(_DEBUG)
+                if (srv._slot >= stream._resources.size())
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%u). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", srv._slot, srv._stream, stream._resources.size()));
+            #endif
+
             const auto& res = *(ShaderResourceView*)stream._resources[srv._slot];
             const auto& sampler = *(SamplerState*)stream._samplers[srv._slot];
 

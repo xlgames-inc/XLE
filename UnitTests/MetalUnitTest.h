@@ -77,12 +77,12 @@ namespace UnitTests
             }
         }
 
-        RenderCore::Techniques::RenderPassInstance BeginRenderPass()
+        RenderCore::Techniques::RenderPassInstance BeginRenderPass(RenderCore::LoadStore loadStore = RenderCore::LoadStore::Clear)
         {
             auto targetDesc = _target->GetDesc();
             RenderCore::Metal::DeviceContext::Get(*_threadContext)->Bind(
                 RenderCore::Metal::ViewportDesc{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height });
-            return RenderCore::Techniques::RenderPassToPresentationTarget(*_threadContext, _target, _parsingContext, RenderCore::LoadStore::Clear);
+            return RenderCore::Techniques::RenderPassToPresentationTarget(*_threadContext, _target, _parsingContext, loadStore);
         }
 
         std::map<unsigned, unsigned> GetFullColorBreakdown()

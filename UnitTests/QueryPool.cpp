@@ -69,7 +69,7 @@ namespace UnitTests
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    C O D E
 
-    TEST_CLASS(InputLayout)
+    TEST_CLASS(QueryPool)
 	{
 	public:
 		std::unique_ptr<MetalTestHelper> _testHelper;
@@ -189,7 +189,6 @@ namespace UnitTests
             }
             ////////////////////////////////////////////////////////////////////////////////////////
 		}
-
 
         TEST_METHOD(QueryPool_SyncEventSet)
         {

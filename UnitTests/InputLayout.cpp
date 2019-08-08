@@ -520,7 +520,7 @@ namespace UnitTests
             Assert::AreEqual(colorBreakdown.begin()->second, targetDesc._textureDesc._width * targetDesc._textureDesc._height);
         }
 
-        TEST_METHOD(BasicBinding_IncorrectUniformBinding)
+        TEST_METHOD(BasicBinding_IncorrectUSI)
         {
             // -------------------------------------------------------------------------------------
             // Bind uniform buffers using the BoundUniforms interface with various error conditions
@@ -541,6 +541,7 @@ namespace UnitTests
             metalContext.Bind(shaderProgram);
 
             {
+                // incorrect arrangement of constant buffer elements
                 const ConstantBufferElementDesc ConstantBufferElementDesc_IncorrectBinding[] {
                     ConstantBufferElementDesc { Hash64("A"), Format::R32_FLOAT, sizeof(Values) - sizeof(Values::A) - offsetof(Values, A) },
                     ConstantBufferElementDesc { Hash64("B"), Format::R32_FLOAT, sizeof(Values) - sizeof(Values::A) - offsetof(Values, B) },
@@ -555,6 +556,7 @@ namespace UnitTests
             }
 
             {
+                // some missing constant buffer elements
                 const ConstantBufferElementDesc ConstantBufferElementDesc_MissingValues[] {
                     RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32_FLOAT, offsetof(Values, A) },
                     RenderCore::ConstantBufferElementDesc { Hash64("vA"), RenderCore::Format::R32G32B32A32_FLOAT, offsetof(Values, vA) }
@@ -567,6 +569,7 @@ namespace UnitTests
             }
 
             {
+                // Incorrect formats of elements within the constant buffer
                 const ConstantBufferElementDesc ConstantBufferElementDesc_IncorrectFormats[] {
                     RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, A) },
                     RenderCore::ConstantBufferElementDesc { Hash64("C"), RenderCore::Format::R8G8B8A8_UNORM, offsetof(Values, C) },
@@ -580,6 +583,7 @@ namespace UnitTests
             }
 
             {
+                // overlapping values in the constant buffer elements
                 const ConstantBufferElementDesc ConstantBufferElementDesc_OverlappingValues[] {
                     RenderCore::ConstantBufferElementDesc { Hash64("A"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, A) },
                     RenderCore::ConstantBufferElementDesc { Hash64("B"), RenderCore::Format::R32G32_FLOAT, offsetof(Values, B) },
@@ -603,6 +607,123 @@ namespace UnitTests
             rpi = {};     // end RPI
         }
 
+        class TestTexture
+        {
+        public:
+            RenderCore::ResourceDesc _resDesc;
+            std::vector<unsigned> _initData;
+            std::shared_ptr<RenderCore::IResource> _res;
+
+            TestTexture(RenderCore::IDevice& device)
+            {
+                using namespace RenderCore;
+                _resDesc = CreateDesc(
+                    BindFlag::ShaderResource, 0, GPUAccess::Read,
+                    TextureDesc::Plain2D(16, 16, Format::R8G8B8A8_UNORM),
+                    "input-tex");
+                for (unsigned y=0; y<16; ++y)
+                    for (unsigned x=0; x<16; ++x)
+                        _initData.push_back(((x+y)&1) ? 0xff7f7f7f : 0xffcfcfcf);
+                _res = device.CreateResource(
+                    _resDesc,
+                    [this](SubResourceId subResId) {
+                        assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+                        return SubResourceInitData { MakeIteratorRange(_initData) };
+                    });
+            }
+        };
+
+        TEST_METHOD(BasicBinding_IncorrectUniformsStream)
+        {
+            // -------------------------------------------------------------------------------------
+            // Bind uniform buffers using the BoundUniforms interface with various error conditions
+            // But this time, the errors are in the UniformsStream object passed to the Apply method
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto shaderProgramCB = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_Uniforms);
+            auto shaderProgramSRV = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_TextureBinding);
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                "temporary-out");
+
+            TestTexture testTexture(*_testHelper->_device);
+
+            // -------------------------------------------------------------------------------------
+
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
+            {
+                // Shader takes a CB called "Values", but we will incorrectly attempt to bind
+                // a shader resource there (and not bind the CB)
+                metalContext.Bind(shaderProgramCB);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Values"));
+                Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+                
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
+                Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
+
+                UniformsStream uniformsStream;
+                const Metal::ShaderResourceView* srvs[] = { &srv };
+                const Metal::SamplerState* samplers[] = { &pointSampler };
+                uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
+                uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
+                uniforms.Apply(metalContext, 0, uniformsStream);                
+            }
+
+            {
+                // Shader takes a SRV called "Texture", but we will incorrectly attempt to bind
+                // a constant buffer there (and not bind the SRV)
+                metalContext.Bind(shaderProgramSRV);
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, {Hash64("Texture")});
+                Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+                
+                ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
+                UniformsStream uniformsStream;
+                uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
+                uniforms.Apply(metalContext, 0, uniformsStream);                
+            }
+
+            {
+                // Shader takes a CB called "Values", we will promise to bind it, but then not
+                // actually include it into the UniformsStream
+                metalContext.Bind(shaderProgramCB);
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
+                Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+
+                Assert::ThrowsException(
+                    [&]() {
+                        uniforms.Apply(metalContext, 0, UniformsStream {});
+                    });
+            }
+
+            {
+                // Shader takes a SRV called "Texture", we will promise to bind it, but then not
+                // actually include it into the UniformsStream
+                metalContext.Bind(shaderProgramSRV);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Texture"));
+                Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+
+                Assert::ThrowsException(
+                    [&]() {
+                        uniforms.Apply(metalContext, 0, UniformsStream {});
+                    });
+            }
+
+            rpi = {};     // end RPI
+        }
+
         TEST_METHOD(BasicBinding_TextureBinding)
         {
             // -------------------------------------------------------------------------------------
@@ -616,20 +737,7 @@ namespace UnitTests
                 TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
                 "temporary-out");
 
-            auto inputTextureDesc = CreateDesc(
-                BindFlag::ShaderResource, 0, GPUAccess::Read,
-                TextureDesc::Plain2D(16, 16, Format::R8G8B8A8_UNORM),
-                "input-tex");
-            std::vector<unsigned> initData;
-            for (unsigned y=0; y<16; ++y)
-                for (unsigned x=0; x<16; ++x)
-                    initData.push_back(((x+y)&1) ? 0xff7f7f7f : 0xffcfcfcf);
-            auto texResource = _testHelper->_device->CreateResource(
-                inputTextureDesc,
-                [&initData](SubResourceId subResId) {
-                    assert(subResId._mip == 0 && subResId._arrayLayer == 0);
-                    return SubResourceInitData { MakeIteratorRange(initData) };
-                });
+            TestTexture testTexture(*_testHelper->_device);
 
             // -------------------------------------------------------------------------------------
 
@@ -653,7 +761,7 @@ namespace UnitTests
                 usi.BindShaderResource(0, Hash64("Texture"));
                 Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
 
-                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), texResource };
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
                 Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
 
                 UniformsStream uniformsStream;
@@ -681,7 +789,7 @@ namespace UnitTests
                 for (unsigned x=0; x<targetDesc._textureDesc._width; ++x) {
                     unsigned inputX = x * 16 / targetDesc._textureDesc._width;
                     unsigned inputY = y * 16 / targetDesc._textureDesc._height;
-                    Assert::AreEqual(pixels[y*targetDesc._textureDesc._width+x], initData[inputY*16+inputX]);
+                    Assert::AreEqual(pixels[y*targetDesc._textureDesc._width+x], testTexture._initData[inputY*16+inputX]);
                 }
         }
 
@@ -698,20 +806,7 @@ namespace UnitTests
                 TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
                 "temporary-out");
 
-            auto inputTextureDesc = CreateDesc(
-                BindFlag::ShaderResource, 0, GPUAccess::Read,
-                TextureDesc::Plain2D(16, 16, Format::R8G8B8A8_UNORM),
-                "input-tex");
-            std::vector<unsigned> initData;
-            for (unsigned y=0; y<16; ++y)
-                for (unsigned x=0; x<16; ++x)
-                    initData.push_back(((x+y)&1) ? 0xff7f7f7f : 0xffcfcfcf);
-            auto texResource = _testHelper->_device->CreateResource(
-                inputTextureDesc,
-                [&initData](SubResourceId subResId) {
-                    assert(subResId._mip == 0 && subResId._arrayLayer == 0);
-                    return SubResourceInitData { MakeIteratorRange(initData) };
-                });
+            TestTexture testTexture(*_testHelper->_device);
 
             // -------------------------------------------------------------------------------------
 
@@ -733,7 +828,7 @@ namespace UnitTests
                 usi.BindShaderResource(0, Hash64("Texture"));
                 Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
 
-                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), texResource };
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
                 Metal::SamplerState linearSampler { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
 
                 UniformsStream uniformsStream;

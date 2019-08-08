@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */; };
 		8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F49155922F20AB000869AB7 /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
@@ -299,6 +300,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_ResourceUpdateAndReadBack.mm; path = ../Wrapper_ResourceUpdateAndReadBack.mm; sourceTree = "<group>"; };
 		8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_QueryPool.mm; path = ../Wrapper_QueryPool.mm; sourceTree = "<group>"; };
 		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsIOS.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = XLEUnitTestsIOS.plist; path = /Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS.plist; sourceTree = "<absolute>"; };
@@ -390,6 +392,7 @@
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
 				8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */,
 				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
+				8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */,
 				8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */,
 				8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */,
 			);
@@ -823,6 +826,7 @@
 				8F4BFA3622F0CB310049AE5E /* Wrapper_InputLayout.mm in Sources */,
 				8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */,
 				8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */,
+				8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
