@@ -17,6 +17,7 @@
         // as part of the "std::experimental" namespace in our version of the C++ library
         template <typename T>
             using optional = std::experimental::optional<T>;
+         constexpr std::experimental::nullopt_t nullopt = std::experimental::nullopt;
     }
 #else
      #include "../Foreign/optional-lite/include/nonstd/optional.hpp"
@@ -24,5 +25,6 @@
      {
          template <typename T>
             using optional = nonstd::optional<T>;
+         constexpr nonstd::nullopt_t nullopt = nonstd::nullopt;
      }
 #endif
