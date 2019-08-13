@@ -829,6 +829,44 @@ namespace UnitTests
                 Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
 
                 Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
+                Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
+
+                UniformsStream uniformsStream;
+                const Metal::ShaderResourceView* srvs[] = { &srv };
+                const Metal::SamplerState* samplers[] = { &pointSampler };
+                uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
+                uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
+                uniforms.Apply(metalContext, 0, uniformsStream);
+
+                metalContext.Bind(Topology::TriangleStrip);
+                metalContext.Draw(4);
+            }
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            rpi = {};     // end RPI
+
+            auto breakdown = fbHelper.GetFullColorBreakdown();
+            Assert::IsTrue(breakdown.size() == 2);       // if point sampling is working, we should have two colors
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            rpi = fbHelper.BeginRenderPass();
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            {
+                auto vertexBuffer0 = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_vIdx));
+                Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
+                Assert::IsTrue(inputLayout.AllAttributesBound());
+                VertexBufferView vbvs[] = { vertexBuffer0.get() };
+                inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+
+                metalContext.Bind(shaderProgram);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Texture"));
+                Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
                 Metal::SamplerState linearSampler { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
 
                 UniformsStream uniformsStream;
@@ -845,7 +883,7 @@ namespace UnitTests
 
             rpi = {};     // end RPI
 
-            auto breakdown = fbHelper.GetFullColorBreakdown();
+            breakdown = fbHelper.GetFullColorBreakdown();
             Assert::IsTrue(breakdown.size() > 2);       // if filtering is working, we will get a large variety of colors
         }
 
