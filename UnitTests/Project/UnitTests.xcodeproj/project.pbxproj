@@ -335,6 +335,24 @@
 		8F4BFA4F22F0DAFF0049AE5E /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
 		8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		8F8573E422F2533B00175F69 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		BE81350423023BE00019A2F6 /* InputLayout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = InputLayout.cpp; path = ../InputLayout.cpp; sourceTree = "<group>"; };
+		BE81350523023C280019A2F6 /* UnitTestHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = UnitTestHelper.h; path = ../UnitTestHelper.h; sourceTree = "<group>"; };
+		BE81350623023C280019A2F6 /* DLLBinding.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = DLLBinding.cpp; path = ../DLLBinding.cpp; sourceTree = "<group>"; };
+		BE81350723023C280019A2F6 /* Utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Utilities.cpp; path = ../Utilities.cpp; sourceTree = "<group>"; };
+		BE81350823023C280019A2F6 /* QueryPool.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QueryPool.cpp; path = ../QueryPool.cpp; sourceTree = "<group>"; };
+		BE81350923023C280019A2F6 /* ResourceUpdateAndReadBack.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ResourceUpdateAndReadBack.cpp; path = ../ResourceUpdateAndReadBack.cpp; sourceTree = "<group>"; };
+		BE81350A23023C280019A2F6 /* ShaderParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderParser.cpp; path = ../ShaderParser.cpp; sourceTree = "<group>"; };
+		BE81350B23023C280019A2F6 /* StreamOutput.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StreamOutput.cpp; path = ../StreamOutput.cpp; sourceTree = "<group>"; };
+		BE81350C23023C280019A2F6 /* ModelConversion.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ModelConversion.cpp; path = ../ModelConversion.cpp; sourceTree = "<group>"; };
+		BE81350D23023C280019A2F6 /* TransformationMachineOpt.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TransformationMachineOpt.cpp; path = ../TransformationMachineOpt.cpp; sourceTree = "<group>"; };
+		BE81350E23023C280019A2F6 /* InputLayoutShaders_GLSL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = InputLayoutShaders_GLSL.h; path = ../InputLayoutShaders_GLSL.h; sourceTree = "<group>"; };
+		BE81350F23023C290019A2F6 /* StreamFormatter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StreamFormatter.cpp; path = ../StreamFormatter.cpp; sourceTree = "<group>"; };
+		BE81351023023C290019A2F6 /* BasicMaths.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BasicMaths.cpp; path = ../BasicMaths.cpp; sourceTree = "<group>"; };
+		BE81351123023C290019A2F6 /* Threading.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Threading.cpp; path = ../Threading.cpp; sourceTree = "<group>"; };
+		BE81351223023C290019A2F6 /* CBLayoutTests.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CBLayoutTests.cpp; path = ../CBLayoutTests.cpp; sourceTree = "<group>"; };
+		BE81351323023C290019A2F6 /* InputLayoutShaders_MSL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = InputLayoutShaders_MSL.h; path = ../InputLayoutShaders_MSL.h; sourceTree = "<group>"; };
+		BE81351423023C290019A2F6 /* StartupShutdown.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StartupShutdown.cpp; path = ../StartupShutdown.cpp; sourceTree = "<group>"; };
+		BE81351523023C290019A2F6 /* MetalUnitTest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MetalUnitTest.h; path = ../MetalUnitTest.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -387,6 +405,7 @@
 				8F4BFA4022F0CD1A0049AE5E /* Frameworks */,
 				8F49644722EF9C0F00BE5E4D /* Info.plist */,
 				8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */,
+				BE81350223023BB60019A2F6 /* NonMembers */,
 				8F49644322EF9C0F00BE5E4D /* Products */,
 				8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */,
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
@@ -531,6 +550,31 @@
 				8F4BFA4122F0CD1A0049AE5E /* Metal.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BE81350223023BB60019A2F6 /* NonMembers */ = {
+			isa = PBXGroup;
+			children = (
+				BE81351023023C290019A2F6 /* BasicMaths.cpp */,
+				BE81351223023C290019A2F6 /* CBLayoutTests.cpp */,
+				BE81350623023C280019A2F6 /* DLLBinding.cpp */,
+				BE81350423023BE00019A2F6 /* InputLayout.cpp */,
+				BE81350E23023C280019A2F6 /* InputLayoutShaders_GLSL.h */,
+				BE81351323023C290019A2F6 /* InputLayoutShaders_MSL.h */,
+				BE81351523023C290019A2F6 /* MetalUnitTest.h */,
+				BE81350C23023C280019A2F6 /* ModelConversion.cpp */,
+				BE81350823023C280019A2F6 /* QueryPool.cpp */,
+				BE81350923023C280019A2F6 /* ResourceUpdateAndReadBack.cpp */,
+				BE81350A23023C280019A2F6 /* ShaderParser.cpp */,
+				BE81351423023C290019A2F6 /* StartupShutdown.cpp */,
+				BE81350F23023C290019A2F6 /* StreamFormatter.cpp */,
+				BE81350B23023C280019A2F6 /* StreamOutput.cpp */,
+				BE81351123023C290019A2F6 /* Threading.cpp */,
+				BE81350D23023C280019A2F6 /* TransformationMachineOpt.cpp */,
+				BE81350523023C280019A2F6 /* UnitTestHelper.h */,
+				BE81350723023C280019A2F6 /* Utilities.cpp */,
+			);
+			name = NonMembers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
