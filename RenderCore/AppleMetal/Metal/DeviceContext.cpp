@@ -265,7 +265,14 @@ namespace RenderCore { namespace Metal_AppleMetal
     void GraphicsPipeline::SetRasterSampleCount(unsigned sampleCount)
     {
         assert(_pimpl->_pipelineDescriptor);
-        _pimpl->_pipelineDescriptor.get().rasterSampleCount = std::max(1u, sampleCount);
+        if ([_pimpl->_pipelineDescriptor.get() respondsToSelector:@selector(setRasterSampleCount:)]) {
+            _pimpl->_pipelineDescriptor.get().rasterSampleCount = std::max(1u, sampleCount);
+        } else {
+            // Some drivers don't appear to have the "rasterSampleCount". It appears to be IOS 11+ only.
+            // Falling back to the older name "sampleCount" -- documentation in the header suggests
+            // they are the same thing
+            _pimpl->_pipelineDescriptor.get().sampleCount = std::max(1u, sampleCount);
+        }
     }
 
     static DepthStencilDesc s_activeDepthStencilDesc;
