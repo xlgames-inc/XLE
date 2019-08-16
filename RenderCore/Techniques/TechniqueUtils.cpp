@@ -49,7 +49,7 @@ namespace RenderCore { namespace Techniques
     ClipSpaceType GetDefaultClipSpaceType()
     {
             // (todo -- this condition could be a runtime test)
-        #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         
+        #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9) || (GFXAPI_ACTIVE == GFXAPI_APPLEMETAL)
             return ClipSpaceType::Positive;
         #elif (GFXAPI_ACTIVE == GFXAPI_VULKAN)
             return ClipSpaceType::PositiveRightHanded;
