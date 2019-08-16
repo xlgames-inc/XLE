@@ -37,6 +37,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<AplMtlTexture> CreateTexture(MTLTextureDescriptor* textureDesc); // <MTLTexture>
         TBC::OCPtr<AplMtlBuffer> CreateBuffer(const void* bytes, unsigned length); // <MTLBuffer>
 
+        const TBC::OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
+        const TBC::OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
+
         ObjectFactory(id<MTLDevice> mtlDevice);
         ObjectFactory() = delete;
         ~ObjectFactory();
@@ -45,6 +48,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         ObjectFactory(const ObjectFactory&) = delete;
     private:
         TBC::OCPtr<AplMtlDevice> _mtlDevice; // <MTLDevice>
+
+        TBC::OCPtr<AplMtlTexture> _standIn2DTexture;
+        TBC::OCPtr<AplMtlTexture> _standInCubeTexture;
     };
 
     class DeviceContext;

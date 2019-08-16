@@ -452,7 +452,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         // src arguments, dst mappings
         ReflectionInformation ri;
         ri._debugReflection = reflection;
-        const std::pair<NSArray<MTLArgument*>*, std::vector<ReflectionInformation::Mapping>*> srcArgumentsDstMappings[] = { std::make_pair(reflection.vertexArguments, &ri._vfMappings), std::make_pair(reflection.fragmentArguments, &ri._ffMappings) };
+        const std::pair<NSArray<MTLArgument*>*, std::vector<ReflectionInformation::Mapping>*> srcArgumentsDstMappings[] = {
+            std::make_pair(reflection.vertexArguments, &ri._vfMappings),
+            std::make_pair(reflection.fragmentArguments, &ri._ffMappings)
+        };
 
         for (unsigned am=0; am < dimof(srcArgumentsDstMappings); ++am) {
             for (MTLArgument* arg in srcArgumentsDstMappings[am].first) {
@@ -479,11 +482,15 @@ namespace RenderCore { namespace Metal_AppleMetal
                     }
                 }
                 */
-                ReflectionInformation::MappingType argType = AsReflectionMappingType(arg.type);
-                riMap->emplace_back(
-                    ReflectionInformation::Mapping{argHash,
-                    argType,
-                    unsigned(arg.index)});
+                ReflectionInformation::Mapping mapping { argHash, AsReflectionMappingType(arg.type), unsigned(arg.index) };
+
+                if (arg.type == MTLArgumentTypeTexture) {
+                    mapping.textureType = unsigned(arg.textureType);
+                    mapping.textureDataType = unsigned(arg.textureDataType);
+                    mapping.isDepthTexture = arg.isDepthTexture;
+                }
+
+                riMap->emplace_back(mapping);
             }
         }
         i = _pimpl->_reflectionInformation.emplace(i, std::make_pair(hash, std::move(ri)));

@@ -49,6 +49,55 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static TBC::OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory)
+    {
+        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        textureDesc.get().textureType = MTLTextureType2D;
+        textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
+        textureDesc.get().width = 4;
+        textureDesc.get().height = 4;
+        textureDesc.get().usage = MTLTextureUsageShaderRead;
+
+        unsigned data[4*4];
+        memset(data, 0xff, sizeof(data));
+
+        auto tex = factory.CreateTexture(textureDesc);
+        [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
+                     mipmapLevel:0
+                           slice:0
+                       withBytes:data
+                     bytesPerRow:4*4
+                   bytesPerImage:4*4*4];
+        return tex;
+    }
+
+    static TBC::OCPtr<AplMtlTexture> CreateStandInCubeTexture(ObjectFactory& factory)
+    {
+        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        textureDesc.get().textureType = MTLTextureTypeCube;
+        textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
+        textureDesc.get().width = 4;
+        textureDesc.get().height = 4;
+        textureDesc.get().usage = MTLTextureUsageShaderRead;
+
+        unsigned data[4*4];
+        memset(data, 0xff, sizeof(data));
+
+        auto tex = factory.CreateTexture(textureDesc);
+        for (unsigned f=0; f<6; ++f) {
+            [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
+                         mipmapLevel:0
+                               slice:f
+                           withBytes:data
+                         bytesPerRow:4*4
+                       bytesPerImage:4*4*4];
+        }
+
+        return tex;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
     static ObjectFactory* s_objectFactory_instance = nullptr;
 
     ObjectFactory::ObjectFactory(id<MTLDevice> mtlDevice)
@@ -56,9 +105,15 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;
+
+        _standIn2DTexture = CreateStandIn2DTexture(*this);
+        _standInCubeTexture = CreateStandInCubeTexture(*this);
     }
     ObjectFactory::~ObjectFactory()
     {
+        _standIn2DTexture = TBC::OCPtr<AplMtlTexture>();
+        _standInCubeTexture = TBC::OCPtr<AplMtlTexture>();
+
         assert(s_objectFactory_instance == this);
         s_objectFactory_instance = nullptr;
     }

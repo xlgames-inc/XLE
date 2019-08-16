@@ -471,29 +471,47 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
-        for (const auto& srv : _srvs) {
-            if (srv.streamIdx != streamIdx) continue;
+        // Bind to vertex and fragment functions
+        for (unsigned m=0; m < dimof(shaderMappings); ++m) {
+            const auto& mappingSet = shaderMappings[m];
+            const auto& mappings = *mappingSet.first;
+            for (unsigned r=0; r < mappings.size(); ++r) {
+                const auto& map = mappings[r];
+                if (map.type != ReflectionInformation::MappingType::Texture)
+                    continue;
 
-            // Bind to vertex and fragment functions
-            for (unsigned m=0; m < dimof(shaderMappings); ++m) {
-                const auto& mappingSet = shaderMappings[m];
-                const auto& mappings = *mappingSet.first;
-                for (unsigned r=0; r < mappings.size(); ++r) {
-                    const auto& map = mappings[r];
+                bool gotBinding = false;
+                for (const auto& srv : _srvs) {
                     if (srv.hashName == map.hashName) {
-                        const auto& shaderResource = *(ShaderResourceView*)stream._resources[srv.slot];
-
-                        if (!shaderResource.IsGood()) {
-                            #if DEBUG
-                                PrintMissingTextureBinding(srv.hashName);
-                                NSLog(@"================> Error in texture when trying to bind");
-                            #endif
-                            continue;
+                        if (srv.streamIdx == streamIdx) {
+                            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[srv.slot];
+                            if (!shaderResource.IsGood()) {
+                                #if DEBUG
+                                    PrintMissingTextureBinding(srv.hashName);
+                                    NSLog(@"================> Error in texture when trying to bind");
+                                #endif
+                            } else {
+                                const auto& texture = shaderResource.GetUnderlying();
+                                id<MTLTexture> mtlTexture = texture.get();
+                                context.Bind(mtlTexture, map.index, mappingSet.second);
+                                gotBinding = true;
+                            }
+                        } else {
+                            gotBinding = true;      // if it's part of a different uniform stream, regard it as "bound"
                         }
-                        const auto& texture = shaderResource.GetUnderlying();
-                        id<MTLTexture> mtlTexture = texture.get();
-                        context.Bind(mtlTexture, map.index, mappingSet.second);
                         break;
+                    }
+                }
+
+                // For safety, we must bind a texture here, because some Metal drivers are unstable
+                // when no texture is bound to a shader. We will either bind a cubemap or 2D texture.
+                // There are other types of textures (1D, 3D, array, etc), but we will just use the
+                // 2D texture in those cases
+                if (!gotBinding) {
+                    if (map.textureType == MTLTextureTypeCube) {
+                        context.Bind(GetObjectFactory().StandInCubeTexture(), map.index, mappingSet.second);
+                    } else {
+                        context.Bind(GetObjectFactory().StandIn2DTexture(), map.index, mappingSet.second);
                     }
                 }
             }

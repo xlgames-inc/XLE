@@ -72,6 +72,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             uint64_t hashName = ~0ull;
             MappingType type = Unknown;
             unsigned index = ~0u;
+            unsigned textureType = ~0u;         // MTLTextureType
+            unsigned textureDataType = ~0u;     // MTLDataType
+            BOOL isDepthTexture = NO;
         };
 
         std::vector<Mapping> _vfMappings;
