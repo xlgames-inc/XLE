@@ -5,15 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DebuggingDisplay.h"
-/*
-#include "OverlayContext.h"
-#include "../RenderCore/IDevice.h"
-#include "../RenderCore/IThreadContext.h"
-*/
 #include "../RenderOverlays/Font.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/Console.h"
-#endif
+#include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../ConsoleRig/ResourceBox.h"       // for FindCachedBox
@@ -715,13 +709,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     HexahedronCorners HexahedronCorners::FromFrustumCorners(const Float4x4& worldToProjection)
     {
         HexahedronCorners result;
-        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection,
-                                   #if defined(HAS_XLE_RENDER_TECHNIQUES)
-                                        RenderCore::Techniques::GetDefaultClipSpaceType()
-                                   #else
-                                        ClipSpaceType::StraddlingZero
-                                   #endif
-                                   );
+        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection, RenderCore::Techniques::GetDefaultClipSpaceType());
             // note -- we can swap 0 & 1 or 2 & 3 (depending on if we want inside or outside faces)
         std::swap(result._worldSpacePts[0], result._worldSpacePts[1]);
         std::swap(result._worldSpacePts[4+0], result._worldSpacePts[4+1]);
