@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     auto ShaderIntrospection::FindUniform(HashType uniformName) const -> Uniform
     {
         // This only finds global uniforms
-        auto globals = LowerBound(_structs, 0ull);
+        auto globals = LowerBound(_structs, (uint64_t)0ull);
         if (globals == _structs.end() || globals->first != 0) return {0,0,0,0};
 
         auto i = std::find_if(

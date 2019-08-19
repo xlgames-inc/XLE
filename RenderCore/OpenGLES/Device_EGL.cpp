@@ -662,7 +662,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         // Build the root context
         EGLint contextAttribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION, GetGLESVersionFromConfig(_display, cfgForNewContext) / 100,
+            EGL_CONTEXT_CLIENT_VERSION, static_cast<EGLint>(GetGLESVersionFromConfig(_display, cfgForNewContext) / 100),
             EGL_NONE, EGL_NONE
         };
         _context = eglCreateContext(_display, cfgForNewContext, rootContext, contextAttribs);
