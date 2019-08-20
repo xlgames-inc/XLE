@@ -61,6 +61,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
         std::vector<SRV> _srvs;
 
+        struct Sampler { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        std::vector<Sampler> _samplers;
+
         uint64_t _boundArgs = 0ull;
     };
 

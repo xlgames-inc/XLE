@@ -7,6 +7,7 @@
 #include "ObjectFactory.h"
 
 #include <Metal/MTLSampler.h>
+#include <Metal/MTLRenderCommandEncoder.h>
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -119,14 +120,19 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl);
 
         id<MTLSamplerState> mtlSamplerState = nil;
-
         if (_pimpl->_enableMipmaps && textureHasMipmaps) {
             mtlSamplerState = _pimpl->_underlyingSamplerMipmaps.get();
         } else {
             mtlSamplerState = _pimpl->_underlyingSamplerNoMipmaps.get();
         }
         assert(mtlSamplerState);
-        context.Bind(mtlSamplerState, samplerIndex, stage);
+
+        id<MTLRenderCommandEncoder> cmdEncoder = context.GetCommandEncoder();
+        if (stage == ShaderStage::Vertex) {
+            [cmdEncoder setVertexSamplerState:mtlSamplerState atIndex:(NSUInteger)samplerIndex];
+        } else if (stage == ShaderStage::Pixel) {
+            [cmdEncoder setFragmentSamplerState:mtlSamplerState atIndex:(NSUInteger)samplerIndex];
+        }
     }
 
     BlendState::BlendState() {}

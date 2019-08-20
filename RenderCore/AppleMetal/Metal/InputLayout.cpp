@@ -375,6 +375,42 @@ namespace RenderCore { namespace Metal_AppleMetal
                     }
                 }
 
+            } else if (arg.type == MTLArgumentTypeSampler) {
+
+                // We're expecting samplers to have the same name as the textures they apply to,
+                // except with the "_sampler" postfix.
+                // This is because the srv and sampler arrays are bound in parallel. There is one
+                // binding name that applies to both. The texture and the sampler can't have the same
+                // name in the shader, though, so we append "_sampler".
+                // This allows us to conveniently support the OGL style combined texture/sampler
+                // inputs, as well as the alternative separated texture/samplers design.
+                auto range = [arg.name rangeOfString:@"_sampler"];
+                if (range.location != NSNotFound && range.location == arg.name.length - range.length) {
+                    argHash = Hash64([[arg.name substringToIndex:range.location] cStringUsingEncoding:NSUTF8StringEncoding]);
+                }
+
+                unsigned matchingSlot = ~0u;
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._srvBindings.size(); ++c) {
+                    if (interfaces[streamIndex]._srvBindings[c] == argHash) {
+                        matchingSlot = c;
+                        break;
+                    }
+                }
+
+                if (matchingSlot != ~0u) {
+                    // look for a binding in a later stream interface
+                    if (!HasSRVBinding(MakeIteratorRange(&interfaces[streamIndex+1], &interfaces[4]), argHash)) {
+                        result._samplers.push_back({
+                            matchingSlot, (unsigned)arg.index
+                            #if defined(_DEBUG)
+                                , argName
+                            #endif
+                        });
+                        assert(argIdx < 64);
+                        result._boundArgs |= 1<<uint64_t(argIdx);
+                    }
+                }
+
             } else if (arg.type == MTLArgumentTypeBuffer) {
 
                 unsigned matchingSlot = ~0u;
@@ -444,6 +480,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                 [encoder setVertexTexture:texture.get() atIndex:b._shaderSlot];
             }
         }
+
+        for (const auto& b:streamMapping._samplers) {
+            const auto& sampler = *(const SamplerState*)stream._samplers[b._uniformStreamSlot];
+            // Note -- assuming parallel sampler / srv arrays
+            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
+            sampler.Apply(context, shaderResource.HasMipMaps(), b._shaderSlot, ShaderStage::Vertex);
+        }
     }
 
     static void ApplyUniformStreamPS(
@@ -474,6 +517,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                 const auto& texture = shaderResource.GetUnderlying();
                 [encoder setFragmentTexture:texture.get() atIndex:b._shaderSlot];
             }
+        }
+
+        for (const auto& b:streamMapping._samplers) {
+            const auto& sampler = *(const SamplerState*)stream._samplers[b._uniformStreamSlot];
+            // Note -- assuming parallel sampler / srv arrays
+            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
+            sampler.Apply(context, shaderResource.HasMipMaps(), b._shaderSlot, ShaderStage::Pixel);
         }
     }
 
@@ -535,6 +585,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 } else {
                     [encoder setVertexTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:arg.index];
                 }
+            } else if (arg.type == MTLArgumentTypeSampler) {
+                [encoder setVertexSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:arg.index];
             }
         }
 
@@ -552,6 +604,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 } else {
                     [encoder setFragmentTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:arg.index];
                 }
+            } else if (arg.type == MTLArgumentTypeSampler) {
+                [encoder setFragmentSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:arg.index];
             }
         }
     }
