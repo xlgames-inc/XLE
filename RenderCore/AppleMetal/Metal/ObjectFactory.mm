@@ -47,14 +47,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
-    TBC::OCPtr<AplMtlSamplerState> ObjectFactory::CreateSamplerState(MTLSamplerDescriptor* samplerDesc)
-    {
-        assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
-        id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
-
-        return TBC::OCPtr<AplMtlSamplerState>(TBC::moveptr([device newSamplerStateWithDescriptor:samplerDesc]));
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static TBC::OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory)
@@ -104,21 +96,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         return tex;
     }
 
-    static TBC::OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory)
-    {
-        TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
-        desc.get().rAddressMode = MTLSamplerAddressModeRepeat;
-        desc.get().sAddressMode = MTLSamplerAddressModeRepeat;
-        desc.get().tAddressMode = MTLSamplerAddressModeRepeat;
-        desc.get().minFilter = MTLSamplerMinMagFilterLinear;
-        desc.get().magFilter = MTLSamplerMinMagFilterLinear;
-        desc.get().mipFilter = MTLSamplerMipFilterLinear;
-        desc.get().compareFunction = MTLCompareFunctionNever;
-
-        auto samplerState = factory.CreateSamplerState(desc);
-        return samplerState;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static ObjectFactory* s_objectFactory_instance = nullptr;
@@ -131,13 +108,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         _standIn2DTexture = CreateStandIn2DTexture(*this);
         _standInCubeTexture = CreateStandInCubeTexture(*this);
-        _standInSamplerState = CreateStandInSamplerState(*this);
     }
     ObjectFactory::~ObjectFactory()
     {
         _standIn2DTexture = TBC::OCPtr<AplMtlTexture>();
         _standInCubeTexture = TBC::OCPtr<AplMtlTexture>();
-        _standInSamplerState = TBC::OCPtr<AplMtlSamplerState>();
 
         assert(s_objectFactory_instance == this);
         s_objectFactory_instance = nullptr;

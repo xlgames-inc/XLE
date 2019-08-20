@@ -394,19 +394,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
-    void GraphicsPipeline::Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderTarget target)
-    {
-        assert(target == Vertex || target == Fragment);
-        assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
-            [_pimpl->_commandEncoder setVertexSamplerState:sampler atIndex:samplerIndex];
-            _pimpl->_boundVertexSamplers |= (1 << samplerIndex);
-        } else if (target == Fragment) {
-            [_pimpl->_commandEncoder setFragmentSamplerState:sampler atIndex:samplerIndex];
-            _pimpl->_boundFragmentSamplers |= (1 << samplerIndex);
-        }
-    }
-
     /* KenD -- cleanup TODO -- this was copied from LightWeightModel */
     static uint64 BuildSemanticHash(const char semantic[])
     {
@@ -502,17 +489,6 @@ namespace RenderCore { namespace Metal_AppleMetal
                     }
                 }
                 */
-
-                /* METAL_TODO: consider possible changes; currently, in shaders, textures are declared with associated
-                 * samplers.  The samplers must have the same name as the texture variable along with a "_sampler" suffix.
-                 * The texture and sampler will both be bound from the same UniformsStream slot.
-                 */
-                if (arg.type == MTLArgumentTypeSampler) {
-                    auto range = [arg.name rangeOfString:@"_sampler"];
-                    if (range.location != NSNotFound && range.location == arg.name.length - range.length) {
-                        argHash = Hash64([[arg.name substringToIndex:range.location] cStringUsingEncoding:NSUTF8StringEncoding]);
-                    }
-                }
                 ReflectionInformation::Mapping mapping { argHash, AsReflectionMappingType(arg.type), unsigned(arg.index) };
 
                 if (arg.type == MTLArgumentTypeTexture) {
@@ -520,7 +496,6 @@ namespace RenderCore { namespace Metal_AppleMetal
                     mapping.textureDataType = unsigned(arg.textureDataType);
                     mapping.isDepthTexture = arg.isDepthTexture;
                 }
-                DEBUG_ONLY(mapping.name = argName;)
 
                 riMap->emplace_back(mapping);
             }

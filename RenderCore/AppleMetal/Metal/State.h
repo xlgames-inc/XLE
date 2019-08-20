@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "ObjectFactory.h"
 #include "../../Types.h"
 #include "../../../Core/Exceptions.h"
 
@@ -57,7 +56,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
         RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
-        bool _enableMipmaps = true;
     };
 
     namespace ColorWriteMask
@@ -95,22 +93,14 @@ namespace RenderCore { namespace Metal_AppleMetal
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode filter, // = FilterMode::Trilinear,
+        SamplerState(   FilterMode filter = FilterMode::Trilinear,
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
-                        CompareOp comparison = CompareOp::Never,
-                        bool enableMipmaps = true);
-        SamplerState(); // inexpensive default constructor
+                        CompareOp comparison = CompareOp::Never);
 
-        TBC::OCPtr<AplMtlSamplerState>  GetUnderlyingMipmaps() const never_throws { return _underlyingSamplerMipmaps; }
-        TBC::OCPtr<AplMtlSamplerState>  GetUnderlyingNoMipmaps() const never_throws { return _underlyingSamplerNoMipmaps; }
-
-        bool EnableMipmaps() const { return _enableMipmaps; }
-    private:
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerMipmaps; // <MTLSamplerState>
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerNoMipmaps; // <MTLSamplerState>
-        bool _enableMipmaps = true;
+        typedef SamplerState UnderlyingType;
+        UnderlyingType GetUnderlying() const never_throws { return *this; }
     };
 
     class BlendState

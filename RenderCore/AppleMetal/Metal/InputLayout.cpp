@@ -477,45 +477,24 @@ namespace RenderCore { namespace Metal_AppleMetal
             const auto& mappings = *mappingSet.first;
             for (unsigned r=0; r < mappings.size(); ++r) {
                 const auto& map = mappings[r];
-                if (map.type != ReflectionInformation::MappingType::Texture && map.type != ReflectionInformation::MappingType::Sampler)
+                if (map.type != ReflectionInformation::MappingType::Texture)
                     continue;
 
-                // When binding a shader resource view, we might be setting a texture or a sampler.
-                // While the resource and sampler are at the same slot in the UniformsStream,
-                // the index that we actually bind to in the shader may differ between texture and sampler.
-                // We cannot assume that the index in the shader is the same for texture and sampler.
                 bool gotBinding = false;
                 for (const auto& srv : _srvs) {
                     if (srv.hashName == map.hashName) {
                         if (srv.streamIdx == streamIdx) {
                             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[srv.slot];
                             if (!shaderResource.IsGood()) {
-#if DEBUG
-                                PrintMissingTextureBinding(srv.hashName);
-                                NSLog(@"================> Error in texture when trying to bind");
-#endif
+                                #if DEBUG
+                                    PrintMissingTextureBinding(srv.hashName);
+                                    NSLog(@"================> Error in texture when trying to bind");
+                                #endif
                             } else {
                                 const auto& texture = shaderResource.GetUnderlying();
                                 id<MTLTexture> mtlTexture = texture.get();
-
-                                if (map.type == ReflectionInformation::MappingType::Texture) {
-                                    context.Bind(mtlTexture, map.index, mappingSet.second);
-                                    gotBinding = true;
-                                } else if (map.type == ReflectionInformation::MappingType::Sampler) {
-                                    const auto& samplerState = *(SamplerState*)stream._samplers[srv.slot];
-                                    id<MTLSamplerState> mtlSamplerState = nil;
-
-                                    if (samplerState.EnableMipmaps() && mtlTexture.mipmapLevelCount > 1) {
-                                        const auto& sampler = samplerState.GetUnderlyingMipmaps();
-                                        mtlSamplerState = sampler.get();
-                                    } else {
-                                        const auto& sampler = samplerState.GetUnderlyingNoMipmaps();
-                                        mtlSamplerState = sampler.get();
-                                    }
-                                    assert(mtlSamplerState);
-                                    context.Bind(mtlSamplerState, map.index, mappingSet.second);
-                                    gotBinding = true;
-                                }
+                                context.Bind(mtlTexture, map.index, mappingSet.second);
+                                gotBinding = true;
                             }
                         } else {
                             gotBinding = true;      // if it's part of a different uniform stream, regard it as "bound"
@@ -529,14 +508,10 @@ namespace RenderCore { namespace Metal_AppleMetal
                 // There are other types of textures (1D, 3D, array, etc), but we will just use the
                 // 2D texture in those cases
                 if (!gotBinding) {
-                    if (map.type == ReflectionInformation::MappingType::Texture) {
-                        if (map.textureType == MTLTextureTypeCube) {
-                            context.Bind(GetObjectFactory().StandInCubeTexture(), map.index, mappingSet.second);
-                        } else {
-                            context.Bind(GetObjectFactory().StandIn2DTexture(), map.index, mappingSet.second);
-                        }
-                    } else if (map.type == ReflectionInformation::MappingType::Sampler) {
-                        context.Bind(GetObjectFactory().StandInSamplerState(), map.index, mappingSet.second);
+                    if (map.textureType == MTLTextureTypeCube) {
+                        context.Bind(GetObjectFactory().StandInCubeTexture(), map.index, mappingSet.second);
+                    } else {
+                        context.Bind(GetObjectFactory().StandIn2DTexture(), map.index, mappingSet.second);
                     }
                 }
             }
