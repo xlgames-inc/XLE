@@ -108,11 +108,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         void Bind(MTLVertexDescriptor* descriptor);
 
-        enum ShaderTarget { Vertex, Fragment };
-        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target);
-        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target);
-        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target);
-        void Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderTarget target);
+        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderStage stage);
+        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderStage stage);
+        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderStage stage);
+        void Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderStage stage);
 
         const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
 

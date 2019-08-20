@@ -10,6 +10,7 @@
 #include "Format.h"
 #include "../IDeviceAppleMetal.h"
 #include "../../IThreadContext.h"
+#include "../../Types.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -355,53 +356,53 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
     }
 
-    void GraphicsPipeline::Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target)
+    void GraphicsPipeline::Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderStage stage)
     {
-        assert(target == Vertex || target == Fragment);
+        assert(stage == ShaderStage::Vertex || stage == ShaderStage::Pixel);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
+        if (stage == ShaderStage::Vertex) {
             [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
             _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
-        } else if (target == Fragment) {
+        } else if (stage == ShaderStage::Pixel) {
             [_pimpl->_commandEncoder setFragmentBuffer:buffer offset:offset atIndex:bufferIndex];
             _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
         }
     }
 
-    void GraphicsPipeline::Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target)
+    void GraphicsPipeline::Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderStage stage)
     {
-        assert(target == Vertex || target == Fragment);
+        assert(stage == ShaderStage::Vertex || stage == ShaderStage::Pixel);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
+        if (stage == ShaderStage::Vertex) {
             [_pimpl->_commandEncoder setVertexBytes:bytes length:length atIndex:bufferIndex];
             _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
-        } else if (target == Fragment) {
+        } else if (stage == ShaderStage::Pixel) {
             [_pimpl->_commandEncoder setFragmentBytes:bytes length:length atIndex:bufferIndex];
             _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
         }
     }
 
-    void GraphicsPipeline::Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target)
+    void GraphicsPipeline::Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderStage stage)
     {
-        assert(target == Vertex || target == Fragment);
+        assert(stage == ShaderStage::Vertex || stage == ShaderStage::Pixel);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
+        if (stage == ShaderStage::Vertex) {
             [_pimpl->_commandEncoder setVertexTexture:texture atIndex:textureIndex];
             _pimpl->_boundVertexTextures |= (1 << textureIndex);
-        } else if (target == Fragment) {
+        } else if (stage == ShaderStage::Pixel) {
             [_pimpl->_commandEncoder setFragmentTexture:texture atIndex:textureIndex];
             _pimpl->_boundFragmentTextures |= (1 << textureIndex);
         }
     }
 
-    void GraphicsPipeline::Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderTarget target)
+    void GraphicsPipeline::Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderStage stage)
     {
-        assert(target == Vertex || target == Fragment);
+        assert(stage == ShaderStage::Vertex || stage == ShaderStage::Pixel);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
+        if (stage == ShaderStage::Vertex) {
             [_pimpl->_commandEncoder setVertexSamplerState:sampler atIndex:samplerIndex];
             _pimpl->_boundVertexSamplers |= (1 << samplerIndex);
-        } else if (target == Fragment) {
+        } else if (stage == ShaderStage::Pixel) {
             [_pimpl->_commandEncoder setFragmentSamplerState:sampler atIndex:samplerIndex];
             _pimpl->_boundFragmentSamplers |= (1 << samplerIndex);
         }
