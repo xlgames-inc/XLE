@@ -10,6 +10,7 @@
 #include "Format.h"
 #include "../IDeviceAppleMetal.h"
 #include "../../IThreadContext.h"
+#include "../../Types.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/LogUtil.h"
 #include "../../../Externals/Misc/OCPtr.h"
