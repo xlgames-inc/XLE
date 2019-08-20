@@ -75,6 +75,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             unsigned textureType = ~0u;         // MTLTextureType
             unsigned textureDataType = ~0u;     // MTLDataType
             BOOL isDepthTexture = NO;
+            DEBUG_ONLY(std::string name;)
         };
 
         std::vector<Mapping> _vfMappings;
@@ -111,6 +112,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target);
         void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target);
         void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target);
+        void Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderTarget target);
 
         const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
 

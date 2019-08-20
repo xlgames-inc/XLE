@@ -148,9 +148,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     SamplerState::SamplerState(
         FilterMode filter,
         AddressMode addressU, AddressMode addressV, AddressMode addressW,
-        CompareOp comparison)
+        CompareOp comparison,
+        bool enableMipmaps)
     : _guid(s_nextSamplerStateGUID)
     {
+        //assert(enableMipmaps); // This argument has no effect; the enableMipmaps argument of Apply is what is relevant.  However, this assertion is a bit overzealous.
+
         s_nextSamplerStateGUID += 2;
 
         CheckGLError("Construct Sampler State (start)");
