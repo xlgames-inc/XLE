@@ -165,6 +165,9 @@ namespace Utility
                 { return &(*this->first); }
 #pragma GCC diagnostic pop
 
+            template<typename OtherIteratorType>
+                IteratorRange<OtherIteratorType> Cast() const { return IteratorRange<OtherIteratorType>((OtherIteratorType)this->first, (OtherIteratorType)this->second); }
+
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
