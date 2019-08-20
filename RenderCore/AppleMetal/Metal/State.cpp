@@ -39,23 +39,13 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
-    class SamplerState::Pimpl
-    {
-    public:
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerMipmaps; // <MTLSamplerState>
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerNoMipmaps; // <MTLSamplerState>
-        bool _enableMipmaps = true;
-    };
-
     SamplerState::SamplerState(
         FilterMode filter,
         AddressMode addressU, AddressMode addressV, AddressMode addressW,
         CompareOp comparison,
         bool enableMipmaps)
+    : _enableMipmaps(enableMipmaps)
     {
-        _pimpl = std::make_shared<Pimpl>();
-        _pimpl->_enableMipmaps = enableMipmaps;
-
         TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
 
         desc.get().rAddressMode = AsMTLenum(addressW);
@@ -102,31 +92,17 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
 
         auto& factory = GetObjectFactory();
-        _pimpl->_underlyingSamplerMipmaps = factory.CreateSamplerState(desc);
+        _underlyingSamplerMipmaps = factory.CreateSamplerState(desc);
 
         desc.get().mipFilter = MTLSamplerMipFilterNotMipmapped;
-        _pimpl->_underlyingSamplerNoMipmaps = factory.CreateSamplerState(desc);
+        _underlyingSamplerNoMipmaps = factory.CreateSamplerState(desc);
     }
 
     SamplerState::SamplerState()
     {
         // Default constructor is intentionally inexpensive and incomplete - it's called, for example, when resizing a vector
-        _pimpl = nullptr;
-    }
-
-    void SamplerState::Apply(DeviceContext& context, bool textureHasMipmaps, unsigned samplerIndex, ShaderStage stage) const never_throws
-    {
-        assert(_pimpl);
-
-        id<MTLSamplerState> mtlSamplerState = nil;
-
-        if (_pimpl->_enableMipmaps && textureHasMipmaps) {
-            mtlSamplerState = _pimpl->_underlyingSamplerMipmaps.get();
-        } else {
-            mtlSamplerState = _pimpl->_underlyingSamplerNoMipmaps.get();
-        }
-        assert(mtlSamplerState);
-        context.Bind(mtlSamplerState, samplerIndex, stage);
+        _underlyingSamplerMipmaps = nil;
+        _underlyingSamplerNoMipmaps = nil;
     }
 
     BlendState::BlendState() {}

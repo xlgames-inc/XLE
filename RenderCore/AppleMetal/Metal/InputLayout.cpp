@@ -46,7 +46,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             id<MTLBuffer> buffer = resource.GetBuffer();
             if (!buffer)
                 Throw(::Exceptions::BasicLabel("Attempting to apply vertex buffer view with invalid resource"));
-            context.Bind(buffer, vbv._offset, i, ShaderStage::Vertex);
+            context.Bind(buffer, vbv._offset, i, GraphicsPipeline::ShaderTarget::Vertex);
             ++i;
         }
     }
@@ -346,9 +346,9 @@ namespace RenderCore { namespace Metal_AppleMetal
          * for buffers and textures.  Then, bind the resources from the stream. */
 
         const auto& reflectionInformation = context.GetReflectionInformation(_vf, _ff);
-        const std::pair<const std::vector<ReflectionInformation::Mapping>*,  ShaderStage> shaderMappings[] = {
-            std::make_pair(&reflectionInformation._vfMappings, ShaderStage::Vertex),
-            std::make_pair(&reflectionInformation._ffMappings, ShaderStage::Pixel)
+        const std::pair<const std::vector<ReflectionInformation::Mapping>*, GraphicsPipeline::ShaderTarget> shaderMappings[] = {
+            std::make_pair(&reflectionInformation._vfMappings, GraphicsPipeline::ShaderTarget::Vertex),
+            std::make_pair(&reflectionInformation._ffMappings, GraphicsPipeline::ShaderTarget::Fragment)
         };
 #if DEBUG
         /* Validation/sanity check of reflection information */
@@ -356,12 +356,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             for (unsigned m=0; m < dimof(shaderMappings); ++m) {
                 const auto& mappingSet = shaderMappings[m];
                 if (m == 0) {
-                    assert(mappingSet.second == ShaderStage::Vertex);
+                    assert(mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex);
                     const auto* vfmap = mappingSet.first;
                     assert(vfmap->size() == reflectionInformation._vfMappings.size());
                 }
                 if (m == 1) {
-                    assert(mappingSet.second == ShaderStage::Pixel);
+                    assert(mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment);
                     const auto* ffmap = mappingSet.first;
                     assert(ffmap->size() == reflectionInformation._ffMappings.size());
                 }
@@ -434,9 +434,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 #if DEBUG
                             {
                                 NSArray<MTLArgument*>* arguments = nil;
-                                if (mappingSet.second == ShaderStage::Vertex) {
+                                if (mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex) {
                                     arguments = renderReflection.vertexArguments;
-                                } else if (mappingSet.second == ShaderStage::Pixel) {
+                                } else if (mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment) {
                                     arguments = renderReflection.fragmentArguments;
                                 } else {
                                     assert(0);
@@ -503,8 +503,17 @@ namespace RenderCore { namespace Metal_AppleMetal
                                     gotBinding = true;
                                 } else if (map.type == ReflectionInformation::MappingType::Sampler) {
                                     const auto& samplerState = *(SamplerState*)stream._samplers[srv.slot];
+                                    id<MTLSamplerState> mtlSamplerState = nil;
 
-                                    samplerState.Apply(context, mtlTexture.mipmapLevelCount > 1, map.index, mappingSet.second);
+                                    if (samplerState.EnableMipmaps() && mtlTexture.mipmapLevelCount > 1) {
+                                        const auto& sampler = samplerState.GetUnderlyingMipmaps();
+                                        mtlSamplerState = sampler.get();
+                                    } else {
+                                        const auto& sampler = samplerState.GetUnderlyingNoMipmaps();
+                                        mtlSamplerState = sampler.get();
+                                    }
+                                    assert(mtlSamplerState);
+                                    context.Bind(mtlSamplerState, map.index, mappingSet.second);
                                     gotBinding = true;
                                 }
                             }

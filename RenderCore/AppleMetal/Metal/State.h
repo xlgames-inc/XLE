@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ObjectFactory.h"
 #include "../../Types.h"
 #include "../../../Core/Exceptions.h"
 
@@ -94,7 +95,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode filter,
+        SamplerState(   FilterMode filter, // = FilterMode::Trilinear,
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
@@ -102,14 +103,14 @@ namespace RenderCore { namespace Metal_AppleMetal
                         bool enableMipmaps = true);
         SamplerState(); // inexpensive default constructor
 
-        void Apply(DeviceContext& context, bool textureHasMipmaps, unsigned samplerIndex, ShaderStage stage) const never_throws;
+        TBC::OCPtr<AplMtlSamplerState>  GetUnderlyingMipmaps() const never_throws { return _underlyingSamplerMipmaps; }
+        TBC::OCPtr<AplMtlSamplerState>  GetUnderlyingNoMipmaps() const never_throws { return _underlyingSamplerNoMipmaps; }
 
-        typedef SamplerState UnderlyingType;
-        UnderlyingType GetUnderlying() const never_throws { return *this; }
-
+        bool EnableMipmaps() const { return _enableMipmaps; }
     private:
-        class Pimpl;
-        std::shared_ptr<Pimpl> _pimpl;
+        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerMipmaps; // <MTLSamplerState>
+        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerNoMipmaps; // <MTLSamplerState>
+        bool _enableMipmaps = true;
     };
 
     class BlendState
