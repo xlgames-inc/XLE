@@ -185,9 +185,9 @@ namespace UnitTests
             fragment float4 fragmentShader(
                 RasterizerData in [[stage_in]],
                 metal::texture2d<float, metal::access::sample> Texture,
-                metal::sampler Sampler)
+                metal::sampler Texture_sampler)
             {
-                return Texture.sample(Sampler, in.texCoord);
+                return Texture.sample(Texture_sampler, in.texCoord);
             }
         )";
 }
