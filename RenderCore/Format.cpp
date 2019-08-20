@@ -602,6 +602,8 @@ namespace RenderCore
             if (type._arrayCount == 2) return Format::R32G32_FLOAT;
             if (type._arrayCount == 3) return Format::R32G32B32_FLOAT;
             if (type._arrayCount == 4) return Format::R32G32B32A32_FLOAT;
+            if (type._arrayCount == 12) return Format::Matrix3x4;
+            if (type._arrayCount == 16) return Format::Matrix4x4;
             return Format::Unknown;
         }
         

@@ -5,10 +5,13 @@
 #pragma once
 
 #include "../../Format.h"
+#include "../../../Utility/ParameterBox.h"
 #include "IncludeAppleMetal.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
     MTLPixelFormat AsMTLPixelFormat(RenderCore::Format fmt);
     RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt);
+
+    Utility::ImpliedTyping::TypeDesc AsTypeDesc(MTLDataType fmt);
 }}

@@ -640,6 +640,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 MakeIteratorRange(qus._samplers).Cast<const void*const*>()
             };
             auto bound = BoundUniforms::Apply_UnboundInterfacePath(*this, pipelineState.second, *qus._unboundInterf, qus._streamIdx, stream);
+            assert((boundVSArgs & bound._vsArguments) == 0);
+            assert((boundPSArgs & bound._psArguments) == 0);
             boundVSArgs |= bound._vsArguments;
             boundPSArgs |= bound._psArguments;
         }

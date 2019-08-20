@@ -299,6 +299,37 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    #if defined(_DEBUG)
+        static void ValidateCBElements(
+            IteratorRange<const ConstantBufferElementDesc*> elements,
+            MTLStructType* structReflection)
+        {
+            // Every member of the struct must be in the "elements", and offsets and types must match
+            for (MTLStructMember* member in structReflection.members) {
+                if (member.arrayType) {
+                } else {
+                    auto hashName = Hash64(member.name.UTF8String);
+                    auto i = std::find_if(
+                        elements.begin(), elements.end(),
+                        [hashName](const ConstantBufferElementDesc& t) { return t._semanticHash == hashName; });
+                    if (i == elements.end())
+                        Throw(::Exceptions::BasicLabel("Missing CB binding for element name (%s)", member.name.UTF8String));
+
+                    if (i->_offset != member.offset)
+                        Throw(::Exceptions::BasicLabel("CB element offset is incorrect for member (%s). It's (%i) in the shader, but (%i) in the binding provided",
+                            member.name.UTF8String, member.offset, i->_offset));
+
+                    auto f = AsFormat(AsTypeDesc(member.dataType));
+                    if (i->_nativeFormat != f)
+                        Throw(::Exceptions::BasicLabel("CB element type is incorrect for member (%s). It's (%s) in the shader, but (%s) in the binding provided",
+                                member.name.UTF8String, AsString(f), AsString(i->_nativeFormat)));
+                }
+            }
+        }
+    #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     static StreamMapping MakeStreamMapping(
         MTLRenderPipelineReflection* reflection,
         unsigned streamIndex,
@@ -349,6 +380,15 @@ namespace RenderCore { namespace Metal_AppleMetal
                 unsigned matchingSlot = ~0u;
                 for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._cbBindings.size(); ++c) {
                     if (interfaces[streamIndex]._cbBindings[c]._hashName == argHash) {
+
+                        #if defined(_DEBUG)
+                            if (arg.bufferStructType) {
+                                ValidateCBElements(
+                                    MakeIteratorRange(interfaces[streamIndex]._cbBindings[c]._elements),
+                                    arg.bufferStructType);
+                            }
+                        #endif
+
                         matchingSlot = c;
                         break;
                     }
