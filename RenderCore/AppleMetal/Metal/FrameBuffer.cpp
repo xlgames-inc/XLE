@@ -43,6 +43,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* Each subpass of the frame will have a RenderCommandEncoder with a different render pass descriptor. */
         context.CreateRenderCommandEncoder(desc);
         context.SetRasterSampleCount(_subpasses[subpassIndex]._rasterCount);
+        context.SetRenderPassStates(_subpasses[subpassIndex]._renderPassDescriptor);
     }
 
     MTLLoadAction NonStencilLoadActionFromRenderCore(RenderCore::LoadStore load)

@@ -96,14 +96,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         struct BoundArguments { uint64_t _vsArguments = 0ull; uint64_t _psArguments = 0ull; };
         static BoundArguments Apply_UnboundInterfacePath(
-            GraphicsPipeline& context,
+            DeviceContext& context,
             MTLRenderPipelineReflection* pipelineReflection,
             const UnboundInterface& unboundInterface,
             unsigned streamIdx,
             const UniformsStream& stream);
 
         static void Apply_Standins(
-            GraphicsPipeline& context,
+            DeviceContext& context,
             MTLRenderPipelineReflection* pipelineReflection,
             uint64_t vsArguments, uint64_t psArguments);
 

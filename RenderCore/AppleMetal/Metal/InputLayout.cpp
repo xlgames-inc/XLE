@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        context.Bind(_vertexDescriptor.get());
+        context.GraphicsPipelineBuilder::Bind(_vertexDescriptor.get());
         unsigned i = 0;
         for (const auto& vbv : vertexBuffers) {
             auto resource = GetResource(vbv._resource);
@@ -416,7 +416,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     static void ApplyUniformStreamVS(
-        GraphicsPipeline& context, const UniformsStream& stream,
+        DeviceContext& context, const UniformsStream& stream,
         const StreamMapping& streamMapping)
     {
         id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
@@ -447,7 +447,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     static void ApplyUniformStreamPS(
-        GraphicsPipeline& context, const UniformsStream& stream,
+        DeviceContext& context, const UniformsStream& stream,
         const StreamMapping& streamMapping)
     {
         id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
@@ -501,7 +501,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     BoundUniforms::BoundArguments BoundUniforms::Apply_UnboundInterfacePath(
-        GraphicsPipeline& context,
+        DeviceContext& context,
         MTLRenderPipelineReflection* pipelineReflection,
         const UnboundInterface& unboundInterface,
         unsigned streamIdx,
@@ -516,7 +516,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     void BoundUniforms::Apply_Standins(
-        GraphicsPipeline& context,
+        DeviceContext& context,
         MTLRenderPipelineReflection* pipelineReflection,
         uint64_t vsArguments, uint64_t psArguments)
     {
@@ -555,191 +555,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
     }
-
-#if 0
-    void BoundUniforms::Apply(DeviceContext& context, unsigned streamIdx, const UniformsStream& stream) const
-    {
-        /* Overview: Use reflection to determine the proper indices in the argument table
-         * for buffers and textures.  Then, bind the resources from the stream. */
-
-        const auto& reflectionInformation = context.GetReflectionInformation(_vf, _ff);
-        const std::pair<const std::vector<ReflectionInformation::Mapping>*, GraphicsPipeline::ShaderTarget> shaderMappings[] = {
-            std::make_pair(&reflectionInformation._vfMappings, GraphicsPipeline::ShaderTarget::Vertex),
-            std::make_pair(&reflectionInformation._ffMappings, GraphicsPipeline::ShaderTarget::Fragment)
-        };
-#if DEBUG
-        /* Validation/sanity check of reflection information */
-        {
-            for (unsigned m=0; m < dimof(shaderMappings); ++m) {
-                const auto& mappingSet = shaderMappings[m];
-                if (m == 0) {
-                    assert(mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex);
-                    const auto* vfmap = mappingSet.first;
-                    assert(vfmap->size() == reflectionInformation._vfMappings.size());
-                }
-                if (m == 1) {
-                    assert(mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment);
-                    const auto* ffmap = mappingSet.first;
-                    assert(ffmap->size() == reflectionInformation._ffMappings.size());
-                }
-            }
-        }
-
-        // Ensure that constant buffer binding indices don't overlap with vertex buffer - this is one cause of a GPU hang.
-        // Likewise, ensure that other bindings don't overlap.
-        MTLRenderPipelineReflection* renderReflection = reflectionInformation._debugReflection.get();
-        {
-            /* Iterate over vertex and function arguments, ensuring that index in each argument table is not used more than once */
-            const NSArray<MTLArgument*>* argumentSets[] = { renderReflection.vertexArguments, renderReflection.fragmentArguments };
-            for (unsigned as=0; as < dimof(argumentSets); ++as) {
-                uint32_t bufferArgTable = 0u;
-                uint32_t textureArgTable = 0u;
-                uint32_t samplerArgTable = 0u;
-                for (MTLArgument* arg in argumentSets[as]) {
-                    if (!arg.active) continue;
-
-                    uint32_t intendedIndex = (1 << arg.index);
-                    if (arg.type == MTLArgumentTypeBuffer) {
-                        if ((intendedIndex & bufferArgTable) != 0) {
-                            // NSLog(@"================> %@ is using buffer index %lu, which is already in use.  This could cause stomping of data and a GPU hang if accessed in a shader.", arg.name, (unsigned long)arg.index);
-                        }
-                        // assert((intendedIndex & bufferArgTable) == 0);
-                        bufferArgTable |= intendedIndex;
-                    } else if (arg.type == MTLArgumentTypeTexture) {
-                        if ((intendedIndex & textureArgTable) != 0) {
-                            NSLog(@"================> %@ is using texture index %lu, which is already in use.", arg.name, (unsigned long)arg.index);
-                        }
-                        assert((intendedIndex & textureArgTable) == 0);
-                        textureArgTable |= intendedIndex;
-                    } else if (arg.type == MTLArgumentTypeSampler) {
-                        assert((intendedIndex & samplerArgTable) == 0);
-                        samplerArgTable |= intendedIndex;
-                    }
-                }
-            }
-        }
-#endif
-
-        // KenD -- Metal optimization -- the binding lookup could probably be improved by reorganizing the iteration and ordering
-
-        // If the constant buffer hash matches a function argument, bind the resource to the mapped location
-        for (const auto& cb : _cbs) {
-            if (cb.streamIdx != streamIdx) continue;
-
-            // Bind to vertex and fragment functions
-            for (unsigned m=0; m < dimof(shaderMappings); ++m) {
-                const auto& mappingSet = shaderMappings[m];
-                const auto& mappings = *mappingSet.first;
-                for (unsigned r=0; r < mappings.size(); ++r) {
-                    const auto& map = mappings[r];
-                    if (cb.hashName == map.hashName) {
-                        const auto& constantBuffer = stream._constantBuffers[cb.slot];
-                        const auto& pkt = constantBuffer._packet;
-                        //
-                        // Input CBV might be a SharedPkt (ie, just some temporary data); or it
-                        // could be an actual prebuilt hardware resource
-                        //
-                        if (!pkt.size()) {
-                            assert(constantBuffer._prebuiltBuffer);
-                            context.Bind(
-                                checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get(),
-                                0, map.index, mappingSet.second);
-                        } else {
-                            const void* constantBufferData = pkt.get();
-                            unsigned length = (unsigned)pkt.size();
-
-#if DEBUG
-                            {
-                                NSArray<MTLArgument*>* arguments = nil;
-                                if (mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex) {
-                                    arguments = renderReflection.vertexArguments;
-                                } else if (mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment) {
-                                    arguments = renderReflection.fragmentArguments;
-                                } else {
-                                    assert(0);
-                                }
-                                for (MTLArgument* arg in arguments) {
-                                    if (!arg.active) continue;
-
-                                    if (arg.type == MTLArgumentTypeBuffer) {
-                                        if (arg.index == map.index) {
-                                            // assert(length == arg.bufferDataSize);
-                                            assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
-
-/* Only in Metal shading language 2.0 -- newer versions of Xcode warned about this, but I ignored it */
-#if 0
-                                            MTLPointerType* ptrType = arg.bufferPointerType;
-                                            MTLStructType* structType = ptrType.elementStructType;
-                                            if (structType) {
-                                                /* Metal TODO -- examine elements, comparing pipeline layout with struct, ensuring the offset is reasonable */
-                                            }
-#endif
-                                        }
-                                    }
-                                }
-                            }
-#endif
-
-                            context.Bind(constantBufferData, length, map.index, mappingSet.second);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Bind to vertex and fragment functions
-        for (unsigned m=0; m < dimof(shaderMappings); ++m) {
-            const auto& mappingSet = shaderMappings[m];
-            const auto& mappings = *mappingSet.first;
-            for (unsigned r=0; r < mappings.size(); ++r) {
-                const auto& map = mappings[r];
-                if (map.type != ReflectionInformation::MappingType::Texture)
-                    continue;
-
-                bool gotBinding = false;
-                for (const auto& srv : _srvs) {
-                    if (srv.hashName == map.hashName) {
-                        if (srv.streamIdx == streamIdx) {
-                            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[srv.slot];
-                            if (!shaderResource.IsGood()) {
-                                #if DEBUG
-                                    PrintMissingTextureBinding(srv.hashName);
-                                    NSLog(@"================> Error in texture when trying to bind");
-                                #endif
-                            } else {
-                                const auto& texture = shaderResource.GetUnderlying();
-                                id<MTLTexture> mtlTexture = texture.get();
-                                context.Bind(mtlTexture, map.index, mappingSet.second);
-                                gotBinding = true;
-                            }
-                        } else {
-                            gotBinding = true;      // if it's part of a different uniform stream, regard it as "bound"
-                        }
-                        break;
-                    }
-                }
-
-                // For safety, we must bind a texture here, because some Metal drivers are unstable
-                // when no texture is bound to a shader. We will either bind a cubemap or 2D texture.
-                // There are other types of textures (1D, 3D, array, etc), but we will just use the
-                // 2D texture in those cases
-                if (!gotBinding) {
-                    if (map.textureType == MTLTextureTypeCube) {
-                        context.Bind(GetObjectFactory().StandInCubeTexture(), map.index, mappingSet.second);
-                    } else {
-                        context.Bind(GetObjectFactory().StandIn2DTexture(), map.index, mappingSet.second);
-                    }
-                }
-            }
-        }
-    }
-#endif
-
-    /* KenD -- Metal TODO -- validate the layout of the constant buffer view,
-         * within the UniformsStreamInterface, against the reflected pipeline state.
-         * The structure used in the shader must match the layout we use for the buffer.
-         */
 
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,

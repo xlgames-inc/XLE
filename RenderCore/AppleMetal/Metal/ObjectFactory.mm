@@ -47,6 +47,22 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
+    auto ObjectFactory::CreateRenderPipelineState(MTLRenderPipelineDescriptor* desc, bool makeReflection) -> RenderPipelineState
+    {
+        NSError* error = NULL;
+        MTLAutoreleasedRenderPipelineReflection reflection = nullptr;
+        id<MTLRenderPipelineState> pipelineState = nullptr;
+
+        if (makeReflection) {
+            MTLPipelineOption options = MTLPipelineOptionArgumentInfo;
+            pipelineState = [_mtlDevice.get() newRenderPipelineStateWithDescriptor:desc options:options reflection:&reflection error:&error];
+        } else {
+            pipelineState = [_mtlDevice.get() newRenderPipelineStateWithDescriptor:desc error:&error];
+        }
+
+        return RenderPipelineState { TBC::moveptr(pipelineState), error, reflection };
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static TBC::OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory)
