@@ -60,6 +60,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
         std::vector<SRV> _srvs;
+
+        uint64_t _boundArgs = 0ull;
     };
 
     struct UnboundInterface
@@ -92,12 +94,18 @@ namespace RenderCore { namespace Metal_AppleMetal
         BoundUniforms(BoundUniforms&& moveFrom) never_throws;
         BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
 
-        static void Apply_UnboundInterfacePath(
+        struct BoundArguments { uint64_t _vsArguments = 0ull; uint64_t _psArguments = 0ull; };
+        static BoundArguments Apply_UnboundInterfacePath(
             GraphicsPipeline& context,
             MTLRenderPipelineReflection* pipelineReflection,
             const UnboundInterface& unboundInterface,
             unsigned streamIdx,
             const UniformsStream& stream);
+
+        static void Apply_Standins(
+            GraphicsPipeline& context,
+            MTLRenderPipelineReflection* pipelineReflection,
+            uint64_t vsArguments, uint64_t psArguments);
 
     private:
         StreamMapping _preboundInterfaceVS[4];

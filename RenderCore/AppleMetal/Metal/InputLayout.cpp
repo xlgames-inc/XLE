@@ -63,65 +63,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         return hash;
     }
 
-#if DEBUG
-    NSString* DeHashVertexAttribute(uint64 semanticHash)
-    {
-        static NSMutableDictionary* knownAttrs = nil;
-        if (!knownAttrs) {
-            knownAttrs = [[NSMutableDictionary alloc] init];
-            knownAttrs[@(Hash64("in_position"))] = @"in_position";
-            knownAttrs[@(Hash64("in_speed"))] = @"in_speed";
-            knownAttrs[@(Hash64("in_uv_life"))] = @"in_uv_life";
-            knownAttrs[@(Hash64("in_color") + 1)] = @"in_color1";
-            knownAttrs[@(Hash64("in_color") + 2)] = @"in_color2";
-            knownAttrs[@(Hash64("in_color") + 3)] = @"in_color3";
-            knownAttrs[@(Hash64("in_scale"))] = @"in_scale";
-            knownAttrs[@(Hash64("in_moreScale"))] = @"in_moreScale";
-            knownAttrs[@(Hash64("in_offsetPosition"))] = @"in_offsetPosition";
-            knownAttrs[@(Hash64("in_rotation"))] = @"in_rotation";
-            knownAttrs[@(Hash64("in_textureRandomStart"))] = @"in_textureRandomStart";
-            knownAttrs[@(Hash64("in_positionCoord"))] = @"in_positionCoord";
-            knownAttrs[@(Hash64("in_modelMatrix_4e") + 0)] = @"in_modelMatrix_4e0";
-            knownAttrs[@(Hash64("in_modelMatrix_4e") + 1)] = @"in_modelMatrix_4e1";
-            knownAttrs[@(Hash64("in_modelMatrix_4e") + 2)] = @"in_modelMatrix_4e2";
-
-            knownAttrs[@(Hash64("a_cc3Bitangent"))] = @"a_cc3Bitangent";
-            knownAttrs[@(Hash64("a_cc3BoneIndices"))] = @"a_cc3BoneIndices";
-            knownAttrs[@(Hash64("a_cc3BoneWeights"))] = @"a_cc3BoneWeights";
-            knownAttrs[@(Hash64("a_cc3Color"))] = @"a_cc3Color";
-            knownAttrs[@(Hash64("a_cc3Normal"))] = @"a_cc3Normal";
-            knownAttrs[@(Hash64("a_cc3Position"))] = @"a_cc3Position";
-            knownAttrs[@(Hash64("a_cc3Tangent"))] = @"a_cc3Tangent";
-            knownAttrs[@(Hash64("a_cc3TexCoord"))] = @"a_cc3TexCoord";
-        }
-
-        id res = knownAttrs[@(semanticHash)];
-        if (res)
-            return (NSString*)res;
-        return [NSString stringWithFormat:@"Unknown semantic hash: 0x%llx", semanticHash];
-    }
-
-    void PrintMissingTextureBinding(uint64 missingSemanticHash)
-    {
-        static NSMutableDictionary* knownAttrs = nil;
-        if (!knownAttrs) {
-            knownAttrs = [[NSMutableDictionary alloc] init];
-
-            knownAttrs[@(Hash64("u_irradianceMap"))] = @"u_irradianceMap";
-            knownAttrs[@(Hash64("u_reflectionMap"))] = @"u_reflectionMap";
-            knownAttrs[@(Hash64("SpecularIBL"))] = @"SpecularIBL";
-            knownAttrs[@(Hash64("u_shadowMap"))] = @"u_shadowMap";
-            knownAttrs[@(Hash64("u_shadowRotateTable"))] = @"u_shadowRotateTable";
-
-            knownAttrs[@(Hash64("s_cc3Texture2Ds")+0)] = @"s_cc3Texture2Ds0";
-            knownAttrs[@(Hash64("s_cc3Texture2Ds")+1)] = @"s_cc3Texture2Ds1";
-            knownAttrs[@(Hash64("s_cc3Texture2Ds")+2)] = @"s_cc3Texture2Ds2";
-        }
-
-        NSLog(@"==================> Missing %@ (%llu)", knownAttrs[@(missingSemanticHash)], missingSemanticHash);
-    }
-#endif
-
     BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
     {
         /* KenD -- Metal TODO -- validate the layout of vertex data.
@@ -195,7 +136,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 Log(Warning) << "Attributes on provided from input layout: " << std::endl;
                 for (unsigned l=0; l < layouts.size(); ++l) {
                     for (unsigned e=0; e < layouts[l]._elements.size(); ++e) {
-                        Log(Warning) << "  [" << l << ", " << e << "] " << DeHashVertexAttribute(layouts[l]._elements[e]._semanticHash) << std::endl;
+                        Log(Warning) << "  [" << l << ", " << e << "] 0x" << std::hex << layouts[l]._elements[e]._semanticHash << std::dec << std::endl;
                     }
                 }
             }
@@ -369,9 +310,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         NSArray <MTLArgument *>* arguments = (stage == ShaderStage::Vertex) ? reflection.vertexArguments : reflection.fragmentArguments;
         StreamMapping result;
 
-        for (MTLArgument* arg in arguments) {
+        auto argCount = arguments.count;
+        for (unsigned argIdx=0; argIdx<argCount; ++argIdx) {
+            MTLArgument* arg = arguments[argIdx];
             if (!arg.active)
                 continue;
+
             const char* argName = [arg.name cStringUsingEncoding:NSUTF8StringEncoding];
             auto argHash = BuildSemanticHash(argName);
 
@@ -395,6 +339,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                                 , argName
                             #endif
                         });
+                        assert(argIdx < 64);
+                        result._boundArgs |= 1<<uint64_t(argIdx);
                     }
                 }
 
@@ -417,6 +363,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                                 , argName
                             #endif
                         });
+                        assert(argIdx < 64);
+                        result._boundArgs |= 1<<uint64_t(argIdx);
                     }
                 }
 
@@ -450,9 +398,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (const auto& b:streamMapping._srvs) {
             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
             if (!shaderResource.IsGood()) {
-                #if DEBUG
-                    NSLog(@"==================> ShaderResource is bad/invalid while binding shader sampler (%s)", b._name.c_str());
-                #endif
+                Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
             } else {
                 const auto& texture = shaderResource.GetUnderlying();
                 [encoder setVertexTexture:texture.get() atIndex:b._shaderSlot];
@@ -483,9 +429,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (const auto& b:streamMapping._srvs) {
             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
             if (!shaderResource.IsGood()) {
-                #if DEBUG
-                    NSLog(@"==================> ShaderResource is bad/invalid while binding shader sampler (%s)", b._name.c_str());
-                #endif
+                Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
             } else {
                 const auto& texture = shaderResource.GetUnderlying();
                 [encoder setFragmentTexture:texture.get() atIndex:b._shaderSlot];
@@ -496,7 +440,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     void BoundUniforms::Apply(DeviceContext& context, unsigned streamIdx, const UniformsStream& stream) const
     {
         if (_unboundInterface) {
-            // ApplyWithUnboundInterface(context, streamIdx, stream);
             context.QueueUniformSet(_unboundInterface, streamIdx, stream);
             return;
         }
@@ -517,7 +460,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         */
     }
 
-    void BoundUniforms::Apply_UnboundInterfacePath(
+    BoundUniforms::BoundArguments BoundUniforms::Apply_UnboundInterfacePath(
         GraphicsPipeline& context,
         MTLRenderPipelineReflection* pipelineReflection,
         const UnboundInterface& unboundInterface,
@@ -528,6 +471,49 @@ namespace RenderCore { namespace Metal_AppleMetal
         ApplyUniformStreamVS(context, stream, bindingVS);
         auto bindingPS = MakeStreamMapping(pipelineReflection, streamIdx, unboundInterface._interface, ShaderStage::Pixel);
         ApplyUniformStreamPS(context, stream, bindingPS);
+
+        return { bindingVS._boundArgs, bindingPS._boundArgs };
+    }
+
+    void BoundUniforms::Apply_Standins(
+        GraphicsPipeline& context,
+        MTLRenderPipelineReflection* pipelineReflection,
+        uint64_t vsArguments, uint64_t psArguments)
+    {
+        id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
+        auto* vsArgs = pipelineReflection.vertexArguments;
+
+        unsigned vsArgCount = std::min(64u - xl_clz8(vsArguments), (unsigned)vsArgs.count);
+        for (unsigned argIdx=0; argIdx<vsArgCount; ++argIdx) {
+            MTLArgument* arg = vsArgs[argIdx];
+            if (!arg.active || !(vsArguments & (1<<uint64_t(argIdx))))
+                continue;
+
+            if (arg.type == MTLArgumentTypeTexture) {
+                if (arg.textureType == MTLTextureTypeCube) {
+                    [encoder setVertexTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:arg.index];
+                } else {
+                    [encoder setVertexTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:arg.index];
+                }
+            }
+        }
+
+        auto* psArgs = pipelineReflection.fragmentArguments;
+
+        unsigned psArgCount = std::min(64u - xl_clz8(psArguments), (unsigned)psArgs.count);
+        for (unsigned argIdx=0; argIdx<psArgCount; ++argIdx) {
+            MTLArgument* arg = psArgs[argIdx];
+            if (!arg.active || !(psArguments & (1<<uint64_t(argIdx))))
+                continue;
+
+            if (arg.type == MTLArgumentTypeTexture) {
+                if (arg.textureType == MTLTextureTypeCube) {
+                    [encoder setFragmentTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:arg.index];
+                } else {
+                    [encoder setFragmentTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:arg.index];
+                }
+            }
+        }
     }
 
 #if 0

@@ -240,6 +240,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_pipelineDescriptor);
         [_pimpl->_pipelineDescriptor setVertexFunction:shaderProgram._vf.get()];
         [_pimpl->_pipelineDescriptor setFragmentFunction:shaderProgram._ff.get()];
+        _pimpl->_queuedUniformSets.clear();
     }
 
     void GraphicsPipeline::Bind(const AttachmentBlendDesc& desc)
@@ -631,15 +632,19 @@ namespace RenderCore { namespace Metal_AppleMetal
         auto pipelineState = MakeUnderlyingPipeline();
         [_pimpl->_commandEncoder setRenderPipelineState:pipelineState.first];
 
+        uint64_t boundVSArgs = 0ull, boundPSArgs = 0ull;
         for (const auto&qus:_pimpl->_queuedUniformSets) {
             UniformsStream stream {
                 MakeIteratorRange(qus._constantBuffers),
                 MakeIteratorRange(qus._resources).Cast<const void*const*>(),
                 MakeIteratorRange(qus._samplers).Cast<const void*const*>()
             };
-            BoundUniforms::Apply_UnboundInterfacePath(*this, pipelineState.second, *qus._unboundInterf, qus._streamIdx, stream);
+            auto bound = BoundUniforms::Apply_UnboundInterfacePath(*this, pipelineState.second, *qus._unboundInterf, qus._streamIdx, stream);
+            boundVSArgs |= bound._vsArguments;
+            boundPSArgs |= bound._psArguments;
         }
-        _pimpl->_queuedUniformSets.clear();
+        // Bind standins for anything that didn't get bound correctly above
+        BoundUniforms::Apply_Standins(*this, pipelineState.second, ~boundVSArgs, ~boundPSArgs);
     }
 
     void GraphicsPipeline::QueueUniformSet(
@@ -653,6 +658,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         qus._constantBuffers = std::vector<ConstantBufferView>{stream._constantBuffers.begin(), stream._constantBuffers.end()};
         qus._resources = std::vector<const ShaderResourceView*>{(const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()};
         qus._samplers = std::vector<const SamplerState*>{(const SamplerState*const*)stream._samplers.begin(), (const SamplerState*const*)stream._samplers.end()};
+
+        for (auto& q:_pimpl->_queuedUniformSets)
+            if (q._streamIdx == streamIdx) {
+                q = std::move(qus);
+                return;
+            }
         _pimpl->_queuedUniformSets.emplace_back(std::move(qus));
     }
 
