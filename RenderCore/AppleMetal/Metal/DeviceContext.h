@@ -18,6 +18,7 @@
 @class MTLRenderPipelineReflection;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
+@protocol MTLRenderCommandEncoder;
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -30,6 +31,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     class RasterizationDesc;
     class DepthStencilDesc;
+    class UnboundInterface;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,14 +109,27 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         void Bind(MTLVertexDescriptor* descriptor);
 
-        enum ShaderTarget { Vertex, Fragment };
-        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target);
-        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target);
-        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target);
+        void BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
+        /*
+        void BindVS(const void* bytes, unsigned length, unsigned bufferIndex);
+        void BindVS(id<MTLTexture> texture, unsigned textureIndex);
 
-        const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
+        void BindPS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
+        void BindPS(const void* bytes, unsigned length, unsigned bufferIndex);
+        void BindPS(id<MTLTexture> texture, unsigned textureIndex);
+        */
 
+        id<MTLRenderCommandEncoder> GetCommandEncoder();
+
+        // const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
+
+        std::pair<id<MTLRenderPipelineState>, MTLRenderPipelineReflection*> MakeUnderlyingPipeline();
         void FinalizePipeline();
+
+        void QueueUniformSet(
+            const std::shared_ptr<UnboundInterface>& unboundInterf,
+            unsigned streamIdx,
+            const UniformsStream& stream);
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);

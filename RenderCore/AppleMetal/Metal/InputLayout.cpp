@@ -46,7 +46,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             id<MTLBuffer> buffer = resource.GetBuffer();
             if (!buffer)
                 Throw(::Exceptions::BasicLabel("Attempting to apply vertex buffer view with invalid resource"));
-            context.Bind(buffer, vbv._offset, i, GraphicsPipeline::ShaderTarget::Vertex);
+            context.BindVS(buffer, vbv._offset, i);
             ++i;
         }
     }
@@ -308,17 +308,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /* KenD -- cleanup TODO -- this was copied from OpenGLES implementation */
-
     static bool HasCBBinding(IteratorRange<const UniformsStreamInterface**> interfaces, uint64_t hash)
     {
         for (auto interf:interfaces) {
             auto i = std::find_if(
-                                  interf->_cbBindings.begin(),
-                                  interf->_cbBindings.end(),
-                                  [hash](const UniformsStreamInterface::RetainedCBBinding& b) {
-                                      return b._hashName == hash;
-                                  });
+                interf->_cbBindings.begin(), interf->_cbBindings.end(),
+                [hash](const UniformsStreamInterface::RetainedCBBinding& b) {
+                    return b._hashName == hash;
+                });
             if (i!=interf->_cbBindings.end())
                 return true;
         }
@@ -335,12 +332,206 @@ namespace RenderCore { namespace Metal_AppleMetal
         return false;
     }
 
+    static bool HasCBBinding(IteratorRange<const UniformsStreamInterface*> interfaces, uint64_t hash)
+    {
+        for (const auto& interf:interfaces) {
+            auto i = std::find_if(
+                interf._cbBindings.begin(), interf._cbBindings.end(),
+                [hash](const UniformsStreamInterface::RetainedCBBinding& b) {
+                    return b._hashName == hash;
+                });
+            if (i!=interf._cbBindings.end())
+                return true;
+        }
+        return false;
+    }
+
+    static bool HasSRVBinding(IteratorRange<const UniformsStreamInterface*> interfaces, uint64_t hash)
+    {
+        for (const auto& interf:interfaces) {
+            auto i = std::find(interf._srvBindings.begin(), interf._srvBindings.end(), hash);
+            if (i!=interf._srvBindings.end())
+                return true;
+        }
+        return false;
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BoundUniforms::Apply(
-            DeviceContext& context,
-            unsigned streamIdx,
-            const UniformsStream& stream) const
+    static StreamMapping MakeStreamMapping(
+        MTLRenderPipelineReflection* reflection,
+        unsigned streamIndex,
+        const UniformsStreamInterface* interfaces,      // expecting exactly 4 entries
+        ShaderStage stage)
+    {
+        assert(streamIndex < 4);
+        assert(stage == ShaderStage::Vertex || stage == ShaderStage::Pixel);
+        NSArray <MTLArgument *>* arguments = (stage == ShaderStage::Vertex) ? reflection.vertexArguments : reflection.fragmentArguments;
+        StreamMapping result;
+
+        for (MTLArgument* arg in arguments) {
+            if (!arg.active)
+                continue;
+            const char* argName = [arg.name cStringUsingEncoding:NSUTF8StringEncoding];
+            auto argHash = BuildSemanticHash(argName);
+
+            // Look for matching input in our interface
+            if (arg.type == MTLArgumentTypeTexture) {
+
+                unsigned matchingSlot = ~0u;
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._srvBindings.size(); ++c) {
+                    if (interfaces[streamIndex]._srvBindings[c] == argHash) {
+                        matchingSlot = c;
+                        break;
+                    }
+                }
+
+                if (matchingSlot != ~0u) {
+                    // look for a binding in a later stream interface
+                    if (!HasSRVBinding(MakeIteratorRange(&interfaces[streamIndex+1], &interfaces[4]), argHash)) {
+                        result._srvs.push_back({
+                            matchingSlot, (unsigned)arg.index
+                            #if defined(_DEBUG)
+                                , argName
+                            #endif
+                        });
+                    }
+                }
+
+            } else if (arg.type == MTLArgumentTypeBuffer) {
+
+                unsigned matchingSlot = ~0u;
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._cbBindings.size(); ++c) {
+                    if (interfaces[streamIndex]._cbBindings[c]._hashName == argHash) {
+                        matchingSlot = c;
+                        break;
+                    }
+                }
+
+                if (matchingSlot != ~0u) {
+                    // look for a binding in a later stream interface
+                    if (!HasCBBinding(MakeIteratorRange(&interfaces[streamIndex+1], &interfaces[4]), argHash)) {
+                        result._cbs.push_back({
+                            matchingSlot, (unsigned)arg.index
+                            #if defined(_DEBUG)
+                                , argName
+                            #endif
+                        });
+                    }
+                }
+
+            }
+
+        }
+
+        return result;
+    }
+
+    static void ApplyUniformStreamVS(
+        GraphicsPipeline& context, const UniformsStream& stream,
+        const StreamMapping& streamMapping)
+    {
+        id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
+
+        for (const auto& b:streamMapping._cbs) {
+            assert(b._uniformStreamSlot < stream._constantBuffers.size());
+            const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];
+            const auto& pkt = constantBuffer._packet;
+            if (!pkt.size()) {
+                assert(constantBuffer._prebuiltBuffer);
+                [encoder setVertexBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
+                                  offset:0
+                                 atIndex:b._shaderSlot];
+            } else {
+                [encoder setVertexBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+            }
+        }
+
+        for (const auto& b:streamMapping._srvs) {
+            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
+            if (!shaderResource.IsGood()) {
+                #if DEBUG
+                    NSLog(@"==================> ShaderResource is bad/invalid while binding shader sampler (%s)", b._name.c_str());
+                #endif
+            } else {
+                const auto& texture = shaderResource.GetUnderlying();
+                [encoder setVertexTexture:texture.get() atIndex:b._shaderSlot];
+            }
+        }
+    }
+
+    static void ApplyUniformStreamPS(
+        GraphicsPipeline& context, const UniformsStream& stream,
+        const StreamMapping& streamMapping)
+    {
+        id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
+
+        for (const auto& b:streamMapping._cbs) {
+            assert(b._uniformStreamSlot < stream._constantBuffers.size());
+            const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];
+            const auto& pkt = constantBuffer._packet;
+            if (!pkt.size()) {
+                assert(constantBuffer._prebuiltBuffer);
+                [encoder setFragmentBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
+                                  offset:0
+                                 atIndex:b._shaderSlot];
+            } else {
+                [encoder setFragmentBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+            }
+        }
+
+        for (const auto& b:streamMapping._srvs) {
+            const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
+            if (!shaderResource.IsGood()) {
+                #if DEBUG
+                    NSLog(@"==================> ShaderResource is bad/invalid while binding shader sampler (%s)", b._name.c_str());
+                #endif
+            } else {
+                const auto& texture = shaderResource.GetUnderlying();
+                [encoder setFragmentTexture:texture.get() atIndex:b._shaderSlot];
+            }
+        }
+    }
+
+    void BoundUniforms::Apply(DeviceContext& context, unsigned streamIdx, const UniformsStream& stream) const
+    {
+        if (_unboundInterface) {
+            // ApplyWithUnboundInterface(context, streamIdx, stream);
+            context.QueueUniformSet(_unboundInterface, streamIdx, stream);
+            return;
+        }
+
+        assert(streamIdx < dimof(_preboundInterfaceVS));
+        ApplyUniformStreamVS(context, stream, _preboundInterfaceVS[streamIdx]);
+        ApplyUniformStreamPS(context, stream, _preboundInterfacePS[streamIdx]);
+
+        /*
+        if (streamIdx == 0) {
+            for (const auto& b:_unbound2DSRVs) {
+                context.Bind(GetObjectFactory().StandInCubeTexture(), b.second, b.first);
+            }
+            for (const auto& b:_unboundCubeSRVs) {
+                context.Bind(GetObjectFactory().StandIn2DTexture(), b.second, b.first);
+            }
+        }
+        */
+    }
+
+    void BoundUniforms::Apply_UnboundInterfacePath(
+        GraphicsPipeline& context,
+        MTLRenderPipelineReflection* pipelineReflection,
+        const UnboundInterface& unboundInterface,
+        unsigned streamIdx,
+        const UniformsStream& stream)
+    {
+        auto bindingVS = MakeStreamMapping(pipelineReflection, streamIdx, unboundInterface._interface, ShaderStage::Vertex);
+        ApplyUniformStreamVS(context, stream, bindingVS);
+        auto bindingPS = MakeStreamMapping(pipelineReflection, streamIdx, unboundInterface._interface, ShaderStage::Pixel);
+        ApplyUniformStreamPS(context, stream, bindingPS);
+    }
+
+#if 0
+    void BoundUniforms::Apply(DeviceContext& context, unsigned streamIdx, const UniformsStream& stream) const
     {
         /* Overview: Use reflection to determine the proper indices in the argument table
          * for buffers and textures.  Then, bind the resources from the stream. */
@@ -517,6 +708,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
     }
+#endif
+
+    /* KenD -- Metal TODO -- validate the layout of the constant buffer view,
+         * within the UniformsStreamInterface, against the reflected pipeline state.
+         * The structure used in the shader must match the layout we use for the buffer.
+         */
 
     BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
@@ -526,14 +723,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         const UniformsStreamInterface& interface2,
         const UniformsStreamInterface& interface3)
     {
-        _vf = shader._vf.get();
-        _ff = shader._ff.get();
-
         for (auto& s : _boundUniformBufferSlots) s = 0ull;
         for (auto& s : _boundResourceSlots) s = 0ull;
-
-        /* Store stream and slot indices for resource hashes so the matching resources (matching based on hash)
-         * can be bound to the proper destination indices when applying a UniformsStream. */
 
         const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = dimof(interfaces);
@@ -544,11 +735,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 const auto& cbBinding = interface._cbBindings[slot];
 
                 // Skip if future binding should take precedence
-                if (HasCBBinding(MakeIteratorRange(&interfaces[s+1], &interfaces[streamCount]), cbBinding._hashName)) {
+                if (HasCBBinding(MakeIteratorRange(&interfaces[s+1], &interfaces[streamCount]), cbBinding._hashName))
                     continue;
-                }
-
-                _cbs.emplace_back(CB{s, slot, cbBinding._hashName});
                 _boundUniformBufferSlots[s] |= (1ull << uint64_t(slot));
             }
 
@@ -556,34 +744,29 @@ namespace RenderCore { namespace Metal_AppleMetal
                 auto& srvBinding = interface._srvBindings[slot];
 
                 // Skip if future binding should take precedence
-                if (HasCBBinding(MakeIteratorRange(&interfaces[s+1], &interfaces[streamCount]), srvBinding)) {
+                if (HasSRVBinding(MakeIteratorRange(&interfaces[s+1], &interfaces[streamCount]), srvBinding))
                     continue;
-                }
-
-                _srvs.emplace_back(SRV{s, slot, interface._srvBindings[slot]});
                 _boundResourceSlots[s] |= (1ull << uint64_t(slot));
             }
         }
 
-        /* KenD -- Metal TODO -- validate the layout of the constant buffer view,
-         * within the UniformsStreamInterface, against the reflected pipeline state.
-         * The structure used in the shader must match the layout we use for the buffer.
-         */
+        _unboundInterface = std::make_unique<UnboundInterface>();
+        _unboundInterface->_interface[0] = interface0;
+        _unboundInterface->_interface[1] = interface1;
+        _unboundInterface->_interface[2] = interface2;
+        _unboundInterface->_interface[3] = interface3;
     }
 
     BoundUniforms::~BoundUniforms() {}
 
-    BoundUniforms::BoundUniforms() {
-        assert(0);
+    BoundUniforms::BoundUniforms()
+    {
         for (auto& s : _boundUniformBufferSlots) s = 0ull;
         for (auto& s : _boundResourceSlots) s = 0ull;
     }
 
     BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
-    : _cbs(std::move(moveFrom._cbs))
-    , _srvs(std::move(moveFrom._srvs))
-    , _vf(std::move(moveFrom._vf))
-    , _ff(std::move(moveFrom._ff))
+    : _unboundInterface(std::move(moveFrom._unboundInterface))
     {
         for (unsigned c=0; c<dimof(moveFrom._boundUniformBufferSlots); ++c) {
             _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
@@ -591,19 +774,28 @@ namespace RenderCore { namespace Metal_AppleMetal
             moveFrom._boundUniformBufferSlots[c] = 0ull;
             moveFrom._boundResourceSlots[c] = 0ull;
         }
+        for (unsigned c=0; c<dimof(moveFrom._preboundInterfaceVS); ++c) {
+            _preboundInterfaceVS[c] = std::move(_preboundInterfaceVS[c]);
+        }
+        for (unsigned c=0; c<dimof(moveFrom._preboundInterfacePS); ++c) {
+            _preboundInterfacePS[c] = std::move(_preboundInterfacePS[c]);
+        }
     }
 
     BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
     {
-        _cbs = std::move(moveFrom._cbs);
-        _srvs = std::move(moveFrom._srvs);
-        _vf = std::move(moveFrom._vf);
-        _ff = std::move(moveFrom._ff);
+        _unboundInterface = std::move(moveFrom._unboundInterface);
         for (unsigned c=0; c<dimof(moveFrom._boundUniformBufferSlots); ++c) {
             _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
             _boundResourceSlots[c] = moveFrom._boundResourceSlots[c];
             moveFrom._boundUniformBufferSlots[c] = 0ull;
             moveFrom._boundResourceSlots[c] = 0ull;
+        }
+        for (unsigned c=0; c<dimof(moveFrom._preboundInterfaceVS); ++c) {
+            _preboundInterfaceVS[c] = std::move(_preboundInterfaceVS[c]);
+        }
+        for (unsigned c=0; c<dimof(moveFrom._preboundInterfacePS); ++c) {
+            _preboundInterfacePS[c] = std::move(_preboundInterfacePS[c]);
         }
         return *this;
     }

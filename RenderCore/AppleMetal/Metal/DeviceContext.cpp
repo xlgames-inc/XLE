@@ -155,6 +155,18 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<id> _commandEncoder; // For the current subpass
         TBC::OCPtr<id> _device;
 
+        class QueuedUniformSet
+        {
+        public:
+            std::shared_ptr<UnboundInterface> _unboundInterf;
+            unsigned _streamIdx;
+
+            std::vector<ConstantBufferView> _constantBuffers;
+            std::vector<const ShaderResourceView*> _resources;
+            std::vector<const SamplerState*> _samplers;
+        };
+        std::vector<QueuedUniformSet> _queuedUniformSets;
+
         /* KenD -- we are currently caching reflection information obtained from temporary RenderPipelineStates.
          * We don't keep those temporary RenderPipelineStates at this point.  The reason is that we need reflection
          * information when applying bound uniforms - we have to determine the destination index in
@@ -164,7 +176,7 @@ namespace RenderCore { namespace Metal_AppleMetal
          *
          * Metal TODO -- management of RenderPipelineStates needs to be improved regarding caching
          */
-        std::vector<std::pair<uint64_t, ReflectionInformation>> _reflectionInformation;
+        // std::vector<std::pair<uint64_t, ReflectionInformation>> _reflectionInformation;
 
 #if CACHE_RENDER_PIPELINE_STATE
         std::map<uint64_t, TBC::OCPtr<id>> _pipelineStateCache; // MTLRenderPipelineState
@@ -195,12 +207,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
+        /*
         uint32_t _boundVertexBuffers = 0u;
         uint32_t _boundVertexTextures = 0u;
         uint32_t _boundVertexSamplers = 0u;
         uint32_t _boundFragmentBuffers = 0u;
         uint32_t _boundFragmentTextures = 0u;
         uint32_t _boundFragmentSamplers = 0u;
+        */
 
         CapturedStates _capturedStates;
     };
@@ -355,45 +369,50 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
     }
 
-    void GraphicsPipeline::Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target)
+    void GraphicsPipeline::BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex)
     {
-        assert(target == Vertex || target == Fragment);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
-            [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
-            _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
-        } else if (target == Fragment) {
-            [_pimpl->_commandEncoder setFragmentBuffer:buffer offset:offset atIndex:bufferIndex];
-            _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
-        }
+        [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
     }
 
-    void GraphicsPipeline::Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target)
+#if 0
+    void GraphicsPipeline::BindPS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex)
     {
-        assert(target == Vertex || target == Fragment);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
-            [_pimpl->_commandEncoder setVertexBytes:bytes length:length atIndex:bufferIndex];
-            _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
-        } else if (target == Fragment) {
-            [_pimpl->_commandEncoder setFragmentBytes:bytes length:length atIndex:bufferIndex];
-            _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
-        }
+        [_pimpl->_commandEncoder setFragmentBuffer:buffer offset:offset atIndex:bufferIndex];
+        _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
     }
 
-    void GraphicsPipeline::Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target)
+    void GraphicsPipeline::BindVS(const void* bytes, unsigned length, unsigned bufferIndex)
     {
-        assert(target == Vertex || target == Fragment);
         assert(_pimpl->_commandEncoder);
-        if (target == Vertex) {
-            [_pimpl->_commandEncoder setVertexTexture:texture atIndex:textureIndex];
-            _pimpl->_boundVertexTextures |= (1 << textureIndex);
-        } else if (target == Fragment) {
-            [_pimpl->_commandEncoder setFragmentTexture:texture atIndex:textureIndex];
-            _pimpl->_boundFragmentTextures |= (1 << textureIndex);
-        }
+        [_pimpl->_commandEncoder setVertexBytes:bytes length:length atIndex:bufferIndex];
+        _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
     }
 
+    void GraphicsPipeline::BindPS(const void* bytes, unsigned length, unsigned bufferIndex)
+    {
+        assert(_pimpl->_commandEncoder);
+        [_pimpl->_commandEncoder setFragmentBytes:bytes length:length atIndex:bufferIndex];
+        _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
+    }
+
+    void GraphicsPipeline::BindVS(id<MTLTexture> texture, unsigned textureIndex)
+    {
+        assert(_pimpl->_commandEncoder);
+        [_pimpl->_commandEncoder setVertexTexture:texture atIndex:textureIndex];
+        _pimpl->_boundVertexTextures |= (1 << textureIndex);
+    }
+
+    void GraphicsPipeline::BindPS(id<MTLTexture> texture, unsigned textureIndex)
+    {
+        assert(_pimpl->_commandEncoder);
+        [_pimpl->_commandEncoder setFragmentTexture:texture atIndex:textureIndex];
+        _pimpl->_boundFragmentTextures |= (1 << textureIndex);
+    }
+#endif
+
+#if 0
     /* KenD -- cleanup TODO -- this was copied from LightWeightModel */
     static uint64 BuildSemanticHash(const char semantic[])
     {
@@ -503,8 +522,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         i = _pimpl->_reflectionInformation.emplace(i, std::make_pair(hash, std::move(ri)));
         return i->second;
     }
+#endif
 
-    void GraphicsPipeline::FinalizePipeline()
+    std::pair<id<MTLRenderPipelineState>, MTLRenderPipelineReflection*> GraphicsPipeline::MakeUnderlyingPipeline()
     {
 #if 0 // DEBUG
         {
@@ -589,17 +609,57 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 #else
+        MTLPipelineOption options = MTLPipelineOptionArgumentInfo;
+        MTLAutoreleasedRenderPipelineReflection reflection;
         id<MTLRenderPipelineState> pipelineState = [_pimpl->_device newRenderPipelineStateWithDescriptor:_pimpl->_pipelineDescriptor
+                                                                                                 options:options
+                                                                                              reflection:&reflection
                                                                                                    error:&error];
 #endif
         if (error) {
             Log(Error) << "Failed to create render pipeline state: " << [[error description] UTF8String] << std::endl;
         }
         assert(!error);
-        [_pimpl->_commandEncoder setRenderPipelineState:pipelineState];
-        [pipelineState release];
+        [pipelineState autorelease];
 
         /* Metal TODO -- non-rasterized passes, multisampling */
+        return std::make_pair(pipelineState, reflection);
+    }
+
+    void GraphicsPipeline::FinalizePipeline()
+    {
+        auto pipelineState = MakeUnderlyingPipeline();
+        [_pimpl->_commandEncoder setRenderPipelineState:pipelineState.first];
+
+        for (const auto&qus:_pimpl->_queuedUniformSets) {
+            UniformsStream stream {
+                MakeIteratorRange(qus._constantBuffers),
+                MakeIteratorRange(qus._resources).Cast<const void*const*>(),
+                MakeIteratorRange(qus._samplers).Cast<const void*const*>()
+            };
+            BoundUniforms::Apply_UnboundInterfacePath(*this, pipelineState.second, *qus._unboundInterf, qus._streamIdx, stream);
+        }
+        _pimpl->_queuedUniformSets.clear();
+    }
+
+    void GraphicsPipeline::QueueUniformSet(
+        const std::shared_ptr<UnboundInterface>& unboundInterf,
+        unsigned streamIdx,
+        const UniformsStream& stream)
+    {
+        Pimpl::QueuedUniformSet qus;
+        qus._unboundInterf = unboundInterf;
+        qus._streamIdx = streamIdx;
+        qus._constantBuffers = std::vector<ConstantBufferView>{stream._constantBuffers.begin(), stream._constantBuffers.end()};
+        qus._resources = std::vector<const ShaderResourceView*>{(const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()};
+        qus._samplers = std::vector<const SamplerState*>{(const SamplerState*const*)stream._samplers.begin(), (const SamplerState*const*)stream._samplers.end()};
+        _pimpl->_queuedUniformSets.emplace_back(std::move(qus));
+    }
+
+    id<MTLRenderCommandEncoder> GraphicsPipeline::GetCommandEncoder()
+    {
+        assert(_pimpl->_commandEncoder);
+        return _pimpl->_commandEncoder;
     }
 
     void GraphicsPipeline::UnbindInputLayout()
@@ -666,6 +726,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            GraphicsPipeline::CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor)
     {
+        #if 0
         {
             /* When the command encoder was destroyed, previously bound textures and buffers would no longer be bound. */
             _pimpl->_boundVertexBuffers = 0u;
@@ -675,6 +736,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             _pimpl->_boundFragmentTextures = 0u;
             _pimpl->_boundFragmentSamplers = 0u;
         }
+        #endif
 
         _pimpl->CheckCommandBufferError();
 
