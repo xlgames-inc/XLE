@@ -12,8 +12,10 @@
 @protocol MTLDevice;
 @protocol MTLTexture;
 @protocol MTLBuffer;
+@protocol MTLSamplerState;
 @protocol MTLRenderPipelineState;
 @class MTLTextureDescriptor;
+@class MTLSamplerDescriptor;
 @class MTLRenderPipelineDescriptor;
 @class MTLRenderPipelineReflection;
 
@@ -24,6 +26,7 @@
  */
 typedef NSObject<MTLTexture> AplMtlTexture;
 typedef NSObject<MTLBuffer> AplMtlBuffer;
+typedef NSObject<MTLSamplerState> AplMtlSamplerState;
 typedef NSObject<MTLDevice> AplMtlDevice;
 typedef NSObject<MTLRenderPipelineState> AplMtlRenderPipelineState;
 
@@ -40,6 +43,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         TBC::OCPtr<AplMtlTexture> CreateTexture(MTLTextureDescriptor* textureDesc); // <MTLTexture>
         TBC::OCPtr<AplMtlBuffer> CreateBuffer(const void* bytes, unsigned length); // <MTLBuffer>
+        TBC::OCPtr<AplMtlSamplerState> CreateSamplerState(MTLSamplerDescriptor* samplerDesc); // <MTLSamplerState>
 
         struct RenderPipelineState
         {
@@ -53,6 +57,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         const TBC::OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
         const TBC::OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
+        const TBC::OCPtr<AplMtlSamplerState>& StandInSamplerState() { return _standInSamplerState; }
 
         ObjectFactory(id<MTLDevice> mtlDevice);
         ObjectFactory() = delete;
@@ -65,6 +70,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         TBC::OCPtr<AplMtlTexture> _standIn2DTexture;
         TBC::OCPtr<AplMtlTexture> _standInCubeTexture;
+        TBC::OCPtr<AplMtlSamplerState> _standInSamplerState;
     };
 
     class DeviceContext;

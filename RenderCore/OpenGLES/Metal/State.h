@@ -59,6 +59,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
         RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+        bool _enableMipmaps = true;
     };
 
     namespace ColorWriteMask
@@ -103,7 +104,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
-                        CompareOp comparison = CompareOp::Never);
+                        CompareOp comparison = CompareOp::Never,
+                        bool enableMipmaps = true); /* this enableMipmaps argument in the constructor is ignored; the argument in Apply is what is relevant */
         SamplerState();
 
         void Apply(
