@@ -9,6 +9,10 @@
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/BitUtils.h"
 
+namespace Magnesium {
+    extern RenderCore::IThreadContext* g_hackActiveThreadContext;
+}
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     unsigned GPUSyncedAllocator::Allocate(unsigned size, unsigned alignment)
@@ -76,7 +80,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     GPUSyncedAllocator::GPUSyncedAllocator(unsigned totalSize)
     : _movingPoint(0), _totalSize(totalSize)
     {
-        _eventSet = std::make_unique<SyncEventSet>();
+        _eventSet = std::make_unique<SyncEventSet>(Magnesium::g_hackActiveThreadContext);
     }
 
     GPUSyncedAllocator::~GPUSyncedAllocator() {}

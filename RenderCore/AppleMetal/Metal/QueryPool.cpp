@@ -2,8 +2,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include <Metal/Metal.h>
+
 #include "QueryPool.h"
 #include "DeviceContext.h"
+#include "Device.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -30,17 +33,89 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto SyncEventSet::SetEvent() -> SyncEvent { return 0; }
-    auto SyncEventSet::LastCompletedEvent() -> SyncEvent { return 0; }
-    void SyncEventSet::Stall() {}
+    auto SyncEventSet::SetEvent() -> SyncEvent {
+        auto iDevice = _context->GetDevice();
+        assert(iDevice);
+        auto *deviceInterface = ((RenderCore::ImplAppleMetal::Device*)iDevice->QueryInterface(typeid(RenderCore::ImplAppleMetal::Device).hash_code()));
+        assert(deviceInterface);
+        auto device = deviceInterface->GetUnderlying();
+        assert(device);
+        auto deviceContext = DeviceContext::Get(*_context);
+        assert(deviceContext);
+        auto buffer = deviceContext->RetrieveCommandBuffer();
+        assert(buffer);
 
-    bool SyncEventSet::IsSupported() { return false; }
+        auto result = ++_nextEvent;
 
-    SyncEventSet::SyncEventSet()
-    {
-        _nextEvent = 0;
-        _lastCompletedEvent = 0;
+        if (@available(iOS 12, macOS 10.14, *)) {
+            auto event = [device newSharedEvent];
+            assert(event);
+            [event notifyListener:_listener atValue:1 block:^(id<MTLSharedEvent> sharedEvent, uint64_t value) {
+                if (result > _lastCompletedEvent)
+                    _lastCompletedEvent = result;
+            }];
+            deviceContext->OnEndEncoding([deviceContext, event]{ [deviceContext->RetrieveCommandBuffer() encodeSignalEvent:event value:1]; });
+        } else {
+            [buffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+                if (result > _lastCompletedEvent) {
+                    _lastCompletedEvent = result;
+                }
+            }];
+        }
+        return result;
     }
+
+    auto SyncEventSet::NextEventToSet() -> SyncEvent {
+        return _nextEvent + 1;
+    }
+
+    auto SyncEventSet::LastCompletedEvent() -> SyncEvent {
+        return _lastCompletedEvent;
+    }
+
+    void SyncEventSet::Stall() {
+        auto *context = ((RenderCore::ImplAppleMetal::ThreadContext *)_context->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code()));
+        assert(context);
+        auto iDevice = _context->GetDevice();
+        assert(iDevice);
+        auto *deviceInterface = ((RenderCore::ImplAppleMetal::Device*)iDevice->QueryInterface(typeid(RenderCore::ImplAppleMetal::Device).hash_code()));
+        assert(deviceInterface);
+        auto device = deviceInterface->GetUnderlying();
+        assert(device);
+
+        auto result = ++_nextEvent;
+
+        if (@available(iOS 12, macOS 10.14, *)) {
+            auto event = [device newSharedEvent];
+            assert(event);
+            [event notifyListener:_listener atValue:1 block:^(id<MTLSharedEvent> sharedEvent, uint64_t value) {
+                if (result > _lastCompletedEvent)
+                    _lastCompletedEvent = result;
+            }];
+            context->WaitUntilQueueCompletedWithCommand([event](id<MTLCommandBuffer> buffer) {
+                [buffer encodeSignalEvent:event value:1];
+            });
+        } else {
+            context->WaitUntilQueueCompletedWithCommand([this, result](id<MTLCommandBuffer> buffer) {
+                [buffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+                    if (result > _lastCompletedEvent) {
+                        _lastCompletedEvent = result;
+                    }
+                }];
+            });
+        }
+    }
+
+    bool SyncEventSet::IsSupported() {
+        return true;
+    }
+
+    SyncEventSet::SyncEventSet(IThreadContext *context) : _context(context), _nextEvent(0), _lastCompletedEvent(0) {
+        if (@available(iOS 12, macOS 10.14, *)) {
+            _listener = [[MTLSharedEventListener alloc] init];
+        }
+    }
+
     SyncEventSet::~SyncEventSet() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -57,6 +57,7 @@ namespace RenderCore { namespace ImplAppleMetal
         void        BeginHeadlessFrame();
         void        EndHeadlessFrame();
         void        WaitUntilQueueCompleted();
+        void        WaitUntilQueueCompletedWithCommand(std::function<void(id<MTLCommandBuffer>)> fn);
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;

@@ -171,6 +171,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::map<uint64_t, TBC::OCPtr<id>> _pipelineStateCache; // MTLRenderPipelineState
 #endif
 
+        std::vector<std::function<void(void)>> _onEndEncodingFunctions;
+
         /* Debug functions */
         void ClearTextureBindings()
         {
@@ -743,6 +745,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
 
         [_pimpl->_commandEncoder endEncoding];
+
+        for (auto fn: _pimpl->_onEndEncodingFunctions) {
+            fn();
+        }
+    }
+
+    void            GraphicsPipeline::OnEndEncoding(std::function<void(void)> fn)
+    {
+        assert(_pimpl->_commandEncoder);
+        _pimpl->_onEndEncodingFunctions.push_back(fn);
     }
 
     void            GraphicsPipeline::DestroyRenderCommandEncoder()

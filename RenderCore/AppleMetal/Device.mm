@@ -93,6 +93,13 @@ namespace RenderCore { namespace ImplAppleMetal
         }
     }
 
+    void        ThreadContext::WaitUntilQueueCompletedWithCommand(std::function<void(id<MTLCommandBuffer>)> fn) {
+        auto *buffer = [_immediateCommandQueue commandBuffer];
+        fn(buffer);
+        [buffer commit];
+        [buffer waitUntilCompleted];
+    }
+
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
     std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }

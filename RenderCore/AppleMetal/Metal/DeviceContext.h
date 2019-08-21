@@ -128,6 +128,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLCommandBuffer>            RetrieveCommandBuffer();
         void            CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
         void            EndEncoding();
+        void            OnEndEncoding(std::function<void(void)> fn);
         void            DestroyRenderCommandEncoder();
 
         void            PushDebugGroup(const char annotationName[]);

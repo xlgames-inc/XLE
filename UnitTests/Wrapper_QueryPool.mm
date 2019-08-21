@@ -38,11 +38,7 @@
 }
 
 - (void)testQueryPool_SyncEventSet {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
-        _underlying->QueryPool_SyncEventSet(self);
-    #else
-        XCTFail(@"Not supported or failing on this GFX API");
-    #endif
+    _underlying->QueryPool_SyncEventSet(self);
 }
 
 @end

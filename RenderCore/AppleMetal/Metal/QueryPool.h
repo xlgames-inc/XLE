@@ -51,21 +51,23 @@ namespace RenderCore { namespace Metal_AppleMetal
     class SyncEventSet
     {
     public:
-        using SyncEvent = unsigned;
+        using SyncEvent = uint64_t;
         SyncEvent SetEvent();
-        SyncEvent NextEventToSet() { return _nextEvent; }
+        SyncEvent NextEventToSet();
         SyncEvent LastCompletedEvent();
         void Stall();
 
         static bool IsSupported();
 
-        SyncEventSet();
+        SyncEventSet(IThreadContext *context);
         ~SyncEventSet();
         SyncEventSet(const SyncEventSet&) = delete;
         SyncEventSet& operator=(const SyncEventSet&) = delete;
     private:
+        IThreadContext *_context;
         SyncEvent _nextEvent;
         SyncEvent _lastCompletedEvent;
+        id _listener;
     };
 
     #if defined(GPUANNOTATIONS_ENABLE)

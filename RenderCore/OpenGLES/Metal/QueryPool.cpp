@@ -74,7 +74,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;
     }
 
-    SyncEventSet::SyncEventSet()
+    SyncEventSet::SyncEventSet(IThreadContext *context)
     {
         _nextEvent = 1;
         _lastCompletedEvent = 0;

@@ -62,7 +62,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         static bool IsSupported();
 
-        SyncEventSet();
+        SyncEventSet(IThreadContext *context);
         ~SyncEventSet();
         SyncEventSet(const SyncEventSet&) = delete;
         SyncEventSet& operator=(const SyncEventSet&) = delete;
