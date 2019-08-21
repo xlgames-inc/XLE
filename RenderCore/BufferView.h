@@ -15,13 +15,14 @@ namespace RenderCore
     public:
         SharedPkt           _packet;
         const IResource*    _prebuiltBuffer;
+        unsigned            _prebuiltRangeBegin = 0, _prebuiltRangeEnd = 0;     // (use 0, 0 for the entire buffer)
         // flags / desc ?
 
         ConstantBufferView() : _prebuiltBuffer(nullptr) {}
         ConstantBufferView(const SharedPkt& pkt) : _packet(pkt), _prebuiltBuffer(nullptr) {}
         ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)), _prebuiltBuffer(nullptr) {}
-        ConstantBufferView(const IResourcePtr& prebuilt) : _prebuiltBuffer(prebuilt.get()) {}
-        ConstantBufferView(const IResource* prebuilt) : _prebuiltBuffer(prebuilt) {}
+        ConstantBufferView(const IResourcePtr& prebuilt, unsigned begin = 0, unsigned end = 0) : _prebuiltBuffer(prebuilt.get()), _prebuiltRangeBegin(begin), _prebuiltRangeEnd(end) {}
+        ConstantBufferView(const IResource* prebuilt, unsigned begin = 0, unsigned end = 0) : _prebuiltBuffer(prebuilt), _prebuiltRangeBegin(begin), _prebuiltRangeEnd(end) {}
     };
 
     class VertexBufferView

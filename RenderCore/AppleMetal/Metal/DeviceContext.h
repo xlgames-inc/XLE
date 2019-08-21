@@ -64,7 +64,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     class GraphicsPipelineBuilder
     {
     public:
-        void SetShaderFunctions(id<MTLFunction> vf, id<MTLFunction> ff);
+        void Bind(const ShaderProgram& shaderProgram);
         void Bind(const AttachmentBlendDesc& desc);
 
         void SetRasterSampleCount(unsigned sampleCount);
@@ -97,7 +97,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
         void    Bind(const IndexBufferView& IB);
 
-        void    Bind(const ShaderProgram& shaderProgram);
         void    Bind(const RasterizationDesc& rasterizer);
         void    Bind(const DepthStencilDesc& depthStencil);
         DepthStencilDesc ActiveDepthStencilDesc();

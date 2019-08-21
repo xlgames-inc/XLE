@@ -152,11 +152,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<MTLRenderPipelineDescriptor> _pipelineDescriptor; // For the current draw
     };
 
-    void GraphicsPipelineBuilder::SetShaderFunctions(id<MTLFunction> vf, id<MTLFunction> ff)
+    void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
         assert(_pimpl->_pipelineDescriptor);
-        [_pimpl->_pipelineDescriptor setVertexFunction:vf];
-        [_pimpl->_pipelineDescriptor setFragmentFunction:ff];
+        [_pimpl->_pipelineDescriptor setVertexFunction:shaderProgram._vf];
+        [_pimpl->_pipelineDescriptor setFragmentFunction:shaderProgram._ff];
         _dirty = true;
     }
 
@@ -207,8 +207,10 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         // KenD -- the vertex descriptor isn't necessary if the vertex function does not have an input argument declared [[stage_in]] */
         assert(_pimpl->_pipelineDescriptor);
-        [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
-        _dirty = true;
+        if (descriptor != _pimpl->_pipelineDescriptor.get().vertexDescriptor) {
+            [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
+            _dirty = true;
+        }
     }
 
     void GraphicsPipelineBuilder::UnbindInputLayout()
@@ -260,8 +262,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         } else if (renderPassDescriptor.depthAttachment.texture) {
             // If the depth texture is a depth/stencil format, we must ensure that both the stencil and depth fields agree
             auto depthFormat = renderPassDescriptor.depthAttachment.texture.pixelFormat;
-            if (    depthFormat == MTLPixelFormatDepth24Unorm_Stencil8 || depthFormat == MTLPixelFormatDepth32Float_Stencil8
-                ||  depthFormat == MTLPixelFormatX32_Stencil8 || depthFormat == MTLPixelFormatX24_Stencil8) {
+            if (depthFormat == MTLPixelFormatDepth32Float_Stencil8 ||  depthFormat == MTLPixelFormatX32_Stencil8
+                #if PLATFORMOS_TARGET == PLATFORMOS_OSX
+                    || depthFormat == MTLPixelFormatDepth24Unorm_Stencil8 || depthFormat == MTLPixelFormatX24_Stencil8
+                #endif
+                ) {
                 _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = depthFormat;
             }
         }
@@ -338,11 +343,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
-    }
-
-    void DeviceContext::Bind(const ShaderProgram& shaderProgram)
-    {
-        SetShaderFunctions(shaderProgram._vf, shaderProgram._ff);
     }
 
     void DeviceContext::Bind(const RasterizationDesc& desc)
