@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        context.GraphicsPipelineBuilder::Bind(_vertexDescriptor.get());
+        context.SetInputLayout(*this);
         unsigned i = 0;
         for (const auto& vbv : vertexBuffers) {
             auto resource = GetResource(vbv._resource);

@@ -14,10 +14,12 @@
 @protocol MTLBuffer;
 @protocol MTLSamplerState;
 @protocol MTLRenderPipelineState;
+@protocol MTLDepthStencilState;
 @class MTLTextureDescriptor;
 @class MTLSamplerDescriptor;
 @class MTLRenderPipelineDescriptor;
 @class MTLRenderPipelineReflection;
+@class MTLDepthStencilDescriptor;
 
 /* KenD -- could switch all of these typedefs from NSObject with a protocol to simply `id`
  * However, cannot have `OCPtr<id<MTLTexture>>` because OCPtr will not work; ObjType will be `id<MTLTexture> *`, which is
@@ -27,6 +29,7 @@
 typedef NSObject<MTLTexture> AplMtlTexture;
 typedef NSObject<MTLBuffer> AplMtlBuffer;
 typedef NSObject<MTLSamplerState> AplMtlSamplerState;
+typedef NSObject<MTLDepthStencilState> AplMtlDepthStencilState;
 typedef NSObject<MTLDevice> AplMtlDevice;
 typedef NSObject<MTLRenderPipelineState> AplMtlRenderPipelineState;
 
@@ -44,6 +47,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<AplMtlTexture> CreateTexture(MTLTextureDescriptor* textureDesc); // <MTLTexture>
         TBC::OCPtr<AplMtlBuffer> CreateBuffer(const void* bytes, unsigned length); // <MTLBuffer>
         TBC::OCPtr<AplMtlSamplerState> CreateSamplerState(MTLSamplerDescriptor* samplerDesc); // <MTLSamplerState>
+        TBC::OCPtr<AplMtlDepthStencilState> CreateDepthStencilState(MTLDepthStencilDescriptor* dss); // <MTLDepthStencilState>
 
         struct RenderPipelineState
         {

@@ -55,6 +55,14 @@ namespace RenderCore { namespace Metal_AppleMetal
         return TBC::OCPtr<AplMtlSamplerState>(TBC::moveptr([device newSamplerStateWithDescriptor:samplerDesc]));
     }
 
+    TBC::OCPtr<AplMtlDepthStencilState> ObjectFactory::CreateDepthStencilState(MTLDepthStencilDescriptor* dss)
+    {
+        assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
+        id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
+
+        return TBC::OCPtr<AplMtlDepthStencilState>(TBC::moveptr([device newDepthStencilStateWithDescriptor:dss]));
+    }
+
     auto ObjectFactory::CreateRenderPipelineState(MTLRenderPipelineDescriptor* desc, bool makeReflection) -> RenderPipelineState
     {
         NSError* error = NULL;

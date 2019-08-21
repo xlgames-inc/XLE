@@ -11,6 +11,7 @@
 #include "../IDeviceAppleMetal.h"
 #include "../../IThreadContext.h"
 #include "../../Types.h"
+#include "../../FrameBufferDesc.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/LogUtil.h"
 #include "../../../Externals/Misc/OCPtr.h"
@@ -150,6 +151,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
     public:
         TBC::OCPtr<MTLRenderPipelineDescriptor> _pipelineDescriptor; // For the current draw
+        AttachmentBlendDesc _attachmentBlendDesc;
+        MTLPrimitiveType _activePrimitiveType;
+        DepthStencilDesc _activeDepthStencilDesc;
     };
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -157,89 +161,123 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_pipelineDescriptor);
         [_pimpl->_pipelineDescriptor setVertexFunction:shaderProgram._vf];
         [_pimpl->_pipelineDescriptor setFragmentFunction:shaderProgram._ff];
+        _pimpl->_pipelineDescriptor.get().rasterizationEnabled = shaderProgram._ff != nullptr;
         _dirty = true;
     }
 
     void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
     {
         assert(_pimpl->_pipelineDescriptor);
-        /* Metal TODO -- may need to support more than the first color attachment */
-        if (_pimpl->_pipelineDescriptor.get().colorAttachments[0].pixelFormat == MTLPixelFormatInvalid) {
-            /* A color attachment may not be bound - for example, if only depth attachment is bound -
-             * so there's no need to set up blending.
-             */
-            return;
-        }
-
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = desc._blendEnable;
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].rgbBlendOperation = AsMTLBlendOperation(desc._colorBlendOp);
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].alphaBlendOperation = AsMTLBlendOperation(desc._alphaBlendOp);
-
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceRGBBlendFactor = AsMTLBlendFactor(desc._srcColorBlendFactor);
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceAlphaBlendFactor = AsMTLBlendFactor(desc._srcAlphaBlendFactor);
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationRGBBlendFactor = AsMTLBlendFactor(desc._dstColorBlendFactor);
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(desc._dstAlphaBlendFactor);
-
-        _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
-            ((desc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
-            ((desc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
-            ((desc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
-            ((desc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
-
+        _pimpl->_attachmentBlendDesc = desc;
         _dirty = true;
     }
 
-    void GraphicsPipelineBuilder::SetRasterSampleCount(unsigned sampleCount)
+    void GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
     {
+        assert(subPass < fbDesc.GetSubpasses().size());
         assert(_pimpl->_pipelineDescriptor);
+
+        auto& subpass = fbDesc.GetSubpasses()[subPass];
+
+        // Derive the sample count directly from the framebuffer properties & the subpass.
+        // TODO -- we should also enable specifying the sample count via a MSAA sampling state structure
+
+        unsigned msaaAttachments = 0, singleSampleAttachments = 0;
+        for (const auto&a:subpass._output) {
+            if (a._window._flags & TextureViewDesc::Flags::ForceSingleSample) {
+                ++singleSampleAttachments;
+            } else {
+                auto& attach = fbDesc.GetAttachments()[a._resourceName]._desc;
+                if (attach._flags & AttachmentDesc::Flags::Multisampled) {
+                    ++msaaAttachments;
+                } else {
+                    ++singleSampleAttachments;
+                }
+            }
+        }
+
+        unsigned sampleCount = 1;
+        if (msaaAttachments == 0) {
+            // no msaa attachments,
+        } else if (fbProps._samples._sampleCount > 1) {
+            if (singleSampleAttachments > 0) {
+                Log(Warning) << "Subpass has a mixture of MSAA and non-MSAA attachments. MSAA can't be enabled, so falling back to single sample mode" << std::endl;
+            } else {
+                sampleCount = fbProps._samples._sampleCount;
+            }
+        }
+
         if ([_pimpl->_pipelineDescriptor.get() respondsToSelector:@selector(setRasterSampleCount:)]) {
-            _pimpl->_pipelineDescriptor.get().rasterSampleCount = std::max(1u, sampleCount);
+            if (sampleCount != _pimpl->_pipelineDescriptor.get().rasterSampleCount) {
+                _pimpl->_pipelineDescriptor.get().rasterSampleCount = sampleCount;
+                _dirty = true;
+            }
         } else {
             // Some drivers don't appear to have the "rasterSampleCount". It appears to be IOS 11+ only.
             // Falling back to the older name "sampleCount" -- documentation in the header suggests
             // they are the same thing
-            _pimpl->_pipelineDescriptor.get().sampleCount = std::max(1u, sampleCount);
+            if (sampleCount != _pimpl->_pipelineDescriptor.get().sampleCount) {
+                _pimpl->_pipelineDescriptor.get().sampleCount = sampleCount;
+                _dirty = true;
+            }
         }
+
+        // Figure out the pixel formats for each of the attachments (including depth/stencil)
+        const unsigned maxColorAttachments = 8u;
+        for (unsigned i=0; i<maxColorAttachments; ++i) {
+            if (i < subpass._output.size()) {
+                assert(subpass._output[i]._resourceName);
+                const auto& window = subpass._output[i]._window;
+                const auto& attachment = fbDesc.GetAttachments()[subpass._output[i]._resourceName]._desc;
+                auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::RTV);
+                _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = AsMTLPixelFormat(finalFormat);
+            } else {
+                _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = MTLPixelFormatInvalid;
+            }
+        }
+
+        _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = MTLPixelFormatInvalid;
+        _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
+
+        if (subpass._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
+            const auto& window = subpass._depthStencil._window;
+            const auto& attachment = fbDesc.GetAttachments()[subpass._depthStencil._resourceName]._desc;
+            auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::DSV);
+
+            auto components = GetComponents(finalFormat);
+            if (components == FormatComponents::Depth) {
+                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+            } else if (components == FormatComponents::Stencil) {
+                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+            } else if (components == FormatComponents::DepthStencil) {
+                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+            } else {
+                assert(0);      // format doesn't appear to have either depth or stencil components
+            }
+        }
+
         _dirty = true;
     }
 
-    void GraphicsPipelineBuilder::Bind(MTLVertexDescriptor* descriptor)
+    void GraphicsPipelineBuilder::SetRenderPassConfiguration(MTLRenderPassDescriptor* renderPassDescriptor, unsigned sampleCount)
     {
-        // KenD -- the vertex descriptor isn't necessary if the vertex function does not have an input argument declared [[stage_in]] */
-        assert(_pimpl->_pipelineDescriptor);
-        if (descriptor != _pimpl->_pipelineDescriptor.get().vertexDescriptor) {
-            [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
-            _dirty = true;
+        sampleCount = std::max(sampleCount, 1u);
+        if ([_pimpl->_pipelineDescriptor.get() respondsToSelector:@selector(setRasterSampleCount:)]) {
+            if (sampleCount != _pimpl->_pipelineDescriptor.get().rasterSampleCount) {
+                _pimpl->_pipelineDescriptor.get().rasterSampleCount = sampleCount;
+                _dirty = true;
+            }
+        } else {
+            // Some drivers don't appear to have the "rasterSampleCount". It appears to be IOS 11+ only.
+            // Falling back to the older name "sampleCount" -- documentation in the header suggests
+            // they are the same thing
+            if (sampleCount != _pimpl->_pipelineDescriptor.get().sampleCount) {
+                _pimpl->_pipelineDescriptor.get().sampleCount = sampleCount;
+                _dirty = true;
+            }
         }
-    }
 
-    void GraphicsPipelineBuilder::UnbindInputLayout()
-    {
-    }
-
-    GraphicsPipeline GraphicsPipelineBuilder::MakePipeline(ObjectFactory& factory)
-    {
-        auto renderPipelineState = factory.CreateRenderPipelineState(_pimpl->_pipelineDescriptor.get(), true);
-        if (renderPipelineState._error) {
-            Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
-        }
-        assert(!renderPipelineState._error);
-
-        // DavidJ -- note -- we keep the state _pimpl->_pipelineDescriptor from here.
-        //      what happens if we continue to change it? It doesn't impact the compiled state we
-        //      just made, right?
-
-        _dirty = false;
-        return { renderPipelineState._renderPipelineState, renderPipelineState._reflection };
-    }
-
-    void GraphicsPipelineBuilder::SetRenderPassStates(MTLRenderPassDescriptor* renderPassDescriptor)
-    {
-        /* The pixel formats of the attachments in the MTLRenderPipelineDescriptor must match
-         * the pixel formats of the associated attachments' textures in the MTLRenderPassDescriptor. */
-        /* There is a maximum of 8 color attachments, defined by MTLRenderPipelineColorAttachmentDescriptor */
-        /* Metal TODO -- for now, when binding the attachmentBlendDesc, we only alter the first color attachment;
-         * we may need to support more than the first color attachment */
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
             MTLRenderPassColorAttachmentDescriptor* renderPassColorAttachmentDesc = renderPassDescriptor.colorAttachments[i];
@@ -270,14 +308,107 @@ namespace RenderCore { namespace Metal_AppleMetal
                 _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = depthFormat;
             }
         }
-
         _dirty = true;
+    }
+
+    void GraphicsPipelineBuilder::SetInputLayout(const BoundInputLayout& inputLayout)
+    {
+        // KenD -- the vertex descriptor isn't necessary if the vertex function does not have an input argument declared [[stage_in]] */
+        assert(_pimpl->_pipelineDescriptor);
+        auto* descriptor = inputLayout.GetVertexDescriptor();
+        if (descriptor != _pimpl->_pipelineDescriptor.get().vertexDescriptor) {
+            [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
+            _dirty = true;
+        }
+    }
+
+    void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
+    {
+        _pimpl->_activeDepthStencilDesc = desc;
+    }
+
+    TBC::OCPtr<NSObject<MTLDepthStencilState>> GraphicsPipelineBuilder::CreateDepthStencilState(ObjectFactory& factory)
+    {
+        /* KenD -- Metal TODO -- depth/stencil states are expensive to construct; cache them */
+        auto& desc = _pimpl->_activeDepthStencilDesc;
+        TBC::OCPtr<MTLDepthStencilDescriptor> mtlDesc = TBC::moveptr([[MTLDepthStencilDescriptor alloc] init]);
+        mtlDesc.get().depthCompareFunction = AsMTLCompareFunction(desc._depthTest);
+        mtlDesc.get().depthWriteEnabled = desc._depthWrite;
+
+        TBC::OCPtr<MTLStencilDescriptor> frontStencilDesc = TBC::moveptr([[MTLStencilDescriptor alloc] init]);
+        frontStencilDesc.get().stencilCompareFunction = AsMTLCompareFunction(desc._frontFaceStencil._comparisonOp);
+        frontStencilDesc.get().stencilFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._failOp);
+        frontStencilDesc.get().depthFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._depthFailOp);
+        frontStencilDesc.get().depthStencilPassOperation = AsMTLStencilOperation(desc._frontFaceStencil._passOp);
+        frontStencilDesc.get().readMask = desc._stencilReadMask;
+        frontStencilDesc.get().writeMask = desc._stencilWriteMask;
+        mtlDesc.get().frontFaceStencil = frontStencilDesc;
+
+        TBC::OCPtr<MTLStencilDescriptor> backStencilDesc = TBC::moveptr([[MTLStencilDescriptor alloc] init]);
+        backStencilDesc.get().stencilCompareFunction = AsMTLCompareFunction(desc._backFaceStencil._comparisonOp);
+        backStencilDesc.get().stencilFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._failOp);
+        backStencilDesc.get().depthFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._depthFailOp);
+        backStencilDesc.get().depthStencilPassOperation = AsMTLStencilOperation(desc._backFaceStencil._passOp);
+        backStencilDesc.get().readMask = desc._stencilReadMask;
+        backStencilDesc.get().writeMask = desc._stencilWriteMask;
+        mtlDesc.get().backFaceStencil = backStencilDesc;
+
+        return factory.CreateDepthStencilState(mtlDesc.get());
+    }
+
+    DepthStencilDesc GraphicsPipelineBuilder::ActiveDepthStencilDesc()
+    {
+        return _pimpl->_activeDepthStencilDesc;
+    }
+
+    void GraphicsPipelineBuilder::Bind(Topology topology)
+    {
+        _pimpl->_activePrimitiveType = AsMTLenum(topology);
+    }
+
+    GraphicsPipeline GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
+    {
+        if (_pimpl->_pipelineDescriptor.get().colorAttachments[0].pixelFormat != MTLPixelFormatInvalid) {
+            const auto& blendDesc = _pimpl->_attachmentBlendDesc;
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = blendDesc._blendEnable;
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].rgbBlendOperation = AsMTLBlendOperation(blendDesc._colorBlendOp);
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].alphaBlendOperation = AsMTLBlendOperation(blendDesc._alphaBlendOp);
+
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceRGBBlendFactor = AsMTLBlendFactor(blendDesc._srcColorBlendFactor);
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceAlphaBlendFactor = AsMTLBlendFactor(blendDesc._srcAlphaBlendFactor);
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationRGBBlendFactor = AsMTLBlendFactor(blendDesc._dstColorBlendFactor);
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(blendDesc._dstAlphaBlendFactor);
+
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
+                ((blendDesc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
+                ((blendDesc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
+                ((blendDesc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
+                ((blendDesc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
+        } else {
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = NO;
+        }
+
+        auto renderPipelineState = factory.CreateRenderPipelineState(_pimpl->_pipelineDescriptor.get(), true);
+        if (renderPipelineState._error) {
+            Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
+        }
+        assert(!renderPipelineState._error);
+
+        auto dss = CreateDepthStencilState(factory);
+
+        // DavidJ -- note -- we keep the state _pimpl->_pipelineDescriptor from here.
+        //      what happens if we continue to change it? It doesn't impact the compiled state we
+        //      just made, right?
+
+        _dirty = false;
+        return { std::move(renderPipelineState._renderPipelineState), std::move(renderPipelineState._reflection), std::move(dss), _pimpl->_activeDepthStencilDesc._stencilReference };
     }
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_pipelineDescriptor = TBC::moveptr([[MTLRenderPipelineDescriptor alloc] init]);
+        _pimpl->_activePrimitiveType = MTLPrimitiveTypeTriangle;
         _dirty = true;
     }
 
@@ -308,8 +439,6 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         CapturedStates _capturedStates;
 
-        MTLPrimitiveType _activePrimitiveType;
-        DepthStencilDesc _activeDepthStencilDesc;
         ViewportDesc _activeViewport;
         TBC::OCPtr<id> _activeIndexBuffer; // MTLBuffer
 
@@ -352,51 +481,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
     }
 
-    void DeviceContext::Bind(const DepthStencilDesc& desc)
+    void DeviceContext::UnbindInputLayout()
     {
-        _pimpl->_activeDepthStencilDesc = desc;
-
-        /* KenD -- Metal TODO -- depth/stencil states are expensive to construct; cache them */
-        assert(_pimpl->_device);
-        assert(_pimpl->_commandEncoder);
-        MTLDepthStencilDescriptor* mtlDesc = [[MTLDepthStencilDescriptor alloc] init];
-        mtlDesc.depthCompareFunction = AsMTLCompareFunction(desc._depthTest);
-        mtlDesc.depthWriteEnabled = desc._depthWrite;
-
-        MTLStencilDescriptor* frontStencilDesc = [[MTLStencilDescriptor alloc] init];
-        frontStencilDesc.stencilCompareFunction = AsMTLCompareFunction(desc._frontFaceStencil._comparisonOp);
-        frontStencilDesc.stencilFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._failOp);
-        frontStencilDesc.depthFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._depthFailOp);
-        frontStencilDesc.depthStencilPassOperation = AsMTLStencilOperation(desc._frontFaceStencil._passOp);
-        frontStencilDesc.readMask = desc._stencilReadMask;
-        frontStencilDesc.writeMask = desc._stencilWriteMask;
-        mtlDesc.frontFaceStencil = frontStencilDesc;
-
-        MTLStencilDescriptor* backStencilDesc = [[MTLStencilDescriptor alloc] init];
-        backStencilDesc.stencilCompareFunction = AsMTLCompareFunction(desc._backFaceStencil._comparisonOp);
-        backStencilDesc.stencilFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._failOp);
-        backStencilDesc.depthFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._depthFailOp);
-        backStencilDesc.depthStencilPassOperation = AsMTLStencilOperation(desc._backFaceStencil._passOp);
-        backStencilDesc.readMask = desc._stencilReadMask;
-        backStencilDesc.writeMask = desc._stencilWriteMask;
-        mtlDesc.backFaceStencil = backStencilDesc;
-
-        id<MTLDepthStencilState> dss = [_pimpl->_device newDepthStencilStateWithDescriptor:mtlDesc];
-        [_pimpl->_commandEncoder setDepthStencilState:dss];
-
-        if (desc._stencilEnable) {
-            [_pimpl->_commandEncoder setStencilReferenceValue:desc._stencilReference];
-        }
-
-        [dss release];
-        [frontStencilDesc release];
-        [backStencilDesc release];
-        [mtlDesc release];
-    }
-
-    DepthStencilDesc DeviceContext::ActiveDepthStencilDesc()
-    {
-        return _pimpl->_activeDepthStencilDesc;
     }
 
     void DeviceContext::Bind(const ViewportDesc& viewport)
@@ -413,16 +499,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         return _pimpl->_activeViewport;
     }
 
-    void DeviceContext::Bind(Topology topology)
-    {
-        _pimpl->_activePrimitiveType = AsMTLenum(topology);
-    }
-
     void DeviceContext::FinalizePipeline()
     {
-        if (GraphicsPipelineBuilder::IsDirty() || !_pimpl->_graphicsPipelineReflection) {
-            auto pipelineState = GraphicsPipelineBuilder::MakePipeline(GetObjectFactory());
+        if (GraphicsPipelineBuilder::IsPipelineStale() || !_pimpl->_graphicsPipelineReflection) {
+            auto pipelineState = GraphicsPipelineBuilder::CreatePipeline(GetObjectFactory());
+
             [_pimpl->_commandEncoder setRenderPipelineState:pipelineState._underlying];
+
+            [_pimpl->_commandEncoder setDepthStencilState:pipelineState._depthStencilState];
+            [_pimpl->_commandEncoder setStencilReferenceValue:pipelineState._stencilReferenceValue];
+
             _pimpl->_graphicsPipelineReflection = std::move(pipelineState._reflection);
             _pimpl->_boundVSArgs = 0;
             _pimpl->_boundPSArgs = 0;
@@ -474,7 +560,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         FinalizePipeline();
         assert(_pimpl->_commandEncoder);
 
-        [_pimpl->_commandEncoder drawPrimitives:_pimpl->_activePrimitiveType
+        [_pimpl->_commandEncoder drawPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                     vertexStart:startVertexLocation
                                     vertexCount:vertexCount];
     }
@@ -486,7 +572,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         FinalizePipeline();
         assert(_pimpl->_commandEncoder);
 
-        [_pimpl->_commandEncoder drawIndexedPrimitives:_pimpl->_activePrimitiveType
+        [_pimpl->_commandEncoder drawIndexedPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_activeIndexBuffer
@@ -498,7 +584,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         FinalizePipeline();
         assert(_pimpl->_commandEncoder);
 
-        [_pimpl->_commandEncoder drawPrimitives:_pimpl->_activePrimitiveType
+        [_pimpl->_commandEncoder drawPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                     vertexStart:startVertexLocation
                                     vertexCount:vertexCount
                                   instanceCount:instanceCount];
@@ -511,7 +597,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         FinalizePipeline();
         assert(_pimpl->_commandEncoder);
 
-        [_pimpl->_commandEncoder drawIndexedPrimitives:_pimpl->_activePrimitiveType
+        [_pimpl->_commandEncoder drawIndexedPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_activeIndexBuffer
@@ -615,7 +701,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     DeviceContext::DeviceContext()
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_activePrimitiveType = MTLPrimitiveTypeTriangle;
         _pimpl->_indexType = MTLIndexTypeUInt16;
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;

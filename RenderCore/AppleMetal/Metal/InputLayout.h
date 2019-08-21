@@ -38,9 +38,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             IteratorRange<const SlotBinding*> layouts,
             const ShaderProgram& program);
 
-        TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
-
         bool AllAttributesBound() const { return _allAttributesBound; }
+        MTLVertexDescriptor* GetVertexDescriptor() const { return _vertexDescriptor; }
+
+    private:
+        TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
         bool _allAttributesBound = true; // Metal HACK - Metal validation can help determine that bindings are correct
     };
 

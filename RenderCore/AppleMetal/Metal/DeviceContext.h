@@ -20,6 +20,9 @@
 @protocol MTLDevice;
 @protocol MTLRenderCommandEncoder;
 @protocol MTLFunction;
+@protocol MTLDepthStencilState;
+
+namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -59,31 +62,36 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         TBC::OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
         TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
+        TBC::OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
+        unsigned _stencilReferenceValue;        // todo -- separate stencil reference value from DepthStencilDesc
     };
 
     class GraphicsPipelineBuilder
     {
     public:
         void Bind(const ShaderProgram& shaderProgram);
+
         void Bind(const AttachmentBlendDesc& desc);
+        void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(Topology topology);
 
-        void SetRasterSampleCount(unsigned sampleCount);
-        void SetIBFormat(Format format);
+        DepthStencilDesc ActiveDepthStencilDesc();
 
-        void Bind(MTLVertexDescriptor* descriptor);
-        void UnbindInputLayout();
+        void SetInputLayout(const BoundInputLayout& inputLayout);
+        void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+        void SetRenderPassConfiguration(MTLRenderPassDescriptor* desc, unsigned sampleCount);
 
-        void SetRenderPassStates(MTLRenderPassDescriptor* renderPassDescriptor);
-
-        GraphicsPipeline MakePipeline(ObjectFactory&);
-        bool IsDirty() const { return _dirty; }
+        GraphicsPipeline CreatePipeline(ObjectFactory&);
+        bool IsPipelineStale() const { return _dirty; }
 
         GraphicsPipelineBuilder();
         ~GraphicsPipelineBuilder();
-    private:
+    protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
         bool _dirty;
+
+        TBC::OCPtr<NSObject<MTLDepthStencilState>> CreateDepthStencilState(ObjectFactory& factory);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,12 +105,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
         void    Bind(const IndexBufferView& IB);
 
+        void UnbindInputLayout();
+
         void    Bind(const RasterizationDesc& rasterizer);
-        void    Bind(const DepthStencilDesc& depthStencil);
-        DepthStencilDesc ActiveDepthStencilDesc();
         void    Bind(const ViewportDesc& viewport);
         ViewportDesc GetViewport();
-        void    Bind(Topology topology);
 
         using GraphicsPipelineBuilder::Bind;
 
