@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Stall();
         void SetGPUMarker();
 
-        GPUSyncedAllocator(unsigned totalSize);
+        GPUSyncedAllocator(IThreadContext *context, unsigned totalSize);
         ~GPUSyncedAllocator();
     private:
         struct Allocation { unsigned _start, _end, _syncPoint; };
@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         Buffer& GetBuffer()             { return _underlyingBuffer; }
         size_t GetResourceSize() const  { return _resourceSize; }
 
-        DynamicBuffer(const LinearBufferDesc& desc, BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface);
+        DynamicBuffer(const LinearBufferDesc& desc, BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface, IThreadContext *context);
         ~DynamicBuffer();
     private:
         Buffer                                  _underlyingBuffer;

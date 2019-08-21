@@ -9,10 +9,6 @@
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/BitUtils.h"
 
-namespace Magnesium {
-    extern RenderCore::IThreadContext* g_hackActiveThreadContext;
-}
-
 namespace RenderCore { namespace Metal_OpenGLES
 {
     unsigned GPUSyncedAllocator::Allocate(unsigned size, unsigned alignment)
@@ -77,10 +73,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         _eventSet->SetEvent();
     }
 
-    GPUSyncedAllocator::GPUSyncedAllocator(unsigned totalSize)
+    GPUSyncedAllocator::GPUSyncedAllocator(IThreadContext *context, unsigned totalSize)
     : _movingPoint(0), _totalSize(totalSize)
     {
-        _eventSet = std::make_unique<SyncEventSet>(Magnesium::g_hackActiveThreadContext);
+        _eventSet = std::make_unique<SyncEventSet>(context);
     }
 
     GPUSyncedAllocator::~GPUSyncedAllocator() {}
@@ -132,7 +128,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    DynamicBuffer::DynamicBuffer(const LinearBufferDesc& desc, BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface)
+    DynamicBuffer::DynamicBuffer(const LinearBufferDesc& desc, BindFlag::BitField bindFlags, StringSection<> name, bool useSyncInterface, IThreadContext *context)
     {
         using namespace RenderCore;
         auto useSyncMarker = useSyncInterface && SyncEventSet::IsSupported();
@@ -148,7 +144,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _resourceSize = desc._sizeInBytes;
 
         if (useSyncMarker)
-            _syncedAllocator = std::make_unique<GPUSyncedAllocator>(_resourceSize);
+            _syncedAllocator = std::make_unique<GPUSyncedAllocator>(context, _resourceSize);
 
         _allocationAlignment = 1;
 
