@@ -54,7 +54,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                 if (result > _lastCompletedEvent)
                     _lastCompletedEvent = result;
             }];
-            deviceContext->OnEndEncoding([deviceContext, event]{ [deviceContext->RetrieveCommandBuffer() encodeSignalEvent:event value:1]; });
+            deviceContext->OnEndEncoding([deviceContext, event]{
+                if (@available(iOS 12, macOS 10.14, *)) {
+                    [deviceContext->RetrieveCommandBuffer() encodeSignalEvent:event value:1];
+                } else {
+                    assert(false);
+                }
+            });
         } else {
             [buffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
                 if (result > _lastCompletedEvent) {
@@ -93,7 +99,11 @@ namespace RenderCore { namespace Metal_AppleMetal
                     _lastCompletedEvent = result;
             }];
             context->WaitUntilQueueCompletedWithCommand([event](id<MTLCommandBuffer> buffer) {
-                [buffer encodeSignalEvent:event value:1];
+                if (@available(iOS 12, macOS 10.14, *)) {
+                    [buffer encodeSignalEvent:event value:1];
+                } else {
+                    assert(false);
+                }
             });
         } else {
             context->WaitUntilQueueCompletedWithCommand([this, result](id<MTLCommandBuffer> buffer) {
