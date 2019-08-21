@@ -439,7 +439,7 @@ namespace RenderCore { namespace Assets
                 adjustedType._arrayCount = 4;
             auto size = adjustedType.GetSize();
 
-            iterator = CeilToMultiplePow2(iterator, size);
+            iterator = CeilToMultiple(iterator, size);
             unsigned result = iterator;                                 // this is the offset for the new element
             iterator += std::max(1u, nextElementArrayCount) * size;     // simplified logic, given alignment is equal to size
 

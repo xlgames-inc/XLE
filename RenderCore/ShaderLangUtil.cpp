@@ -71,6 +71,12 @@ namespace RenderCore
             }
         }
 
+        if (XlEqString(hlslTypeName, "mat4")) {
+            return TypeDesc { ImpliedTyping::TypeCat::Float, 16, ImpliedTyping::TypeHint::Matrix };
+        } else if (XlEqString(hlslTypeName, "mat3")) {
+            return TypeDesc { ImpliedTyping::TypeCat::Float, 9, ImpliedTyping::TypeHint::Matrix };
+        }
+
         return TypeDesc(TypeCat::Void, 0);
     }
 
