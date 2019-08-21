@@ -542,7 +542,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         [_pimpl->_commandEncoder endEncoding];
 
-        for (auto fn: _pimpl->_onEndEncodingFunctions) {
+        for (const auto& fn: _pimpl->_onEndEncodingFunctions) {
             fn();
         }
     }
