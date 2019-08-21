@@ -79,19 +79,11 @@
 }
 
 - (void)testBasicBinding_IncorrectUSI {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
-        _underlying->BasicBinding_IncorrectUSI(self);
-    #else
-        XCTFail(@"Not supported or failing on this GFX API");
-    #endif
+    _underlying->BasicBinding_IncorrectUSI(self);
 }
 
 - (void)testBasicBinding_IncorrectUniformsStream {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
-        _underlying->BasicBinding_IncorrectUniformsStream(self);
-    #else
-        XCTFail(@"Not supported or failing on this GFX API");
-    #endif
+    _underlying->BasicBinding_IncorrectUniformsStream(self);
 }
 
 @end

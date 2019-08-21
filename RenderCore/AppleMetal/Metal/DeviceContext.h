@@ -18,6 +18,8 @@
 @class MTLRenderPipelineReflection;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
+@protocol MTLRenderCommandEncoder;
+@protocol MTLFunction;
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -30,6 +32,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     class RasterizationDesc;
     class DepthStencilDesc;
+    class UnboundInterface;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,7 +46,6 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
-
     class CapturedStates
     {
     public:
@@ -52,107 +54,96 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::vector<std::pair<uint64_t, uint64_t>> _customBindings;
     };
 
-    class ReflectionInformation
-    {
-    public:
-        /* This contains the vertex and fragment mappings for the hashed name of a shader function argument
-         * and its type and index.s
-         * For example, the vertex function might have "metalUniforms" with hashName 1234567, type Buffer, index 3,
-         * and the fragment function might have "colorMap" with hashName 7654321, type Texture, index 1.
-         * The same argument might be in both the vertex and fragment functions, but could have different
-         * indices in the argument table.
-         */
-        enum MappingType {
-            Buffer,
-            Texture,
-            Sampler,
-            Unknown
-        };
-        struct Mapping {
-            uint64_t hashName = ~0ull;
-            MappingType type = Unknown;
-            unsigned index = ~0u;
-            unsigned textureType = ~0u;         // MTLTextureType
-            unsigned textureDataType = ~0u;     // MTLDataType
-            BOOL isDepthTexture = NO;
-            DEBUG_ONLY(std::string name;)
-        };
-
-        std::vector<Mapping> _vfMappings;
-        std::vector<Mapping> _ffMappings;
-
-        TBC::OCPtr<MTLRenderPipelineReflection> _debugReflection;
-    };
-
     class GraphicsPipeline
     {
     public:
-        template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
-        void Bind(const IndexBufferView& IB);
-        void UnbindInputLayout();
+        TBC::OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
+        TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
+    };
 
-        template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        void Bind(const ShaderProgram& shaderProgram);
-
+    class GraphicsPipelineBuilder
+    {
+    public:
+        void SetShaderFunctions(id<MTLFunction> vf, id<MTLFunction> ff);
         void Bind(const AttachmentBlendDesc& desc);
-        void Bind(const RasterizationDesc& rasterizer);
-        void Bind(const DepthStencilDesc& depthStencil);
-        void Bind(Topology topology);
-        void Bind(const ViewportDesc& viewport);
-        ViewportDesc GetViewport();
 
-        DepthStencilDesc ActiveDepthStencilDesc();
         void SetRasterSampleCount(unsigned sampleCount);
+        void SetIBFormat(Format format);
 
         void Bind(MTLVertexDescriptor* descriptor);
+        void UnbindInputLayout();
 
-        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderStage stage);
-        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderStage stage);
-        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderStage stage);
-        void Bind(id<MTLSamplerState> sampler, unsigned samplerIndex, ShaderStage stage);
+        void SetRenderPassStates(MTLRenderPassDescriptor* renderPassDescriptor);
 
-        const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
+        GraphicsPipeline MakePipeline(ObjectFactory&);
+        bool IsDirty() const { return _dirty; }
 
-        void FinalizePipeline();
-
-        void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
-        void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-        void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
-        void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-
-        void            HoldDevice(id<MTLDevice>);
-        void            HoldCommandBuffer(id<MTLCommandBuffer>);
-        void            ReleaseCommandBuffer();
-        id<MTLCommandBuffer>            RetrieveCommandBuffer();
-        void            CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
-        void            EndEncoding();
-        void            OnEndEncoding(std::function<void(void)> fn);
-        void            DestroyRenderCommandEncoder();
-
-        void            PushDebugGroup(const char annotationName[]);
-        void            PopDebugGroup();
-
-        GraphicsPipeline();
-        GraphicsPipeline(const GraphicsPipeline&) = delete;
-        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
-        virtual ~GraphicsPipeline();
-
-        CapturedStates* GetCapturedStates();
-        void        BeginStateCapture(CapturedStates& capturedStates);
-        void        EndStateCapture();
-
+        GraphicsPipelineBuilder();
+        ~GraphicsPipelineBuilder();
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+        bool _dirty;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DeviceContext : public GraphicsPipeline
+    class DeviceContext : public GraphicsPipelineBuilder
     {
     public:
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      E N C O D E R
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        void    BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
+        void    Bind(const IndexBufferView& IB);
+
+        void    Bind(const ShaderProgram& shaderProgram);
+        void    Bind(const RasterizationDesc& rasterizer);
+        void    Bind(const DepthStencilDesc& depthStencil);
+        DepthStencilDesc ActiveDepthStencilDesc();
+        void    Bind(const ViewportDesc& viewport);
+        ViewportDesc GetViewport();
+        void    Bind(Topology topology);
+
+        using GraphicsPipelineBuilder::Bind;
+
+        void    Draw(unsigned vertexCount, unsigned startVertexLocation=0);
+        void    DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+        void    DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void    DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+
+        void    PushDebugGroup(const char annotationName[]);
+        void    PopDebugGroup();
+
+        id<MTLRenderCommandEncoder> GetCommandEncoder();
+        void    CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
+        void    EndEncoding();
+        void    OnEndEncoding(std::function<void(void)> fn);
+        void    DestroyRenderCommandEncoder();
+
+        void QueueUniformSet(
+            const std::shared_ptr<UnboundInterface>& unboundInterf,
+            unsigned streamIdx,
+            const UniformsStream& stream);
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      C A P T U R E D S T A T E S
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        CapturedStates* GetCapturedStates();
+        void        BeginStateCapture(CapturedStates& capturedStates);
+        void        EndStateCapture();
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      U T I L I T Y
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        void            HoldDevice(id<MTLDevice>);
+        void            HoldCommandBuffer(id<MTLCommandBuffer>);
+        void            ReleaseCommandBuffer();
+        id<MTLCommandBuffer>            RetrieveCommandBuffer();
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      C M D L I S T
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
@@ -165,28 +156,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         virtual ~DeviceContext();
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+
+        void FinalizePipeline();
     };
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<int Count> void GraphicsPipeline::Bind(const ResourceList<VertexBufferView, Count>& VBs)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
-    {
-    }
 
 }}

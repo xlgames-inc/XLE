@@ -10,6 +10,8 @@
 #include "../../../Externals/Misc/OCPtr.h"
 
 @class MTLVertexDescriptor;
+@class MTLRenderPipelineReflection;
+@protocol MTLRenderPipelineState;
 
 namespace RenderCore { class VertexBufferView; class SharedPkt; }
 
@@ -48,15 +50,34 @@ namespace RenderCore { namespace Metal_AppleMetal
     using ConstantBufferPacket = SharedPkt;
     class ConstantBuffer;
     class ShaderResourceView;
+    class GraphicsPipeline;
+
+    class StreamMapping
+    {
+    public:
+        struct CB { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        std::vector<CB> _cbs;
+
+        struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        std::vector<SRV> _srvs;
+
+        struct Sampler { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        std::vector<Sampler> _samplers;
+
+        uint64_t _boundArgs = 0ull;
+    };
+
+    struct UnboundInterface
+    {
+        UniformsStreamInterface _interface[4];
+    };
 
     class BoundUniforms
     {
     public:
-        void Apply(
-            DeviceContext& context,
-            unsigned streamIdx,
-            const UniformsStream& stream) const;
+        void Apply(DeviceContext& context, unsigned streamIdx, const UniformsStream& stream) const;
 
+        // DavidJ -- note -- we can't calculate these correctly in the "unbound" interface case. So we just regard everything as biund
         uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
 
@@ -71,17 +92,31 @@ namespace RenderCore { namespace Metal_AppleMetal
         ~BoundUniforms();
 
         BoundUniforms(const BoundUniforms&) = delete;
+        BoundUniforms& operator=(const BoundUniforms&) = delete;
+
         BoundUniforms(BoundUniforms&& moveFrom) never_throws;
         BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
 
-    private:
-        struct CB { unsigned streamIdx, slot; uint64_t hashName; DEBUG_ONLY(std::string _name;) };
-        std::vector<CB> _cbs;
-        struct SRV { unsigned streamIdx, slot; uint64_t hashName; DEBUG_ONLY(std::string _name;) };
-        std::vector<SRV> _srvs;
+        struct BoundArguments { uint64_t _vsArguments = 0ull; uint64_t _psArguments = 0ull; };
+        static BoundArguments Apply_UnboundInterfacePath(
+            DeviceContext& context,
+            MTLRenderPipelineReflection* pipelineReflection,
+            const UnboundInterface& unboundInterface,
+            unsigned streamIdx,
+            const UniformsStream& stream);
 
-        // KenD -- Metal improvement? -- story pointers to MTLFunctions seems a bit invasive or heavy
-        TBC::OCPtr<id> _vf; // MTLFunction
-        TBC::OCPtr<id> _ff; // MTLFunction
+        static void Apply_Standins(
+            DeviceContext& context,
+            MTLRenderPipelineReflection* pipelineReflection,
+            uint64_t vsArguments, uint64_t psArguments);
+
+    private:
+        StreamMapping _preboundInterfaceVS[4];
+        StreamMapping _preboundInterfacePS[4];
+        std::vector<std::pair<ShaderStage, unsigned>> _unboundCBs;
+        std::vector<std::pair<ShaderStage, unsigned>> _unbound2DSRVs;
+        std::vector<std::pair<ShaderStage, unsigned>> _unboundCubeSRVs;
+
+        std::shared_ptr<UnboundInterface> _unboundInterface;
     };
 }}
