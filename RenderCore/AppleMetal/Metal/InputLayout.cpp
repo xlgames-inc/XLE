@@ -466,7 +466,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (!pkt.size()) {
                 assert(constantBuffer._prebuiltBuffer);
                 [encoder setVertexBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
-                                  offset:0
+                                  offset:constantBuffer._prebuiltRangeBegin
                                  atIndex:b._shaderSlot];
             } else {
                 [encoder setVertexBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
@@ -504,7 +504,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (!pkt.size()) {
                 assert(constantBuffer._prebuiltBuffer);
                 [encoder setFragmentBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
-                                  offset:0
+                                  offset:constantBuffer._prebuiltRangeBegin
                                  atIndex:b._shaderSlot];
             } else {
                 [encoder setFragmentBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
