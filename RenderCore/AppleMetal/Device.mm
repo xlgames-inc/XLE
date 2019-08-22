@@ -101,7 +101,14 @@ namespace RenderCore { namespace ImplAppleMetal
     }
 
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
-    ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
+    ThreadContextStateDesc      ThreadContext::GetStateDesc() const
+    {
+        auto viewport = _devContext->GetViewport();
+        return {
+            VectorPattern<unsigned, 2> { (unsigned)viewport.Width, (unsigned)viewport.Height },
+            0
+        };
+    }
     std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
     void                        ThreadContext::IncrFrameId() {}
     void                        ThreadContext::InvalidateCachedState() const {}
