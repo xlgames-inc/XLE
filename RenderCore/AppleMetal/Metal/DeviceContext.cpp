@@ -154,6 +154,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         AttachmentBlendDesc _attachmentBlendDesc;
         MTLPrimitiveType _activePrimitiveType;
         DepthStencilDesc _activeDepthStencilDesc;
+
+        uint32_t _shaderGuid = 0;
+        uint64_t _rpHash = 0;
     };
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -162,6 +165,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_pipelineDescriptor setVertexFunction:shaderProgram._vf];
         [_pimpl->_pipelineDescriptor setFragmentFunction:shaderProgram._ff];
         _pimpl->_pipelineDescriptor.get().rasterizationEnabled = shaderProgram._ff != nullptr;
+        _pimpl->_shaderGuid = shaderProgram.GetGUID();
         _dirty = true;
     }
 
@@ -222,6 +226,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
+        uint64_t rpHash = sampleCount;
+
         // Figure out the pixel formats for each of the attachments (including depth/stencil)
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
@@ -230,7 +236,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                 const auto& window = subpass._output[i]._window;
                 const auto& attachment = fbDesc.GetAttachments()[subpass._output[i]._resourceName]._desc;
                 auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::RTV);
-                _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = AsMTLPixelFormat(finalFormat);
+                auto mtlFormat = AsMTLPixelFormat(finalFormat);
+                _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = mtlFormat;
+                rpHash = HashCombine(mtlFormat, rpHash);
             } else {
                 _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = MTLPixelFormatInvalid;
             }
@@ -245,19 +253,23 @@ namespace RenderCore { namespace Metal_AppleMetal
             auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::DSV);
 
             auto components = GetComponents(finalFormat);
+            auto mtlFormat = AsMTLPixelFormat(finalFormat);
             if (components == FormatComponents::Depth) {
-                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = mtlFormat;
             } else if (components == FormatComponents::Stencil) {
-                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = mtlFormat;
             } else if (components == FormatComponents::DepthStencil) {
-                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
-                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = AsMTLPixelFormat(finalFormat);
+                _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = mtlFormat;
+                _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = mtlFormat;
             } else {
                 assert(0);      // format doesn't appear to have either depth or stencil components
             }
+
+            rpHash = HashCombine(mtlFormat, rpHash);
         }
 
         _dirty = true;
+        _pimpl->_rpHash = rpHash;
     }
 
     void GraphicsPipelineBuilder::SetRenderPassConfiguration(MTLRenderPassDescriptor* renderPassDescriptor, unsigned sampleCount)
@@ -278,6 +290,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
+        uint64_t rpHash = sampleCount;
+
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
             MTLRenderPassColorAttachmentDescriptor* renderPassColorAttachmentDesc = renderPassDescriptor.colorAttachments[i];
@@ -286,6 +300,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     assert(0); // If this assert hits, we need to support more color attachments (such as multiple render target methods)
                 }
                 _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = renderPassColorAttachmentDesc.texture.pixelFormat;
+                rpHash = HashCombine(renderPassColorAttachmentDesc.texture.pixelFormat, rpHash);
             }
         }
 
@@ -308,7 +323,14 @@ namespace RenderCore { namespace Metal_AppleMetal
                 _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = depthFormat;
             }
         }
+
+        if (renderPassDescriptor.depthAttachment.texture) {
+            rpHash = HashCombine(renderPassDescriptor.depthAttachment.texture.pixelFormat, rpHash);
+        } else if (renderPassDescriptor.stencilAttachment.texture)
+            rpHash = HashCombine(renderPassDescriptor.stencilAttachment.texture.pixelFormat, rpHash);
+
         _dirty = true;
+        _pimpl->_rpHash = rpHash;
     }
 
     void GraphicsPipelineBuilder::SetInputLayout(const BoundInputLayout& inputLayout)
@@ -368,24 +390,39 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     GraphicsPipeline GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
-        if (_pimpl->_pipelineDescriptor.get().colorAttachments[0].pixelFormat != MTLPixelFormatInvalid) {
+        MTLRenderPipelineColorAttachmentDescriptor* colAttachmentZero =
+            _pimpl->_pipelineDescriptor.get().colorAttachments[0];
+        if (colAttachmentZero.pixelFormat != MTLPixelFormatInvalid) {
             const auto& blendDesc = _pimpl->_attachmentBlendDesc;
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = blendDesc._blendEnable;
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].rgbBlendOperation = AsMTLBlendOperation(blendDesc._colorBlendOp);
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].alphaBlendOperation = AsMTLBlendOperation(blendDesc._alphaBlendOp);
+            colAttachmentZero.blendingEnabled = blendDesc._blendEnable;
 
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceRGBBlendFactor = AsMTLBlendFactor(blendDesc._srcColorBlendFactor);
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceAlphaBlendFactor = AsMTLBlendFactor(blendDesc._srcAlphaBlendFactor);
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationRGBBlendFactor = AsMTLBlendFactor(blendDesc._dstColorBlendFactor);
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(blendDesc._dstAlphaBlendFactor);
+            if (blendDesc._colorBlendOp != BlendOp::NoBlending) {
+                colAttachmentZero.rgbBlendOperation = AsMTLBlendOperation(blendDesc._colorBlendOp);
+                colAttachmentZero.sourceRGBBlendFactor = AsMTLBlendFactor(blendDesc._srcColorBlendFactor);
+                colAttachmentZero.destinationRGBBlendFactor = AsMTLBlendFactor(blendDesc._dstColorBlendFactor);
+            } else {
+                colAttachmentZero.rgbBlendOperation = MTLBlendOperationAdd;
+                colAttachmentZero.sourceRGBBlendFactor = MTLBlendFactorOne;
+                colAttachmentZero.destinationRGBBlendFactor = MTLBlendFactorZero;
+            }
 
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
+            if (blendDesc._colorBlendOp != BlendOp::NoBlending) {
+                colAttachmentZero.alphaBlendOperation = AsMTLBlendOperation(blendDesc._alphaBlendOp);
+                colAttachmentZero.sourceAlphaBlendFactor = AsMTLBlendFactor(blendDesc._srcAlphaBlendFactor);
+                colAttachmentZero.destinationAlphaBlendFactor = AsMTLBlendFactor(blendDesc._dstAlphaBlendFactor);
+            } else {
+                colAttachmentZero.alphaBlendOperation = MTLBlendOperationAdd;
+                colAttachmentZero.sourceAlphaBlendFactor = MTLBlendFactorOne;
+                colAttachmentZero.destinationAlphaBlendFactor = MTLBlendFactorZero;
+            }
+
+            colAttachmentZero.writeMask =
                 ((blendDesc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
                 ((blendDesc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
                 ((blendDesc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
                 ((blendDesc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
         } else {
-            _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = NO;
+            colAttachmentZero.blendingEnabled = NO;
         }
 
         auto renderPipelineState = factory.CreateRenderPipelineState(_pimpl->_pipelineDescriptor.get(), true);
@@ -396,12 +433,25 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         auto dss = CreateDepthStencilState(factory);
 
+        auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
+        hash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1, hash);
+        hash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1, hash);
+        hash = HashCombine(_pimpl->_activePrimitiveType, hash);
+        // todo -- input layout hash
+
         // DavidJ -- note -- we keep the state _pimpl->_pipelineDescriptor from here.
         //      what happens if we continue to change it? It doesn't impact the compiled state we
         //      just made, right?
 
         _dirty = false;
-        return { std::move(renderPipelineState._renderPipelineState), std::move(renderPipelineState._reflection), std::move(dss), _pimpl->_activeDepthStencilDesc._stencilReference };
+        return {
+            std::move(renderPipelineState._renderPipelineState),
+            std::move(renderPipelineState._reflection),
+            std::move(dss),
+            (unsigned)_pimpl->_activePrimitiveType,
+            _pimpl->_activeDepthStencilDesc._stencilReference,
+            hash
+        };
     }
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()
@@ -605,6 +655,59 @@ namespace RenderCore { namespace Metal_AppleMetal
                                          instanceCount:instanceCount];
     }
 
+    void    DeviceContext::Draw(
+        const GraphicsPipeline& pipeline,
+        unsigned vertexCount, unsigned startVertexLocation)
+    {
+        assert(_pimpl->_commandEncoder);
+        [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+        [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+        [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+
+        _pimpl->_graphicsPipelineReflection = nullptr;
+        _pimpl->_boundVSArgs = 0;
+        _pimpl->_boundPSArgs = 0;
+        _pimpl->_queuedUniformSets.clear();
+
+        [_pimpl->_commandEncoder drawPrimitives:(MTLPrimitiveType)pipeline._primitiveType
+                                    vertexStart:startVertexLocation
+                                    vertexCount:vertexCount];
+    }
+
+    void    DeviceContext::DrawIndexed(
+        const GraphicsPipeline& pipeline,
+        unsigned indexCount, unsigned startIndexLocation)
+    {
+        assert(_pimpl->_commandEncoder);
+        [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+        [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+        [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+
+        _pimpl->_graphicsPipelineReflection = nullptr;
+        _pimpl->_boundVSArgs = 0;
+        _pimpl->_boundPSArgs = 0;
+        _pimpl->_queuedUniformSets.clear();
+
+        [_pimpl->_commandEncoder drawIndexedPrimitives:(MTLPrimitiveType)pipeline._primitiveType
+                                            indexCount:indexCount
+                                             indexType:_pimpl->_indexType
+                                           indexBuffer:_pimpl->_activeIndexBuffer
+                                     indexBufferOffset:_pimpl->offsetToIndex(startIndexLocation)];
+    }
+
+    void    DeviceContext::DrawInstances(
+        const GraphicsPipeline& pipeline,
+        unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    {
+        assert(0);
+    }
+
+    void    DeviceContext::DrawIndexedInstances(
+        const GraphicsPipeline& pipeline,
+        unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation)
+    {
+        assert(0);
+    }
 
     void            DeviceContext::CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor)
     {

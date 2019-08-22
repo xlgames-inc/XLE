@@ -333,7 +333,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     static StreamMapping MakeStreamMapping(
         MTLRenderPipelineReflection* reflection,
         unsigned streamIndex,
-        const UniformsStreamInterface* interfaces,      // expecting exactly 4 entries
+        const UniformsStreamInterface** interfaces,      // expecting exactly 4 entries
         ShaderStage stage)
     {
         assert(streamIndex < 4);
@@ -354,8 +354,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (arg.type == MTLArgumentTypeTexture) {
 
                 unsigned matchingSlot = ~0u;
-                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._srvBindings.size(); ++c) {
-                    if (interfaces[streamIndex]._srvBindings[c] == argHash) {
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]->_srvBindings.size(); ++c) {
+                    if (interfaces[streamIndex]->_srvBindings[c] == argHash) {
                         matchingSlot = c;
                         break;
                     }
@@ -372,6 +372,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                         });
                         assert(argIdx < 64);
                         result._boundArgs |= 1<<uint64_t(argIdx);
+                        result._boundSRVSlots |= 1<<uint64_t(matchingSlot);
                     }
                 }
 
@@ -390,8 +391,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 }
 
                 unsigned matchingSlot = ~0u;
-                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._srvBindings.size(); ++c) {
-                    if (interfaces[streamIndex]._srvBindings[c] == argHash) {
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]->_srvBindings.size(); ++c) {
+                    if (interfaces[streamIndex]->_srvBindings[c] == argHash) {
                         matchingSlot = c;
                         break;
                     }
@@ -414,13 +415,13 @@ namespace RenderCore { namespace Metal_AppleMetal
             } else if (arg.type == MTLArgumentTypeBuffer) {
 
                 unsigned matchingSlot = ~0u;
-                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]._cbBindings.size(); ++c) {
-                    if (interfaces[streamIndex]._cbBindings[c]._hashName == argHash) {
+                for (unsigned c=0; c<(unsigned)interfaces[streamIndex]->_cbBindings.size(); ++c) {
+                    if (interfaces[streamIndex]->_cbBindings[c]._hashName == argHash) {
 
                         #if defined(_DEBUG)
                             if (arg.bufferStructType) {
                                 ValidateCBElements(
-                                    MakeIteratorRange(interfaces[streamIndex]._cbBindings[c]._elements),
+                                    MakeIteratorRange(interfaces[streamIndex]->_cbBindings[c]._elements),
                                     arg.bufferStructType);
                             }
                         #endif
@@ -441,6 +442,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                         });
                         assert(argIdx < 64);
                         result._boundArgs |= 1<<uint64_t(argIdx);
+                        result._boundCBSlots |= 1<<uint64_t(matchingSlot);
                     }
                 }
 
@@ -538,16 +540,27 @@ namespace RenderCore { namespace Metal_AppleMetal
         ApplyUniformStreamVS(context, stream, _preboundInterfaceVS[streamIdx]);
         ApplyUniformStreamPS(context, stream, _preboundInterfacePS[streamIdx]);
 
-        /*
         if (streamIdx == 0) {
+            auto* encoder = context.GetCommandEncoder();
             for (const auto& b:_unbound2DSRVs) {
-                context.Bind(GetObjectFactory().StandInCubeTexture(), b.second, b.first);
+                if (b.first == ShaderStage::Vertex) {
+                    [encoder setVertexTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
+                } else
+                    [encoder setFragmentTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
             }
             for (const auto& b:_unboundCubeSRVs) {
-                context.Bind(GetObjectFactory().StandIn2DTexture(), b.second, b.first);
+                if (b.first == ShaderStage::Vertex) {
+                    [encoder setVertexTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:b.second];
+                } else
+                    [encoder setFragmentTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:b.second];
+            }
+            for (const auto& b:_unboundSamplers) {
+                if (b.first == ShaderStage::Vertex) {
+                    [encoder setVertexSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:b.second];
+                } else
+                    [encoder setFragmentSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:b.second];
             }
         }
-        */
     }
 
     BoundUniforms::BoundArguments BoundUniforms::Apply_UnboundInterfacePath(
@@ -557,9 +570,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned streamIdx,
         const UniformsStream& stream)
     {
-        auto bindingVS = MakeStreamMapping(pipelineReflection, streamIdx, unboundInterface._interface, ShaderStage::Vertex);
+        const UniformsStreamInterface* interfaces[] = { &unboundInterface._interface[0], &unboundInterface._interface[1], &unboundInterface._interface[2], &unboundInterface._interface[3] };
+        auto bindingVS = MakeStreamMapping(pipelineReflection, streamIdx, interfaces, ShaderStage::Vertex);
         ApplyUniformStreamVS(context, stream, bindingVS);
-        auto bindingPS = MakeStreamMapping(pipelineReflection, streamIdx, unboundInterface._interface, ShaderStage::Pixel);
+        auto bindingPS = MakeStreamMapping(pipelineReflection, streamIdx, interfaces, ShaderStage::Pixel);
         ApplyUniformStreamPS(context, stream, bindingPS);
 
         return { bindingVS._boundArgs, bindingPS._boundArgs };
@@ -652,6 +666,63 @@ namespace RenderCore { namespace Metal_AppleMetal
         _unboundInterface->_interface[3] = interface3;
     }
 
+    BoundUniforms::BoundUniforms(
+        const GraphicsPipeline& pipeline,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+    {
+        const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
+
+        uint64_t boundVS = 0, boundPS = 0;
+        for (unsigned c=0; c<dimof(interfaces); ++c) {
+            _preboundInterfaceVS[c] = MakeStreamMapping(pipeline._reflection, c, interfaces, ShaderStage::Vertex);
+            _preboundInterfacePS[c] = MakeStreamMapping(pipeline._reflection, c, interfaces, ShaderStage::Pixel);
+
+            boundVS |= _preboundInterfaceVS[c]._boundArgs;
+            boundPS |= _preboundInterfacePS[c]._boundArgs;
+
+            _boundUniformBufferSlots[c] = _preboundInterfaceVS[c]._boundCBSlots | _preboundInterfacePS[c]._boundCBSlots;
+            _boundResourceSlots[c] = _preboundInterfaceVS[c]._boundSRVSlots | _preboundInterfacePS[c]._boundSRVSlots;
+        }
+
+        auto* vsArgs = pipeline._reflection.get().vertexArguments;
+        auto* psArgs = pipeline._reflection.get().fragmentArguments;
+        for (unsigned argIdx=0; argIdx<vsArgs.count; ++argIdx) {
+            MTLArgument* arg = vsArgs[argIdx];
+            if (!arg.active || (boundVS & (1<<uint64_t(argIdx))))
+                continue;
+
+            if (arg.type == MTLArgumentTypeTexture) {
+                if (arg.textureType == MTLTextureTypeCube) {
+                    _unboundCubeSRVs.push_back({ShaderStage::Vertex, arg.index});
+                } else {
+                    _unbound2DSRVs.push_back({ShaderStage::Vertex, arg.index});
+                }
+            } else if (arg.type == MTLArgumentTypeSampler) {
+                _unboundSamplers.push_back({ShaderStage::Vertex, arg.index});
+            }
+        }
+
+        for (unsigned argIdx=0; argIdx<psArgs.count; ++argIdx) {
+            MTLArgument* arg = psArgs[argIdx];
+            if (!arg.active || (boundPS & (1<<uint64_t(argIdx))))
+                continue;
+
+            if (arg.type == MTLArgumentTypeTexture) {
+                if (arg.textureType == MTLTextureTypeCube) {
+                    _unboundCubeSRVs.push_back({ShaderStage::Pixel, arg.index});
+                } else {
+                    _unbound2DSRVs.push_back({ShaderStage::Pixel, arg.index});
+                }
+            } else if (arg.type == MTLArgumentTypeSampler) {
+                _unboundSamplers.push_back({ShaderStage::Pixel, arg.index});
+            }
+        }
+    }
+
     BoundUniforms::~BoundUniforms() {}
 
     BoundUniforms::BoundUniforms()
@@ -668,13 +739,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             _boundResourceSlots[c] = moveFrom._boundResourceSlots[c];
             moveFrom._boundUniformBufferSlots[c] = 0ull;
             moveFrom._boundResourceSlots[c] = 0ull;
+
+            _preboundInterfaceVS[c] = std::move(moveFrom._preboundInterfaceVS[c]);
+            _preboundInterfacePS[c] = std::move(moveFrom._preboundInterfacePS[c]);
         }
-        for (unsigned c=0; c<dimof(moveFrom._preboundInterfaceVS); ++c) {
-            _preboundInterfaceVS[c] = std::move(_preboundInterfaceVS[c]);
-        }
-        for (unsigned c=0; c<dimof(moveFrom._preboundInterfacePS); ++c) {
-            _preboundInterfacePS[c] = std::move(_preboundInterfacePS[c]);
-        }
+        _unboundCBs = std::move(moveFrom._unboundCBs);
+        _unbound2DSRVs = std::move(moveFrom._unbound2DSRVs);
+        _unboundCubeSRVs = std::move(moveFrom._unboundCubeSRVs);
+        _unboundSamplers = std::move(moveFrom._unboundSamplers);
     }
 
     BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
@@ -687,10 +759,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             moveFrom._boundResourceSlots[c] = 0ull;
         }
         for (unsigned c=0; c<dimof(moveFrom._preboundInterfaceVS); ++c) {
-            _preboundInterfaceVS[c] = std::move(_preboundInterfaceVS[c]);
+            _preboundInterfaceVS[c] = std::move(moveFrom._preboundInterfaceVS[c]);
         }
         for (unsigned c=0; c<dimof(moveFrom._preboundInterfacePS); ++c) {
-            _preboundInterfacePS[c] = std::move(_preboundInterfacePS[c]);
+            _preboundInterfacePS[c] = std::move(moveFrom._preboundInterfacePS[c]);
         }
         return *this;
     }

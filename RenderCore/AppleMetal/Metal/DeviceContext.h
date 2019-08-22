@@ -63,7 +63,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
         TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
         TBC::OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
+        unsigned _primitiveType;              // MTLPrimitiveType
         unsigned _stencilReferenceValue;        // todo -- separate stencil reference value from DepthStencilDesc
+        uint64_t _hash;
+
+        uint64_t GetGUID() const { return _hash; }
     };
 
     class GraphicsPipelineBuilder
@@ -117,6 +121,19 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void    DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void    DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+
+        void    Draw(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned startVertexLocation=0);
+        void    DrawIndexed(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned startIndexLocation=0);
+        void    DrawInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void    DrawIndexedInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 
         void    PushDebugGroup(const char annotationName[]);
         void    PopDebugGroup();

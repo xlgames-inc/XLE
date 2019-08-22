@@ -66,6 +66,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         struct Sampler { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
         std::vector<Sampler> _samplers;
 
+        uint64_t _boundCBSlots = 0ull;
+        uint64_t _boundSRVSlots = 0ull;
         uint64_t _boundArgs = 0ull;
     };
 
@@ -85,6 +87,13 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         BoundUniforms(
             const ShaderProgram& shader,
+            const PipelineLayoutConfig& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
+        BoundUniforms(
+            const GraphicsPipeline& pipeline,
             const PipelineLayoutConfig& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
@@ -118,6 +127,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::vector<std::pair<ShaderStage, unsigned>> _unboundCBs;
         std::vector<std::pair<ShaderStage, unsigned>> _unbound2DSRVs;
         std::vector<std::pair<ShaderStage, unsigned>> _unboundCubeSRVs;
+        std::vector<std::pair<ShaderStage, unsigned>> _unboundSamplers;
 
         std::shared_ptr<UnboundInterface> _unboundInterface;
     };
