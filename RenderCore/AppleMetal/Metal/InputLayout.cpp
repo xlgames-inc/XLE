@@ -63,6 +63,26 @@ namespace RenderCore { namespace Metal_AppleMetal
         return hash;
     }
 
+    static uint64_t MakeHash(MTLVertexAttributeDescriptor* vertexAttribute)
+    {
+        // assert(vertexAttribute.format <= 0xffff); (always true)
+        assert(vertexAttribute.bufferIndex <= 0xffff);
+        assert(vertexAttribute.offset <= 0xffffffff);
+        return uint64_t(vertexAttribute.format)
+            | (uint64_t(vertexAttribute.bufferIndex) << 16)
+            | (uint64_t(vertexAttribute.offset) << 32);
+    }
+
+    static uint64_t MakeHash(MTLVertexBufferLayoutDescriptor* bufferLayout)
+    {
+        assert(bufferLayout.stride <= 0xffff);
+        // assert(bufferLayout.stepFunction <= 0xffff); (always true)
+        assert(bufferLayout.stepRate <= 0xffffffff);
+        return uint64_t(bufferLayout.stride)
+            | (uint64_t(bufferLayout.stepFunction) << 16)
+            | (uint64_t(bufferLayout.stepRate) << 32);
+    }
+
     BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
     {
         /* KenD -- Metal TODO -- validate the layout of vertex data.
@@ -88,6 +108,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         // Map each vertex attribute's semantic hash to its attribute index
         id<MTLFunction> vf = program._vf.get();
 
+        _hash = DefaultSeed64;
+
         std::map<uint64_t, unsigned> hashToLocation;
         _allAttributesBound = true;
         for (unsigned a=0; a<vf.vertexAttributes.count; ++a) {
@@ -107,6 +129,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                     desc.attributes[attributeIdx].format = AsMTLVertexFormat(e._nativeFormat);
                     desc.attributes[attributeIdx].offset = CalculateVertexStride(MakeIteratorRange(layouts[l]._elements.begin(), &e), false);
                     foundBinding = true;
+
+                    _hash = HashCombine(_hash, MakeHash(desc.attributes[attributeIdx]));
+                    _hash = HashCombine(_hash, attributeIdx);
                     break;
                 }
             }
@@ -124,7 +149,11 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.layouts[l].stepFunction = MTLVertexStepFunctionPerInstance;
                 desc.layouts[l].stepRate = layouts[l]._instanceStepDataRate;
             }
+
+            _hash = HashCombine(_hash, MakeHash(desc.layouts[l]));
         }
+
+        _hash = HashCombine(_hash, _allAttributesBound);
 
         #if defined(_DEBUG)
             if (!_allAttributesBound) {
@@ -163,6 +192,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes)
             attributeHashes.push_back(BuildSemanticHash(vertexAttribute.name.UTF8String));
 
+        _hash = DefaultSeed64;
+
         // Populate MTLVertexAttributeDescriptorArray
         for (unsigned slot=0; slot<maxSlot+1; ++slot) {
             unsigned workingStride = 0;
@@ -188,6 +219,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                         desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
                         desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
                         desc.attributes[attributeLoc].offset = alignedOffset;
+
+                        _hash = HashCombine(_hash, MakeHash(desc.attributes[attributeLoc]));
+                        _hash = HashCombine(_hash, attributeLoc);
 
                         // You will hit this assert if we attempt to bind the same attribute more
                         // than once
@@ -217,6 +251,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.layouts[slot].stepFunction = MTLVertexStepFunctionPerInstance;
                 desc.layouts[slot].stepRate = inputDataRate;
             }
+
+            _hash = HashCombine(_hash, MakeHash(desc.layouts[slot]));
         }
 
         _allAttributesBound = true;
@@ -229,6 +265,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 break;
             }
         }
+
+        _hash = HashCombine(_hash, _allAttributesBound);
 
         #if defined(_DEBUG)
             if (!_allAttributesBound) {

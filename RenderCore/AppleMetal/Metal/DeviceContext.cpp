@@ -17,6 +17,7 @@
 #include "../../../Externals/Misc/OCPtr.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <assert.h>
+#include <map>
 #include "IncludeAppleMetal.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
@@ -157,6 +158,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         uint32_t _shaderGuid = 0;
         uint64_t _rpHash = 0;
+        uint64_t _inputLayoutGuid = 0;
+
+        std::map<uint64_t, GraphicsPipeline> _prebuiltPipelines;
     };
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -340,6 +344,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         auto* descriptor = inputLayout.GetVertexDescriptor();
         if (descriptor != _pimpl->_pipelineDescriptor.get().vertexDescriptor) {
             [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
+            _pimpl->_inputLayoutGuid = inputLayout.GetGUID();
             _dirty = true;
         }
     }
@@ -390,6 +395,16 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     GraphicsPipeline GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
+        auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
+        hash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1, hash);
+        hash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1, hash);
+        hash = HashCombine(_pimpl->_activePrimitiveType, hash);
+        hash = HashCombine(_pimpl->_inputLayoutGuid, hash);
+
+        auto i = _pimpl->_prebuiltPipelines.find(hash);
+        if (i!=_pimpl->_prebuiltPipelines.end())
+            return i->second;
+
         MTLRenderPipelineColorAttachmentDescriptor* colAttachmentZero =
             _pimpl->_pipelineDescriptor.get().colorAttachments[0];
         if (colAttachmentZero.pixelFormat != MTLPixelFormatInvalid) {
@@ -433,18 +448,12 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         auto dss = CreateDepthStencilState(factory);
 
-        auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
-        hash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1, hash);
-        hash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1, hash);
-        hash = HashCombine(_pimpl->_activePrimitiveType, hash);
-        // todo -- input layout hash
-
         // DavidJ -- note -- we keep the state _pimpl->_pipelineDescriptor from here.
         //      what happens if we continue to change it? It doesn't impact the compiled state we
         //      just made, right?
 
         _dirty = false;
-        return {
+        GraphicsPipeline result {
             std::move(renderPipelineState._renderPipelineState),
             std::move(renderPipelineState._reflection),
             std::move(dss),
@@ -452,6 +461,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             _pimpl->_activeDepthStencilDesc._stencilReference,
             hash
         };
+
+        _pimpl->_prebuiltPipelines.insert(std::make_pair(hash, result));
+        return result;
     }
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()

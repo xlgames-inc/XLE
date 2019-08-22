@@ -26,6 +26,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
 
+        uint64_t GetGUID() const { return _hash; }
+
         BoundInputLayout();
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
 
@@ -44,6 +46,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     private:
         TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
         bool _allAttributesBound = true; // Metal HACK - Metal validation can help determine that bindings are correct
+        uint64_t _hash = 0;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
