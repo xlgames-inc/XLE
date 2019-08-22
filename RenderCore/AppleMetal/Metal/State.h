@@ -77,16 +77,17 @@ namespace RenderCore { namespace Metal_AppleMetal
     /**
      * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
      */
-    class AttachmentBlendDesc {
+    class AttachmentBlendDesc
+    {
     public:
-        bool _blendEnable;
-        RenderCore::Blend _srcColorBlendFactor;
-        RenderCore::Blend _dstColorBlendFactor;
-        RenderCore::BlendOp _colorBlendOp;
-        RenderCore::Blend _srcAlphaBlendFactor;
-        RenderCore::Blend _dstAlphaBlendFactor;
-        RenderCore::BlendOp _alphaBlendOp;
-        ColorWriteMask::BitField _writeMask;
+        bool _blendEnable = false;
+        Blend _srcColorBlendFactor = Blend::One;
+        Blend _dstColorBlendFactor = Blend::Zero;
+        BlendOp _colorBlendOp = BlendOp::Add;
+        Blend _srcAlphaBlendFactor = Blend::One;
+        Blend _dstAlphaBlendFactor = Blend::Zero;
+        BlendOp _alphaBlendOp = BlendOp::Add;
+        ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
