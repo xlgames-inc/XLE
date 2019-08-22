@@ -16,18 +16,6 @@ namespace RenderCore { namespace Techniques
 {
     Float3 NegativeLightDirection    = Normalize(Float3(0.f, 1.0f, 1.f));
 
-    CameraDesc::CameraDesc()
-    {
-        _cameraToWorld          = Identity<Float4x4>();
-        _nearClip               = 0.1f;
-        _farClip                = 100000.f;
-        _verticalFieldOfView    = Deg2Rad(34.8246f);
-        _projection             = Projection::Perspective;
-        _left = _top = -1.f;
-        _right = _bottom = 1.f;
-    }
-
-
     Float4x4 Projection(const CameraDesc& sceneCamera, float viewportAspect)
     {
         if (sceneCamera._projection == CameraDesc::Projection::Orthogonal) {

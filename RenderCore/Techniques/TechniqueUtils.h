@@ -21,20 +21,18 @@ namespace RenderCore { namespace Techniques
     class CameraDesc
     {
     public:
-        Float4x4    _cameraToWorld;
-        float       _nearClip, _farClip;
+        Float4x4    _cameraToWorld = Identity<Float4x4>();
+        float       _nearClip = 0.1f, _farClip = 100000.f;
 
         enum class Projection { Perspective, Orthogonal };
-        Projection  _projection;
+        Projection  _projection = Projection::Perspective;
 
         // perspective settings
-        float       _verticalFieldOfView;
+        float       _verticalFieldOfView = Deg2Rad(34.8246f);
 
         // orthogonal settings
-        float       _left, _top;
-        float       _right, _bottom;
-
-        CameraDesc();
+        float       _left = -1.f, _top = -1.f;
+        float       _right = 1.f, _bottom = 1.f;
     };
 
     // Culling tests use an optimized implementation that takes advantage of
