@@ -310,15 +310,15 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         MTLIndexType _indexType;
         unsigned _indexFormatBytes;
-        unsigned _indexOffset;
+        unsigned _indexBufferOffsetBytes;
 
         TBC::OCPtr<MTLRenderPipelineReflection> _graphicsPipelineReflection;
         uint64_t _boundVSArgs = 0ull, _boundPSArgs = 0ull;
 
         std::vector<std::function<void(void)>> _onEndEncodingFunctions;
 
-        unsigned offsetToIndex(unsigned index) {
-            return index * _indexFormatBytes + _indexOffset;
+        unsigned offsetToStartIndex(unsigned startIndex) {
+            return startIndex * _indexFormatBytes + _indexBufferOffsetBytes;
         }
     };
 
@@ -331,7 +331,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_activeIndexBuffer = buffer;
         _pimpl->_indexType = AsMTLIndexType(IB._indexFormat);
         _pimpl->_indexFormatBytes = BitsPerPixel(IB._indexFormat) / 8;
-        _pimpl->_indexOffset = IB._offset;
+        _pimpl->_indexBufferOffsetBytes = IB._offset;
     }
 
     void DeviceContext::BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex)
@@ -490,7 +490,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_activeIndexBuffer
-                                     indexBufferOffset:_pimpl->offsetToIndex(startIndexLocation)];
+                                     indexBufferOffset:_pimpl->offsetToStartIndex(startIndexLocation)];
     }
 
     void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
@@ -515,7 +515,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_activeIndexBuffer
-                                     indexBufferOffset:_pimpl->offsetToIndex(startIndexLocation)
+                                     indexBufferOffset:_pimpl->offsetToStartIndex(startIndexLocation)
                                          instanceCount:instanceCount];
     }
 
@@ -618,7 +618,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_activePrimitiveType = MTLPrimitiveTypeTriangle;
         _pimpl->_indexType = MTLIndexTypeUInt16;
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
-        _pimpl->_indexOffset = 0;
+        _pimpl->_indexBufferOffsetBytes = 0;
     }
 
     DeviceContext::~DeviceContext()
