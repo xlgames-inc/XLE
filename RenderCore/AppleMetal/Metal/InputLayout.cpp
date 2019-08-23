@@ -540,7 +540,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (const auto& b:streamMapping._cbs) {
             #if defined(_DEBUG)
                 if (b._uniformStreamSlot >= stream._constantBuffers.size())
-                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%s). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", b._uniformStreamSlot, b._name.c_str(), stream._constantBuffers.size()));
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include Constant Buffer for bound resource. Expected CB bound at index (%u) of stream (%s). Only (%u) CBs were provided in the UniformsStream passed to BoundUniforms::Apply", b._uniformStreamSlot, b._name.c_str(), stream._constantBuffers.size()));
             #endif
 
             const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];

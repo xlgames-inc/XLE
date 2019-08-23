@@ -493,7 +493,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #if defined(_DEBUG)
                 if (cb._slot >= stream._constantBuffers.size())
-                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%u). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", cb._slot, cb._stream, stream._constantBuffers.size()));
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include Constant Buffer for bound resource. Expected CB bound at index (%u) of stream (%u). Only (%u) CBs were provided in the UniformsStream passed to BoundUniforms::Apply", cb._slot, cb._stream, stream._constantBuffers.size()));
             #endif
 
             assert(!cb._commandGroup._commands.empty());
