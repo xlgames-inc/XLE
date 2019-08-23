@@ -205,7 +205,7 @@ namespace UnitTests
 
             UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
 
-            Metal::SyncEventSet syncEventSet(threadContext);
+            Metal::SyncEventSet syncEventSet(threadContext.get());
             Assert::IsTrue(Metal::SyncEventSet::IsSupported());
 
             const unsigned frameCount = 10;
