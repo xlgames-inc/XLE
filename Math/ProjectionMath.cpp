@@ -635,11 +635,12 @@ namespace XLEMath
             //      miniProj[3] = B = -(2fn) / (f-n)
             //      n = B / (A - 1)
             //      f = B / (A + 1)
-
         const float A = minimalProjection[2];
         const float B = minimalProjection[3];
         if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
-            return std::make_pair(B / A, B / (A + 1.f));
+            // This is a slightly more accurate way to calculate the
+            // same value as B / (A+1) when A is very near -1.
+            return std::make_pair(B / A, 1.f / (A/B + 1.f/B));
         } else {
             return std::make_pair(B / (A - 1.f), B / (A + 1.f));
         }
