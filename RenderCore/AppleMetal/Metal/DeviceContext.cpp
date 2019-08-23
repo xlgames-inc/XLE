@@ -155,10 +155,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         AttachmentBlendDesc _attachmentBlendDesc;
         MTLPrimitiveType _activePrimitiveType;
         DepthStencilDesc _activeDepthStencilDesc;
+        TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
 
         uint32_t _shaderGuid = 0;
         uint64_t _rpHash = 0;
         uint64_t _inputLayoutGuid = 0;
+        uint64_t _absHash = 0, _dssHash = 0;
 
         std::map<uint64_t, GraphicsPipeline> _prebuiltPipelines;
     };
@@ -175,8 +177,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
     {
-        assert(_pimpl->_pipelineDescriptor);
         _pimpl->_attachmentBlendDesc = desc;
+        _pimpl->_absHash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1);
         _dirty = true;
     }
 
@@ -342,8 +344,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         // KenD -- the vertex descriptor isn't necessary if the vertex function does not have an input argument declared [[stage_in]] */
         assert(_pimpl->_pipelineDescriptor);
         auto* descriptor = inputLayout.GetVertexDescriptor();
-        if (descriptor != _pimpl->_pipelineDescriptor.get().vertexDescriptor) {
-            [_pimpl->_pipelineDescriptor setVertexDescriptor:descriptor];
+        if (descriptor != _pimpl->_vertexDescriptor.get()) {
+            _pimpl->_vertexDescriptor = descriptor;
             _pimpl->_inputLayoutGuid = inputLayout.GetGUID();
             _dirty = true;
         }
@@ -352,6 +354,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
         _pimpl->_activeDepthStencilDesc = desc;
+        _pimpl->_dssHash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1);
     }
 
     TBC::OCPtr<NSObject<MTLDepthStencilState>> GraphicsPipelineBuilder::CreateDepthStencilState(ObjectFactory& factory)
@@ -396,8 +399,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     GraphicsPipeline GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
         auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
-        hash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1, hash);
-        hash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1, hash);
+        hash = HashCombine(_pimpl->_absHash, hash);
+        hash = HashCombine(_pimpl->_dssHash, hash);
         hash = HashCombine(_pimpl->_activePrimitiveType, hash);
         hash = HashCombine(_pimpl->_inputLayoutGuid, hash);
 
@@ -439,6 +442,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         } else {
             colAttachmentZero.blendingEnabled = NO;
         }
+
+        [_pimpl->_pipelineDescriptor setVertexDescriptor:_pimpl->_vertexDescriptor.get()];
 
         auto renderPipelineState = factory.CreateRenderPipelineState(_pimpl->_pipelineDescriptor.get(), true);
         if (renderPipelineState._error) {

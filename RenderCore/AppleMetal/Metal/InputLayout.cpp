@@ -514,7 +514,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (const auto& b:streamMapping._srvs) {
             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
             if (!shaderResource.IsGood()) {
-                Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
+                #if defined(_DEBUG)
+                    Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
+                #endif
             } else {
                 const auto& texture = shaderResource.GetUnderlying();
                 [encoder setVertexTexture:texture.get() atIndex:b._shaderSlot];
@@ -552,7 +554,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (const auto& b:streamMapping._srvs) {
             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
             if (!shaderResource.IsGood()) {
-                Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
+                #if defined(_DEBUG)
+                    Log(Verbose) << "==================> ShaderResource is bad/invalid while binding shader sampler (" << b._name << ")" << std::endl;
+                #endif
             } else {
                 const auto& texture = shaderResource.GetUnderlying();
                 [encoder setFragmentTexture:texture.get() atIndex:b._shaderSlot];
