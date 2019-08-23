@@ -538,7 +538,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLRenderCommandEncoder> encoder = context.GetCommandEncoder();
 
         for (const auto& b:streamMapping._cbs) {
-            assert(b._uniformStreamSlot < stream._constantBuffers.size());
+            #if defined(_DEBUG)
+                if (b._uniformStreamSlot >= stream._constantBuffers.size())
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%s). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", b._uniformStreamSlot, b._name.c_str(), stream._constantBuffers.size()));
+            #endif
+
             const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];
             const auto& pkt = constantBuffer._packet;
             if (!pkt.size()) {
@@ -552,6 +556,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
 
         for (const auto& b:streamMapping._srvs) {
+            #if defined(_DEBUG)
+                if (b._uniformStreamSlot >= stream._resources.size())
+                    Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%s). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", b._uniformStreamSlot, b._name.c_str(), stream._resources.size()));
+            #endif
+
             const auto& shaderResource = *(const ShaderResourceView*)stream._resources[b._uniformStreamSlot];
             if (!shaderResource.IsGood()) {
                 #if defined(_DEBUG)
