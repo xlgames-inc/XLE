@@ -82,8 +82,12 @@
     _underlying->BasicBinding_IncorrectUSI(self);
 }
 
-- (void)testBasicBinding_IncorrectUniformsStream {
-    _underlying->BasicBinding_IncorrectUniformsStream(self);
+- (void)testBasicBinding_IncorrectUniformsStreamShader {
+    _underlying->BasicBinding_IncorrectUniformsStreamShader(self);
+}
+
+- (void)testBasicBinding_IncorrectUniformsStreamPipeline {
+    _underlying->BasicBinding_IncorrectUniformsStreamPipeline(self);
 }
 
 @end

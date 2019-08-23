@@ -633,7 +633,7 @@ namespace UnitTests
             }
         };
 
-        TEST_METHOD(BasicBinding_IncorrectUniformsStream)
+        TEST_METHOD(BasicBinding_IncorrectUniformsStreamShader)
         {
             // -------------------------------------------------------------------------------------
             // Bind uniform buffers using the BoundUniforms interface with various error conditions
@@ -731,6 +731,109 @@ namespace UnitTests
                         metalContext.Bind(Topology::TriangleStrip);
                         metalContext.Draw(4);
                     });
+            }
+
+            rpi = {};     // end RPI
+        }
+
+        TEST_METHOD(BasicBinding_IncorrectUniformsStreamPipeline)
+        {
+            // -------------------------------------------------------------------------------------
+            // Bind uniform buffers using the BoundUniforms interface with various error conditions
+            // But this time, the errors are in the UniformsStream object passed to the Apply method
+            // (Here we construct with the graphics pipeline, instead of the shader, so we should
+            //  get an immediate exception from Apply.)
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto shaderProgramCB = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_Uniforms);
+            auto shaderProgramSRV = MakeShaderProgram(*_testHelper, vsText_FullViewport2, psText_TextureBinding);
+            auto targetDesc = CreateDesc(
+                                         BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                                         TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                                         "temporary-out");
+
+            TestTexture testTexture(*_testHelper->_device);
+
+            // -------------------------------------------------------------------------------------
+
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
+            auto vertexBuffer0 = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_vIdx));
+            Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
+            Assert::IsTrue(inputLayout.AllAttributesBound());
+            VertexBufferView vbvs[] = { vertexBuffer0.get() };
+            inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+
+            {
+                // Shader takes a CB called "Values", but we will incorrectly attempt to bind
+                // a shader resource there (and not bind the CB)
+                metalContext.Bind(shaderProgramCB);
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Values"));
+                Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+
+                Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
+                Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
+
+                UniformsStream uniformsStream;
+                const Metal::ShaderResourceView* srvs[] = { &srv };
+                const Metal::SamplerState* samplers[] = { &pointSampler };
+                uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
+                uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
+                uniforms.Apply(metalContext, 0, uniformsStream);
+            }
+
+            {
+                // Shader takes a SRV called "Texture", but we will incorrectly attempt to bind
+                // a constant buffer there (and not bind the SRV)
+                metalContext.Bind(shaderProgramSRV);
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, {Hash64("Texture")});
+                Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+
+                ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
+                UniformsStream uniformsStream;
+                uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
+                uniforms.Apply(metalContext, 0, uniformsStream);
+            }
+
+            {
+                // Shader takes a CB called "Values", we will promise to bind it, but then not
+                // actually include it into the UniformsStream
+                metalContext.Bind(shaderProgramCB);
+
+                auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+
+                UniformsStreamInterface usi;
+                usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
+                Metal::BoundUniforms uniforms { pipeline, Metal::PipelineLayoutConfig {}, usi };
+
+                Assert::ThrowsException(
+                                        [&]() {
+                                            uniforms.Apply(metalContext, 0, UniformsStream {});
+                                        });
+            }
+
+            {
+                // Shader takes a SRV called "Texture", we will promise to bind it, but then not
+                // actually include it into the UniformsStream
+                metalContext.Bind(shaderProgramSRV);
+
+                auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+
+                UniformsStreamInterface usi;
+                usi.BindShaderResource(0, Hash64("Texture"));
+                Metal::BoundUniforms uniforms { pipeline, Metal::PipelineLayoutConfig {}, usi };
+
+                Assert::ThrowsException(
+                                        [&]() {
+                                            uniforms.Apply(metalContext, 0, UniformsStream {});
+                                        });
             }
 
             rpi = {};     // end RPI
