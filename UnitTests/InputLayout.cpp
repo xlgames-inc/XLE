@@ -638,6 +638,8 @@ namespace UnitTests
             // -------------------------------------------------------------------------------------
             // Bind uniform buffers using the BoundUniforms interface with various error conditions
             // But this time, the errors are in the UniformsStream object passed to the Apply method
+            // (With Apple Metal, the Apply method only queues up uniforms to be applied at Draw,
+            // so it's the Draw that will throw.)
             // -------------------------------------------------------------------------------------
             using namespace RenderCore;
             auto threadContext = _testHelper->_device->GetImmediateContext();
@@ -655,6 +657,12 @@ namespace UnitTests
             auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
             UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
             auto rpi = fbHelper.BeginRenderPass();
+
+            auto vertexBuffer0 = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_vIdx));
+            Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
+            Assert::IsTrue(inputLayout.AllAttributesBound());
+            VertexBufferView vbvs[] = { vertexBuffer0.get() };
+            inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
 
             {
                 // Shader takes a CB called "Values", but we will incorrectly attempt to bind
@@ -703,6 +711,8 @@ namespace UnitTests
                 Assert::ThrowsException(
                     [&]() {
                         uniforms.Apply(metalContext, 0, UniformsStream {});
+                        metalContext.Bind(Topology::TriangleStrip);
+                        metalContext.Draw(4);
                     });
             }
 
@@ -718,6 +728,8 @@ namespace UnitTests
                 Assert::ThrowsException(
                     [&]() {
                         uniforms.Apply(metalContext, 0, UniformsStream {});
+                        metalContext.Bind(Topology::TriangleStrip);
+                        metalContext.Draw(4);
                     });
             }
 
