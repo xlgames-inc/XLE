@@ -173,6 +173,10 @@ namespace UnitTests
 
                 #if GFXAPI_TARGET == GFXAPI_OPENGLES
                     glFlush();
+                #elif GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    auto *threadContextAppleMetal = ((RenderCore::ImplAppleMetal::ThreadContext *)threadContext->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code()));
+                    Assert::IsTrue(threadContextAppleMetal);
+                    threadContextAppleMetal->WaitUntilQueueCompleted();
                 #endif
 
                 // finish any results as they come in
