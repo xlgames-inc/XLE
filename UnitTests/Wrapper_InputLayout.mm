@@ -71,11 +71,7 @@
 }
 
 - (void)testBasicBinding_BindMissingAttribute {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
-        _underlying->BasicBinding_BindMissingAttribute(self);
-    #else
-        XCTFail(@"Not supported or failing on this GFX API");
-    #endif
+    _underlying->BasicBinding_BindMissingAttribute(self);
 }
 
 - (void)testBasicBinding_IncorrectUSI {

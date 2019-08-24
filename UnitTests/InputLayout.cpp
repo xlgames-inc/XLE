@@ -418,7 +418,16 @@ namespace UnitTests
             // VBs -- do apply)
             // -------------------------------------------------------------------------------------
             using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
             auto shaderProgram = MakeShaderProgram(*_testHelper, vsText, psText);
+            auto targetDesc = CreateDesc(
+                                         BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                                         TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                                         "temporary-out");
+            auto& metalContext = *Metal::DeviceContext::Get(*_testHelper->_device->GetImmediateContext());
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            auto rpi = fbHelper.BeginRenderPass();
+
             InputElementDesc inputEles[] = {
                 InputElementDesc { "position", 0, Format::R32G32_SINT, 0 },
                 InputElementDesc { "color", 0, Format::R8G8B8A8_UNORM, 1, ~0u, InputDataRate::PerInstance, 1 },
@@ -436,7 +445,7 @@ namespace UnitTests
                 VertexBufferView { vertexBuffer1.get() },
                 VertexBufferView { vertexBuffer2.get() },
             };
-            auto& metalContext = *Metal::DeviceContext::Get(*_testHelper->_device->GetImmediateContext());
+
             inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
         }
 
