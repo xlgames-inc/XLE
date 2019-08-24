@@ -63,7 +63,7 @@
 // DavidJ -- note -- Apple Metal fails these test cases currently
 //
 - (void)testBindAttributeToGeneratorShader {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL && GFXAPI_TARGET != GFXAPI_OPENGLES
+    #if GFXAPI_TARGET != GFXAPI_OPENGLES
         _underlying->BasicBinding_BindAttributeToGeneratorShader(self);
     #else
         XCTFail(@"Not supported or failing on this GFX API");
