@@ -132,6 +132,7 @@ namespace RenderCore
         return MakeSubFramePkt(&input, PtrAdd(&input, sizeof(T)));
     }
 
+    void* SubFrameHeap_Allocate(size_t size);
     unsigned SubFrameHeap_ProducerFrameBarrier();
     void SubFrameHeap_ConsumerFrameBarrier(unsigned producerBarrierId);
     void SubFrameHeap_ProducerAndConsumerFrameBarrier();

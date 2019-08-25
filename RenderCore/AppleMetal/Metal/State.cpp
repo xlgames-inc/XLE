@@ -21,7 +21,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 #if TARGET_OS_OSX
             case AddressMode::Border: return MTLSamplerAddressModeClampToBorderColor;
 #endif
-            default: assert(0);
+            default:
+                assert(0);
+                return MTLSamplerAddressModeRepeat;
         }
     }
 

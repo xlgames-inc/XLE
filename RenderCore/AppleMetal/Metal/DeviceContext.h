@@ -68,6 +68,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint64_t _hash;
 
         uint64_t GetGUID() const { return _hash; }
+        // bool IsGood() const { return _underlying != nullptr; }
     };
 
     class GraphicsPipelineBuilder
@@ -85,7 +86,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
         void SetRenderPassConfiguration(MTLRenderPassDescriptor* desc, unsigned sampleCount);
 
-        GraphicsPipeline CreatePipeline(ObjectFactory&);
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
         bool IsPipelineStale() const { return _dirty; }
 
         GraphicsPipelineBuilder();

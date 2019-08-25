@@ -8,6 +8,8 @@
 #include "DeviceContext.h"
 #include "Device.h"
 
+#pragma GCC diagnostic ignored "-Wunguarded-availability-new"
+
 namespace RenderCore { namespace Metal_AppleMetal
 {
     auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 

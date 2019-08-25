@@ -37,18 +37,22 @@ namespace RenderCore { namespace Metal_AppleMetal
         return dummy;
     }
 
-    void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundVertexBuffers::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        context.SetInputLayout(*this);
         unsigned i = 0;
         for (const auto& vbv : vertexBuffers) {
-            auto resource = GetResource(vbv._resource);
-            id<MTLBuffer> buffer = resource.GetBuffer();
+            id<MTLBuffer> buffer = GetResource(vbv._resource).GetBuffer();
             if (!buffer)
                 Throw(::Exceptions::BasicLabel("Attempting to apply vertex buffer view with invalid resource"));
             context.BindVS(buffer, vbv._offset, i);
             ++i;
         }
+    }
+
+    void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    {
+        context.SetInputLayout(*this);
+        _boundVertexBuffers.Apply(context, vertexBuffers);
     }
 
     /* KenD -- cleanup TODO -- this was copied from LightWeightModel */

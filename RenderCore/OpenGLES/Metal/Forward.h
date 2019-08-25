@@ -23,5 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class ViewportDesc;
     class PipelineLayoutConfig;
     class ObjectFactory;
+    class GraphicsPipeline;
+    class GraphicsPipelineBuilder;
 
 }}

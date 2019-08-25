@@ -432,6 +432,11 @@ namespace RenderCore
         GetSubFrameHeap().OnProducerAndConsumerFrameBarrier();
     }
 
+    void* SubFrameHeap_Allocate(size_t size)
+    {
+        return GetSubFrameHeap().Allocate(size).first;
+    }
+
     MiniHeap& SharedPkt::GetHeap()
     {
         static MiniHeap* MainHeap = nullptr;

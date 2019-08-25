@@ -162,7 +162,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint64_t _inputLayoutGuid = 0;
         uint64_t _absHash = 0, _dssHash = 0;
 
-        std::map<uint64_t, GraphicsPipeline> _prebuiltPipelines;
+        std::map<uint64_t, std::shared_ptr<GraphicsPipeline>> _prebuiltPipelines;
     };
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -396,7 +396,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_activePrimitiveType = AsMTLenum(topology);
     }
 
-    GraphicsPipeline GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
+    const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
         auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
         hash = HashCombine(_pimpl->_absHash, hash);
@@ -458,17 +458,17 @@ namespace RenderCore { namespace Metal_AppleMetal
         //      just made, right?
 
         _dirty = false;
-        GraphicsPipeline result {
+        auto result  = std::make_shared<GraphicsPipeline>(GraphicsPipeline{
             std::move(renderPipelineState._renderPipelineState),
             std::move(renderPipelineState._reflection),
             std::move(dss),
             (unsigned)_pimpl->_activePrimitiveType,
             _pimpl->_activeDepthStencilDesc._stencilReference,
             hash
-        };
+        });
 
-        _pimpl->_prebuiltPipelines.insert(std::make_pair(hash, result));
-        return result;
+        i = _pimpl->_prebuiltPipelines.insert(std::make_pair(hash, result)).first;
+        return i->second;
     }
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()
@@ -515,6 +515,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         TBC::OCPtr<MTLRenderPipelineReflection> _graphicsPipelineReflection;
         uint64_t _boundVSArgs = 0ull, _boundPSArgs = 0ull;
+
+        const GraphicsPipeline* _boundGraphicsPipeline = nullptr;
 
         std::vector<std::function<void(void)>> _onEndEncodingFunctions;
 
@@ -569,7 +571,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     void DeviceContext::FinalizePipeline()
     {
         if (GraphicsPipelineBuilder::IsPipelineStale() || !_pimpl->_graphicsPipelineReflection) {
-            auto pipelineState = GraphicsPipelineBuilder::CreatePipeline(GetObjectFactory());
+            auto& pipelineState = *GraphicsPipelineBuilder::CreatePipeline(GetObjectFactory());
 
             [_pimpl->_commandEncoder setRenderPipelineState:pipelineState._underlying];
 
@@ -596,6 +598,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
         _pimpl->_boundVSArgs |= boundVSArgs;
         _pimpl->_boundPSArgs |= boundPSArgs;
+        _pimpl->_boundGraphicsPipeline = nullptr;
         _pimpl->_queuedUniformSets.clear();
 
         // Bind standins for anything that have never been bound to anything correctly
@@ -677,14 +680,17 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned vertexCount, unsigned startVertexLocation)
     {
         assert(_pimpl->_commandEncoder);
-        [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
-        [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
-        [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+        if (_pimpl->_boundGraphicsPipeline != &pipeline) {
+            [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+            [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
 
-        _pimpl->_graphicsPipelineReflection = nullptr;
-        _pimpl->_boundVSArgs = 0;
-        _pimpl->_boundPSArgs = 0;
-        _pimpl->_queuedUniformSets.clear();
+            _pimpl->_graphicsPipelineReflection = nullptr;
+            _pimpl->_boundVSArgs = 0;
+            _pimpl->_boundPSArgs = 0;
+            _pimpl->_boundGraphicsPipeline = &pipeline;
+            _pimpl->_queuedUniformSets.clear();
+        }
 
         [_pimpl->_commandEncoder drawPrimitives:(MTLPrimitiveType)pipeline._primitiveType
                                     vertexStart:startVertexLocation
@@ -696,14 +702,17 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned indexCount, unsigned startIndexLocation)
     {
         assert(_pimpl->_commandEncoder);
-        [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
-        [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
-        [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+        if (_pimpl->_boundGraphicsPipeline != &pipeline) {
+            [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+            [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
 
-        _pimpl->_graphicsPipelineReflection = nullptr;
-        _pimpl->_boundVSArgs = 0;
-        _pimpl->_boundPSArgs = 0;
-        _pimpl->_queuedUniformSets.clear();
+            _pimpl->_graphicsPipelineReflection = nullptr;
+            _pimpl->_boundVSArgs = 0;
+            _pimpl->_boundPSArgs = 0;
+            _pimpl->_boundGraphicsPipeline = &pipeline;
+            _pimpl->_queuedUniformSets.clear();
+        }
 
         [_pimpl->_commandEncoder drawIndexedPrimitives:(MTLPrimitiveType)pipeline._primitiveType
                                             indexCount:indexCount
@@ -747,6 +756,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
 
         [_pimpl->_commandEncoder endEncoding];
+
+        _pimpl->_graphicsPipelineReflection = nullptr;
+        _pimpl->_boundVSArgs = 0;
+        _pimpl->_boundPSArgs = 0;
+        _pimpl->_boundGraphicsPipeline = nullptr;
+        _pimpl->_queuedUniformSets.clear();
 
         for (const auto& fn: _pimpl->_onEndEncodingFunctions) {
             fn();

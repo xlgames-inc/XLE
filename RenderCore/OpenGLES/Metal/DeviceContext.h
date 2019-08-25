@@ -32,6 +32,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     class RasterizationDesc;
     class DepthStencilDesc;
+    class AttachmentBlendDesc;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -67,6 +68,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     class GraphicsPipeline
     {
     public:
+        uint64_t GetGUID() const { return 0; }
+    };
+
+    class GraphicsPipelineBuilder
+    {
+    public:
         void Bind(const IndexBufferView& IB);
         void UnbindInputLayout();
 
@@ -77,22 +84,53 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Bind(const BlendState& blender);
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(const AttachmentBlendDesc& blendState);
         void Bind(Topology topology);
         void Bind(const ViewportDesc& viewport);
         
         DepthStencilDesc ActiveDepthStencilDesc();
+
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
+        void    Draw(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned startVertexLocation=0)
+        {
+            Draw(vertexCount, startVertexLocation);
+        }
+
+        void    DrawIndexed(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned startIndexLocation=0)
+        {
+            DrawIndexed(indexCount, startIndexLocation);
+        }
+
+        void    DrawInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0)
+        {
+            DrawInstances(vertexCount, instanceCount, startVertexLocation);
+        }
+
+        void    DrawIndexedInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0)
+        {
+            DrawIndexedInstances(indexCount, instanceCount, startIndexLocation);
+        }
+
         FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
 
-        GraphicsPipeline(FeatureSet::BitField featureSet);
-        GraphicsPipeline(const GraphicsPipeline&) = delete;
-        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
-        ~GraphicsPipeline();
+        GraphicsPipelineBuilder(FeatureSet::BitField featureSet);
+        GraphicsPipelineBuilder(const GraphicsPipelineBuilder&) = delete;
+        GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&) = delete;
+        ~GraphicsPipelineBuilder();
 
         CapturedStates* GetCapturedStates() { return _capturedStates; }
         void        BeginStateCapture(CapturedStates& capturedStates);
@@ -110,7 +148,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DeviceContext : public GraphicsPipeline
+    class DeviceContext : public GraphicsPipelineBuilder
     {
     public:
         void            BeginCommandList();
@@ -132,7 +170,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    template<int Count> void GraphicsPipelineBuilder::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
         for (int c=0; c<Count; ++c) {
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
@@ -142,14 +180,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             _capturedStates->_activeTextureIndex = Count + shaderResources._startingPoint;
     }
 
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
+    template<int Count> void GraphicsPipelineBuilder::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
     {
         for (int c=0; c<Count; ++c) {
             samplerStates._buffers[c].Apply(c+samplerStates._startingPoint);
         }
     }
 
-    inline void GraphicsPipeline::Bind(Topology topology)
+    inline void GraphicsPipelineBuilder::Bind(Topology topology)
     {
         switch (topology)
         {

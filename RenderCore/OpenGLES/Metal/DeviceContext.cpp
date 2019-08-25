@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return glFormat;
     }
 
-    void GraphicsPipeline::Bind(const IndexBufferView& IB)
+    void GraphicsPipelineBuilder::Bind(const IndexBufferView& IB)
     {
 		auto ibBuffer = GetBufferRawGLHandle(*IB._resource);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuffer);
@@ -43,7 +43,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind IndexBufferView");
     }
 
-    void GraphicsPipeline::UnbindInputLayout()
+    void GraphicsPipelineBuilder::UnbindInputLayout()
     {
         if (_featureSet & FeatureSet::GLES300) {
             glBindVertexArray(0);
@@ -61,15 +61,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
-    void GraphicsPipeline::Bind(const ShaderProgram& shaderProgram)
+    void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
         CheckGLError("Bind ShaderProgram");
     }
 
-    void GraphicsPipeline::Bind(const BlendState& blender)
+    void GraphicsPipelineBuilder::Bind(const BlendState& blender)
     {
         blender.Apply();
+    }
+
+    static std::shared_ptr<GraphicsPipeline> s_dummyPipeline;
+    
+    const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory&)
+    {
+        return s_dummyPipeline;
     }
 
 #pragma clang diagnostic ignored "-Wunused-function"        // SetUnmanagedStates() not used in this file
@@ -89,7 +96,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
-    void GraphicsPipeline::Bind(const RasterizationDesc& desc)
+    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
     {
         if (desc._cullMode != CullMode::None) {
             glEnable(GL_CULL_FACE);
@@ -101,7 +108,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind RasterizationState");
     }
 
-    void GraphicsPipeline::Bind(const DepthStencilDesc& desc)
+    void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
         CheckGLError("Bind DepthStencilState (start)");
 
@@ -143,7 +150,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind DepthStencilState");
     }
     
-    DepthStencilDesc GraphicsPipeline::ActiveDepthStencilDesc()
+    DepthStencilDesc GraphicsPipelineBuilder::ActiveDepthStencilDesc()
     {
         DepthStencilDesc depthStencil = {};
         GLint depthFunc = 0;
@@ -203,7 +210,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         return depthStencil;
     }
 
-    void GraphicsPipeline::Bind(const ViewportDesc& viewport)
+    void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
+    {
+        if (desc._blendEnable) glEnable(GL_BLEND);
+        else glDisable(GL_BLEND);
+
+        glBlendFuncSeparate(AsGLenum(desc._srcColorBlendFactor), AsGLenum(desc._dstColorBlendFactor), AsGLenum(desc._srcAlphaBlendFactor), AsGLenum(desc._dstAlphaBlendFactor));
+        glBlendEquationSeparate(AsGLenum(desc._colorBlendOp), AsGLenum(desc._alphaBlendOp));
+        glColorMask(((desc._writeMask & ColorWriteMask::Red)   ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Green) ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Blue)  ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Alpha) ? GL_TRUE : GL_FALSE));
+    }
+
+    void GraphicsPipelineBuilder::Bind(const ViewportDesc& viewport)
     {
         glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
 
@@ -217,13 +237,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind Viewport");
     }
 
-    void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    void GraphicsPipelineBuilder::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
         CheckGLError("Draw()");
     }
 
-    void GraphicsPipeline::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void GraphicsPipelineBuilder::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         CheckGLError("before DrawIndexed()");
 
@@ -235,7 +255,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawIndexed()");
     }
 
-    void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    void GraphicsPipelineBuilder::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
@@ -262,7 +282,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawInstances()");
     }
 
-    void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void GraphicsPipelineBuilder::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
@@ -295,7 +315,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static unsigned s_nextCapturedStatesGUID = 1;
 
-    void GraphicsPipeline::BeginStateCapture(CapturedStates& capturedStates)
+    void GraphicsPipelineBuilder::BeginStateCapture(CapturedStates& capturedStates)
     {
         assert(!_capturedStates);
         _capturedStates = &capturedStates;
@@ -328,7 +348,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // capturedStates._texUnitsSetToCube = 0;
     }
 
-    void GraphicsPipeline::EndStateCapture()
+    void GraphicsPipelineBuilder::EndStateCapture()
     {
         assert(_capturedStates != nullptr);
         _capturedStates = nullptr;
@@ -351,7 +371,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     #endif
 
-    GraphicsPipeline::GraphicsPipeline(FeatureSet::BitField featureSet)
+    GraphicsPipelineBuilder::GraphicsPipelineBuilder(FeatureSet::BitField featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
         _indexFormatBytes = 2;
@@ -360,12 +380,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         _capturedStates = nullptr;
     }
 
-    GraphicsPipeline::~GraphicsPipeline()
+    GraphicsPipelineBuilder::~GraphicsPipelineBuilder()
     {
     }
 
     DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
-    : GraphicsPipeline(featureSet)
+    : GraphicsPipelineBuilder(featureSet)
     {
     }
 

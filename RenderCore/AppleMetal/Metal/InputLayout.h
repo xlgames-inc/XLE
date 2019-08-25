@@ -21,10 +21,18 @@ namespace RenderCore { namespace Metal_AppleMetal
     class PipelineLayoutConfig;
     class DeviceContext;
 
+    class BoundVertexBuffers
+    {
+    public:
+        void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+    };
+
     class BoundInputLayout
     {
     public:
         void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+
+        const BoundVertexBuffers& GetBoundVertexBuffers() const { return _boundVertexBuffers; };
 
         uint64_t GetGUID() const { return _hash; }
 
@@ -47,6 +55,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
         bool _allAttributesBound = true; // Metal HACK - Metal validation can help determine that bindings are correct
         uint64_t _hash = 0;
+
+        BoundVertexBuffers _boundVertexBuffers;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
