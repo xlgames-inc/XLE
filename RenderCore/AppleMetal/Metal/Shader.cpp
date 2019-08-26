@@ -295,6 +295,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 #if defined(_DEBUG)
         [_vf setLabel:[[_vf.get() name] stringByAppendingFormat:@" (%@)", vertexLibrary.label]];
         [_ff setLabel:[[_ff.get() name] stringByAppendingFormat:@" (%@)", fragmentLibrary.label]];
+
+        std::stringstream str;
+        str << "[VS:" << vertexShader.GetIdentifier() << "][FS:" << fragmentShader.GetIdentifier() << "]";
+        _sourceIdentifiers = str.str();
 #endif
 
         _guid = g_nextShaderProgramGUID++;

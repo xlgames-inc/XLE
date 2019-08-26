@@ -163,6 +163,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint64_t _absHash = 0, _dssHash = 0;
 
         std::map<uint64_t, std::shared_ptr<GraphicsPipeline>> _prebuiltPipelines;
+
+        #if defined(_DEBUG)
+            std::string _shaderSourceIdentifiers;
+        #endif
     };
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
@@ -173,6 +177,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_pipelineDescriptor.get().rasterizationEnabled = shaderProgram._ff != nullptr;
         _pimpl->_shaderGuid = shaderProgram.GetGUID();
         _dirty = true;
+
+        #if defined(_DEBUG)
+            _pimpl->_shaderSourceIdentifiers = shaderProgram.SourceIdentifiers();
+        #endif
     }
 
     void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
@@ -465,6 +473,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             (unsigned)_pimpl->_activePrimitiveType,
             _pimpl->_activeDepthStencilDesc._stencilReference,
             hash
+
+            #if defined(_DEBUG)
+                , _pimpl->_shaderSourceIdentifiers
+            #endif
         });
 
         i = _pimpl->_prebuiltPipelines.insert(std::make_pair(hash, result)).first;

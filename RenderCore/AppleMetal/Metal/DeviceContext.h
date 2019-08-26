@@ -68,7 +68,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint64_t _hash;
 
         uint64_t GetGUID() const { return _hash; }
-        // bool IsGood() const { return _underlying != nullptr; }
+
+        #if defined(_DEBUG)
+            std::string _shaderSourceIdentifiers;
+        #endif
     };
 
     class GraphicsPipelineBuilder
