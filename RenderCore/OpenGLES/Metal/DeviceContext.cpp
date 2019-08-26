@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return glFormat;
     }
 
-    void GraphicsPipelineBuilder::Bind(const IndexBufferView& IB)
+    void DeviceContext::Bind(const IndexBufferView& IB)
     {
 		auto ibBuffer = GetBufferRawGLHandle(*IB._resource);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuffer);
@@ -43,7 +43,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind IndexBufferView");
     }
 
-    void GraphicsPipelineBuilder::UnbindInputLayout()
+    void DeviceContext::UnbindInputLayout()
     {
         if (_featureSet & FeatureSet::GLES300) {
             glBindVertexArray(0);
@@ -65,11 +65,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
         CheckGLError("Bind ShaderProgram");
-    }
-
-    void GraphicsPipelineBuilder::Bind(const BlendState& blender)
-    {
-        blender.Apply();
     }
 
     static std::shared_ptr<GraphicsPipeline> s_dummyPipeline;
@@ -96,7 +91,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
-    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
+    void DeviceContext::Bind(const RasterizationDesc& desc)
     {
         if (desc._cullMode != CullMode::None) {
             glEnable(GL_CULL_FACE);
@@ -223,7 +218,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     ((desc._writeMask & ColorWriteMask::Alpha) ? GL_TRUE : GL_FALSE));
     }
 
-    void GraphicsPipelineBuilder::Bind(const ViewportDesc& viewport)
+    void DeviceContext::Bind(const ViewportDesc& viewport)
     {
         glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
 
@@ -237,13 +232,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind Viewport");
     }
 
-    void GraphicsPipelineBuilder::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
         CheckGLError("Draw()");
     }
 
-    void GraphicsPipelineBuilder::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         CheckGLError("before DrawIndexed()");
 
@@ -255,7 +250,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawIndexed()");
     }
 
-    void GraphicsPipelineBuilder::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
@@ -282,7 +277,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawInstances()");
     }
 
-    void GraphicsPipelineBuilder::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void DeviceContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
@@ -315,7 +310,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static unsigned s_nextCapturedStatesGUID = 1;
 
-    void GraphicsPipelineBuilder::BeginStateCapture(CapturedStates& capturedStates)
+    void DeviceContext::BeginStateCapture(CapturedStates& capturedStates)
     {
         assert(!_capturedStates);
         _capturedStates = &capturedStates;
@@ -348,7 +343,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // capturedStates._texUnitsSetToCube = 0;
     }
 
-    void GraphicsPipelineBuilder::EndStateCapture()
+    void DeviceContext::EndStateCapture()
     {
         assert(_capturedStates != nullptr);
         _capturedStates = nullptr;
@@ -373,20 +368,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder(FeatureSet::BitField featureSet)
     {
-        _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
-        _indexFormatBytes = 2;
-        _nativeTopology = GL_TRIANGLES;
         _featureSet = featureSet;
-        _capturedStates = nullptr;
-    }
-
-    GraphicsPipelineBuilder::~GraphicsPipelineBuilder()
-    {
+        _nativeTopology = GL_TRIANGLES;
     }
 
     DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
     : GraphicsPipelineBuilder(featureSet)
     {
+        _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
+        _indexFormatBytes = 2;
+
+        _featureSet = featureSet;
+        _capturedStates = nullptr;
     }
 
     DeviceContext::~DeviceContext()

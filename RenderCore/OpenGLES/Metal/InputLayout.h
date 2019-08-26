@@ -19,16 +19,37 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgram;
     class PipelineLayoutConfig;
 	class DeviceContext;
-    class GraphicsPipelineBuilder;
 
-    class BoundVertexBuffers
+    class BoundInputLayout
     {
     public:
         void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+        void CreateVAO(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers);
+        bool AllAttributesBound() const { return _allAttributesBound; }
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            IteratorRange<const std::string *> UnboundAttributesNames() const { return Utility::MakeIteratorRange(_unboundAttributesNames); }
+        #endif
 
-        intrusive_ptr<OpenGL::VAO> _vao;
-        uint64_t _vaoBindingHash = 0;
+        static void SetWarnOnMissingVertexAttribute(bool warn) { _warnOnMissingVertexAttribute = warn; }
 
+        BoundInputLayout() : _attributeState(0), _maxVertexAttributes(0), _vaoBindingHash(0), _allAttributesBound(true) {}
+        BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
+
+        struct SlotBinding
+        {
+            IteratorRange<const MiniInputElementDesc*> _elements;
+            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
+        };
+        BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const ShaderProgram& program);
+
+        BoundInputLayout(BoundInputLayout&&) = default;
+        BoundInputLayout& operator=(BoundInputLayout&&) = default;
+        BoundInputLayout(const BoundInputLayout&) = default;
+        BoundInputLayout& operator=(const BoundInputLayout&) = default;
+
+    private:
         class Binding
         {
         public:
@@ -42,53 +63,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
         std::vector<Binding> _bindings;
         std::vector<unsigned> _bindingsByVertexBuffer;
-        uint32_t _attributeState = 0;
+        uint32_t _attributeState;
 
-        uint32_t _maxVertexAttributes = 0;
+        uint32_t _maxVertexAttributes;
 
-        void UnderlyingApply(GraphicsPipelineBuilder& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
-    };
+        intrusive_ptr<OpenGL::VAO> _vao;
+        uint64_t _vaoBindingHash;
 
-    class BoundInputLayout
-    {
-    public:
-        void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
-        void CreateVAO(GraphicsPipelineBuilder& context, IteratorRange<const VertexBufferView*> vertexBuffers);
-        bool AllAttributesBound() const { return _allAttributesBound; }
-        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
-            IteratorRange<const std::string *> UnboundAttributesNames() const { return Utility::MakeIteratorRange(_unboundAttributesNames); }
-        #endif
-
-        const BoundVertexBuffers& GetBoundVertexBuffers() const { return _boundVertexBuffers; };
-
-        static void SetWarnOnMissingVertexAttribute(bool warn) { _warnOnMissingVertexAttribute = warn; }
-
-        BoundInputLayout() : _allAttributesBound(true) {}
-        BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
-
-        struct SlotBinding
-        {
-            IteratorRange<const MiniInputElementDesc*> _elements;
-            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
-        };
-        BoundInputLayout(
-            IteratorRange<const SlotBinding*> layouts,
-            const ShaderProgram& program);
-
-        BoundInputLayout(BoundInputLayout&&) never_throws = default;
-        BoundInputLayout& operator=(BoundInputLayout&&) never_throws = default;
-        BoundInputLayout(const BoundInputLayout&) = default;
-        BoundInputLayout& operator=(const BoundInputLayout&) = default;
-
-    private:
         bool _allAttributesBound;
         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::vector<std::string> _unboundAttributesNames;
         #endif
 
         static bool _warnOnMissingVertexAttribute;
-        BoundVertexBuffers _boundVertexBuffers;
 
+        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
         bool CalculateAllAttributesBound(const ShaderProgram& program);
     };
 

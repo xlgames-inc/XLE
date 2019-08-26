@@ -74,23 +74,40 @@ namespace RenderCore { namespace Metal_OpenGLES
     class GraphicsPipelineBuilder
     {
     public:
+        void Bind(const ShaderProgram& shaderProgram);
+
+        void Bind(const AttachmentBlendDesc& blendState);
+        void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(Topology topology);
+
+        DepthStencilDesc ActiveDepthStencilDesc();
+
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+
+        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+
+        GraphicsPipelineBuilder(FeatureSet::BitField featureSet);
+
+    protected:
+        unsigned    _nativeTopology;
+        FeatureSet::BitField _featureSet;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class DeviceContext : public GraphicsPipelineBuilder
+    {
+    public:
         void Bind(const IndexBufferView& IB);
         void UnbindInputLayout();
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        void Bind(const ShaderProgram& shaderProgram);
 
-        void Bind(const BlendState& blender);
         void Bind(const RasterizationDesc& rasterizer);
-        void Bind(const DepthStencilDesc& depthStencil);
-        void Bind(const AttachmentBlendDesc& blendState);
-        void Bind(Topology topology);
         void Bind(const ViewportDesc& viewport);
-        
-        DepthStencilDesc ActiveDepthStencilDesc();
 
-        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+        using GraphicsPipelineBuilder::Bind;
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -125,32 +142,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             DrawIndexedInstances(indexCount, instanceCount, startIndexLocation);
         }
 
-        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
-
-        GraphicsPipelineBuilder(FeatureSet::BitField featureSet);
-        GraphicsPipelineBuilder(const GraphicsPipelineBuilder&) = delete;
-        GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&) = delete;
-        ~GraphicsPipelineBuilder();
-
         CapturedStates* GetCapturedStates() { return _capturedStates; }
         void        BeginStateCapture(CapturedStates& capturedStates);
         void        EndStateCapture();
 
-    private:
-        unsigned    _nativeTopology;
-        unsigned    _indicesFormat;
-        unsigned    _indexFormatBytes;
-        unsigned    _indexBufferOffsetBytes;
-        FeatureSet::BitField _featureSet;
 
-        CapturedStates* _capturedStates;
-    };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeviceContext : public GraphicsPipelineBuilder
-    {
-    public:
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            ExecuteCommandList(CommandList& commandList);
@@ -166,11 +162,17 @@ namespace RenderCore { namespace Metal_OpenGLES
     private:
         friend class Device;
         friend class DeviceOpenGLES;
+
+        unsigned    _indicesFormat;
+        unsigned    _indexFormatBytes;
+        unsigned    _indexBufferOffsetBytes;
+
+        CapturedStates* _capturedStates;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<int Count> void GraphicsPipelineBuilder::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    template<int Count> void DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
         for (int c=0; c<Count; ++c) {
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
@@ -180,7 +182,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             _capturedStates->_activeTextureIndex = Count + shaderResources._startingPoint;
     }
 
-    template<int Count> void GraphicsPipelineBuilder::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
+    template<int Count> void DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
     {
         for (int c=0; c<Count; ++c) {
             samplerStates._buffers[c].Apply(c+samplerStates._startingPoint);

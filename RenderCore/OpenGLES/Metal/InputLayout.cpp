@@ -14,7 +14,6 @@
 #include "Resource.h"
 #include "DeviceContext.h"
 #include "GPUSyncedAllocator.h"
-#include "ObjectFactory.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -48,19 +47,20 @@ namespace RenderCore { namespace Metal_OpenGLES
             //
         const InputElementDesc* elements = layout.begin();
         size_t elementsCount = layout.size();
-        _boundVertexBuffers._bindings.reserve(elementsCount);
-        _boundVertexBuffers._attributeState = 0;
+        _bindings.reserve(elementsCount);
+        _attributeState = 0;
         _allAttributesBound = false;
+        _vaoBindingHash = 0;
 
         unsigned vbMax = 0;
         for (const auto&l:layout)
             vbMax = std::max(l._inputSlot, vbMax);
 
         auto programIndex = program.GetUnderlying();
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_boundVertexBuffers._maxVertexAttributes);
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
 
         for (unsigned vbIndex = 0; vbIndex <= vbMax; ++vbIndex) {
-            auto bindingStart = _boundVertexBuffers._bindings.size();
+            auto bindingStart = _bindings.size();
             size_t vertexStride = 0;
             {
                 unsigned lastElementEnd = 0;
@@ -101,7 +101,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
                 } else {
                     const auto componentType = GetComponentType(elements[c]._nativeFormat);
-                    _boundVertexBuffers._bindings.push_back({
+                    _bindings.push_back({
                             unsigned(attribute),
                             GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
                             (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
@@ -110,15 +110,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                             elements[c]._inputSlotClass == InputDataRate::PerVertex ? 0 : elements[c]._instanceDataStepRate
                         });
 
-                    assert(!(_boundVertexBuffers._attributeState & 1<<unsigned(attribute)));
-                    _boundVertexBuffers._attributeState |= 1<<unsigned(attribute);
+                    assert(!(_attributeState & 1<<unsigned(attribute)));
+                    _attributeState |= 1<<unsigned(attribute);
                 }
 
                 lastElementEnd = elementStart + elementSize;
             }
 
-            if (bindingStart != (unsigned)_boundVertexBuffers._bindings.size())
-                _boundVertexBuffers._bindingsByVertexBuffer.push_back(unsigned(_boundVertexBuffers._bindings.size() - bindingStart));
+            if (bindingStart != (unsigned)_bindings.size())
+                _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
 
         _allAttributesBound = CalculateAllAttributesBound(program);
@@ -128,12 +128,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
     {
-        _boundVertexBuffers._attributeState = 0;
+        _attributeState = 0;
         _allAttributesBound = false;
+        _vaoBindingHash = 0;
 
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_boundVertexBuffers._maxVertexAttributes);
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
         
         int activeAttributeCount = 0, activeAttributeMaxLength = 0;
         glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTES, &activeAttributeCount);
@@ -142,7 +143,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         GLchar buffer[activeAttributeMaxLength];
 
         if (!layouts.empty()) {
-            std::vector<BoundVertexBuffers::Binding> workingBindings[layouts.size()];
+            std::vector<Binding> workingBindings[layouts.size()];
             unsigned vertexStrides[layouts.size()];
             for (unsigned c=0; c<layouts.size(); ++c)
                 vertexStrides[c] = CalculateVertexStride(layouts[c]._elements, false);
@@ -187,16 +188,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
 
                 if (foundBinding) {
-                    assert(!(_boundVertexBuffers._attributeState & 1 << unsigned(attrLoc)));
-                    _boundVertexBuffers._attributeState |= 1 << unsigned(attrLoc);
+                    assert(!(_attributeState & 1 << unsigned(attrLoc)));
+                    _attributeState |= 1 << unsigned(attrLoc);
                 }
             }
 
             for (unsigned c=0; c<layouts.size(); ++c) {
-                _boundVertexBuffers._bindings.insert(_boundVertexBuffers._bindings.end(), workingBindings[c].begin(), workingBindings[c].end());
-                _boundVertexBuffers._bindingsByVertexBuffer.push_back(unsigned(workingBindings[c].size()));
+                _bindings.insert(_bindings.end(), workingBindings[c].begin(), workingBindings[c].end());
+                _bindingsByVertexBuffer.push_back(unsigned(workingBindings[c].size()));
             }
-            assert(_boundVertexBuffers._bindings.size() <= _boundVertexBuffers._maxVertexAttributes);
+            assert(_bindings.size() <= _maxVertexAttributes);
         }
 
         _allAttributesBound = CalculateAllAttributesBound(program);
@@ -231,7 +232,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto location = glGetAttribLocation(programHandle, buffer);
 
             bool hasBoundAttribute = false;
-            for (const auto&b:_boundVertexBuffers._bindings) {
+            for (const auto&b:_bindings) {
                 if (b._attributeLocation == location) {
                     hasBoundAttribute = true;
                     break;
@@ -258,7 +259,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
     }
 
-    void BoundVertexBuffers::UnderlyingApply(GraphicsPipelineBuilder& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
         auto featureSet = devContext.GetFeatureSet();
 
@@ -359,7 +360,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Apply BoundInputLayout");
     }
 
-    static void BindVAO(GraphicsPipelineBuilder& devContext, RawGLHandle vao)
+    static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
     {
         auto* capture = devContext.GetCapturedStates();
         if (capture) {
@@ -391,7 +392,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return hash;
     }
 
-    void BoundVertexBuffers::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
         if (_vao) {
             // The "vao" binds this input layout to a specific set of vertex buffers (passed to CreateVAO())
@@ -406,25 +407,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundInputLayout::CreateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers)
     {
-        _boundVertexBuffers.Apply(devContext, vertexBuffers);
-    }
+        _vao = nullptr;
 
-    void BoundInputLayout::CreateVAO(GraphicsPipelineBuilder& devContext, IteratorRange<const VertexBufferView*> vertexBuffers)
-    {
-        _boundVertexBuffers._vao = nullptr;
-
-        _boundVertexBuffers._vao = GetObjectFactory().CreateVAO();
-        if (!_boundVertexBuffers._vao) return;
+        _vao = GetObjectFactory(devContext).CreateVAO();
+        if (!_vao) return;
 
         auto* originalCapture = devContext.GetCapturedStates();
         if (originalCapture)
             devContext.EndStateCapture();
 
-        BindVAO(devContext, _boundVertexBuffers._vao->AsRawGLHandle());
-        _boundVertexBuffers.UnderlyingApply(devContext, vertexBuffers);
-        _boundVertexBuffers._vaoBindingHash = Hash(vertexBuffers);
+        BindVAO(devContext, _vao->AsRawGLHandle());
+        UnderlyingApply(devContext, vertexBuffers);
+        _vaoBindingHash = Hash(vertexBuffers);
 
         // Reset cached state in devContext
         // When a vao other than 0 is bound, it's unclear to me how calls to glEnableVertexAttribArray, etc,
@@ -452,7 +448,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
             uint64_t _cbNameHash;
             unsigned _boundBuffer;
-            unsigned _rangeBegin, _rangeEnd;
             unsigned _deviceContextCaptureGUID;
         };
         std::vector<UniformBuffers> _uniformBuffers;
@@ -475,7 +470,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             _uniformBuffers.reserve(introspection.GetUniformBlocks().size());
             for (const auto&s:introspection.GetUniformBlocks()) {
-                _uniformBuffers.push_back(UniformBuffers{s.first, 0, 0, 0, 0});
+                _uniformBuffers.push_back(UniformBuffers{s.first, 0, 0});
             }
         }
     };
@@ -523,10 +518,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             } else {
                 const auto pkt2 = ((Resource*)cbv._prebuiltBuffer)->GetConstantBuffer();
                 if (pkt2.size() != 0) {
-                    unsigned rangeBegin = cbv._prebuiltRangeBegin, rangeEnd = cbv._prebuiltRangeEnd;
-                    if (rangeBegin == 0 && rangeEnd == 0)
-                        rangeEnd = (unsigned)pkt2.size();
-                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, MakeIteratorRange(PtrAdd(pkt2.begin(), rangeBegin), PtrAdd(pkt2.begin(), rangeEnd)));
+                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, pkt2);
                 }
             }
         }
@@ -610,24 +602,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                     } else {
                         auto glHandle = res->GetBuffer()->AsRawGLHandle();
-                        unsigned rangeBegin = cbv._prebuiltRangeBegin;
-                        unsigned rangeEnd = cbv._prebuiltRangeEnd;
-                        if (rangeBegin == 0 && rangeEnd == 0)
-                            rangeEnd = res->GetDesc()._linearBufferDesc._sizeInBytes;
                         if (    capturedState._boundBuffer != glHandle
-                            ||  capturedState._rangeBegin != rangeBegin
-                            ||  capturedState._rangeEnd != rangeEnd
                             ||  capturedState._deviceContextCaptureGUID != context.GetCapturedStates()->_captureGUID) {
 
-                            glBindBufferRange(
-                                GL_UNIFORM_BUFFER,
-                                uniformBuffer._uniformBlockIdx,
-                                glHandle,
-                                rangeBegin, rangeEnd - rangeBegin);
-
+                            glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
                             capturedState._boundBuffer = res->GetBuffer()->AsRawGLHandle();
-                            capturedState._rangeBegin = rangeBegin;
-                            capturedState._rangeEnd = rangeEnd;
                             capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
                         }
                     }
