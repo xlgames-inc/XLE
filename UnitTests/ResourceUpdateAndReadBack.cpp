@@ -151,7 +151,7 @@ namespace UnitTests
 
             auto cbResource = _testHelper->_device->CreateResource(
                 CreateDesc(
-                    BindFlag::ConstantBuffer, CPUAccess::Write, GPUAccess::Read,
+                    BindFlag::ConstantBuffer, CPUAccess::WriteDynamic, GPUAccess::Read,
                     LinearBufferDesc::Create(sizeof(Values)),
                     "test-cbuffer"));
 
@@ -212,12 +212,28 @@ namespace UnitTests
             }
 
             auto breakdown = fbHelper.GetFullColorBreakdown();
+            // METAL_TODO: On Apple Metal, we get 0x40000 pixels that match
+            // testValue3 (0xff19ff19), 0xc0000 values (0xffa88054) that
+            // (almost) match testValue0 (0xff5480a8), and no pixels that
+            // match the other two. Figure out whether that's expected, or a
+            // bug in our Buffer::Update.
             Assert::AreEqual(breakdown.size(), (size_t)4);
             for (auto i:breakdown) {
-                Assert::IsTrue( i.second == testValue0.ColorPackedForm()
-                            ||  i.second == testValue1.ColorPackedForm()
-                            ||  i.second == testValue2.ColorPackedForm()
-                            ||  i.second == testValue3.ColorPackedForm());
+                // METAL_TODO: Is there a nativeToRGBA or something, or do we need to
+                // explicitly check for Apple Metal and manually swap bytes?
+                auto color = i.first;
+                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    uint8_t *stupid = reinterpret_cast<uint8_t *>(&color);
+                    std::swap(stupid[0], stupid[2]);
+                #endif
+                // METAL_TODO: ColorPackedForm treats 0.5f as 0x7f, but
+                // (sometimes?) Apple Metal renders 0.5f as 0x80. Maybe
+                // something to do with round-half-to-even vs.
+                // round-half-away-from-zero or something?
+                Assert::IsTrue( color == testValue0.ColorPackedForm()
+                            ||  color == testValue1.ColorPackedForm()
+                            ||  color == testValue2.ColorPackedForm()
+                            ||  color == testValue3.ColorPackedForm());
             }
 		}
 
