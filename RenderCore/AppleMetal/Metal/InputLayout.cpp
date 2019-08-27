@@ -599,15 +599,15 @@ namespace RenderCore { namespace Metal_AppleMetal
             auto* encoder = context.GetCommandEncoder();
             for (const auto& b:_unbound2DSRVs) {
                 if (b.first == ShaderStage::Vertex) {
-                    [encoder setVertexTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
-                } else
-                    [encoder setFragmentTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
-            }
-            for (const auto& b:_unboundCubeSRVs) {
-                if (b.first == ShaderStage::Vertex) {
                     [encoder setVertexTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:b.second];
                 } else
                     [encoder setFragmentTexture:GetObjectFactory().StandIn2DTexture().get() atIndex:b.second];
+            }
+            for (const auto& b:_unboundCubeSRVs) {
+                if (b.first == ShaderStage::Vertex) {
+                    [encoder setVertexTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
+                } else
+                    [encoder setFragmentTexture:GetObjectFactory().StandInCubeTexture().get() atIndex:b.second];
             }
             for (const auto& b:_unboundSamplers) {
                 if (b.first == ShaderStage::Vertex) {

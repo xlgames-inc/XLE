@@ -25,8 +25,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         Desc GetDesc() const override        { return _desc; }
 
-        TBC::OCPtr<AplMtlTexture> GetTexture() const { return _underlyingTexture; }; // <MTLTexture>
-        TBC::OCPtr<AplMtlBuffer> GetBuffer() const { return _underlyingBuffer; }; // <MTLBuffer>
+        const TBC::OCPtr<AplMtlTexture>& GetTexture() const { return _underlyingTexture; }; // <MTLTexture>
+        const TBC::OCPtr<AplMtlBuffer>& GetBuffer() const { return _underlyingBuffer; }; // <MTLBuffer>
 
         /* KenD -- GetRenderBuffer() is not necessary for Metal implementation at this point */
         //TBC::OCPtr<id> GetRenderBuffer() const { return _underlyingRenderBuffer; }; // <MTLTexture>
