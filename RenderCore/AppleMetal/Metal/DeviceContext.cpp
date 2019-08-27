@@ -186,7 +186,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
     {
         _pimpl->_attachmentBlendDesc = desc;
-        _pimpl->_absHash = Hash64(&_pimpl->_attachmentBlendDesc, &_pimpl->_attachmentBlendDesc+1);
+        _pimpl->_absHash = _pimpl->_attachmentBlendDesc.Hash();
         _dirty = true;
     }
 
@@ -286,6 +286,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_rpHash = rpHash;
     }
 
+    uint64_t GraphicsPipelineBuilder::GetRenderPassConfigurationHash() const
+    {
+        return _pimpl->_rpHash;
+    }
+
     void GraphicsPipelineBuilder::SetRenderPassConfiguration(MTLRenderPassDescriptor* renderPassDescriptor, unsigned sampleCount)
     {
         sampleCount = std::max(sampleCount, 1u);
@@ -362,7 +367,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
         _pimpl->_activeDepthStencilDesc = desc;
-        _pimpl->_dssHash = Hash64(&_pimpl->_activeDepthStencilDesc, &_pimpl->_activeDepthStencilDesc+1);
+        _pimpl->_dssHash = _pimpl->_activeDepthStencilDesc.Hash();
     }
 
     TBC::OCPtr<NSObject<MTLDepthStencilState>> GraphicsPipelineBuilder::CreateDepthStencilState(ObjectFactory& factory)
@@ -730,7 +735,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_activeIndexBuffer
-                                     indexBufferOffset:_pimpl->offsetToIndex(startIndexLocation)];
+                                     indexBufferOffset:_pimpl->offsetToStartIndex(startIndexLocation)];
     }
 
     void    DeviceContext::DrawInstances(

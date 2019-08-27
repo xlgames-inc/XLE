@@ -88,6 +88,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void SetInputLayout(const BoundInputLayout& inputLayout);
         void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
         void SetRenderPassConfiguration(MTLRenderPassDescriptor* desc, unsigned sampleCount);
+        uint64_t GetRenderPassConfigurationHash() const;
 
         const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
         bool IsPipelineStale() const { return _dirty; }

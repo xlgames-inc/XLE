@@ -37,6 +37,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint8_t         _stencilReference = 0x0;
         StencilDesc     _frontFaceStencil;
         StencilDesc     _backFaceStencil;
+
+        uint64_t Hash() const;
     };
 
     /// Similar to VkPipelineRasterizationStateCreateInfo or D3D12_RASTERIZER_DESC
@@ -88,6 +90,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         Blend _dstAlphaBlendFactor = Blend::Zero;
         BlendOp _alphaBlendOp = BlendOp::Add;
         ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
+
+        uint64_t Hash() const;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
