@@ -361,30 +361,30 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         for (auto& cmd:uniforms._commands) {
             // (note, only glUniform1iv supported at the moment! -- used by texture uniform binding)
-            assert((cmd._dataOffset+4*cmd._count) <= data.size()); // "ShaderUniformGroup contains corrupt dataOffset value"
+            unsigned bytesRemaining = unsigned(data.size() - cmd._dataOffset);
             switch (cmd._type) {
 
             case GL_FLOAT:
-                glUniform1fv(cmd._location, cmd._count, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform1fv(cmd._location, std::min(bytesRemaining / (unsigned)sizeof(float), cmd._count), (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_FLOAT_VEC2:
-                glUniform2fv(cmd._location, cmd._count, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform2fv(cmd._location, std::min(bytesRemaining / (unsigned)(2*sizeof(float)), cmd._count), (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_FLOAT_VEC3:
-                glUniform3fv(cmd._location, cmd._count, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform3fv(cmd._location, std::min(bytesRemaining / (unsigned)(3*sizeof(float)), cmd._count), (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_FLOAT_VEC4:
-                glUniform4fv(cmd._location, cmd._count, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform4fv(cmd._location, std::min(bytesRemaining / (unsigned)(4*sizeof(float)), cmd._count), (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
 
             case GL_FLOAT_MAT2:
-                glUniformMatrix2fv(cmd._location, cmd._count, GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniformMatrix2fv(cmd._location, std::min(bytesRemaining / (unsigned)(4*sizeof(float)), cmd._count), GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_FLOAT_MAT3:
-                glUniformMatrix3fv(cmd._location, cmd._count, GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniformMatrix3fv(cmd._location, std::min(bytesRemaining / (unsigned)(9*sizeof(float)), cmd._count), GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_FLOAT_MAT4:
-                glUniformMatrix4fv(cmd._location, cmd._count, GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniformMatrix4fv(cmd._location, std::min(bytesRemaining / (unsigned)(16*sizeof(float)), cmd._count), GL_FALSE, (GLfloat*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
 
             case GL_INT:
@@ -394,20 +394,20 @@ namespace RenderCore { namespace Metal_OpenGLES
             case GL_INT_SAMPLER_2D:
             case GL_UNSIGNED_INT_SAMPLER_2D:
             case GL_BOOL:
-                glUniform1iv(cmd._location, cmd._count, (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform1iv(cmd._location, std::min(bytesRemaining / (unsigned)sizeof(unsigned), cmd._count), (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
 
             case GL_INT_VEC2:
             case GL_BOOL_VEC2:
-                glUniform2iv(cmd._location, cmd._count, (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform2iv(cmd._location, std::min(bytesRemaining / (unsigned)(2*sizeof(unsigned)), cmd._count), (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_INT_VEC3:
             case GL_BOOL_VEC3:
-                glUniform3iv(cmd._location, cmd._count, (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform3iv(cmd._location, std::min(bytesRemaining / (unsigned)(3*sizeof(unsigned)), cmd._count), (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
             case GL_INT_VEC4:
             case GL_BOOL_VEC4:
-                glUniform4iv(cmd._location, cmd._count, (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
+                glUniform4iv(cmd._location, std::min(bytesRemaining / (unsigned)(4*sizeof(unsigned)), cmd._count), (GLint*)PtrAdd(AsPointer(data.begin()), cmd._dataOffset));
                 break;
 
             default:
