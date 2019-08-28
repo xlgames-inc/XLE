@@ -315,11 +315,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         for (unsigned i=0; i<maxColorAttachments; ++i) {
             MTLRenderPassColorAttachmentDescriptor* renderPassColorAttachmentDesc = renderPassDescriptor.colorAttachments[i];
             if (renderPassColorAttachmentDesc.texture) {
-                if (i > 0) {
-                    assert(0); // If this assert hits, we need to support more color attachments (such as multiple render target methods)
-                }
                 _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = renderPassColorAttachmentDesc.texture.pixelFormat;
                 rpHash = HashCombine(renderPassColorAttachmentDesc.texture.pixelFormat, rpHash);
+            } else {
+                _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = MTLPixelFormatInvalid;
             }
         }
 
@@ -595,7 +594,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             [_pimpl->_commandEncoder setDepthStencilState:pipelineState._depthStencilState];
             [_pimpl->_commandEncoder setStencilReferenceValue:pipelineState._stencilReferenceValue];
 
-            _pimpl->_graphicsPipelineReflection = std::move(pipelineState._reflection);
+            _pimpl->_graphicsPipelineReflection = pipelineState._reflection;
             _pimpl->_boundVSArgs = 0;
             _pimpl->_boundPSArgs = 0;
         }
