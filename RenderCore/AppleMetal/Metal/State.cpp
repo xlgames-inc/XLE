@@ -114,7 +114,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     SamplerState::SamplerState()
     {
         // Default constructor is intentionally inexpensive and incomplete - it's called, for example, when resizing a vector
-        _pimpl = nullptr;
+        _pimpl = std::make_shared<Pimpl>();
+        _pimpl->_enableMipmaps = false;
+        _pimpl->_underlyingSamplerNoMipmaps = GetObjectFactory().StandInSamplerState();
     }
 
     void SamplerState::Apply(DeviceContext& context, bool textureHasMipmaps, unsigned samplerIndex, ShaderStage stage) const never_throws
