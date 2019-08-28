@@ -534,6 +534,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         const GraphicsPipeline* _boundGraphicsPipeline = nullptr;
 
+        NSThread* _boundThread = nullptr;
+
         std::vector<std::function<void(void)>> _onEndEncodingFunctions;
 
         unsigned offsetToStartIndex(unsigned startIndex) {
@@ -543,6 +545,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::Bind(const IndexBufferView& IB)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         auto resource = AsResource(IB._resource);
         id<MTLBuffer> buffer = resource.GetBuffer();
         if (!buffer)
@@ -555,12 +558,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
     }
 
     void DeviceContext::Bind(const RasterizationDesc& desc)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setFrontFacingWinding:AsMTLenum(desc._frontFaceWinding)];
         [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
@@ -568,10 +573,12 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::UnbindInputLayout()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
     }
 
     void DeviceContext::Bind(const ViewportDesc& viewport)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         _pimpl->_activeViewport = viewport;
 
         /* KenD -- because we may not have an encoder yet, delay setting the viewport until later */
@@ -586,6 +593,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::FinalizePipeline()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+
         if (GraphicsPipelineBuilder::IsPipelineStale() || !_pimpl->_graphicsPipelineReflection) {
             auto& pipelineState = *GraphicsPipelineBuilder::CreatePipeline(GetObjectFactory());
 
@@ -626,6 +635,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned streamIdx,
         const UniformsStream& stream)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+
         Pimpl::QueuedUniformSet qus;
         qus._unboundInterf = unboundInterf;
         qus._streamIdx = streamIdx;
@@ -643,9 +654,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
-        FinalizePipeline();
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
 
+        FinalizePipeline();
         [_pimpl->_commandEncoder drawPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                     vertexStart:startVertexLocation
                                     vertexCount:vertexCount];
@@ -654,10 +666,10 @@ namespace RenderCore { namespace Metal_AppleMetal
     void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);
-
-        FinalizePipeline();
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
 
+        FinalizePipeline();
         [_pimpl->_commandEncoder drawIndexedPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
@@ -667,9 +679,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
-        FinalizePipeline();
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
 
+        FinalizePipeline();
         [_pimpl->_commandEncoder drawPrimitives:GraphicsPipelineBuilder::_pimpl->_activePrimitiveType
                                     vertexStart:startVertexLocation
                                     vertexCount:vertexCount
@@ -678,6 +691,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(baseVertexLocation==0);
 
         FinalizePipeline();
@@ -695,6 +709,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         const GraphicsPipeline& pipeline,
         unsigned vertexCount, unsigned startVertexLocation)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         if (_pimpl->_boundGraphicsPipeline != &pipeline) {
             [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
@@ -717,6 +732,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         const GraphicsPipeline& pipeline,
         unsigned indexCount, unsigned startIndexLocation)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         if (_pimpl->_boundGraphicsPipeline != &pipeline) {
             [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
@@ -753,6 +769,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            DeviceContext::CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         CheckCommandBufferError(_pimpl->_commandBuffer);
 
         assert(!_pimpl->_commandEncoder);
@@ -769,6 +786,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            DeviceContext::EndEncoding()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
 
         [_pimpl->_commandEncoder endEncoding];
@@ -786,24 +804,28 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            DeviceContext::OnEndEncoding(std::function<void(void)> fn)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         _pimpl->_onEndEncodingFunctions.push_back(fn);
     }
 
     void            DeviceContext::DestroyRenderCommandEncoder()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         _pimpl->_commandEncoder = nullptr;
     }
 
     id<MTLRenderCommandEncoder> DeviceContext::GetCommandEncoder()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         return _pimpl->_commandEncoder;
     }
 
     void            DeviceContext::HoldDevice(id<MTLDevice> device)
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         _pimpl->_device = device;
         assert(_pimpl->_device);
     }
@@ -811,6 +833,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     void            DeviceContext::HoldCommandBuffer(id<MTLCommandBuffer> commandBuffer)
     {
         /* Hold for the duration of the frame */
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(!_pimpl->_commandBuffer);
         _pimpl->_commandBuffer = commandBuffer;
 
@@ -819,6 +842,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            DeviceContext::ReleaseCommandBuffer()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         CheckCommandBufferError(_pimpl->_commandBuffer);
 
         /* The command encoder should have been released when the subpass was finished,
@@ -830,17 +854,20 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     id<MTLCommandBuffer>            DeviceContext::RetrieveCommandBuffer()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         return _pimpl->_commandBuffer;
     }
 
     void            DeviceContext::PushDebugGroup(const char annotationName[])
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         // assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder pushDebugGroup:[NSString stringWithCString:annotationName encoding:NSUTF8StringEncoding]];
     }
 
     void            DeviceContext::PopDebugGroup()
     {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
         // assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder popDebugGroup];
     }
@@ -855,6 +882,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_indexType = MTLIndexTypeUInt16;
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;
+        _pimpl->_boundThread = [NSThread currentThread];
     }
 
     DeviceContext::~DeviceContext()
