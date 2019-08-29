@@ -145,93 +145,99 @@ namespace RenderCore { namespace Metal_AppleMetal
         StringSection<::Assets::ResChar> definesTable,
         IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
     {
-#if defined(_DEBUG)
-        std::stringstream variantLabel;
-#endif
-        std::stringstream definesPreamble;
-        unsigned preambleLineCount = 0;
-        NSMutableDictionary* preprocessorMacros = [[NSMutableDictionary alloc] init];
-        {
-            auto p = definesTable.begin();
-            while (p != definesTable.end()) {
-                while (p != definesTable.end() && std::isspace(*p)) ++p;
+        @try {
+            #if defined(_DEBUG)
+                std::stringstream variantLabel;
+            #endif
 
-                auto definition = std::find(p, definesTable.end(), '=');
-                auto defineEnd = std::find(p, definesTable.end(), ';');
+            std::stringstream definesPreamble;
+            unsigned preambleLineCount = 0;
+            NSMutableDictionary* preprocessorMacros = [[NSMutableDictionary alloc] init];
+            {
+                auto p = definesTable.begin();
+                while (p != definesTable.end()) {
+                    while (p != definesTable.end() && std::isspace(*p)) ++p;
 
-                auto endOfName = std::min(defineEnd, definition);
-                while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+                    auto definition = std::find(p, definesTable.end(), '=');
+                    auto defineEnd = std::find(p, definesTable.end(), ';');
 
-                if (definition < defineEnd) {
-                    auto e = definition+1;
-                    while (e < defineEnd && std::isspace(*e)) ++e;
-                    NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
-                    NSString* value = [NSString stringWithCString:MakeStringSection(e, defineEnd).AsString().c_str() encoding:NSUTF8StringEncoding];
-                    preprocessorMacros[key] = value;
-                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
-                    ++preambleLineCount;
-#if defined(_DEBUG)
-                    variantLabel << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "; ";
-#endif
-                } else {
-                    NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
-                    preprocessorMacros[key] = @(1);
-                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
-                    ++preambleLineCount;
-#if defined(_DEBUG)
-                    variantLabel << MakeStringSection(p, endOfName).AsString() << "; ";
-#endif
+                    auto endOfName = std::min(defineEnd, definition);
+                    while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+
+                    if (definition < defineEnd) {
+                        auto e = definition+1;
+                        while (e < defineEnd && std::isspace(*e)) ++e;
+                        NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
+                        NSString* value = [NSString stringWithCString:MakeStringSection(e, defineEnd).AsString().c_str() encoding:NSUTF8StringEncoding];
+                        preprocessorMacros[key] = value;
+                        definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
+                        ++preambleLineCount;
+                        #if defined(_DEBUG)
+                            variantLabel << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "; ";
+                        #endif
+                    } else {
+                        NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
+                        preprocessorMacros[key] = @(1);
+                        definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
+                        ++preambleLineCount;
+                        #if defined(_DEBUG)
+                            variantLabel << MakeStringSection(p, endOfName).AsString() << "; ";
+                        #endif
+                    }
+
+                    p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
                 }
-
-                p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
             }
+
+            bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
+            const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n" : "";
+            if (isFragmentShader) ++preambleLineCount;
+            definesPreamble << versionDecl;
+            definesPreamble << MakeStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength));
+
+            auto finalShaderCode = definesPreamble.str();
+
+            MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
+            options.languageVersion = MTLLanguageVersion1_2;
+            [preprocessorMacros release];
+            NSError* error = NULL;
+            id<MTLLibrary> newLibrary = [_device.get() newLibraryWithSource:[NSString stringWithUTF8String:finalShaderCode.c_str()]
+                                                                    options:options
+                                                                      error:&error];
+            [options release];
+            if (!newLibrary) {
+                auto errorMsg = TranslateErrorMsgs(error.description.UTF8String, sourceLineMarkers, preambleLineCount);
+
+                Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
+                Log(Error) << errorMsg << std::endl;
+
+                errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
+                return false;
+            }
+            assert(newLibrary);
+            #if defined(_DEBUG)
+                [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];
+            #endif
+
+            uint64_t hashCode = Hash64(finalShaderCode);
+            s_compiledShaders.emplace(std::make_pair(hashCode, newLibrary));
+
+            struct OutputBlob
+            {
+                ShaderService::ShaderHeader _hdr;
+                uint64_t _hashCode;
+            };
+            payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
+            OutputBlob& output = *(OutputBlob*)payload->data();
+            StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+            identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
+            output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
+            output._hashCode = hashCode;
+            return true;
+
+        } @catch (NSException *exception) {
+            Throw(::Exceptions::BasicLabel("Caught Obj-C exception (%s) during shader compile. This is dangerous, avoid Obj-C exceptions here", exception.description.UTF8String));
         }
-
-        bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
-        const char* versionDecl = isFragmentShader ? "#define FRAGMENT_SHADER 1\n" : "";
-        if (isFragmentShader) ++preambleLineCount;
-        definesPreamble << versionDecl;
-        definesPreamble << MakeStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength));
-
-        auto finalShaderCode = definesPreamble.str();
-
-        MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
-        options.languageVersion = MTLLanguageVersion1_2;
-        [preprocessorMacros release];
-        NSError* error = NULL;
-        id<MTLLibrary> newLibrary = [_device.get() newLibraryWithSource:[NSString stringWithUTF8String:finalShaderCode.c_str()]
-                                                                options:options
-                                                                  error:&error];
-        [options release];
-        if (!newLibrary) {
-            auto errorMsg = TranslateErrorMsgs(error.localizedDescription.UTF8String, sourceLineMarkers, preambleLineCount);
-
-            Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
-            Log(Error) << errorMsg << std::endl;
-
-            errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
-            return false;
-        }
-        assert(newLibrary);
-#if defined(_DEBUG)
-        [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];
-#endif
-
-        uint64_t hashCode = Hash64(finalShaderCode);
-        s_compiledShaders.emplace(std::make_pair(hashCode, newLibrary));
-
-        struct OutputBlob
-        {
-            ShaderService::ShaderHeader _hdr;
-            uint64_t _hashCode;
-        };
-        payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
-        OutputBlob& output = *(OutputBlob*)payload->data();
-        StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
-        identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
-        output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
-        output._hashCode = hashCode;
-        return true;
     }
 
     std::string ShaderCompiler::MakeShaderMetricsString(const void* byteCode, size_t byteCodeSize) const { return std::string(); }
