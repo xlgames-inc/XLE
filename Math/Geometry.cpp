@@ -341,7 +341,7 @@ namespace XLEMath
 						more complex math (see, for example, the Triangle library)
 			*/
 		Vector3T<Primitive> normal;
-        if (!Normalize_Checked(&normal, Cross(pt0 - pt1, pt2 - pt1)))
+        if (!Normalize_Checked(&normal, Vector3T<Primitive>(Cross(pt0 - pt1, pt2 - pt1))))
             return false;
 
         auto w = (-Dot( pt0, normal ) - Dot( pt1, normal ) - Dot( pt2, normal )) * Primitive(1./3.);

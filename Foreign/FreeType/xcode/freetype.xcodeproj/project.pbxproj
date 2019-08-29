@@ -687,7 +687,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/../..",
-					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/cml-2_1_2",
 					"$(PROJECT_DIR)/../../Foreign/eigen",
 					"$(PROJECT_DIR)/xcode/include/freetype2",
 					"$(PROJECT_DIR)/include",
@@ -711,7 +711,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/../..",
-					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/cml-2_1_2",
 					"$(PROJECT_DIR)/../../Foreign/eigen",
 					"$(PROJECT_DIR)/xcode/include/freetype2",
 					"$(PROJECT_DIR)/include",

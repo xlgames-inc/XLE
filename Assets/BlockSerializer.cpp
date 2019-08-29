@@ -243,11 +243,15 @@ namespace Serialization
         if (!base) { base = block; }
 
         const Header& h = *(const Header*)block;
-        const NascentBlockSerializer::InternalPointer* ptrTable = 
-            (const NascentBlockSerializer::InternalPointer*)PtrAdd(block, ptrdiff_t(sizeof(Header)+h._rawMemorySize));
+
+        // Use uintptr_t even though this is of type (NascentBlockSerializer::InternalPointer*) to avoid
+        // SIGBUS errors
+        uintptr_t ptrTable = (uintptr_t)PtrAdd(block, ptrdiff_t(sizeof(Header)+h._rawMemorySize));
 
         for (unsigned c=0; c<h._internalPointerCount; ++c) {
-            const NascentBlockSerializer::InternalPointer& ptr = ptrTable[c];
+             NascentBlockSerializer::InternalPointer ptr;
+             // Use memcpy to avoid SIGBUS errors if the data isn't aligned
+             memcpy(&ptr, (void*)(ptrTable + (sizeof(ptr) * c)), sizeof(ptr));
             if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Unknown) {
                 SetPtr(PtrAdd(block, ptrdiff_t(sizeof(Header)+ptr._pointerOffset)),
                        ptr._subBlockOffset + size_t(base) + sizeof(Header));

@@ -42,12 +42,19 @@ namespace RenderCore { namespace Metal_OpenGLES
                                   [bindingName](const ConstantBufferElementDesc& e) { return e._semanticHash == bindingName; });
             if (b != inputElements.end()) {
                 // Check for compatibility of types.
-                assert(std::max(1, i._elementCount) == std::max(1u, b->_arrayElementCount)); // "Array uniforms within structs not currently supported");
+                auto arrayElementsInShader = std::max(1u, (unsigned)i._elementCount);
+                auto arrayElementsInInputBinding = std::max(1u, b->_arrayElementCount);
+                
+                // On DesktopGL, the arrays in the shader can be truncated if some elements are not used
+                // Let's verify that the input data has at least enough data to fill up the array
+                // elements in the shader.
+                assert(arrayElementsInShader <= arrayElementsInInputBinding);
+                
                 auto basicType = GLUniformTypeAsTypeDesc(i._type);
                 auto inputBasicType = AsImpliedType(b->_nativeFormat);
                 if (basicType == inputBasicType) {
                     assert(i._location != -1);
-                    result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
+                    result._commands.push_back({i._location, i._type, std::min(arrayElementsInShader, arrayElementsInInputBinding), b->_offset });
                 } else {
                     #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                         Log(Warning) << "In MakeBinding, binding shader struct to predefined layout failed because of type mismatch on uniform (" << i._name << ") in struct (" << s->second._name << ")" << std::endl;
@@ -70,7 +77,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     auto ShaderIntrospection::FindUniform(HashType uniformName) const -> Uniform
     {
         // This only finds global uniforms
-        auto globals = LowerBound(_structs, 0ull);
+        auto globals = LowerBound(_structs, (uint64_t)0ull);
         if (globals == _structs.end() || globals->first != 0) return {0,0,0,0};
 
         auto i = std::find_if(

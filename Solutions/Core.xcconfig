@@ -33,7 +33,7 @@ OTHER_LDFLAGS = -ObjC
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 FRAMEWORK_SEARCH_PATHS = $(inherited)
-HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/../.. $(PROJECT_DIR)/../../Foreign/cml-1_0_2 $(PROJECT_DIR)/../../Foreign/eigen
+HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/../.. $(PROJECT_DIR)/../../Foreign/cml-2_1_2 $(PROJECT_DIR)/../../Foreign/eigen
 EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = $(inherited)
 ALWAYS_SEARCH_USER_PATHS = NO
 

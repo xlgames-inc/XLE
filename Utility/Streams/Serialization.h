@@ -8,6 +8,7 @@
 
 #include "../../Core/Exceptions.h"
 #include <memory>
+#include <stdexcept>
 #include <vector>
 #include <cstdint>
 #include <algorithm>		// (for std::max)

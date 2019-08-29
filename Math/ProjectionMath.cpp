@@ -26,7 +26,7 @@ namespace XLEMath
     static Float4x4 InvertWorldToProjection(const Float4x4& input, bool useAccurateInverse)
     {
         if (useAccurateInverse) {
-            return cml::detail::inverse_f<Float4x4, 0>()(input);
+            return cml::inverse(input);
         } else {
             return Inverse(input);
         }

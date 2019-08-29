@@ -4,6 +4,10 @@
 #include "../../Core/Types.h"
 #include <sys/time.h>
 
+#ifdef ANDROID
+#include <time.h>
+#endif
+
 namespace Utility
 {
     uint32 XlGetCurrentThreadId()

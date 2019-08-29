@@ -501,7 +501,7 @@ namespace XLEMath
 		// If the points are already too close together, the math will not be accurate enough
 		// We must just use the current time as a close-enough approximation of the collapse time
 		if (Equivalent(p0, p1, GetEpsilon<Primitive>())) {
-			auto pt = (p0 + p1) / Primitive(2);
+			Vector2T<Primitive> pt = (p0 + p1) / Primitive(2);
 			return Expand(pt, Primitive(0));
 		}
 
