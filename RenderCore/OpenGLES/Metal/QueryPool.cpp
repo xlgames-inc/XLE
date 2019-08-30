@@ -55,20 +55,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         return _lastCompletedEvent;
     }
 
-    void SyncEventSet::Stall()
-    {
-        while (!_pendingSyncs.empty()) {
-            auto nextToTest = _pendingSyncs.front();
-            auto result = glClientWaitSync(nextToTest.first, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000000ull);
-            if (result != GL_CONDITION_SATISFIED && result != GL_ALREADY_SIGNALED) {
-                assert(false);
-            }
-            _lastCompletedEvent = std::max(_lastCompletedEvent, nextToTest.second);
-            glDeleteSync(nextToTest.first);
-            _pendingSyncs.pop_front();
-        }
-    }
-
     bool SyncEventSet::IsSupported()
     {
         return GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;

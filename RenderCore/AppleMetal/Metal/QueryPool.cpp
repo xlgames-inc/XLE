@@ -81,43 +81,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         return *_lastCompletedEvent;
     }
 
-    void SyncEventSet::Stall() {
-        auto *context = ((RenderCore::ImplAppleMetal::ThreadContext *)_context->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code()));
-        assert(context);
-        auto iDevice = _context->GetDevice();
-        assert(iDevice);
-        auto *deviceInterface = ((RenderCore::ImplAppleMetal::Device*)iDevice->QueryInterface(typeid(RenderCore::ImplAppleMetal::Device).hash_code()));
-        assert(deviceInterface);
-        auto device = deviceInterface->GetUnderlying();
-        assert(device);
-
-        auto result = ++_nextEvent;
-        std::shared_ptr<SyncEvent> lastCompletedEvent = _lastCompletedEvent;
-
-        if (@available(iOS 12, macOS 10.14, *)) {
-            TBC::OCPtr<id> event([device newSharedEvent]);
-            assert(event);
-            [event.get() notifyListener:_listener.get() atValue:1 block:^(id<MTLSharedEvent> sharedEvent, uint64_t value) {
-                if (result > *lastCompletedEvent)
-                    *lastCompletedEvent = result;
-            }];
-            context->WaitUntilQueueCompletedWithCommand([event](id<MTLCommandBuffer> buffer) {
-                if (@available(iOS 12, macOS 10.14, *)) {
-                    [buffer encodeSignalEvent:event.get() value:1];
-                } else {
-                    assert(false);
-                }
-            });
-        } else {
-            context->WaitUntilQueueCompletedWithCommand([lastCompletedEvent, result](id<MTLCommandBuffer> buffer) {
-                [buffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-                    if (result > *lastCompletedEvent)
-                        *lastCompletedEvent = result;
-                }];
-            });
-        }
-    }
-
     bool SyncEventSet::IsSupported() {
         return true;
     }

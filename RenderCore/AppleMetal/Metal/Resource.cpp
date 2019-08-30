@@ -60,7 +60,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         #endif
 
-        metalContext->WaitUntilQueueCompleted();
+        // METAL_TODO: Is this really the right place for this? We used to do WaitUntilQueueCompleted, which implicitly assumed that we're at the end of either a headless or an already-drawn but uncommitted frame, committed the current command buffer, and started a new one, so this trio of calls has _almost_ the same functionality, except for keeping the drawable around from one frame to the next (which is probably a bad idea anyway), which will now assert if we try it. But it seems weird. At any rate, even if we do want to keep this, we'll want to switch it to the new method once it's ready.
+        metalContext->EndHeadlessFrame();
+        metalContext->GetDevice()->Stall();
+        metalContext->BeginHeadlessFrame();
 
         if (_underlyingTexture) {
 

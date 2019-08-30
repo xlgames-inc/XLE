@@ -58,7 +58,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         SyncEvent SetEvent();
         SyncEvent NextEventToSet() { return _nextEvent; }
         SyncEvent LastCompletedEvent();
-        void Stall();
 
         static bool IsSupported();
 

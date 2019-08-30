@@ -422,6 +422,11 @@ namespace RenderCore { namespace ImplOpenGLES
 		return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
 	}
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -670,7 +675,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void ThreadContext::SetFeatureSet(unsigned featureSet)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(_device.lock(), featureSet);
     }
 
     unsigned ThreadContext::GetFeatureSet() const
@@ -683,7 +688,7 @@ namespace RenderCore { namespace ImplOpenGLES
     , _device(device), _currentPresentationChainGUID(0)
     , _clonedContext(true)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, unsigned featureSet, const std::shared_ptr<Device>& device)
@@ -722,7 +727,7 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
 
         if (featureSet)
-            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::~ThreadContext()

@@ -63,11 +63,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         return result+preBufferForAlignment;
     }
 
-    void GPUSyncedAllocator::Stall()
-    {
-        _eventSet->Stall();
-    }
-
     void GPUSyncedAllocator::SetGPUMarker()
     {
         _eventSet->SetEvent();
@@ -106,7 +101,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto offset = _syncedAllocator->Allocate((unsigned)data.size(), _allocationAlignment);
             if (offset == ~0u) {
                 Log(Warning) << "Performance warning --- synchronizing CPU/GPU due to DynamicBuffer allocation failure" << std::endl;
-                _syncedAllocator->Stall();
+                devContext.GetDevice()->Stall();
                 offset = _syncedAllocator->Allocate((unsigned)data.size(), _allocationAlignment);
             }
             if (offset == ~0u)

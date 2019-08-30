@@ -20,7 +20,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         unsigned Allocate(unsigned size, unsigned alignment);
         unsigned GetTotalSize() const { return _totalSize; }
-        void Stall();
         void SetGPUMarker();
 
         GPUSyncedAllocator(IThreadContext *context, unsigned totalSize);

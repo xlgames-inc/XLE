@@ -110,6 +110,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
         std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
 
+        virtual void Stall() override;
+
         EGLDisplay GetDisplay() const { return _display; };
         EGLConfig GetRootContextConfig() const { return _rootContextConfig; }
         unsigned GetGLESVersion() const;

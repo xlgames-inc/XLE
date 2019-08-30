@@ -372,7 +372,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _nativeTopology = GL_TRIANGLES;
     }
 
-    DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
+    DeviceContext::DeviceContext(std::shared_ptr<IDevice> device, FeatureSet::BitField featureSet)
     : GraphicsPipelineBuilder(featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
@@ -380,6 +380,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         _featureSet = featureSet;
         _capturedStates = nullptr;
+
+        _device = device;
     }
 
     DeviceContext::~DeviceContext()
@@ -398,6 +400,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     void                            DeviceContext::ExecuteCommandList(CommandList& commandList)
     {
 
+    }
+
+    std::shared_ptr<IDevice> DeviceContext::GetDevice()
+    {
+        return _device.lock();
     }
 
     const std::shared_ptr<DeviceContext>& DeviceContext::Get(IThreadContext& threadContext)

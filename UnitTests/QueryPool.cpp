@@ -19,6 +19,7 @@
 
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
     #include "InputLayoutShaders_MSL.h"
+    #include "../RenderCore/AppleMetal/IDeviceAppleMetal.h"
 #elif GFXAPI_TARGET == GFXAPI_OPENGLES
     #include "InputLayoutShaders_GLSL.h"
 #else
@@ -171,13 +172,7 @@ namespace UnitTests
                     }
                 }
 
-                #if GFXAPI_TARGET == GFXAPI_OPENGLES
-                    glFlush();
-                #elif GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                    auto *threadContextAppleMetal = ((RenderCore::ImplAppleMetal::ThreadContext *)threadContext->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code()));
-                    Assert::IsTrue(threadContextAppleMetal);
-                    threadContextAppleMetal->WaitUntilQueueCompleted();
-                #endif
+                threadContext->GetDevice()->Stall();
 
                 // finish any results as they come in
                 while (!pendingFrameIds.empty()) {
@@ -230,8 +225,16 @@ namespace UnitTests
                 VertexBufferView vbv { vertexBuffer.get() };
                 auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-                for (unsigned f=0; f<frameCount; ++f) {
+                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    auto *appleMetalThreadContext = (RenderCore::IThreadContextAppleMetal *)threadContext->QueryInterface(typeid(RenderCore::IThreadContextAppleMetal).hash_code());
+                    assert(appleMetalThreadContext);
+                #endif
 
+                for (unsigned f=0; f<frameCount; ++f) {
+                    // METAL_TODO: Once we have the new interface with a public EndHeadlessFrame
+                    // and no BeginHeadlessFrame, change to use it.
+                    #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    #endif
                     auto rpi = fbHelper.BeginRenderPass();
 
                     inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
@@ -258,7 +261,7 @@ namespace UnitTests
                             auto evnt = syncEventSet.SetEvent();
                             for (auto&e:pendingEvents)
                                 Assert::AreNotEqual(e, evnt);               // ensure no other evnt matches
-                            Assert::AreNotEqual(lastCompleted, evnt);       // can't be completed before it's set
+                            Assert::AreNotEqual(lastCompleted, evnt);       // can't be completed before it's set¨
                             Assert::IsTrue(evnt > lastCompleted);
                             pendingEvents.push_back(evnt);
                             lastEventScheduled = evnt;
@@ -267,6 +270,12 @@ namespace UnitTests
                     }
 
                     rpi = {};     // end RPI
+
+                    // METAL_TODO: See last METAL_TODO above
+                    #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                        appleMetalThreadContext->EndHeadlessFrame();
+                        appleMetalThreadContext->BeginHeadlessFrame();
+                    #endif
 
                     while (!pendingEvents.empty()) {
                         if (pendingEvents.front() <= syncEventSet.LastCompletedEvent()) {
@@ -277,15 +286,7 @@ namespace UnitTests
                     }
                 }
 
-                #if GFXAPI_TARGET == GFXAPI_OPENGLES
-                    glFlush();
-                #elif GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                    auto *threadContextAppleMetal = ((RenderCore::ImplAppleMetal::ThreadContext *)threadContext->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code()));
-                    Assert::IsTrue(threadContextAppleMetal);
-                    threadContextAppleMetal->WaitUntilQueueCompleted();
-                #else
-                    syncEventSet.Stall();
-                #endif
+                threadContext->GetDevice()->Stall();
 
                 // finish any results as they come in
                 // Note that we're assuming they finish in the order they were scheduled

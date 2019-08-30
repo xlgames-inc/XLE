@@ -828,7 +828,11 @@ namespace UnitTests
 
                 UniformsStreamInterface usi;
                 usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
-                Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+                #else
+                    Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+                #endif
 
                 Assert::ThrowsException(
                                         [&]() {
@@ -845,7 +849,11 @@ namespace UnitTests
 
                 UniformsStreamInterface usi;
                 usi.BindShaderResource(0, Hash64("Texture"));
-                Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                    Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+                #else
+                    Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+                #endif
 
                 Assert::ThrowsException(
                                         [&]() {

@@ -56,8 +56,6 @@ namespace RenderCore { namespace ImplAppleMetal
         
         void        BeginHeadlessFrame();
         void        EndHeadlessFrame();
-        void        WaitUntilQueueCompleted();
-        void        WaitUntilQueueCompletedWithCommand(std::function<void(id<MTLCommandBuffer>)> fn);
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
@@ -98,18 +96,20 @@ namespace RenderCore { namespace ImplAppleMetal
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(
-            const void* platformValue, const PresentationChainDesc &desc);
-        void* QueryInterface(size_t guid);
+            const void* platformValue, const PresentationChainDesc &desc) override;
+        void* QueryInterface(size_t guid) override;
 
-        std::shared_ptr<IThreadContext> GetImmediateContext();
-        std::unique_ptr<IThreadContext> CreateDeferredContext();
+        std::shared_ptr<IThreadContext> GetImmediateContext() override;
+        std::unique_ptr<IThreadContext> CreateDeferredContext() override;
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc();
-        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
+        DeviceDesc GetDesc() override;
+        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
-        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler();
+        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
+        virtual void Stall() override;
 
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 

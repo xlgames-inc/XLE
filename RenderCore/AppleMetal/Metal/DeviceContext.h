@@ -164,7 +164,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         //      U T I L I T Y
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        void            HoldDevice(id<MTLDevice>);
         void            HoldCommandBuffer(id<MTLCommandBuffer>);
         void            ReleaseCommandBuffer();
         id<MTLCommandBuffer>            RetrieveCommandBuffer();
@@ -176,11 +175,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
 
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      D E V I C E
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        std::shared_ptr<IDevice> GetDevice();
+
         static void PrepareForDestruction(IDevice* device);
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext();
+        DeviceContext(std::shared_ptr<IDevice> device);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         virtual ~DeviceContext();

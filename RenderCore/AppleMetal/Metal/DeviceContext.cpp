@@ -506,7 +506,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         TBC::OCPtr<id> _commandBuffer; // For the duration of the frame
         TBC::OCPtr<id> _commandEncoder; // For the current subpass
-        TBC::OCPtr<id> _device;
+
+        std::weak_ptr<IDevice> _device;
 
         class QueuedUniformSet
         {
@@ -823,13 +824,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         return _pimpl->_commandEncoder;
     }
 
-    void            DeviceContext::HoldDevice(id<MTLDevice> device)
-    {
-        assert(_pimpl->_boundThread == [NSThread currentThread]);
-        _pimpl->_device = device;
-        assert(_pimpl->_device);
-    }
-
     void            DeviceContext::HoldCommandBuffer(id<MTLCommandBuffer> commandBuffer)
     {
         /* Hold for the duration of the frame */
@@ -876,13 +870,19 @@ namespace RenderCore { namespace Metal_AppleMetal
     void        DeviceContext::BeginStateCapture(CapturedStates& capturedStates) {}
     void        DeviceContext::EndStateCapture() {}
 
-    DeviceContext::DeviceContext()
+    std::shared_ptr<IDevice> DeviceContext::GetDevice()
+    {
+        return _pimpl->_device.lock();
+    }
+
+    DeviceContext::DeviceContext(std::shared_ptr<IDevice> device)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_indexType = MTLIndexTypeUInt16;
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;
         _pimpl->_boundThread = [NSThread currentThread];
+        _pimpl->_device = device;
     }
 
     DeviceContext::~DeviceContext()

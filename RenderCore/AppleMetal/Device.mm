@@ -73,33 +73,6 @@ namespace RenderCore { namespace ImplAppleMetal
         _commandBuffer = nullptr;
     }
 
-    void        ThreadContext::WaitUntilQueueCompleted()
-    {
-        // METAL_TODO -- this only stalls waiting for the current command list to be completed
-        // We actually need to wait until all queued command lists have finished. To do that
-        // we need to keep some low-overhead scheme for checking on the status of specific
-        // command lists, and use that to determine what command lists are in an uncertain state.
-        // Then we should call waitUntilCompleted on all of them.
-
-        if (_commandBuffer.get()) {
-            [_commandBuffer.get() commit];
-            [_commandBuffer.get() waitUntilCompleted];
-
-            GetDeviceContext()->ReleaseCommandBuffer();
-            _commandBuffer = nullptr;
-
-            _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
-            GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
-        }
-    }
-
-    void        ThreadContext::WaitUntilQueueCompletedWithCommand(std::function<void(id<MTLCommandBuffer>)> fn) {
-        auto *buffer = [_immediateCommandQueue commandBuffer];
-        fn(buffer);
-        [buffer commit];
-        [buffer waitUntilCompleted];
-    }
-
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const
     {
@@ -144,10 +117,7 @@ namespace RenderCore { namespace ImplAppleMetal
     : _immediateCommandQueue(immediateCommandQueue)
     , _device(device)
     {
-        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
-
-        // KenD -- needed a way for the device context to access the MTLDevice
-        _devContext->HoldDevice(device->GetUnderlying());
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>(device);
     }
 
     ThreadContext::ThreadContext(
@@ -156,10 +126,7 @@ namespace RenderCore { namespace ImplAppleMetal
     : _device(device)
     , _commandBuffer(commandBuffer)
     {
-        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
-
-        // KenD -- needed a way for the device context to access the MTLDevice
-        _devContext->HoldDevice(device->GetUnderlying());
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>(device);
     }
 
     ThreadContext::~ThreadContext() {
@@ -211,6 +178,12 @@ namespace RenderCore { namespace ImplAppleMetal
     std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
     {
         return Metal_AppleMetal::CreateLowLevelShaderCompiler(*this);
+    }
+
+    void Device::Stall() {
+        TBC::OCPtr<id> buffer = [_immediateCommandQueue commandBuffer];
+        [buffer commit];
+        [buffer waitUntilCompleted];
     }
 
     DeviceDesc Device::GetDesc()

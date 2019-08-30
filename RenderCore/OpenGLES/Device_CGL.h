@@ -113,6 +113,8 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
         virtual FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
+        virtual void Stall() override;
+
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-CGL", "", "" }; }
 
         virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;

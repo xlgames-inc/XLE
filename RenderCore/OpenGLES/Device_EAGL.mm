@@ -116,6 +116,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
     }
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -276,7 +281,7 @@ namespace RenderCore { namespace ImplOpenGLES
         : ThreadContext(sharedContext, device)
     {
         auto featureSet = AsGLESFeatureSet(sharedContext.API);
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}

@@ -106,6 +106,8 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EAGL", "", "" }; }
         virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
 
+        virtual void Stall() override;
+
         Device();
         ~Device();
 
