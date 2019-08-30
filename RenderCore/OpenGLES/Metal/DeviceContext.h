@@ -106,6 +106,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const ViewportDesc& viewport);
+        ViewportDesc GetViewport();
 
         using GraphicsPipelineBuilder::Bind;
 
