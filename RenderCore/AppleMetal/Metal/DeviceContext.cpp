@@ -458,18 +458,23 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_pipelineDescriptor setVertexDescriptor:_pimpl->_vertexDescriptor.get()];
 
         auto renderPipelineState = factory.CreateRenderPipelineState(_pimpl->_pipelineDescriptor.get(), true);
-        if (renderPipelineState._error) {
-            Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
-        }
-        assert(!renderPipelineState._error);
-
-        auto dss = CreateDepthStencilState(factory);
 
         // DavidJ -- note -- we keep the state _pimpl->_pipelineDescriptor from here.
         //      what happens if we continue to change it? It doesn't impact the compiled state we
         //      just made, right?
 
         _dirty = false;
+
+        if (!renderPipelineState._renderPipelineState) {
+            if (renderPipelineState._error) {
+                Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
+                Throw(::Exceptions::BasicLabel("PipelineState failed with error: %s", renderPipelineState._error.get().description.UTF8String));
+            } else {
+                Throw(::Exceptions::BasicLabel("PipelineState failed with no error code msg"));
+            }
+        }
+
+        auto dss = CreateDepthStencilState(factory);
         auto result  = std::make_shared<GraphicsPipeline>(GraphicsPipeline{
             std::move(renderPipelineState._renderPipelineState),
             std::move(renderPipelineState._reflection),
