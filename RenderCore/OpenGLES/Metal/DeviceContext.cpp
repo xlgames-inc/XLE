@@ -232,6 +232,32 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind Viewport");
     }
 
+    ViewportDesc DeviceContext::GetViewport()
+    {
+        // in OpenGL, viewport coordinates are always integers
+        GLint viewportParameters[4];
+        glGetIntegerv(GL_VIEWPORT, viewportParameters);
+
+        // hack -- desktop gl has a slight naming change
+#if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+        GLfloat depthParams[2];
+        glGetFloatv(GL_DEPTH_RANGE, depthParams);
+#else
+        GLdouble depthParams[2];
+        glGetDoublev(GL_DEPTH_RANGE, depthParams);
+#endif
+        CheckGLError("GetViewport");
+
+        ViewportDesc viewport;
+        viewport.TopLeftX = viewportParameters[0];
+        viewport.TopLeftY = viewportParameters[1];
+        viewport.Width = viewportParameters[2];
+        viewport.Height = viewportParameters[3];
+        viewport.MinDepth = depthParams[0];
+        viewport.MaxDepth = depthParams[1];
+        return viewport;
+    }
+
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);

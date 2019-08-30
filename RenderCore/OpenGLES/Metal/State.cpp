@@ -250,19 +250,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Apply BlendState");
     }
 
-    ViewportDesc::ViewportDesc(DeviceContext& viewport)
+    ViewportDesc::ViewportDesc(DeviceContext& devContext)
     {
-            // in OpenGL, viewport coordinates are always integers
-        GLint viewportParameters[4];
-        glGetIntegerv(GL_VIEWPORT, viewportParameters);
-        TopLeftX     = float(viewportParameters[0]);
-        TopLeftY     = float(viewportParameters[1]);
-        Width        = float(viewportParameters[2]);
-        Height       = float(viewportParameters[3]);
-
-        glGetFloatv(GL_DEPTH_RANGE, &MinDepth); // (get MinDepth & MaxDepth)
-
-        CheckGLError("GetViewport");
+        *this = devContext.GetViewport();
     }
     
 }}
