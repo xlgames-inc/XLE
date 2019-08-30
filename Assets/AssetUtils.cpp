@@ -26,6 +26,7 @@
 #include "../Utility/SystemUtils.h"     // for XlGetCurrentDirectory
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 namespace Assets
 {

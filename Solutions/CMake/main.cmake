@@ -9,7 +9,7 @@ macro(BasicLibrary LibName Src)
         set_target_properties(${LibName} PROPERTIES VS_USER_PROPS "${MAIN_CMAKE_DIR}/Main.props")
     endif ()
     include_directories(${XLE_DIR})
-    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-1_0_2)
+    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-2_1_2)
 endmacro()
 
 macro(BasicExecutable ExeName Src)
@@ -28,7 +28,7 @@ macro(BasicExecutable ExeName Src)
     endif (MSVC)
 
     include_directories(${XLE_DIR})
-    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-1_0_2)
+    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-2_1_2)
 
     if (NOT WIN32)
         target_link_libraries(${ExeName} pthread)
@@ -53,7 +53,7 @@ macro(BasicDLL DllName Src)
     endif (MSVC)
 
     include_directories(${XLE_DIR})
-    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-1_0_2)
+    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-2_1_2)
 
     if (NOT WIN32)
         target_link_libraries(${DllName} pthread)

@@ -266,6 +266,7 @@ namespace RenderCore { namespace Techniques
     public:
         virtual IResourcePtr GetResource(AttachmentName resName) const;
         virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
+		virtual const FrameBufferProperties& GetFrameBufferProperties() const;
 
         SemanticNamedAttachments(
 			AttachmentPool& pool, 

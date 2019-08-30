@@ -860,6 +860,11 @@ namespace RenderCore { namespace Techniques
         return _pool->GetBoundResourceDesc(_semanticMapping[resName]);
 	}
 
+	const FrameBufferProperties& SemanticNamedAttachments::GetFrameBufferProperties() const
+	{
+		return _pool->GetFrameBufferProperties();
+	}
+
     SemanticNamedAttachments::SemanticNamedAttachments(
 		RenderCore::Techniques::AttachmentPool& pool, 
 		IteratorRange<const uint64_t*> semanticMapping)
