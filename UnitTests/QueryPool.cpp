@@ -225,16 +225,7 @@ namespace UnitTests
                 VertexBufferView vbv { vertexBuffer.get() };
                 auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                    auto *appleMetalThreadContext = (RenderCore::IThreadContextAppleMetal *)threadContext->QueryInterface(typeid(RenderCore::IThreadContextAppleMetal).hash_code());
-                    assert(appleMetalThreadContext);
-                #endif
-
                 for (unsigned f=0; f<frameCount; ++f) {
-                    // METAL_TODO: Once we have the new interface with a public EndHeadlessFrame
-                    // and no BeginHeadlessFrame, change to use it.
-                    #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                    #endif
                     auto rpi = fbHelper.BeginRenderPass();
 
                     inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
@@ -271,11 +262,7 @@ namespace UnitTests
 
                     rpi = {};     // end RPI
 
-                    // METAL_TODO: See last METAL_TODO above
-                    #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                        appleMetalThreadContext->EndHeadlessFrame();
-                        appleMetalThreadContext->BeginHeadlessFrame();
-                    #endif
+                    threadContext->CommitHeadless();
 
                     while (!pendingEvents.empty()) {
                         if (pendingEvents.front() <= syncEventSet.LastCompletedEvent()) {
@@ -286,6 +273,7 @@ namespace UnitTests
                     }
                 }
 
+                threadContext->CommitHeadless();
                 threadContext->GetDevice()->Stall();
 
                 // finish any results as they come in

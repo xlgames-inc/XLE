@@ -29,12 +29,13 @@
     _underlying.reset();
 }
 
-- (void)testUpdateConstantBuffer {
-    #if GFXAPI_TARGET != GFXAPI_APPLEMETAL
-        _underlying->UpdateConstantBuffer(self);
-    #else
-        XCTFail(@"Not supported or failing on this GFX API");
-    #endif
+- (void)testUpdateConstantBufferUnsynchronized {
+    _underlying->UpdateConstantBufferUnsynchronized(self);
 }
+
+- (void)testUpdateConstantBufferSynchronized {
+    _underlying->UpdateConstantBufferSynchronized(self);
+}
+
 
 @end

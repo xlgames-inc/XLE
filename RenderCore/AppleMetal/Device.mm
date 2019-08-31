@@ -28,10 +28,11 @@ namespace RenderCore { namespace ImplAppleMetal
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
+        assert(_immediateCommandQueue);
+        assert(_commandBuffer);
+
         _activeFrameDrawable = nullptr;
         
-        BeginHeadlessFrame();
-
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
 
         // note -- nextDrawable can stall if the CPU is running too fast
@@ -52,7 +53,12 @@ namespace RenderCore { namespace ImplAppleMetal
         
         EndHeadlessFrame();
     }
-    
+
+    void        ThreadContext::CommitHeadless()
+    {
+        EndHeadlessFrame();
+    }
+
     void        ThreadContext::BeginHeadlessFrame()
     {
         assert(!_activeFrameDrawable);
@@ -66,11 +72,13 @@ namespace RenderCore { namespace ImplAppleMetal
     void        ThreadContext::EndHeadlessFrame()
     {
         assert(_commandBuffer);
-        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present/CommitHeadless on the "immediate" context
         
         [_commandBuffer.get() commit];
         GetDeviceContext()->ReleaseCommandBuffer();
         _commandBuffer = nullptr;
+
+        BeginHeadlessFrame();
     }
 
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
@@ -118,6 +126,7 @@ namespace RenderCore { namespace ImplAppleMetal
     , _device(device)
     {
         _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>(device);
+        BeginHeadlessFrame();
     }
 
     ThreadContext::ThreadContext(

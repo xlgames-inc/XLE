@@ -509,8 +509,19 @@ namespace RenderCore { namespace Metal_AppleMetal
     class DeviceContext::Pimpl
     {
     public:
+        // This should always exist. In a device context for an immediate
+        // thread context, we'll be given a command buffer at startup, and
+        // each time we release one (in Present or CommitHeadless) we get
+        // a new one instantly. And the only other way to create a device
+        // context is with a command buffer that you had lying around.
         TBC::OCPtr<id> _commandBuffer; // For the duration of the frame
+
+        // Only one encoder (of either type) can exist, not both. Within a
+        // render pass, each subpass corresponds with one render encoder.
+        // Outside of render passes, encoders should only be created, used,
+        // and immediately destroyed, e.g., in a On... callback.
         TBC::OCPtr<id> _commandEncoder; // For the current subpass
+        TBC::OCPtr<id> _blitCommandEncoder;
 
         std::weak_ptr<IDevice> _device;
 
@@ -543,6 +554,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         NSThread* _boundThread = nullptr;
 
         std::vector<std::function<void(void)>> _onEndEncodingFunctions;
+        std::vector<std::function<void(void)>> _onDestroyEncoderFunctions;
 
         unsigned offsetToStartIndex(unsigned startIndex) {
             return startIndex * _indexFormatBytes + _indexBufferOffsetBytes;
@@ -779,6 +791,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         CheckCommandBufferError(_pimpl->_commandBuffer);
 
         assert(!_pimpl->_commandEncoder);
+        assert(!_pimpl->_blitCommandEncoder);
         _pimpl->_commandEncoder = [_pimpl->_commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
         assert(_pimpl->_commandEncoder);
 
@@ -790,12 +803,25 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_queuedUniformSets.clear();
     }
 
+    void            DeviceContext::CreateBlitCommandEncoder()
+    {
+        CheckCommandBufferError(_pimpl->_commandBuffer);
+        assert(!_pimpl->_commandEncoder);
+        assert(!_pimpl->_blitCommandEncoder);
+        _pimpl->_blitCommandEncoder = [_pimpl->_commandBuffer blitCommandEncoder];
+        assert(_pimpl->_blitCommandEncoder);
+    }
+
     void            DeviceContext::EndEncoding()
     {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
-        assert(_pimpl->_commandEncoder);
+        assert(_pimpl->_commandEncoder || _pimpl->_blitCommandEncoder);
 
-        [_pimpl->_commandEncoder endEncoding];
+        if (_pimpl->_commandEncoder) {
+            [_pimpl->_commandEncoder endEncoding];
+        } else {
+            [_pimpl->_blitCommandEncoder endEncoding];
+        }
 
         _pimpl->_graphicsPipelineReflection = nullptr;
         _pimpl->_boundVSArgs = 0;
@@ -803,16 +829,27 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_boundGraphicsPipeline = nullptr;
         _pimpl->_queuedUniformSets.clear();
 
-        for (const auto& fn: _pimpl->_onEndEncodingFunctions) {
-            fn();
-        }
+        for (auto fn: _pimpl->_onEndEncodingFunctions) { fn(); }
     }
 
     void            DeviceContext::OnEndEncoding(std::function<void(void)> fn)
     {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
-        assert(_pimpl->_commandEncoder);
-        _pimpl->_onEndEncodingFunctions.push_back(fn);
+        if (_pimpl->_commandEncoder || _pimpl->_blitCommandEncoder) {
+            _pimpl->_onEndEncodingFunctions.push_back(fn);
+        } else {
+            fn();
+        }
+    }
+
+    void            DeviceContext::OnDestroyEncoder(std::function<void(void)> fn)
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        if (_pimpl->_commandEncoder || _pimpl->_blitCommandEncoder) {
+            _pimpl->_onDestroyEncoderFunctions.push_back(fn);
+        } else {
+            fn();
+        }
     }
 
     void            DeviceContext::DestroyRenderCommandEncoder()
@@ -820,13 +857,51 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         _pimpl->_commandEncoder = nullptr;
+
+        for (auto fn: _pimpl->_onDestroyEncoderFunctions) { fn(); }
+    }
+
+    void            DeviceContext::DestroyBlitCommandEncoder()
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(_pimpl->_blitCommandEncoder);
+        _pimpl->_blitCommandEncoder = nullptr;
+
+        for (auto fn: _pimpl->_onDestroyEncoderFunctions) { fn(); }
+    }
+
+    bool DeviceContext::HasEncoder()
+    {
+        return HasRenderCommandEncoder() || HasBlitCommandEncoder();
+    }
+
+    bool DeviceContext::HasRenderCommandEncoder()
+    {
+        return _pimpl->_commandEncoder;
+    }
+
+    bool DeviceContext::HasBlitCommandEncoder()
+    {
+        return _pimpl->_blitCommandEncoder;
     }
 
     id<MTLRenderCommandEncoder> DeviceContext::GetCommandEncoder()
     {
+        return GetRenderCommandEncoder();
+    }
+
+    id<MTLRenderCommandEncoder> DeviceContext::GetRenderCommandEncoder()
+    {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         return _pimpl->_commandEncoder;
+    }
+
+    id<MTLBlitCommandEncoder> DeviceContext::GetBlitCommandEncoder()
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(_pimpl->_blitCommandEncoder);
+        return _pimpl->_blitCommandEncoder;
     }
 
     void            DeviceContext::HoldCommandBuffer(id<MTLCommandBuffer> commandBuffer)
@@ -846,7 +921,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         /* The command encoder should have been released when the subpass was finished,
          * now we release the command buffer */
-        assert(!_pimpl->_commandEncoder);
+        assert(!_pimpl->_commandEncoder && !_pimpl->_blitCommandEncoder);
         assert(_pimpl->_commandBuffer);
         _pimpl->_commandBuffer = nullptr;
     }

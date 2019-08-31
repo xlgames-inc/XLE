@@ -16,6 +16,7 @@
 
 @class MTLRenderPassDescriptor;
 @class MTLRenderPipelineReflection;
+@protocol MTLBlitCommandEncoder;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
 @protocol MTLRenderCommandEncoder;
@@ -143,11 +144,20 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    PushDebugGroup(const char annotationName[]);
         void    PopDebugGroup();
 
+        bool    HasEncoder();
+        bool    HasRenderCommandEncoder();
+        bool    HasBlitCommandEncoder();
         id<MTLRenderCommandEncoder> GetCommandEncoder();
+        id<MTLRenderCommandEncoder> GetRenderCommandEncoder();
+        id<MTLBlitCommandEncoder> GetBlitCommandEncoder();
         void    CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
+        void    CreateBlitCommandEncoder();
         void    EndEncoding();
         void    OnEndEncoding(std::function<void(void)> fn);
+        // METAL_TODO: This function shouldn't be needed; it's here only as a temporary substitute for OnEndRenderPass (which is a safe time when we know we will not have a current encoder).
+        void    OnDestroyEncoder(std::function<void(void)> fn);
         void    DestroyRenderCommandEncoder();
+        void    DestroyBlitCommandEncoder();
 
         void QueueUniformSet(
             const std::shared_ptr<UnboundInterface>& unboundInterf,

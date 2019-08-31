@@ -53,9 +53,15 @@ namespace RenderCore { namespace ImplAppleMetal
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
-        
+        void        CommitHeadless() /*override*/;
+
+        // METAL_TODO: These could become private, as they should only be called
+        // by BeginFrame/Present/CommitHeadless and startup and shutdown, but
+        // probably better to just inline them and eliminate them.
+    private:
         void        BeginHeadlessFrame();
         void        EndHeadlessFrame();
+    public:
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
@@ -83,6 +89,7 @@ namespace RenderCore { namespace ImplAppleMetal
         std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 
         TBC::OCPtr<id> _activeFrameDrawable;        // (id<MTLDrawable>)
+        // TODO: Should this be managed implicitly by the DeviceContext?
         TBC::OCPtr<id> _commandBuffer;              // (id<MTLCommandBuffer>)
 
         std::shared_ptr<IAnnotator> _annotator;

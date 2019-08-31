@@ -27,6 +27,22 @@
     #error Unit test shaders not written for this graphics API
 #endif
 
+// See comments in ColorPackedForm below. We can't predict the exact value, so we have to test +/- 1.
+static bool componentsMatch(uint32_t c1, uint32_t c2) {
+    return (c1 == c2 || c1+1 == c2 || c1 == c2+1);
+}
+
+static bool colorsMatch(uint32_t c1, uint32_t c2) {
+    unsigned char *p1 = reinterpret_cast<unsigned char *>(&c1);
+    unsigned char *p2 = reinterpret_cast<unsigned char *>(&c2);
+    return (
+        componentsMatch(p1[0], p2[0]) &&
+        componentsMatch(p1[1], p2[1]) &&
+        componentsMatch(p1[2], p2[2]) &&
+        componentsMatch(p1[3], p2[3])
+    );
+}
+
 namespace UnitTests
 {
 
@@ -51,13 +67,27 @@ namespace UnitTests
 
         Values() {}
 
+        // Convert the float32 colors into U8_NORM colors, packed into 4 bytes, with the appropriate conversion and order for the GFXAPI. (Ignoring the min(max(f, 0.0), 255.0) normalization for simplicity, so don't construct values outside of [0.0, 1.0].)
         unsigned ColorPackedForm() const 
         {
-            return  (unsigned(A * 255.f) << 16)
-                |   (unsigned(B * 255.f) <<  8)
-                |   (unsigned(vA[0] * 255.f) <<  0)
-                |   (unsigned(vA[1] * 255.f) << 24)
-                ;
+            #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+                // Metal is BGRA. Also, each component is rounded to nearest even, according to the spec. Except that this isn't true. While 0.3, 0.5, and 0.7 round up to 77, 128, and 179, as the spec says, 0.1 and 0.9 round down to 25 and 229. So, we don't know the actual rule, and might as well just truncate.
+                return  (unsigned(A * 255.f) << 0)
+                    |   (unsigned(B * 255.f) <<  8)
+                    |   (unsigned(vA[0] * 255.f) <<  16)
+                    |   (unsigned(vA[1] * 255.f) << 24)
+                    ;
+            #elif GFXAPI_TARGET == GFXAPI_OPENGLES
+                // GL is easy: RGBA, where each component is just truncated toward zero.
+                return  (unsigned(A * 255.f) << 16)
+                    |   (unsigned(B * 255.f) <<  8)
+                    |   (unsigned(vA[0] * 255.f) <<  0)
+                    |   (unsigned(vA[1] * 255.f) << 24)
+                    ;
+            #else
+                // METAL_TODO: Write this for other APIs
+                assert(false);
+            #endif
         }
     };
 
@@ -127,42 +157,37 @@ namespace UnitTests
             metalContext.Draw(4);           // Draw once, with CB contents initialized outside of the RPI
         }
 
-		TEST_METHOD(UpdateConstantBuffer)
-		{
+        const Values testValue0 = Float4(0.33f, 0.5f, 0.66f, 1.0f);
+        const Values testValue1 = Float4(1.0f, 0.25f, 0.25f, 1.0f);
+        const Values testValue2 = Float4(0.25f, 0.25f, 1.0f, 1.0f);
+        const Values testValue3 = Float4(0.1f, 1.0f, 0.1f, 1.0f);
+        const Values testValueRedundant = Float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        std::map<unsigned, unsigned> _UpdateConstantBufferHelper(XCTestCase* self, bool unsynchronized)
+        {
             // -------------------------------------------------------------------------------------
             // Create a constant buffer and use it during rendering of several draw calls. Ensure
             // that the updates to the constant buffer affect rendering as expected
             // -------------------------------------------------------------------------------------
             using namespace RenderCore;
 
-            auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
-            if (glesDevice) {
-                if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
-                    XCTFail(@"Known issues running this code on non GLES300 OpenGL");
-                }
-            }
-
             auto threadContext = _testHelper->_device->GetImmediateContext();
             auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_clipInput, psText_Uniforms);
             auto targetDesc = CreateDesc(
-                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
-                TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
-                "temporary-out");
+                                         BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                                         TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+                                         "temporary-out");
 
             auto cbResource = _testHelper->_device->CreateResource(
-                CreateDesc(
-                    BindFlag::ConstantBuffer, CPUAccess::WriteDynamic, GPUAccess::Read,
-                    LinearBufferDesc::Create(sizeof(Values)),
-                    "test-cbuffer"));
-
-            Values testValue0(Float4(0.33f, 0.5f, 0.66f, 1.0f));
-            Values testValue1(Float4(1.0f, 0.25f, 0.25f, 1.0f));
-            Values testValue2(Float4(0.25f, 0.25f, 1.0f, 1.0f));
-            Values testValue3(Float4(0.1f, 1.0f, 0.1f, 1.0f));
-            Values testValueRedundant(Float4(0.0f, 0.0f, 0.0f, 1.0f));
+                                                                   CreateDesc(
+                                                                              BindFlag::ConstantBuffer, CPUAccess::WriteDynamic, GPUAccess::Read,
+                                                                              LinearBufferDesc::Create(sizeof(Values)),
+                                                                              "test-cbuffer"));
 
             auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-            ((Metal::Buffer*)cbResource.get())->Update(metalContext, &testValue0, sizeof(testValue0));
+            auto *cBuffer = (Metal::Buffer*)cbResource.get();
+            int flags = unsynchronized ? Metal::Buffer::UpdateFlags::UnsynchronizedWrite : 0;
+            cBuffer->Update(metalContext, &testValue0, sizeof(testValue0), 0, flags);
 
             // ............. Setup BoundInputLayout & BoundUniforms ................................
 
@@ -171,7 +196,7 @@ namespace UnitTests
             Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
 
             // ............. Start RPI .............................................................
-            
+
             UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
 
             {
@@ -186,16 +211,32 @@ namespace UnitTests
                 // CB values set prior to the rpi
                 DrawClipSpaceQuad(metalContext, shaderProgram, Float2(-1.0f, -1.0f), Float2( 0.0f, 0.0f));
 
-                // CB values set in the middle of the rpi
-                ((Metal::Buffer*)cbResource.get())->Update(metalContext, &testValue1, sizeof(testValue1));
+                // CB values set in the middle of the rpi--illegal for synchronized
+                if (unsynchronized) {
+                    cBuffer->Update(metalContext, &testValue1, sizeof(testValue1), 0, flags);
+                } else {
+                    Assert::ThrowsException([&]() {
+                        cBuffer->Update(metalContext, &testValue1, sizeof(testValue1), 0, flags);
+                    });
+                }
                 DrawClipSpaceQuad(metalContext, shaderProgram, Float2( 0.0f, -1.0f), Float2( 1.0f, 0.0f));
 
-                // Set a value that will be unused, and then immediate reset with new data
-                ((Metal::Buffer*)cbResource.get())->Update(metalContext, &testValueRedundant, sizeof(testValueRedundant));
-                ((Metal::Buffer*)cbResource.get())->Update(metalContext, &testValue2, sizeof(testValue2));
+                // Set a value that will be unused, and then immediate reset with new data--still illegal for synchronized
+                if (unsynchronized) {
+                    cBuffer->Update(metalContext, &testValueRedundant, sizeof(testValueRedundant), 0, flags);
+                    cBuffer->Update(metalContext, &testValue2, sizeof(testValue2), 0, flags);
+                }
                 DrawClipSpaceQuad(metalContext, shaderProgram, Float2(-1.0f,  0.0f), Float2( 0.0f, 1.0f));
 
-                ((Metal::Buffer*)cbResource.get())->Update(metalContext, &testValue3, sizeof(testValue3));
+                // Set a value to be used in the next render pass--still illegal for synchronized
+                if (unsynchronized) {
+                    cBuffer->Update(metalContext, &testValue3, sizeof(testValue3), 0, flags);
+                }
+            }
+
+            // Set a value to be used in the next render pass--the right place for unsynchronized
+            if (!unsynchronized) {
+                cBuffer->Update(metalContext, &testValue3, sizeof(testValue3), 0, flags);
             }
 
             {
@@ -211,31 +252,56 @@ namespace UnitTests
                 DrawClipSpaceQuad(metalContext, shaderProgram, Float2( 0.0f,  0.0f), Float2( 1.0f, 1.0f));
             }
 
-            auto breakdown = fbHelper.GetFullColorBreakdown();
-            // METAL_TODO: On Apple Metal, we get 0x40000 pixels that match
-            // testValue3 (0xff19ff19), 0xc0000 values (0xffa88054) that
-            // (almost) match testValue0 (0xff5480a8), and no pixels that
-            // match the other two. Figure out whether that's expected, or a
-            // bug in our Buffer::Update.
-            Assert::AreEqual(breakdown.size(), (size_t)4);
+            return fbHelper.GetFullColorBreakdown();
+        }
+
+        TEST_METHOD(UpdateConstantBufferUnsynchronized)
+		{
+            using namespace RenderCore;
+
+            // METAL_TODO: The issue is that we fall back to doing synchronized writes on non-GLES300 (or APPPORTABLE) GL, which means we end up getting 2 colors instead of 1. Should that call fail (and we just skip this test), or throw (and we check for the exception here), or should that be the documented behavior (which we test for)?
+            auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
+            if (glesDevice) {
+                if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
+                    XCTFail(@"Known issues running this code on non GLES300 OpenGL");
+                }
+            }
+
+            auto breakdown = _UpdateConstantBufferHelper(self, true);
+            // Since we're not synchronizing anywhere, and doing virtually no CPU work,
+            // it's incredibly unlikely that anything in either render pass will get
+            // drawn before the last update, so all four quadrants should have the
+            // last value set.
+            Assert::AreEqual(breakdown.size(), (size_t)1);
             for (auto i:breakdown) {
-                // METAL_TODO: Is there a nativeToRGBA or something, or do we need to
-                // explicitly check for Apple Metal and manually swap bytes?
                 auto color = i.first;
-                #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                    uint8_t *stupid = reinterpret_cast<uint8_t *>(&color);
-                    std::swap(stupid[0], stupid[2]);
-                #endif
-                // METAL_TODO: ColorPackedForm treats 0.5f as 0x7f, but
-                // (sometimes?) Apple Metal renders 0.5f as 0x80. Maybe
-                // something to do with round-half-to-even vs.
-                // round-half-away-from-zero or something?
-                Assert::IsTrue( color == testValue0.ColorPackedForm()
-                            ||  color == testValue1.ColorPackedForm()
-                            ||  color == testValue2.ColorPackedForm()
-                            ||  color == testValue3.ColorPackedForm());
+                Assert::IsTrue(colorsMatch(color, testValue3.ColorPackedForm()));
             }
 		}
 
+        TEST_METHOD(UpdateConstantBufferSynchronized)
+        {
+            using namespace RenderCore;
+
+            // METAL_TODO: The issue here is that we haven't implemented any way to reject synchronous writes during render passes, so we fail the exception test, and then get 3 colors instead of 2.
+            auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
+            if (glesDevice) {
+                if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
+                    XCTFail(@"Known issues running this code on non GLES300 OpenGL");
+                }
+            }
+
+            auto breakdown = _UpdateConstantBufferHelper(self, false);
+            // With synchronized writes that happen on render-pass boundaries, we're
+            // expecting that the first three quadrants (in the first render pass)
+            // will have testValue0, and the last quadrant (in the second) will have
+            // testValue3.
+            Assert::AreEqual(breakdown.size(), (size_t)2);
+            for (auto i:breakdown) {
+                auto color = i.first;
+                Assert::IsTrue(colorsMatch(color, testValue0.ColorPackedForm()) ||
+                               colorsMatch(color, testValue3.ColorPackedForm()));
+            }
+        }
 	};
 }

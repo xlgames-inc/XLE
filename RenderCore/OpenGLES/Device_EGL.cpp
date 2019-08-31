@@ -554,7 +554,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // Ensure that the IDevice still exists. If you run into this issue, it means that the device
         // that created this ThreadContext has already been destroyed -- which will be an issue, because
         // the device deletes _display when it is destroyed.
-        assert(_device.lock());
+        auto device = _device.lock();
+        assert(device);
 
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         assert(!_activeTargetRenderbuffer);
@@ -612,6 +613,12 @@ namespace RenderCore { namespace ImplOpenGLES
             eglSwapBuffers(_display, presChain.GetSurface());
         }
         _activeTargetRenderbuffer = nullptr;
+    }
+
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeTargetRenderbuffer); // If you're actively rendering, you need Present instead
+        glFlush();
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const

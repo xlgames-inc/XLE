@@ -368,6 +368,14 @@ namespace RenderCore { namespace ImplOpenGLES
         CGLSetCurrentContext(_sharedContext);
     }
 
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
+        if (CGLGetCurrentContext()) {
+            glFlush();
+        }
+    }
+
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
         return _device.lock();

@@ -240,6 +240,14 @@ namespace RenderCore { namespace ImplOpenGLES
             [EAGLContext setCurrentContext:_sharedContext.get()];
     }
 
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
+        if (EAGLContext.currentContext) {
+            glFlush();
+        }
+    }
+
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
         return _device.lock();
