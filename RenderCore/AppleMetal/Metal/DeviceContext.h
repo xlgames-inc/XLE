@@ -144,6 +144,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    PushDebugGroup(const char annotationName[]);
         void    PopDebugGroup();
 
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
+
         bool    HasEncoder();
         bool    HasRenderCommandEncoder();
         bool    HasBlitCommandEncoder();

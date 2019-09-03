@@ -15,8 +15,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
-        // METAL_TODO: Need a way to enforce this check that we're not inside a render pass.
-        if (!(flags & UpdateFlags::UnsynchronizedWrite) && false) {
+        if (!(flags & UpdateFlags::UnsynchronizedWrite) && context.InRenderPass()) {
             Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
         }
 

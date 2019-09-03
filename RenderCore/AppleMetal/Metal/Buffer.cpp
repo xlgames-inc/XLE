@@ -23,18 +23,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             return;
         }
 
-        // METAL_TODO: Instead of allocating a new buffer and giving it to the GPU to blit from (which defeats the whole performance purpose of calling Update, although it might still be simpler to use in some cases, and at least it allows us to test the API...), we should have some kind of pool of buffers, or just a shared DynamicBuffer per context or something. Until we do that, it would be more efficient to just:
-        // if (writeOffset == 0 && dataSize == GetDesc()._linearBufferDesc._sizeInBytes) {
-        //     _underlyingBuffer = GetObjectFactory().CreateBuffer(data, (unsigned)dataSize);
-        // }
+        // NOTE: This implementation is designed to be bulletproof, and to work exaxtly the same way on GL, Apple Metal, and Vulkan, for cases where updating a buffer synchronously is convenient. If you're naively using it as an optimization (which sort of works in GL-only code), it's actually making your code a lot slower; what you want is to use unsynchronized writes, and add your own sync on top--or use Magnesium::DynamicBuffer, which gives you allocations out of a big shared buffer and wraps all of that up for you.
 
-        // METAL_TODO: This should be checking that we're not inside a render pass; this instead checks that we're not inside a subpass.
-        if (context.HasEncoder()) {
+        if (context.InRenderPass()) {
             Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
         }
 
         TBC::OCPtr<id> buffer = (AplMtlBuffer*)GetBuffer().get(); // id<MTLBuffer>
-        // METAL_TODO: Implementing this for managed-mode buffers is pretty simple, but those only exist on macOS, so we probably never have them?
+        // METAL_TODO: Implementing this for managed-mode buffers is simple, but those only exist on macOS, so we probably never have them.
         assert([buffer.get() storageMode] == MTLStorageModeShared);
 
         assert(dataSize < MAX_INT);
@@ -42,14 +38,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLBuffer> blitBuffer = [GetObjectFactory().CreateBuffer((const unsigned char *)data, (unsigned)dataSize).get() retain];
         [commandBuffer addCompletedHandler:^(id){ [blitBuffer release]; }];
 
-        // METAL_TODO: The intended design (because it's the best granularity we can get with Vulkan) is to only allow blit updates at the end of, or between, rendering passes. But this allows them at the end of any subpass.
-        context.OnDestroyEncoder([&context, blitBuffer, buffer, writeOffset, dataSize]() {
-            context.CreateBlitCommandEncoder();
-            id<MTLBlitCommandEncoder> encoder = context.GetBlitCommandEncoder();
-            [encoder copyFromBuffer:blitBuffer sourceOffset:0 toBuffer:buffer destinationOffset:writeOffset size:dataSize];
-            context.EndEncoding();
-            context.DestroyBlitCommandEncoder();
-        });
+        context.CreateBlitCommandEncoder();
+        id<MTLBlitCommandEncoder> encoder = context.GetBlitCommandEncoder();
+        [encoder copyFromBuffer:blitBuffer sourceOffset:0 toBuffer:buffer destinationOffset:writeOffset size:dataSize];
+        context.EndEncoding();
+        context.DestroyBlitCommandEncoder();
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,

@@ -67,27 +67,14 @@ namespace UnitTests
 
         Values() {}
 
-        // Convert the float32 colors into U8_NORM colors, packed into 4 bytes, with the appropriate conversion and order for the GFXAPI. (Ignoring the min(max(f, 0.0), 255.0) normalization for simplicity, so don't construct values outside of [0.0, 1.0].)
-        unsigned ColorPackedForm() const 
+        // The way float32 colors get rounded when drawn to normalized U8 textures may differ between GFXAPIs. Metal documents that each component gets normalized and then rounded to nearest even, but this isn't actually what happens--while 0.3, 0.5, and 0.7 get rounded up to 77, 128, and 179 as you'd expect, 0.1 and 0.9 get rounded down to 25 and 229. So, rather than worry about rounding here, we just truncate, and then check +/-1 in the comparison.
+        unsigned ColorPackedForm() const
         {
-            #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                // Metal is BGRA. Also, each component is rounded to nearest even, according to the spec. Except that this isn't true. While 0.3, 0.5, and 0.7 round up to 77, 128, and 179, as the spec says, 0.1 and 0.9 round down to 25 and 229. So, we don't know the actual rule, and might as well just truncate.
-                return  (unsigned(A * 255.f) << 0)
-                    |   (unsigned(B * 255.f) <<  8)
-                    |   (unsigned(vA[0] * 255.f) <<  16)
-                    |   (unsigned(vA[1] * 255.f) << 24)
-                    ;
-            #elif GFXAPI_TARGET == GFXAPI_OPENGLES
-                // GL is easy: RGBA, where each component is just truncated toward zero.
-                return  (unsigned(A * 255.f) << 16)
-                    |   (unsigned(B * 255.f) <<  8)
-                    |   (unsigned(vA[0] * 255.f) <<  0)
-                    |   (unsigned(vA[1] * 255.f) << 24)
-                    ;
-            #else
-                // METAL_TODO: Write this for other APIs
-                assert(false);
-            #endif
+            return  (unsigned(A * 255.f) << 0)
+                |   (unsigned(B * 255.f) <<  8)
+                |   (unsigned(vA[0] * 255.f) <<  16)
+                |   (unsigned(vA[1] * 255.f) << 24)
+                ;
         }
     };
 
@@ -157,11 +144,11 @@ namespace UnitTests
             metalContext.Draw(4);           // Draw once, with CB contents initialized outside of the RPI
         }
 
-        const Values testValue0 = Float4(0.33f, 0.5f, 0.66f, 1.0f);
-        const Values testValue1 = Float4(1.0f, 0.25f, 0.25f, 1.0f);
-        const Values testValue2 = Float4(0.25f, 0.25f, 1.0f, 1.0f);
-        const Values testValue3 = Float4(0.1f, 1.0f, 0.1f, 1.0f);
-        const Values testValueRedundant = Float4(0.0f, 0.0f, 0.0f, 1.0f);
+        const Values testValue0 = Float4(0.1f, 0.2f, 0.95f, 1.0f);
+        const Values testValue1 = Float4(0.9f, 0.4f, 0.3f, 1.0f);
+        const Values testValue2 = Float4(0.5f, 0.85f, 0.6f, 1.0f);
+        const Values testValue3 = Float4(0.7f, 0.8f, 0.75f, 1.0f);
+        const Values testValueRedundant = Float4(0.65f, 0.33f, 0.42f, 1.0f);
 
         std::map<unsigned, unsigned> _UpdateConstantBufferHelper(XCTestCase* self, bool unsynchronized)
         {
@@ -259,11 +246,10 @@ namespace UnitTests
 		{
             using namespace RenderCore;
 
-            // METAL_TODO: The issue is that we fall back to doing synchronized writes on non-GLES300 (or APPPORTABLE) GL, which means we end up getting 2 colors instead of 1. Should that call fail (and we just skip this test), or throw (and we check for the exception here), or should that be the documented behavior (which we test for)?
             auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
             if (glesDevice) {
                 if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
-                    XCTFail(@"Known issues running this code on non GLES300 OpenGL");
+                    XCTFail(@"Known issues running this code on non GLES300 OpenGL: unsynchronized writes are simulated with synchronized writes, so we don't get the expected results");
                 }
             }
 
@@ -271,7 +257,8 @@ namespace UnitTests
             // Since we're not synchronizing anywhere, and doing virtually no CPU work,
             // it's incredibly unlikely that anything in either render pass will get
             // drawn before the last update, so all four quadrants should have the
-            // last value set.
+            // last value set, even though testValue0, 1, and 2 were the current
+            // values at the times we actually issued the draws.
             Assert::AreEqual(breakdown.size(), (size_t)1);
             for (auto i:breakdown) {
                 auto color = i.first;
@@ -281,16 +268,6 @@ namespace UnitTests
 
         TEST_METHOD(UpdateConstantBufferSynchronized)
         {
-            using namespace RenderCore;
-
-            // METAL_TODO: The issue here is that we haven't implemented any way to reject synchronous writes during render passes, so we fail the exception test, and then get 3 colors instead of 2.
-            auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
-            if (glesDevice) {
-                if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
-                    XCTFail(@"Known issues running this code on non GLES300 OpenGL");
-                }
-            }
-
             auto breakdown = _UpdateConstantBufferHelper(self, false);
             // With synchronized writes that happen on render-pass boundaries, we're
             // expecting that the first three quadrants (in the first render pass)

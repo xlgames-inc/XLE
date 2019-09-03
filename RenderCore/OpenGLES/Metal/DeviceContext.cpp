@@ -375,6 +375,34 @@ namespace RenderCore { namespace Metal_OpenGLES
         _capturedStates = nullptr;
     }
 
+    void DeviceContext::BeginRenderPass()
+    {
+        assert(!_inRenderPass);
+        _inRenderPass = true;
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+        assert(_inRenderPass);
+        _inRenderPass = false;
+        for (auto fn: _onEndRenderPassFunctions) { fn(); }
+        _onEndRenderPassFunctions.clear();
+    }
+
+    bool DeviceContext::InRenderPass()
+    {
+        return _inRenderPass;
+    }
+
+    void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
+    {
+        if (!_inRenderPass) {
+            _onEndRenderPassFunctions.push_back(fn);
+        } else {
+            fn();
+        }
+    }
+
     #if defined(_DEBUG)
         void CapturedStates::VerifyIntegrity()
         {
@@ -406,6 +434,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         _featureSet = featureSet;
         _capturedStates = nullptr;
+
+        _inRenderPass = false;
 
         _device = device;
     }

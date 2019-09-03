@@ -523,6 +523,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<id> _commandEncoder; // For the current subpass
         TBC::OCPtr<id> _blitCommandEncoder;
 
+        bool _inRenderPass;
+
         std::weak_ptr<IDevice> _device;
 
         class QueuedUniformSet
@@ -553,6 +555,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         NSThread* _boundThread = nullptr;
 
+        std::vector<std::function<void(void)>> _onEndRenderPassFunctions;
         std::vector<std::function<void(void)>> _onEndEncodingFunctions;
         std::vector<std::function<void(void)>> _onDestroyEncoderFunctions;
 
@@ -785,6 +788,37 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(0);
     }
 
+    void DeviceContext::BeginRenderPass()
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(!_pimpl->_inRenderPass);
+        _pimpl->_inRenderPass = true;
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(_pimpl->_inRenderPass);
+        _pimpl->_inRenderPass = false;
+        for (auto fn: _pimpl->_onEndRenderPassFunctions) { fn(); }
+        _pimpl->_onEndRenderPassFunctions.clear();
+    }
+
+    bool DeviceContext::InRenderPass()
+    {
+        return _pimpl->_inRenderPass;
+    }
+
+    void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
+    {
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        if (!_pimpl->_inRenderPass) {
+            _pimpl->_onEndRenderPassFunctions.push_back(fn);
+        } else {
+            fn();
+        }
+    }
+
     void            DeviceContext::CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor)
     {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
@@ -830,6 +864,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_queuedUniformSets.clear();
 
         for (auto fn: _pimpl->_onEndEncodingFunctions) { fn(); }
+        _pimpl->_onEndEncodingFunctions.clear();
     }
 
     void            DeviceContext::OnEndEncoding(std::function<void(void)> fn)
@@ -859,6 +894,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_commandEncoder = nullptr;
 
         for (auto fn: _pimpl->_onDestroyEncoderFunctions) { fn(); }
+        _pimpl->_onDestroyEncoderFunctions.clear();
     }
 
     void            DeviceContext::DestroyBlitCommandEncoder()
@@ -868,6 +904,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_blitCommandEncoder = nullptr;
 
         for (auto fn: _pimpl->_onDestroyEncoderFunctions) { fn(); }
+        _pimpl->_onDestroyEncoderFunctions.clear();
     }
 
     bool DeviceContext::HasEncoder()
@@ -961,6 +998,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_indexType = MTLIndexTypeUInt16;
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;
+        _pimpl->_inRenderPass = false;
         _pimpl->_boundThread = [NSThread currentThread];
         _pimpl->_device = device;
     }

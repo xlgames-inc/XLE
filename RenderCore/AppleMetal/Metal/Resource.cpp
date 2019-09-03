@@ -67,7 +67,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
             #if PLATFORMOS_TARGET == PLATFORMOS_IOS
                 if (_underlyingTexture.get().framebufferOnly)
-                    Throw(std::runtime_error("Cannot use Resource::ReadBack on a framebuffer only resource on IOS. You must readback through a CPU accessable copy of this textuer."));
+                    Throw(std::runtime_error("Cannot use Resource::ReadBack on a framebuffer-only resource on IOS. You must readback through a CPU accessible copy of this texture."));
             #endif
 
             auto mipmapDesc = CalculateMipMapDesc(_desc._textureDesc, subRes._mip);

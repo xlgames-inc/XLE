@@ -147,6 +147,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         void        BeginStateCapture(CapturedStates& capturedStates);
         void        EndStateCapture();
 
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
 
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
@@ -173,6 +177,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         CapturedStates* _capturedStates;
 
         std::weak_ptr<IDevice> _device;
+
+        bool _inRenderPass;
+        std::vector<std::function<void(void)>> _onEndRenderPassFunctions;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
