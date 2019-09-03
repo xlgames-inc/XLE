@@ -106,6 +106,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const ViewportDesc& viewport);
+        ViewportDesc GetViewport();
 
         using GraphicsPipelineBuilder::Bind;
 
@@ -146,16 +147,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         void        BeginStateCapture(CapturedStates& capturedStates);
         void        EndStateCapture();
 
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
 
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            ExecuteCommandList(CommandList& commandList);
 
+        std::shared_ptr<IDevice> GetDevice();
+
         static void PrepareForDestruction(IDevice* device);
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext(FeatureSet::BitField featureSet);
+        DeviceContext(std::shared_ptr<IDevice> device, FeatureSet::BitField featureSet);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         ~DeviceContext();
@@ -168,6 +175,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned    _indexBufferOffsetBytes;
 
         CapturedStates* _capturedStates;
+
+        std::weak_ptr<IDevice> _device;
+
+        bool _inRenderPass;
+        std::vector<std::function<void(void)>> _onEndRenderPassFunctions;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

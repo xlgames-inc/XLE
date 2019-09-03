@@ -141,6 +141,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
     }
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -363,6 +368,14 @@ namespace RenderCore { namespace ImplOpenGLES
         CGLSetCurrentContext(_sharedContext);
     }
 
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
+        if (CGLGetCurrentContext()) {
+            glFlush();
+        }
+    }
+
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
         return _device.lock();
@@ -383,7 +396,7 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
         : ThreadContext(sharedContext, device)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(GetFeatureSet());
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, GetFeatureSet());
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}

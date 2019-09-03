@@ -168,6 +168,8 @@ namespace RenderCore
         virtual IResourcePtr        CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = ResourceInitializer()) = 0;
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
+        // Block until the GPU has caught up to (at least) the end of the previous frame
+        virtual void                Stall() = 0;
 
 		virtual std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() = 0;
 

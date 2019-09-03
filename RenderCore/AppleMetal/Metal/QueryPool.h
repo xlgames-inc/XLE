@@ -56,7 +56,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         SyncEvent SetEvent();
         SyncEvent NextEventToSet();
         SyncEvent LastCompletedEvent();
-        void Stall();
 
         static bool IsSupported();
 

@@ -232,6 +232,32 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind Viewport");
     }
 
+    ViewportDesc DeviceContext::GetViewport()
+    {
+        // in OpenGL, viewport coordinates are always integers
+        GLint viewportParameters[4];
+        glGetIntegerv(GL_VIEWPORT, viewportParameters);
+
+        // hack -- desktop gl has a slight naming change
+#if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+        GLfloat depthParams[2];
+        glGetFloatv(GL_DEPTH_RANGE, depthParams);
+#else
+        GLdouble depthParams[2];
+        glGetDoublev(GL_DEPTH_RANGE, depthParams);
+#endif
+        CheckGLError("GetViewport");
+
+        ViewportDesc viewport;
+        viewport.TopLeftX = viewportParameters[0];
+        viewport.TopLeftY = viewportParameters[1];
+        viewport.Width = viewportParameters[2];
+        viewport.Height = viewportParameters[3];
+        viewport.MinDepth = depthParams[0];
+        viewport.MaxDepth = depthParams[1];
+        return viewport;
+    }
+
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
@@ -349,6 +375,34 @@ namespace RenderCore { namespace Metal_OpenGLES
         _capturedStates = nullptr;
     }
 
+    void DeviceContext::BeginRenderPass()
+    {
+        assert(!_inRenderPass);
+        _inRenderPass = true;
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+        assert(_inRenderPass);
+        _inRenderPass = false;
+        for (auto fn: _onEndRenderPassFunctions) { fn(); }
+        _onEndRenderPassFunctions.clear();
+    }
+
+    bool DeviceContext::InRenderPass()
+    {
+        return _inRenderPass;
+    }
+
+    void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
+    {
+        if (!_inRenderPass) {
+            _onEndRenderPassFunctions.push_back(fn);
+        } else {
+            fn();
+        }
+    }
+
     #if defined(_DEBUG)
         void CapturedStates::VerifyIntegrity()
         {
@@ -372,7 +426,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _nativeTopology = GL_TRIANGLES;
     }
 
-    DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
+    DeviceContext::DeviceContext(std::shared_ptr<IDevice> device, FeatureSet::BitField featureSet)
     : GraphicsPipelineBuilder(featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
@@ -380,6 +434,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         _featureSet = featureSet;
         _capturedStates = nullptr;
+
+        _inRenderPass = false;
+
+        _device = device;
     }
 
     DeviceContext::~DeviceContext()
@@ -398,6 +456,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     void                            DeviceContext::ExecuteCommandList(CommandList& commandList)
     {
 
+    }
+
+    std::shared_ptr<IDevice> DeviceContext::GetDevice()
+    {
+        return _device.lock();
     }
 
     const std::shared_ptr<DeviceContext>& DeviceContext::Get(IThreadContext& threadContext)

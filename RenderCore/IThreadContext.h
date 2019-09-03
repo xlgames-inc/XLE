@@ -85,6 +85,20 @@ namespace RenderCore
 		/// </example>
 		virtual void			Present(IPresentationChain& presentationChain) = 0;
 
+        /// <summary>Finishes some non-presentation GPU work</summary>
+        /// When you want to use the GPU for non-presentation work, like rendering to
+        /// an offscreen surface, you don't want to call BeginFrame and Present, but
+        /// you do still need a way to tell Metal, and the GPU, when you're done.
+        ///
+        /// To do this, call CommitHeadless().
+        ///
+        /// Do not call this method if you're between a BeginFrame and Present. A
+        /// presentation frame must be ended with a Present.
+        ///
+        /// You never need to call both Present and this method; Present already
+        /// takes care of committing work and starting the next frame.
+        virtual void            CommitHeadless() = 0;
+
         virtual void*           QueryInterface(size_t guid) = 0;
         virtual bool            IsImmediate() const = 0;
         virtual auto			GetDevice() const -> std::shared_ptr<IDevice> = 0;

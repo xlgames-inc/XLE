@@ -16,8 +16,6 @@ namespace RenderCore
     {
     public:
         virtual const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  GetDeviceContext() = 0;
-        virtual void BeginHeadlessFrame() = 0;
-        virtual void EndHeadlessFrame() = 0;
         ~IThreadContextAppleMetal();
     };
 

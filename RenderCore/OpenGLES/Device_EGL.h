@@ -47,6 +47,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
         virtual void Present(IPresentationChain& presentationChain) override;
+        virtual void CommitHeadless() override;
 
         virtual void* QueryInterface(size_t guid) override;
         virtual bool IsImmediate() const override { return false; }
@@ -109,6 +110,8 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EGL", "", "" }; }
 
         std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
+        virtual void Stall() override;
 
         EGLDisplay GetDisplay() const { return _display; };
         EGLConfig GetRootContextConfig() const { return _rootContextConfig; }

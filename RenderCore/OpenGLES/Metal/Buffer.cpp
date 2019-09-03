@@ -15,10 +15,15 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
+        if (!(flags & UpdateFlags::UnsynchronizedWrite) && context.InRenderPass()) {
+            Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
+        }
+
         if (GetBuffer()) {
             auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
             glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
 
+            // METAL_TODO: Should unsynchronized writes on APPPORTABLE or on pre-GLES300 actually be errors instead of falling back to synchronized writes?
             #if !APPORTABLE
                 if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
                     auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;

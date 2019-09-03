@@ -422,6 +422,11 @@ namespace RenderCore { namespace ImplOpenGLES
 		return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
 	}
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -549,7 +554,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // Ensure that the IDevice still exists. If you run into this issue, it means that the device
         // that created this ThreadContext has already been destroyed -- which will be an issue, because
         // the device deletes _display when it is destroyed.
-        assert(_device.lock());
+        auto device = _device.lock();
+        assert(device);
 
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         assert(!_activeTargetRenderbuffer);
@@ -607,6 +613,12 @@ namespace RenderCore { namespace ImplOpenGLES
             eglSwapBuffers(_display, presChain.GetSurface());
         }
         _activeTargetRenderbuffer = nullptr;
+    }
+
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeTargetRenderbuffer); // If you're actively rendering, you need Present instead
+        glFlush();
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
@@ -670,7 +682,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void ThreadContext::SetFeatureSet(unsigned featureSet)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(_device.lock(), featureSet);
     }
 
     unsigned ThreadContext::GetFeatureSet() const
@@ -683,7 +695,7 @@ namespace RenderCore { namespace ImplOpenGLES
     , _device(device), _currentPresentationChainGUID(0)
     , _clonedContext(true)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, unsigned featureSet, const std::shared_ptr<Device>& device)
@@ -722,7 +734,7 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
 
         if (featureSet)
-            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::~ThreadContext()

@@ -53,11 +53,15 @@ namespace RenderCore { namespace ImplAppleMetal
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
-        
+        void        CommitHeadless() /*override*/;
+
+        // METAL_TODO: These could become private, as they should only be called
+        // by BeginFrame/Present/CommitHeadless and startup and shutdown, but
+        // probably better to just inline them and eliminate them.
+    private:
         void        BeginHeadlessFrame();
         void        EndHeadlessFrame();
-        void        WaitUntilQueueCompleted();
-        void        WaitUntilQueueCompletedWithCommand(std::function<void(id<MTLCommandBuffer>)> fn);
+    public:
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
@@ -85,6 +89,7 @@ namespace RenderCore { namespace ImplAppleMetal
         std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 
         TBC::OCPtr<id> _activeFrameDrawable;        // (id<MTLDrawable>)
+        // TODO: Should this be managed implicitly by the DeviceContext?
         TBC::OCPtr<id> _commandBuffer;              // (id<MTLCommandBuffer>)
 
         std::shared_ptr<IAnnotator> _annotator;
@@ -98,18 +103,20 @@ namespace RenderCore { namespace ImplAppleMetal
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(
-            const void* platformValue, const PresentationChainDesc &desc);
-        void* QueryInterface(size_t guid);
+            const void* platformValue, const PresentationChainDesc &desc) override;
+        void* QueryInterface(size_t guid) override;
 
-        std::shared_ptr<IThreadContext> GetImmediateContext();
-        std::unique_ptr<IThreadContext> CreateDeferredContext();
+        std::shared_ptr<IThreadContext> GetImmediateContext() override;
+        std::unique_ptr<IThreadContext> CreateDeferredContext() override;
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc();
-        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
+        DeviceDesc GetDesc() override;
+        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
-        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler();
+        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
+        virtual void Stall() override;
 
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 

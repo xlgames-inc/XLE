@@ -570,6 +570,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         s_nextSubpass = 0;
         s_clearValues.clear();
         s_clearValues.insert(s_clearValues.end(), clearValues.begin(), clearValues.end());
+        context.BeginRenderPass();
         BeginNextSubpass(context, frameBuffer);
     }
 
@@ -599,6 +600,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
+        context.EndRenderPass();
     }
     
     unsigned GetCurrentSubpassIndex(DeviceContext& context)

@@ -16,6 +16,7 @@
 
 @class MTLRenderPassDescriptor;
 @class MTLRenderPipelineReflection;
+@protocol MTLBlitCommandEncoder;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
 @protocol MTLRenderCommandEncoder;
@@ -143,11 +144,25 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    PushDebugGroup(const char annotationName[]);
         void    PopDebugGroup();
 
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
+
+        bool    HasEncoder();
+        bool    HasRenderCommandEncoder();
+        bool    HasBlitCommandEncoder();
         id<MTLRenderCommandEncoder> GetCommandEncoder();
+        id<MTLRenderCommandEncoder> GetRenderCommandEncoder();
+        id<MTLBlitCommandEncoder> GetBlitCommandEncoder();
         void    CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
+        void    CreateBlitCommandEncoder();
         void    EndEncoding();
         void    OnEndEncoding(std::function<void(void)> fn);
+        // METAL_TODO: This function shouldn't be needed; it's here only as a temporary substitute for OnEndRenderPass (which is a safe time when we know we will not have a current encoder).
+        void    OnDestroyEncoder(std::function<void(void)> fn);
         void    DestroyRenderCommandEncoder();
+        void    DestroyBlitCommandEncoder();
 
         void QueueUniformSet(
             const std::shared_ptr<UnboundInterface>& unboundInterf,
@@ -164,7 +179,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         //      U T I L I T Y
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        void            HoldDevice(id<MTLDevice>);
         void            HoldCommandBuffer(id<MTLCommandBuffer>);
         void            ReleaseCommandBuffer();
         id<MTLCommandBuffer>            RetrieveCommandBuffer();
@@ -176,11 +190,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
 
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      D E V I C E
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        std::shared_ptr<IDevice> GetDevice();
+
         static void PrepareForDestruction(IDevice* device);
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext();
+        DeviceContext(std::shared_ptr<IDevice> device);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         virtual ~DeviceContext();

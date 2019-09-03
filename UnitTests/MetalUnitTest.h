@@ -60,10 +60,7 @@ namespace UnitTests
         UnitTestFBHelper(RenderCore::IDevice& device, RenderCore::IThreadContext& threadContext, const RenderCore::ResourceDesc& targetDesc)
         : _parsingContext(_techniqueContext, &_namedResources, &_frameBufferPool)     // careful init-order rules
         {
-            auto* metalThreadContext = (RenderCore::ImplAppleMetal::ThreadContext*)threadContext.QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code());
-            if (metalThreadContext)
-                metalThreadContext->BeginHeadlessFrame();
-
+            threadContext.CommitHeadless();
             _target = device.CreateResource(targetDesc);
             _threadContext = &threadContext;
         }
@@ -71,9 +68,7 @@ namespace UnitTests
         ~UnitTestFBHelper()
         {
             if (_threadContext) {
-                auto* metalThreadContext = (RenderCore::ImplAppleMetal::ThreadContext*)_threadContext->QueryInterface(typeid(RenderCore::ImplAppleMetal::ThreadContext).hash_code());
-                if (metalThreadContext)
-                    metalThreadContext->EndHeadlessFrame();
+                _threadContext->CommitHeadless();
             }
         }
 
