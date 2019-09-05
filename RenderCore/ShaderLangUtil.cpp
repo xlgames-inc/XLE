@@ -34,7 +34,9 @@ namespace RenderCore
         { "int", ImpliedTyping::TypeCat::Int32 },
         { "byte", ImpliedTyping::TypeCat::UInt8 },
         { "bool", ImpliedTyping::TypeCat::Bool },
-		{ "vec", ImpliedTyping::TypeCat::Float }          // GLSL-style naming
+		{ "vec", ImpliedTyping::TypeCat::Float },          // GLSL-style naming
+        { "ivec", ImpliedTyping::TypeCat::Int32 },
+        { "uvec", ImpliedTyping::TypeCat::UInt32 }
         // "half", "double" not supported
     };
 
