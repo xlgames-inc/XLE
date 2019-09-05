@@ -1379,10 +1379,6 @@ namespace XLEMath
 					crashPtSkeleton, _vertices[motor->_head]._skeletonVertexId,
 					motor->_leftFace, motor->_rightFace, StraightSkeleton<Primitive>::EdgeType::VertexPath);
 
-			auto crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
-				[crashEvent](const WavefrontEdge& e) { return e._head == crashEvent._collisionEdgeHead && e._tail == crashEvent._collisionEdgeTail; });
-			assert(crashSegment != loop->_edges.end());
-
 			// We need to build 2 new WavefrontLoops -- one for the "tout" side and one for the "tin" side
 			// In some cases, one side or the other than can be completely collapsed. But we're still going to
 			// create it.
@@ -1395,11 +1391,11 @@ namespace XLEMath
 					[motorHead](const WavefrontEdge& test) { return test._tail == motorHead; });
 				assert(tout != loop->_edges.end());
 
-				if (tout->_head != crashSegment->_tail) {
+				if (tout->_head != crashEvent._collisionEdgeTail) {
 					auto starti = tout+1;
 					if (starti == loop->_edges.end()) starti = loop->_edges.begin();
 					auto i=starti;
-					while (i->_head!=crashSegment->_tail) {
+					while (i->_head!=crashEvent._collisionEdgeTail) {
 						outSide._edges.push_back(*i);
 						++i;
 						if (i == loop->_edges.end()) i = loop->_edges.begin();
@@ -1415,14 +1411,26 @@ namespace XLEMath
 				// crashes have been processed, it will be.
 				auto newVertex = (unsigned)_vertices.size();
 				_vertices.push_back(Vertex<Primitive>{crashEvent._crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
-				outSide._edges.push_back({newVertex, crashSegment->_tail, crashSegment->_leftFace, crashSegment->_rightFace});	// (hin)
+
+                std::vector<WavefrontEdge>::iterator crashSegment;
+                if (crashEvent._collisionEdgeHead != crashEvent._collisionEdgeTail) {
+                    crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
+                        [crashEvent](const WavefrontEdge& e) { return e._head == crashEvent._collisionEdgeHead && e._tail == crashEvent._collisionEdgeTail; });
+                    assert(crashSegment != loop->_edges.end());
+                } else {
+                    crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
+                        [crashEvent](const WavefrontEdge& e) { return e._head == crashEvent._collisionEdgeHead; });
+                    assert(crashSegment != loop->_edges.end());
+                }
+                outSide._edges.push_back({newVertex, crashEvent._collisionEdgeTail, crashSegment->_leftFace, crashSegment->_rightFace});    // (hin)
+
 				outSide._edges.push_back({tout->_head, newVertex, tout->_leftFace, tout->_rightFace});					// tout
 			}
 
 			{
 				// Start at crashSegment._head, and work around in order until we hit the motor vertex
 				auto hout = std::find_if(loop->_edges.begin(), loop->_edges.end(),
-					[crashSegment](const WavefrontEdge& test) { return test._tail == crashSegment->_head; });
+					[crashEvent](const WavefrontEdge& test) { return test._tail == crashEvent._collisionEdgeHead; });
 				assert(hout != loop->_edges.end());
 
 				auto starti = hout;
@@ -1439,7 +1447,19 @@ namespace XLEMath
 				auto newVertex = (unsigned)_vertices.size();
 				_vertices.push_back(Vertex<Primitive>{crashEvent._crashPt, Zero<Vector2T<Primitive>>(), crashEvent._time, crashPtSkeleton});
 				inSide._edges.push_back({newVertex, tin->_tail, tin->_leftFace, tin->_rightFace});
-				inSide._edges.push_back({crashSegment->_head, newVertex, crashSegment->_leftFace, crashSegment->_rightFace});
+
+                std::vector<WavefrontEdge>::iterator crashSegment;
+                if (crashEvent._collisionEdgeHead != crashEvent._collisionEdgeTail) {
+                    crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
+                        [crashEvent](const WavefrontEdge& e) { return e._head == crashEvent._collisionEdgeHead && e._tail == crashEvent._collisionEdgeTail; });
+                    assert(crashSegment != loop->_edges.end());
+                } else {
+                    crashSegment = std::find_if(loop->_edges.begin(), loop->_edges.end(),
+                        [crashEvent](const WavefrontEdge& e) { return e._tail == crashEvent._collisionEdgeTail; });
+                    assert(crashSegment != loop->_edges.end());
+                }
+
+                inSide._edges.push_back({crashEvent._collisionEdgeHead, newVertex, crashSegment->_leftFace, crashSegment->_rightFace});
 			}
 
 			// We don't have to add more edges from the 2 new vertices to the crash point. Since 
@@ -1473,6 +1493,7 @@ namespace XLEMath
 			// from the system every time we process a motorcycle crash. So, if one of the upcoming
 			// crash events involves this vertex, we have rename it to either the new vertex on the
 			// inSide, or on the outSide
+            unsigned crashSegmentTail = crashEvent._collisionEdgeTail, crashSegmentHead = crashEvent._collisionEdgeHead;
 			for (auto i=crashI+1; i!=crashes.end(); ++i) {
 				auto inSideI = std::find_if(inSide._motorcycleSegments.begin(), inSide._motorcycleSegments.end(),
 					[i](const MotorcycleSegment& s){ return s._head == i->second;});
@@ -1488,11 +1509,11 @@ namespace XLEMath
 				else if (i->first._collisionEdgeTail == motorHead) i->first._collisionEdgeTail = replacementIdx;
 
 				if (isInSide) {
-					if (i->first._collisionEdgeHead == crashSegment->_tail) i->first._collisionEdgeHead = replacementIdx;
-					else if (i->first._collisionEdgeTail == crashSegment->_tail) i->first._collisionEdgeTail = replacementIdx;
+					if (i->first._collisionEdgeHead == crashSegmentTail) i->first._collisionEdgeHead = replacementIdx;
+					else if (i->first._collisionEdgeTail == crashSegmentTail) i->first._collisionEdgeTail = replacementIdx;
 				} else {
-					if (i->first._collisionEdgeHead == crashSegment->_head) i->first._collisionEdgeHead = replacementIdx;
-					else if (i->first._collisionEdgeTail == crashSegment->_head) i->first._collisionEdgeTail = replacementIdx;
+					if (i->first._collisionEdgeHead == crashSegmentHead) i->first._collisionEdgeHead = replacementIdx;
+					else if (i->first._collisionEdgeTail == crashSegmentHead) i->first._collisionEdgeTail = replacementIdx;
 				}
 			}
 
