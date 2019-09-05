@@ -156,10 +156,13 @@ namespace Assets
     DependencyValidation::~DependencyValidation() {}
 
     void RegisterFileDependency(
-        const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
+        const std::shared_ptr<DependencyValidation>& validationIndex,
         StringSection<ResChar> filename)
     {
-		MainFileSystem::TryMonitor(filename, validationIndex);
+        MainFileSystem::TryMonitor(filename, validationIndex);
+        #if defined(_DEBUG)
+            validationIndex->_monitoredFiles.push_back(filename.AsString());
+        #endif
     }
 
     void RegisterAssetDependency(

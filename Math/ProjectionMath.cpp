@@ -584,7 +584,10 @@ namespace XLEMath
             result(2,2) =  -1.f / (f-n);            // (note z direction flip here)
             result(2,3) =    -n / (f-n);
         } else {
-            assert(0);
+                //  This is the OpenGL view of clip space
+                //      -1<z/w<1
+            result(2,2) =     -(f+n) / (f*(f-n));
+            result(2,3) =   -(2.f*n) / (f-n);
         }
 
         if (clipSpaceType == ClipSpaceType::PositiveRightHanded) {

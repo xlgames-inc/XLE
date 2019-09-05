@@ -50,15 +50,25 @@ namespace RenderCore { namespace Techniques
 		LoadStore loadOperation)
 	{
 		auto boundDepth = parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::MultisampleDepth);
-		if (!boundDepth) {
+		if (!boundDepth && loadOperation != LoadStore::Clear)
 			return RenderPassToPresentationTarget(context, presentationTarget, parserContext, loadOperation);
-		}
+
+        parserContext.GetNamedResources().Bind(AttachmentSemantics::ColorLDR, presentationTarget);
 
 		SubpassDesc subpass;
 		subpass._output.push_back( AttachmentViewDesc { 0, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
 		subpass._depthStencil = AttachmentViewDesc { 1, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } };
 		FrameBufferDesc::Attachment colorAttachment { AttachmentSemantics::ColorLDR, AsAttachmentDesc(presentationTarget->GetDesc()) };
-		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, AsAttachmentDesc(boundDepth->GetDesc()) };
+
+        AttachmentDesc depthDesc;
+        if (boundDepth) {
+            depthDesc = AsAttachmentDesc(boundDepth->GetDesc());
+        } else {
+            depthDesc = colorAttachment._desc;
+            depthDesc._format = Format::D24_UNORM_S8_UINT;
+            depthDesc._flags = AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil;
+        }
+		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, depthDesc };
 
 		FrameBufferDesc fbDesc {
 			std::vector<FrameBufferDesc::Attachment>{colorAttachment, depthAttachment},

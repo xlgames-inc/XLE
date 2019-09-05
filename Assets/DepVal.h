@@ -56,6 +56,10 @@ namespace Assets
 
         DependencyValidation(const DependencyValidation&) = delete;
         DependencyValidation& operator=(const DependencyValidation&) = delete;
+
+        #if defined(_DEBUG)
+            std::vector<std::string> _monitoredFiles;
+        #endif
     private:
         unsigned _validationIndex;
 
@@ -75,7 +79,7 @@ namespace Assets
     /// <param name="validationIndex">Callback to receive invalidation events</param>
     /// <param name="filename">Normally formatted filename</param>
     void RegisterFileDependency(
-        const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
+        const std::shared_ptr<DependencyValidation>& validationIndex, 
         StringSection<ResChar> filename);
 
     /// <summary>Registers a dependency on another resource</summary>
