@@ -38,9 +38,9 @@ namespace XLEMath
         template<typename Type> using Vector2T = cml::vector<Type, cml::fixed<2>>;
         template<typename Type> using Vector3T = cml::vector<Type, cml::fixed<3>>;
         template<typename Type> using Vector4T = cml::vector<Type, cml::fixed<4>>;
-        template<typename Type, size_t N> using VectorTT = cml::vector<Type, cml::fixed<N>>;
+        template<typename Type, int N> using VectorTT = cml::vector<Type, cml::fixed<N>>;
 
-        template <typename Type, size_t N>
+        template <typename Type, int N>
             cml::vector<Type, cml::fixed<N+1>>      Expand(const cml::vector<Type, cml::fixed<N>>& input, Type extra);
 
         template <typename Type>
@@ -61,7 +61,7 @@ namespace XLEMath
                 return cml::vector<Type, cml::fixed<4>>(input[0], input[1], extra[0], extra[1]);
             }
 
-        template <typename Type, size_t N>
+        template <typename Type, int N>
             cml::vector<Type, cml::fixed<N-1>>      Truncate(const cml::vector<Type, cml::fixed<N>>& input);
 
         template <typename Type>
@@ -267,7 +267,7 @@ namespace std
         // override for std::size for XLEMath::VectorTT
         // Note that std::size is part of the C++17. None of our compilers
         // support it yet; but we can still make use of the syntax.
-    template<typename ValueType, size_t N>
+    template<typename ValueType, int N>
         /*constexpr*/ auto size(const XLEMath::VectorTT<ValueType, N>& c) 
             -> decltype(c.dimension) { return c.dimension; }
 }
