@@ -121,6 +121,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         void    Bind(const ViewportDesc& viewport);
         ViewportDesc GetViewport();
 
+        void    SetScissorRect(int x, int y, int width, int height);
+
         using GraphicsPipelineBuilder::Bind;
 
         void    Draw(unsigned vertexCount, unsigned startVertexLocation=0);

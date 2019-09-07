@@ -602,7 +602,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_boundThread == [NSThread currentThread]);
         _pimpl->_activeViewport = viewport;
 
-        /* KenD -- because we may not have an encoder yet, delay setting the viewport until later */
         if (_pimpl->_commandEncoder)
             [_pimpl->_commandEncoder setViewport:AsMTLViewport(_pimpl->_activeViewport)];
     }
@@ -610,6 +609,18 @@ namespace RenderCore { namespace Metal_AppleMetal
     ViewportDesc DeviceContext::GetViewport()
     {
         return _pimpl->_activeViewport;
+    }
+
+    void DeviceContext::SetScissorRect(int x, int y, int width, int height)
+    {
+        if (_pimpl->_commandEncoder) {
+            MTLScissorRect rect;
+            rect.height = height;
+            rect.width = width;
+            rect.x = x;
+            rect.y = y;
+            [_pimpl->_commandEncoder setScissorRect:rect];
+        }
     }
 
     void DeviceContext::FinalizePipeline()
