@@ -390,7 +390,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 continue;
 
             const char* argName = [arg.name cStringUsingEncoding:NSUTF8StringEncoding];
-            auto argHash = BuildSemanticHash(argName);
+            auto argHash = Hash64(argName);
 
             // Look for matching input in our interface
             if (arg.type == MTLArgumentTypeTexture) {
