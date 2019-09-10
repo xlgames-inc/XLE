@@ -24,15 +24,18 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto lastCompleted = _eventSet->LastCompletedEvent();
             while (!_allocationsInfront.empty() && _allocationsInfront.begin()->_syncPoint <= lastCompleted)
                 _allocationsInfront.erase(_allocationsInfront.begin());
+            crashPoint = _allocationsInfront.empty() ? _totalSize : _allocationsInfront[0]._start;
+            headRoom = crashPoint - _movingPoint;
 
             if (_allocationsInfront.empty()) {
                 // try to erase from _allocationsBehind, also
                 while (!_allocationsBehind.empty() && _allocationsBehind.begin()->_syncPoint <= lastCompleted)
                     _allocationsBehind.erase(_allocationsBehind.begin());
+                crashPoint = _totalSize;
+                headRoom = crashPoint - _movingPoint;
 
                 // we can now choose to reset "_movingPoint" back to the start. But we should only
                 // do this if we still don't have enough room for the allocation
-                headRoom = _totalSize - _movingPoint;
                 if (headRoom < (size+preBufferForAlignment)) {
                     if (!_allocationsBehind.empty()) {
                         _allocationsInfront = std::move(_allocationsBehind);
@@ -100,7 +103,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // safe to write to this location immediately)
             auto offset = _syncedAllocator->Allocate((unsigned)data.size(), _allocationAlignment);
             if (offset == ~0u) {
-                Log(Warning) << "Performance warning --- synchronizing CPU/GPU due to DynamicBuffer allocation failure" << std::endl;
+                Log(Warning) << "Performance warning --- synchronizing CPU/GPU due to (GL-specific) DynamicBuffer allocation failure" << std::endl;
                 devContext.GetDevice()->Stall();
                 offset = _syncedAllocator->Allocate((unsigned)data.size(), _allocationAlignment);
             }
