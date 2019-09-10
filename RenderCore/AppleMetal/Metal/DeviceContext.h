@@ -122,6 +122,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ViewportDesc GetViewport();
 
         void    SetScissorRect(int x, int y, int width, int height);
+        void    ApplyScissorRectToFutureRenderCommandEncoders(bool shouldApply);
 
         using GraphicsPipelineBuilder::Bind;
 

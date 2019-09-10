@@ -544,6 +544,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         ViewportDesc _activeViewport;
         TBC::OCPtr<id> _activeIndexBuffer; // MTLBuffer
 
+        MTLScissorRect _activeScissorRect;
+        bool _applyScissorRectToNewRenderCommandEncoders = false;
+
         MTLIndexType _indexType;
         unsigned _indexFormatBytes;
         unsigned _indexBufferOffsetBytes;
@@ -613,14 +616,21 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::SetScissorRect(int x, int y, int width, int height)
     {
+        MTLScissorRect rect;
+        rect.height = height;
+        rect.width = width;
+        rect.x = x;
+        rect.y = y;
+        _pimpl->_activeScissorRect = rect;
+
         if (_pimpl->_commandEncoder) {
-            MTLScissorRect rect;
-            rect.height = height;
-            rect.width = width;
-            rect.x = x;
-            rect.y = y;
             [_pimpl->_commandEncoder setScissorRect:rect];
         }
+    }
+
+    void DeviceContext::ApplyScissorRectToFutureRenderCommandEncoders(bool shouldApply)
+    {
+        _pimpl->_applyScissorRectToNewRenderCommandEncoders = shouldApply;
     }
 
     void DeviceContext::FinalizePipeline()
@@ -846,6 +856,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_boundPSArgs = 0;
         _pimpl->_graphicsPipelineReflection = nullptr;
         _pimpl->_queuedUniformSets.clear();
+
+        if (_pimpl->_applyScissorRectToNewRenderCommandEncoders) {
+            [_pimpl->_commandEncoder setScissorRect:_pimpl->_activeScissorRect];
+        }
     }
 
     void            DeviceContext::CreateBlitCommandEncoder()
@@ -1010,6 +1024,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;
         _pimpl->_inRenderPass = false;
+        _pimpl->_applyScissorRectToNewRenderCommandEncoders = false;
         _pimpl->_boundThread = [NSThread currentThread];
         _pimpl->_device = device;
     }
