@@ -369,7 +369,7 @@ namespace RenderCore { namespace Techniques
         _frameBuffer = std::move(fb._frameBuffer);
         _attachmentPoolRemapping = std::vector<AttachmentName>(fb._poolAttachmentsRemapping.begin(), fb._poolAttachmentsRemapping.end());
         _attachmentPool = &attachmentPool;
-        Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, layout, attachmentPool.GetFrameBufferProperties(), beginInfo._clearValues);
+        Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, beginInfo._clearValues);
     }
 
 	RenderPassInstance::RenderPassInstance(

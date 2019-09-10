@@ -231,8 +231,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
         IteratorRange<const ClearValue*> clearValues)
     {
         s_nextSubpass = 0;
