@@ -71,4 +71,43 @@ namespace RenderCore { namespace Metal_AppleMetal
     ResourceDesc ExtractRenderBufferDesc(const id<MTLTexture>& texture);
     //ResourceDesc ExtractTextureDesc(const id<MTLTexture>& texture);
     //ResourceDesc ExtractBufferDesc(const id<MTLBuffer>& buffer);
+
+
+    class BlitPass
+    {
+    public:
+        class CopyPartial_Dest
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+        };
+
+        class CopyPartial_Src
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+            VectorPattern<unsigned, 3>      _rightBottomBack;
+        };
+
+        void    Write(
+            const CopyPartial_Dest& dst,
+            const SubResourceInitData& srcData,
+            Format srcDataFormat,
+            VectorPattern<unsigned, 3> srcDataDimensions);
+
+        void    Copy(
+            const CopyPartial_Dest& dst,
+            const CopyPartial_Src& src);
+
+        BlitPass(IThreadContext& threadContext);
+        ~BlitPass();
+
+    private:
+        DeviceContext* _devContext;
+        bool _openedEncoder;
+    };
 }}

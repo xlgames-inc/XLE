@@ -362,4 +362,153 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         return CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, TextureDesc::Plain2D((uint32)texture.width, (uint32)texture.height, AsRenderCoreFormat(texture.pixelFormat)), "");
     }
+
+
+    void BlitPass::Write(
+        const CopyPartial_Dest& dst,
+        const RenderCore::SubResourceInitData& srcData,
+        RenderCore::Format srcDataFormat,
+        VectorPattern<unsigned, 3> srcDataDimensions)
+    {
+        auto* metalContentRes = (RenderCore::Metal_AppleMetal::Resource*)dst._resource->QueryInterface(typeid(RenderCore::Metal_AppleMetal::Resource).hash_code());
+        assert(metalContentRes);
+
+        auto srcPixelCount = srcDataDimensions[0] * srcDataDimensions[1] * srcDataDimensions[2];
+        if (!srcPixelCount)
+            Throw(std::runtime_error("No source pixels in WriteTexels operation. The depth of the srcDataDimensions field might need to be at least 1."));
+
+        auto transferSrc = _devContext->GetDevice()->CreateResource(
+            RenderCore::CreateDesc(
+                RenderCore::BindFlag::TransferSrc,
+                0, RenderCore::GPUAccess::Read,
+                RenderCore::TextureDesc::Plain3D(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2], srcDataFormat),
+                "BlitPassInstanceSrc"),
+            [srcData](RenderCore::SubResourceId) { return srcData; });
+
+        auto* metalSrcRes = (RenderCore::Metal_AppleMetal::Resource*)transferSrc->QueryInterface(typeid(RenderCore::Metal_AppleMetal::Resource).hash_code());
+        assert(metalSrcRes);
+
+        if (!_openedEncoder) {
+            _devContext->CreateBlitCommandEncoder();
+            _openedEncoder = true;
+        }
+
+        id<MTLBlitCommandEncoder> encoder = _devContext->GetBlitCommandEncoder();
+        [encoder copyFromTexture:metalSrcRes->GetTexture()
+                     sourceSlice:0
+                     sourceLevel:0
+                    sourceOrigin:MTLOriginMake(0,0,0)
+                      sourceSize:MTLSizeMake(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2])
+                       toTexture:metalContentRes->GetTexture()
+                destinationSlice:dst._subResource._arrayLayer
+                destinationLevel:dst._subResource._mip
+               destinationOrigin:MTLOriginMake(dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2])];
+
+        id<MTLCommandBuffer> commandBuffer = _devContext->RetrieveCommandBuffer();
+        [commandBuffer addCompletedHandler:^(id){ (void)transferSrc; }];
+    }
+
+    void BlitPass::Copy(
+        const CopyPartial_Dest& dst,
+        const CopyPartial_Src& src)
+    {
+        auto* dstMetalRes = (RenderCore::Metal_AppleMetal::Resource*)dst._resource->QueryInterface(typeid(RenderCore::Metal_AppleMetal::Resource).hash_code());
+        assert(dstMetalRes);
+
+        auto* srcMetalRes = (RenderCore::Metal_AppleMetal::Resource*)src._resource->QueryInterface(typeid(RenderCore::Metal_AppleMetal::Resource).hash_code());
+        assert(srcMetalRes);
+
+        if (!_openedEncoder) {
+            _devContext->CreateBlitCommandEncoder();
+            _openedEncoder = true;
+        }
+        id<MTLBlitCommandEncoder> encoder = _devContext->GetBlitCommandEncoder();
+
+        if (dstMetalRes->GetTexture() && srcMetalRes->GetTexture()) {
+
+            // texture-to-texture copy
+            [encoder copyFromTexture:srcMetalRes->GetTexture()
+                         sourceSlice:src._subResource._arrayLayer
+                         sourceLevel:src._subResource._mip
+                        sourceOrigin:MTLOriginMake(src._leftTopFront[0], src._leftTopFront[1], src._leftTopFront[2])
+                          sourceSize:MTLSizeMake(src._rightBottomBack[0]-src._leftTopFront[0], src._rightBottomBack[1]-src._leftTopFront[1], src._rightBottomBack[2]-src._leftTopFront[2])
+                           toTexture:dstMetalRes->GetTexture()
+                    destinationSlice:dst._subResource._arrayLayer
+                    destinationLevel:dst._subResource._mip
+                   destinationOrigin:MTLOriginMake(dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2])];
+
+        } else if (dstMetalRes->GetTexture() && srcMetalRes->GetBuffer()) {
+
+            // buffer-to-texture copy
+            auto srcDesc = srcMetalRes->GetDesc();
+            if (srcDesc._type != RenderCore::ResourceDesc::Type::Texture)
+                Throw(std::runtime_error("Source resource does not have a texture desc in BlitPassInstance::Copy operation. Both input and output must have a texture type desc"));
+
+            auto mipOffset = RenderCore::GetSubResourceOffset(srcDesc._textureDesc, src._subResource._mip, 0);
+            auto startOffset =
+                    src._leftTopFront[0] * RenderCore::BitsPerPixel(srcDesc._textureDesc._format) / 8
+                +   src._leftTopFront[1] * mipOffset._pitches._rowPitch
+                +   src._leftTopFront[2] * mipOffset._pitches._slicePitch
+                ;
+
+            [encoder copyFromBuffer:srcMetalRes->GetBuffer()
+                       sourceOffset:mipOffset._offset + startOffset
+                  sourceBytesPerRow:mipOffset._pitches._rowPitch
+                sourceBytesPerImage:mipOffset._pitches._slicePitch
+                         sourceSize:MTLSizeMake(src._rightBottomBack[0]-src._leftTopFront[0], src._rightBottomBack[1]-src._leftTopFront[1], src._rightBottomBack[2]-src._leftTopFront[2])
+                          toTexture:dstMetalRes->GetTexture()
+                   destinationSlice:dst._subResource._arrayLayer
+                   destinationLevel:dst._subResource._mip
+                  destinationOrigin:MTLOriginMake(dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2])];
+
+        } else if (dstMetalRes->GetBuffer() && srcMetalRes->GetTexture()) {
+
+            // texture-to-buffer copy
+            auto dstDesc = dstMetalRes->GetDesc();
+            if (dstDesc._type != RenderCore::ResourceDesc::Type::Texture)
+                Throw(std::runtime_error("Source resource does not have a texture desc in BlitPassInstance::Copy operation. Both input and output must have a texture type desc"));
+
+            auto mipOffset = RenderCore::GetSubResourceOffset(dstDesc._textureDesc, dst._subResource._mip, 0);
+            auto startOffset =
+                    dst._leftTopFront[0] * RenderCore::BitsPerPixel(dstDesc._textureDesc._format) / 8
+                +   dst._leftTopFront[1] * mipOffset._pitches._rowPitch
+                +   dst._leftTopFront[2] * mipOffset._pitches._slicePitch
+                ;
+
+            [encoder copyFromTexture:srcMetalRes->GetTexture()
+                         sourceSlice:src._subResource._arrayLayer
+                         sourceLevel:src._subResource._mip
+                        sourceOrigin:MTLOriginMake(src._leftTopFront[0], src._leftTopFront[1], src._leftTopFront[2])
+                          sourceSize:MTLSizeMake(src._rightBottomBack[0]-src._leftTopFront[0], src._rightBottomBack[1]-src._leftTopFront[1], src._rightBottomBack[2]-src._leftTopFront[2])
+                            toBuffer:dstMetalRes->GetBuffer()
+                   destinationOffset:mipOffset._offset + startOffset
+              destinationBytesPerRow:mipOffset._pitches._rowPitch
+            destinationBytesPerImage:mipOffset._pitches._slicePitch];
+
+        } else {
+
+            Throw(std::runtime_error("Expecting either destination or source or both to be a true texture type in BlitPassInstance::Copy operation. Both input resources where either buffers or invalid"));
+
+        }
+
+    }
+
+    BlitPass::BlitPass(IThreadContext& threadContext)
+    {
+        _devContext = RenderCore::Metal_AppleMetal::DeviceContext::Get(threadContext).get();
+        if (!_devContext)
+            Throw(std::runtime_error("Unexpected thread context type passed to BltPassInstance constructor (expecting Apple Metal thread context)"));
+        if (_devContext->InRenderPass())
+            Throw(::Exceptions::BasicLabel("BlitPassInstance begun while inside of a render pass. This can only be called outside of render passes."));
+        _openedEncoder = false;
+    }
+
+    BlitPass::~BlitPass()
+    {
+        if (_openedEncoder) {
+            _devContext->EndEncoding();
+            _devContext->DestroyBlitCommandEncoder();
+        }
+    }
+
 }}
