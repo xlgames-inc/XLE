@@ -28,6 +28,10 @@
 #include <unordered_set>
 #include <cctype>
 
+// HACK HACK HACK
+#include <signal.h>
+#include <unistd.h>
+
 // #define EXTRA_INPUT_LAYOUT_LOGGING
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -564,7 +568,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 // METAL_TODO: something should own this object!
                 // METAL_TODO: When we move this to a more appropriate place, get a proper IThreadContext instead of passing nullptr. It happens to work here because this code is GL-only, and the GL implementation currently passes the context down a couple levels just to be ignored.
                 static DynamicBuffer buffer(
-                    RenderCore::LinearBufferDesc::Create(128 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
+                    RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
 
                 const auto& cbv = stream._constantBuffers[uniformBuffer._slot];
                 const auto& pkt = cbv._packet;
