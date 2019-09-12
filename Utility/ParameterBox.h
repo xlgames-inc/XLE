@@ -118,6 +118,8 @@ namespace Utility
             ParameterName(StringSection<utf8> name);
             ParameterName(StringSection<char> name);
             ParameterName(ParameterNameHash hash);
+            ParameterName(const utf8 name[]);
+            ParameterName(const char name[]);
         };
 
         static ParameterNameHash    MakeParameterNameHash(StringSection<utf8> name);
@@ -287,6 +289,16 @@ namespace Utility
     }
 
     inline ParameterBox::ParameterName::ParameterName(StringSection<char> name)
+    {
+        _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(const utf8 name[])
+    {
+        _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(const char name[])
     {
         _hash = ParameterBox::MakeParameterNameHash(name);
     }
