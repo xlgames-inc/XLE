@@ -617,8 +617,39 @@ namespace RenderCore { namespace Metal_OpenGLES
         // Commit changes to texture uniforms
         // This must be done separately to the texture binding, because when using array uniforms,
         // a single uniform set operation can be used for multiple texture bindings
-        if (streamIdx == 0 && !_textureAssignmentCommands._commands.empty())
+        if (streamIdx == 0 && !_textureAssignmentCommands._commands.empty()) {
             Bind(context, _textureAssignmentCommands, MakeIteratorRange(_textureAssignmentByteData));
+
+            if (_standInTexture2DUnit != ~0u) {
+                if (capture) {
+                    if (capture->_activeTextureIndex != _standInTexture2DUnit) {
+                        glActiveTexture(GL_TEXTURE0 + _standInTexture2DUnit);
+                        capture->_activeTextureIndex = _standInTexture2DUnit;
+                    }
+                    glBindTexture(GL_TEXTURE_2D, GetObjectFactory(context).StandIn2DTexture());
+                    SamplerState().Apply(*capture, _standInTexture2DUnit, GL_TEXTURE_2D, nullptr, false);
+                } else {
+                    glActiveTexture(GL_TEXTURE0 + _standInTexture2DUnit);
+                    glBindTexture(GL_TEXTURE_2D, GetObjectFactory(context).StandIn2DTexture());
+                    SamplerState().Apply(_standInTexture2DUnit, GL_TEXTURE_2D, false);
+                }
+            }
+
+            if (_standInTextureCubeUnit != ~0u) {
+                if (capture) {
+                    if (capture->_activeTextureIndex != _standInTextureCubeUnit) {
+                        glActiveTexture(GL_TEXTURE0 + _standInTextureCubeUnit);
+                        capture->_activeTextureIndex = _standInTextureCubeUnit;
+                    }
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, GetObjectFactory(context).StandInCubeTexture());
+                    SamplerState().Apply(*capture, _standInTextureCubeUnit, GL_TEXTURE_2D, nullptr, false);
+                } else {
+                    glActiveTexture(GL_TEXTURE0 + _standInTextureCubeUnit);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, GetObjectFactory(context).StandInCubeTexture());
+                    SamplerState().Apply(_standInTextureCubeUnit, GL_TEXTURE_CUBE_MAP, false);
+                }
+            }
+        }
 
         CheckGLError("Apply BoundUniforms");
     }
@@ -821,8 +852,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
+        auto globalsStruct = introspection.FindStruct(0);
         #if defined(_DEBUG)
-            auto globalsStruct = introspection.FindStruct(0);
             for (const auto&u:globalsStruct._uniforms) {
                 if (boundGlobalUniforms.find(u._bindingName) == boundGlobalUniforms.end()) {
                     Log(Verbose) << "Didn't get binding for global uniform (" << u._name << ") in BoundUniforms constructor" << std::endl;
@@ -842,6 +873,44 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
             }
         #endif
+
+        // Ensure all sampler uniforms got some assignment. If they don't have a valid assignment,
+        // we should set them to a dummy resource. This helps avoid problems related to texture
+        // bindings (maybe from previous draw calls) getting bound to incorrect sampler types
+        // (which triggers a GL error and skips the draw)
+        for (const auto&u:globalsStruct._uniforms) {
+            auto dim = DimensionalityForUniformType(u._type);
+            bool isSampler = dim != GL_NONE;
+            if (!isSampler) continue;
+
+            for (unsigned elementIndex=0; elementIndex<u._elementCount; ++elementIndex) {
+                auto existing = std::find_if(
+                    srvUniformSets.begin(), srvUniformSets.end(),
+                    [&u, elementIndex](const UniformSet& us) {
+                        return us._location == u._location && us._index == elementIndex;
+                    });
+                if (existing != srvUniformSets.end()) continue;
+
+                // If we got here, there is no existing binding. We must bind a dummy texture here
+                unsigned textureUnit = 0;
+                if (dim == GL_TEXTURE_CUBE_MAP) {
+                    if (_standInTextureCubeUnit == ~0u) {
+                        _standInTextureCubeUnit = pipelineLayout.GetFlexibleTextureUnit(textureUnitAccumulator);
+                        textureUnitAccumulator++;
+                    }
+                    textureUnit = _standInTextureCubeUnit;
+                } else {
+                    // assuming 2D, 3D textures not supported
+                    if (_standInTexture2DUnit == ~0u) {
+                        _standInTexture2DUnit = pipelineLayout.GetFlexibleTextureUnit(textureUnitAccumulator);
+                        textureUnitAccumulator++;
+                    }
+                    textureUnit = _standInTexture2DUnit;
+                }
+
+                srvUniformSets.push_back({u._location, elementIndex, textureUnit, u._type, u._elementCount});
+            }
+        }
 
         // sort the uniform sets to collect up sequential sets on the same uniforms
         std::sort(
@@ -915,6 +984,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     , _unboundUniforms(std::move(moveFrom._unboundUniforms))
     #endif
     , _capturedState(std::move(moveFrom._capturedState))
+    , _standInTexture2DUnit(moveFrom._standInTexture2DUnit)
+    , _standInTextureCubeUnit(moveFrom._standInTextureCubeUnit)
     {
         for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
             _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
@@ -940,6 +1011,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         #if defined(_DEBUG)
             _unboundUniforms = std::move(moveFrom._unboundUniforms);
         #endif
+        _standInTexture2DUnit = moveFrom._standInTexture2DUnit;
+        _standInTextureCubeUnit = moveFrom._standInTextureCubeUnit;
         _capturedState = std::move(moveFrom._capturedState);
         return *this;
     }
