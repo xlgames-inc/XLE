@@ -448,15 +448,17 @@ namespace Assets
 				auto& fs = _fileSystems[fsIdx];
 				if (!fs._pendingDirectories.empty()) {
 					auto splitPath = MakeSplitPath(fs._pendingDirectories);
-					auto dir = splitPath.GetSections()[0];
-					auto hash = HashFilenameAndPath(dir);
-					auto existing = std::find_if(
-						_directories.begin(), _directories.end(),
-						[hash](const SubDirectory& file) { return file._nameHash == hash; });
-					if (existing == _directories.end())
-						existing = _directories.emplace(existing, SubDirectory{dir.AsString(), hash});
-					existing->_filesystemIndices.push_back(fsIdx);
-					continue;
+                    if (splitPath.GetSectionCount() != 0) {
+                        auto dir = splitPath.GetSections()[0];
+                        auto hash = HashFilenameAndPath(dir);
+                        auto existing = std::find_if(
+                            _directories.begin(), _directories.end(),
+                            [hash](const SubDirectory& file) { return file._nameHash == hash; });
+                        if (existing == _directories.end())
+                            existing = _directories.emplace(existing, SubDirectory{dir.AsString(), hash});
+                        existing->_filesystemIndices.push_back(fsIdx);
+                        continue;
+                    }
 				}
 
 				auto foundSubDirs = fs._fs->FindSubDirectories(MakeStringSection(fs._internalPoint));
@@ -515,8 +517,8 @@ namespace Assets
 
 		for (auto fsIdx:i->_filesystemIndices) {
 			auto& fs = _pimpl->_fileSystems[fsIdx];
-			if (!fs._pendingDirectories.empty()) {
-				auto splitPath = MakeSplitPath(fs._pendingDirectories);
+			auto splitPath = MakeSplitPath(fs._pendingDirectories);
+            if (splitPath.GetSectionCount() != 0) {
 				assert(HashFilenameAndPath(splitPath.GetSection(0)) == hash);
 
 				// strip off the first part of the path name

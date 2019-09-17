@@ -97,17 +97,24 @@ namespace Utility
 		{
             std::vector<std::string> fileList;
 
-#if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
-            glob_t globbuf;
-            glob(searchPath.c_str(), GLOB_TILDE, NULL, &globbuf);
-            for (int i=0; i<globbuf.gl_pathc; ++i)
-                fileList.push_back(globbuf.gl_pathv[i]);
+            DIR *dir = dir = opendir(searchPath.c_str());
+            if (dir != NULL) {
+                struct dirent *entry;
+                while ((entry = readdir(dir)) != NULL) {
+                    auto full_path = searchPath + "/" + entry->d_name;
+                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                        continue;
+                    }
+                    if ((entry->d_type == DT_DIR) && (filter & FindFilesFilter::Directory)) {
+                        fileList.push_back(full_path);
+                    }
 
-            if (globbuf.gl_pathc > 0)
-                globfree(&globbuf);
-#else
-            assert(0); // implement me!
-#endif
+                    if ((entry->d_type == DT_REG) && (filter & FindFilesFilter::File)) {
+                        fileList.push_back(full_path);
+                    }
+                }
+                closedir(dir);
+            }
 
             return fileList;
 		}
