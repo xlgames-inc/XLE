@@ -214,6 +214,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                 errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
                 return false;
             }
+
+            if (!newLibrary.functionNames.count) {
+                std::string errorMsg = "Shader compile failed because no functions were found in the compiled result";
+                errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
+                return false;
+            }
+
             assert(newLibrary);
             #if defined(_DEBUG)
                 [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];

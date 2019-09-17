@@ -1,8 +1,10 @@
 
 #include "Resource.h"
 #include "Format.h"
+#include "DeviceContext.h"
 #include "../../ResourceUtils.h"
 #include "../../../ConsoleRig/Log.h"
+#include "../../../Utility/BitUtils.h"
 #include "IncludeGLES.h"
 #include <sstream>
 
@@ -549,6 +551,117 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         return str.str();
     }
+
+
+    void BlitPass::Write(
+        const CopyPartial_Dest& dst,
+        const RenderCore::SubResourceInitData& srcData,
+        RenderCore::Format srcDataFormat,
+        VectorPattern<unsigned, 3> srcDataDimensions)
+    {
+        auto texelFormatType = RenderCore::Metal_OpenGLES::AsTexelFormatType(srcDataFormat);
+        auto oglesContentRes = (RenderCore::Metal_OpenGLES::Resource*)dst._resource->QueryInterface(typeid(RenderCore::Metal_OpenGLES::Resource).hash_code());
+        assert(oglesContentRes);
+
+        if (dst._leftTopFront[2] != 0 || srcDataDimensions[2] != 1 || dst._subResource._arrayLayer != 0)
+            Throw(std::runtime_error("Only first depth slice and array slice supported for OpenGLES WritePixel operations"));
+
+        auto desc = oglesContentRes->GetDesc();
+        if (desc._type != RenderCore::ResourceDesc::Type::Texture)
+            Throw(std::runtime_error("Non-texture resource type used with OGLES WritePixel operation"));
+
+        if (dst._subResource._mip >= desc._textureDesc._mipCount)
+            Throw(std::runtime_error("Mipmap index used in OGLES WritePixel operation is too high"));
+
+        if ((dst._leftTopFront[0]+srcDataDimensions[0]) > desc._textureDesc._width || (dst._leftTopFront[1]+srcDataDimensions[1]) > desc._textureDesc._height)
+            Throw(std::runtime_error("Rectangle dimensions used with OGLES WritePixel operation are outside of the destination texture area"));
+
+        glBindTexture(GL_TEXTURE_2D, oglesContentRes->GetTexture()->AsRawGLHandle());
+        if (!_boundTexture) {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        }
+        _boundTexture = true;
+
+        auto rowPitch = srcData._pitches._rowPitch;
+        if (!rowPitch)
+            rowPitch = srcDataDimensions[0] * BitsPerPixel(srcDataFormat) / 8;
+
+        if (rowPitch != CeilToMultiple(srcDataDimensions[0] * BitsPerPixel(srcDataFormat) / 8, 4))
+            Throw(std::runtime_error("Row pitch unexpected for GLES Write operation. Expecting densely packed rows."));
+
+        assert((size_t(srcData._data.begin()) % 4) == 0);
+        assert((rowPitch % 4) == 0);
+
+        glTexSubImage2D(
+            GL_TEXTURE_2D, dst._subResource._mip,
+            dst._leftTopFront[0], dst._leftTopFront[1], srcDataDimensions[0], srcDataDimensions[1],
+            texelFormatType._format, texelFormatType._type,
+            srcData._data.begin());
+
+        CheckGLError("After glTexSubImage2D() upload in BlitPassInstance::Write");
+    }
+
+    void BlitPass::Copy(
+        const CopyPartial_Dest& dst,
+        const CopyPartial_Src& src)
+    {
+        Throw(std::runtime_error("BlitPassInstance::Copy() not implemented for OpenGLES"));
+    }
+
+    BlitPass::BlitPass(RenderCore::IThreadContext& genericContext)
+    {
+        auto* context = DeviceContext::Get(genericContext).get();
+        if (!context)
+            Throw(std::runtime_error("Unexpected thread context type passed to BltPassInstance constructor (expecting GLES thread context)"));
+        if (context->InRenderPass())
+            Throw(::Exceptions::BasicLabel("BlitPassInstance begun while inside of a render pass. This can only be called outside of render passes."));
+
+        _boundTexture = false;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &_prevTextureBinding);
+
+        GLint packRowLength = 0, packSkipRows = 0, packSkipPixels = 0;
+        GLint packAlignment = 0;
+        glGetIntegerv(GL_PACK_ROW_LENGTH, &packRowLength);
+        glGetIntegerv(GL_PACK_SKIP_ROWS, &packSkipRows);
+        glGetIntegerv(GL_PACK_SKIP_PIXELS, &packSkipPixels);
+        glGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
+
+        GLint unpackRowLength = 0, unpackSkipRows = 0, unpackSkipPixels = 0, unpackSkipImages =0;
+        GLint unpackImageHeight = 0, unpackAlignment = 0;
+        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &unpackRowLength);
+        glGetIntegerv(GL_UNPACK_SKIP_ROWS, &unpackSkipRows);
+        glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &unpackSkipPixels);
+        glGetIntegerv(GL_UNPACK_SKIP_IMAGES, &unpackSkipImages);
+        glGetIntegerv(GL_UNPACK_IMAGE_HEIGHT, &unpackImageHeight);
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+
+        assert(packRowLength == 0);
+        assert(packSkipRows == 0);
+        assert(packSkipPixels == 0);
+
+        assert(unpackSkipRows == 0);
+        assert(unpackSkipPixels == 0);
+        assert(unpackSkipImages == 0);
+        assert(unpackImageHeight == 0);
+
+        _prevUnpackAlignment = unpackAlignment;
+        _prevUnpackRowLength = unpackRowLength;
+
+        GLint unpackBuffer = 0;
+        glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
+        assert(unpackBuffer == 0);
+    }
+
+    BlitPass::~BlitPass()
+    {
+        if (_boundTexture) {
+            glBindTexture(GL_TEXTURE_2D, _prevTextureBinding);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, _prevUnpackRowLength);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, _prevUnpackAlignment);
+        }
+    }
+
 
 }}
 

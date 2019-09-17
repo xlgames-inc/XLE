@@ -74,6 +74,45 @@ namespace RenderCore { namespace Metal_OpenGLES
     ResourceDesc ExtractDesc(OpenGL::Texture* renderbuffer);
     ResourceDesc ExtractDesc(OpenGL::Buffer* renderbuffer);
     std::string DescribeUnknownObject(unsigned glName);
+
+    class BlitPass
+    {
+    public:
+        class CopyPartial_Dest
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+        };
+
+        class CopyPartial_Src
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+            VectorPattern<unsigned, 3>      _rightBottomBack;
+        };
+
+        void    Write(
+            const CopyPartial_Dest& dst,
+            const SubResourceInitData& srcData,
+            Format srcDataFormat,
+            VectorPattern<unsigned, 3> srcDataDimensions);
+
+        void    Copy(
+            const CopyPartial_Dest& dst,
+            const CopyPartial_Src& src);
+
+        BlitPass(IThreadContext& threadContext);
+        ~BlitPass();
+
+    private:
+        GLint _prevTextureBinding;
+        GLint _prevUnpackAlignment, _prevUnpackRowLength;
+        bool _boundTexture;
+    };
 }}
 
 

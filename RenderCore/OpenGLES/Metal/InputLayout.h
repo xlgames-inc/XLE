@@ -145,6 +145,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         std::vector<uint8_t>    _textureAssignmentByteData;
 
         std::shared_ptr<ShaderProgramCapturedState> _capturedState;
+
+        unsigned _standInTexture2DUnit = ~0u;
+        unsigned _standInTextureCubeUnit = ~0u;
     };
 
 }}
