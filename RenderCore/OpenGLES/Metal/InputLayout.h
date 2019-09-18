@@ -137,9 +137,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
             unsigned _stream, _slot;
             unsigned _uniformBlockIdx;
+            unsigned _blockSize;
             DEBUG_ONLY(std::string _name;)
         };
         std::vector<UniformBuffer> _uniformBuffer;
+
+        struct UnboundUniformBuffer
+        {
+            unsigned _uniformBlockIdx;
+            unsigned _blockSize;
+            DEBUG_ONLY(std::string _name;)
+        };
+        std::vector<UnboundUniformBuffer> _unboundUniformBuffers;
 
         SetUniformCommandGroup  _textureAssignmentCommands;
         std::vector<uint8_t>    _textureAssignmentByteData;
