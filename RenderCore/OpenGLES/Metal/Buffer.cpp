@@ -35,7 +35,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 } else
             #endif
             {
-                glBufferSubData(bindTarget, 0, dataSize, data);
+                glBufferSubData(bindTarget, writeOffset, dataSize, data);
             }
         } else {
             auto size = std::min(ptrdiff_t(_constantBuffer.size()) - ptrdiff_t(writeOffset), ptrdiff_t(dataSize));
