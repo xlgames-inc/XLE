@@ -410,20 +410,27 @@ namespace RenderCore { namespace Assets
 
             auto size = nextElement.GetSize();
 
-            // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
-            // let's detect that case, and add pre-alignment as necessary
-            if (FloorToMultiplePow2(iterator, 16) != FloorToMultiplePow2(iterator + std::min(16u, size) - 1, 16)) {
+            if (nextElementArrayCount==0) {
+                // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
+                // let's detect that case, and add pre-alignment as necessary
+                if (FloorToMultiplePow2(iterator, 16) != FloorToMultiplePow2(iterator + std::min(16u, size) - 1, 16)) {
+                    iterator = CeilToMultiplePow2(iterator, 16);
+                }
+
+                unsigned result = iterator;     // this is the offset for the new element
+                arrayElementStride = size;
+                iterator += size;
+                return result;
+
+            } else {
+                // We must always begin on 16 byte alignment for an array
+                // note this even applies to array of a single element
                 iterator = CeilToMultiplePow2(iterator, 16);
+                unsigned result = iterator;
+                arrayElementStride = CeilToMultiplePow2(size, 16);
+                iterator += nextElementArrayCount * arrayElementStride;
+                return result;
             }
-
-            unsigned result = iterator;     // this is the offset for the new element
-
-            arrayElementStride = (nextElementArrayCount>1) ? CeilToMultiplePow2(size, 16) : size;
-
-            // now add the size of the
-            iterator += (std::max(1u, nextElementArrayCount)-1) * arrayElementStride + size;
-
-            return result;
 
         } else if (alignmentRules == PredefinedCBLayout::AlignmentRules_MSL) {
 
