@@ -453,6 +453,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             uint64_t _cbNameHash;
             unsigned _boundBuffer;
             unsigned _deviceContextCaptureGUID;
+            unsigned _rangeBegin = 0;
+            unsigned _rangeEnd = 0;
         };
         std::vector<UniformBuffers> _uniformBuffers;
 
@@ -570,6 +572,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 static DynamicBuffer buffer(
                     RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
 
+                assert(uniformBuffer._uniformBlockIdx < _capturedState->_uniformBuffers.size());
+                auto& capturedState = _capturedState->_uniformBuffers[uniformBuffer._uniformBlockIdx];
+
                 const auto& cbv = stream._constantBuffers[uniformBuffer._slot];
                 const auto& pkt = cbv._packet;
                 if (pkt.size() != 0) {
@@ -580,15 +585,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                             uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
                             buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
                             offset, pkt.size());
+                        capturedState._boundBuffer = 0;
                     } else {
                         Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
                     }
                 } else {
                     assert(((IResource*)cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
                     auto* res = checked_cast<const Resource*>(cbv._prebuiltBuffer);
-
-                    assert(uniformBuffer._uniformBlockIdx < _capturedState->_uniformBuffers.size());
-                    auto& capturedState = _capturedState->_uniformBuffers[uniformBuffer._uniformBlockIdx];
 
                     if (!res->GetConstantBuffer().empty()) {
 
@@ -597,21 +600,40 @@ namespace RenderCore { namespace Metal_OpenGLES
                         // we can overwrite the part of the buffer that was previously bound and
                         // thereby mark some updates as incorrectly redundant.
 
-                        unsigned offset = buffer.Write(context, res->GetConstantBuffer());
+                        auto data = res->GetConstantBuffer();
+                        if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
+                            auto base = data;
+                            data.first = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeBegin));
+                            data.second = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeEnd));
+                        }
+                        unsigned offset = buffer.Write(context, data);
                         glBindBufferRange(
                             GL_UNIFORM_BUFFER,
                             uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
                             buffer.GetBuffer().GetUnderlying()->AsRawGLHandle(),
-                            offset, res->GetConstantBuffer().size());
+                            offset, data.size());
+                        capturedState._boundBuffer = 0;
 
                     } else {
                         auto glHandle = res->GetBuffer()->AsRawGLHandle();
                         if (    capturedState._boundBuffer != glHandle
-                            ||  capturedState._deviceContextCaptureGUID != context.GetCapturedStates()->_captureGUID) {
+                            ||  capturedState._deviceContextCaptureGUID != context.GetCapturedStates()->_captureGUID
+                            ||  capturedState._rangeBegin != cbv._prebuiltRangeBegin
+                            ||  capturedState._rangeEnd != cbv._prebuiltRangeEnd) {
 
-                            glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
+                            if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
+                                glBindBufferRange(
+                                    GL_UNIFORM_BUFFER,
+                                    uniformBuffer._uniformBlockIdx,
+                                    glHandle,
+                                    cbv._prebuiltRangeBegin, cbv._prebuiltRangeEnd-cbv._prebuiltRangeBegin);
+                            } else {
+                                glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
+                            }
                             capturedState._boundBuffer = res->GetBuffer()->AsRawGLHandle();
                             capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                            capturedState._rangeBegin = cbv._prebuiltRangeBegin;
+                            capturedState._rangeEnd = cbv._prebuiltRangeEnd;
                         }
                     }
                 }
