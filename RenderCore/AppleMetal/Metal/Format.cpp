@@ -381,6 +381,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::R16G16_FLOAT: return MTLVertexFormatHalf2;
             case Format::R16G16B16A16_FLOAT: return MTLVertexFormatHalf4;
 
+            case Format::R16G16_UINT: return MTLVertexFormatUShort2;
+            case Format::R16G16B16A16_UINT: return MTLVertexFormatUShort4;
+
+            case Format::R16G16_SINT: return MTLVertexFormatShort2;
+            case Format::R16G16B16A16_SINT: return MTLVertexFormatShort4;
+
             case Format::R8G8_UINT: return MTLVertexFormatUChar2;
             case Format::R8G8B8_UINT: return MTLVertexFormatUChar3;
             case Format::R8G8B8A8_UINT: return MTLVertexFormatUChar4;
