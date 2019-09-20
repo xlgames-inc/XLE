@@ -407,14 +407,25 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         _pimpl->_activePrimitiveType = AsMTLenum(topology);
     }
+    
+    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
+    {
+        _rs = desc;
+    }
 
     const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
+        
+        auto cullMode = AsMTLenum(_rs._cullMode);
+        auto faceWinding = AsMTLenum(_rs._frontFaceWinding);
+        
         auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
         hash = HashCombine(_pimpl->_absHash, hash);
         hash = HashCombine(_pimpl->_dssHash, hash);
-        hash = HashCombine(_pimpl->_activePrimitiveType, hash);
         hash = HashCombine(_pimpl->_inputLayoutGuid, hash);
+        hash = HashCombine(cullMode |
+                            (faceWinding << 2) |
+                            (_pimpl->_activePrimitiveType << 3), hash);
 
         auto i = _pimpl->_prebuiltPipelines.find(hash);
         if (i!=_pimpl->_prebuiltPipelines.end())
@@ -481,6 +492,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             std::move(dss),
             (unsigned)_pimpl->_activePrimitiveType,
             _pimpl->_activeDepthStencilDesc._stencilReference,
+            _rs,
             hash
 
             #if defined(_DEBUG)
@@ -589,6 +601,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void DeviceContext::Bind(const RasterizationDesc& desc)
     {
+        GraphicsPipelineBuilder::Bind(desc);
         assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setFrontFacingWinding:AsMTLenum(desc._frontFaceWinding)];

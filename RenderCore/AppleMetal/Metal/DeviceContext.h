@@ -66,6 +66,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
         unsigned _primitiveType;              // MTLPrimitiveType
         unsigned _stencilReferenceValue;        // todo -- separate stencil reference value from DepthStencilDesc
+        RasterizationDesc _rs;
         uint64_t _hash;
 
         uint64_t GetGUID() const { return _hash; }
@@ -83,6 +84,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void Bind(const AttachmentBlendDesc& desc);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
+        void Bind(const RasterizationDesc& rasterizer);
 
         DepthStencilDesc ActiveDepthStencilDesc();
 
@@ -100,6 +102,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
         bool _dirty;
+        RasterizationDesc _rs;
 
         TBC::OCPtr<NSObject<MTLDepthStencilState>> CreateDepthStencilState(ObjectFactory& factory);
     };
