@@ -262,6 +262,7 @@ namespace RenderCore { namespace ImplOpenGLES
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, EAGLContext* eaglContext, const void* platformValue, const PresentationChainDesc& desc)
+    : _eaglContext(eaglContext)
     {
         if (desc._bindFlags & BindFlag::ShaderResource) {
             Throw(std::runtime_error("Readable main color buffer is not supported on iOS; need to use fake backbuffer path"));
