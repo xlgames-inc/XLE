@@ -91,6 +91,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////
 
+    class BoundContextVerification;
+
     class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
@@ -116,6 +118,10 @@ namespace RenderCore { namespace ImplOpenGLES
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
         TBC::OCPtr<EAGLContext> _sharedContext;
+
+        #if defined(_DEBUG)
+            std::unique_ptr<BoundContextVerification> _boundContextVerification;
+        #endif
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES

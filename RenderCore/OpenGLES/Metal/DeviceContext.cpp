@@ -16,6 +16,17 @@
 #include "IncludeGLES.h"
 #include <assert.h>
 
+#if defined(_DEBUG) && (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+    namespace RenderCore { namespace ImplOpenGLES {
+        void CheckContextIntegrity();
+    }}
+#else
+    namespace RenderCore { namespace ImplOpenGLES {
+        inline void CheckContextIntegrity() {}
+    }}
+#endif
+
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     static GLenum AsGLIndexBufferType(Format idxFormat)
@@ -32,6 +43,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(const IndexBufferView& IB)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
 		auto ibBuffer = GetBufferRawGLHandle(*IB._resource);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuffer);
 
@@ -45,6 +58,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::UnbindInputLayout()
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         if (_featureSet & FeatureSet::GLES300) {
             glBindVertexArray(0);
         } else {
@@ -63,6 +78,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
         CheckGLError("Bind ShaderProgram");
     }
@@ -93,6 +109,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(const RasterizationDesc& desc)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         if (desc._cullMode != CullMode::None) {
             glEnable(GL_CULL_FACE);
             glCullFace(AsGLenum(desc._cullMode));
@@ -105,6 +122,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         CheckGLError("Bind DepthStencilState (start)");
 
         glDepthFunc(AsGLenum(desc._depthTest));
@@ -220,6 +238,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Bind(const ViewportDesc& viewport)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
 
         // hack -- desktop gl has a slight naming change
@@ -260,12 +279,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
         CheckGLError("Draw()");
     }
 
     void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         CheckGLError("before DrawIndexed()");
 
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
@@ -278,6 +299,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
                 glDrawArraysInstanced(
@@ -305,6 +328,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
@@ -338,6 +363,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::BeginStateCapture(CapturedStates& capturedStates)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         assert(!_capturedStates);
         _capturedStates = &capturedStates;
 
@@ -377,12 +404,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DeviceContext::BeginRenderPass()
     {
+        ImplOpenGLES::CheckContextIntegrity();
         assert(!_inRenderPass);
         _inRenderPass = true;
     }
 
     void DeviceContext::EndRenderPass()
     {
+        ImplOpenGLES::CheckContextIntegrity();
         assert(_inRenderPass);
         _inRenderPass = false;
         for (auto fn: _onEndRenderPassFunctions) { fn(); }
