@@ -197,7 +197,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         return _constantBuffer;
     }
 
-    static uint64_t s_nextResourceGUID = 1;
+    static std::atomic<uint64_t> s_nextResourceGUID;
+    static uint64_t GetNextResourceGUID()
+    {
+        auto beforeIncrement = s_nextResourceGUID.fetch_add(1);
+        return beforeIncrement+1;
+    }
 
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
@@ -223,12 +228,15 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
     */
 
+    void CheckContext();
+    void GLUberReset();
+
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const IDevice::ResourceInitializer& initializer)
     : _desc(desc)
     , _isBackBuffer(false)
-    , _guid(s_nextResourceGUID++)
+    , _guid(GetNextResourceGUID())
     {
         #if defined(_DEBUG) && (PLATFORMOS_TARGET == PLATFORMOS_IOS)
             ImplOpenGLES::CheckContextIntegrity();
@@ -414,7 +422,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     Resource::Resource(const intrusive_ptr<OpenGL::Texture>& texture, const ResourceDesc& desc)
     : _underlyingTexture(texture)
     , _desc(desc)
-    , _guid(s_nextResourceGUID++)
+    , _guid(GetNextResourceGUID())
     {
         if (!glIsTexture(texture->AsRawGLHandle()))
             Throw(::Exceptions::BasicLabel("Binding non-texture as texture resource"));
@@ -423,7 +431,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     Resource::Resource(const intrusive_ptr<OpenGL::RenderBuffer>& renderbuffer)
     : _underlyingRenderBuffer(renderbuffer)
-    , _guid(s_nextResourceGUID++)
+    , _guid(GetNextResourceGUID())
     {
         if (!glIsRenderbuffer(renderbuffer->AsRawGLHandle()))
             Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
@@ -434,7 +442,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     Resource::Resource(const intrusive_ptr<OpenGL::Buffer>& buffer)
     : _underlyingBuffer(buffer)
-    , _guid(s_nextResourceGUID++)
+    , _guid(GetNextResourceGUID())
     {
         if (!glIsBuffer(buffer->AsRawGLHandle()))
             Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
@@ -443,7 +451,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _isBackBuffer = false;
     }
 
-    Resource::Resource() : _isBackBuffer(false), _guid(s_nextResourceGUID++) {}
+    Resource::Resource() : _isBackBuffer(false), _guid(GetNextResourceGUID()) {}
     Resource::~Resource() {}
 
     Resource Resource::CreateBackBuffer(const Desc& desc)
