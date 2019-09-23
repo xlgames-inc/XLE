@@ -107,19 +107,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
-    void DeviceContext::Bind(const RasterizationDesc& desc)
-    {
-        ImplOpenGLES::CheckContextIntegrity();
-        if (desc._cullMode != CullMode::None) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(AsGLenum(desc._cullMode));
-        } else {
-            glDisable(GL_CULL_FACE);
-        }
-        glFrontFace(AsGLenum(desc._frontFaceWinding));
-        CheckGLError("Bind RasterizationState");
-    }
-
     void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
         ImplOpenGLES::CheckContextIntegrity();
@@ -234,6 +221,20 @@ namespace RenderCore { namespace Metal_OpenGLES
                     ((desc._writeMask & ColorWriteMask::Green) ? GL_TRUE : GL_FALSE),
                     ((desc._writeMask & ColorWriteMask::Blue)  ? GL_TRUE : GL_FALSE),
                     ((desc._writeMask & ColorWriteMask::Alpha) ? GL_TRUE : GL_FALSE));
+    }
+    
+    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
+    {
+        _rs = desc;
+        ImplOpenGLES::CheckContextIntegrity();
+        if (desc._cullMode != CullMode::None) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(AsGLenum(desc._cullMode));
+        } else {
+            glDisable(GL_CULL_FACE);
+        }
+        glFrontFace(AsGLenum(desc._frontFaceWinding));
+        CheckGLError("Bind RasterizationState");
     }
 
     void DeviceContext::Bind(const ViewportDesc& viewport)

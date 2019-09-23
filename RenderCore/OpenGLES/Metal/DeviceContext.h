@@ -10,6 +10,7 @@
 #include "ObjectFactory.h"
 #include "TextureView.h"
 #include "Format.h"     // (for FeatureSet)
+#include "State.h"
 #include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
@@ -79,6 +80,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Bind(const AttachmentBlendDesc& blendState);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
+        void Bind(const RasterizationDesc& desc);
 
         DepthStencilDesc ActiveDepthStencilDesc();
 
@@ -91,6 +93,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     protected:
         unsigned    _nativeTopology;
         FeatureSet::BitField _featureSet;
+        RasterizationDesc _rs;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +107,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
 
-        void Bind(const RasterizationDesc& rasterizer);
         void Bind(const ViewportDesc& viewport);
         ViewportDesc GetViewport();
 
