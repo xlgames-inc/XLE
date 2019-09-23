@@ -10,6 +10,10 @@
 
 #include "GLWrappers.h"
 
+namespace RenderCore { namespace ImplOpenGLES {
+    void CheckContextIntegrity();
+}}
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
 
@@ -24,7 +28,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         // Also note that this function will always 0 when multiple flags are set in 'bindFlags'
 
         switch (bindFlags) {
-        case BindFlag::VertexBuffer: return GL_ARRAY_BUFFER;
+        case BindFlag::VertexBuffer:
+        {
+            // We have to be very careful about using the "GL_ARRAY_BUFFER" binding while a
+            // VAO is bound. That will change the VAO contents specifically, which will can later
+            // on result in clients of the VAO using this new binding. It's dangerous and difficult
+            // to debug
+            #if defined(_DEBUG)
+                GLint currentVAO = 0;
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &currentVAO);
+                assert(currentVAO==0);
+            #endif
+            return GL_ARRAY_BUFFER;
+        }
         case BindFlag::IndexBuffer: return GL_ELEMENT_ARRAY_BUFFER;
         case BindFlag::ConstantBuffer: return GL_UNIFORM_BUFFER;
         case BindFlag::StreamOutput: return GL_TRANSFORM_FEEDBACK_BUFFER;
@@ -214,6 +230,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     , _isBackBuffer(false)
     , _guid(s_nextResourceGUID++)
     {
+        #if defined(_DEBUG) && (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+            ImplOpenGLES::CheckContextIntegrity();
+        #endif
+
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
 
             SubResourceInitData initData;
@@ -236,7 +256,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(bindTarget != 0); // "Could not resolve buffer binding target for bind flags (0x%x)", bindFlags);
 
                 auto usageMode = AsUsageMode(desc._cpuAccess, desc._gpuAccess);
-                assert(bindTarget != 0); // "Could not resolve buffer usable mode for cpu access flags (0x%x) and gpu access flags (0x%x)", cpuAccess, gpuAccess);
+                assert(usageMode != 0); // "Could not resolve buffer usable mode for cpu access flags (0x%x) and gpu access flags (0x%x)", cpuAccess, gpuAccess);
 
                 // upload data to opengl buffer...
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
