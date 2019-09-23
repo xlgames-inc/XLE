@@ -28,10 +28,6 @@
 #include <unordered_set>
 #include <cctype>
 
-// HACK HACK HACK
-#include <signal.h>
-#include <unistd.h>
-
 // #define EXTRA_INPUT_LAYOUT_LOGGING
 
 namespace RenderCore { namespace Metal_OpenGLES
