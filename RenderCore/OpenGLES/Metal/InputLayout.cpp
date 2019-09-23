@@ -364,15 +364,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Apply BoundInputLayout");
     }
 
-    static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
+    static void UnderlyingBindVAO(DeviceContext& devContext, RawGLHandle vao)
     {
-        auto* capture = devContext.GetCapturedStates();
-        if (capture) {
-            capture->VerifyIntegrity();
-            if (capture->_boundVAO == vao) return;
-            capture->_boundVAO = vao;
-        }
-        
         auto featureSet = devContext.GetFeatureSet();
         if (featureSet & FeatureSet::GLES300) {
             glBindVertexArray(vao);
@@ -383,6 +376,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindVertexArrayOES(vao);
             #endif
         }
+    }
+
+    static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
+    {
+        auto* capture = devContext.GetCapturedStates();
+        if (capture) {
+            capture->VerifyIntegrity();
+            if (capture->_boundVAO == vao) return;
+            capture->_boundVAO = vao;
+        }
+
+        UnderlyingBindVAO(devContext, vao);
     }
 
     static uint64_t Hash(IteratorRange<const VertexBufferView*> vertexBuffers)
@@ -396,6 +401,70 @@ namespace RenderCore { namespace Metal_OpenGLES
         return hash;
     }
 
+    #if defined(_DEBUG)
+        void BoundInputLayout::ValidateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const
+        {
+            GLint prevVAO = 0;
+            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
+
+            auto featureSet = devContext.GetFeatureSet();
+            if (featureSet & FeatureSet::GLES300) {
+                assert(glIsVertexArray(_vao->AsRawGLHandle()));
+            } else {
+                #if GL_APPLE_vertex_array_object
+                    assert(glIsVertexArrayAPPLE(_vao->AsRawGLHandle()));
+                #else
+                    assert(glIsVertexArrayOES(_vao->AsRawGLHandle()));
+                #endif
+            }
+            UnderlyingBindVAO(devContext, _vao->AsRawGLHandle());
+
+            for (unsigned c=0; c<_maxVertexAttributes; ++c) {
+                GLint isEnabled = 0;
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &isEnabled);
+                assert(!!(_attributeState & (1<<c)) == isEnabled);
+                if (!isEnabled) continue;
+
+                auto i = std::find_if(
+                    _bindings.begin(), _bindings.end(),
+                    [c](const Binding& binding) {
+                        return binding._attributeLocation == c;
+                    });
+                assert(i!=_bindings.end());
+                size_t bindingIdx = std::distance(_bindings.begin(), i);
+                auto vb=_bindingsByVertexBuffer.begin();
+                for (; vb!=_bindingsByVertexBuffer.end(); ++i) {
+                    if (bindingIdx < *vb)
+                        break;
+                    bindingIdx -= *vb;
+                }
+                assert(vb != _bindingsByVertexBuffer.end());
+                size_t vbIdx = std::distance(_bindingsByVertexBuffer.begin(), vb);
+                assert(vbIdx < vertexBuffers.size());
+
+                GLint arrayBufferBinding = 0;
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &arrayBufferBinding);
+                assert(arrayBufferBinding == GetBufferRawGLHandle(*vertexBuffers[vbIdx]._resource));
+
+                GLint size = 0, stride = 0, type = 0, normalized = 0;
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_SIZE, &size);
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
+                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_NORMALIZED, &normalized);
+                assert(size == i->_size);
+                assert(stride == i->_stride);
+                assert(type == i->_type);
+                assert(normalized == i->_isNormalized);
+
+                GLvoid *pointer = nullptr;
+                glGetVertexAttribPointerv(c, GL_VERTEX_ATTRIB_ARRAY_POINTER, &pointer);
+                assert(pointer == (const void*)(size_t)(vertexBuffers[vbIdx]._offset + i->_offset));
+            }
+
+            UnderlyingBindVAO(devContext, prevVAO);
+        }
+    #endif
+
     void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
         if (_vao) {
@@ -404,6 +473,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             // passed to this function. That won't work; you need to either clone the BoundInputLayout for
             // each set of vertex buffers you want to use, or just don't call CreateVAO at all.
             assert(_vaoBindingHash == Hash(vertexBuffers));
+            #if defined(_DEBUG)
+                ValidateVAO(devContext, vertexBuffers);
+            #endif
             BindVAO(devContext, _vao->AsRawGLHandle());
         } else {
             BindVAO(devContext, 0);

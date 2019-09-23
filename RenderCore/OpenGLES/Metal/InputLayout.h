@@ -75,6 +75,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             std::vector<std::string> _unboundAttributesNames;
         #endif
 
+        #if defined(_DEBUG)
+            void ValidateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const;
+        #endif
+
         static bool _warnOnMissingVertexAttribute;
 
         void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
