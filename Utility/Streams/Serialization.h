@@ -254,6 +254,8 @@ namespace Utility
 			assert(pos >= _begin && pos <= _end);
 			auto idx = pos - _begin;
 			auto cnt = std::distance(first, last);
+            if (!cnt) return &_begin[idx];
+
 			if ((_end+cnt) > _capacity) {
 				Expand(size()+cnt);
 			}
