@@ -410,14 +410,14 @@ namespace RenderCore { namespace Metal_AppleMetal
     
     void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
     {
-        _rs = desc;
+        _cullMode = (unsigned)AsMTLenum(desc._cullMode);
+        _faceWinding = (unsigned)AsMTLenum(desc._frontFaceWinding);
     }
 
     const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
     {
-        
-        auto cullMode = AsMTLenum(_rs._cullMode);
-        auto faceWinding = AsMTLenum(_rs._frontFaceWinding);
+        unsigned cullMode = _cullMode;
+        unsigned faceWinding = _faceWinding;
         
         auto hash = HashCombine(_pimpl->_shaderGuid, _pimpl->_rpHash);
         hash = HashCombine(_pimpl->_absHash, hash);
@@ -492,7 +492,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             std::move(dss),
             (unsigned)_pimpl->_activePrimitiveType,
             _pimpl->_activeDepthStencilDesc._stencilReference,
-            _rs,
+            cullMode,
+            faceWinding,
             hash
 
             #if defined(_DEBUG)
@@ -599,15 +600,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
     }
 
-    void DeviceContext::Bind(const RasterizationDesc& desc)
-    {
-        GraphicsPipelineBuilder::Bind(desc);
-        assert(_pimpl->_boundThread == [NSThread currentThread]);
-        assert(_pimpl->_commandEncoder);
-        [_pimpl->_commandEncoder setFrontFacingWinding:AsMTLenum(desc._frontFaceWinding)];
-        [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
-    }
-
     void DeviceContext::UnbindInputLayout()
     {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
@@ -655,6 +647,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
             [_pimpl->_commandEncoder setRenderPipelineState:pipelineState._underlying];
 
+            [_pimpl->_commandEncoder setCullMode:(MTLCullMode)pipelineState._cullMode];
+            [_pimpl->_commandEncoder setFrontFacingWinding:(MTLWinding)pipelineState._faceWinding];
             [_pimpl->_commandEncoder setDepthStencilState:pipelineState._depthStencilState];
             [_pimpl->_commandEncoder setStencilReferenceValue:pipelineState._stencilReferenceValue];
 
@@ -768,6 +762,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         if (_pimpl->_boundGraphicsPipeline != &pipeline) {
             [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setCullMode:(MTLCullMode)pipeline._cullMode];
+            [_pimpl->_commandEncoder setFrontFacingWinding:(MTLWinding)pipeline._faceWinding];
             [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
             [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
 
@@ -791,6 +787,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         if (_pimpl->_boundGraphicsPipeline != &pipeline) {
             [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setCullMode:(MTLCullMode)pipeline._cullMode];
+            [_pimpl->_commandEncoder setFrontFacingWinding:(MTLWinding)pipeline._faceWinding];
             [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
             [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
 
