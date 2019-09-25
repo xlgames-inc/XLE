@@ -177,6 +177,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Device::~Device()
     {
+        if (EAGLContext.currentContext == _sharedContext.get()) {
+            _boundContextVerification->UnbindFromCurrentThread((size_t)_sharedContext.get());
+            EAGLContext.currentContext = nil;
+        }
         _boundContextVerification.reset();
     }
 
