@@ -259,8 +259,58 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
     }
 
-    void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    #if defined(_DEBUG) && PLATFORMOS == PLATFORMOS_IOS
+        static void ArrayBufferCanaryCheck()
+        {
+            //
+            // On IOS, we've run into a case where array buffers created in background contexts
+            // will not be valid for use with glVertexAttribPointer. It appears to be a particular
+            // bug or restriction within the driver. When it happens, we just get an error code
+            // back from glVertexAttribPointer.
+            //
+            // However, in this case, we will also get a crash if we try to call glMapBufferRange
+            // on the buffer in question. Given than IOS has a shared memory model, we are normally
+            // always able to map a buffer for reading. So we can check for this condition by
+            // calling glMapBufferRange() before the call to glVertexAttribPointer(). If we hit
+            // the particular driver bug, we will crash there. Even though it's upgrading a GL
+            // error code to a crash, it's makes it easier to distinguish this particular issue
+            // from other errors in the glVertexAttribPointer() and can help highlight the
+            // problem sooner.
+            //
+            static unsigned canaryCheckCount = 32;
+            if (canaryCheckCount != 32) {
+                ++canaryCheckCount;
+                return;
+            }
+            canaryCheckCount = 0;
+
+            GLint arrayBufferBinding0 = 0;
+            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBufferBinding0);
+            assert(glIsBuffer(arrayBufferBinding0));
+
+            GLint bufferSize = 0, bufferMapped = 0, bufferUsage = 0;
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufferSize);
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &bufferMapped);
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &bufferUsage);
+
+            void* mappedData = glMapBufferRange(GL_ARRAY_BUFFER, 0, bufferSize, GL_MAP_READ_BIT);
+            assert(mappedData);
+            (void)mappedData;
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+        }
+    #else
+        inline void ArrayBufferCanaryCheck() {}
+    #endif
+
+    uint32_t BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool cancelOnError) const never_throws
     {
+        if (cancelOnError) {
+            auto error = glGetError();
+            if (error != GL_NO_ERROR) {
+                return error;
+            }
+        }
+
         auto featureSet = devContext.GetFeatureSet();
 
         uint32_t instanceFlags = 0u;
@@ -273,6 +323,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (!bindingCount) continue;
             const auto& vb = vertexBuffers[b];
             glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*vb._resource));
+            ArrayBufferCanaryCheck();
             for(auto ai=attributeIterator; ai<(attributeIterator+bindingCount); ++ai) {
                 const auto& i = _bindings[ai];
                 glVertexAttribPointer(
@@ -286,8 +337,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             attributeIterator += bindingCount;
         }
 
-        auto* capture = devContext.GetCapturedStates();
+        if (cancelOnError) {
+            auto error = glGetError();
+            if (error != GL_NO_ERROR) {
+                return error;
+            }
+        }
 
+        auto* capture = devContext.GetCapturedStates();
         if (capture) {
             if (featureSet & FeatureSet::GLES300) {
                 auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
@@ -357,7 +414,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
         }
 
+        if (cancelOnError) {
+            auto error = glGetError();
+            if (error != GL_NO_ERROR) {
+                return error;
+            }
+        }
+
         CheckGLError("Apply BoundInputLayout");
+        return GL_NO_ERROR;
     }
 
     static void UnderlyingBindVAO(DeviceContext& devContext, RawGLHandle vao)
@@ -475,7 +540,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             BindVAO(devContext, _vao->AsRawGLHandle());
         } else {
             BindVAO(devContext, 0);
-            UnderlyingApply(devContext, vertexBuffers);
+            UnderlyingApply(devContext, vertexBuffers, false);
         }
     }
 
@@ -491,8 +556,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             devContext.EndStateCapture();
 
         BindVAO(devContext, _vao->AsRawGLHandle());
-        UnderlyingApply(devContext, vertexBuffers);
-        _vaoBindingHash = Hash(vertexBuffers);
+        auto error = UnderlyingApply(devContext, vertexBuffers, true);
+        if (error != GL_NO_ERROR) {
+            Log(Warning) << "Encountered OpenGL error (0x" << std::hex << error << std::dec << ") while attempt to create VAO. Dropping back to non-VAO path. Note that without VAOs performance will be severely impacted." << std::endl;
+            _vao = nullptr;
+            _vaoBindingHash = 0;
+        } else {
+            _vaoBindingHash = Hash(vertexBuffers);
+        }
 
         // Reset cached state in devContext
         // When a vao other than 0 is bound, it's unclear to me how calls to glEnableVertexAttribArray, etc,

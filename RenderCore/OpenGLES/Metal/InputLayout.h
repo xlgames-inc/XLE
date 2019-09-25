@@ -81,7 +81,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         static bool _warnOnMissingVertexAttribute;
 
-        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+        uint32_t UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool cancelOnError) const never_throws;
         bool CalculateAllAttributesBound(const ShaderProgram& program);
     };
 
