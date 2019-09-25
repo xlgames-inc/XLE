@@ -403,6 +403,11 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         auto* t = [[EAGLContext alloc] initWithAPI:_sharedContext.get().API sharegroup:_sharedContext.get().sharegroup];
         _deferredContext = TBC::moveptr(t);
+
+        // All of the contexts within the same share group must have a matching "multiThreaded" flag
+        // without this, we can get strange crashes & unexpected opengl errors
+        _deferredContext.get().multiThreaded = _sharedContext.get().multiThreaded;
+
         assert(EAGLContext.currentContext != t);        // BoundContextVerification assumes that creating a context doesn't change the currentContext
     }
 
@@ -442,6 +447,10 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         assert(!_activeFrameContext);
         if (_deferredContext) {
+            // Double check that the "multiThreaded" flag on the deferred context matches the shared context flag
+            // All contexts within the same share group must agree on the state of this flag. If one has
+            // it enabled, but others do not, then strange things will happen.
+            assert(_sharedContext.get().multiThreaded == _deferredContext.get().multiThreaded);
             EAGLContext.currentContext = _deferredContext.get();
             BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_deferredContext.get());
             return IsBoundToCurrentThread();
