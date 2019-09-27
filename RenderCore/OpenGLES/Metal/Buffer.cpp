@@ -37,6 +37,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             {
                 glBufferSubData(bindTarget, writeOffset, dataSize, data);
             }
+
+            if (!_constantBuffer.empty()) {
+                auto start = std::min(_constantBuffer.size(), writeOffset);
+                auto end = std::min(_constantBuffer.size(), writeOffset + dataSize);
+                std::memcpy(PtrAdd(_constantBuffer.data(), start), data, end-start);
+                _constantBufferHash = 0;        // don't hash writable constant buffers, because often larger constant buffers are large and the hash overhead can be redundant
+            }
         } else {
             auto size = std::min(ptrdiff_t(_constantBuffer.size()) - ptrdiff_t(writeOffset), ptrdiff_t(dataSize));
             if (size > 0)

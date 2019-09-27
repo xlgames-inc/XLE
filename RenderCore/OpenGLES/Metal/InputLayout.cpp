@@ -646,25 +646,32 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             const auto& cbv = stream._constantBuffers[cb._slot];
             const auto& pkt = cbv._packet;
+            IteratorRange<const void*> pktData;
+            uint64_t pktHash = 0;
             if (pkt.size() != 0) {
-                auto hash = pkt.GetHash();
+                pktHash = pkt.GetHash();
+                pktData = MakeIteratorRange(pkt.begin(), pkt.end());
+                assert(cbv._prebuiltRangeBegin == 0 && cbv._prebuiltRangeEnd == 0);     // we don't support using partial parts of the constant buffer in this case
+            } else {
+                pktHash = ((Resource*)cbv._prebuiltBuffer)->GetConstantBufferHash();
+                pktData = ((Resource*)cbv._prebuiltBuffer)->GetConstantBuffer();
+                pktData.first = std::min(pktData.end(), PtrAdd(pktData.begin(), cbv._prebuiltRangeBegin));
+                pktData.second = std::min(pktData.end(), PtrAdd(pktData.begin(), cbv._prebuiltRangeEnd));
+            }
+
+            if (!pktData.empty()) {
                 assert(cb._capturedStateIndex < _capturedState->_structs.size());
                 auto& capturedState = _capturedState->_structs[cb._capturedStateIndex];
                 bool redundantSet = false;
-                if (hash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
-                    redundantSet = capturedState._boundContents == hash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
-                    capturedState._boundContents = hash;
+                if (pktHash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
+                    redundantSet = capturedState._boundContents == pktHash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
+                    capturedState._boundContents = pktHash;
                     capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
                 }
                 if (!redundantSet) {
-                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
+                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, pktData);
                 } else {
                     s_redundantUniformSetAccumulator += (unsigned)cb._commandGroup._commands.size();
-                }
-            } else {
-                const auto pkt2 = ((Resource*)cbv._prebuiltBuffer)->GetConstantBuffer();
-                if (pkt2.size() != 0) {
-                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, pkt2);
                 }
             }
         }

@@ -249,14 +249,21 @@ namespace RenderCore { namespace Metal_OpenGLES
                 initData = initializer({0,0});
 
             bool supportsUniformBuffers = (factory.GetFeatureSet() & FeatureSet::GLES300);
-            if ((desc._bindFlags & BindFlag::ConstantBuffer) && !supportsUniformBuffers) {
-                // If we request a constant buffer on a device that doesn't support uniform
-                // buffers; we just use a basic data array.
+            if (desc._bindFlags & BindFlag::ConstantBuffer) {
+                // If we request a constant buffer, we must always keep a CPU size copy of the buffer
+                // this is because we can bind the constant buffer to a global uniforms in the shader
+                // using underscore syntax. When that happens, a true device uniform buffer doesn't
+                // really help us. We need access to the CPU data
                 auto size = std::min(initData._data.size(), (size_t)desc._linearBufferDesc._sizeInBytes);
                 _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.begin() + size);
                 if (size < desc._linearBufferDesc._sizeInBytes)
                     _constantBuffer.resize(desc._linearBufferDesc._sizeInBytes, 0);
-            } else {
+
+                if (!(desc._cpuAccess & CPUAccess::Write))
+                    _constantBufferHash = Hash64(AsPointer(_constantBuffer.begin()), AsPointer(_constantBuffer.end()));
+            }
+
+            if ((desc._bindFlags != BindFlag::ConstantBuffer) || supportsUniformBuffers) {
                 _underlyingBuffer = factory.CreateBuffer();
                 assert(_underlyingBuffer->AsRawGLHandle() != 0); // "Failed to allocate buffer name in Magnesium::Buffer::Buffer");
 

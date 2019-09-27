@@ -25,6 +25,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }
         const intrusive_ptr<OpenGL::RenderBuffer>& GetRenderBuffer() const { return _underlyingRenderBuffer; }
         IteratorRange<const void*> GetConstantBuffer() const { return MakeIteratorRange(_constantBuffer); }
+        uint64_t GetConstantBufferHash() const { return _constantBufferHash; }
         const bool IsBackBuffer() { return _isBackBuffer; }
 
         virtual void*       QueryInterface(size_t guid) override;
@@ -52,6 +53,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<OpenGL::Texture> _underlyingTexture;
         intrusive_ptr<OpenGL::RenderBuffer> _underlyingRenderBuffer;
         std::vector<uint8_t> _constantBuffer;
+        uint64_t _constantBufferHash = 0ull;
         bool _isBackBuffer;
         Desc _desc;
         uint64_t _guid;
