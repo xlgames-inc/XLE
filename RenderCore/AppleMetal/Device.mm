@@ -78,7 +78,9 @@ namespace RenderCore { namespace ImplAppleMetal
         GetDeviceContext()->ReleaseCommandBuffer();
         _commandBuffer = nullptr;
 
-        BeginHeadlessFrame();
+        // Begin a new command buffer immediately
+        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
     }
 
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
