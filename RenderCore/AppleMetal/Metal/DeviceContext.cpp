@@ -810,14 +810,54 @@ namespace RenderCore { namespace Metal_AppleMetal
         const GraphicsPipeline& pipeline,
         unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
-        assert(0);
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(_pimpl->_commandEncoder);
+        if (_pimpl->_boundGraphicsPipeline != &pipeline) {
+            [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setCullMode:(MTLCullMode)pipeline._cullMode];
+            [_pimpl->_commandEncoder setFrontFacingWinding:(MTLWinding)pipeline._faceWinding];
+            [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+            [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+
+            _pimpl->_graphicsPipelineReflection = nullptr;
+            _pimpl->_boundVSArgs = 0;
+            _pimpl->_boundPSArgs = 0;
+            _pimpl->_boundGraphicsPipeline = &pipeline;
+            _pimpl->_queuedUniformSets.clear();
+        }
+
+        [_pimpl->_commandEncoder drawPrimitives:(MTLPrimitiveType)pipeline._primitiveType
+                                    vertexStart:startVertexLocation
+                                    vertexCount:vertexCount
+                                    instanceCount:instanceCount];
     }
 
     void    DeviceContext::DrawIndexedInstances(
         const GraphicsPipeline& pipeline,
         unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation)
     {
-        assert(0);
+        assert(_pimpl->_boundThread == [NSThread currentThread]);
+        assert(_pimpl->_commandEncoder);
+        if (_pimpl->_boundGraphicsPipeline != &pipeline) {
+            [_pimpl->_commandEncoder setRenderPipelineState:pipeline._underlying];
+            [_pimpl->_commandEncoder setCullMode:(MTLCullMode)pipeline._cullMode];
+            [_pimpl->_commandEncoder setFrontFacingWinding:(MTLWinding)pipeline._faceWinding];
+            [_pimpl->_commandEncoder setDepthStencilState:pipeline._depthStencilState];
+            [_pimpl->_commandEncoder setStencilReferenceValue:pipeline._stencilReferenceValue];
+
+            _pimpl->_graphicsPipelineReflection = nullptr;
+            _pimpl->_boundVSArgs = 0;
+            _pimpl->_boundPSArgs = 0;
+            _pimpl->_boundGraphicsPipeline = &pipeline;
+            _pimpl->_queuedUniformSets.clear();
+        }
+
+        [_pimpl->_commandEncoder drawIndexedPrimitives:(MTLPrimitiveType)pipeline._primitiveType
+                                            indexCount:indexCount
+                                             indexType:_pimpl->_indexType
+                                           indexBuffer:_pimpl->_activeIndexBuffer
+                                     indexBufferOffset:_pimpl->offsetToStartIndex(startIndexLocation)
+                                         instanceCount:instanceCount];
     }
 
     void DeviceContext::BeginRenderPass()
