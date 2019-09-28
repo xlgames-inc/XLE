@@ -4,6 +4,7 @@
 
 #include "Shader.h"
 #include "Device.h"
+#include "ObjectFactory.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include "../../Types.h"
@@ -54,10 +55,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ~ShaderCompiler();
 
         TBC::OCPtr<id> _device; // MTLDevice
-        static std::unordered_map<uint64_t, TBC::OCPtr<id>> s_compiledShaders;
     };
-
-    std::unordered_map<uint64_t, TBC::OCPtr<id>> ShaderCompiler::s_compiledShaders;
 
     void ShaderCompiler::AdaptShaderModel(
         ResChar destination[],
@@ -218,16 +216,20 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (!newLibrary.functionNames.count) {
                 std::string errorMsg = "Shader compile failed because no functions were found in the compiled result";
                 errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
+                [newLibrary release];
                 return false;
             }
 
-            assert(newLibrary);
             #if defined(_DEBUG)
                 [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];
             #endif
 
+            auto& objectFactory = GetObjectFactory();
             uint64_t hashCode = Hash64(finalShaderCode);
-            s_compiledShaders.emplace(std::make_pair(hashCode, newLibrary));
+            {
+                ScopedLock(objectFactory._compiledShadersLock);
+                objectFactory._compiledShaders.emplace(std::make_pair(hashCode, TBC::moveptr(newLibrary)));
+            }
 
             struct OutputBlob
             {
@@ -279,10 +281,15 @@ namespace RenderCore { namespace Metal_AppleMetal
         auto fsByteCode = fragmentShader.GetByteCode();
 
         assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
-        const auto& vs = ShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
-        const auto& fs = ShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
 
-        assert(vs && fs);
+        TBC::OCPtr<id> vs, fs;
+        auto& objectFactory = GetObjectFactory();
+        {
+            ScopedLock(objectFactory._compiledShadersLock);
+            vs = objectFactory._compiledShaders[*(uint64_t*)vsByteCode.first];
+            fs = objectFactory._compiledShaders[*(uint64_t*)fsByteCode.first];
+            assert(vs && fs);
+        }
 
         _depVal = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());

@@ -8,6 +8,8 @@
 #pragma once
 
 #include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Utility/Threading/Mutex.h"
+#include <unordered_map>
 
 @protocol MTLDevice;
 @protocol MTLTexture;
@@ -62,6 +64,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         const TBC::OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
         const TBC::OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
         const TBC::OCPtr<AplMtlSamplerState>& StandInSamplerState() { return _standInSamplerState; }
+
+        Threading::Mutex _compiledShadersLock;
+        std::unordered_map<uint64_t, TBC::OCPtr<id>> _compiledShaders;
 
         ObjectFactory(id<MTLDevice> mtlDevice);
         ObjectFactory() = delete;

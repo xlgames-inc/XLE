@@ -163,6 +163,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         _standInCubeTexture = TBC::OCPtr<AplMtlTexture>();
         _standInSamplerState = TBC::OCPtr<AplMtlSamplerState>();
 
+        {
+            ScopedLock(_compiledShadersLock);
+            decltype(_compiledShaders)().swap(_compiledShaders);
+        }
+
         assert(s_objectFactory_instance == this);
         s_objectFactory_instance = nullptr;
     }
