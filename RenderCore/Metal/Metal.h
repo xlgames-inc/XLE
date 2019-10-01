@@ -8,12 +8,14 @@
 
 #include "../../Core/SelectConfiguration.h"
 
-/**************************************************/
-/* Uncomment the following to use Metal as gfx api -- tryMetal */
-#if PLATFORMOS_TARGET == PLATFORMOS_OSX
-    #define SELECT_APPLEMETAL
+#if !defined(SELECT_APPLEMETAL) && !defined(SELECT_VULKAN) && !defined(SELECT_DX) && !defined(SELECT_OPENGL)
+    // If you hit the following error, it probably means that the project being compiled is not configured
+    // for use with the RenderCore::Metal namespace. This could either be intentional (ie, it's a project
+    // that should be API-agnostic) or it might just be that the project hasn't been configured yet.
+    // If you hit this error, check the project being compiled and check which configuration options
+    // have been selected
+    #error None of the "SELECT_..." macros are defined when including Metal.h. These macros determine which graphics API is used when accessing the RenderCore::Metal namespace.
 #endif
-/**************************************************/
 
 #define GFXAPI_DX11         1
 #define GFXAPI_DX9          2

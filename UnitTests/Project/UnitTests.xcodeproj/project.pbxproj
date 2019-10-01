@@ -7,10 +7,42 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8F2A482223442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
-		8F2A482323442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
-		8F2A482423442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
-		8F2A482523442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
+		8F2A47882343D890000E4532 /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
+		8F2A47892343D890000E4532 /* MetalUnitTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */; };
+		8F2A478A2343D890000E4532 /* Wrapper_InputLayout.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */; };
+		8F2A478B2343D890000E4532 /* Wrapper_BasicMath.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */; };
+		8F2A478C2343D890000E4532 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
+		8F2A478D2343D890000E4532 /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */; };
+		8F2A478F2343D890000E4532 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F8573E422F2533B00175F69 /* OpenGL.framework */; };
+		8F2A47902343D890000E4532 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */; };
+		8F2A47912343D890000E4532 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA4722F0DA610049AE5E /* Cocoa.framework */; };
+		8F2A47922343D890000E4532 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA4122F0CD1A0049AE5E /* Metal.framework */; };
+		8F2A47932343D890000E4532 /* libfreetype-mac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647522EF9D2200BE5E4D /* libfreetype-mac.a */; };
+		8F2A47942343D890000E4532 /* libAssetsMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647E22EF9D2C00BE5E4D /* libAssetsMac.a */; };
+		8F2A47952343D890000E4532 /* libConsoleRigMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646C22EF9D1300BE5E4D /* libConsoleRigMac.a */; };
+		8F2A47962343D890000E4532 /* libMathMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49648722EF9D3500BE5E4D /* libMathMac.a */; };
+		8F2A47972343D890000E4532 /* libRenderCoreAppleMetalMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646322EF9D0500BE5E4D /* libRenderCoreAppleMetalMac.a */; };
+		8F2A47982343D890000E4532 /* libRenderCoreMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */; };
+		8F2A47992343D890000E4532 /* libRenderCoreOGLESMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645A22EF9D0500BE5E4D /* libRenderCoreOGLESMac.a */; };
+		8F2A479A2343D890000E4532 /* libUtilityMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649022EF9D4100BE5E4D /* libUtilityMac.a */; };
+		8F2A47BD2343D898000E4532 /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
+		8F2A47BE2343D898000E4532 /* MetalUnitTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */; };
+		8F2A47BF2343D898000E4532 /* Wrapper_InputLayout.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */; };
+		8F2A47C02343D898000E4532 /* Wrapper_BasicMath.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */; };
+		8F2A47C12343D898000E4532 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
+		8F2A47C32343D898000E4532 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49159722F20C5F00869AB7 /* Metal.framework */; };
+		8F2A47C42343D898000E4532 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49158E22F20C0D00869AB7 /* QuartzCore.framework */; };
+		8F2A47C52343D898000E4532 /* libfreetype-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647722EF9D2200BE5E4D /* libfreetype-ios.a */; };
+		8F2A47C62343D898000E4532 /* libAssetsIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49648022EF9D2C00BE5E4D /* libAssetsIOS.a */; };
+		8F2A47C72343D898000E4532 /* libConsoleRigIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646E22EF9D1300BE5E4D /* libConsoleRigIOS.a */; };
+		8F2A47C82343D898000E4532 /* libMathIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49648922EF9D3500BE5E4D /* libMathIOS.a */; };
+		8F2A47C92343D898000E4532 /* libRenderCoreAppleMetalIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49646522EF9D0500BE5E4D /* libRenderCoreAppleMetalIOS.a */; };
+		8F2A47CA2343D898000E4532 /* libRenderCoreIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645322EF9D0500BE5E4D /* libRenderCoreIOS.a */; };
+		8F2A47CB2343D898000E4532 /* libRenderCoreOGLESIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645C22EF9D0500BE5E4D /* libRenderCoreOGLESIOS.a */; };
+		8F2A47CC2343D898000E4532 /* libUtilityIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649222EF9D4100BE5E4D /* libUtilityIOS.a */; };
+		8F2A48042343D99F000E4532 /* libXLESubsetMac-Metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */; };
+		8F2A48052343D9B4000E4532 /* libXLESubsetIOS-Metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */; };
+		8F2A48082343D9D7000E4532 /* libXLESubsetIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */; };
 		8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */; };
 		8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
@@ -25,7 +57,6 @@
 		8F49158622F20B1300869AB7 /* libRenderCoreIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645322EF9D0500BE5E4D /* libRenderCoreIOS.a */; };
 		8F49158722F20B1300869AB7 /* libRenderCoreOGLESIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645C22EF9D0500BE5E4D /* libRenderCoreOGLESIOS.a */; };
 		8F49158822F20B1300869AB7 /* libUtilityIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649222EF9D4100BE5E4D /* libUtilityIOS.a */; };
-		8F49158922F20B1300869AB7 /* libXLESubsetIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */; };
 		8F49158A22F20B1D00869AB7 /* libfreetype-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647722EF9D2200BE5E4D /* libfreetype-ios.a */; };
 		8F49158F22F20C0D00869AB7 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49158E22F20C0D00869AB7 /* QuartzCore.framework */; };
 		8F49159822F20C5F00869AB7 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49159722F20C5F00869AB7 /* Metal.framework */; };
@@ -49,6 +80,146 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		8F2A47762343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F044BB01EA6B0890074D6A4;
+			remoteInfo = AssetsMac;
+		};
+		8F2A47782343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA52DB71FD9D42E0039B229;
+			remoteInfo = ConsoleRigMac;
+		};
+		8F2A477A2343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 0B427040DAF64EC3B5394E42;
+			remoteInfo = "freetype-mac";
+		};
+		8F2A477C2343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F044B691EA695590074D6A4;
+			remoteInfo = MathMac;
+		};
+		8F2A477E2343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F7B6C58202129EF006D0079;
+			remoteInfo = RenderCoreAppleMetalMac;
+		};
+		8F2A47802343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1B591FD628E10028A531;
+			remoteInfo = RenderCoreOGLESMac;
+		};
+		8F2A47822343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1AB21FD619910028A531;
+			remoteInfo = RenderCoreIOS;
+		};
+		8F2A47842343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FD85CF71EA6872D009BD9B0;
+			remoteInfo = UtilityMac;
+		};
+		8F2A47A42343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2A472A2343D77D000E4532;
+			remoteInfo = "XLESubsetMac-Metal";
+		};
+		8F2A47A62343D890000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F2A47732343D78B000E4532;
+			remoteInfo = "XLESubsetIOS-Metal";
+		};
+		8F2A47AB2343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA3F7721EDD16E3003EF623;
+			remoteInfo = AssetsIOS;
+		};
+		8F2A47AD2343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646622EF9D1300BE5E4D /* ConsoleRig.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA52D851FD9D3900039B229;
+			remoteInfo = ConsoleRigIOS;
+		};
+		8F2A47AF2343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49646F22EF9D2200BE5E4D /* freetype.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AF31765020A41897005F4F91;
+			remoteInfo = "freetype-ios";
+		};
+		8F2A47B12343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648122EF9D3500BE5E4D /* Math.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA3F7D91EDD17F1003EF623;
+			remoteInfo = MathIOS;
+		};
+		8F2A47B32343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F7B6C5E20212A51006D0079;
+			remoteInfo = RenderCoreAppleMetalIOS;
+		};
+		8F2A47B52343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1B3E1FD628270028A531;
+			remoteInfo = RenderCoreOGLESIOS;
+		};
+		8F2A47B72343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2D1AB21FD619910028A531;
+			remoteInfo = RenderCoreIOS;
+		};
+		8F2A47B92343D898000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49648A22EF9D4100BE5E4D /* Utility.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8FA3F7AF1EDD178B003EF623;
+			remoteInfo = UtilityIOS;
+		};
+		8F2A48022343D997000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2A46A62343D77D000E4532;
+			remoteInfo = "XLESubsetMac-Metal";
+		};
+		8F2A48062343D9C2000E4532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F2A472B2343D78B000E4532;
+			remoteInfo = "XLESubsetIOS-Metal";
+		};
 		8F49157022F20AF900869AB7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8F49647822EF9D2C00BE5E4D /* Assets.xcodeproj */;
@@ -304,12 +475,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		8F2A482023442EA3000E4532 /* CoordinateSpaces.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CoordinateSpaces.cpp; path = ../CoordinateSpaces.cpp; sourceTree = "<group>"; };
-		8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_CoordinateSpaces.mm; path = ../Wrapper_CoordinateSpaces.mm; sourceTree = "<group>"; };
+		8F2A47A02343D890000E4532 /* XLEUnitTestsMac-Metal.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsMac-Metal.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2A47A82343D890000E4532 /* XLEUnitTestsMac-Metal.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "XLEUnitTestsMac-Metal.plist"; path = "/Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsMac-Metal.plist"; sourceTree = "<absolute>"; };
+		8F2A47D22343D898000E4532 /* XLEUnitTestsIOS-Metal.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsIOS-Metal.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F2A47D32343D899000E4532 /* XLEUnitTestsIOS-Metal.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "XLEUnitTestsIOS-Metal.plist"; path = "/Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS-Metal.plist"; sourceTree = "<absolute>"; };
 		8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_ResourceUpdateAndReadBack.mm; path = ../Wrapper_ResourceUpdateAndReadBack.mm; sourceTree = "<group>"; };
 		8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_QueryPool.mm; path = ../Wrapper_QueryPool.mm; sourceTree = "<group>"; };
-		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsIOS.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = XLEUnitTestsIOS.plist; path = /Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS.plist; sourceTree = "<absolute>"; };
+		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS-GL.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsIOS-GL.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS-GL.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "XLEUnitTestsIOS-GL.plist"; path = "/Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS-GL.plist"; sourceTree = "<absolute>"; };
 		8F49158E22F20C0D00869AB7 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.4.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
 		8F49159722F20C5F00869AB7 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.4.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
 		8F49159922F2292400869AB7 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.4.sdk/System/Library/Frameworks/MetalKit.framework; sourceTree = DEVELOPER_DIR; };
@@ -317,8 +490,8 @@
 		8F49643B22EF9BAB00BE5E4D /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8F49643C22EF9BAB00BE5E4D /* CoreDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
 		8F49643D22EF9BAB00BE5E4D /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
-		8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsMac.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F49644722EF9C0F00BE5E4D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac-GL.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsMac-GL.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F49644722EF9C0F00BE5E4D /* XLEUnitTestsMac-GL.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "XLEUnitTestsMac-GL.plist"; sourceTree = "<group>"; };
 		8F49644B22EF9D0500BE5E4D /* RenderCore.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore.xcodeproj; path = ../../RenderCore/Project/RenderCore.xcodeproj; sourceTree = "<group>"; };
 		8F49645422EF9D0500BE5E4D /* RenderCore_OpenGLES.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore_OpenGLES.xcodeproj; path = ../../RenderCore/Project/RenderCore_OpenGLES.xcodeproj; sourceTree = "<group>"; };
 		8F49645D22EF9D0500BE5E4D /* RenderCore_AppleMetal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RenderCore_AppleMetal.xcodeproj; path = ../../RenderCore/Project/RenderCore_AppleMetal.xcodeproj; sourceTree = "<group>"; };
@@ -362,6 +535,44 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		8F2A478E2343D890000E4532 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2A478F2343D890000E4532 /* OpenGL.framework in Frameworks */,
+				8F2A47902343D890000E4532 /* QuartzCore.framework in Frameworks */,
+				8F2A47912343D890000E4532 /* Cocoa.framework in Frameworks */,
+				8F2A47922343D890000E4532 /* Metal.framework in Frameworks */,
+				8F2A47932343D890000E4532 /* libfreetype-mac.a in Frameworks */,
+				8F2A47942343D890000E4532 /* libAssetsMac.a in Frameworks */,
+				8F2A47952343D890000E4532 /* libConsoleRigMac.a in Frameworks */,
+				8F2A47962343D890000E4532 /* libMathMac.a in Frameworks */,
+				8F2A47972343D890000E4532 /* libRenderCoreAppleMetalMac.a in Frameworks */,
+				8F2A47982343D890000E4532 /* libRenderCoreMac.a in Frameworks */,
+				8F2A47992343D890000E4532 /* libRenderCoreOGLESMac.a in Frameworks */,
+				8F2A479A2343D890000E4532 /* libUtilityMac.a in Frameworks */,
+				8F2A48042343D99F000E4532 /* libXLESubsetMac-Metal.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2A47C22343D898000E4532 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2A47C32343D898000E4532 /* Metal.framework in Frameworks */,
+				8F2A47C42343D898000E4532 /* QuartzCore.framework in Frameworks */,
+				8F2A47C52343D898000E4532 /* libfreetype-ios.a in Frameworks */,
+				8F2A47C62343D898000E4532 /* libAssetsIOS.a in Frameworks */,
+				8F2A47C72343D898000E4532 /* libConsoleRigIOS.a in Frameworks */,
+				8F2A47C82343D898000E4532 /* libMathIOS.a in Frameworks */,
+				8F2A47C92343D898000E4532 /* libRenderCoreAppleMetalIOS.a in Frameworks */,
+				8F2A47CA2343D898000E4532 /* libRenderCoreIOS.a in Frameworks */,
+				8F2A47CB2343D898000E4532 /* libRenderCoreOGLESIOS.a in Frameworks */,
+				8F2A47CC2343D898000E4532 /* libUtilityIOS.a in Frameworks */,
+				8F2A48052343D9B4000E4532 /* libXLESubsetIOS-Metal.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8F49155D22F20AB000869AB7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -376,7 +587,7 @@
 				8F49158622F20B1300869AB7 /* libRenderCoreIOS.a in Frameworks */,
 				8F49158722F20B1300869AB7 /* libRenderCoreOGLESIOS.a in Frameworks */,
 				8F49158822F20B1300869AB7 /* libUtilityIOS.a in Frameworks */,
-				8F49158922F20B1300869AB7 /* libXLESubsetIOS.a in Frameworks */,
+				8F2A48082343D9D7000E4532 /* libXLESubsetIOS.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -409,7 +620,6 @@
 				8F49643922EF9BA300BE5E4D /* Config */,
 				8F49649C22EF9D5800BE5E4D /* Dependencies */,
 				8F4BFA4022F0CD1A0049AE5E /* Frameworks */,
-				8F49644722EF9C0F00BE5E4D /* Info.plist */,
 				8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */,
 				BE81350223023BB60019A2F6 /* NonMembers */,
 				8F49644322EF9C0F00BE5E4D /* Products */,
@@ -420,13 +630,16 @@
 				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
 				8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */,
 				8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */,
-				8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS.plist */,
 			);
 			sourceTree = "<group>";
 		};
 		8F49643922EF9BA300BE5E4D /* Config */ = {
 			isa = PBXGroup;
 			children = (
+				8F49644722EF9C0F00BE5E4D /* XLEUnitTestsMac-GL.plist */,
+				8F49156F22F20AB000869AB7 /* XLEUnitTestsIOS-GL.plist */,
+				8F2A47A82343D890000E4532 /* XLEUnitTestsMac-Metal.plist */,
+				8F2A47D32343D899000E4532 /* XLEUnitTestsIOS-Metal.plist */,
 				8F49643B22EF9BAB00BE5E4D /* Core.xcconfig */,
 				8F49643C22EF9BAB00BE5E4D /* CoreDebug.xcconfig */,
 				8F49643A22EF9BAB00BE5E4D /* CoreRelease.xcconfig */,
@@ -438,8 +651,10 @@
 		8F49644322EF9C0F00BE5E4D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */,
-				8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */,
+				8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac-GL.xctest */,
+				8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS-GL.xctest */,
+				8F2A47A02343D890000E4532 /* XLEUnitTestsMac-Metal.xctest */,
+				8F2A47D22343D898000E4532 /* XLEUnitTestsIOS-Metal.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -521,6 +736,8 @@
 			children = (
 				8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */,
 				8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */,
+				8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */,
+				8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -588,9 +805,61 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		8F49154522F20AB000869AB7 /* XLEUnitTestsIOS */ = {
+		8F2A47742343D890000E4532 /* XLEUnitTestsMac-Metal */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 8F49156B22F20AB000869AB7 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS" */;
+			buildConfigurationList = 8F2A479D2343D890000E4532 /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac-Metal" */;
+			buildPhases = (
+				8F2A47872343D890000E4532 /* Sources */,
+				8F2A478E2343D890000E4532 /* Frameworks */,
+				8F2A479C2343D890000E4532 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8F2A48032343D997000E4532 /* PBXTargetDependency */,
+				8F2A47752343D890000E4532 /* PBXTargetDependency */,
+				8F2A47772343D890000E4532 /* PBXTargetDependency */,
+				8F2A47792343D890000E4532 /* PBXTargetDependency */,
+				8F2A477B2343D890000E4532 /* PBXTargetDependency */,
+				8F2A477D2343D890000E4532 /* PBXTargetDependency */,
+				8F2A477F2343D890000E4532 /* PBXTargetDependency */,
+				8F2A47812343D890000E4532 /* PBXTargetDependency */,
+				8F2A47832343D890000E4532 /* PBXTargetDependency */,
+			);
+			name = "XLEUnitTestsMac-Metal";
+			productName = XLEUnitTests;
+			productReference = 8F2A47A02343D890000E4532 /* XLEUnitTestsMac-Metal.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8F2A47A92343D898000E4532 /* XLEUnitTestsIOS-Metal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F2A47CF2343D898000E4532 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS-Metal" */;
+			buildPhases = (
+				8F2A47BC2343D898000E4532 /* Sources */,
+				8F2A47C22343D898000E4532 /* Frameworks */,
+				8F2A47CE2343D898000E4532 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8F2A47AA2343D898000E4532 /* PBXTargetDependency */,
+				8F2A47AC2343D898000E4532 /* PBXTargetDependency */,
+				8F2A47AE2343D898000E4532 /* PBXTargetDependency */,
+				8F2A47B02343D898000E4532 /* PBXTargetDependency */,
+				8F2A47B22343D898000E4532 /* PBXTargetDependency */,
+				8F2A47B42343D898000E4532 /* PBXTargetDependency */,
+				8F2A47B62343D898000E4532 /* PBXTargetDependency */,
+				8F2A47B82343D898000E4532 /* PBXTargetDependency */,
+				8F2A48072343D9C2000E4532 /* PBXTargetDependency */,
+			);
+			name = "XLEUnitTestsIOS-Metal";
+			productName = XLEUnitTests;
+			productReference = 8F2A47D22343D898000E4532 /* XLEUnitTestsIOS-Metal.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8F49154522F20AB000869AB7 /* XLEUnitTestsIOS-GL */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8F49156B22F20AB000869AB7 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS-GL" */;
 			buildPhases = (
 				8F49155822F20AB000869AB7 /* Sources */,
 				8F49155D22F20AB000869AB7 /* Frameworks */,
@@ -609,14 +878,14 @@
 				8F49157F22F20AF900869AB7 /* PBXTargetDependency */,
 				8F49158122F20AF900869AB7 /* PBXTargetDependency */,
 			);
-			name = XLEUnitTestsIOS;
+			name = "XLEUnitTestsIOS-GL";
 			productName = XLEUnitTests;
-			productReference = 8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */;
+			productReference = 8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS-GL.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac */ = {
+		8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac-GL */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac" */;
+			buildConfigurationList = 8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac-GL" */;
 			buildPhases = (
 				8F49643E22EF9C0F00BE5E4D /* Sources */,
 				8F49643F22EF9C0F00BE5E4D /* Frameworks */,
@@ -635,9 +904,9 @@
 				8F4964AC22EF9D8E00BE5E4D /* PBXTargetDependency */,
 				8F4964AE22EF9D8E00BE5E4D /* PBXTargetDependency */,
 			);
-			name = XLEUnitTestsMac;
+			name = "XLEUnitTestsMac-GL";
 			productName = XLEUnitTests;
-			productReference = 8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac.xctest */;
+			productReference = 8F49644222EF9C0F00BE5E4D /* XLEUnitTestsMac-GL.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -704,13 +973,29 @@
 			);
 			projectRoot = "";
 			targets = (
-				8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac */,
-				8F49154522F20AB000869AB7 /* XLEUnitTestsIOS */,
+				8F49644122EF9C0F00BE5E4D /* XLEUnitTestsMac-GL */,
+				8F49154522F20AB000869AB7 /* XLEUnitTestsIOS-GL */,
+				8F2A47742343D890000E4532 /* XLEUnitTestsMac-Metal */,
+				8F2A47A92343D898000E4532 /* XLEUnitTestsIOS-Metal */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
+		8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libXLESubsetMac-Metal.a";
+			remoteRef = 8F2A47A42343D890000E4532 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libXLESubsetIOS-Metal.a";
+			remoteRef = 8F2A47A62343D890000E4532 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 		8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
@@ -840,6 +1125,20 @@
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
+		8F2A479C2343D890000E4532 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2A47CE2343D898000E4532 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8F49156A22F20AB000869AB7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -863,7 +1162,6 @@
 			files = (
 				8F2A47882343D890000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F2A47892343D890000E4532 /* MetalUnitTest.cpp in Sources */,
-				8F2A482423442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F2A478A2343D890000E4532 /* Wrapper_InputLayout.mm in Sources */,
 				8F2A478B2343D890000E4532 /* Wrapper_BasicMath.mm in Sources */,
 				8F2A478C2343D890000E4532 /* Wrapper_QueryPool.mm in Sources */,
@@ -875,7 +1173,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8F2A482523442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F2A47BD2343D898000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F2A47BE2343D898000E4532 /* MetalUnitTest.cpp in Sources */,
 				8F2A47BF2343D898000E4532 /* Wrapper_InputLayout.mm in Sources */,
@@ -914,6 +1211,96 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		8F2A47752343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = AssetsMac;
+			targetProxy = 8F2A47762343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47772343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ConsoleRigMac;
+			targetProxy = 8F2A47782343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47792343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "freetype-mac";
+			targetProxy = 8F2A477A2343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A477B2343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MathMac;
+			targetProxy = 8F2A477C2343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A477D2343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreAppleMetalMac;
+			targetProxy = 8F2A477E2343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A477F2343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreOGLESMac;
+			targetProxy = 8F2A47802343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47812343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreIOS;
+			targetProxy = 8F2A47822343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47832343D890000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = UtilityMac;
+			targetProxy = 8F2A47842343D890000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47AA2343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = AssetsIOS;
+			targetProxy = 8F2A47AB2343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47AC2343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ConsoleRigIOS;
+			targetProxy = 8F2A47AD2343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47AE2343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "freetype-ios";
+			targetProxy = 8F2A47AF2343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47B02343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MathIOS;
+			targetProxy = 8F2A47B12343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47B22343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreAppleMetalIOS;
+			targetProxy = 8F2A47B32343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47B42343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreOGLESIOS;
+			targetProxy = 8F2A47B52343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47B62343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RenderCoreIOS;
+			targetProxy = 8F2A47B72343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A47B82343D898000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = UtilityIOS;
+			targetProxy = 8F2A47B92343D898000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A48032343D997000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "XLESubsetMac-Metal";
+			targetProxy = 8F2A48022343D997000E4532 /* PBXContainerItemProxy */;
+		};
+		8F2A48072343D9C2000E4532 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "XLESubsetIOS-Metal";
+			targetProxy = 8F2A48062343D9C2000E4532 /* PBXContainerItemProxy */;
+		};
 		8F49157122F20AF900869AB7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = AssetsIOS;
@@ -1007,12 +1394,80 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		8F2A479E2343D890000E4532 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_APPLEMETAL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsMac-Metal.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		8F2A479F2343D890000E4532 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_APPLEMETAL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsMac-Metal.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		8F2A47D02343D898000E4532 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_APPLEMETAL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsIOS-Metal.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		8F2A47D12343D898000E4532 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_APPLEMETAL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsIOS-Metal.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
 		8F49156C22F20AB000869AB7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_FILE = XLEUnitTestsIOS.plist;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_OPENGL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsIOS-GL.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1024,7 +1479,11 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_FILE = XLEUnitTestsIOS.plist;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_OPENGL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsIOS-GL.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1050,7 +1509,11 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_FILE = Info.plist;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_OPENGL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsMac-GL.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -1062,7 +1525,11 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_FILE = Info.plist;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SELECT_OPENGL=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "XLEUnitTestsMac-GL.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.XLE.XLEUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -1072,7 +1539,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		8F49156B22F20AB000869AB7 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS" */ = {
+		8F2A479D2343D890000E4532 /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac-Metal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2A479E2343D890000E4532 /* Debug */,
+				8F2A479F2343D890000E4532 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F2A47CF2343D898000E4532 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS-Metal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8F2A47D02343D898000E4532 /* Debug */,
+				8F2A47D12343D898000E4532 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8F49156B22F20AB000869AB7 /* Build configuration list for PBXNativeTarget "XLEUnitTestsIOS-GL" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8F49156C22F20AB000869AB7 /* Debug */,
@@ -1090,7 +1575,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac" */ = {
+		8F49644822EF9C0F00BE5E4D /* Build configuration list for PBXNativeTarget "XLEUnitTestsMac-GL" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8F49644922EF9C0F00BE5E4D /* Debug */,
