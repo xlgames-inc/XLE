@@ -38,6 +38,16 @@ namespace UnitTests
         VertexPC { Float4 {   1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff }
     };
 
+    static VertexPC vertices_fullViewport[] = {
+        VertexPC { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff },
+        VertexPC { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff },
+        VertexPC { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff },
+
+        VertexPC { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff },
+        VertexPC { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff },
+        VertexPC { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff }
+    };
+
     static RenderCore::InputElementDesc inputElePC[] = {
         RenderCore::InputElementDesc { "position", 0, RenderCore::Format::R32G32B32A32_FLOAT },
         RenderCore::InputElementDesc { "color", 0, RenderCore::Format::R8G8B8A8_UNORM }
@@ -62,6 +72,29 @@ namespace UnitTests
             _testHelper.reset();
         }
 
+        void RenderQuad(
+            RenderCore::Metal::DeviceContext& metalContext,
+            IteratorRange<const VertexPC*> vertices,
+            const RenderCore::Metal::RasterizationDesc& rasterizationDesc)
+        {
+            auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_clipInput, psText);
+
+            using namespace RenderCore;
+            auto vertexBuffer = CreateVB(*_testHelper->_device, vertices);
+
+            // Using the InputElementDesc version of BoundInputLayout constructor
+            Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
+            assert(inputLayout.AllAttributesBound());
+
+            VertexBufferView vbv { vertexBuffer.get() };
+            inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+
+            metalContext.Bind(shaderProgram);
+            metalContext.Bind(Topology::TriangleList);
+            metalContext.Bind(rasterizationDesc);
+            metalContext.Draw((unsigned)vertices.size());
+        }
+
 		TEST_METHOD(WindowCoordSpaceOrientation)
 		{
             // -------------------------------------------------------------------------------------
@@ -70,35 +103,17 @@ namespace UnitTests
             // -------------------------------------------------------------------------------------
             using namespace RenderCore;
             auto threadContext = _testHelper->_device->GetImmediateContext();
-            auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_clipInput, psText);
             auto targetDesc = CreateDesc(
                 BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
                 TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
                 "temporary-out");
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
             UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
-            auto rpi = fbHelper.BeginRenderPass();
-
-            ////////////////////////////////////////////////////////////////////////////////////////
             {
-                auto vertexBuffer = CreateVB(*_testHelper->_device, MakeIteratorRange(vertices_topLeftQuad));
-
-                // Using the InputElementDesc version of BoundInputLayout constructor
-                Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
-                Assert::IsTrue(inputLayout.AllAttributesBound());
-
-                VertexBufferView vbv { vertexBuffer.get() };
-                auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-                inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
-
-                metalContext.Bind(shaderProgram);
-                metalContext.Bind(Topology::TriangleList);
-                metalContext.Bind(Metal::RasterizationDesc{CullMode::None});
-                metalContext.Draw(dimof(vertices_topLeftQuad));
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
             }
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            rpi = {};     // end RPI
 
             auto data = fbHelper._target->ReadBack(*threadContext);
             unsigned lastPixel = *(unsigned*)PtrAdd(AsPointer(data.end()), -sizeof(unsigned));
@@ -115,6 +130,57 @@ namespace UnitTests
                 Assert::AreEqual(firstPixel, 0xffffffff);
                 Assert::AreEqual(lastPixel, 0xff000000);
             #endif
+            (void)firstPixel; (void)lastPixel;
+        }
+
+        TEST_METHOD(WindowCoordSpaceWindingOrder)
+        {
+            // -------------------------------------------------------------------------------------
+            // Render a quad to check the impact of window coordinates on winding oder
+            // -------------------------------------------------------------------------------------
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
+                "temporary-out0");
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            {
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CCW});
+            }
+            auto breakdown0 = fbHelper.GetFullColorBreakdown();
+
+            {
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
+            }
+            auto breakdown1 = fbHelper.GetFullColorBreakdown();
+
+            // The differences in the window coordinate definition does not impact the winding
+            // mode. Even though the handiness of window coordinates is different, the winding
+            // order calculate is determined in cull space.
+            Assert::AreEqual(breakdown0.size(), (size_t)1);
+            Assert::AreEqual(breakdown0.begin()->first, 0xffffffff);
+            Assert::AreEqual(breakdown1.begin()->first, 0xff000000);
+            (void)breakdown0; (void)breakdown1;
+
+            {
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CCW});
+            }
+            auto breakdown2 = fbHelper.GetFullColorBreakdown();
+
+            // If we draw only one triangle of the full screen quad, we will draw to approximately
+            // half the screen. It's not exactly half, though, because of the rules for when a
+            // triangle goes through the center of a pixel. We draw to slightly fewer than half
+            // of the pixels. And we should get the same results regardless of API and regardless
+            // of window coordinate space definition
+            Assert::AreEqual(breakdown2.size(), (size_t)2);
+            Assert::AreEqual(breakdown2[0xff000000], 2080u);
+            Assert::AreEqual(breakdown2[0xffffffff], unsigned((64*64) - 2080));
         }
     };
 }

@@ -31,5 +31,9 @@
     _underlying->WindowCoordSpaceOrientation(self);
 }
 
+- (void)testWindowCoordSpaceWindingOrder {
+    _underlying->WindowCoordSpaceWindingOrder(self);
+}
+
 @end
 
