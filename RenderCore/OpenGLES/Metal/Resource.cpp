@@ -637,11 +637,45 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("After glTexSubImage2D() upload in BlitPassInstance::Write");
     }
 
+    void BindToFramebuffer(
+        GLenum frameBufferTarget,
+        GLenum attachmentSlot,
+        Resource& res, const TextureViewDesc& viewWindow);
+
     void BlitPass::Copy(
         const CopyPartial_Dest& dst,
         const CopyPartial_Src& src)
     {
-        Throw(std::runtime_error("BlitPassInstance::Copy() not implemented for OpenGLES"));
+        GLint prevFrameBuffer = ~0u;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFrameBuffer);
+
+        if (src._leftTopFront[2] != 0 || src._rightBottomBack[2] != 1 || dst._leftTopFront[2] != 0)
+            Throw(std::runtime_error("Only the first depth slice is supported in BlitPass::Copy for GL. To copy other depth slices of a 3D texture you must use shader based copies."));
+
+        if (src._subResource._mip != 0 || src._subResource._arrayLayer != 0 || dst._subResource._mip != 0 || dst._subResource._arrayLayer != 0)
+            Throw(std::runtime_error("Only the first mip level and array layer is supported in BlitPass::Copy for GL."));
+
+        // Using BlitPass::Copy on GL is slow / inefficient. It's not recommended for per-frame use
+
+        GLuint fbs[2];
+        glGenFramebuffers(dimof(fbs), fbs);
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbs[0]);
+        BindToFramebuffer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *checked_cast<Resource*>(src._resource), {});
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbs[1]);
+        BindToFramebuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *checked_cast<Resource*>(dst._resource), {});
+
+        auto width = src._rightBottomBack[0] - src._leftTopFront[0];
+        auto height = src._rightBottomBack[1] - src._leftTopFront[1];
+
+        glBlitFramebuffer(
+            src._leftTopFront[0], src._leftTopFront[1], width, height,
+            dst._leftTopFront[0], dst._leftTopFront[1], width, height,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, prevFrameBuffer);
+        glDeleteFramebuffers(dimof(fbs), fbs);
     }
 
     BlitPass::BlitPass(RenderCore::IThreadContext& genericContext)
