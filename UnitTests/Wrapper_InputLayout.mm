@@ -57,9 +57,6 @@
     _underlying->BasicBinding_TextureSampling(self);
 }
 
-//
-// DavidJ -- note -- Apple Metal fails these test cases currently
-//
 - (void)testBindAttributeToGeneratorShader {
     #if GFXAPI_TARGET != GFXAPI_OPENGLES
         _underlying->BasicBinding_BindAttributeToGeneratorShader(self);

@@ -35,5 +35,13 @@
     _underlying->WindowCoordSpaceWindingOrder(self);
 }
 
+- (void)testRenderCopyThenReadback {
+    _underlying->RenderCopyThenReadback(self);
+}
+
+- (void)testRenderBltAndThenReadback {
+    _underlying->RenderBltAndThenReadback(self);
+}
+
 @end
 
