@@ -207,6 +207,13 @@ namespace RenderCore
     extern int appleMetalAPIValidationEnabled;
 
     void SetAppleMetalAPIValidationEnabled();
+
+    // NOTE: This function overrides whatever is set in your Xcode scheme
+    // when running in Xcode, or your shell/user defaults/system defaults
+    // otherwise. It must be called before MTLCreateSystemDefaultDevice
+    // (normally called by cocos3d's CreateXLEDevice, which calls
+    // RenderCore's TryCreateDevice), or it will have no effect.
+    //
+    // The values are the same as above.
+    void ForceAppleMetalAPIValidation(int level);
 }
-
-
