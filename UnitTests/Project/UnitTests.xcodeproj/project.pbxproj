@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F2A482223442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
+		8F2A482323442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
+		8F2A482423442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
+		8F2A482523442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */; };
 		8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */; };
 		8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
@@ -300,6 +304,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8F2A482023442EA3000E4532 /* CoordinateSpaces.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CoordinateSpaces.cpp; path = ../CoordinateSpaces.cpp; sourceTree = "<group>"; };
+		8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_CoordinateSpaces.mm; path = ../Wrapper_CoordinateSpaces.mm; sourceTree = "<group>"; };
 		8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_ResourceUpdateAndReadBack.mm; path = ../Wrapper_ResourceUpdateAndReadBack.mm; sourceTree = "<group>"; };
 		8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_QueryPool.mm; path = ../Wrapper_QueryPool.mm; sourceTree = "<group>"; };
 		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XLEUnitTestsIOS.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -409,6 +415,7 @@
 				8F49644322EF9C0F00BE5E4D /* Products */,
 				8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */,
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
+				8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */,
 				8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */,
 				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
 				8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */,
@@ -555,6 +562,7 @@
 		BE81350223023BB60019A2F6 /* NonMembers */ = {
 			isa = PBXGroup;
 			children = (
+				8F2A482023442EA3000E4532 /* CoordinateSpaces.cpp */,
 				BE81351023023C290019A2F6 /* BasicMaths.cpp */,
 				BE81351223023C290019A2F6 /* CBLayoutTests.cpp */,
 				BE81350623023C280019A2F6 /* DLLBinding.cpp */,
@@ -849,10 +857,38 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8F2A47872343D890000E4532 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2A47882343D890000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
+				8F2A47892343D890000E4532 /* MetalUnitTest.cpp in Sources */,
+				8F2A482423442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
+				8F2A478A2343D890000E4532 /* Wrapper_InputLayout.mm in Sources */,
+				8F2A478B2343D890000E4532 /* Wrapper_BasicMath.mm in Sources */,
+				8F2A478C2343D890000E4532 /* Wrapper_QueryPool.mm in Sources */,
+				8F2A478D2343D890000E4532 /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F2A47BC2343D898000E4532 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F2A482523442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
+				8F2A47BD2343D898000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
+				8F2A47BE2343D898000E4532 /* MetalUnitTest.cpp in Sources */,
+				8F2A47BF2343D898000E4532 /* Wrapper_InputLayout.mm in Sources */,
+				8F2A47C02343D898000E4532 /* Wrapper_BasicMath.mm in Sources */,
+				8F2A47C12343D898000E4532 /* Wrapper_QueryPool.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8F49155822F20AB000869AB7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F2A482323442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F49155922F20AB000869AB7 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F49155A22F20AB000869AB7 /* MetalUnitTest.cpp in Sources */,
 				8F49155B22F20AB000869AB7 /* Wrapper_InputLayout.mm in Sources */,
@@ -867,6 +903,7 @@
 			files = (
 				8F4964BC22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F4BFA4422F0CD470049AE5E /* MetalUnitTest.cpp in Sources */,
+				8F2A482223442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F4BFA3622F0CB310049AE5E /* Wrapper_InputLayout.mm in Sources */,
 				8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */,
 				8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */,
