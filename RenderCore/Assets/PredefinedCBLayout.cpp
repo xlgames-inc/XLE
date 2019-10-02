@@ -602,7 +602,7 @@ namespace RenderCore { namespace Assets
         unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
         std::vector<uint8> cbData(_cbSizeByLanguage[alignmentRules], uint8(0));
         WriteBuffer(AsPointer(cbData.begin()), parameters, lang);
-        return std::move(cbData);
+        return cbData;
     }
 
     SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters, ShaderLanguage lang) const
@@ -611,7 +611,7 @@ namespace RenderCore { namespace Assets
         SharedPkt result = MakeSharedPktSize(_cbSizeByLanguage[alignmentRules]);
         std::memset(result.begin(), 0, _cbSizeByLanguage[alignmentRules]);
         WriteBuffer(result.begin(), parameters, lang);
-        return std::move(result);
+        return result;
     }
     
     uint64_t PredefinedCBLayout::CalculateHash() const

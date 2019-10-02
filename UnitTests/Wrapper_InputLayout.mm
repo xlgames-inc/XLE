@@ -5,8 +5,6 @@
 //  Created by David Jewsbury on 7/30/19.
 //
 
-#define GL_SILENCE_DEPRECATION
-
 #import <XCTest/XCTest.h>
 #include "XCTestAdapter.h"
 #include "InputLayout.cpp"
