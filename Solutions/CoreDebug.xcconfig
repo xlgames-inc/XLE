@@ -19,7 +19,8 @@ GCC_OPTIMIZATION_LEVEL = 0
     //  P R E P R O C E S S I N G   //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1 _DEBUG GL_SILENCE_DEPRECATION=1 $(inherited)
+CORE_PREPROCESSOR_DEFINITIONS = DEBUG=1 _DEBUG GL_SILENCE_DEPRECATION=1
+GCC_PREPROCESSOR_DEFINITIONS = $(CORE_PREPROCESSOR_DEFINITIONS) $(inherited)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     //  U S E R   D E F I N E D  //

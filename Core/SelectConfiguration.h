@@ -51,7 +51,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__) || defined(__LP64__)
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__) || defined(__LP64__) || defined(__arm64__) && defined(__aarch64__)
     #define TARGET_64BIT 1
 #else
     #define TARGET_64BIT 0

@@ -13,7 +13,8 @@ VALIDATE_PRODUCT = YES
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ENABLE_NS_ASSERTIONS = NO
-GCC_PREPROCESSOR_DEFINITIONS = NDEBUG NS_BLOCK_ASSERTIONS=1 GL_SILENCE_DEPRECATION=1 $(inherited)
+CORE_PREPROCESSOR_DEFINITIONS = NDEBUG NS_BLOCK_ASSERTIONS=1 GL_SILENCE_DEPRECATION=1
+GCC_PREPROCESSOR_DEFINITIONS = $(CORE_PREPROCESSOR_DEFINITIONS) $(inherited)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     //  U S E R   D E F I N E D  //

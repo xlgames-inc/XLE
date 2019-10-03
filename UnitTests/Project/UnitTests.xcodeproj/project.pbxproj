@@ -42,7 +42,15 @@
 		8F2A47CC2343D898000E4532 /* libUtilityIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649222EF9D4100BE5E4D /* libUtilityIOS.a */; };
 		8F2A48042343D99F000E4532 /* libXLESubsetMac-Metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */; };
 		8F2A48052343D9B4000E4532 /* libXLESubsetIOS-Metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */; };
-		8F2A48082343D9D7000E4532 /* libXLESubsetIOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */; };
+		8F2A48082343D9D7000E4532 /* libXLESubsetIOS-GL.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS-GL.a */; };
+		8F365C602345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */; };
+		8F365C612345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */; };
+		8F365C622345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */; };
+		8F365C632345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */; };
+		8F365C652345672100AB0A4D /* CoordinateSpaces.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */; };
+		8F365C662345672100AB0A4D /* CoordinateSpaces.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */; };
+		8F365C672345672100AB0A4D /* CoordinateSpaces.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */; };
+		8F365C682345672100AB0A4D /* CoordinateSpaces.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */; };
 		8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */; };
 		8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
 		8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */; };
@@ -67,7 +75,7 @@
 		8F4964B422EF9DBC00BE5E4D /* libRenderCoreMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645122EF9D0500BE5E4D /* libRenderCoreMac.a */; };
 		8F4964B522EF9DBC00BE5E4D /* libRenderCoreOGLESMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49645A22EF9D0500BE5E4D /* libRenderCoreOGLESMac.a */; };
 		8F4964B622EF9DBC00BE5E4D /* libUtilityMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649022EF9D4100BE5E4D /* libUtilityMac.a */; };
-		8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */; };
+		8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac-GL.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49649922EF9D5300BE5E4D /* libXLESubsetMac-GL.a */; };
 		8F4964B822EF9DCD00BE5E4D /* libfreetype-mac.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F49647522EF9D2200BE5E4D /* libfreetype-mac.a */; };
 		8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */; };
 		8F4964BC22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */; };
@@ -479,6 +487,8 @@
 		8F2A47A82343D890000E4532 /* XLEUnitTestsMac-Metal.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "XLEUnitTestsMac-Metal.plist"; path = "/Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsMac-Metal.plist"; sourceTree = "<absolute>"; };
 		8F2A47D22343D898000E4532 /* XLEUnitTestsIOS-Metal.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsIOS-Metal.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F2A47D32343D899000E4532 /* XLEUnitTestsIOS-Metal.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "XLEUnitTestsIOS-Metal.plist"; path = "/Users/djewsbury/code/dragons3d/Externals/cocos3d/XLE/UnitTests/Project/XLEUnitTestsIOS-Metal.plist"; sourceTree = "<absolute>"; };
+		8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_CoordinateSpaces.mm; path = ../Wrapper_CoordinateSpaces.mm; sourceTree = "<group>"; };
+		8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CoordinateSpaces.cpp; path = ../CoordinateSpaces.cpp; sourceTree = "<group>"; };
 		8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_ResourceUpdateAndReadBack.mm; path = ../Wrapper_ResourceUpdateAndReadBack.mm; sourceTree = "<group>"; };
 		8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_QueryPool.mm; path = ../Wrapper_QueryPool.mm; sourceTree = "<group>"; };
 		8F49156E22F20AB000869AB7 /* XLEUnitTestsIOS-GL.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "XLEUnitTestsIOS-GL.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -587,7 +597,7 @@
 				8F49158622F20B1300869AB7 /* libRenderCoreIOS.a in Frameworks */,
 				8F49158722F20B1300869AB7 /* libRenderCoreOGLESIOS.a in Frameworks */,
 				8F49158822F20B1300869AB7 /* libUtilityIOS.a in Frameworks */,
-				8F2A48082343D9D7000E4532 /* libXLESubsetIOS.a in Frameworks */,
+				8F2A48082343D9D7000E4532 /* libXLESubsetIOS-GL.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,7 +617,7 @@
 				8F4964B422EF9DBC00BE5E4D /* libRenderCoreMac.a in Frameworks */,
 				8F4964B522EF9DBC00BE5E4D /* libRenderCoreOGLESMac.a in Frameworks */,
 				8F4964B622EF9DBC00BE5E4D /* libUtilityMac.a in Frameworks */,
-				8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac.a in Frameworks */,
+				8F4964B722EF9DBC00BE5E4D /* libXLESubsetMac-GL.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -625,7 +635,7 @@
 				8F49644322EF9C0F00BE5E4D /* Products */,
 				8F4964B922EF9EFE00BE5E4D /* Wrapper_BasicMath.mm */,
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
-				8F2A482123442F00000E4532 /* Wrapper_CoordinateSpaces.mm */,
+				8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */,
 				8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */,
 				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
 				8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */,
@@ -734,8 +744,8 @@
 		8F49649422EF9D5300BE5E4D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */,
-				8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */,
+				8F49649922EF9D5300BE5E4D /* libXLESubsetMac-GL.a */,
+				8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS-GL.a */,
 				8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */,
 				8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */,
 			);
@@ -779,9 +789,9 @@
 		BE81350223023BB60019A2F6 /* NonMembers */ = {
 			isa = PBXGroup;
 			children = (
-				8F2A482023442EA3000E4532 /* CoordinateSpaces.cpp */,
 				BE81351023023C290019A2F6 /* BasicMaths.cpp */,
 				BE81351223023C290019A2F6 /* CBLayoutTests.cpp */,
+				8F365C642345672100AB0A4D /* CoordinateSpaces.cpp */,
 				BE81350623023C280019A2F6 /* DLLBinding.cpp */,
 				BE81350423023BE00019A2F6 /* InputLayout.cpp */,
 				BE81350E23023C280019A2F6 /* InputLayoutShaders_GLSL.h */,
@@ -1108,17 +1118,17 @@
 			remoteRef = 8F49649122EF9D4100BE5E4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		8F49649922EF9D5300BE5E4D /* libXLESubsetMac.a */ = {
+		8F49649922EF9D5300BE5E4D /* libXLESubsetMac-GL.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libXLESubsetMac.a;
+			path = "libXLESubsetMac-GL.a";
 			remoteRef = 8F49649822EF9D5300BE5E4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS.a */ = {
+		8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS-GL.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libXLESubsetIOS.a;
+			path = "libXLESubsetIOS-GL.a";
 			remoteRef = 8F49649A22EF9D5300BE5E4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
@@ -1162,7 +1172,9 @@
 			files = (
 				8F2A47882343D890000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F2A47892343D890000E4532 /* MetalUnitTest.cpp in Sources */,
+				8F365C622345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F2A478A2343D890000E4532 /* Wrapper_InputLayout.mm in Sources */,
+				8F365C672345672100AB0A4D /* CoordinateSpaces.cpp in Sources */,
 				8F2A478B2343D890000E4532 /* Wrapper_BasicMath.mm in Sources */,
 				8F2A478C2343D890000E4532 /* Wrapper_QueryPool.mm in Sources */,
 				8F2A478D2343D890000E4532 /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */,
@@ -1173,8 +1185,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F365C632345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F2A47BD2343D898000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F2A47BE2343D898000E4532 /* MetalUnitTest.cpp in Sources */,
+				8F365C682345672100AB0A4D /* CoordinateSpaces.cpp in Sources */,
 				8F2A47BF2343D898000E4532 /* Wrapper_InputLayout.mm in Sources */,
 				8F2A47C02343D898000E4532 /* Wrapper_BasicMath.mm in Sources */,
 				8F2A47C12343D898000E4532 /* Wrapper_QueryPool.mm in Sources */,
@@ -1185,9 +1199,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8F2A482323442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
+				8F365C612345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F49155922F20AB000869AB7 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F49155A22F20AB000869AB7 /* MetalUnitTest.cpp in Sources */,
+				8F365C662345672100AB0A4D /* CoordinateSpaces.cpp in Sources */,
 				8F49155B22F20AB000869AB7 /* Wrapper_InputLayout.mm in Sources */,
 				8F49155C22F20AB000869AB7 /* Wrapper_BasicMath.mm in Sources */,
 				8F3DD5FE22FA53D50077F6B5 /* Wrapper_QueryPool.mm in Sources */,
@@ -1200,8 +1215,9 @@
 			files = (
 				8F4964BC22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F4BFA4422F0CD470049AE5E /* MetalUnitTest.cpp in Sources */,
-				8F2A482223442F01000E4532 /* Wrapper_CoordinateSpaces.mm in Sources */,
+				8F365C602345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F4BFA3622F0CB310049AE5E /* Wrapper_InputLayout.mm in Sources */,
+				8F365C652345672100AB0A4D /* CoordinateSpaces.cpp in Sources */,
 				8F4964BA22EF9EFE00BE5E4D /* Wrapper_BasicMath.mm in Sources */,
 				8F3DD5FC22FA53C70077F6B5 /* Wrapper_QueryPool.mm in Sources */,
 				8F395BD422FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm in Sources */,
