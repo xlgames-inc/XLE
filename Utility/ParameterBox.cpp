@@ -126,9 +126,9 @@ namespace Utility
                 uint8_t srcBuffer[MAXIMUM_SRC_SIZE];
 
                 // Check if unaligned
-                if ((uintptr_t)rawSrc & 3u) {
+                if (uintptr_t(rawSrc.begin()) & 3u) {
                     // If unaligned, copy to the srcBuffer (memcpy is safe to do unaligned access)
-                    memcpy(&srcBuffer[0], src, srcSize);
+                    memcpy(&srcBuffer[0], src.begin(), srcSize);
                     // Set src to the srcBuffer
                     src = { &srcBuffer[0], &srcBuffer[srcSize] };
                 }
