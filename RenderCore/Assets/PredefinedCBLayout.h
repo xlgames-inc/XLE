@@ -49,7 +49,7 @@ namespace RenderCore { namespace Assets
 		// Reorder the given elements to try to find an ordering that will minimize the
 		// size of the final constant buffer. This accounts for ordering rules such as
 		// preventing vectors from crossing 16 byte boundaries.
-		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 1; std::string _conditions = {}; };
+		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 0u; std::string _conditions = {}; };
 		static void OptimizeElementOrder(IteratorRange<NameAndType*> elements, ShaderLanguage lang);
         std::vector<NameAndType> GetNamesAndTypes();
 
