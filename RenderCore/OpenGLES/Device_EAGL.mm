@@ -164,8 +164,10 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         _sharedContext = TBC::moveptr(t);
         [EAGLContext setCurrentContext:_sharedContext.get()];
-        _boundContextVerification = std::make_unique<BoundContextVerification>();
-        _boundContextVerification->BindToCurrentThread((size_t)_sharedContext.get());
+        #if defined(_DEBUG)
+            _boundContextVerification = std::make_unique<BoundContextVerification>();
+            _boundContextVerification->BindToCurrentThread((size_t)_sharedContext.get());
+        #endif
 
         auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);
         _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
@@ -178,10 +180,14 @@ namespace RenderCore { namespace ImplOpenGLES
     Device::~Device()
     {
         if (EAGLContext.currentContext == _sharedContext.get()) {
-            _boundContextVerification->UnbindFromCurrentThread((size_t)_sharedContext.get());
+            #if defined(_DEBUG)
+                _boundContextVerification->UnbindFromCurrentThread((size_t)_sharedContext.get());
+            #endif
             EAGLContext.currentContext = nil;
         }
-        _boundContextVerification.reset();
+        #if defined(_DEBUG)
+            _boundContextVerification.reset();
+        #endif
     }
 
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc)
@@ -340,7 +346,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
         if (EAGLContext.currentContext != _activeFrameContext.get()) {
             [EAGLContext setCurrentContext:_activeFrameContext.get()];
-            BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_activeFrameContext.get());
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_activeFrameContext.get());
+            #endif
         }
 
         return _activeFrameRenderbuffer;
@@ -361,8 +369,10 @@ namespace RenderCore { namespace ImplOpenGLES
         _activeFrameContext = nullptr;
         if (EAGLContext.currentContext != _sharedContext.get()) {
             [EAGLContext setCurrentContext:_sharedContext.get()];
-            BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_activeFrameContext.get());
-            BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_activeFrameContext.get());
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #endif
         }
     }
 
@@ -436,7 +446,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
     bool ThreadContextOpenGLES::IsBoundToCurrentThread()
     {
-        CheckContextIntegrity();
+        #if defined(_DEBUG)
+            CheckContextIntegrity();
+        #endif
         EAGLContext* currentContext = EAGLContext.currentContext;
         if (_activeFrameContext) {
             return currentContext == _activeFrameContext.get();
@@ -456,11 +468,15 @@ namespace RenderCore { namespace ImplOpenGLES
             // it enabled, but others do not, then strange things will happen.
             assert(_sharedContext.get().multiThreaded == _deferredContext.get().multiThreaded);
             EAGLContext.currentContext = _deferredContext.get();
-            BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_deferredContext.get());
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_deferredContext.get());
+            #endif
             return IsBoundToCurrentThread();
         } else if (_sharedContext) {
             EAGLContext.currentContext = _sharedContext.get();
-            BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #endif
             return IsBoundToCurrentThread();
         } else {
             return false;
@@ -472,11 +488,13 @@ namespace RenderCore { namespace ImplOpenGLES
         assert(IsBoundToCurrentThread());
         glFlush();
         EAGLContext.currentContext = nil;
-        if (_deferredContext) {
-            BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_deferredContext.get());
-        } else {
-            BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_sharedContext.get());
-        }
+        #if defined(_DEBUG)
+            if (_deferredContext) {
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_deferredContext.get());
+            } else {
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_sharedContext.get());
+            }
+        #endif
     }
 
     std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()
