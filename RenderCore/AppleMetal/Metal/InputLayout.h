@@ -73,7 +73,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         struct CB { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
         std::vector<CB> _cbs;
 
-        struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; unsigned _textureType; bool _isDepth; DEBUG_ONLY(std::string _name;) };
         std::vector<SRV> _srvs;
 
         struct Sampler { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
@@ -138,7 +138,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         StreamMapping _preboundInterfaceVS[4];
         StreamMapping _preboundInterfacePS[4];
         std::vector<std::pair<ShaderStage, unsigned>> _unboundCBs;
-        std::vector<std::pair<ShaderStage, unsigned>> _unbound2DSRVs;
+        std::vector<std::tuple<ShaderStage, unsigned, bool>> _unbound2DSRVs;
         std::vector<std::pair<ShaderStage, unsigned>> _unboundCubeSRVs;
         std::vector<std::pair<ShaderStage, unsigned>> _unboundSamplers;
 

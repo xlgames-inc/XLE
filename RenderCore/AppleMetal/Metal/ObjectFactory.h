@@ -62,8 +62,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             bool makeReflection = false);
 
         const TBC::OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
+        const TBC::OCPtr<AplMtlTexture>& StandIn2DDepthTexture() { return _standIn2DDepthTexture; }
         const TBC::OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
         const TBC::OCPtr<AplMtlSamplerState>& StandInSamplerState() { return _standInSamplerState; }
+        const TBC::OCPtr<AplMtlTexture>& GetStandInTexture(unsigned type, bool isDepth);
 
         Threading::Mutex _compiledShadersLock;
         std::unordered_map<uint64_t, TBC::OCPtr<id>> _compiledShaders;
@@ -78,6 +80,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<AplMtlDevice> _mtlDevice; // <MTLDevice>
 
         TBC::OCPtr<AplMtlTexture> _standIn2DTexture;
+        TBC::OCPtr<AplMtlTexture> _standIn2DDepthTexture;
         TBC::OCPtr<AplMtlTexture> _standInCubeTexture;
         TBC::OCPtr<AplMtlSamplerState> _standInSamplerState;
     };
