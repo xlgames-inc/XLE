@@ -755,7 +755,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 if (arg.textureType == MTLTextureTypeCube) {
                     _unboundCubeSRVs.push_back({ShaderStage::Vertex, arg.index});
                 } else {
-                    _unbound2DSRVs.push_back({ShaderStage::Vertex, arg.index});
+                    _unbound2DSRVs.push_back({ShaderStage::Vertex, arg.index, arg.isDepthTexture});
                 }
             } else if (arg.type == MTLArgumentTypeSampler) {
                 _unboundSamplers.push_back({ShaderStage::Vertex, arg.index});
