@@ -656,7 +656,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 continue;
 
             if (arg.type == MTLArgumentTypeTexture) {
-                [encoder setVertexTexture:GetObjectFactory().GetStandInTexture(arg.textureType, (bool)arg.isDepthTexture).get()
+                [encoder setVertexTexture:GetObjectFactory().GetStandInTexture((unsigned)arg.textureType, (bool)arg.isDepthTexture).get()
                                   atIndex:arg.index];
             } else if (arg.type == MTLArgumentTypeSampler) {
                 [encoder setVertexSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:arg.index];
@@ -672,7 +672,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 continue;
 
             if (arg.type == MTLArgumentTypeTexture) {
-                [encoder setFragmentTexture:GetObjectFactory().GetStandInTexture(arg.textureType, (bool)arg.isDepthTexture).get()
+                [encoder setFragmentTexture:GetObjectFactory().GetStandInTexture((unsigned)arg.textureType, (bool)arg.isDepthTexture).get()
                                     atIndex:arg.index];
             } else if (arg.type == MTLArgumentTypeSampler) {
                 [encoder setFragmentSamplerState:GetObjectFactory().StandInSamplerState().get() atIndex:arg.index];
