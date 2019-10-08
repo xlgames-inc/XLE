@@ -91,6 +91,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         
         if (isDepth) {
             textureDesc.get().pixelFormat = MTLPixelFormatDepth32Float;
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
+            /* METAL_TODO: depth textures on macOS must have a private storage mode; to populate that texture, we would need to blit to it. */
+            textureDesc.get().storageMode = MTLStorageModePrivate;
+#endif
         } else {
             textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
         }
@@ -99,12 +103,14 @@ namespace RenderCore { namespace Metal_AppleMetal
         memset(data, 0xff, sizeof(data));
 
         auto tex = factory.CreateTexture(textureDesc);
-        [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
-                     mipmapLevel:0
-                           slice:0
-                       withBytes:data
-                     bytesPerRow:4*4
-                   bytesPerImage:4*4*4];
+        if (textureDesc.get().storageMode == MTLStorageModeShared) {
+            [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
+                         mipmapLevel:0
+                               slice:0
+                           withBytes:data
+                         bytesPerRow:4*4
+                       bytesPerImage:4*4*4];
+        }
         return tex;
     }
 
