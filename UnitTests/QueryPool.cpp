@@ -249,9 +249,12 @@ namespace UnitTests
 
                         if (c == *nextMarker) {
                             auto lastCompleted = syncEventSet.LastCompletedEvent();
+                            (void)lastCompleted;
                             auto evnt = syncEventSet.SetEvent();
-                            for (auto&e:pendingEvents)
+                            for (auto&e:pendingEvents) {
                                 Assert::AreNotEqual(e, evnt);               // ensure no other evnt matches
+                                (void)e;
+                            }
                             Assert::AreNotEqual(lastCompleted, evnt);       // can't be completed before it's set¨
                             Assert::IsTrue(evnt > lastCompleted);
                             pendingEvents.push_back(evnt);
