@@ -7,6 +7,7 @@
 #include "../../../Utility/BitUtils.h"
 #include "IncludeGLES.h"
 #include <sstream>
+#include <atomic>
 
 #include "GLWrappers.h"
 
