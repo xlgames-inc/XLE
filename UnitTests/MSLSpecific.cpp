@@ -25,24 +25,11 @@ namespace UnitTests
     #define ValuesStructs R"(
             struct Values0Struct
             {
-                float A, B, C;
-                float4 vA;
+                metal::float4x4 worldToClip;
             };
 
             struct Values1Struct
             {
-                float4 vA[4];
-            };
-
-            struct Values2Struct
-            {
-                unsigned dummy;
-                metal::float4x4 dummy0;
-            };
-
-            struct Values3Struct
-            {
-                metal::float4x4 values;
             };
         )"
 
@@ -53,12 +40,9 @@ namespace UnitTests
             fragment float4 fragmentShader(
                 RasterizerData in [[stage_in]],
                 constant Values0Struct* UsedValues,
-                constant Values1Struct* UnusedValues,
-                constant Values2Struct* UnusedValues2,
-                constant Values3Struct* UsedValue2
-                )
+                constant Values1Struct* UnusedValues)
             {
-                return UsedValues->vA + UsedValue2->values[1];
+                return UsedValues->worldToClip[0];
             }
         )";
 
@@ -70,17 +54,12 @@ namespace UnitTests
             {
                 constant Values0Struct& UsedValues;
                 constant Values1Struct& UnusedValues;
-                constant Values2Struct& UnusedValues2;
-                constant Values3Struct& UsedValue2;
 
-                float UnusedFunction()
-                {
-                    return UnusedValues.vA[0].x + (float)UnusedValues2.dummy;
-                }
+                metal::float4x4 getWorldToClip() { return transpose(UsedValues.worldToClip); }
 
                 float4 CalculateResult()
                 {
-                    return UsedValues.vA + UsedValue2.values[1];
+                    return getWorldToClip()[0];
                 }
 
                 void main(thread float4& res)
@@ -99,36 +78,34 @@ namespace UnitTests
 
     static const char vsText_ComplicatedUniformShader[] =
         VaryingsT
+        ValuesStructs
+        R"(
+            metal::float4x4 fake_transpose(metal::float4x4 inMatrix)
+            {
+                float4 i0 = inMatrix[0];
+                float4 i1 = inMatrix[1];
+                float4 i2 = inMatrix[2];
+                float4 i3 = inMatrix[3];
+
+                metal::float4x4 outMatrix = metal::float4x4(
+                                float4(i0.x, i1.x, i2.x, i3.x),
+                                float4(i0.y, i1.y, i2.y, i3.y),
+                                float4(i0.z, i1.z, i2.z, i3.z),
+                                float4(i0.w, i1.w, i2.w, i3.w));
+                return outMatrix;
+            }
+        )"
         R"(
             struct Globals
             {
-        )"
-        ValuesStructs
-        R"(
                 constant Values0Struct& UsedValues;
                 constant Values1Struct& UnusedValues;
-                constant Values2Struct& UnusedValues2;
-                constant Values3Struct& UsedValue2;
 
-                float UnusedFunction()
-                {
-                    return UnusedValues.vA[0].x + (float)UnusedValues2.dummy;
-                }
-
-                metal::float4x4 UnusedFunction2()
-                {
-                    return transpose(UnusedValues2.dummy0);
-                }
-
-                float4 CalculateResult()
-                {
-                    return UsedValues.vA + UsedValue2.values[1];
-                }
+                metal::float4x4 getWorldToClip() { return transpose(UsedValues.worldToClip); }
 
                 void main(thread float4& res, float4 input)
                 {
-                    // res = CalculateResult();
-                    res = transpose(UsedValue2.values) * input + UsedValues.vA;
+                    res = getWorldToClip() * input;
                 }
             };
 
@@ -143,7 +120,7 @@ namespace UnitTests
                     out.texCoord.y * -2.0f + 1.0f,
                     0.0f, 1.0f
                 );
-                float4 offset;
+                float4 offset; // = gbls.getWorldToClip() * out.clipSpacePosition;
                 gbls.main(offset, out.clipSpacePosition);
                 out.clipSpacePosition += offset;
                 return out;
@@ -200,41 +177,29 @@ namespace UnitTests
             auto reflection1 = MakeDefaultReflection(
                 MakeShaderProgram(*_testHelper, vsText_FullViewport, psText_ComplicatedUniformShader));
 
-            Assert::IsTrue(reflection1.get().fragmentArguments.count == 4);
+            Assert::IsTrue(reflection1.get().fragmentArguments.count == 2);
             Assert::IsTrue([reflection1.get().fragmentArguments[0].name isEqualToString:@"UsedValues"]);
             Assert::IsTrue([reflection1.get().fragmentArguments[1].name isEqualToString:@"UnusedValues"]);
-            Assert::IsTrue([reflection1.get().fragmentArguments[2].name isEqualToString:@"UnusedValues2"]);
-            Assert::IsTrue([reflection1.get().fragmentArguments[3].name isEqualToString:@"UsedValue2"]);
             Assert::AreEqual(reflection1.get().fragmentArguments[0].active, (BOOL)true);
             Assert::AreEqual(reflection1.get().fragmentArguments[1].active, (BOOL)false);
-            Assert::AreEqual(reflection1.get().fragmentArguments[2].active, (BOOL)false);
-            Assert::AreEqual(reflection1.get().fragmentArguments[3].active, (BOOL)true);
 
             auto reflection2 = MakeDefaultReflection(
                 MakeShaderProgram(*_testHelper, vsText_FullViewport, psText_ComplicatedUniformShader2));
 
-            Assert::IsTrue(reflection2.get().fragmentArguments.count == 4);
+            Assert::IsTrue(reflection2.get().fragmentArguments.count == 2);
             Assert::IsTrue([reflection2.get().fragmentArguments[0].name isEqualToString:@"UsedValues"]);
             Assert::IsTrue([reflection2.get().fragmentArguments[1].name isEqualToString:@"UnusedValues"]);
-            Assert::IsTrue([reflection2.get().fragmentArguments[2].name isEqualToString:@"UnusedValues2"]);
-            Assert::IsTrue([reflection2.get().fragmentArguments[3].name isEqualToString:@"UsedValue2"]);
             Assert::AreEqual(reflection2.get().fragmentArguments[0].active, (BOOL)true);
             Assert::AreEqual(reflection2.get().fragmentArguments[1].active, (BOOL)false);
-            Assert::AreEqual(reflection2.get().fragmentArguments[2].active, (BOOL)false);
-            Assert::AreEqual(reflection2.get().fragmentArguments[3].active, (BOOL)true);
 
             auto reflection3 = MakeDefaultReflection(
                 MakeShaderProgram(*_testHelper, vsText_ComplicatedUniformShader, psText_TextureBinding));
 
-            Assert::IsTrue(reflection3.get().vertexArguments.count == 4);
+            Assert::IsTrue(reflection3.get().vertexArguments.count == 2);
             Assert::IsTrue([reflection3.get().vertexArguments[0].name isEqualToString:@"UsedValues"]);
             Assert::IsTrue([reflection3.get().vertexArguments[1].name isEqualToString:@"UnusedValues"]);
-            Assert::IsTrue([reflection3.get().vertexArguments[2].name isEqualToString:@"UnusedValues2"]);
-            Assert::IsTrue([reflection3.get().vertexArguments[3].name isEqualToString:@"UsedValue2"]);
             Assert::AreEqual(reflection3.get().vertexArguments[0].active, (BOOL)true);
             Assert::AreEqual(reflection3.get().vertexArguments[1].active, (BOOL)false);
-            Assert::AreEqual(reflection3.get().vertexArguments[2].active, (BOOL)false);
-            Assert::AreEqual(reflection3.get().vertexArguments[3].active, (BOOL)true);
 		}
 	};
 }
