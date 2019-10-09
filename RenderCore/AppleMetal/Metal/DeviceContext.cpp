@@ -246,7 +246,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
             if (i < subpass._output.size()) {
-                assert(subpass._output[i]._resourceName);
+                assert(subpass._output[i]._resourceName <= fbDesc.GetAttachments().size());
                 const auto& window = subpass._output[i]._window;
                 const auto& attachment = fbDesc.GetAttachments()[subpass._output[i]._resourceName]._desc;
                 auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::RTV);
@@ -262,6 +262,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
 
         if (subpass._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
+            assert(subpass._depthStencil._resourceName <= fbDesc.GetAttachments().size());
             const auto& window = subpass._depthStencil._window;
             const auto& attachment = fbDesc.GetAttachments()[subpass._depthStencil._resourceName]._desc;
             auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::DSV);
