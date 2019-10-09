@@ -80,6 +80,8 @@
 		8F4BFA4422F0CD470049AE5E /* MetalUnitTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BFA4322F0CD470049AE5E /* MetalUnitTest.cpp */; };
 		8F4BFA4822F0DA610049AE5E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA4722F0DA610049AE5E /* Cocoa.framework */; };
 		8F4BFA5622F0DD070049AE5E /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */; };
+		8F522A1E234D64C60017911D /* Wrapper_MSLSpecific.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F522A19234D64C60017911D /* Wrapper_MSLSpecific.mm */; };
+		8F522A1F234D64C60017911D /* Wrapper_MSLSpecific.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F522A19234D64C60017911D /* Wrapper_MSLSpecific.mm */; };
 		8F8573E622F2533B00175F69 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F8573E422F2533B00175F69 /* OpenGL.framework */; };
 /* End PBXBuildFile section */
 
@@ -476,6 +478,13 @@
 			remoteGlobalIDString = 8F707B5A1EA6C41F00DEC600;
 			remoteInfo = XLESubsetMac;
 		};
+		8F522A1C234D64C60017911D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8F49649322EF9D5300BE5E4D /* XLESubset.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8F70411F2347F9E000F721F3;
+			remoteInfo = "XLESubsetIOS-DefaultGFXAPI";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -519,6 +528,8 @@
 		8F4BFA4C22F0DAB80049AE5E /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		8F4BFA4F22F0DAFF0049AE5E /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
 		8F4BFA5522F0DD070049AE5E /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		8F522A19234D64C60017911D /* Wrapper_MSLSpecific.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Wrapper_MSLSpecific.mm; path = ../Wrapper_MSLSpecific.mm; sourceTree = "<group>"; };
+		8F522A20234D64DC0017911D /* MSLSpecific.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MSLSpecific.cpp; path = ../MSLSpecific.cpp; sourceTree = "<group>"; };
 		8F8573E422F2533B00175F69 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		BE81350423023BE00019A2F6 /* InputLayout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = InputLayout.cpp; path = ../InputLayout.cpp; sourceTree = "<group>"; };
 		BE81350523023C280019A2F6 /* UnitTestHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = UnitTestHelper.h; path = ../UnitTestHelper.h; sourceTree = "<group>"; };
@@ -633,6 +644,7 @@
 				8F4964BB22EFA79000BE5E4D /* Wrapper_CBLayoutTests.mm */,
 				8F365C5E2345671400AB0A4D /* Wrapper_CoordinateSpaces.mm */,
 				8F4BFA3522F0CB310049AE5E /* Wrapper_InputLayout.mm */,
+				8F522A19234D64C60017911D /* Wrapper_MSLSpecific.mm */,
 				8F3DD5FA22FA53C70077F6B5 /* Wrapper_QueryPool.mm */,
 				8F395BD222FB4AB900B41A5D /* Wrapper_ResourceUpdateAndReadBack.mm */,
 				8F4964BD22EFA7D900BE5E4D /* XCTestAdapter.h */,
@@ -744,6 +756,7 @@
 				8F49649B22EF9D5300BE5E4D /* libXLESubsetIOS-GL.a */,
 				8F2A47A52343D890000E4532 /* libXLESubsetMac-Metal.a */,
 				8F2A47A72343D890000E4532 /* libXLESubsetIOS-Metal.a */,
+				8F522A1D234D64C60017911D /* libXLESubsetIOS-DefaultGFXAPI.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -794,6 +807,7 @@
 				BE81351323023C290019A2F6 /* InputLayoutShaders_MSL.h */,
 				BE81351523023C290019A2F6 /* MetalUnitTest.h */,
 				BE81350C23023C280019A2F6 /* ModelConversion.cpp */,
+				8F522A20234D64DC0017911D /* MSLSpecific.cpp */,
 				BE81350823023C280019A2F6 /* QueryPool.cpp */,
 				BE81350923023C280019A2F6 /* ResourceUpdateAndReadBack.cpp */,
 				BE81350A23023C280019A2F6 /* ShaderParser.cpp */,
@@ -1128,6 +1142,13 @@
 			remoteRef = 8F49649A22EF9D5300BE5E4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
+		8F522A1D234D64C60017911D /* libXLESubsetIOS-DefaultGFXAPI.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libXLESubsetIOS-DefaultGFXAPI.a";
+			remoteRef = 8F522A1C234D64C60017911D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
@@ -1166,6 +1187,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F522A1E234D64C60017911D /* Wrapper_MSLSpecific.mm in Sources */,
 				8F2A47882343D890000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
 				8F2A47892343D890000E4532 /* MetalUnitTest.cpp in Sources */,
 				8F365C622345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
@@ -1182,6 +1204,7 @@
 			files = (
 				8F365C632345671400AB0A4D /* Wrapper_CoordinateSpaces.mm in Sources */,
 				8F2A47BD2343D898000E4532 /* Wrapper_CBLayoutTests.mm in Sources */,
+				8F522A1F234D64C60017911D /* Wrapper_MSLSpecific.mm in Sources */,
 				8F2A47BE2343D898000E4532 /* MetalUnitTest.cpp in Sources */,
 				8F2A47BF2343D898000E4532 /* Wrapper_InputLayout.mm in Sources */,
 				8F2A47C02343D898000E4532 /* Wrapper_BasicMath.mm in Sources */,
