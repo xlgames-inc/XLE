@@ -7,6 +7,7 @@
 #include "ParsingContext.h"
 #include "CommonBindings.h"
 #include "../IDevice.h"
+#include "../IThreadContext.h"
 #include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -65,7 +66,14 @@ namespace RenderCore { namespace Techniques
             depthDesc = AsAttachmentDesc(boundDepth->GetDesc());
         } else {
             depthDesc = colorAttachment._desc;
-            depthDesc._format = Format::D24_UNORM_S8_UINT;
+            auto device = context.GetDevice();
+            if (device->QueryFormatCapability(Format::D24_UNORM_S8_UINT, 0) == FormatCapability::Supported) {
+                depthDesc._format = Format::D24_UNORM_S8_UINT;
+            } else if (device->QueryFormatCapability(Format::D32_SFLOAT_S8_UINT, 0) == FormatCapability::Supported) {
+                depthDesc._format = Format::D32_SFLOAT_S8_UINT;
+            } else {
+                assert(0);
+            }
             depthDesc._flags = AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil;
         }
 		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, depthDesc };
