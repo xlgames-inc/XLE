@@ -131,8 +131,6 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual unsigned GetNativeFormatCode() override;
         virtual void* QueryInterface(size_t guid) override;
 
-        Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext();
-
         DeviceOpenGLES();
         ~DeviceOpenGLES();
     };
