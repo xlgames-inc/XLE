@@ -98,6 +98,7 @@
 		BE4C1C052033E15B00A941D4 /* ObjectFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjectFactory.h; sourceTree = "<group>"; };
 		BE4C1C062033E21C00A941D4 /* FrameBuffer.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = FrameBuffer.cpp; sourceTree = "<group>"; };
 		BE5DFC5B2033FCBE0036CAF1 /* ObjectFactory.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjectFactory.mm; sourceTree = "<group>"; };
+		BEA7A510235920FE00F21F55 /* FeatureSet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FeatureSet.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +181,7 @@
 				8F46A0B6202140280003948C /* TextureView.cpp */,
 				8F46A0BA202140290003948C /* TextureView.h */,
 				8F46A0F3202149980003948C /* Types.h */,
+				BEA7A510235920FE00F21F55 /* FeatureSet.h */,
 			);
 			name = Metal;
 			path = ../AppleMetal/Metal;

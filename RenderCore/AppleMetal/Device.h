@@ -5,10 +5,10 @@
 #pragma once
 
 #include "IDeviceAppleMetal.h"
-#include "Metal/Format.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
+#include "Metal/FeatureSet.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include <memory>
 

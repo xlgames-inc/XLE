@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Format.h" // (for FeatureSet)
+#include "FeatureSet.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
