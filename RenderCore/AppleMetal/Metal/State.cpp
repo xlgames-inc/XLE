@@ -96,15 +96,18 @@ namespace RenderCore { namespace Metal_AppleMetal
         desc.get().magFilter = magFilter;
         desc.get().mipFilter = mipFilter;
 
-        /* METAL TODO: restrictions on framework-side sampler comparison function
-         The MTLFeatureSet_iOS_GPUFamily3_v1 and MTLFeatureSet_OSX_GPUFamily1_v1 feature sets allow you to define a framework-side sampler comparison function for a MTLSamplerState object. All feature sets support shader-side sampler comparison functions, as described in the Metal Shading Language Guide.
-         */
         desc.get().compareFunction = AsMTLenum(comparison);
         if (filter != FilterMode::ComparisonBilinear) {
             desc.get().compareFunction = MTLCompareFunctionNever;
         }
 
         auto& factory = GetObjectFactory();
+        if (!(factory.GetFeatureSet() & FeatureSet::Flags::SamplerComparisonFn)) {
+            // Not all Metal feature sets allow you to define a framework-side sampler comparison function for a MTLSamplerState object.
+            // All feature sets support shader-side sampler comparison functions, as described in the Metal Shading Language Guide.
+            desc.get().compareFunction = MTLCompareFunctionNever;
+        }
+
         _pimpl->_underlyingSamplerMipmaps = factory.CreateSamplerState(desc);
 
         desc.get().mipFilter = MTLSamplerMipFilterNotMipmapped;

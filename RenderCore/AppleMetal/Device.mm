@@ -202,6 +202,11 @@ namespace RenderCore { namespace ImplAppleMetal
         return DeviceDesc { "AppleMetal", "", "" };
     }
 
+    Metal_AppleMetal::FeatureSet::BitField Device::GetFeatureSet()
+    {
+        return _objectFactory->GetFeatureSet();
+    }
+
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
     {
         auto mtlFormat = Metal_AppleMetal::AsMTLPixelFormat(format);

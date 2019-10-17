@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IDeviceAppleMetal.h"
+#include "Metal/Format.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
@@ -117,6 +118,8 @@ namespace RenderCore { namespace ImplAppleMetal
         std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
 
         virtual void Stall() override;
+
+        Metal_AppleMetal::FeatureSet::BitField GetFeatureSet();
 
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 

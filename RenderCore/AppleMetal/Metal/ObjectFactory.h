@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "Format.h" // (for FeatureSet)
 #include "../../../Externals/Misc/OCPtr.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
@@ -70,6 +71,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         Threading::Mutex _compiledShadersLock;
         std::unordered_map<uint64_t, TBC::OCPtr<id>> _compiledShaders;
 
+        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+
         ObjectFactory(id<MTLDevice> mtlDevice);
         ObjectFactory() = delete;
         ~ObjectFactory();
@@ -78,6 +81,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ObjectFactory(const ObjectFactory&) = delete;
     private:
         TBC::OCPtr<AplMtlDevice> _mtlDevice; // <MTLDevice>
+        FeatureSet::BitField _featureSet;
 
         TBC::OCPtr<AplMtlTexture> _standIn2DTexture;
         TBC::OCPtr<AplMtlTexture> _standIn2DDepthTexture;

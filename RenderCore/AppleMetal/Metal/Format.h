@@ -10,6 +10,15 @@
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
+    namespace FeatureSet
+    {
+        enum Flags
+        {
+            SamplerComparisonFn     = (1<<0),
+        };
+        using BitField = unsigned;
+    };
+
     MTLPixelFormat AsMTLPixelFormat(RenderCore::Format fmt);
     RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt);
 

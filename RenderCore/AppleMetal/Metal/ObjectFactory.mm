@@ -51,6 +51,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
+        if (!(_featureSet & FeatureSet::Flags::SamplerComparisonFn)) {
+            assert(samplerDesc.compareFunction == MTLCompareFunctionNever);
+        }
 
         return TBC::OCPtr<AplMtlSamplerState>(TBC::moveptr([device newSamplerStateWithDescriptor:samplerDesc]));
     }
@@ -168,6 +171,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         _standIn2DDepthTexture = CreateStandIn2DTexture(*this, true);
         _standInCubeTexture = CreateStandInCubeTexture(*this);
         _standInSamplerState = CreateStandInSamplerState(*this, false);
+
+#if TARGET_OS_IPHONE
+        _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
+#elif TARGET_OS_OSX
+        _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_OSX_GPUFamily1_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
+#endif
     }
     ObjectFactory::~ObjectFactory()
     {
