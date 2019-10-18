@@ -142,7 +142,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         return tex;
     }
 
-    static TBC::OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory, bool isDepth)
+    static TBC::OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory)
     {
         TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
         desc.get().rAddressMode = MTLSamplerAddressModeRepeat;
@@ -151,7 +151,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         desc.get().minFilter = MTLSamplerMinMagFilterLinear;
         desc.get().magFilter = MTLSamplerMinMagFilterLinear;
         desc.get().mipFilter = MTLSamplerMipFilterLinear;
-        desc.get().compareFunction = isDepth ? MTLCompareFunctionLess : MTLCompareFunctionNever;
+        desc.get().compareFunction = MTLCompareFunctionNever;
 
         auto samplerState = factory.CreateSamplerState(desc);
         return samplerState;
@@ -170,7 +170,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _standIn2DTexture = CreateStandIn2DTexture(*this, false);
         _standIn2DDepthTexture = CreateStandIn2DTexture(*this, true);
         _standInCubeTexture = CreateStandInCubeTexture(*this);
-        _standInSamplerState = CreateStandInSamplerState(*this, false);
+        _standInSamplerState = CreateStandInSamplerState(*this);
 
 #if TARGET_OS_IPHONE
         _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
