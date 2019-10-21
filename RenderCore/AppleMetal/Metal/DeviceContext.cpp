@@ -366,6 +366,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
+        // Enabling depth write but disabling depth test doesn't really make sense,
+        // and has different behavior among graphics APIs.
+        assert(desc._depthTest != CompareOp::Always || !desc._depthWrite);
+
         _pimpl->_activeDepthStencilDesc = desc;
         _pimpl->_dssHash = _pimpl->_activeDepthStencilDesc.Hash();
     }

@@ -115,6 +115,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDepthFunc(AsGLenum(desc._depthTest));
         glDepthMask(desc._depthWrite ? GL_TRUE : GL_FALSE);
 
+        // Enabling depth write but disabling depth test doesn't really make sense,
+        // and has different behavior among graphics APIs.
+        assert(desc._depthTest != CompareOp::Always || !desc._depthWrite);
+
         if (desc._depthTest != CompareOp::Always) {
             glEnable(GL_DEPTH_TEST);
         } else {
