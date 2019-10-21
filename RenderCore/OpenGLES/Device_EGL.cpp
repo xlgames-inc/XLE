@@ -487,6 +487,7 @@ namespace RenderCore { namespace ImplOpenGLES
 				// In fake back buffer mode, the caller must give us the format they want explicitly
 				// Otherwise, we'll try to extract it from what the driver created
 				// We can't get the color depth of the true texture, just the number of components & a color space flag
+#if defined(EGL_GL_COLORSPACE)      // DavidJ -- working around an issue related to EGL1.5 defines not being in some headers). 
 				EGLint colorSpace, textureFormat;
 				bool success = eglQuerySurface(display, _surface, EGL_GL_COLORSPACE, &colorSpace);
 				success &= eglQuerySurface(display, _surface, EGL_TEXTURE_FORMAT, &textureFormat);
@@ -498,6 +499,7 @@ namespace RenderCore { namespace ImplOpenGLES
 						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
 					}
 				}
+#endif
 			}
         }
     }
