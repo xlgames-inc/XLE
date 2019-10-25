@@ -62,6 +62,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		108D9F502360D18900403C2E /* AppleMetal_HookValidation.inc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; name = AppleMetal_HookValidation.inc; path = ../AppleMetal/AppleMetal_HookValidation.inc; sourceTree = "<group>"; };
 		8F46A0A8202140270003948C /* Shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Shader.h; sourceTree = "<group>"; };
 		8F46A0A9202140270003948C /* DeviceContext.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = DeviceContext.cpp; sourceTree = "<group>"; };
 		8F46A0AA202140270003948C /* PipelineLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PipelineLayout.cpp; sourceTree = "<group>"; };
@@ -125,6 +126,7 @@
 				8F7B6C5020212950006D0079 /* Config */,
 				8F7B6C6B20212AEC006D0079 /* Device.h */,
 				8F7B6C6A20212AEC006D0079 /* Device.mm */,
+				108D9F502360D18900403C2E /* AppleMetal_HookValidation.inc */,
 				8F46A0F8202167110003948C /* IDeviceAppleMetal.h */,
 				8F7B6C8820212D23006D0079 /* Metal */,
 				8F7B6C5A202129EF006D0079 /* Products */,
