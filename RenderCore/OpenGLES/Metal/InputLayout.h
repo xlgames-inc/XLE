@@ -75,7 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             std::vector<std::string> _unboundAttributesNames;
         #endif
 
-        #if defined(_DEBUG)
+        #if defined(_DEBUG) && !defined(PGDROID)
             void ValidateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const;
         #endif
 

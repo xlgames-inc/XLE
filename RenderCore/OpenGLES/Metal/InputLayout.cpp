@@ -462,7 +462,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return hash;
     }
 
-    #if defined(_DEBUG)
+    #if defined(_DEBUG) && !PGDROID
         void BoundInputLayout::ValidateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const
         {
             GLint prevVAO = 0;
@@ -534,7 +534,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // passed to this function. That won't work; you need to either clone the BoundInputLayout for
             // each set of vertex buffers you want to use, or just don't call CreateVAO at all.
             assert(_vaoBindingHash == Hash(vertexBuffers));
-            #if defined(_DEBUG)
+            #if defined(_DEBUG) && !PGDROID
                 ValidateVAO(devContext, vertexBuffers);
             #endif
             BindVAO(devContext, _vao->AsRawGLHandle());
@@ -709,7 +709,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
-        #if defined(GL_ES_VERSION_3_0)
+        #if defined(GL_ES_VERSION_3_0) && !PGDROID
             if (GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300) {
                 // METAL_TODO: something should own this object!
                 // METAL_TODO: When we move this to a more appropriate place, get a proper IThreadContext instead of passing nullptr. It happens to work here because this code is GL-only, and the GL implementation currently passes the context down a couple levels just to be ignored.
