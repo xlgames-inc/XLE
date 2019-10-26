@@ -210,9 +210,4 @@ namespace RenderCore { namespace Metal_AppleMetal
             ;
     }
 
-    ViewportDesc::ViewportDesc(DeviceContext& devContext)
-    {
-        *this = devContext.GetViewport();
-    }
-    
 }}

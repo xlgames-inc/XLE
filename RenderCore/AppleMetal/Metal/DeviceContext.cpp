@@ -129,16 +129,34 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
-    static MTLViewport AsMTLViewport(const ViewportDesc& viewport)
+    static MTLViewport AsMTLViewport(const Viewport& viewport, const float renderTargetWidth, const float renderTargetHeight)
     {
         MTLViewport vp;
-        vp.originX = viewport.TopLeftX;
-        vp.originY = viewport.TopLeftY;
+        vp.originX = viewport.X;
+        vp.originY = viewport.Y;
+        if (!viewport.OriginIsUpperLeft) {
+            // Metal window coordinate space has origin in upper-left, so we must account for that in the viewport
+            vp.originY = renderTargetHeight - viewport.Y - viewport.Height;
+        }
         vp.width = viewport.Width;
         vp.height = viewport.Height;
         vp.znear = viewport.MinDepth;
         vp.zfar = viewport.MaxDepth;
         return vp;
+    }
+
+    static MTLScissorRect AsMTLScissorRect(const ScissorRect& scissorRect, const float renderTargetWidth, const float renderTargetHeight)
+    {
+        MTLScissorRect s;
+        s.x = scissorRect.X;
+        s.y = scissorRect.Y;
+        s.width = scissorRect.Width;
+        s.height = scissorRect.Height;
+        if (!scissorRect.OriginIsUpperLeft) {
+            // Metal window coordinate space has origin in upper-left, so we must account for that in the scissor rect
+            s.y = renderTargetHeight - scissorRect.Y - scissorRect.Height;
+        }
+        return s;
     }
 
     static void CheckCommandBufferError(id<MTLCommandBuffer> buffer)
@@ -559,6 +577,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         bool _inRenderPass;
 
+        float _renderTargetWidth;
+        float _renderTargetHeight;
+
         std::weak_ptr<IDevice> _device;
 
         class QueuedUniformSet
@@ -575,11 +596,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         CapturedStates _capturedStates;
 
-        ViewportDesc _activeViewport;
         TBC::OCPtr<id> _activeIndexBuffer; // MTLBuffer
-
-        MTLScissorRect _activeScissorRect;
-        bool _applyScissorRectToNewRenderCommandEncoders = false;
 
         MTLIndexType _indexType;
         unsigned _indexFormatBytes;
@@ -626,37 +643,36 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_boundThread == [NSThread currentThread]);
     }
 
-    void DeviceContext::Bind(const ViewportDesc& viewport)
+    void DeviceContext::SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects)
     {
         assert(_pimpl->_boundThread == [NSThread currentThread]);
-        _pimpl->_activeViewport = viewport;
+        assert(_pimpl->_commandEncoder);
 
-        if (_pimpl->_commandEncoder)
-            [_pimpl->_commandEncoder setViewport:AsMTLViewport(_pimpl->_activeViewport)];
-    }
-
-    ViewportDesc DeviceContext::GetViewport()
-    {
-        return _pimpl->_activeViewport;
-    }
-
-    void DeviceContext::SetScissorRect(int x, int y, int width, int height)
-    {
-        MTLScissorRect rect;
-        rect.height = height;
-        rect.width = width;
-        rect.x = x;
-        rect.y = y;
-        _pimpl->_activeScissorRect = rect;
+        assert(viewports.size() == scissorRects.size() || scissorRects.size() == 0);
+        // For now, we only support one viewport and scissor rect; in the future, we could support more
+        assert(viewports.size() == 1);
 
         if (_pimpl->_commandEncoder) {
-            [_pimpl->_commandEncoder setScissorRect:rect];
+            const auto& viewport = viewports[0];
+            [_pimpl->_commandEncoder setViewport:AsMTLViewport(viewport, _pimpl->_renderTargetWidth, _pimpl->_renderTargetHeight)];
+            if (scissorRects.size()) {
+                const auto& scissorRect = scissorRects[0];
+                MTLScissorRect s = AsMTLScissorRect(scissorRect, _pimpl->_renderTargetWidth, _pimpl->_renderTargetHeight);
+                if (s.x > _pimpl->_renderTargetWidth || s.y > _pimpl->_renderTargetHeight) {
+                    return;
+                }
+                if (s.x + s.width > _pimpl->_renderTargetWidth) {
+                    s.width = _pimpl->_renderTargetWidth - s.x;
+                }
+                if (s.y + s.height > _pimpl->_renderTargetHeight) {
+                    s.height = _pimpl->_renderTargetHeight - s.y;
+                }
+                [_pimpl->_commandEncoder setScissorRect:s];
+            } else {
+                // If a scissor rect is not specified, use the full size of the render target
+                [_pimpl->_commandEncoder setScissorRect:MTLScissorRect{0, 0, (NSUInteger)_pimpl->_renderTargetWidth, (NSUInteger)_pimpl->_renderTargetHeight}];
+            }
         }
-    }
-
-    void DeviceContext::ApplyScissorRectToFutureRenderCommandEncoders(bool shouldApply)
-    {
-        _pimpl->_applyScissorRectToNewRenderCommandEncoders = shouldApply;
     }
 
     void DeviceContext::FinalizePipeline()
@@ -919,19 +935,28 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         assert(!_pimpl->_commandEncoder);
         assert(!_pimpl->_blitCommandEncoder);
+
+        float width = 0.f;
+        float height = 0.f;
+        if (renderPassDescriptor.colorAttachments[0].texture) {
+            width = renderPassDescriptor.colorAttachments[0].texture.width;
+            height = renderPassDescriptor.colorAttachments[0].texture.height;
+        } else if (renderPassDescriptor.depthAttachment.texture) {
+            width = renderPassDescriptor.depthAttachment.texture.width;
+            height = renderPassDescriptor.depthAttachment.texture.height;
+        } else if (renderPassDescriptor.stencilAttachment.texture) {
+            width = renderPassDescriptor.stencilAttachment.texture.width;
+            height = renderPassDescriptor.stencilAttachment.texture.height;
+        }
+        _pimpl->_renderTargetWidth = width;
+        _pimpl->_renderTargetHeight = height;
         _pimpl->_commandEncoder = [_pimpl->_commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
         assert(_pimpl->_commandEncoder);
-
-        [_pimpl->_commandEncoder setViewport:AsMTLViewport(_pimpl->_activeViewport)];
 
         _pimpl->_boundVSArgs = 0;
         _pimpl->_boundPSArgs = 0;
         _pimpl->_graphicsPipelineReflection = nullptr;
         _pimpl->_queuedUniformSets.clear();
-
-        if (_pimpl->_applyScissorRectToNewRenderCommandEncoders) {
-            [_pimpl->_commandEncoder setScissorRect:_pimpl->_activeScissorRect];
-        }
     }
 
     void            DeviceContext::CreateBlitCommandEncoder()
@@ -989,6 +1014,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_boundThread == [NSThread currentThread]);
         assert(_pimpl->_commandEncoder);
         _pimpl->_commandEncoder = nullptr;
+        _pimpl->_renderTargetWidth = 0.f;
+        _pimpl->_renderTargetHeight = 0.f;
 
         for (auto fn: _pimpl->_onDestroyEncoderFunctions) { fn(); }
         _pimpl->_onDestroyEncoderFunctions.clear();
@@ -1096,7 +1123,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_indexBufferOffsetBytes = 0;
         _pimpl->_inRenderPass = false;
-        _pimpl->_applyScissorRectToNewRenderCommandEncoders = false;
+        _pimpl->_renderTargetWidth = 0.f;
+        _pimpl->_renderTargetHeight = 0.f;
         _pimpl->_boundThread = [NSThread currentThread];
         _pimpl->_device = device;
     }

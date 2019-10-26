@@ -250,9 +250,4 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Apply BlendState");
     }
 
-    ViewportDesc::ViewportDesc(DeviceContext& devContext)
-    {
-        *this = devContext.GetViewport();
-    }
-    
 }}

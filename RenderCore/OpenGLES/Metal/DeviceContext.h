@@ -29,7 +29,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout;
     class ShaderProgram;
     class BlendState;
-    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
@@ -107,8 +106,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
 
-        void Bind(const ViewportDesc& viewport);
-        ViewportDesc GetViewport();
+        void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
         using GraphicsPipelineBuilder::Bind;
 
@@ -154,6 +152,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool    InRenderPass();
         void    OnEndRenderPass(std::function<void(void)> fn);
 
+        void    BeginSubpass(float renderTargetWidth, float renderTargetHeight);
+        void    EndSubpass();
+
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            ExecuteCommandList(CommandList& commandList);
@@ -179,6 +180,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         CapturedStates* _capturedStates;
 
         std::weak_ptr<IDevice> _device;
+
+        float _renderTargetWidth;
+        float _renderTargetHeight;
 
         bool _inRenderPass;
         std::vector<std::function<void(void)>> _onEndRenderPassFunctions;

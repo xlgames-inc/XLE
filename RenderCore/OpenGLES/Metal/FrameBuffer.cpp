@@ -513,6 +513,31 @@ namespace RenderCore { namespace Metal_OpenGLES
             glInvalidateFramebuffer(GL_FRAMEBUFFER, invalidationCount, attachmentsToInvalidate);
             CheckGLError("After FrameBuffer::BindSubpass() Invalidate framebuffer");
         }
+
+        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
+        {
+            float width = 0.f;
+            float height = 0.f;
+            if (s._rtvCount > 0 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
+                const auto& textureDesc = s._rtvs[0].GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            } else if (s._dsv.IsGood()) {
+                const auto& textureDesc = s._dsv.GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            }
+
+            context.BeginSubpass(width, height);
+
+            Viewport viewports[1];
+            viewports[0] = Viewport{0.f, 0.f, width, height};
+            // origin of viewport doesn't matter because it is full-size
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
+            // origin of viewport doesn't matter because it is full-size
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+        }
     }
 
     void FrameBuffer::FinishSubpass(DeviceContext& context, unsigned subpassIndex) const
@@ -539,6 +564,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             glInvalidateFramebuffer(GL_READ_FRAMEBUFFER, invalidateAttachmentCount, invalidateAttachments);
         }
+
+        context.EndSubpass();
     }
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)

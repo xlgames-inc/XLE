@@ -44,6 +44,30 @@ namespace RenderCore { namespace Metal_AppleMetal
         context.CreateRenderCommandEncoder(desc);
 
         context.SetRenderPassConfiguration(desc, _subpasses[subpassIndex]._rasterCount);
+
+        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
+        {
+            float width = 0.f;
+            float height = 0.f;
+            if (desc.colorAttachments[0].texture) {
+                width = desc.colorAttachments[0].texture.width;
+                height = desc.colorAttachments[0].texture.height;
+            } else if (desc.depthAttachment.texture) {
+                width = desc.depthAttachment.texture.width;
+                height = desc.depthAttachment.texture.height;
+            } else if (desc.stencilAttachment.texture) {
+                width = desc.stencilAttachment.texture.width;
+                height = desc.stencilAttachment.texture.height;
+            }
+
+            Viewport viewports[1];
+            viewports[0] = Viewport{0.f, 0.f, width, height};
+            // origin of viewport doesn't matter because it is full-size
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
+            // origin of scissor rect doesn't matter because it is full-size
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+        }
     }
 
     MTLLoadAction NonStencilLoadActionFromRenderCore(RenderCore::LoadStore load)

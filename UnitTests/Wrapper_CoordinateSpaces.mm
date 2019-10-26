@@ -31,6 +31,10 @@
     _underlying->WindowCoordSpaceOrientation(self);
 }
 
+- (void)testScissorRect {
+    _underlying->ScissorRect(self);
+}
+
 - (void)testWindowCoordSpaceWindingOrder {
     _underlying->WindowCoordSpaceWindingOrder(self);
 }

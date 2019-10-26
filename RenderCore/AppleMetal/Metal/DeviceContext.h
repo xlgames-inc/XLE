@@ -32,7 +32,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     class ConstantBuffer;
     class BoundInputLayout;
     class ShaderProgram;
-    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
@@ -122,11 +121,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         void UnbindInputLayout();
 
-        void    Bind(const ViewportDesc& viewport);
-        ViewportDesc GetViewport();
-
-        void    SetScissorRect(int x, int y, int width, int height);
-        void    ApplyScissorRectToFutureRenderCommandEncoders(bool shouldApply);
+        void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
         using GraphicsPipelineBuilder::Bind;
 

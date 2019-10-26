@@ -86,11 +86,8 @@ namespace RenderCore { namespace ImplAppleMetal
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const
     {
-        auto viewport = _devContext->GetViewport();
-        return {
-            VectorPattern<unsigned, 2> { (unsigned)viewport.Width, (unsigned)viewport.Height },
-            0
-        };
+        Throw(::Exceptions::BasicLabel("ThreadContext::GetStateDesc is not implemented for Apple Metal because we don't currently support retrieving the viewport"));
+        return {};
     }
     std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
     void                        ThreadContext::IncrFrameId() {}

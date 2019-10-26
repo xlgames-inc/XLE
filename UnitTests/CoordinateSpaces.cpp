@@ -31,23 +31,47 @@ namespace UnitTests
     };
 
     static VertexPCT vertices_topLeftQuad[] = {
+        // Clockwise-winding triangle
         VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
         VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
         VertexPCT { Float4 {  -1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
 
+        // Counter clockwise-winding triangle
         VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
         VertexPCT { Float4 {  -1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
         VertexPCT { Float4 {   1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } }
     };
 
     static VertexPCT vertices_fullViewport[] = {
+        // Counter clockwise-winding triangle
         VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
         VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
         VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
 
+        // Counter clockwise-winding triangle
         VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
         VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
         VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } }
+    };
+
+    static VertexPCT vertices_topLeftQuad_Red[] = {
+        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 1.f } },
+
+        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 1.f } },
+        VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 0.f } },
+    };
+
+    static VertexPCT vertices_bottomLeftQuad_Blue[] = {
+        VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 0.f } },
+        VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 0.f } },
+        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 1.f } },
+
+        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 1.f } },
+        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 1.f } },
+        VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 0.f } },
     };
 
     static RenderCore::InputElementDesc inputElePCT[] = {
@@ -151,6 +175,117 @@ namespace UnitTests
             (void)firstPixel; (void)lastPixel;
         }
 
+        TEST_METHOD(ScissorRect)
+        {
+            using namespace RenderCore;
+            auto threadContext = _testHelper->_device->GetImmediateContext();
+            auto targetDesc = CreateDesc(
+                BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
+                "temporary-out");
+            auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+
+            UnitTestFBHelper fbHelper(*_testHelper->_device, *threadContext, targetDesc);
+            {
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
+                RenderQuad(metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
+            }
+
+            auto breakdown0 = fbHelper.GetFullColorBreakdown();
+
+            // For scissor rect, draw red on top half of screen and blue on bottom.
+            Assert::AreEqual(breakdown0.size(), (size_t)2);
+            Assert::AreEqual(breakdown0[0xffff0000], breakdown0[0xff0000ff]);
+
+            auto SetScissorRect = [&](float x, float y, float w, float h, bool originIsUpperLeft)
+            {
+                RenderCore::Viewport viewports[1];
+                viewports[0] = RenderCore::Viewport{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
+                viewports[0].OriginIsUpperLeft = originIsUpperLeft;
+                RenderCore::ScissorRect scissorRects[1];
+                scissorRects[0] = RenderCore::ScissorRect{ (int)x, (int)y, (unsigned)w, (unsigned)h };
+                scissorRects[0].OriginIsUpperLeft = originIsUpperLeft;
+                metalContext.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+            };
+
+            auto TestScissor = [&](float x, float y, float w, float h, bool originIsUpperLeft)
+            {
+                auto rpi = fbHelper.BeginRenderPass();
+                RenderQuad(metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
+                RenderQuad(metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
+                SetScissorRect(x, y, w, h, originIsUpperLeft);
+                RenderQuad(metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::None});
+            };
+
+            {
+                // Setting scissor rect outside renderpass will fail with assertion
+                //SetScissorRect(16, 48, 32, 16);
+            }
+
+            // Set scissor rect to include part of top half of screen.
+            // Draw white full screen.  Readback framebuffer.
+            // The ratio of white to full screen should be size of scissor rect relative to full framebuffer size.
+            // The ratio of red should be less than blue.
+            {
+                // {16, 48, 32, 16} with origin at lower-left should result in less 0xff0000ff (red) than 0xffff0000 (blue)
+                TestScissor(16, 48, 32, 16, false);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::AreEqual((size_t)breakdown[0xffffffff], (size_t)32*16);
+                Assert::IsTrue(breakdown[0xff0000ff] < breakdown[0xffff0000]);
+            }
+            {
+                // {16, 24, 32, 16} with origin at lower-left should result in equal 0xffff0000 (blue) and 0xff0000ff (red)
+                TestScissor(16, 24, 32, 16, false);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::AreEqual(breakdown[0xff0000ff], breakdown[0xffff0000]);
+            }
+            {
+                // {16, 24, 32, 16} with origin at upper-left should result in equal 0xffff0000 (blue) and 0xff0000ff (red)
+                TestScissor(16, 24, 32, 16, true);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::AreEqual(breakdown[0xff0000ff], breakdown[0xffff0000]);
+            }
+            {
+                // {16, 40, 32, 16} with origin at upper-left should result in less 0xffff0000 (blue) than 0xff0000ff (red)
+                TestScissor(16, 40, 32, 16, true);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::IsTrue(breakdown[0xffff0000] < breakdown[0xff0000ff]);
+            }
+            {
+                // {0, 32, 64, 32} with origin at lower-left should have no 0xff0000ff (red)
+                TestScissor(0, 32, 64, 32, false);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::AreEqual(breakdown.size(), (size_t)2);
+                Assert::AreEqual((size_t)breakdown[0xffffffff], (size_t)64*32);
+                Assert::AreEqual((size_t)breakdown[0xffff0000], (size_t)64*32);
+            }
+            {
+                // {0, 32, 64, 32} with origin at upper-left should have no 0xffff0000 (blue)
+                TestScissor(0, 32, 64, 32, true);
+                auto breakdown = fbHelper.GetFullColorBreakdown();
+                Assert::AreEqual(breakdown.size(), (size_t)2);
+                Assert::AreEqual((size_t)breakdown[0xffffffff], (size_t)64*32);
+                Assert::AreEqual((size_t)breakdown[0xff0000ff], (size_t)64*32);
+            }
+
+            // Test for scissor rect outside of framebuffer bounds.
+            // We may be clipping to framebuffer bounds, so there should be no validation errors.
+            {
+                // origin is lower-left
+                auto rpi = fbHelper.BeginRenderPass();
+                SetScissorRect(0, 0, 0, 0, false); // zero size
+                SetScissorRect(0, 0, 64, 64, false); // full-frame
+                SetScissorRect(-32, 0, 64, 64, false); // outside left
+                //SetScissorRect(32, 0, 64, 64, false); // outside right (Metal validation error)
+                //SetScissorRect(0, 32, 64, 64, false); // outside top (Metal validation error)
+                SetScissorRect(0, -32, 64, 64, false); // outside bottom
+
+                SetScissorRect(32, 0, -32, 64, false); // negative width
+                SetScissorRect(0, 32, 64, -32, false); // negative height
+            }
+        }
+
         TEST_METHOD(WindowCoordSpaceWindingOrder)
         {
             // -------------------------------------------------------------------------------------
@@ -201,6 +336,7 @@ namespace UnitTests
             Assert::AreEqual(breakdown2[0xff000000], 2080u);
             Assert::AreEqual(breakdown2[0xffffffff], unsigned((64*64) - 2080));
 
+#if 0 /* To avoid confusion that might stem from flipped viewports, we will disallow them */
             // If we put a flip on the viewport (but leave everything else alone), then the handiness
             // of the winding order is actually flipped.
             // This should actually generate an error in OpenGL, where negative viewport heights are
@@ -208,14 +344,20 @@ namespace UnitTests
             #if GFXAPI_TARGET != GFXAPI_OPENGLES
                 {
                     auto rpi = fbHelper.BeginRenderPass();
-                    metalContext.Bind(
-                        RenderCore::Metal::ViewportDesc{ 0.f, (float)targetDesc._textureDesc._height, (float)targetDesc._textureDesc._width, -(float)targetDesc._textureDesc._height });
+                    RenderCore::Viewport viewports[1];
+                    viewports[0] = RenderCore::Viewport{ 0.f, (float)targetDesc._textureDesc._height, (float)targetDesc._textureDesc._width, -(float)targetDesc._textureDesc._height };
+                    viewports[0].OriginIsUpperLeft = false;
+                    RenderCore::ScissorRect scissorRects[1];
+                    scissorRects[0] = RenderCore::ScissorRect{ 0, 0, targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+                    scissorRects[0].OriginIsUpperLeft = false;
+                    metalContext.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
                     RenderQuad(metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
                 }
                 auto breakdown3 = fbHelper.GetFullColorBreakdown();
                 Assert::AreEqual(breakdown3.size(), (size_t)1);
                 Assert::AreEqual(breakdown3.begin()->first, 0xffffffff);
             #endif
+#endif
         }
 
         TEST_METHOD(RenderCopyThenReadback)

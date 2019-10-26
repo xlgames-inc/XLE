@@ -103,7 +103,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         glLineWidth(1.f);
         glPolygonOffset(0.f, 0.f);
         glDisable(GL_POLYGON_OFFSET_FILL);
-        glDisable(GL_SCISSOR_TEST);
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
@@ -241,45 +240,45 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind RasterizationState");
     }
 
-    void DeviceContext::Bind(const ViewportDesc& viewport)
+    void DeviceContext::SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects)
     {
+        CheckGLError("Before Bind Viewport");
+
         ImplOpenGLES::CheckContextIntegrity();
-        glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
 
-        // hack -- desktop gl has a slight naming change
-        #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
-            glDepthRangef(viewport.MinDepth, viewport.MaxDepth);
-        #else
-            glDepthRange(viewport.MinDepth, viewport.MaxDepth);
-        #endif
+        assert(viewports.size() == scissorRects.size() || scissorRects.size() == 0);
+        // For now, we only support one viewport and scissor rect; in the future, we could support more
+        assert(viewports.size() == 1);
 
-        CheckGLError("Bind Viewport");
-    }
-
-    ViewportDesc DeviceContext::GetViewport()
-    {
-        // in OpenGL, viewport coordinates are always integers
-        GLint viewportParameters[4];
-        glGetIntegerv(GL_VIEWPORT, viewportParameters);
+        auto viewport = viewports[0];
+        if (viewport.OriginIsUpperLeft) {
+            // OpenGL window coordinate space has origin in lower-left, so we must account for that in the viewport
+            viewport.Y = _renderTargetHeight - viewport.Y - viewport.Height;
+        }
+        glViewport((GLint)viewport.X, (GLint)viewport.Y, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
 
         // hack -- desktop gl has a slight naming change
 #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
-        GLfloat depthParams[2];
-        glGetFloatv(GL_DEPTH_RANGE, depthParams);
+        glDepthRangef(viewport.MinDepth, viewport.MaxDepth);
 #else
-        GLdouble depthParams[2];
-        glGetDoublev(GL_DEPTH_RANGE, depthParams);
+        glDepthRange(viewport.MinDepth, viewport.MaxDepth);
 #endif
-        CheckGLError("GetViewport");
 
-        ViewportDesc viewport;
-        viewport.TopLeftX = viewportParameters[0];
-        viewport.TopLeftY = viewportParameters[1];
-        viewport.Width = viewportParameters[2];
-        viewport.Height = viewportParameters[3];
-        viewport.MinDepth = depthParams[0];
-        viewport.MaxDepth = depthParams[1];
-        return viewport;
+        CheckGLError("Bind Viewport");
+
+        if (scissorRects.size()) {
+            auto scissorRect = scissorRects[0];
+            if (scissorRect.OriginIsUpperLeft) {
+                // OpenGL window coordinate space has origin in lower-left, so we must account for that in the scissor rect
+                scissorRect.Y = _renderTargetHeight - scissorRect.Y - scissorRect.Height;
+            }
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(scissorRect.X, scissorRect.Y, scissorRect.Width, scissorRect.Height);
+        } else {
+            // If a scissor rect is not specified, disable the scissor test
+            glDisable(GL_SCISSOR_TEST);
+        }
+        CheckGLError("Bind ScissorRect");
     }
 
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
@@ -414,11 +413,24 @@ namespace RenderCore { namespace Metal_OpenGLES
         _inRenderPass = true;
     }
 
+    void DeviceContext::BeginSubpass(float renderTargetWidth, float renderTargetHeight) {
+        _renderTargetWidth = renderTargetWidth;
+        _renderTargetHeight = renderTargetHeight;
+    }
+
+    void DeviceContext::EndSubpass() {
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
+    }
+
     void DeviceContext::EndRenderPass()
     {
         ImplOpenGLES::CheckContextIntegrity();
         assert(_inRenderPass);
         _inRenderPass = false;
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
+
         for (auto fn: _onEndRenderPassFunctions) { fn(); }
         _onEndRenderPassFunctions.clear();
     }
@@ -470,6 +482,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         _capturedStates = nullptr;
 
         _inRenderPass = false;
+
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
 
         _device = device;
     }

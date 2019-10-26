@@ -199,7 +199,7 @@ namespace UnitTests
             Assert::IsTrue([reflection3.get().vertexArguments[0].name isEqualToString:@"UsedValues"]);
             Assert::IsTrue([reflection3.get().vertexArguments[1].name isEqualToString:@"UnusedValues"]);
             Assert::AreEqual(reflection3.get().vertexArguments[0].active, (BOOL)true);
-            Assert::AreEqual(reflection3.get().vertexArguments[1].active, (BOOL)false);
+            Assert::AreEqual(reflection3.get().vertexArguments[1].active, (BOOL)false); /* Ideally, this assertion would pass.  However, it seems that there is a bug in the shader compilation or reflecting that results in unused values being active.  That is, we currently expect this to fail. */
 		}
 	};
 }
