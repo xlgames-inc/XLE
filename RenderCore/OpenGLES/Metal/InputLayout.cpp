@@ -710,103 +710,125 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         #if defined(GL_ES_VERSION_3_0)
-            // METAL_TODO: something should own this object!
-            // METAL_TODO: When we move this to a more appropriate place, get a proper IThreadContext instead of passing nullptr. It happens to work here because this code is GL-only, and the GL implementation currently passes the context down a couple levels just to be ignored.
-            static DynamicBuffer reusableTemporarySpace(
-                RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
+            if (GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300) {
+                // METAL_TODO: something should own this object!
+                // METAL_TODO: When we move this to a more appropriate place, get a proper IThreadContext instead of passing nullptr. It happens to work here because this code is GL-only, and the GL implementation currently passes the context down a couple levels just to be ignored.
+                static DynamicBuffer reusableTemporarySpace(
+                    RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
 
-            for (const auto&uniformBuffer:_uniformBuffer) {
-                if (uniformBuffer._stream != streamIdx) continue;
-                assert(uniformBuffer._slot < stream._constantBuffers.size());
+                for (const auto&uniformBuffer:_uniformBuffer) {
+                    if (uniformBuffer._stream != streamIdx) continue;
+                    assert(uniformBuffer._slot < stream._constantBuffers.size());
 
-                assert(uniformBuffer._uniformBlockIdx < _capturedState->_uniformBuffers.size());
-                auto& capturedState = _capturedState->_uniformBuffers[uniformBuffer._uniformBlockIdx];
+                    assert(uniformBuffer._uniformBlockIdx < _capturedState->_uniformBuffers.size());
+                    auto& capturedState = _capturedState->_uniformBuffers[uniformBuffer._uniformBlockIdx];
 
-                const auto& cbv = stream._constantBuffers[uniformBuffer._slot];
-                const auto& pkt = cbv._packet;
-                if (pkt.size() != 0) {
-                    unsigned offset = reusableTemporarySpace.Write(context, pkt.AsIteratorRange());
-                    if (offset != ~0u) {
-                        assert(pkt.size() >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
+                    const auto& cbv = stream._constantBuffers[uniformBuffer._slot];
+                    const auto& pkt = cbv._packet;
+                    if (pkt.size() != 0) {
+                        unsigned offset = reusableTemporarySpace.Write(context, pkt.AsIteratorRange());
+                        if (offset != ~0u) {
+                            assert(pkt.size() >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
 
-                        auto hash = pkt.GetHash();
-                        bool redundantSet = false;
-                        if (hash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
-                            redundantSet = capturedState._boundContents == hash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
-                            capturedState._boundContents = hash;
-                            capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                            auto hash = pkt.GetHash();
+                            bool redundantSet = false;
+                            if (hash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
+                                redundantSet = capturedState._boundContents == hash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
+                                capturedState._boundContents = hash;
+                                capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                            }
+
+                            if (!redundantSet) {
+                                glBindBufferRange(
+                                    GL_UNIFORM_BUFFER,
+                                    uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
+                                    reusableTemporarySpace.GetBuffer().GetUnderlying()->AsRawGLHandle(),
+                                    offset, pkt.size());
+                                capturedState._boundBuffer = 0;
+                            } else {
+                                s_redundantUniformSetAccumulator += (unsigned)pkt.size();
+                            }
+                        } else {
+                            Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
                         }
+                    } else {
+                        assert(((IResource*)cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
+                        auto* res = checked_cast<const Resource*>(cbv._prebuiltBuffer);
 
-                        if (!redundantSet) {
+                        if (!res->GetConstantBuffer().empty()) {
+
+                            // note -- we don't do redundant change checking in this case. The wrapping
+                            // behaviour in the DynamicBuffer class makes it more difficult -- because
+                            // we can overwrite the part of the buffer that was previously bound and
+                            // thereby mark some updates as incorrectly redundant.
+
+                            auto data = res->GetConstantBuffer();
+                            if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
+                                auto base = data;
+                                data.first = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeBegin));
+                                data.second = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeEnd));
+                            }
+                            unsigned offset = reusableTemporarySpace.Write(context, data);
+                            assert(data.size() >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
                             glBindBufferRange(
                                 GL_UNIFORM_BUFFER,
                                 uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
                                 reusableTemporarySpace.GetBuffer().GetUnderlying()->AsRawGLHandle(),
-                                offset, pkt.size());
+                                offset, data.size());
                             capturedState._boundBuffer = 0;
+                            capturedState._boundContents = 0;
+
                         } else {
-                            s_redundantUniformSetAccumulator += (unsigned)pkt.size();
-                        }
-                    } else {
-                        Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
-                    }
-                } else {
-                    assert(((IResource*)cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
-                    auto* res = checked_cast<const Resource*>(cbv._prebuiltBuffer);
+                            auto glHandle = res->GetBuffer()->AsRawGLHandle();
+                            bool isRedundant = false;
+                            if (context.GetCapturedStates()) {
+                                isRedundant = capturedState._boundBuffer == glHandle
+                                    &&  capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID
+                                    &&  capturedState._rangeBegin == cbv._prebuiltRangeBegin
+                                    &&  capturedState._rangeEnd == cbv._prebuiltRangeEnd;
 
-                    if (!res->GetConstantBuffer().empty()) {
-
-                        // note -- we don't do redundant change checking in this case. The wrapping
-                        // behaviour in the DynamicBuffer class makes it more difficult -- because
-                        // we can overwrite the part of the buffer that was previously bound and
-                        // thereby mark some updates as incorrectly redundant.
-
-                        auto data = res->GetConstantBuffer();
-                        if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
-                            auto base = data;
-                            data.first = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeBegin));
-                            data.second = std::min(base.second, PtrAdd(base.first, cbv._prebuiltRangeEnd));
-                        }
-                        unsigned offset = reusableTemporarySpace.Write(context, data);
-                        assert(data.size() >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
-                        glBindBufferRange(
-                            GL_UNIFORM_BUFFER,
-                            uniformBuffer._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
-                            reusableTemporarySpace.GetBuffer().GetUnderlying()->AsRawGLHandle(),
-                            offset, data.size());
-                        capturedState._boundBuffer = 0;
-                        capturedState._boundContents = 0;
-
-                    } else {
-                        auto glHandle = res->GetBuffer()->AsRawGLHandle();
-                        bool isRedundant = false;
-                        if (context.GetCapturedStates()) {
-                            isRedundant = capturedState._boundBuffer == glHandle
-                                &&  capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID
-                                &&  capturedState._rangeBegin == cbv._prebuiltRangeBegin
-                                &&  capturedState._rangeEnd == cbv._prebuiltRangeEnd;
+                                if (!isRedundant) {
+                                    capturedState._boundBuffer = res->GetBuffer()->AsRawGLHandle();
+                                    capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                                    capturedState._rangeBegin = cbv._prebuiltRangeBegin;
+                                    capturedState._rangeEnd = cbv._prebuiltRangeEnd;
+                                    capturedState._boundContents = 0;
+                                }
+                            }
 
                             if (!isRedundant) {
-                                capturedState._boundBuffer = res->GetBuffer()->AsRawGLHandle();
-                                capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
-                                capturedState._rangeBegin = cbv._prebuiltRangeBegin;
-                                capturedState._rangeEnd = cbv._prebuiltRangeEnd;
-                                capturedState._boundContents = 0;
+                                if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
+                                    assert((cbv._prebuiltRangeEnd-cbv._prebuiltRangeBegin) >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
+                                    glBindBufferRange(
+                                        GL_UNIFORM_BUFFER,
+                                        uniformBuffer._uniformBlockIdx,
+                                        glHandle,
+                                        cbv._prebuiltRangeBegin, cbv._prebuiltRangeEnd-cbv._prebuiltRangeBegin);
+                                } else {
+                                    assert(res->GetDesc()._linearBufferDesc._sizeInBytes >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
+                                    glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
+                                }
                             }
                         }
+                    }
+                }
 
-                        if (!isRedundant) {
-                            if (cbv._prebuiltRangeBegin != 0 || cbv._prebuiltRangeEnd != 0) {
-                                assert((cbv._prebuiltRangeEnd-cbv._prebuiltRangeBegin) >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
-                                glBindBufferRange(
-                                    GL_UNIFORM_BUFFER,
-                                    uniformBuffer._uniformBlockIdx,
-                                    glHandle,
-                                    cbv._prebuiltRangeBegin, cbv._prebuiltRangeEnd-cbv._prebuiltRangeBegin);
-                            } else {
-                                assert(res->GetDesc()._linearBufferDesc._sizeInBytes >= uniformBuffer._blockSize);        // the provided buffer must be large enough, or we can get GPU crashes on IOS
-                                glBindBufferBase(GL_UNIFORM_BUFFER, uniformBuffer._uniformBlockIdx, glHandle);
-                            }
+                if (streamIdx == 0) {
+                    for (const auto&block:_unboundUniformBuffers) {
+                        assert(block._uniformBlockIdx < _capturedState->_uniformBuffers.size());
+                        auto& capturedState = _capturedState->_uniformBuffers[block._uniformBlockIdx];
+
+                        std::vector<uint8_t> tempBuffer(block._blockSize, 0);
+                        unsigned offset = reusableTemporarySpace.Write(context, MakeIteratorRange(tempBuffer));
+                        if (offset != ~0u) {
+                            glBindBufferRange(
+                                GL_UNIFORM_BUFFER,
+                                block._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
+                                reusableTemporarySpace.GetBuffer().GetUnderlying()->AsRawGLHandle(),
+                                offset, tempBuffer.size());
+                            capturedState._boundBuffer = 0;
+                        } else {
+                            Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
                         }
                     }
                 }
@@ -850,26 +872,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                     }
                 }
             }
-
-            #if defined(GL_ES_VERSION_3_0)
-                for (const auto&block:_unboundUniformBuffers) {
-                    assert(block._uniformBlockIdx < _capturedState->_uniformBuffers.size());
-                    auto& capturedState = _capturedState->_uniformBuffers[block._uniformBlockIdx];
-
-                    std::vector<uint8_t> tempBuffer(block._blockSize, 0);
-                    unsigned offset = reusableTemporarySpace.Write(context, MakeIteratorRange(tempBuffer));
-                    if (offset != ~0u) {
-                        glBindBufferRange(
-                            GL_UNIFORM_BUFFER,
-                            block._uniformBlockIdx, // mapped 1:1 with uniform buffer binding points
-                            reusableTemporarySpace.GetBuffer().GetUnderlying()->AsRawGLHandle(),
-                            offset, tempBuffer.size());
-                        capturedState._boundBuffer = 0;
-                    } else {
-                        Log(Error) << "Allocation failed on dynamic CB buffer. Cannot write uniform values." << std::endl;
-                    }
-                }
-            #endif
         }
 
         CheckGLError("Apply BoundUniforms");
