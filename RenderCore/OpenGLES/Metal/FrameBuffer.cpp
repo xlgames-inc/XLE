@@ -364,6 +364,31 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         #endif
 
+        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
+        {
+            float width = 0.f;
+            float height = 0.f;
+            if (s._rtvCount > 0 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
+                const auto& textureDesc = s._rtvs[0].GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            } else if (s._dsv.IsGood()) {
+                const auto& textureDesc = s._dsv.GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            }
+
+            context.BeginSubpass(width, height);
+
+            Viewport viewports[1];
+            viewports[0] = Viewport{0.f, 0.f, width, height};
+            // origin of viewport doesn't matter because it is full-size
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
+            // origin of viewport doesn't matter because it is full-size
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+        }
+
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2 and GL2, we have to drop back to the older API
         bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
@@ -512,31 +537,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (invalidationCount) {
             glInvalidateFramebuffer(GL_FRAMEBUFFER, invalidationCount, attachmentsToInvalidate);
             CheckGLError("After FrameBuffer::BindSubpass() Invalidate framebuffer");
-        }
-
-        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
-        {
-            float width = 0.f;
-            float height = 0.f;
-            if (s._rtvCount > 0 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
-                const auto& textureDesc = s._rtvs[0].GetResource()->GetDesc()._textureDesc;
-                width = textureDesc._width;
-                height = textureDesc._height;
-            } else if (s._dsv.IsGood()) {
-                const auto& textureDesc = s._dsv.GetResource()->GetDesc()._textureDesc;
-                width = textureDesc._width;
-                height = textureDesc._height;
-            }
-
-            context.BeginSubpass(width, height);
-
-            Viewport viewports[1];
-            viewports[0] = Viewport{0.f, 0.f, width, height};
-            // origin of viewport doesn't matter because it is full-size
-            ScissorRect scissorRects[1];
-            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
-            // origin of viewport doesn't matter because it is full-size
-            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
         }
     }
 
