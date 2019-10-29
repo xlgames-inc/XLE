@@ -432,6 +432,42 @@ namespace RenderCore { namespace Assets
                 return result;
             }
 
+        } else if (alignmentRules == PredefinedCBLayout::AlignmentRules_GLSL_std140) {
+
+            // Alignment rules for std140 mode in GLSL
+            // (ie, use "layout(std140) uniform ...").
+            // Alignment rules are documented here:
+            //  https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_uniform_buffer_object.txt
+            // It's similar to both MSL and HLSL modes, but differs in very subtle cases
+
+            auto adjustedType = nextElement;
+            if (adjustedType._arrayCount == 3)      // alignment for a 3d vector behaves like a 4d vector
+                adjustedType._arrayCount = 4;
+            auto sizeForAlignment = adjustedType.GetSize();
+
+            if (nextElementArrayCount > 1) {
+                // As per rule 4, round up the element size to the alignment for a vec4
+                arrayElementStride = CeilToMultiple(sizeForAlignment, 16);
+                iterator = CeilToMultiple(iterator, arrayElementStride);
+                unsigned result = iterator;                                 // this is the offset for the new element
+
+                iterator += (std::max(1u, nextElementArrayCount)-1) * arrayElementStride;     // simplified logic, given alignment is equal to size
+
+                // For the last element in the array (or for the only element in a non-array case), we
+                // move forward only by the size of the type. That is, we don't add padding to based
+                // on the alignment size of the type. This is one of the only differences relative to
+                // the Metal Shader Language alignment type
+                iterator += nextElement.GetSize();
+
+                return result;
+            } else {
+                iterator = CeilToMultiple(iterator, sizeForAlignment);
+                unsigned result = iterator;                                 // this is the offset for the new element
+                arrayElementStride = nextElement.GetSize();
+                iterator += arrayElementStride;
+                return result;
+            }
+
         } else if (alignmentRules == PredefinedCBLayout::AlignmentRules_MSL) {
 
             // In metal shader language, the alignment is always equal to the size of the type,
@@ -569,7 +605,7 @@ namespace RenderCore { namespace Assets
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
         Tokenizer si { source };
-        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0, 0 };
         for (;;) {
             if (si.PeekNextToken()._value.IsEmpty())
                 break;
@@ -582,9 +618,18 @@ namespace RenderCore { namespace Assets
             _cbSizeByLanguage[c] = CeilToMultiplePow2(cbIterator[c], 16);
     }
 
+    static PredefinedCBLayout::AlignmentRules AlignmentRulesForLanguage(ShaderLanguage lang)
+    {
+        switch (lang) {
+        case ShaderLanguage::MetalShaderLanguage: return PredefinedCBLayout::AlignmentRules_MSL;
+        case ShaderLanguage::HLSL: return PredefinedCBLayout::AlignmentRules_HLSL;
+        case ShaderLanguage::GLSL: return PredefinedCBLayout::AlignmentRules_GLSL_std140;
+        }
+    }
+
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters, ShaderLanguage lang) const
     {
-        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
             for (auto e=0u; e<std::max(1u, c->_arrayElementCount); e++) {
                 bool gotValue = parameters.GetParameter(
@@ -599,7 +644,7 @@ namespace RenderCore { namespace Assets
 
     std::vector<uint8> PredefinedCBLayout::BuildCBDataAsVector(const ParameterBox& parameters, ShaderLanguage lang) const
     {
-        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
         std::vector<uint8> cbData(_cbSizeByLanguage[alignmentRules], uint8(0));
         WriteBuffer(AsPointer(cbData.begin()), parameters, lang);
         return cbData;
@@ -607,7 +652,7 @@ namespace RenderCore { namespace Assets
 
     SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters, ShaderLanguage lang) const
     {
-        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
         SharedPkt result = MakeSharedPktSize(_cbSizeByLanguage[alignmentRules]);
         std::memset(result.begin(), 0, _cbSizeByLanguage[alignmentRules]);
         WriteBuffer(result.begin(), parameters, lang);
@@ -629,7 +674,7 @@ namespace RenderCore { namespace Assets
     
     auto PredefinedCBLayout::MakeConstantBufferElements(ShaderLanguage lang) const -> std::vector<ConstantBufferElementDesc>
     {
-        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
         std::vector<ConstantBufferElementDesc> result;
         result.reserve(_elements.size());
         for (auto i=_elements.begin(); i!=_elements.end(); ++i) {
@@ -642,7 +687,7 @@ namespace RenderCore { namespace Assets
 
     unsigned PredefinedCBLayout::GetSize(ShaderLanguage lang) const
     {
-        unsigned alignmentRules = (lang == ShaderLanguage::MetalShaderLanguage) ? AlignmentRules_MSL : AlignmentRules_HLSL;
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
         return _cbSizeByLanguage[alignmentRules];
     }
 
@@ -650,7 +695,7 @@ namespace RenderCore { namespace Assets
     {
         PredefinedCBLayout result;
         result._validationCallback = _validationCallback;
-        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0, 0 };
 
         result._elements.reserve(_elements.size());
         for (const auto& e:_elements) {
@@ -678,7 +723,7 @@ namespace RenderCore { namespace Assets
 
     PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements)
     {
-        unsigned cbIterator[AlignmentRules_Max] = { 0, 0 };
+        unsigned cbIterator[AlignmentRules_Max] = { 0, 0, 0 };
 
         for (auto&e:elements)
             AppendElement(*this, e, cbIterator);
@@ -792,7 +837,7 @@ namespace RenderCore { namespace Assets
 
         std::string currentLayoutName;
         std::shared_ptr<PredefinedCBLayout> currentLayout;
-        unsigned currentLayoutCBIterator[PredefinedCBLayout::AlignmentRules_Max] = { 0, 0 };
+        unsigned currentLayoutCBIterator[PredefinedCBLayout::AlignmentRules_Max] = { 0, 0, 0 };
 
         for (;;) {
             auto next = iterator.PeekNextToken();

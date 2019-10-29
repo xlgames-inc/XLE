@@ -19,8 +19,9 @@ namespace RenderCore { namespace Assets
     {
     public:
         enum AlignmentRules {
-            AlignmentRules_HLSL,   // GLSL and HLSL offsets are compatible
-            AlignmentRules_MSL,    // Apple Metal Shader Language
+            AlignmentRules_HLSL,            // Basic HLSL alignment; often compatible with GLSL
+            AlignmentRules_GLSL_std140,     // GLSL "std140" layout style
+            AlignmentRules_MSL,             // Apple Metal Shader Language
             AlignmentRules_Max
         };
 
