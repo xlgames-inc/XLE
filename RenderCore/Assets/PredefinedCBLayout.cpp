@@ -445,7 +445,7 @@ namespace RenderCore { namespace Assets
                 adjustedType._arrayCount = 4;
             auto sizeForAlignment = adjustedType.GetSize();
 
-            if (nextElementArrayCount > 1) {
+            if (nextElementArrayCount >= 1) {
                 // As per rule 4, round up the element size to the alignment for a vec4
                 arrayElementStride = CeilToMultiple(sizeForAlignment, 16);
                 iterator = CeilToMultiple(iterator, arrayElementStride);
