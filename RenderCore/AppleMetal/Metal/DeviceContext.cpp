@@ -667,6 +667,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                 if (s.y + s.height > _pimpl->_renderTargetHeight) {
                     s.height = _pimpl->_renderTargetHeight - s.y;
                 }
+                if (s.width == 0 || s.height == 0) {
+                    Throw(::Exceptions::BasicLabel("Scissor rect width (%d) and height (%d) must be non-zero", s.width, s.height));
+                }
                 [_pimpl->_commandEncoder setScissorRect:s];
             } else {
                 // If a scissor rect is not specified, use the full size of the render target

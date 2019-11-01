@@ -272,6 +272,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 // OpenGL window coordinate space has origin in lower-left, so we must account for that in the scissor rect
                 scissorRect.Y = _renderTargetHeight - scissorRect.Y - scissorRect.Height;
             }
+            if (scissorRect.Width == 0 || scissorRect.Height == 0) {
+                Throw(::Exceptions::BasicLabel("Scissor rect width (%d) and height (%d) must be non-zero", scissorRect.Width, scissorRect.Height));
+            }
             glEnable(GL_SCISSOR_TEST);
             glScissor(scissorRect.X, scissorRect.Y, scissorRect.Width, scissorRect.Height);
         } else {
