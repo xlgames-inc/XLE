@@ -658,7 +658,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (scissorRects.size()) {
                 const auto& scissorRect = scissorRects[0];
                 MTLScissorRect s = AsMTLScissorRect(scissorRect, _pimpl->_renderTargetWidth, _pimpl->_renderTargetHeight);
-                if (s.x > _pimpl->_renderTargetWidth || s.y > _pimpl->_renderTargetHeight) {
+                if (s.x >= _pimpl->_renderTargetWidth || s.y >= _pimpl->_renderTargetHeight) {
                     return;
                 }
                 if (s.x + s.width > _pimpl->_renderTargetWidth) {
