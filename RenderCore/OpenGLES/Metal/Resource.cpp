@@ -690,45 +690,54 @@ namespace RenderCore { namespace Metal_OpenGLES
         _boundTexture = false;
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &_prevTextureBinding);
 
-        GLint packRowLength = 0, packSkipRows = 0, packSkipPixels = 0;
+        GLint packRowLength = 0;
         GLint packAlignment = 0;
         glGetIntegerv(GL_PACK_ROW_LENGTH, &packRowLength);
-        glGetIntegerv(GL_PACK_SKIP_ROWS, &packSkipRows);
-        glGetIntegerv(GL_PACK_SKIP_PIXELS, &packSkipPixels);
         glGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
-
-        GLint unpackRowLength = 0, unpackSkipRows = 0, unpackSkipPixels = 0, unpackSkipImages =0;
-        GLint unpackImageHeight = 0, unpackAlignment = 0;
-        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &unpackRowLength);
-        glGetIntegerv(GL_UNPACK_SKIP_ROWS, &unpackSkipRows);
-        glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &unpackSkipPixels);
-        glGetIntegerv(GL_UNPACK_SKIP_IMAGES, &unpackSkipImages);
-        glGetIntegerv(GL_UNPACK_IMAGE_HEIGHT, &unpackImageHeight);
-        glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
-
         assert(packRowLength == 0);
-        assert(packSkipRows == 0);
-        assert(packSkipPixels == 0);
 
-        assert(unpackSkipRows == 0);
-        assert(unpackSkipPixels == 0);
-        assert(unpackSkipImages == 0);
-        assert(unpackImageHeight == 0);
+        #if !PGDROID
+            GLint packSkipRows = 0, packSkipPixels = 0;
+            glGetIntegerv(GL_PACK_SKIP_ROWS, &packSkipRows);
+            glGetIntegerv(GL_PACK_SKIP_PIXELS, &packSkipPixels);
 
-        _prevUnpackAlignment = unpackAlignment;
-        _prevUnpackRowLength = unpackRowLength;
+            GLint unpackRowLength = 0, unpackSkipRows = 0, unpackSkipPixels = 0, unpackSkipImages =0;
+            GLint unpackImageHeight = 0, unpackAlignment = 0;
+            glGetIntegerv(GL_UNPACK_ROW_LENGTH, &unpackRowLength);
+            glGetIntegerv(GL_UNPACK_SKIP_ROWS, &unpackSkipRows);
+            glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &unpackSkipPixels);
+            glGetIntegerv(GL_UNPACK_SKIP_IMAGES, &unpackSkipImages);
+            glGetIntegerv(GL_UNPACK_IMAGE_HEIGHT, &unpackImageHeight);
+            glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
 
-        GLint unpackBuffer = 0;
-        glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
-        assert(unpackBuffer == 0);
+            GLint unpackBuffer = 0;
+            glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
+            assert(unpackBuffer == 0);
+
+            assert(packSkipRows == 0);
+            assert(packSkipPixels == 0);
+
+            assert(unpackSkipRows == 0);
+            assert(unpackSkipPixels == 0);
+            assert(unpackSkipImages == 0);
+            assert(unpackImageHeight == 0);
+
+            _prevUnpackAlignment = unpackAlignment;
+            _prevUnpackRowLength = unpackRowLength;
+        #else
+            _prevUnpackAlignment = 0;
+            _prevUnpackRowLength = 0;
+        #endif
     }
 
     BlitPass::~BlitPass()
     {
         if (_boundTexture) {
             glBindTexture(GL_TEXTURE_2D, _prevTextureBinding);
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, _prevUnpackRowLength);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, _prevUnpackAlignment);
+            #if !PGDROID
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, _prevUnpackRowLength);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, _prevUnpackAlignment);
+            #endif
         }
     }
 
