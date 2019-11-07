@@ -10,21 +10,35 @@ namespace SceneEngine
             unsigned missingRequestsCount = 0;
 
             unsigned frozenCount = 0;
+
+            #if defined(_DEBUG)
+                bool frozenBlocks[_blockStates.size()];
+                for (unsigned c=0; c<unsigned(_blockStates.size()); ++c) frozenBlocks[c] = false;
+            #endif
+
             for (unsigned c=0; c<requests.size(); ++c) {
                 auto k = requests[c];
                 auto i = std::find_if(_blockStates.begin(), _blockStates.end(),
                     [k](const Block& b) { return (b._state != Block::State::Empty) && (b._key == k); });
                 if (i!=_blockStates.end()) {
-                    results[c]._index = (unsigned)std::distance(_blockStates.begin(), i);
+                    auto blockStateIndex = (unsigned)std::distance(_blockStates.begin(), i);
+                    results[c]._index = blockStateIndex;
                     results[c]._result = (i->_state == Block::State::Occupied) ? RequestResult::Result::Available : RequestResult::Result::CurrentlyTransferring;
                     results[c]._previousKey = k;
-                    _lruQueue.BringToFront(results[c]._index);
+                    _lruQueue.BringToFront(blockStateIndex);
+
+                    #if defined(_DEBUG)
+                        assert(!frozenBlocks[blockStateIndex]);
+                        frozenBlocks[blockStateIndex] = true;
+                    #endif
+
                     ++frozenCount;
                 } else {
                     missingRequests[missingRequestsCount++] = c;
                 }
             }
             
+            assert(frozenCount <= unsigned(_blockStates.size()));
             auto maxEvict = unsigned(_blockStates.size()) - frozenCount;
             unsigned c=0;
             for (; c<std::min(missingRequestsCount, maxEvict); ++c) {
