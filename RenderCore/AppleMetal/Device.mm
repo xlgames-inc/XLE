@@ -250,7 +250,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
         auto* metalLayer = (CAMetalLayer*)view.layer;
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm; /* Metal TODO -- Currently fixed to using LDR format */
-        metalLayer.framebufferOnly = YES;
+        metalLayer.framebufferOnly = NO; /* This must be false in order to use the BlitCommandEncoder to capture the frame buffer to a texture */
         metalLayer.drawableSize = CGSizeMake(_desc->_width, _desc->_height);
         metalLayer.device = device;
         // metalLayer.colorSpace = nil;     <-- only OSX?
