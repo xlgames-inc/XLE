@@ -45,11 +45,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             const IDevice::ResourceInitializer& initData);
 
         Resource(const id<MTLTexture>&, const ResourceDesc& = {});
-
+        Resource(const id<MTLTexture>&, const ResourceDesc&, uint64_t guidOverride);
         Resource(const IResourcePtr&, const ResourceDesc& = {});
 
         Resource();
         ~Resource();
+
+        static uint64_t ReserveGUID();
+
     protected:
         TBC::OCPtr<AplMtlBuffer> _underlyingBuffer; // id<MTLBuffer>
         TBC::OCPtr<AplMtlTexture> _underlyingTexture; // id<MTLTexture>

@@ -40,8 +40,33 @@ namespace RenderCore { namespace ImplAppleMetal
         id<MTLTexture> texture = nextDrawable.texture;
         _activeFrameDrawable = nextDrawable;
 
+        // Find a cached GUID for this texture
+        // We keep a limited list of texture pointer to GUID mapping. We assume if we get back
+        // the same pointer value, we can map it onto the same GUID.
+        uint64_t renderTargetGuid = 0;
+        {
+            auto i = std::find_if(
+                presChain._drawableTextureGUIDMapping.begin(),
+                presChain._drawableTextureGUIDMapping.end(),
+                [texture](const std::pair<id, uint64_t> &p) { return p.first == texture; });
+            if (i != presChain._drawableTextureGUIDMapping.end()) {
+                renderTargetGuid = i->second;
+
+                auto v = *i;
+                presChain._drawableTextureGUIDMapping.erase(i);
+                presChain._drawableTextureGUIDMapping.push_back(v);
+            } else {
+                const unsigned cacheSizeLimit = 32;
+                if (presChain._drawableTextureGUIDMapping.size() >= cacheSizeLimit)
+                    presChain._drawableTextureGUIDMapping.erase(presChain._drawableTextureGUIDMapping.begin());
+
+                renderTargetGuid = Metal_AppleMetal::Resource::ReserveGUID();
+                presChain._drawableTextureGUIDMapping.push_back({texture, renderTargetGuid});
+            }
+        }
+
         // KenD -- This is constructing a RenderBuffer, but we don't really differentiate between RenderBuffer and Texture really.  The binding is specified as RenderTarget.
-        return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture));
+        return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture), renderTargetGuid);
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)

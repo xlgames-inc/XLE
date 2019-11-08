@@ -40,6 +40,8 @@ namespace RenderCore { namespace ImplAppleMetal
         PresentationChain(id<MTLDevice> device, const void* platformValue, const PresentationChainDesc &desc);
         ~PresentationChain();
 
+        std::vector<std::pair<id, uint64_t>> _drawableTextureGUIDMapping;
+
     private:
         TBC::OCPtr<CAMetalLayer> _layer;
         std::shared_ptr<PresentationChainDesc> _desc;

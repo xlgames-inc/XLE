@@ -117,7 +117,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         return _guid;
     }
 
-    static uint64_t s_nextResourceGUID = 0;
+    static uint64_t s_nextResourceGUID = 1;
 
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
@@ -326,6 +326,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         //Log(Verbose) << "Created resource from a texture (wrapping a MTLTexture in a Resource; this is done for the current framebuffer)" << std::endl;
     }
 
+    Resource::Resource(const id<MTLTexture>& texture, const ResourceDesc& desc, uint64_t guidOverride)
+    : _underlyingTexture(texture)
+    , _desc(desc)
+    , _guid(guidOverride)
+    {
+        if (![texture conformsToProtocol:@protocol(MTLTexture)]) {
+            Throw(::Exceptions::BasicLabel("Creating non-texture as texture resource"));
+        }
+    }
+
     Resource::Resource(const IResourcePtr& res, const ResourceDesc& desc)
     : _desc(desc)
     , _guid(s_nextResourceGUID++)
@@ -342,6 +352,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     Resource::Resource() : _guid(s_nextResourceGUID++) {}
     Resource::~Resource() {}
+
+    uint64_t Resource::ReserveGUID()
+    {
+        return s_nextResourceGUID++;
+    }
 
     ResourceDesc ExtractDesc(const IResource& input)
     {
