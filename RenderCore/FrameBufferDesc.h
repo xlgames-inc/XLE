@@ -75,6 +75,8 @@ namespace RenderCore
             return result;
         }
 
+        uint64_t CalculateHash() const;
+
         #if defined(_DEBUG)
             mutable std::string _name = std::string();
             inline AttachmentDesc&& SetName(const std::string& name) const { this->_name = name; return std::move(const_cast<AttachmentDesc&>(*this)); }
@@ -131,6 +133,8 @@ namespace RenderCore
         void AppendOutput(const AttachmentViewDesc& view);
         void AppendInput(const AttachmentViewDesc& view);
         void SetDepthStencil(const AttachmentViewDesc& view);
+
+        uint64_t CalculateHash() const;
     };
 
     class FrameBufferDesc

@@ -210,7 +210,7 @@ namespace RenderCore { namespace Techniques
             std::shared_ptr<Metal::FrameBuffer> _fb;
             std::vector<AttachmentName> _poolAttachmentsRemapping;
         };
-        Entry _entries[5];
+        Entry _entries[10];
         unsigned _currentTickId = 0;
 
         void IncreaseTickId();
@@ -237,8 +237,11 @@ namespace RenderCore { namespace Techniques
 		assert(poolAttachments.size() == desc.GetAttachments().size());
 
         uint64_t hashValue = desc.GetHash();
-        for (const auto&a:poolAttachments)
-            hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
+        for (const auto&a:poolAttachments) {
+            auto *res = attachmentPool.GetResource(a).get();
+            assert(res);
+            hashValue = HashCombine(res->GetGUID(), hashValue);
+        }
         assert(hashValue != ~0ull);     // using ~0ull has a sentinel, so this will cause some problems
 
         unsigned earliestEntry = 0;
