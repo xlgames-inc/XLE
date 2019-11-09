@@ -711,11 +711,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         #if defined(GL_ES_VERSION_3_0) && !PGDROID
             if (GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300) {
-                // METAL_TODO: something should own this object!
-                // METAL_TODO: When we move this to a more appropriate place, get a proper IThreadContext instead of passing nullptr. It happens to work here because this code is GL-only, and the GL implementation currently passes the context down a couple levels just to be ignored.
-                static DynamicBuffer reusableTemporarySpace(
-                    RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
-
+                auto& reusableTemporarySpace = GetObjectFactory().GetReusableCBSpace();
                 for (const auto&uniformBuffer:_uniformBuffer) {
                     if (uniformBuffer._stream != streamIdx) continue;
                     assert(uniformBuffer._slot < stream._constantBuffers.size());

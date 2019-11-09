@@ -68,6 +68,8 @@ namespace OpenGL
     
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    class DynamicBuffer;
+
     class ObjectFactory
     {
     public:
@@ -101,6 +103,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandIn2DTexture()     { return _standIn2DTexture; }
         const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandInCubeTexture()   { return _standInCubeTexture; }
 
+        DynamicBuffer& GetReusableCBSpace() { return *_reusableCBSpace; }
+
         static bool WriteObjectLabels();
     private:
         std::vector<std::pair<uint64_t, signed>> _refCountTable;
@@ -110,6 +114,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         intrusive_ptr<GlObject<GlObject_Type::Texture>> _standIn2DTexture;
         intrusive_ptr<GlObject<GlObject_Type::Texture>> _standInCubeTexture;
+
+        std::unique_ptr<DynamicBuffer> _reusableCBSpace;
     };
 
     class DeviceContext;

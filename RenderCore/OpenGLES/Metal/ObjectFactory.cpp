@@ -4,6 +4,7 @@
 
 #include "ObjectFactory.h"
 #include "Resource.h"       // (for DescribeUnknownObject)
+#include "GPUSyncedAllocator.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../IDeviceOpenGLES.h"
@@ -441,11 +442,15 @@ namespace RenderCore { namespace Metal_OpenGLES
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
         CheckGLError("After initializing stand in textures");
+
+        _reusableCBSpace = std::make_unique<DynamicBuffer>(
+            RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
     }
     ObjectFactory::~ObjectFactory()
     {
         assert(s_objectFactory_instance == this);
 
+        _reusableCBSpace.reset();
         _standInCubeTexture.reset();
         _standIn2DTexture.reset();
 
