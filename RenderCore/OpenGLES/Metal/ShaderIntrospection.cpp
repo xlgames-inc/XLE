@@ -144,7 +144,17 @@ namespace RenderCore { namespace Metal_OpenGLES
             // An underscore also works like a fake struct separator.
             // However, ignore the underscore if it's the first, second or third character
             // so that prefixes like "u_" aren't considered structs.
-            if (i > (input.begin()+2) && *i == '_') return {{input.begin(), i}, {i+1, input.end()}};
+            if (i > (input.begin()+2) && *i == '_') {
+                // If we get 'xx' immediately after the underscore, we're copying to skip over
+                // those as well. This is to avoid double underscore scenarios. Ie, if the
+                // variable name starts with an underscore, we'll end up with a double. These are
+                // illegal In GLSL, so let's work around it
+                if ((input.end() - i) >= 3 && i[1] == 'x' && i[2] == 'x') {
+                    return {{input.begin(), i}, {i+3, input.end()}};
+                }
+
+                return {{input.begin(), i}, {i+1, input.end()}};
+            }
         }
         return {input, {}};
     }
