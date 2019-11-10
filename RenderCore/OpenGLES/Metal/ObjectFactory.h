@@ -103,7 +103,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandIn2DTexture()     { return _standIn2DTexture; }
         const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandInCubeTexture()   { return _standInCubeTexture; }
 
-        DynamicBuffer& GetReusableCBSpace() { return *_reusableCBSpace; }
+        DynamicBuffer& GetReusableCBSpace() { assert(_reusableCBSpace); return *_reusableCBSpace; }
 
         static bool WriteObjectLabels();
     private:

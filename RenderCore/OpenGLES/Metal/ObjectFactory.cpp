@@ -443,8 +443,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         CheckGLError("After initializing stand in textures");
 
-        _reusableCBSpace = std::make_unique<DynamicBuffer>(
-            RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
+        if (_featureSet & FeatureSet::GLES300) {
+            _reusableCBSpace = std::make_unique<DynamicBuffer>(
+                RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
+        }
     }
     ObjectFactory::~ObjectFactory()
     {

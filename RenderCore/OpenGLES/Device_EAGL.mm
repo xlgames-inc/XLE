@@ -169,12 +169,12 @@ namespace RenderCore { namespace ImplOpenGLES
             _boundContextVerification->BindToCurrentThread((size_t)_sharedContext.get());
         #endif
 
-        auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
-
         #if defined(_DEBUG)
             s_mainShareGroup = _sharedContext.get().sharegroup;
         #endif
+
+        auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
     }
 
     Device::~Device()
