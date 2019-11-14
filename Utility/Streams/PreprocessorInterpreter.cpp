@@ -3,11 +3,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PreprocessorInterpreter.h"
+#include "../Threading/ThreadingUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../Foreign/cparse/shunting-yard.h"
 #include "../../Foreign/cparse/shunting-yard-exceptions.h"
 
 #include <cmath>
+#include <atomic>
 
 namespace preprocessor_operations
 {
@@ -170,14 +172,23 @@ namespace preprocessor_operations
 
 namespace Utility
 {
+    static std::atomic_bool static_hasSetupPreprocOps { false };
+    static std::atomic_bool static_setupThreadAssigned { false };
+
     bool EvaluatePreprocessorExpression(
         StringSection<> input,
         const std::unordered_map<std::string, int>& definedTokens)
     {
-        static bool hasSetupPreprocOps = false;
-        if (!hasSetupPreprocOps) {
-            preprocessor_operations::Startup();
-            hasSetupPreprocOps = true;
+        if (!static_hasSetupPreprocOps.load()) {
+            bool threadAssigned = static_setupThreadAssigned.exchange(true);
+            if (!threadAssigned) {
+                preprocessor_operations::Startup();
+                static_hasSetupPreprocOps.store(true);
+            } else {
+                while (!static_hasSetupPreprocOps.load()) {
+                    Threading::YieldTimeSlice();
+                }
+            }
         }
 
         TokenMap vars;
