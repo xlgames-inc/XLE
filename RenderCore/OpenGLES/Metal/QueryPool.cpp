@@ -57,7 +57,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     bool SyncEventSet::IsSupported()
     {
-        return GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;
+        #if !defined(PGDROID)
+            return GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;
+        #else
+            return false;
+        #endif
     }
 
     SyncEventSet::SyncEventSet(IThreadContext *context)
