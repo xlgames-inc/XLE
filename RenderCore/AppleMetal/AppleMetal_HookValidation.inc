@@ -51,7 +51,7 @@
                 NSLog(@"Apple Metal validation unknown failure type %lld", type);
                 typeName="assertion"; break;
         }
-        NSLog(@"%s:%d: failed %s `%@'", func, line, typeName, msg);
+        NSLog(@"MTLReportFailure: %s:%d: failed %s `%@'", func, line, typeName, msg);
         if (doAbort) {
             abort();
         }
