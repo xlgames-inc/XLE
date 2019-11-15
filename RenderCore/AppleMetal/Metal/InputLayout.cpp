@@ -480,7 +480,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     // look for a binding in a later stream interface
                     if (!HasCBBinding(MakeIteratorRange(&interfaces[streamIndex+1], &interfaces[4]), argHash)) {
                         result._cbs.push_back({
-                            matchingSlot, (unsigned)arg.index
+                            matchingSlot, (unsigned)arg.index,
+                            (unsigned)arg.bufferDataSize
                             #if defined(_DEBUG)
                                 , argName
                             #endif
@@ -509,12 +510,24 @@ namespace RenderCore { namespace Metal_AppleMetal
             const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];
             const auto& pkt = constantBuffer._packet;
             if (!pkt.size()) {
-                assert(constantBuffer._prebuiltBuffer);
+                #if defined(_DEBUG)
+                    assert(constantBuffer._prebuiltBuffer);
+                    auto bufferDesc = constantBuffer._prebuiltBuffer->GetDesc();
+                    assert(bufferDesc._type == ResourceDesc::Type::LinearBuffer);
+                    assert(bufferDesc._linearBufferDesc._sizeInBytes >= b._cbSize);
+                #endif
                 [encoder setVertexBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
                                   offset:constantBuffer._prebuiltRangeBegin
                                  atIndex:b._shaderSlot];
             } else {
-                [encoder setVertexBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+                if (pkt.size() < b._cbSize) {
+                    char extendedBuffer[b._cbSize];
+                    std::memcpy(extendedBuffer, pkt.get(), pkt.size());
+                    std::memset(PtrAdd(extendedBuffer, pkt.size()), 0, b._cbSize-pkt.size());
+                    [encoder setVertexBytes:extendedBuffer length:b._cbSize atIndex:b._shaderSlot];
+                } else {
+                    [encoder setVertexBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+                }
             }
         }
 
@@ -553,12 +566,24 @@ namespace RenderCore { namespace Metal_AppleMetal
             const auto& constantBuffer = stream._constantBuffers[b._uniformStreamSlot];
             const auto& pkt = constantBuffer._packet;
             if (!pkt.size()) {
-                assert(constantBuffer._prebuiltBuffer);
+                #if defined(_DEBUG)
+                    assert(constantBuffer._prebuiltBuffer);
+                    auto bufferDesc = constantBuffer._prebuiltBuffer->GetDesc();
+                    assert(bufferDesc._type == ResourceDesc::Type::LinearBuffer);
+                    assert(bufferDesc._linearBufferDesc._sizeInBytes >= b._cbSize);
+                #endif
                 [encoder setFragmentBuffer:checked_cast<const Resource*>(constantBuffer._prebuiltBuffer)->GetBuffer().get()
                                   offset:constantBuffer._prebuiltRangeBegin
                                  atIndex:b._shaderSlot];
             } else {
-                [encoder setFragmentBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+                if (pkt.size() < b._cbSize) {
+                    char extendedBuffer[b._cbSize];
+                    std::memcpy(extendedBuffer, pkt.get(), pkt.size());
+                    std::memset(PtrAdd(extendedBuffer, pkt.size()), 0, b._cbSize-pkt.size());
+                    [encoder setFragmentBytes:extendedBuffer length:b._cbSize atIndex:b._shaderSlot];
+                } else {
+                    [encoder setFragmentBytes:pkt.get() length:(unsigned)pkt.size() atIndex:b._shaderSlot];
+                }
             }
         }
 

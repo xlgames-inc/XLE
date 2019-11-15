@@ -70,7 +70,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     class StreamMapping
     {
     public:
-        struct CB { unsigned _uniformStreamSlot; unsigned _shaderSlot; DEBUG_ONLY(std::string _name;) };
+        struct CB { unsigned _uniformStreamSlot; unsigned _shaderSlot; unsigned _cbSize; DEBUG_ONLY(std::string _name;) };
         std::vector<CB> _cbs;
 
         struct SRV { unsigned _uniformStreamSlot; unsigned _shaderSlot; unsigned _textureType; bool _isDepth; DEBUG_ONLY(std::string _name;) };
