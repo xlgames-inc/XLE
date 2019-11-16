@@ -147,16 +147,40 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     static MTLScissorRect AsMTLScissorRect(const ScissorRect& scissorRect, const float renderTargetWidth, const float renderTargetHeight)
     {
-        MTLScissorRect s;
-        s.x = scissorRect.X;
-        s.y = scissorRect.Y;
-        s.width = scissorRect.Width;
-        s.height = scissorRect.Height;
+        int x = scissorRect.X;
+        int y = scissorRect.Y;
+        int width = scissorRect.Width;
+        int height = scissorRect.Height;
+
+        // Metal window coordinate space has origin in upper-left, so we must account for that in the scissor rect
         if (!scissorRect.OriginIsUpperLeft) {
-            // Metal window coordinate space has origin in upper-left, so we must account for that in the scissor rect
-            s.y = renderTargetHeight - scissorRect.Y - scissorRect.Height;
+            y = renderTargetHeight - y - height;
         }
-        return s;
+
+        // Ensure scissor rect lies entirely within render target bounds.
+        if (x < 0) {
+            width += x;
+            x = 0;
+        } else if (x > renderTargetWidth) {
+            width = 0;
+            x = renderTargetWidth;
+        }
+
+        if (y < 0) {
+            height += y;
+            y = 0;
+        } else if (y > renderTargetHeight) {
+            height = 0;
+            y = renderTargetHeight;
+        }
+
+        // Clamp size to valid window coordinates
+        width = std::max(0, std::min(width, (int)renderTargetWidth - x));
+        height = std::max(0, std::min(height, (int)renderTargetHeight - y));
+
+        // Should never be negative numbers at this point, as that will produce wrap-around when casting to unsigned.
+        assert(x >= 0 && y >= 0 && width >= 0 && height >= 0);
+        return MTLScissorRect { (unsigned)x, (unsigned)y, (unsigned)width, (unsigned)height };
     }
 
     static void CheckCommandBufferError(id<MTLCommandBuffer> buffer)
@@ -657,18 +681,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             [_pimpl->_commandEncoder setViewport:AsMTLViewport(viewport, _pimpl->_renderTargetWidth, _pimpl->_renderTargetHeight)];
             if (scissorRects.size()) {
                 const auto& scissorRect = scissorRects[0];
+                if (scissorRect.Width == 0 || scissorRect.Height == 0) {
+                    Throw(::Exceptions::BasicLabel("Scissor rect width (%d) and height (%d) must be non-zero", scissorRect.Width, scissorRect.Height));
+                }
                 MTLScissorRect s = AsMTLScissorRect(scissorRect, _pimpl->_renderTargetWidth, _pimpl->_renderTargetHeight);
-                if (s.x >= _pimpl->_renderTargetWidth || s.y >= _pimpl->_renderTargetHeight) {
-                    return;
-                }
-                if (s.x + s.width > _pimpl->_renderTargetWidth) {
-                    s.width = _pimpl->_renderTargetWidth - s.x;
-                }
-                if (s.y + s.height > _pimpl->_renderTargetHeight) {
-                    s.height = _pimpl->_renderTargetHeight - s.y;
-                }
+
+                // The size of s will be zero if the input ScissorRect contained no valid on-screen area.
                 if (s.width == 0 || s.height == 0) {
-                    Throw(::Exceptions::BasicLabel("Scissor rect width (%d) and height (%d) must be non-zero", s.width, s.height));
+                    return;
                 }
                 [_pimpl->_commandEncoder setScissorRect:s];
             } else {
