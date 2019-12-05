@@ -8,6 +8,7 @@
 #include "InputLayout.h"
 #include "Buffer.h"
 #include "Format.h"
+#include "BasicLabelWithNSError.h"
 #include "../IDeviceAppleMetal.h"
 #include "../../IThreadContext.h"
 #include "../../Types.h"
@@ -542,7 +543,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         if (!renderPipelineState._renderPipelineState) {
             if (renderPipelineState._error) {
                 Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
-                Throw(::Exceptions::BasicLabel("PipelineState failed with error: %s", renderPipelineState._error.get().description.UTF8String));
+                Throw(BasicLabelWithNSError(renderPipelineState._error, "PipelineState failed with error: %s", renderPipelineState._error.get().description.UTF8String));
             } else {
                 Throw(::Exceptions::BasicLabel("PipelineState failed with no error code msg"));
             }
