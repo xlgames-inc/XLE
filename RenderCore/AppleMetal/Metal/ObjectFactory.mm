@@ -79,6 +79,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             pipelineState = [_mtlDevice.get() newRenderPipelineStateWithDescriptor:desc error:&error];
         }
 
+        assert(reflection);
+
         return RenderPipelineState { TBC::moveptr(pipelineState), error, reflection };
     }
 
@@ -171,6 +173,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         _standIn2DDepthTexture = CreateStandIn2DTexture(*this, true);
         _standInCubeTexture = CreateStandInCubeTexture(*this);
         _standInSamplerState = CreateStandInSamplerState(*this);
+
+        _featureSet = 0;
 
 #if TARGET_OS_IPHONE
         _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
