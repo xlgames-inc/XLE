@@ -423,7 +423,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         // METAL_TODO: Should this account for things like MTLPixelFormatStencil8 (which have stencil but no depth) or MTLPixelFormatX24_Stencil8 (that have 24 bits set aside for, but not used for, depth)? I've never seen us use those formats with a depth buffer (unlike Invalid), but that's no guarantee that we can't ever do so.
         bool hasDepthAttachment = depthAttachmentPixelFormat != MTLPixelFormatInvalid;
 
-        /* KenD -- Metal TODO -- depth/stencil states are expensive to construct; cache them */
         auto& desc = _pimpl->_activeDepthStencilDesc;
         // METAL_TODO: Is this the right place to check this, or should we have discovered this earlier, while creating _activeDepthStencilDesc?
         if (!hasDepthAttachment) {
