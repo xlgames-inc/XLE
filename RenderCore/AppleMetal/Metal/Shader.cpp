@@ -304,10 +304,16 @@ namespace RenderCore { namespace Metal_AppleMetal
             MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
             options.languageVersion = MTLLanguageVersion1_2;
 
-            CompletionFunction completionFunctionCopy = completionFunction;
+            CompletionFunction completionFunctionCopy = std::move(completionFunction);
 
             auto asyncCallbackDataCopy = _asyncCallbackData;
             ++asyncCallbackDataCopy->_pendingAsyncCallbackCount;
+            std::vector<SourceLineMarker> sourceLineMarkersCopy(sourceLineMarkers.begin(), sourceLineMarkers.end());
+            uint64_t hashCode = Hash64(finalShaderCode);
+
+            StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+            identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
+            ShaderService::ShaderHeader shaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
 
             [_device.get() newLibraryWithSource:[NSString stringWithUTF8String:finalShaderCode.c_str()]
                                         options:options
@@ -327,13 +333,13 @@ namespace RenderCore { namespace Metal_AppleMetal
                                 }
 
                                 if (!newLibrary) {
-                                    auto errorMsg = TranslateErrorMsgs(error.description.UTF8String, sourceLineMarkers, preambleLineCount);
+                                    auto errorMsg = TranslateErrorMsgs(error.description.UTF8String, MakeIteratorRange(sourceLineMarkersCopy), preambleLineCount);
 
                                     Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
                                     Log(Error) << errorMsg << std::endl;
 
                                     errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
-                                    completionFunction(false, payload, errors, dependencies);
+                                    completionFunctionCopy(false, payload, errors, dependencies);
                                     --asyncCallbackDataCopy->_pendingAsyncCallbackCount;
                                     return;
                                 }
@@ -341,18 +347,18 @@ namespace RenderCore { namespace Metal_AppleMetal
                                 if (!newLibrary.functionNames.count) {
                                     std::string errorMsg = "Shader compile failed because no functions were found in the compiled result";
                                     errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(errorMsg.begin()), (const uint8_t*)AsPointer(errorMsg.end()));
-                                    completionFunction(false, payload, errors, dependencies);
+                                    completionFunctionCopy(false, payload, errors, dependencies);
                                     --asyncCallbackDataCopy->_pendingAsyncCallbackCount;
                                     return;
                                 }
 
-                                auto& objectFactory = GetObjectFactory();
-                                uint64_t hashCode = Hash64(finalShaderCode);
+                                auto uniqueHashCode = hashCode;
                                 {
+                                    auto& objectFactory = GetObjectFactory();
                                     ScopedLock(objectFactory._compiledShadersLock);
-                                    while (objectFactory._compiledShaders.find(hashCode) != objectFactory._compiledShaders.end())
-                                        ++hashCode;     // uniquify this hash. There are some edge cases where we can end up compiling the same shader twice; it's better to tread safely here
-                                    objectFactory._compiledShaders.emplace(std::make_pair(hashCode, newLibrary));
+                                    while (objectFactory._compiledShaders.find(uniqueHashCode) != objectFactory._compiledShaders.end())
+                                        ++uniqueHashCode;     // uniquify this hash. There are some edge cases where we can end up compiling the same shader twice; it's better to tread safely here
+                                    objectFactory._compiledShaders.emplace(std::make_pair(uniqueHashCode, newLibrary));   // increase reference count here. Note the difference between this and the non-async case, which must *move* the pointer, without a reference count increase
                                 }
 
                                 struct OutputBlob
@@ -374,10 +380,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                                         delete obj;
                                     });
                                 OutputBlob& output = *(OutputBlob*)payload->data();
-                                StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
-                                identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
-                                output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
-                                output._hashCode = hashCode;
+                                output._hdr = shaderHeader;
+                                output._hashCode = uniqueHashCode;
 
                                 completionFunctionCopy(true, payload, errors, dependencies);
 
