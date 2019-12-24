@@ -15,6 +15,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
 #include <sstream>
@@ -85,6 +86,19 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
+		SourceCodeWithRemapping AssembleDirectFromFile(StringSection<> filename)
+		{
+			// Fall back to loading the file directly (without any real preprocessing)
+			SourceCodeWithRemapping result;
+			result._dependencies.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(filename));
+
+			size_t sizeResult = 0;
+			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
+			result._processedSource = std::string((char*)blob.get(), (char*)PtrAdd(blob.get(), sizeResult));
+			result._lineMarkers.push_back(RenderCore::ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
+			return result;
+		}
+
 		virtual SourceCodeWithRemapping RunPreprocessor(const char filename[])
 		{
 			// Encoded in the filename is the guid for the CompiledShaderPatchCollection, the list of functions that require
@@ -93,12 +107,12 @@ namespace RenderCore { namespace Techniques
 			static std::regex filenameExp(R"--(([^-]+)-([0-9,a-f,A-F]{1,16})(?:-([0-9,a-f,A-F]{1,16}))*)--");
 			std::cmatch matches;
 			if (!std::regex_match(filename, XlStringEnd(filename), matches, filenameExp) || matches.size() < 3)
-				return {};		// don't understand the input filename, we can't expand this
+				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
 
 			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
 			auto& patchCollection = ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollectionGuid);
-			if (!patchCollection)
-				return {};
+			if (!patchCollection || patchCollection->GetPatches().empty())
+				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));
 
 			std::vector<uint64_t> redirectedPatchFunctions;
 			redirectedPatchFunctions.reserve(matches.size() - 3);

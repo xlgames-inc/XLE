@@ -166,8 +166,6 @@ namespace ColladaConversion
         ParseExtraForTextures(matSettings, profile->_techniqueExtra, profile->GetParams(), pubEles, cfg, AsString(effect.GetName()));
         ParseExtraForTextures(matSettings, profile->_extra, profile->GetParams(), pubEles, cfg, AsString(effect.GetName()));
 
-		matSettings._techniqueConfig = "xleres/techniques/illum.tech";
-        
         return std::move(matSettings);
     }
 

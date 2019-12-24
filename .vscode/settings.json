@@ -50,6 +50,9 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "typeinfo": "cpp",
-        "utility": "cpp"
-    }
+        "utility": "cpp",
+        "random": "cpp",
+        "xtree": "cpp"
+    },
+    "cmake.cmakePath": "C:\\Program Files\\CMake\\bin\\cmake.exe"
 }

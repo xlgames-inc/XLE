@@ -47,6 +47,8 @@ BuildLog.htm
 *.VC.opendb
 **/.vs/*
 *.orig
+.vscode/ipch/**
+Working/.vscode/**
 
 /Foreign/freetype-2.5.0.1/objs/
 /ForeignNonDist/
