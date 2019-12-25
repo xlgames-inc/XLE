@@ -10,10 +10,7 @@ set(Src
     ${CMAKE_BINARY_DIR}/ConsoleRig/Version.cpp)
 BasicLibrary(ConsoleRig "${Src}")
 
-# Foreign Common
-target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
-target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/LuaBridge/Source/LuaBridge)
-target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/Lua/src)
+target_link_libraries(ConsoleRig ForeignMisc)  # required to pull in interface include directories (etc)
 
 ##################################################################################################################################
 

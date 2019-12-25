@@ -18,6 +18,5 @@ set(Src
     "Metal/PipelineLayout.cpp")
 
 BasicLibrary(RenderCore_DX11 "${Src}" "${Headers}")
+target_link_libraries(RenderCore_DX11 ForeignMisc)  # required to pull in interface include directories (etc)
 
-# Foreign Common 
-target_include_directories(RenderCore_DX11 PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)

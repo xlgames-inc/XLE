@@ -19,7 +19,4 @@ set(Src
 add_definitions("-DGL_EXT_debug_marker=0")
 
 BasicLibrary(RenderCore_OpenGLES "${Src}" "${Headers}")
-
-# Foreign Common 
-target_include_directories(RenderCore_OpenGLES PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)
-
+target_link_libraries(RenderCore_OpenGLES ForeignMisc)  # required to pull in interface include directories (etc)

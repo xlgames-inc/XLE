@@ -1,9 +1,31 @@
-# file(GLOB Src "*.cpp")
-# file(GLOB Headers "*.h")
-# BasicLibrary(Assets "${Src}" "${Headers}")
+set(Src
+    ArchiveCache.cpp
+    Assets.cpp
+    AssetServices.cpp
+    AssetSetManager.cpp
+    AssetTraits.cpp
+    AssetUtils.cpp
+    AsyncMarkerGroup.cpp
+    BlockSerializer.cpp
+    ChunkFileContainer.cpp
+    ChunkFile.cpp
+    CompilationThread.cpp
+    CompileAndAsyncManager.cpp
+    ConfigFileContainer.cpp
+    DeferredConstruction.cpp
+    GeneralCompiler.cpp
+    IntermediateAssets.cpp
+    MainFileSystem.cpp
+    MemoryFile.cpp
+    MountingTree.cpp
+    NascentChunk.cpp
+    OSFileSystem.cpp
+    RawFileAsset.cpp)
 
-FindProjectFiles(Src)
+if (WIN32)
+    list(APPEND WinAPISrc AsyncLoadOperation_WinAPI.cpp)
+endif ()
+
 BasicLibrary(Assets "${Src}")
 
-# Foreign Common 
-target_include_directories(Assets PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
+target_link_libraries(Assets ForeignMisc)  # required to pull in interface include directories (etc)

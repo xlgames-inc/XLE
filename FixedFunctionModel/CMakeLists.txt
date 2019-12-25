@@ -4,7 +4,7 @@ set(Src
     ModelCache.cpp
     ModelRunTime.cpp
     ModelUtils.cpp
-    ShaderVariationSet.cpp
+    PreboundShaders.cpp
     SharedStateSet.cpp
     SkinningRunTime.cpp)
 set(Headers
@@ -14,7 +14,8 @@ set(Headers
     ModelRendererInternal.h
     ModelRunTime.h
     ModelUtils.h
-    ShaderVariationSet.h
+    PreboundShaders.h
     SharedStateSet.h)
 
 BasicLibrary(FixedFunctionModel "${Src};${Headers}")
+target_link_libraries(FixedFunctionModel ForeignMisc)  # required to pull in interface include directories (etc)

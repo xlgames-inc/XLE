@@ -1,5 +1,30 @@
-file(GLOB Src "*.cpp")
-file(GLOB Headers "*.h")
+set(Src 
+	AntlrHelper.cpp
+	DescriptorSetInstantiation.cpp
+	GraphSyntaxInstantiate.cpp
+	GraphSyntaxParse.cpp
+	NodeGraph.cpp
+	NodeGraphProvider.cpp
+	NodeGraphSignature.cpp
+	ParameterSignature.cpp
+	ShaderInstantiation.cpp
+	ShaderPatcher.cpp
+	ShaderSignatureParser.cpp
+	StructureForPreview.cpp)
+	
+set(Headers
+	AntlrHelper.h
+	DescriptorSetInstantiation.h
+	Exceptions.h
+	GraphSyntax.h
+	NodeGraph.h
+	NodeGraphProvider.h
+	NodeGraphSignature.h
+	ParameterSignature.h
+	ShaderInstantiation.h
+	ShaderPatcher_Internal.h
+	ShaderPatcher.h
+	ShaderSignatureParser.h)
 
 set(GeneratedGrammarFiles
 	Grammar/GraphSyntaxEval.c Grammar/GraphSyntaxEval.h
@@ -20,6 +45,7 @@ add_custom_command(
 BasicLibrary(ShaderParser "${Src};${Headers};${GeneratedGrammarFiles}")
 
 target_include_directories(ShaderParser PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(ShaderParser ForeignMisc)  # required to pull in interface include directories (etc)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	target_compile_options(ShaderParser PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)

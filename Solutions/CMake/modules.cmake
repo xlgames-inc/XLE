@@ -17,4 +17,4 @@ add_subdirectory(${MAIN_CMAKE_DIR}/../../ShaderParser ShaderParser)
 
 add_subdirectory(${MAIN_CMAKE_DIR}/../../Foreign ForeignMisc)
 add_subdirectory(${MAIN_CMAKE_DIR}/../../Foreign/tinyxml2-master tinyxml2)
-
+add_subdirectory(${MAIN_CMAKE_DIR}/../../Foreign/FreeType FreeType)

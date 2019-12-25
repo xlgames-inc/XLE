@@ -1,19 +1,56 @@
-file(GLOB Src "*.cpp")
-file(GLOB Headers "*.h")
+set(Src
+    BasicSceneParser.cpp
+    CameraManager.cpp
+    DebugHotKeys.cpp
+    FrameRig.cpp
+    InitDebugDisplays.cpp
+    InputListener.cpp
+    MainInputHandler.cpp
+    OverlaySystem.cpp
+    PlatformRigUtil.cpp
+    Screenshot.cpp
+    UnitCamera.cpp)
+set(Headers 
+    AllocationProfiler.h
+    BasicSceneParser.h
+    CameraManager.h
+    DebugHotKeys.h
+    FrameRig.h
+    InputListener.h
+    InputTranslator.h
+    MainInputHandler.h
+    OverlappedWindow.h
+    OverlaySystem.h
+    PlatformRigUtil.h
+    Screenshot.h
+    UnitCamera.h)
 
-list(FILTER Src EXCLUDE REGEX ".*MeshNode.cpp$")
-list(FILTER Src EXCLUDE REGEX ".*StatePropagation.cpp$")
-
-file(GLOB DebuggingDisplaysSrc "DebuggingDisplays/*.cpp")
-file(GLOB DebuggingDisplaysHeaders "DebuggingDisplays/*.h")
+set(DebuggingDisplaysSrc 
+    DebuggingDisplays/BufferUploadDisplay.cpp
+    DebuggingDisplays/ConsoleDisplay.cpp
+    DebuggingDisplays/CPUProfileDisplay.cpp
+    DebuggingDisplays/DynamicImpostersDisplay.cpp
+    DebuggingDisplays/GPUProfileDisplay.cpp
+    DebuggingDisplays/HierarchicalSpikesDisplay.cpp
+    DebuggingDisplays/HistoricalProfilerDisplay.cpp
+    DebuggingDisplays/PlacementsDisplay.cpp
+    DebuggingDisplays/TestDisplays.cpp)
+set(DebuggingDisplaysHeaders 
+    DebuggingDisplays/BufferUploadDisplay.h
+    DebuggingDisplays/ConsoleDisplay.h
+    DebuggingDisplays/CPUProfileDisplay.h
+    DebuggingDisplays/DynamicImpostersDisplay.h
+    DebuggingDisplays/GPUProfileDisplay.h
+    DebuggingDisplays/HierarchicalSpikesDisplay.h
+    DebuggingDisplays/HistoricalProfilerDisplay.h
+    DebuggingDisplays/PlacementsDisplay.h
+    DebuggingDisplays/TestDisplays.h)
 
 if (WIN32)
-    file(GLOB WinSrc "WinAPI/*.cpp")
+    set(WinSrc WinAPI/AllocationProfiler.cpp WinAPI/InputTranslator.cpp WinAPI/OverlappedWindow.cpp WinAPI/RunLoop_WinAPI.cpp)
+    set(WinHeaders RunLoop_WinAPI.h)
 endif()
 
-BasicLibrary(PlatformRig "${Src};${WinSrc};${DebuggingDisplaysSrc}" "${Headers};${DebuggingDisplaysHeaders}")
+BasicLibrary(PlatformRig "${Src};${WinSrc};${DebuggingDisplaysSrc}" "${Headers};${WinHeaders};${DebuggingDisplaysHeaders}")
 
-# Foreign Common 
-target_include_directories(PlatformRig PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR})
-target_include_directories(PlatformRig PRIVATE ${FOREIGN_DIR}/LuaBridge/Source/LuaBridge)
-target_include_directories(PlatformRig PRIVATE ${FOREIGN_DIR}/Lua/src)
+target_link_libraries(PlatformRig ForeignMisc)  # required to pull in interface include directories (etc)
