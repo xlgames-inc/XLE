@@ -15,6 +15,7 @@
 #include "../RenderOverlays/DebuggingDisplay.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/RenderPassUtils.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -200,6 +201,15 @@ namespace PlatformRig
             Assets::Services::GetAsyncMan().Update();
 
 		auto presentationTarget = context.BeginFrame(*presChain);
+		auto presentationTargetDesc = presentationTarget->GetDesc();
+
+		// Bind the presentation target as the default output for the parser context
+		// (including setting the normalized width and height)
+		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
+		parserContext.GetNamedResources().Bind(
+			RenderCore::FrameBufferProperties {
+				presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
+				presentationTargetDesc._textureDesc._samples });
 
 		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
