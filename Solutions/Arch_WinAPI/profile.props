@@ -9,6 +9,7 @@
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;PROFILE;XL_PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

@@ -5,11 +5,9 @@
     <ClInclude Include="..\OpenGLES\Metal\Buffer.h" />
     <ClInclude Include="..\OpenGLES\Metal\DeviceContext.h" />
     <ClInclude Include="..\OpenGLES\Metal\Format.h" />
-    <ClInclude Include="..\OpenGLES\Metal\IndexedGLType.h" />
     <ClInclude Include="..\OpenGLES\Metal\InputLayout.h" />
     <ClInclude Include="..\OpenGLES\Metal\Resource.h" />
     <ClInclude Include="..\OpenGLES\Metal\Shader.h" />
-    <ClInclude Include="..\OpenGLES\Metal\ShaderResource.h" />
     <ClInclude Include="..\OpenGLES\Metal\State.h" />
     <ClInclude Include="..\OpenGLES\Metal\Forward.h" />
     <ClInclude Include="..\OpenGLES\Metal\FrameBuffer.h" />
@@ -24,10 +22,8 @@
     <ClCompile Include="..\OpenGLES\Metal\Buffer.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\Format.cpp" />
-    <ClCompile Include="..\OpenGLES\Metal\IndexedGLType.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\InputLayout.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\Shader.cpp" />
-    <ClCompile Include="..\OpenGLES\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\State.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\FrameBuffer.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\ObjectFactory.cpp" />
