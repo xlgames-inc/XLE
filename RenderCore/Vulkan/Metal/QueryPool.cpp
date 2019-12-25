@@ -210,7 +210,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_underlying.get(),
 			queryId, 1, sizeof(results), &results, sizeof(results),
 			VK_QUERY_RESULT_WAIT_BIT);
-		assert(res == VK_SUCCESS);
+		assert(res == VK_SUCCESS); (void)res;
 		_queryStates[queryId] = QueryState::PendingReset;
 
 		if (dst.size() >= sizeof(QueryResult_StreamOutput)) {

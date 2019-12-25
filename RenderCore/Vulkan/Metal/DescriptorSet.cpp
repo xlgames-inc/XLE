@@ -364,7 +364,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		for (unsigned w=0; w<_pendingWrites; ++w) {
 			auto binding = _writes[w].dstBinding;
-			assert(binding < sig._bindings.size());
+			assert(binding < sig._bindings.size()); (void)binding;
 			assert(AsVkDescriptorType(sig._bindings[binding]) == _writes[w].descriptorType);
 		}
 	}

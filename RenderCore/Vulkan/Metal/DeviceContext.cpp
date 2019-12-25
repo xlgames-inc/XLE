@@ -634,13 +634,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c) {
 			_graphicsDescriptors._descriptorSets[c] = _graphicsDescriptors._descInfo[c]._dummy.get();
-			_graphicsDescriptors._descInfo[c]._currentlyBoundDescription = _graphicsDescriptors._descInfo[c]._dummyDescription;
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				_graphicsDescriptors._descInfo[c]._currentlyBoundDescription = _graphicsDescriptors._descInfo[c]._dummyDescription;
+			#endif
 		}
 		_graphicsDescriptors._numericBindings.Reset();
 
 		for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c) {
 			_computeDescriptors._descriptorSets[c] = _computeDescriptors._descInfo[c]._dummy.get();
-			_computeDescriptors._descInfo[c]._currentlyBoundDescription = _computeDescriptors._descInfo[c]._dummyDescription;
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				_computeDescriptors._descInfo[c]._currentlyBoundDescription = _computeDescriptors._descInfo[c]._dummyDescription;
+			#endif
 		}
 		_computeDescriptors._numericBindings.Reset();
 
@@ -866,7 +870,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			for (const auto&d:helper._descriptorSets) {
 				_graphicsDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummy = d._bound._blankBindings;
-				_graphicsDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					_graphicsDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+				#endif
 			}
 		}
 
@@ -898,7 +904,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			for (const auto&d:helper._descriptorSets) {
 				_computeDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummy = d._bound._blankBindings;
-				_computeDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					_computeDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+				#endif
 			}
 		}
 
