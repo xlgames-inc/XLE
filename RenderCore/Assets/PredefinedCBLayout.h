@@ -19,12 +19,12 @@ namespace RenderCore { namespace Assets
         class Element
         {
         public:
-            ParameterBox::ParameterNameHash _hash;
-            uint64_t _hash64;
+            ParameterBox::ParameterNameHash _hash = ~0u;
+            uint64_t _hash64 = ~0ull;
             ImpliedTyping::TypeDesc _type;
-            unsigned _offset;
-            unsigned _arrayElementCount;
-            unsigned _arrayElementStride;
+            unsigned _offset = 0;
+            unsigned _arrayElementCount = 1;
+            unsigned _arrayElementStride = 0;
         };
         std::vector<Element> _elements;		// note -- we hash this memory, so make this convenient, we should avoid having any pointers here
 		std::vector<std::string> _elementNames;

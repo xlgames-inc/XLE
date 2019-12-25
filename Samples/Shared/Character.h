@@ -19,7 +19,7 @@ namespace FixedFunctionModel
     class SkinPrepareMachine;
 }
 
-namespace RenderCore { class Assets
+namespace RenderCore { namespace Assets
 {
     class ModelScaffold;
     class SkeletonScaffold;

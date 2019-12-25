@@ -98,7 +98,7 @@ namespace Assets
 			if (i != _assets.end() && i->first == hash) {
 				i->second = newFuture;
 			} else 
-				_assets.insert(i, { hash, newFuture });
+				_assets.insert(i, std::make_pair(hash, newFuture));
 		}
 
 		// note -- call AutoConstructToFuture outside of the mutex lock, because this operation can be expensive

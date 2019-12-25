@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
 		~ShaderPatchCollection();
 	private:
 		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>> _patches;
-		uint64_t _hash;
+		uint64_t _hash = ~0ull;
 
 		void SortAndCalculateHash();
 	};

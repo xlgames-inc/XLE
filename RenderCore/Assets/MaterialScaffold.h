@@ -225,6 +225,8 @@ namespace RenderCore { namespace Assets
         _forwardBlendSrc = Blend(0); // Metal::Blend::One;
         _forwardBlendDst = Blend(0); // Metal::Blend::Zero;
         _forwardBlendOp = BlendOp(0); // Metal::BlendOp::NoBlending;
+
+		_padding = 0;
     }
     
     inline uint64 RenderStateSet::GetHash() const

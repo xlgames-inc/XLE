@@ -41,20 +41,20 @@ namespace RenderCore { namespace Assets
         public:
             struct Parameter
             {
-                uint64  _name;
-                uint32  _index;
-                AnimSamplerType  _type;
+                uint64  _name = ~0ull;
+                uint32  _index = 0u;
+                AnimSamplerType  _type = (AnimSamplerType)0;
             };
 
-            Parameter*  _parameters;
-            size_t      _parameterCount;
+            Parameter*  _parameters = nullptr;
+            size_t      _parameterCount = 0;
         };
 
         class OutputInterface
         {
         public:
-            uint64*     _outputMatrixNames;
-            size_t      _outputMatrixNameCount;
+            uint64*     _outputMatrixNames = nullptr;
+            size_t      _outputMatrixNameCount = 0;
         };
 
         const InputInterface&   GetInputInterface() const   { return _inputInterface; }

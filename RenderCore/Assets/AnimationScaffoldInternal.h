@@ -9,6 +9,7 @@
 #include "TransformationCommands.h"
 #include "../Format.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/Serialization.h"
 
 namespace RenderCore { namespace Assets

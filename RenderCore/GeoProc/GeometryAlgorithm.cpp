@@ -102,7 +102,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				v0 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
 				v1 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
 				v2 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
-				assert(v0 != v1 && v1 != v2 && v1 != v2);
+				assert(v0 != v1 && v1 != v2 && v0 != v2);
 			} else {
 				v0 = unsigned(c*3+0);
 				v1 = unsigned(c*3+1);

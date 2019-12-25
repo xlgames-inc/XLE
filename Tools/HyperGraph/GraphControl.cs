@@ -37,7 +37,7 @@ namespace HyperGraph
 {
 	public delegate bool AcceptElement(IElement element);
 
-	public class GraphControl
+	public class GraphControl : IDisposable
 	{
 		public void Attach(Control ctrl)
 		{
@@ -1746,6 +1746,30 @@ namespace HyperGraph
                 dragNode.SubGraphTag = FindOverlappingSubGraph(dragNode.bounds);
             dragNode = null;
         }
-		#endregion
-	}
+        #endregion
+
+        bool disposed = false;
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        // Protected implementation of Dispose pattern.
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+
+            if (disposing)
+            {
+                this.SmallGridPen.Dispose();
+                this.LargeGridPen.Dispose();
+                this.transformation.Dispose();
+                this.inverse_transformation.Dispose();
+            }
+
+            disposed = true;
+        }
+    }
 }

@@ -150,7 +150,7 @@ namespace SceneEngine
             //  SRGB results, others give linear results)
 
 		auto* targetDesc = rpi.GetOutputAttachmentDesc(0);
-		assert(targetDesc);
+		assert(targetDesc); (void)targetDesc;
 		// This parameter should be tied to whether the texture view for the output texture has SRGB enabled
 		// or not (ie, the hardware is writing out SRGB, rather than linear colors).
 		// We're always writing to SRGB enabled output view currently

@@ -73,7 +73,13 @@ namespace RenderCore
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	inline InputElementDesc::InputElementDesc() {}
+	inline InputElementDesc::InputElementDesc()
+	{
+		_semanticIndex = 0;
+		_nativeFormat = (Format)0; _inputSlot = 0;
+		_alignedByteOffset = ~0u; _inputSlotClass = InputDataRate::PerVertex;
+		_instanceDataStepRate = 0;
+	}
 	inline InputElementDesc::InputElementDesc(const std::string& name, unsigned semanticIndex,
 		Format nativeFormat, unsigned inputSlot,
 		unsigned alignedByteOffset,

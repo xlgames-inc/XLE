@@ -42,7 +42,7 @@ namespace XLEMath
         signed IsRotationY() const;
         signed IsRotationZ() const;
 
-        ArbitraryRotation() {}
+		ArbitraryRotation() : _axis(Float3(1.0f, 0.f, 0.f)), _angle(0.f) {}
         ArbitraryRotation(Float3 axis, float angle) : _axis(axis), _angle(angle) {}
         ArbitraryRotation(const Float3x3& rotationMatrix);
     };
@@ -50,17 +50,17 @@ namespace XLEMath
     class LookAt
     {
     public:
-        Float3 _origin;
-        Float3 _focusPosition;
-        Float3 _upDirection;
+		Float3 _origin = Float3(0.f, 0.f, 0.f);
+        Float3 _focusPosition = Float3(10.f, 0.f, 0.f);
+        Float3 _upDirection = Float3(0.f, 0.f, 1.f);
     };
 
     class Skew
     {
     public:
-        float _angle;
-        Float3 _axisA;
-        Float3 _axisB;
+        float _angle = 0.f;
+        Float3 _axisA = Float3(1.f, 0.f, 0.f);
+        Float3 _axisB = Float3(0.f, 0.f, 1.f);
     };
 
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML

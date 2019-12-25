@@ -134,7 +134,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
     public:
         std::vector<InputElementDesc> _elements;
-        unsigned _vertexStride;
+        unsigned _vertexStride = 0;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
