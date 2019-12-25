@@ -58,8 +58,8 @@ namespace SceneEngine
             const bool useNormals = Tweakable("AO_UseNormals", true);
             auto& mainTargets = lightingParserContext.GetMainTargets();
             auto& aoRes = ConsoleRig::FindCachedBox2<AmbientOcclusionResources>(
-                mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
-                useNormals, (useNormals && mainTargets.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
+                mainTargets.GetDimensions(parserContext)[0], mainTargets.GetDimensions(parserContext)[1], Format::R8_UNORM,
+                useNormals, (useNormals && mainTargets.GetSamplingCount(parserContext) > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(metalContext);
 			auto normalSRV = mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal);
             AmbientOcclusion_Render(
@@ -82,7 +82,7 @@ namespace SceneEngine
             auto& mainTargets = lightingParserContext.GetMainTargets();
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 metalContext, parserContext,
-                unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
+                unsigned(mainTargets.GetDimensions(parserContext)[0]), unsigned(mainTargets.GetDimensions(parserContext)[1]), resolveContext.UseMsaaSamplers(),
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse, {diffuseAspect}), 
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter),

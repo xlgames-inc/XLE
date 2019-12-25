@@ -216,19 +216,6 @@ namespace SceneEngine
 				rpi = Techniques::RenderPassInstance { fbDesc, parsingContext.GetNamedResources() };
 			}
 
-			if (0) {
-				// Legacy "MainTargets" behaviour
-				lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
-				lightingParserContext._mainTargets._samplingCount = 1;
-				for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c) {
-					// Remap the name via the rpi, to get the appropriate resource inside the AttachmentPool
-					auto remappedName = rpi.RemapAttachmentName(c);
-					if (remappedName != ~0u)
-						lightingParserContext._mainTargets._namedTargetsMapping.push_back(
-							{merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), remappedName});
-				}
-			}
-
 			for (unsigned c=0; c<std::distance(renderStepIterator, renderStepEnd); ++c) {
 				CATCH_ASSETS_BEGIN
 					Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
@@ -415,32 +402,31 @@ namespace SceneEngine
 
 	auto MainTargets::GetSRV(Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> SRV
 	{
-		for (unsigned c=0; c<_namedTargetsMapping.size(); ++c)
-			if (_namedTargetsMapping[c].first == semantic)
-				return *context.GetNamedResources().GetSRV(_namedTargetsMapping[c].second, window);
+		auto& namedResources = context.GetNamedResources();
+		RenderCore::FrameBufferDesc::Attachment requestAttachments[1];
+		requestAttachments[0]._semantic = semantic;
+		auto result = namedResources.Request(MakeIteratorRange(requestAttachments));
+		if (!result.empty())
+			return *namedResources.GetSRV(result[0]);
 		return SRV {};
 	}
 
 	RenderCore::IResourcePtr MainTargets::GetResource(Techniques::ParsingContext& context, uint64_t semantic) const
 	{
-		for (unsigned c=0; c<_namedTargetsMapping.size(); ++c)
-			if (_namedTargetsMapping[c].first == semantic)
-				return context.GetNamedResources().GetResource(_namedTargetsMapping[c].second);
-		return nullptr;
+		return context.GetNamedResources().GetBoundResource(semantic);
 	}
 
-	UInt2		MainTargets::GetDimensions() const
+	UInt2		MainTargets::GetDimensions(Techniques::ParsingContext& context) const
 	{
-		return _dimensions;
+		auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		return { fbProps._outputWidth, fbProps._outputHeight };
 	}
 
-	unsigned    MainTargets::GetSamplingCount() const
+	unsigned    MainTargets::GetSamplingCount(Techniques::ParsingContext& context) const
 	{
-		return _samplingCount;
+		auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		return fbProps._samples._sampleCount;
 	}
-
-	MainTargets::MainTargets()  {}
-	MainTargets::~MainTargets() {}
 
 
 	class SceneExecuteContext::Pimpl

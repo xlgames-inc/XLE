@@ -334,7 +334,7 @@ namespace SceneEngine
         switch (Tweakable("OITransMode", 1)) {
         case 1:     oiMode = OIMode::Stochastic; break;
         case 2:     oiMode = OIMode::DepthWeighted; break;
-        case 3:     oiMode = (mainTargets.GetSamplingCount() <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
+        case 3:     oiMode = (mainTargets.GetSamplingCount(parserContext) <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
         default:    oiMode = OIMode::Unordered; break;
         }
 

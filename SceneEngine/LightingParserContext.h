@@ -32,19 +32,12 @@ namespace SceneEngine
 	class MainTargets
     {
     public:
-		std::vector<std::pair<uint64_t, unsigned>> _namedTargetsMapping;
-		UInt2 _dimensions = UInt2{0,0};
-		unsigned _samplingCount = 0;
-
         using SRV = RenderCore::Metal::ShaderResourceView;
         SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
 		std::shared_ptr<RenderCore::IResource> GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
 
-		UInt2		GetDimensions() const;
-		unsigned    GetSamplingCount() const;
-
-		MainTargets();
-		~MainTargets();
+		UInt2		GetDimensions(RenderCore::Techniques::ParsingContext& context) const;
+		unsigned    GetSamplingCount(RenderCore::Techniques::ParsingContext& context) const;
     };
 
     class LightingParserContext
