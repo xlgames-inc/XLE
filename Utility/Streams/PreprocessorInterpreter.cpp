@@ -2,6 +2,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma warning(disable:4099) // 'Iterator': type name first seen using 'class' now seen using 'struct'
+#pragma warning(disable:4180) // qualifier applied to function type has no meaning; ignored
+#pragma warning(disable:4505) // 'preprocessor_operations::UndefinedOnUndefinedOperation': unreferenced local function has been removed
+
 #include "PreprocessorInterpreter.h"
 #include "../Threading/ThreadingUtils.h"
 #include "../../Core/Exceptions.h"

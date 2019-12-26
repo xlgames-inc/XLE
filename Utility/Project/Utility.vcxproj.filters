@@ -114,6 +114,9 @@
     <ClInclude Include="..\StreamUtils.h" />
     <ClInclude Include="..\ExposeStreamOp.h" />
     <ClInclude Include="..\VariantUtils.h" />
+    <ClInclude Include="..\Streams\PreprocessorInterpreter.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -177,6 +180,9 @@
     </ClCompile>
     <ClCompile Include="..\Meta\AccessorSerialize.cpp">
       <Filter>Meta</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\PreprocessorInterpreter.cpp">
+      <Filter>Streams</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

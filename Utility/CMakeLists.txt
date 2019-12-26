@@ -46,6 +46,7 @@ set(StreamsSrc
     Streams/DataSerialize.cpp
     Streams/FileUtils.cpp
     Streams/PathUtils.cpp
+    Streams/PreprocessorInterpreter.cpp
     Streams/Stream.cpp
     Streams/StreamDOM.cpp
     Streams/StreamFormatter.cpp

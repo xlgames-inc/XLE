@@ -79,6 +79,7 @@
     <ClInclude Include="..\Meta\ClassAccessorsImpl.h" />
     <ClInclude Include="..\MiniHeap.h" />
     <ClInclude Include="..\Mixins.h" />
+    <ClInclude Include="..\Streams\PreprocessorInterpreter.h" />
     <ClInclude Include="..\StreamUtils.h" />
     <ClInclude Include="..\ParameterBox.h" />
     <ClInclude Include="..\ParameterPackUtils.h" />
@@ -127,6 +128,7 @@
     <ClCompile Include="..\Streams\DataSerialize.cpp" />
     <ClCompile Include="..\Streams\FileUtils.cpp" />
     <ClCompile Include="..\Streams\PathUtils.cpp" />
+    <ClCompile Include="..\Streams\PreprocessorInterpreter.cpp" />
     <ClCompile Include="..\Streams\Stream.cpp" />
     <ClCompile Include="..\Streams\StreamDOM.cpp" />
     <ClCompile Include="..\Streams\StreamFormatter.cpp" />
