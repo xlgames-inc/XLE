@@ -349,6 +349,14 @@ namespace RenderCore { namespace ImplDX11
         return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
 
+	void Device::Stall()
+	{
+		// There's no straight forward way of doing this on DX11. We have to create a query and wait
+		// for it; or use some kind of fence trickery
+		_immediateContext->Flush();
+		assert(0);	// not fully implemented & tested
+	}
+
 	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
 	{
 		return Metal_DX11::CreateLowLevelShaderCompiler(*this);
@@ -514,6 +522,13 @@ namespace RenderCore { namespace ImplDX11
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         swapChain->GetUnderlying()->Present(0, 0);
     }
+
+	void	ThreadContext::CommitHeadless()
+	{
+		// We essentially just want to trigger the execution of the command list we're building
+		// on the GPU.
+		_underlying->GetUnderlying()->Flush();
+	}
 
     bool    ThreadContext::IsImmediate() const
     {

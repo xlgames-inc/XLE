@@ -105,6 +105,12 @@ namespace RenderCore { namespace Metal_DX11
 		return _guid;
 	}
 
+	std::vector<uint8_t>    Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
+	{
+		assert(0);	// unimplemented
+		return {};
+	}
+
 	static uint64_t s_nextResourceGUID = 1;
 
 	Resource::Resource() : _guid(s_nextResourceGUID++) {}

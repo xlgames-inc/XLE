@@ -21,15 +21,15 @@ namespace RenderCore { namespace ImplDX11
 
     class Device;
 
-    class PresentationChain : public Base_PresentationChain
+    class PresentationChain : public IPresentationChain
     {
     public:
-        void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
+        void                Resize(unsigned newWidth, unsigned newHeight) override;
         IDXGI::SwapChain*   GetUnderlying() const { return _underlying.get(); }
 
         void                AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory);
 
-        const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+        const std::shared_ptr<PresentationChainDesc>& GetDesc() const override;
 		IResourcePtr GetPresentationResource();
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
@@ -46,19 +46,20 @@ namespace RenderCore { namespace ImplDX11
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ThreadContext : public Base_ThreadContext
+    class ThreadContext : public IThreadContext
     {
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
-        void    Present(IPresentationChain& presentationChain) /*override*/;
+        void    Present(IPresentationChain& presentationChain) override;
+		void	CommitHeadless() override;
 
-        bool                        IsImmediate() const;
-        ThreadContextStateDesc      GetStateDesc() const;
+        bool                        IsImmediate() const override;
+        ThreadContextStateDesc      GetStateDesc() const override;
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        IncrFrameId();
-		void						InvalidateCachedState() const;
+		void						InvalidateCachedState() const override;
 
-		IAnnotator&					GetAnnotator();
+		IAnnotator&					GetAnnotator() override;
 
         ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();
@@ -82,7 +83,7 @@ namespace RenderCore { namespace ImplDX11
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device : public Base_Device, public std::enable_shared_from_this<Device>
+    class Device : public IDevice, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc) /*override*/;
@@ -99,6 +100,8 @@ namespace RenderCore { namespace ImplDX11
 		FormatCapability		QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
         ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
+
+		void					Stall();
 
 		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
 

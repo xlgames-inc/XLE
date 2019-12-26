@@ -46,9 +46,11 @@ namespace RenderCore { namespace Metal_DX11
 
 		const intrusive_ptr<ID3D::Resource>& GetUnderlying() const { return _underlying; }
 
-		virtual void*			QueryInterface(size_t guid);
-		virtual ResourceDesc	GetDesc() const;
-		virtual uint64_t        GetGUID() const;
+		virtual void*			QueryInterface(size_t guid) override;
+		virtual ResourceDesc	GetDesc() const override;
+		virtual uint64_t        GetGUID() const override;
+
+		virtual std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes) const override;
 
 		Resource();
 		explicit Resource(const intrusive_ptr<ID3D::Resource>& underlying);

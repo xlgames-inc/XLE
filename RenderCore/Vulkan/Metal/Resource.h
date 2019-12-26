@@ -61,10 +61,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkDeviceMemory GetMemory() const    { return _mem.get(); }
 		VkImage GetImage() const            { return _underlyingImage.get(); }
 		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
-		Desc GetDesc() const				{ return _desc; }
-		uint64_t GetGUID() const			{ return _guid; }
+		Desc GetDesc() const override		{ return _desc; }
+		uint64_t GetGUID() const override	{ return _guid; }
 
-		virtual void*       QueryInterface(size_t guid);
+		void*       QueryInterface(size_t guid) override;
+
+		std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes) const override;
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
 	protected:

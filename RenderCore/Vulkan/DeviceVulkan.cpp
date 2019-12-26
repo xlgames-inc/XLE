@@ -807,6 +807,11 @@ namespace RenderCore { namespace ImplVulkan
 		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this);
 	}
 
+	void Device::Stall()
+	{
+		assert(0);	// unimplemented
+	}
+
     static const char* s_underlyingApi = "Vulkan";
         
     DeviceDesc Device::GetDesc()
@@ -1215,6 +1220,11 @@ namespace RenderCore { namespace ImplVulkan
 		// Finally, we can queue the present
 		//		-- do it here to allow it to run in parallel as much as possible
 		swapChain->PresentToQueue(_queue);
+	}
+
+	void	ThreadContext::CommitHeadless()
+	{
+		assert(0);
 	}
 
     bool ThreadContext::IsImmediate() const

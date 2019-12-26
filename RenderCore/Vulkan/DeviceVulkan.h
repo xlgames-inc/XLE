@@ -47,7 +47,7 @@ namespace RenderCore { namespace ImplVulkan
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PresentationChain : public Base_PresentationChain
+    class PresentationChain : public IPresentationChain
     {
     public:
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
@@ -113,22 +113,23 @@ namespace RenderCore { namespace ImplVulkan
 
 	class EventBasedTracker;
 
-    class ThreadContext : public Base_ThreadContext
+    class ThreadContext : public IThreadContext
     {
     public:
-		void	        Present(IPresentationChain&);
+		void	        Present(IPresentationChain&) override;
 		IResourcePtr	BeginFrame(IPresentationChain& presentationChain) override;
+		void			CommitHeadless() override;
 
-        bool                        IsImmediate() const;
-        ThreadContextStateDesc      GetStateDesc() const;
+        bool                        IsImmediate() const override;
+        ThreadContextStateDesc      GetStateDesc() const override;
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        IncrFrameId();
-		void						InvalidateCachedState() const;
+		void						InvalidateCachedState() const override;
 
         Metal_Vulkan::CommandPool&  GetRenderingCommandPool()   { return _renderingCommandPool; }
         VkQueue                     GetQueue()                  { return _queue; }
 
-		IAnnotator&					GetAnnotator();
+		IAnnotator&					GetAnnotator() override;
 
 		void SetGPUTracker(const std::shared_ptr<EventBasedTracker>&);
 		void AttachDestroyer(const std::shared_ptr<Metal_Vulkan::IDestructionQueue>&);
@@ -160,7 +161,7 @@ namespace RenderCore { namespace ImplVulkan
     class ThreadContextVulkan : public ThreadContext, public IThreadContextVulkan
     {
     public:
-        virtual void*   QueryInterface(size_t guid);
+        virtual void*   QueryInterface(size_t guid) override;
         const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
 
 		ThreadContextVulkan(
@@ -174,28 +175,30 @@ namespace RenderCore { namespace ImplVulkan
 
 ////////////////////////////////////////////////////////////////////////////////
 
-	class Device : public Base_Device, public std::enable_shared_from_this<Device>
+	class Device : public IDevice, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(
-			const void* platformValue, const PresentationChainDesc& desc) /*override*/;
+			const void* platformValue, const PresentationChainDesc& desc) override;
 
-        DeviceDesc                              GetDesc();
+        DeviceDesc                              GetDesc() override;
 
-        std::shared_ptr<IThreadContext>         GetImmediateContext();
-        std::unique_ptr<IThreadContext>         CreateDeferredContext();
+        std::shared_ptr<IThreadContext>         GetImmediateContext() override;
+        std::unique_ptr<IThreadContext>         CreateDeferredContext() override;
 
         Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
 		Metal_Vulkan::ObjectFactory&			GetObjectFactory() { return _objectFactory; }
 
 		IResourcePtr CreateResource(
 			const ResourceDesc& desc, 
-			const std::function<SubResourceInitData(SubResourceId)>&);
-		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+			const std::function<SubResourceInitData(SubResourceId)>&) override;
+		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
+
+		void			Stall() override;
 
 		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
 
-		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
+		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() override;
 
         Device();
         ~Device();

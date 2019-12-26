@@ -424,6 +424,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	std::vector<uint8_t>    Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
+	{
+		assert(0);		// unimplemented
+		return {};
+	}
+
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
