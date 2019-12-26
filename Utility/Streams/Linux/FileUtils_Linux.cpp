@@ -1,6 +1,9 @@
 #include "../FileUtils.h"
 #include "../PathUtils.h"
 #include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <unordered_map>
 
 // Sadly, Android does not include glob
 #if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
@@ -94,15 +97,24 @@ namespace Utility
 		{
             std::vector<std::string> fileList;
 
-#if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
-            glob_t globbuf;
-            glob(searchPath.c_str(), GLOB_TILDE, NULL, &globbuf);
-            for (int i=0; i<globbuf.gl_pathc; ++i)
-                fileList.push_back(globbuf.gl_pathv[i]);
+            DIR *dir = dir = opendir(searchPath.c_str());
+            if (dir != NULL) {
+                struct dirent *entry;
+                while ((entry = readdir(dir)) != NULL) {
+                    auto full_path = searchPath + "/" + entry->d_name;
+                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                        continue;
+                    }
+                    if ((entry->d_type == DT_DIR) && (filter & FindFilesFilter::Directory)) {
+                        fileList.push_back(full_path);
+                    }
 
-            if (globbuf.gl_pathc > 0)
-                globfree(&globbuf);
-#endif
+                    if ((entry->d_type == DT_REG) && (filter & FindFilesFilter::File)) {
+                        fileList.push_back(full_path);
+                    }
+                }
+                closedir(dir);
+            }
 
             return fileList;
 		}
@@ -115,8 +127,36 @@ namespace Utility
 
 		std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter)
 		{
-            	assert(0);
-			return {};
+            std::vector<std::string> searchPaths = {rootDirectory};
+            std::vector<std::string> retval;
+            while (!searchPaths.empty()) {
+                const std::string searchPath = searchPaths.back();
+                searchPaths.pop_back();
+                DIR *dir = dir = opendir(searchPath.c_str());
+                if (dir != NULL) {
+                    struct dirent *entry;
+                    while ((entry = readdir(dir)) != NULL) {
+                        auto full_path = searchPath + "/" + entry->d_name;
+                        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                            continue;
+                        }
+                        if (entry->d_type == DT_DIR) {
+                            searchPaths.push_back(full_path);
+                        } else if (entry->d_type == DT_REG) {
+                            retval.push_back(full_path);
+                        }
+                    }
+                    closedir(dir);
+                } else {
+                    struct stat st;
+                    if (stat(searchPath.c_str(), &st)) {
+                        assert(false); // TODO throw exception
+                    }
+                    assert(st.st_mode & S_IFREG); // TODO throw exception
+                    retval.push_back(searchPath);
+                }
+            }
+            return retval;
 		}
 	}
 }

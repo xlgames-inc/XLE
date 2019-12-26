@@ -8,6 +8,7 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
+#include "Metal/FeatureSet.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include <memory>
 
@@ -39,6 +40,8 @@ namespace RenderCore { namespace ImplAppleMetal
         PresentationChain(id<MTLDevice> device, const void* platformValue, const PresentationChainDesc &desc);
         ~PresentationChain();
 
+        std::vector<std::pair<id, uint64_t>> _drawableTextureGUIDMapping;
+
     private:
         TBC::OCPtr<CAMetalLayer> _layer;
         std::shared_ptr<PresentationChainDesc> _desc;
@@ -48,11 +51,20 @@ namespace RenderCore { namespace ImplAppleMetal
 
     class Device;
 
-    class ThreadContext : public Base_ThreadContext, public IThreadContextAppleMetal
+    class ThreadContext : public IThreadContext, public IThreadContextAppleMetal
     {
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
+        void        CommitHeadless() /*override*/;
+
+        // METAL_TODO: These could become private, as they should only be called
+        // by BeginFrame/Present/CommitHeadless and startup and shutdown, but
+        // probably better to just inline them and eliminate them.
+    private:
+        void        BeginHeadlessFrame();
+        void        EndHeadlessFrame();
+    public:
 
         void*                       QueryInterface(size_t guid);
         bool                        IsImmediate() const;
@@ -64,6 +76,8 @@ namespace RenderCore { namespace ImplAppleMetal
         IAnnotator&                 GetAnnotator();
 
         const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  GetDeviceContext();
+
+        id<MTLCommandBuffer> GetCurrentCommandBuffer() { return (id<MTLCommandBuffer>)_commandBuffer.get(); }
 
         ThreadContext(
             id<MTLCommandQueue> immediateCommandQueue,
@@ -78,6 +92,7 @@ namespace RenderCore { namespace ImplAppleMetal
         std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 
         TBC::OCPtr<id> _activeFrameDrawable;        // (id<MTLDrawable>)
+        // TODO: Should this be managed implicitly by the DeviceContext?
         TBC::OCPtr<id> _commandBuffer;              // (id<MTLCommandBuffer>)
 
         std::shared_ptr<IAnnotator> _annotator;
@@ -87,22 +102,26 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
+    class Device :  public IDevice, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(
-            const void* platformValue, const PresentationChainDesc &desc);
-        void* QueryInterface(size_t guid);
+            const void* platformValue, const PresentationChainDesc &desc) override;
+        void* QueryInterface(size_t guid) override;
 
-        std::shared_ptr<IThreadContext> GetImmediateContext();
-        std::unique_ptr<IThreadContext> CreateDeferredContext();
+        std::shared_ptr<IThreadContext> GetImmediateContext() override;
+        std::unique_ptr<IThreadContext> CreateDeferredContext() override;
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc();
-        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
+        DeviceDesc GetDesc() override;
+        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
-        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler();
+        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
+
+        virtual void Stall() override;
+
+        Metal_AppleMetal::FeatureSet::BitField GetFeatureSet();
 
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 

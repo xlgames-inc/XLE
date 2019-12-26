@@ -1,4 +1,6 @@
-message("Build type: ${CMAKE_BUILD_TYPE}")
+# setup basic XLE_DIR & FOREIGN_DIR macros
+get_filename_component(XLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+get_filename_component(FOREIGN_DIR "${XLE_DIR}/Foreign/" ABSOLUTE)
 
 macro(BasicLibrary LibName Src)
 	source_group("" FILES ${Src})       # Push all files into the root folder

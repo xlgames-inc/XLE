@@ -2,7 +2,6 @@ if(NOT CLIENT_HAS_LUA)
     file(GLOB LuaSrc "Lua/src/*.c" "Lua/src/*.h")
 endif()
 file(GLOB HashSrc "Hash/*.cpp" "Hash/*.h")
-file(GLOB AntlrSrc "Antlr-3.4/libantlr3c-3.4/src/*.c")
 file(GLOB FmtSrc "fmt/*.cc")
 if (WIN32)
 	file(GLOB StackWalkerSrc "StackWalker/*.cpp")
@@ -11,7 +10,7 @@ file(GLOB PlustacheSrc "plustache/*.cpp")
 file(GLOB ZLibSrc "zlib/*.c" "zlib/*.h")
 set(StamSimpleFluidSrc StamSimpleFluid/solver.c)
 
-BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${AntlrSrc};${FmtSrc};${StackWalkerSrc};${PlustacheSrc};${StamSimpleFluidSrc};${ZLibSrc}")
+BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${FmtSrc};${StackWalkerSrc};${PlustacheSrc};${StamSimpleFluidSrc};${ZLibSrc}")
 
 # Ensure we export the necessary include folders from this target
 # Most other targets list this target as a dependency, so they should inherit these include folders

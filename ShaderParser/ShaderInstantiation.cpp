@@ -89,7 +89,7 @@ namespace ShaderSourceParser
 					InstantiatedShader::EntryPoint entryPoint { scaffoldName, scaffoldSignature };
 					if (!scaffoldSignature.GetImplements().empty()) {
 						auto implementsSig = inst._graph._subProvider->FindSignature(scaffoldSignature.GetImplements());
-						if (implementsSig.has_value()) {
+						if (implementsSig) {
 							entryPoint._implementsName = implementsSig.value()._name;
 							entryPoint._implementsSignature = implementsSig.value()._signature;
 						}

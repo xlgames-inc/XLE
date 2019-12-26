@@ -72,6 +72,16 @@ namespace RenderCore
             StringSection<::Assets::ResChar> definesTable,
             IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
 
+        using CompletionFunction = std::function<void(bool success, const ::Assets::Blob& payload, const ::Assets::Blob& errors, const std::vector<::Assets::DependentFileState>& dependencies)>;
+        virtual bool DoLowLevelCompile(
+            CompletionFunction&& completionFunction,
+            const void* sourceCode, size_t sourceCodeLength,
+            const ResId& shaderPath,
+            StringSection<::Assets::ResChar> definesTable,
+            IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const { return false; }
+
+        virtual bool SupportsCompletionFunctionCompile() { return false; }
+
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const = 0;
 

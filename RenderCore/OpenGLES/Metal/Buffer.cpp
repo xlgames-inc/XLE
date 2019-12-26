@@ -15,38 +15,40 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
-        auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
-        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
-
-        #if !APPORTABLE
-            if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
-                auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-                if (flags & UpdateFlags::UnsynchronizedWrite)
-                    glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
-                void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
-                std::memcpy(mappedData, data, dataSize);
-                glUnmapBuffer(bindTarget);
-            } else
-		#endif
-        {
-            glBufferSubData(bindTarget, 0, dataSize, data);
+        if (!(flags & UpdateFlags::UnsynchronizedWrite) && context.InRenderPass()) {
+            Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
         }
-    }
 
-    std::vector<uint8_t> Buffer::Readback()
-    {
-        auto bindTarget = GetDesc()._type != ResourceDesc::Type::Unknown ? AsBufferTarget(GetDesc()._bindFlags) : GL_ARRAY_BUFFER;
-        glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
+        if (GetBuffer()) {
+            auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
+            glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
 
-        GLint bufferSize = 0;
-        glGetBufferParameteriv(bindTarget, GL_BUFFER_SIZE, &bufferSize);
+            // METAL_TODO: Should unsynchronized writes on APPPORTABLE or on pre-GLES300 actually be errors instead of falling back to synchronized writes?
+            #if !APPORTABLE
+                if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
+                    auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+                    if (flags & UpdateFlags::UnsynchronizedWrite)
+                        glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
+                    void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
+                    std::memcpy(mappedData, data, dataSize);
+                    glUnmapBuffer(bindTarget);
+                } else
+            #endif
+            {
+                glBufferSubData(bindTarget, writeOffset, dataSize, data);
+            }
 
-        void* mappedData = glMapBufferRange(bindTarget, 0, bufferSize, GL_MAP_READ_BIT);
-        std::vector<uint8_t> result(bufferSize);
-        std::memcpy(result.data(), mappedData, bufferSize);
-        glUnmapBuffer(bindTarget);
-
-        return result;
+            if (!_constantBuffer.empty()) {
+                auto start = std::min(_constantBuffer.size(), writeOffset);
+                auto end = std::min(_constantBuffer.size(), writeOffset + dataSize);
+                std::memcpy(PtrAdd(_constantBuffer.data(), start), data, end-start);
+                _constantBufferHash = 0;        // don't hash writable constant buffers, because often larger constant buffers are large and the hash overhead can be redundant
+            }
+        } else {
+            auto size = std::min(ptrdiff_t(_constantBuffer.size()) - ptrdiff_t(writeOffset), ptrdiff_t(dataSize));
+            if (size > 0)
+                std::copy((const uint8_t*)data, (const uint8_t*)data + size, _constantBuffer.begin() + writeOffset);
+        }
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,

@@ -68,8 +68,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (*i == '\n') ++result;
         return result;
     }
-    
-    static std::regex s_appleStyle(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--");
 
     struct ErrorMessage
     {
@@ -97,7 +95,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (line.IsEmpty()) break;
 
             std::cmatch match;
-            bool a = std::regex_match(line.begin(), line.end(), match, s_appleStyle);
+            bool a = std::regex_match(line.begin(), line.end(), match, std::regex(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--"));
             if (a && match.size() >= 5) {
                 std::stringstream str;
                 str << match[1].str() << ": " << match[4].str();
@@ -371,7 +369,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             ScopedLock(factory._compiledShadersLock);
             vs = factory._compiledShaders[*(uint64_t*)vsByteCode.first];
             fs = factory._compiledShaders[*(uint64_t*)fsByteCode.first];
-			assert(vs && fs);
+            assert(vs && fs);
         }
 
         _depVal = std::make_shared<Assets::DependencyValidation>();
@@ -435,6 +433,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                 _depVal,
                 errorsLog));
         }
+
+        #if defined(GL_ES_VERSION_3_0)
+            // We have to give each uniform block index a "binding"
+            if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                GLint uniformBlockCount = 0;
+                glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_ACTIVE_UNIFORM_BLOCKS, &uniformBlockCount);
+                for (unsigned c=0; c<uniformBlockCount; ++c)
+                    glUniformBlockBinding(newProgramIndex->AsRawGLHandle(), c, c);
+            }
+        #endif
 
         #if defined(_DEBUG)
             _sourceIdentifiers = sourceIdentifiers;
@@ -562,6 +570,44 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto location = glGetUniformLocation(shaderProgram.GetUnderlying()->AsRawGLHandle(), buffer);
                     stream << location;
                 }
+
+                #if defined(GL_ES_VERSION_3_0)
+                    GLint secondType = 0, secondSize = 0, blockIndex = 0, offset = 0, arrayStride = 0, matrixStride = 0, isRowMajor = 0;
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_TYPE, &secondType);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_SIZE, &secondSize);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_BLOCK_INDEX, &blockIndex);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_OFFSET, &offset);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_ARRAY_STRIDE, &arrayStride);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_MATRIX_STRIDE, &matrixStride);
+                    glGetActiveUniformsiv(
+                        shaderProgram.GetUnderlying()->AsRawGLHandle(), 
+                        1, &c,
+                        GL_UNIFORM_IS_ROW_MAJOR, &isRowMajor);
+
+                    stream
+                        << ", glGetActiveUniformsiv <type: " << GLenumAsString(secondType) << ", size: " << size 
+                        << ", blockIndex: " << blockIndex << ", offset: " << offset << ", arrayStride: " << arrayStride
+                        << ", matrixStride: " << matrixStride << ", isRowMajor: " << isRowMajor << ">";
+                #endif
+
                 stream << std::endl;
             }
         }

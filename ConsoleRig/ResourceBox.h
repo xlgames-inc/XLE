@@ -7,10 +7,10 @@
 #pragma once
 
 #include "Log.h"
-#include "../../Core/Types.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/IteratorUtils.h"
+#include "../Core/Types.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <algorithm>
 

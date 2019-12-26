@@ -5,8 +5,10 @@
 #include "Metal/Resource.h"
 #include "Metal/QueryPool.h"
 #include "Metal/Shader.h"
+#include "../Init.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../ConsoleRig/Log.h"
 #include <type_traits>
@@ -16,6 +18,8 @@
 #include <OpenGL/OpenGL.h>
 #include <AppKit/NSOpenGL.h>
 #include <AppKit/NSOpenGLView.h>
+
+#pragma GCC diagnostic ignored "-Wunused-value"
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -111,9 +115,11 @@ namespace RenderCore { namespace ImplOpenGLES
         }
 
         bool supported = true;
-        if (bindingType & BindFlag::ShaderResource) {
+        if (bindingType & BindFlag::DepthStencil) {
+            return FormatCapability::Supported;
+        } else if (bindingType & BindFlag::ShaderResource) {
             supported &= !!(activeFeatureSet & glFmt._textureFeatureSet);
-        } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
+        } else if (bindingType & BindFlag::RenderTarget) {
             supported &= !!(activeFeatureSet & glFmt._renderbufferFeatureSet);
         }
 
@@ -133,6 +139,11 @@ namespace RenderCore { namespace ImplOpenGLES
     std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
     {
         return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
+    }
+
+    void Device::Stall()
+    {
+        glFinish();
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +368,14 @@ namespace RenderCore { namespace ImplOpenGLES
         CGLSetCurrentContext(_sharedContext);
     }
 
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
+        if (CGLGetCurrentContext()) {
+            glFlush();
+        }
+    }
+
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
         return _device.lock();
@@ -377,7 +396,7 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
         : ThreadContext(sharedContext, device)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(GetFeatureSet());
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, GetFeatureSet());
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}
@@ -421,6 +440,12 @@ namespace RenderCore { namespace ImplOpenGLES
     render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
         return std::make_shared<DeviceOpenGLES>();
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::OpenGLES, &CreateDevice);
     }
 
 } }

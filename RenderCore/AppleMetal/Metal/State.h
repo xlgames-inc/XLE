@@ -37,6 +37,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint8_t         _stencilReference = 0x0;
         StencilDesc     _frontFaceStencil;
         StencilDesc     _backFaceStencil;
+
+        uint64_t Hash() const;
     };
 
     /// Similar to VkPipelineRasterizationStateCreateInfo or D3D12_RASTERIZER_DESC
@@ -56,6 +58,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
         RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+        bool _enableMipmaps = true;
     };
 
     namespace ColorWriteMask
@@ -76,16 +79,19 @@ namespace RenderCore { namespace Metal_AppleMetal
     /**
      * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
      */
-    class AttachmentBlendDesc {
+    class AttachmentBlendDesc
+    {
     public:
-        bool _blendEnable;
-        RenderCore::Blend _srcColorBlendFactor;
-        RenderCore::Blend _dstColorBlendFactor;
-        RenderCore::BlendOp _colorBlendOp;
-        RenderCore::Blend _srcAlphaBlendFactor;
-        RenderCore::Blend _dstAlphaBlendFactor;
-        RenderCore::BlendOp _alphaBlendOp;
-        ColorWriteMask::BitField _writeMask;
+        bool _blendEnable = false;
+        Blend _srcColorBlendFactor = Blend::One;
+        Blend _dstColorBlendFactor = Blend::Zero;
+        BlendOp _colorBlendOp = BlendOp::Add;
+        Blend _srcAlphaBlendFactor = Blend::One;
+        Blend _dstAlphaBlendFactor = Blend::Zero;
+        BlendOp _alphaBlendOp = BlendOp::Add;
+        ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
+
+        uint64_t Hash() const;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,14 +99,22 @@ namespace RenderCore { namespace Metal_AppleMetal
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode filter = FilterMode::Trilinear,
+        SamplerState(   FilterMode filter,
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
-                        CompareOp comparison = CompareOp::Never);
+                        CompareOp comparison = CompareOp::Never,
+                        bool enableMipmaps = true);
+        SamplerState(); // inexpensive default constructor
+
+        void Apply(DeviceContext& context, bool textureHasMipmaps, unsigned samplerIndex, ShaderStage stage) const never_throws;
 
         typedef SamplerState UnderlyingType;
         UnderlyingType GetUnderlying() const never_throws { return *this; }
+
+    private:
+        class Pimpl;
+        std::shared_ptr<Pimpl> _pimpl;
     };
 
     class BlendState
@@ -112,20 +126,5 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ViewportDesc
-    {
-    public:
-            // (naming convention as per D3D11_VIEWPORT)
-        float TopLeftX, TopLeftY;
-        float Width, Height;
-        float MinDepth, MaxDepth;
-
-        ViewportDesc(DeviceContext&);
-        ViewportDesc(float topLeftX=0.f, float topLeftY=0.f, float width=0.f, float height=0.f, float minDepth=0.f, float maxDepth=1.f)
-        : TopLeftX(topLeftX), TopLeftY(topLeftY)
-        , Width(width), Height(height)
-        , MinDepth(minDepth), MaxDepth(maxDepth)
-        {}
-    };
 }}
 

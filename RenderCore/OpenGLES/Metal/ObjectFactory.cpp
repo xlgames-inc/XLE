@@ -4,6 +4,7 @@
 
 #include "ObjectFactory.h"
 #include "Resource.h"       // (for DescribeUnknownObject)
+#include "GPUSyncedAllocator.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../IDeviceOpenGLES.h"
@@ -405,10 +406,55 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;
+
+        CheckGLError("Before initializing stand in textures");
+
+        _standIn2DTexture = CreateTexture();
+        glBindTexture(GL_TEXTURE_2D, _standIn2DTexture->AsRawGLHandle());
+        unsigned dummyData[4*4];
+        for (unsigned c=0; c<dimof(dummyData); ++c)
+            dummyData[c] = 0xffffffff;
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0, GL_RGBA,
+            4, 4, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE,
+            dummyData);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        _standInCubeTexture = CreateTexture();
+        GLenum faceBinding[] = {
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+            GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+            GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+            GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
+        glBindTexture(GL_TEXTURE_CUBE_MAP, _standInCubeTexture->AsRawGLHandle());
+        for (unsigned c=0; c<dimof(faceBinding); ++c) {
+            glTexImage2D(
+                faceBinding[c],
+                0, GL_RGBA,
+                4, 4, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE,
+                dummyData);
+        }
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        CheckGLError("After initializing stand in textures");
+
+        if (_featureSet & FeatureSet::GLES300) {
+            _reusableCBSpace = std::make_unique<DynamicBuffer>(
+                RenderCore::LinearBufferDesc::Create(2048 * 1024), RenderCore::BindFlag::ConstantBuffer, "TempCBBuffer", true, nullptr);
+        }
     }
     ObjectFactory::~ObjectFactory()
     {
         assert(s_objectFactory_instance == this);
+
+        _reusableCBSpace.reset();
+        _standInCubeTexture.reset();
+        _standIn2DTexture.reset();
 
         {
             ScopedLock(_compiledShadersLock);

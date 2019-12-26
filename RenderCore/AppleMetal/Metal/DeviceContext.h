@@ -16,8 +16,14 @@
 
 @class MTLRenderPassDescriptor;
 @class MTLRenderPipelineReflection;
+@protocol MTLBlitCommandEncoder;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
+@protocol MTLRenderCommandEncoder;
+@protocol MTLFunction;
+@protocol MTLDepthStencilState;
+
+namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -26,10 +32,10 @@ namespace RenderCore { namespace Metal_AppleMetal
     class ConstantBuffer;
     class BoundInputLayout;
     class ShaderProgram;
-    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
+    class UnboundInterface;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,7 +49,6 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
-
     class CapturedStates
     {
     public:
@@ -52,136 +57,160 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::vector<std::pair<uint64_t, uint64_t>> _customBindings;
     };
 
-    class ReflectionInformation
-    {
-    public:
-        /* This contains the vertex and fragment mappings for the hashed name of a shader function argument
-         * and its type and index.s
-         * For example, the vertex function might have "metalUniforms" with hashName 1234567, type Buffer, index 3,
-         * and the fragment function might have "colorMap" with hashName 7654321, type Texture, index 1.
-         * The same argument might be in both the vertex and fragment functions, but could have different
-         * indices in the argument table.
-         */
-        enum MappingType {
-            Buffer,
-            Texture,
-            Sampler,
-            Unknown
-        };
-        struct Mapping {
-            uint64_t hashName = ~0ull;
-            MappingType type = Unknown;
-            unsigned index = ~0u;
-        };
-
-        std::vector<Mapping> _vfMappings;
-        std::vector<Mapping> _ffMappings;
-
-        TBC::OCPtr<MTLRenderPipelineReflection> _debugReflection;
-    };
-
     class GraphicsPipeline
     {
     public:
-        template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
-        void Bind(const IndexBufferView& IB);
-        void UnbindInputLayout();
+        TBC::OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
+        TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
+        TBC::OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
+        unsigned _primitiveType;              // MTLPrimitiveType
+        unsigned _stencilReferenceValue;        // todo -- separate stencil reference value from DepthStencilDesc
+        unsigned _cullMode;
+        unsigned _faceWinding;
+        uint64_t _hash;
 
-        template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        uint64_t GetGUID() const { return _hash; }
+
+        #if defined(_DEBUG)
+            std::string _shaderSourceIdentifiers;
+        #endif
+    };
+
+    class GraphicsPipelineBuilder
+    {
+    public:
         void Bind(const ShaderProgram& shaderProgram);
 
         void Bind(const AttachmentBlendDesc& desc);
-        void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
-        void Bind(const ViewportDesc& viewport);
-        ViewportDesc GetViewport();
+        void Bind(const RasterizationDesc& rasterizer);
 
         DepthStencilDesc ActiveDepthStencilDesc();
-        void SetRasterSampleCount(unsigned sampleCount);
 
-        void Bind(MTLVertexDescriptor* descriptor);
+        void SetInputLayout(const BoundInputLayout& inputLayout);
+        void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+        void SetRenderPassConfiguration(MTLRenderPassDescriptor* desc, unsigned sampleCount);
+        uint64_t GetRenderPassConfigurationHash() const;
 
-        enum ShaderTarget { Vertex, Fragment };
-        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target);
-        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target);
-        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target);
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+        bool IsPipelineStale() const { return _dirty; }
 
-        const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
-
-        void FinalizePipeline();
-
-        void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
-        void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-        void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
-        void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-
-        void            HoldDevice(id<MTLDevice>);
-        void            HoldCommandBuffer(id<MTLCommandBuffer>);
-        void            ReleaseCommandBuffer();
-        id<MTLCommandBuffer>            RetrieveCommandBuffer();
-        void            CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
-        void            EndEncoding();
-        void            DestroyRenderCommandEncoder();
-
-        void            PushDebugGroup(const char annotationName[]);
-        void            PopDebugGroup();
-
-        GraphicsPipeline();
-        GraphicsPipeline(const GraphicsPipeline&) = delete;
-        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
-        virtual ~GraphicsPipeline();
-
-        CapturedStates* GetCapturedStates();
-        void        BeginStateCapture(CapturedStates& capturedStates);
-        void        EndStateCapture();
-
-    private:
+        GraphicsPipelineBuilder();
+        ~GraphicsPipelineBuilder();
+    protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+        bool _dirty;
+        unsigned _cullMode;
+        unsigned _faceWinding;
+
+        TBC::OCPtr<NSObject<MTLDepthStencilState>> CreateDepthStencilState(ObjectFactory& factory);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DeviceContext : public GraphicsPipeline
+    class DeviceContext : public GraphicsPipelineBuilder
     {
     public:
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      E N C O D E R
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        void    BindVS(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex);
+        void    Bind(const IndexBufferView& IB);
+
+        void UnbindInputLayout();
+
+        void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+
+        using GraphicsPipelineBuilder::Bind;
+
+        void    Draw(unsigned vertexCount, unsigned startVertexLocation=0);
+        void    DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+        void    DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void    DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+
+        void    Draw(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned startVertexLocation=0);
+        void    DrawIndexed(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned startIndexLocation=0);
+        void    DrawInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void    DrawIndexedInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
+
+        void    PushDebugGroup(const char annotationName[]);
+        void    PopDebugGroup();
+
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
+
+        bool    HasEncoder();
+        bool    HasRenderCommandEncoder();
+        bool    HasBlitCommandEncoder();
+        id<MTLRenderCommandEncoder> GetCommandEncoder();
+        id<MTLRenderCommandEncoder> GetRenderCommandEncoder();
+        id<MTLBlitCommandEncoder> GetBlitCommandEncoder();
+        void    CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
+        void    CreateBlitCommandEncoder();
+        void    EndEncoding();
+        void    OnEndEncoding(std::function<void(void)> fn);
+        // METAL_TODO: This function shouldn't be needed; it's here only as a temporary substitute for OnEndRenderPass (which is a safe time when we know we will not have a current encoder).
+        void    OnDestroyEncoder(std::function<void(void)> fn);
+        void    DestroyRenderCommandEncoder();
+        void    DestroyBlitCommandEncoder();
+
+        void QueueUniformSet(
+            const std::shared_ptr<UnboundInterface>& unboundInterf,
+            unsigned streamIdx,
+            const UniformsStream& stream);
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      C A P T U R E D S T A T E S
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        CapturedStates* GetCapturedStates();
+        void        BeginStateCapture(CapturedStates& capturedStates);
+        void        EndStateCapture();
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      U T I L I T Y
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        void            HoldCommandBuffer(id<MTLCommandBuffer>);
+        void            ReleaseCommandBuffer();
+        id<MTLCommandBuffer>            RetrieveCommandBuffer();
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      C M D L I S T
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //      D E V I C E
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        std::shared_ptr<IDevice> GetDevice();
 
         static void PrepareForDestruction(IDevice* device);
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext();
+        DeviceContext(std::shared_ptr<IDevice> device);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         virtual ~DeviceContext();
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+
+        void FinalizePipeline();
     };
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<int Count> void GraphicsPipeline::Bind(const ResourceList<VertexBufferView, Count>& VBs)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
-    {
-        assert(0);
-    }
-
-    template<int Count> void GraphicsPipeline::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
-    {
-    }
 
 }}

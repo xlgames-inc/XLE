@@ -2,31 +2,98 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include <Metal/Metal.h>
+
 #include "QueryPool.h"
 #include "DeviceContext.h"
+#include "Device.h"
+
+#pragma GCC diagnostic ignored "-Wunguarded-availability-new"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
-    auto QueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
+    auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
     { 
         return QueryId_Invalid; 
     }
 
-    auto QueryPool::BeginFrame(DeviceContext& context) -> FrameId
+    auto TimeStampQueryPool::BeginFrame(DeviceContext& context) -> FrameId
     { 
         return FrameId_Invalid;
     }
 
-    void QueryPool::EndFrame(DeviceContext& context, FrameId frame)
+    void TimeStampQueryPool::EndFrame(DeviceContext& context, FrameId frame)
     {}
 
-    auto QueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
+    auto TimeStampQueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
     {
         return FrameResults { false, false, nullptr, nullptr, 0ull };
     }
 
-    QueryPool::QueryPool(ObjectFactory& factory) {}
-    QueryPool::~QueryPool() {}
+    TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory) {}
+    TimeStampQueryPool::~TimeStampQueryPool() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto SyncEventSet::SetEvent() -> SyncEvent {
+        auto iDevice = _context->GetDevice();
+        assert(iDevice);
+        auto *deviceInterface = ((RenderCore::ImplAppleMetal::Device*)iDevice->QueryInterface(typeid(RenderCore::ImplAppleMetal::Device).hash_code()));
+        assert(deviceInterface);
+        auto device = deviceInterface->GetUnderlying();
+        assert(device);
+        auto deviceContext = DeviceContext::Get(*_context);
+        assert(deviceContext);
+        auto buffer = deviceContext->RetrieveCommandBuffer();
+        assert(buffer);
+
+        auto result = ++_nextEvent;
+        std::shared_ptr<SyncEvent> lastCompletedEvent = _lastCompletedEvent;
+
+        if (@available(iOS 12, macOS 10.14, *)) {
+            TBC::OCPtr<id> event(TBC::moveptr([device newSharedEvent]));
+            assert(event);
+            [event.get() notifyListener:_listener.get() atValue:1 block:^(id<MTLSharedEvent> sharedEvent, uint64_t value) {
+                if (result > *lastCompletedEvent)
+                    *lastCompletedEvent = result;
+            }];
+            deviceContext->OnEndEncoding([deviceContext, event]{
+                if (@available(iOS 12, macOS 10.14, *)) {
+                    [deviceContext->RetrieveCommandBuffer() encodeSignalEvent:event.get() value:1];
+                } else {
+                    assert(false);
+                }
+            });
+        } else {
+            [buffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+                if (result > *lastCompletedEvent)
+                    *lastCompletedEvent = result;
+            }];
+        }
+        return result;
+    }
+
+    auto SyncEventSet::NextEventToSet() -> SyncEvent {
+        return _nextEvent + 1;
+    }
+
+    auto SyncEventSet::LastCompletedEvent() -> SyncEvent {
+        return *_lastCompletedEvent;
+    }
+
+    bool SyncEventSet::IsSupported() {
+        return true;
+    }
+
+    SyncEventSet::SyncEventSet(IThreadContext *context) : _context(context), _nextEvent(0), _lastCompletedEvent(new SyncEvent) {
+        if (@available(iOS 12, macOS 10.14, *)) {
+            _listener = [[MTLSharedEventListener alloc] init];
+        }
+    }
+
+    SyncEventSet::~SyncEventSet() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if defined(GPUANNOTATIONS_ENABLE)
 
@@ -53,5 +120,24 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
 
     #endif
+
+    void    Annotator::Frame_Begin(IThreadContext& primaryContext, unsigned frameID) {}
+    void    Annotator::Frame_End(IThreadContext& primaryContext) {}
+
+    void    Annotator::Event(IThreadContext& context, const char name[], EventTypes::BitField types)
+    {
+        if (types & EventTypes::Flags::MarkerBegin) {
+            GPUAnnotation::Begin(*DeviceContext::Get(context), name);
+        } else if (types & EventTypes::Flags::MarkerEnd) {
+            GPUAnnotation::End(*DeviceContext::Get(context));
+        }
+    }
+
+    unsigned    Annotator::AddEventListener(const EventListener& callback) { return 0; }
+    void        Annotator::RemoveEventListener(unsigned listenerId) {}
+
+    Annotator::Annotator() {}
+    Annotator::~Annotator() {}
+
 
 }}

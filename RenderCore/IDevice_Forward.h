@@ -16,7 +16,6 @@ namespace RenderCore
     class IResource;
 
     using Resource = IResource;
-    using ResourcePtr = std::shared_ptr<IResource>;
     using IResourcePtr = std::shared_ptr<IResource>;
     class ResourceDesc;
     class PresentationChainDesc;

@@ -33,7 +33,10 @@ namespace RenderCore
         { "dword", ImpliedTyping::TypeCat::UInt32 },
         { "int", ImpliedTyping::TypeCat::Int32 },
         { "byte", ImpliedTyping::TypeCat::UInt8 },
-        { "bool", ImpliedTyping::TypeCat::Bool }
+        { "bool", ImpliedTyping::TypeCat::Bool },
+		{ "vec", ImpliedTyping::TypeCat::Float },          // GLSL-style naming
+        { "ivec", ImpliedTyping::TypeCat::Int32 },
+        { "uvec", ImpliedTyping::TypeCat::UInt32 }
         // "half", "double" not supported
     };
 
@@ -70,21 +73,48 @@ namespace RenderCore
             }
         }
 
+        if (XlEqString(hlslTypeName, "mat4")) {
+            return TypeDesc { ImpliedTyping::TypeCat::Float, 16, ImpliedTyping::TypeHint::Matrix };
+        } else if (XlEqString(hlslTypeName, "mat3")) {
+            return TypeDesc { ImpliedTyping::TypeCat::Float, 9, ImpliedTyping::TypeHint::Matrix };
+        }
+
         return TypeDesc(TypeCat::Void, 0);
     }
 
-	std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& typeDesc)
-	{
-		using namespace ImpliedTyping;
-        for (unsigned c=0; c<dimof(s_baseTypes); ++c) {
-			if (s_baseTypes[c].second == typeDesc._type) {
-				if (typeDesc._arrayCount > 1)
-					return s_baseTypes[c].first.AsString() + std::to_string(typeDesc._arrayCount);
-				return s_baseTypes[c].first.AsString();
-			}
-		}
-		return "<<unknown type>>";
-	}
+    std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type)
+    {
+        const char* baseName = nullptr;
+        using namespace ImpliedTyping;
+        switch (type._type) {
+        case TypeCat::Bool: baseName = "bool"; break;
+        case TypeCat::Int8: baseName = "int"; break;
+        case TypeCat::UInt8: baseName = "byte"; break;
+        case TypeCat::Int16: baseName = "int"; break;
+        case TypeCat::UInt16: baseName = "uint"; break;
+        case TypeCat::Int32: baseName = "int"; break;
+        case TypeCat::UInt32: baseName = "uint"; break;
+        case TypeCat::Int64: baseName = "uint"; break;
+        case TypeCat::UInt64: baseName = "uint"; break;
+        case TypeCat::Float: baseName = "float"; break;
+        case TypeCat::Double: baseName = "float"; break;
+        default:
+        case TypeCat::Void: return "<<unknown type>>";
+        }
+
+        if (type._typeHint == TypeHint::Matrix) {
+            if (type._arrayCount == 16)
+                return baseName + std::string("4x4");
+            if (type._arrayCount == 12)
+                return baseName + std::string("3x4");
+            if (type._arrayCount == 9)
+                return baseName + std::string("3x3");
+        }
+
+        if (type._arrayCount <= 1)
+            return baseName;
+        return baseName + std::to_string(type._arrayCount);
+    }
 }
 
 

@@ -21,6 +21,7 @@ ENABLE_BITCODE = NO
 COPY_PHASE_STRIP = NO
 TARGETED_DEVICE_FAMILY = 1,2
 IPHONEOS_DEPLOYMENT_TARGET = 7.0
+MACOSX_DEPLOYMENT_TARGET = 10.14
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
     //  L I N K I N G   //
@@ -33,7 +34,7 @@ OTHER_LDFLAGS = -ObjC
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 FRAMEWORK_SEARCH_PATHS = $(inherited)
-HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/../.. $(PROJECT_DIR)/../../Foreign/cml-1_0_2 $(PROJECT_DIR)/../../Foreign/eigen
+HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/../.. $(PROJECT_DIR)/../../Foreign/cml-2_1_2 $(PROJECT_DIR)/../../Foreign/eigen
 EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = $(inherited)
 ALWAYS_SEARCH_USER_PATHS = NO
 
@@ -68,3 +69,4 @@ CLANG_ENABLE_OBJC_ARC = NO
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ENABLE_STRICT_OBJC_MSGSEND = YES
+

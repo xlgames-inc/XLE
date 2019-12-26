@@ -21,9 +21,88 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/ThreadLocalPtr.h"
 
+extern char **environ;
 
 namespace RenderCore
 {
+    int appleMetalAPIValidationEnabled = -1;
+
+    void SetAppleMetalAPIValidationEnabled() {
+        // NOTE: The actual (undocumented) details are more complicated than
+        // this. These are the only values Xcode 10 ever sets, but other
+        // values (used by some command line tools by people who've
+        // partially reverse-engineered things) have the same effects,
+        // and it's always possible that a future Xcode will use other
+        // values. Other variables seen in the wild include METAL_ERROR_MODE
+        // and METAL_WARNINGS_MODE, but Xcode 10 doesn't seem to ever set them.
+        // If these values are not present in the environment, Metal sometimes
+        // checks for them in user defaults, but presumably nobody will ever
+        // set them on OSX, while on iOS that's where the environment comes
+        // from anyway.
+
+        const char *deviceWrapperType = getenv("METAL_DEVICE_WRAPPER_TYPE");
+        // 1 means that debug validation refers to API Validation, 2 means
+        // Telemetry, 3 means Counters, anything else means none of the above.
+        // Xcode 10 always sets 1. For this and the other variables, a
+        // non-numeric string appears to count as 0, but unset is not 0.
+        if (!deviceWrapperType || atoi(deviceWrapperType) != 1) {
+            appleMetalAPIValidationEnabled = 0;
+            return;
+        }
+
+        const char *extendedMode = getenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+        // Unset means no extended mode; set to anything means extended mode
+        // (and also means enabled, regardless of the last setting). Xcode
+        // 10 always sets 0 for extended, unsets for enabled or disabled.
+        if (extendedMode) {
+            appleMetalAPIValidationEnabled = 2;
+            return;
+        }
+
+        const char *debugErrorMode = getenv("METAL_DEBUG_ERROR_MODE");
+        // Unset means disabled, 4 means disabled, anything else means
+        // enabled (except that setting METAL_DEBUG_MODE to anything other
+        // than 4 changes the meaning of this flag). Xcode always sets 0
+        // for enabled, 4 for disabled (and doesn't set METAL_DEBUG_MODE).
+        if (debugErrorMode && atoi(debugErrorMode) != 4) {
+            appleMetalAPIValidationEnabled = 1;
+        } else {
+            appleMetalAPIValidationEnabled = 0;
+        }
+    }
+
+    void ForceAppleMetalAPIValidation(int level) {
+        #ifndef _WIN32
+            switch (level) {
+                case 0:
+                    // These are the settings used by Xcode 11 for Disabled.
+                    // Xcode 10 sets METAL_DEVICE_WRAPPER_TYPE to 1 instead.
+                    // Either way works, it's just a matter of selecting
+                    // API validation and disabling that vs. disabling nothing
+                    // validation and disabling that.
+                    unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                    unsetenv("METAL_DEVICE_WRAPPER_TYPE");
+                    unsetenv("METAL_DEBUG_ERROR_MODE");
+                    return;
+                case 1:
+                    // These are the settings used by both Xcode 10 and Xcode 11
+                    // for Enabled.
+                    unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                    setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                    setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                    return;
+                case 2:
+                    // These are the settings used by Xcode 10 for Extended.
+                    // Xcode 11 no longer has this setting, but its SDKs still
+                    // support it.
+                    setenv("METAL_ERROR_CHECK_EXTENDED_MODE", "0", 1);
+                    setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                    setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                    return;
+            }
+        #endif
+    }
+
     const TextureViewDesc::SubResourceRange TextureViewDesc::All = SubResourceRange{0, Unlimited};
 
     namespace Exceptions
@@ -49,50 +128,67 @@ namespace RenderCore
 
 #if !FEATURE_THREAD_LOCAL_KEYWORD
     thread_local_ptr<SubFrameHeap_Heap>  s_producerHeap;
-
-    static SubFrameHeap_Heap* GetThreadLocalProducerHeap()
-    {
-        return s_producerHeap.get();
-    }
-
-    static SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
-    {
-        auto* producerHeap = s_producerHeap.get();
-        if (!producerHeap) {
-            s_producerHeap.allocate();
-            producerHeap = s_producerHeap.get();
-            producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
-            producerHeap->_writeMarker = producerHeap->_data.data();
-            producerHeap->_resetId = 1;
-        }
-        return *producerHeap;
-    }
 #else
     static thread_local std::shared_ptr<SubFrameHeap_Heap> s_producerHeap;
-
-    static SubFrameHeap_Heap* GetThreadLocalProducerHeap()
-    {
-        return s_producerHeap.get();
-    }
-
-    static SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
-    {
-        auto* producerHeap = s_producerHeap.get();
-        if (!producerHeap) {
-            s_producerHeap = std::make_shared<SubFrameHeap_Heap>();
-            producerHeap = s_producerHeap.get();
-            producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
-            producerHeap->_writeMarker = producerHeap->_data.data();
-            producerHeap->_resetId = 1;
-        }
-        return *producerHeap;
-    }
 #endif
-    
+
+
     class SubFrameHeap
     {
     public:
         using ResetId = unsigned;
+
+#if !FEATURE_THREAD_LOCAL_KEYWORD
+        SubFrameHeap_Heap* GetThreadLocalProducerHeap() const
+        {
+            return s_producerHeap.get();
+        }
+
+        SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
+        {
+            auto* producerHeap = s_producerHeap.get();
+            if (!producerHeap) {
+                s_producerHeap.allocate();
+                producerHeap = s_producerHeap.get();
+                producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
+                producerHeap->_writeMarker = producerHeap->_data.data();
+                producerHeap->_resetId = 1;
+
+#if DEBUG
+                {
+                    ScopedLock(_swapMutex);
+                    _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
+                }
+#endif
+            }
+            return *producerHeap;
+        }
+#else
+
+        SubFrameHeap_Heap* GetThreadLocalProducerHeap() const
+        {
+            return s_producerHeap.get();
+        }
+
+        SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
+        {
+            auto* producerHeap = s_producerHeap.get();
+            if (!producerHeap) {
+                s_producerHeap = std::make_shared<SubFrameHeap_Heap>();
+                producerHeap = s_producerHeap.get();
+                producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
+                producerHeap->_writeMarker = producerHeap->_data.data();
+                producerHeap->_resetId = 1;
+#if DEBUG
+                {
+                    ScopedLock(_swapMutex);
+                    _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
+                }
+#endif
+            }
+            return *producerHeap;
+        }
+#endif
 
         void OnConsumerFrameBarrier(unsigned producerBarrierId)
         {
@@ -134,6 +230,16 @@ namespace RenderCore
                 nextMainHeap._resetId = result+1;
 
                 std::swap(*producerHeap, nextMainHeap);
+
+#if DEBUG
+                for (auto it = _currentProducerHeapResetIds.begin(); it != _currentProducerHeapResetIds.end(); ++it) {
+                    if (*it == nextMainHeap._resetId) {
+                        _currentProducerHeapResetIds.erase(it);
+                        break;
+                    }
+                }
+#endif
+
                 _pendingConsumerHeaps.emplace_back(std::move(nextMainHeap));
 
                 if (_pendingConsumerHeaps.size() >= 16) {
@@ -157,6 +263,7 @@ namespace RenderCore
             _logMsg = true;
         }
 
+#if DEBUG
         bool IsValidResetId(ResetId resetId) const
         {
             auto* producerHeap = GetThreadLocalProducerHeap();
@@ -167,8 +274,15 @@ namespace RenderCore
             for (const auto&pendingConsumer:_pendingConsumerHeaps)
                 if (pendingConsumer._resetId == resetId)
                     return true;
+
+            for (const auto &currentProducerResetId : _currentProducerHeapResetIds) {
+                if (currentProducerResetId == resetId) {
+                    return true;
+                }
+            }
             return false;
         }
+#endif
         
         std::pair<void*, ResetId> Allocate(size_t size)
         {
@@ -231,6 +345,7 @@ namespace RenderCore
         mutable Threading::Mutex    _swapMutex;
         #if defined(_DEBUG)
             Threading::ThreadId         _mainProducerThread;
+            std::vector<unsigned> _currentProducerHeapResetIds;
         #endif
     };
     
@@ -349,6 +464,11 @@ namespace RenderCore
         GetSubFrameHeap().OnProducerAndConsumerFrameBarrier();
     }
 
+    void* SubFrameHeap_Allocate(size_t size)
+    {
+        return GetSubFrameHeap().Allocate(size).first;
+    }
+
     MiniHeap& SharedPkt::GetHeap()
     {
         static MiniHeap* MainHeap = nullptr;
@@ -358,7 +478,10 @@ namespace RenderCore
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
             auto& services = ConsoleRig::CrossModule::GetInstance()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
-                auto newMiniHeap = std::make_shared<MiniHeap>();
+                MiniHeap** storedPtr = &MainHeap;
+                auto newMiniHeap = std::shared_ptr<MiniHeap>(
+                    new MiniHeap,
+                    [storedPtr](MiniHeap* heap) { assert(heap == *storedPtr); delete heap; *storedPtr = nullptr; });
                 services.Add(Fn_GetStorage,
                     [newMiniHeap]() { return newMiniHeap.get(); });
                 MainHeap = newMiniHeap.get();

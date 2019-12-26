@@ -4,6 +4,8 @@
 
 #include "../RenderOverlays/Font.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../ShaderParser/ShaderInstantiation.h"
 #include <memory>
 
 namespace RenderOverlays
@@ -18,4 +20,15 @@ namespace RenderCore { namespace Techniques
     {
         return nullptr;
     }
+
+    TechniqueContext::TechniqueContext() {}
 }}
+
+namespace ShaderSourceParser
+{
+    uint64_t InstantiationRequest::CalculateHash() const
+    {
+        assert(0);
+        return 0;
+    }
+}

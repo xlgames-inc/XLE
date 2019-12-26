@@ -20,6 +20,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
+        #if defined(_DEBUG)
+            std::string SourceIdentifiers() const { return _sourceIdentifiers; };
+        #endif
 
         ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
@@ -32,6 +35,10 @@ namespace RenderCore { namespace Metal_AppleMetal
     private:
         ::Assets::DepValPtr                     _depVal;
         uint32_t                                _guid;
+
+        #if defined(_DEBUG)
+            std::string _sourceIdentifiers;
+        #endif
     };
 
     std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);

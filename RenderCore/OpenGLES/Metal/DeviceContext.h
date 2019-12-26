@@ -10,6 +10,7 @@
 #include "ObjectFactory.h"
 #include "TextureView.h"
 #include "Format.h"     // (for FeatureSet)
+#include "State.h"
 #include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
@@ -28,10 +29,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout;
     class ShaderProgram;
     class BlendState;
-    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
+    class AttachmentBlendDesc;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -67,72 +68,129 @@ namespace RenderCore { namespace Metal_OpenGLES
     class GraphicsPipeline
     {
     public:
+        uint64_t GetGUID() const { return 0; }
+    };
+
+    class GraphicsPipelineBuilder
+    {
+    public:
+        void Bind(const ShaderProgram& shaderProgram);
+
+        void Bind(const AttachmentBlendDesc& blendState);
+        void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(Topology topology);
+        void Bind(const RasterizationDesc& desc);
+
+        DepthStencilDesc ActiveDepthStencilDesc();
+
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+
+        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+
+        GraphicsPipelineBuilder(FeatureSet::BitField featureSet);
+
+    protected:
+        unsigned    _nativeTopology;
+        FeatureSet::BitField _featureSet;
+        RasterizationDesc _rs;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class DeviceContext : public GraphicsPipelineBuilder
+    {
+    public:
         void Bind(const IndexBufferView& IB);
         void UnbindInputLayout();
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        void Bind(const ShaderProgram& shaderProgram);
 
-        void Bind(const BlendState& blender);
-        void Bind(const RasterizationDesc& rasterizer);
-        void Bind(const DepthStencilDesc& depthStencil);
-        void Bind(Topology topology);
-        void Bind(const ViewportDesc& viewport);
-        
-        DepthStencilDesc ActiveDepthStencilDesc();
+        void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+
+        using GraphicsPipelineBuilder::Bind;
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
-        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+        void    Draw(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned startVertexLocation=0)
+        {
+            Draw(vertexCount, startVertexLocation);
+        }
 
-        GraphicsPipeline(FeatureSet::BitField featureSet);
-        GraphicsPipeline(const GraphicsPipeline&) = delete;
-        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
-        ~GraphicsPipeline();
+        void    DrawIndexed(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned startIndexLocation=0)
+        {
+            DrawIndexed(indexCount, startIndexLocation);
+        }
+
+        void    DrawInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0)
+        {
+            DrawInstances(vertexCount, instanceCount, startVertexLocation);
+        }
+
+        void    DrawIndexedInstances(
+            const GraphicsPipeline& pipeline,
+            unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0)
+        {
+            DrawIndexedInstances(indexCount, instanceCount, startIndexLocation);
+        }
 
         CapturedStates* GetCapturedStates() { return _capturedStates; }
         void        BeginStateCapture(CapturedStates& capturedStates);
         void        EndStateCapture();
 
-    private:
-        unsigned    _nativeTopology;
-        unsigned    _indicesFormat;
-        unsigned    _indexFormatBytes;
-        unsigned    _indexBufferOffsetBytes;
-        FeatureSet::BitField _featureSet;
+        void    BeginRenderPass();
+        void    EndRenderPass();
+        bool    InRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
 
-        CapturedStates* _capturedStates;
-    };
+        void    BeginSubpass(float renderTargetWidth, float renderTargetHeight);
+        void    EndSubpass();
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeviceContext : public GraphicsPipeline
-    {
-    public:
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
         void            ExecuteCommandList(CommandList& commandList);
+
+        std::shared_ptr<IDevice> GetDevice();
 
         static void PrepareForDestruction(IDevice* device);
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext(FeatureSet::BitField featureSet);
+        DeviceContext(std::shared_ptr<IDevice> device, FeatureSet::BitField featureSet);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         ~DeviceContext();
     private:
         friend class Device;
         friend class DeviceOpenGLES;
+
+        unsigned    _indicesFormat;
+        unsigned    _indexFormatBytes;
+        unsigned    _indexBufferOffsetBytes;
+
+        CapturedStates* _capturedStates;
+
+        std::weak_ptr<IDevice> _device;
+
+        float _renderTargetWidth;
+        float _renderTargetHeight;
+
+        bool _inRenderPass;
+        std::vector<std::function<void(void)>> _onEndRenderPassFunctions;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
+    template<int Count> void DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
         for (int c=0; c<Count; ++c) {
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
@@ -142,14 +200,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             _capturedStates->_activeTextureIndex = Count + shaderResources._startingPoint;
     }
 
-    template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
+    template<int Count> void DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
     {
         for (int c=0; c<Count; ++c) {
             samplerStates._buffers[c].Apply(c+samplerStates._startingPoint);
         }
     }
 
-    inline void GraphicsPipeline::Bind(Topology topology)
+    inline void GraphicsPipelineBuilder::Bind(Topology topology)
     {
         switch (topology)
         {

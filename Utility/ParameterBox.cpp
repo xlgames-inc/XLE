@@ -107,11 +107,32 @@ namespace Utility
 
         bool Cast(
             IteratorRange<void*> dest, TypeDesc destType,
-            IteratorRange<const void*> src, TypeDesc srcType)
+            IteratorRange<const void*> rawSrc, TypeDesc srcType)
         {
-            assert(src.size() >= srcType.GetSize());
+            assert(rawSrc.size() >= srcType.GetSize());
             assert(dest.size() >= destType.GetSize());
+            IteratorRange<const void*> src = rawSrc;
             if (destType._arrayCount <= 1) {
+#if defined(__arm__) && !defined(__aarch64__)
+                // Only 32-bit ARM, we may get unaligned access reading directly from rawSrc
+                // Therefore, we check if it is 4-byte unaligned and copy if so
+
+                // Setup the stack buffer if we need it
+                // Right now maximum size of a type is 8 bytes, adjust if necessary
+                const size_t MAXIMUM_SRC_SIZE = 8;
+                const size_t srcSize = srcType.GetSize();
+                assert(srcSize > 0);
+                assert(srcSize <= MAXIMUM_SRC_SIZE);
+                uint8_t srcBuffer[MAXIMUM_SRC_SIZE];
+
+                // Check if unaligned
+                if (uintptr_t(rawSrc.begin()) & 3u) {
+                    // If unaligned, copy to the srcBuffer (memcpy is safe to do unaligned access)
+                    memcpy(&srcBuffer[0], src.begin(), srcSize);
+                    // Set src to the srcBuffer
+                    src = { &srcBuffer[0], &srcBuffer[srcSize] };
+                }
+#endif
                     // casting single element. Will we read the first element
                     // of the 
                 switch (destType._type) {
@@ -421,6 +442,7 @@ namespace Utility
             std::basic_regex<CharType> s_signedPattern;
             std::basic_regex<CharType> s_floatPattern;
             std::basic_regex<CharType> s_arrayPattern;
+            std::basic_regex<CharType> s_arrayElementPattern;
         
             ParsingRegex()
             : s_booleanTrue((const CharType*)R"(^(true)|(True)|(y)|(Y)|(yes)|(Yes)|(TRUE)|(Y)|(YES)$)")
@@ -429,31 +451,35 @@ namespace Utility
             , s_signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(i64)|(I8)|(I16)|(I32)|(I64))?$)")
             , s_floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32)|(f64)|(F64))?$)")
             , s_arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))")
+            , s_arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))")
             {}
             ~ParsingRegex() {}
         };
         
-        static ParsingRegex<char> s_parsingChar;
+        static std::unique_ptr<ParsingRegex<char>> s_parsingChar;
         
         template<typename CharType>
             TypeDesc Parse(
                 StringSection<CharType> expression,
                 void* dest, size_t destSize)
         {
+            if (!s_parsingChar) {
+                s_parsingChar = std::make_unique<ParsingRegex<char>>();
+            }
                 // parse string expression into native types.
                 // We'll write the native object into the buffer and return a type desc
-            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar.s_booleanTrue)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanTrue)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
                 return TypeDesc(TypeCat::Bool);
-            } else if (std::regex_match(expression.begin(), expression.end(), s_parsingChar.s_booleanFalse)) {
+            } else if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
                 return TypeDesc(TypeCat::Bool);
             }
 
             std::match_results<const CharType*> cm; 
-            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar.s_unsignedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_unsignedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
@@ -488,7 +514,7 @@ namespace Utility
                 assert(0);
             }
 
-            if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar.s_signedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar->s_signedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
@@ -523,7 +549,7 @@ namespace Utility
                 assert(0);
             }
 
-            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar.s_floatPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_floatPattern)) {
                 bool doublePrecision = false;
                 if (cm.size() >= 4 && cm[4].length() > 1) {
                     auto precision = XlAtoUI32(&cm[2].str()[1]);
@@ -546,13 +572,11 @@ namespace Utility
                 // R"(^\{\s*[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]\s*(\s*,\s*([-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]))*\s*\}[vc]?$)"
 
                 // std::match_results<typename std::basic_string<CharType>::const_iterator> cm;
-                if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar.s_arrayPattern)) {
-                    static std::basic_regex<CharType> arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))");
-
+                if (std::regex_match(expression.begin(), expression.end(), cm, s_parsingChar->s_arrayPattern)) {
                     const auto& subMatch = cm[1];
                     std::regex_iterator<const CharType*> rit(
                         subMatch.first, subMatch.second,
-                        arrayElementPattern);
+                        s_parsingChar->s_arrayElementPattern);
                     std::regex_iterator<const CharType*> rend;
                     
                     auto startIt = rit;
@@ -752,7 +776,13 @@ namespace Utility
         std::string AsString(IteratorRange<const void*> data, const TypeDesc& type, bool strongTyping)
         {
             return AsString(data.begin(), data.size(), type, strongTyping);
+		}
+
+		void Cleanup()
+		{
+            s_parsingChar.reset();
         }
+
 
         template std::pair<bool, bool> Parse(StringSection<utf8>);
         template std::pair<bool, unsigned> Parse(StringSection<utf8>);

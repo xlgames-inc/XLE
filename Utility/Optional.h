@@ -4,7 +4,7 @@
 
 #pragma once
 
-#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) && !ANDROID
 	#include <optional>
 #else
      #include "../Foreign/optional-lite/include/nonstd/optional.hpp"
@@ -12,5 +12,6 @@
      {
          template <typename T>
             using optional = nonstd::optional<T>;
+         constexpr nonstd::nullopt_t nullopt = nonstd::nullopt;
      }
 #endif

@@ -46,6 +46,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         BoundInputLayout(BoundInputLayout&&) = default;
         BoundInputLayout& operator=(BoundInputLayout&&) = default;
+        BoundInputLayout(const BoundInputLayout&) = default;
+        BoundInputLayout& operator=(const BoundInputLayout&) = default;
 
     private:
         class Binding
@@ -73,9 +75,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             std::vector<std::string> _unboundAttributesNames;
         #endif
 
+        #if defined(_DEBUG) && !defined(PGDROID)
+            void ValidateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const;
+        #endif
+
         static bool _warnOnMissingVertexAttribute;
 
-        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+        uint32_t UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool cancelOnError) const never_throws;
         bool CalculateAllAttributesBound(const ShaderProgram& program);
     };
 
@@ -131,11 +137,30 @@ namespace RenderCore { namespace Metal_OpenGLES
             DEBUG_ONLY(std::string _name;)
         };
         std::vector<SRV> _srvs;
+        struct UniformBuffer
+        {
+            unsigned _stream, _slot;
+            unsigned _uniformBlockIdx;
+            unsigned _blockSize;
+            DEBUG_ONLY(std::string _name;)
+        };
+        std::vector<UniformBuffer> _uniformBuffer;
+
+        struct UnboundUniformBuffer
+        {
+            unsigned _uniformBlockIdx;
+            unsigned _blockSize;
+            DEBUG_ONLY(std::string _name;)
+        };
+        std::vector<UnboundUniformBuffer> _unboundUniformBuffers;
 
         SetUniformCommandGroup  _textureAssignmentCommands;
         std::vector<uint8_t>    _textureAssignmentByteData;
 
         std::shared_ptr<ShaderProgramCapturedState> _capturedState;
+
+        unsigned _standInTexture2DUnit = ~0u;
+        unsigned _standInTextureCubeUnit = ~0u;
     };
 
 }}

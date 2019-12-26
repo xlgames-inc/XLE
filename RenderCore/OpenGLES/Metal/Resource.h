@@ -19,16 +19,18 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using Desc = ResourceDesc;
 
-        Desc GetDesc() const         { return _desc; }
+        Desc GetDesc() const override        { return _desc; }
 
         const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const { return _underlyingBuffer; }
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }
         const intrusive_ptr<OpenGL::RenderBuffer>& GetRenderBuffer() const { return _underlyingRenderBuffer; }
         IteratorRange<const void*> GetConstantBuffer() const { return MakeIteratorRange(_constantBuffer); }
+        uint64_t GetConstantBufferHash() const { return _constantBufferHash; }
         const bool IsBackBuffer() { return _isBackBuffer; }
 
-        virtual void*       QueryInterface(size_t guid);
-        virtual uint64_t    GetGUID() const;
+        virtual void*       QueryInterface(size_t guid) override;
+        virtual uint64_t    GetGUID() const override;
+        virtual std::vector<uint8_t> ReadBack(IThreadContext& context, SubResourceId subRes) const override;
 
         Resource(
             ObjectFactory& factory, const Desc& desc,
@@ -51,6 +53,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<OpenGL::Texture> _underlyingTexture;
         intrusive_ptr<OpenGL::RenderBuffer> _underlyingRenderBuffer;
         std::vector<uint8_t> _constantBuffer;
+        uint64_t _constantBufferHash = 0ull;
         bool _isBackBuffer;
         Desc _desc;
         uint64_t _guid;
@@ -73,6 +76,45 @@ namespace RenderCore { namespace Metal_OpenGLES
     ResourceDesc ExtractDesc(OpenGL::Texture* renderbuffer);
     ResourceDesc ExtractDesc(OpenGL::Buffer* renderbuffer);
     std::string DescribeUnknownObject(unsigned glName);
+
+    class BlitPass
+    {
+    public:
+        class CopyPartial_Dest
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+        };
+
+        class CopyPartial_Src
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+            VectorPattern<unsigned, 3>      _rightBottomBack;
+        };
+
+        void    Write(
+            const CopyPartial_Dest& dst,
+            const SubResourceInitData& srcData,
+            Format srcDataFormat,
+            VectorPattern<unsigned, 3> srcDataDimensions);
+
+        void    Copy(
+            const CopyPartial_Dest& dst,
+            const CopyPartial_Src& src);
+
+        BlitPass(IThreadContext& threadContext);
+        ~BlitPass();
+
+    private:
+        GLint _prevTextureBinding;
+        GLint _prevUnpackAlignment, _prevUnpackRowLength;
+        bool _boundTexture;
+    };
 }}
 
 

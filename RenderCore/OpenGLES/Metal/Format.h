@@ -64,5 +64,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     StencilOp AsStencilOp(GLenum stencilOp);
 
     const char* GLenumAsString(GLenum value);
+    const char* CheckFramebufferStatusToString(GLenum value);
 }}
 

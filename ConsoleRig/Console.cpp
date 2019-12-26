@@ -7,13 +7,13 @@
 #include "Console.h"
 #include "Plugins.h"
 #include "../Utility/PtrUtils.h"
-#include "../../Utility/Mixins.h"
-#include "../../Utility/StringFormat.h"
-#include "../../Utility/StringUtils.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Utility/IteratorUtils.h"
-#include "../../Core/Exceptions.h"
-#include "../../Math/Vector.h"
+#include "../Utility/Mixins.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Core/Exceptions.h"
+#include "../Math/Vector.h"
 #include <iterator>
 #include <algorithm>
 

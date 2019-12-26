@@ -42,7 +42,32 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         /* Each subpass of the frame will have a RenderCommandEncoder with a different render pass descriptor. */
         context.CreateRenderCommandEncoder(desc);
-        context.SetRasterSampleCount(_subpasses[subpassIndex]._rasterCount);
+
+        context.SetRenderPassConfiguration(desc, _subpasses[subpassIndex]._rasterCount);
+
+        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
+        {
+            float width = 0.f;
+            float height = 0.f;
+            if (desc.colorAttachments[0].texture) {
+                width = desc.colorAttachments[0].texture.width;
+                height = desc.colorAttachments[0].texture.height;
+            } else if (desc.depthAttachment.texture) {
+                width = desc.depthAttachment.texture.width;
+                height = desc.depthAttachment.texture.height;
+            } else if (desc.stencilAttachment.texture) {
+                width = desc.stencilAttachment.texture.width;
+                height = desc.stencilAttachment.texture.height;
+            }
+
+            Viewport viewports[1];
+            viewports[0] = Viewport{0.f, 0.f, width, height};
+            // origin of viewport doesn't matter because it is full-size
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
+            // origin of scissor rect doesn't matter because it is full-size
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+        }
     }
 
     MTLLoadAction NonStencilLoadActionFromRenderCore(RenderCore::LoadStore load)
@@ -127,10 +152,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    FrameBuffer::FrameBuffer(
-                             ObjectFactory& factory,
-                             const FrameBufferDesc& fbDesc,
-                             const INamedAttachments& namedResources)
+    FrameBuffer::FrameBuffer(ObjectFactory& factory, const FrameBufferDesc& fbDesc, const INamedAttachments& namedResources)
     {
         auto subpasses = fbDesc.GetSubpasses();
 
@@ -233,13 +255,12 @@ namespace RenderCore { namespace Metal_AppleMetal
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
         IteratorRange<const ClearValue*> clearValues)
     {
         s_nextSubpass = 0;
         s_clearValues.clear();
         s_clearValues.insert(s_clearValues.end(), clearValues.begin(), clearValues.end());
+        context.BeginRenderPass();
         BeginNextSubpass(context, frameBuffer);
     }
 
@@ -285,6 +306,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
+        context.EndRenderPass();
     }
 
     unsigned GetCurrentSubpassIndex(DeviceContext& context)

@@ -8,6 +8,7 @@
 
 #include "IDevice_Forward.h"
 #include "IThreadContext_Forward.h"
+#include "ResourceDesc.h"       // (required just for SubResourceId)
 #include "../Core/Prefix.h"
 #include "../Utility/IntrusivePtr.h"
 #include <memory>
@@ -167,6 +168,8 @@ namespace RenderCore
         virtual IResourcePtr        CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = ResourceInitializer()) = 0;
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
+        // Block until the GPU has caught up to (at least) the end of the previous frame
+        virtual void                Stall() = 0;
 
 		virtual std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() = 0;
 
@@ -179,9 +182,10 @@ namespace RenderCore
     class IResource
     {
     public:
-		virtual ResourceDesc	GetDesc() const = 0;
-        virtual void*			QueryInterface(size_t guid) = 0;
-        virtual uint64_t        GetGUID() const = 0;
+		virtual ResourceDesc	        GetDesc() const = 0;
+        virtual void*			        QueryInterface(size_t guid) = 0;
+        virtual uint64_t                GetGUID() const = 0;
+        virtual std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes = {}) const = 0;
         ~IResource();
     };
 

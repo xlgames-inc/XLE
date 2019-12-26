@@ -68,6 +68,8 @@ namespace OpenGL
     
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    class DynamicBuffer;
+
     class ObjectFactory
     {
     public:
@@ -98,12 +100,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         Threading::Mutex _compiledShadersLock;
         std::unordered_map<uint64_t, intrusive_ptr<GlObject<GlObject_Type::Shader>>> _compiledShaders;
 
+        const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandIn2DTexture()     { return _standIn2DTexture; }
+        const intrusive_ptr<GlObject<GlObject_Type::Texture>>& StandInCubeTexture()   { return _standInCubeTexture; }
+
+        DynamicBuffer& GetReusableCBSpace() { assert(_reusableCBSpace); return *_reusableCBSpace; }
+
         static bool WriteObjectLabels();
     private:
         std::vector<std::pair<uint64_t, signed>> _refCountTable;
         Threading::Mutex _refCountTableLock;
         FeatureSet::BitField _featureSet;
         bool _vaosEnabled;
+
+        intrusive_ptr<GlObject<GlObject_Type::Texture>> _standIn2DTexture;
+        intrusive_ptr<GlObject<GlObject_Type::Texture>> _standInCubeTexture;
+
+        std::unique_ptr<DynamicBuffer> _reusableCBSpace;
     };
 
     class DeviceContext;

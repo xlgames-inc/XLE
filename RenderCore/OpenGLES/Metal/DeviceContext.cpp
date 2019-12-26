@@ -16,6 +16,17 @@
 #include "IncludeGLES.h"
 #include <assert.h>
 
+#if defined(_DEBUG) && (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+    namespace RenderCore { namespace ImplOpenGLES {
+        void CheckContextIntegrity();
+    }}
+#else
+    namespace RenderCore { namespace ImplOpenGLES {
+        inline void CheckContextIntegrity() {}
+    }}
+#endif
+
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     static GLenum AsGLIndexBufferType(Format idxFormat)
@@ -30,8 +41,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         return glFormat;
     }
 
-    void GraphicsPipeline::Bind(const IndexBufferView& IB)
+    void DeviceContext::Bind(const IndexBufferView& IB)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
 		auto ibBuffer = GetBufferRawGLHandle(*IB._resource);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuffer);
 
@@ -43,8 +56,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind IndexBufferView");
     }
 
-    void GraphicsPipeline::UnbindInputLayout()
+    void DeviceContext::UnbindInputLayout()
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         if (_featureSet & FeatureSet::GLES300) {
             glBindVertexArray(0);
         } else {
@@ -61,15 +76,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
-    void GraphicsPipeline::Bind(const ShaderProgram& shaderProgram)
+    void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
         CheckGLError("Bind ShaderProgram");
     }
 
-    void GraphicsPipeline::Bind(const BlendState& blender)
+    static std::shared_ptr<GraphicsPipeline> s_dummyPipeline;
+    
+    const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory&)
     {
-        blender.Apply();
+        return s_dummyPipeline;
     }
 
 #pragma clang diagnostic ignored "-Wunused-function"        // SetUnmanagedStates() not used in this file
@@ -85,28 +103,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         glLineWidth(1.f);
         glPolygonOffset(0.f, 0.f);
         glDisable(GL_POLYGON_OFFSET_FILL);
-        glDisable(GL_SCISSOR_TEST);
         glDisable(GL_DITHER);       // (not supported in D3D11)
     }
 
-    void GraphicsPipeline::Bind(const RasterizationDesc& desc)
+    void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& desc)
     {
-        if (desc._cullMode != CullMode::None) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(AsGLenum(desc._cullMode));
-        } else {
-            glDisable(GL_CULL_FACE);
-        }
-        glFrontFace(AsGLenum(desc._frontFaceWinding));
-        CheckGLError("Bind RasterizationState");
-    }
-
-    void GraphicsPipeline::Bind(const DepthStencilDesc& desc)
-    {
+        ImplOpenGLES::CheckContextIntegrity();
         CheckGLError("Bind DepthStencilState (start)");
 
         glDepthFunc(AsGLenum(desc._depthTest));
         glDepthMask(desc._depthWrite ? GL_TRUE : GL_FALSE);
+
+        // Enabling depth write but disabling depth test doesn't really make sense,
+        // and has different behavior among graphics APIs.
+        assert(desc._depthTest != CompareOp::Always || !desc._depthWrite);
 
         if (desc._depthTest != CompareOp::Always) {
             glEnable(GL_DEPTH_TEST);
@@ -143,22 +153,25 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind DepthStencilState");
     }
     
-    DepthStencilDesc GraphicsPipeline::ActiveDepthStencilDesc()
+    DepthStencilDesc GraphicsPipelineBuilder::ActiveDepthStencilDesc()
     {
         DepthStencilDesc depthStencil = {};
-        GLint depthTest = 0, depthMask = 0;
-        glGetIntegerv(GL_DEPTH_TEST, &depthTest);
+        GLint depthFunc = 0;
+        GLboolean depthTest = 0, depthMask = 0;
+        // glGetBooleanv(GL_DEPTH_TEST, &depthTest);      (this is supposed to work, according to the documentation, but IOS drivers don't seem to like it)
+        depthTest = glIsEnabled(GL_DEPTH_TEST);
         if (depthTest) {
-            glGetIntegerv(GL_DEPTH_FUNC, &depthTest);
-            depthStencil._depthTest = AsCompareOp(depthTest);
+            glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+            depthStencil._depthTest = AsCompareOp(depthFunc);
         } else
             depthStencil._depthTest = CompareOp::Always;
         
-        glGetIntegerv(GL_DEPTH_TEST, &depthMask);
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
         depthStencil._depthWrite = depthMask != 0;
         
-        GLint stencilEnable = 0;
-        glGetIntegerv(GL_STENCIL_TEST, &stencilEnable);
+        GLboolean stencilEnable = 0;
+        // glGetBooleanv(GL_STENCIL_TEST, &stencilEnable);      (this is supposed to work, according to the documentation, but IOS drivers don't seem to like it)
+        stencilEnable = glIsEnabled(GL_STENCIL_TEST);
         if (stencilEnable) {
             depthStencil._stencilEnable = true;
             
@@ -200,28 +213,87 @@ namespace RenderCore { namespace Metal_OpenGLES
         return depthStencil;
     }
 
-    void GraphicsPipeline::Bind(const ViewportDesc& viewport)
+    void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& desc)
     {
-        glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
+        if (desc._blendEnable) glEnable(GL_BLEND);
+        else glDisable(GL_BLEND);
 
-        // hack -- desktop gl has a slight naming change
-        #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
-            glDepthRangef(viewport.MinDepth, viewport.MaxDepth);
-        #else
-            glDepthRange(viewport.MinDepth, viewport.MaxDepth);
-        #endif
-
-        CheckGLError("Bind Viewport");
+        glBlendFuncSeparate(AsGLenum(desc._srcColorBlendFactor), AsGLenum(desc._dstColorBlendFactor), AsGLenum(desc._srcAlphaBlendFactor), AsGLenum(desc._dstAlphaBlendFactor));
+        glBlendEquationSeparate(AsGLenum(desc._colorBlendOp), AsGLenum(desc._alphaBlendOp));
+        glColorMask(((desc._writeMask & ColorWriteMask::Red)   ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Green) ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Blue)  ? GL_TRUE : GL_FALSE),
+                    ((desc._writeMask & ColorWriteMask::Alpha) ? GL_TRUE : GL_FALSE));
+    }
+    
+    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
+    {
+        _rs = desc;
+        ImplOpenGLES::CheckContextIntegrity();
+        if (desc._cullMode != CullMode::None) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(AsGLenum(desc._cullMode));
+        } else {
+            glDisable(GL_CULL_FACE);
+        }
+        glFrontFace(AsGLenum(desc._frontFaceWinding));
+        CheckGLError("Bind RasterizationState");
     }
 
-    void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    void DeviceContext::SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects)
     {
+        CheckGLError("Before Bind Viewport");
+
+        ImplOpenGLES::CheckContextIntegrity();
+
+        assert(viewports.size() == scissorRects.size() || scissorRects.size() == 0);
+        // For now, we only support one viewport and scissor rect; in the future, we could support more
+        assert(viewports.size() == 1);
+
+        auto viewport = viewports[0];
+        if (viewport.OriginIsUpperLeft) {
+            // OpenGL window coordinate space has origin in lower-left, so we must account for that in the viewport
+            viewport.Y = _renderTargetHeight - viewport.Y - viewport.Height;
+        }
+        glViewport((GLint)viewport.X, (GLint)viewport.Y, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
+
+        // hack -- desktop gl has a slight naming change
+#if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+        glDepthRangef(viewport.MinDepth, viewport.MaxDepth);
+#else
+        glDepthRange(viewport.MinDepth, viewport.MaxDepth);
+#endif
+
+        CheckGLError("Bind Viewport");
+
+        if (scissorRects.size()) {
+            auto scissorRect = scissorRects[0];
+            if (scissorRect.OriginIsUpperLeft) {
+                // OpenGL window coordinate space has origin in lower-left, so we must account for that in the scissor rect
+                scissorRect.Y = _renderTargetHeight - scissorRect.Y - scissorRect.Height;
+            }
+            if (scissorRect.Width == 0 || scissorRect.Height == 0) {
+                Throw(::Exceptions::BasicLabel("Scissor rect width (%d) and height (%d) must be non-zero", scissorRect.Width, scissorRect.Height));
+            }
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(scissorRect.X, scissorRect.Y, scissorRect.Width, scissorRect.Height);
+        } else {
+            // If a scissor rect is not specified, disable the scissor test
+            glDisable(GL_SCISSOR_TEST);
+        }
+        CheckGLError("Bind ScissorRect");
+    }
+
+    void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
+    {
+        ImplOpenGLES::CheckContextIntegrity();
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
         CheckGLError("Draw()");
     }
 
-    void GraphicsPipeline::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void DeviceContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
         CheckGLError("before DrawIndexed()");
 
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
@@ -232,8 +304,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawIndexed()");
     }
 
-    void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
                 glDrawArraysInstanced(
@@ -259,8 +333,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawInstances()");
     }
 
-    void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+    void DeviceContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
             if (_featureSet & FeatureSet::GLES300) {
@@ -292,8 +368,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static unsigned s_nextCapturedStatesGUID = 1;
 
-    void GraphicsPipeline::BeginStateCapture(CapturedStates& capturedStates)
+    void DeviceContext::BeginStateCapture(CapturedStates& capturedStates)
     {
+        ImplOpenGLES::CheckContextIntegrity();
+
         assert(!_capturedStates);
         _capturedStates = &capturedStates;
 
@@ -325,10 +403,53 @@ namespace RenderCore { namespace Metal_OpenGLES
         // capturedStates._texUnitsSetToCube = 0;
     }
 
-    void GraphicsPipeline::EndStateCapture()
+    void DeviceContext::EndStateCapture()
     {
         assert(_capturedStates != nullptr);
         _capturedStates = nullptr;
+    }
+
+    void DeviceContext::BeginRenderPass()
+    {
+        ImplOpenGLES::CheckContextIntegrity();
+        assert(!_inRenderPass);
+        _inRenderPass = true;
+    }
+
+    void DeviceContext::BeginSubpass(float renderTargetWidth, float renderTargetHeight) {
+        _renderTargetWidth = renderTargetWidth;
+        _renderTargetHeight = renderTargetHeight;
+    }
+
+    void DeviceContext::EndSubpass() {
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+        ImplOpenGLES::CheckContextIntegrity();
+        assert(_inRenderPass);
+        _inRenderPass = false;
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
+
+        for (auto fn: _onEndRenderPassFunctions) { fn(); }
+        _onEndRenderPassFunctions.clear();
+    }
+
+    bool DeviceContext::InRenderPass()
+    {
+        return _inRenderPass;
+    }
+
+    void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
+    {
+        if (!_inRenderPass) {
+            _onEndRenderPassFunctions.push_back(fn);
+        } else {
+            fn();
+        }
     }
 
     #if defined(_DEBUG)
@@ -348,22 +469,27 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     #endif
 
-    GraphicsPipeline::GraphicsPipeline(FeatureSet::BitField featureSet)
+    GraphicsPipelineBuilder::GraphicsPipelineBuilder(FeatureSet::BitField featureSet)
+    {
+        _featureSet = featureSet;
+        _nativeTopology = GL_TRIANGLES;
+    }
+
+    DeviceContext::DeviceContext(std::shared_ptr<IDevice> device, FeatureSet::BitField featureSet)
+    : GraphicsPipelineBuilder(featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
         _indexFormatBytes = 2;
-        _nativeTopology = GL_TRIANGLES;
+
         _featureSet = featureSet;
         _capturedStates = nullptr;
-    }
 
-    GraphicsPipeline::~GraphicsPipeline()
-    {
-    }
+        _inRenderPass = false;
 
-    DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
-    : GraphicsPipeline(featureSet)
-    {
+        _renderTargetWidth = 0.f;
+        _renderTargetHeight = 0.f;
+
+        _device = device;
     }
 
     DeviceContext::~DeviceContext()
@@ -382,6 +508,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     void                            DeviceContext::ExecuteCommandList(CommandList& commandList)
     {
 
+    }
+
+    std::shared_ptr<IDevice> DeviceContext::GetDevice()
+    {
+        return _device.lock();
     }
 
     const std::shared_ptr<DeviceContext>& DeviceContext::Get(IThreadContext& threadContext)

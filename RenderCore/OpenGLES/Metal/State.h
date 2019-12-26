@@ -59,6 +59,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
         RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+        bool _enableMipmaps = true;
     };
 
     namespace ColorWriteMask
@@ -79,16 +80,17 @@ namespace RenderCore { namespace Metal_OpenGLES
     /**
      * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
      */
-    class AttachmentBlendDesc {
+    class AttachmentBlendDesc
+    {
     public:
-        bool _blendEnable;
-        RenderCore::Blend _srcColorBlendFactor;
-        RenderCore::Blend _dstColorBlendFactor;
-        RenderCore::BlendOp _colorBlendOp;
-        RenderCore::Blend _srcAlphaBlendFactor;
-        RenderCore::Blend _dstAlphaBlendFactor;
-        RenderCore::BlendOp _alphaBlendOp;
-        ColorWriteMask::BitField _writeMask;
+        bool _blendEnable = false;
+        Blend _srcColorBlendFactor = Blend::One;
+        Blend _dstColorBlendFactor = Blend::Zero;
+        BlendOp _colorBlendOp = BlendOp::Add;
+        Blend _srcAlphaBlendFactor = Blend::One;
+        Blend _dstAlphaBlendFactor = Blend::Zero;
+        BlendOp _alphaBlendOp = BlendOp::Add;
+        ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +105,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
-                        CompareOp comparison = CompareOp::Never);
+                        CompareOp comparison = CompareOp::Never,
+                        bool enableMipmaps = true); /* this enableMipmaps argument in the constructor is ignored; the argument in Apply is what is relevant */
         SamplerState();
 
         void Apply(
@@ -138,20 +141,5 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ViewportDesc
-    {
-    public:
-            // (naming convention as per D3D11_VIEWPORT)
-        float TopLeftX, TopLeftY;
-        float Width, Height;
-        float MinDepth, MaxDepth;
-
-        ViewportDesc(DeviceContext&);
-        ViewportDesc(float topLeftX=0.f, float topLeftY=0.f, float width=0.f, float height=0.f, float minDepth=0.f, float maxDepth=1.f)
-        : TopLeftX(topLeftX), TopLeftY(topLeftY)
-        , Width(width), Height(height)
-        , MinDepth(minDepth), MaxDepth(maxDepth)
-        {}
-    };
 }}
 

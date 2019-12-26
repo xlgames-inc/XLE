@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		8F2DB61D2017F858009F52AB /* FileUtils_Linux.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */; };
 		8F2DB6282017F8CF009F52AB /* FileUtils_Linux.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */; };
+		8F4D188F22BC1E5000E48517 /* PreprocessorInterpreter.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D188E22BC1E5000E48517 /* PreprocessorInterpreter.h */; };
+		8F4D189122BC1E6400E48517 /* PreprocessorInterpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D189022BC1E6400E48517 /* PreprocessorInterpreter.cpp */; };
+		8F4D189222BC1E6400E48517 /* PreprocessorInterpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D189022BC1E6400E48517 /* PreprocessorInterpreter.cpp */; };
 		8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
 		8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
 		8F90567E1FA2749D0020DDB5 /* SuppressionProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */; };
@@ -113,6 +116,7 @@
 		8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
 		8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D551EA688D1009BD9B0 /* UTFUtils.h */; };
 		8FD85DA11EA688D1009BD9B0 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
+		AF4C599122123F7600FC8444 /* Optional.h in Headers */ = {isa = PBXBuildFile; fileRef = AF4C599022123F7600FC8444 /* Optional.h */; };
 		AF74EB4021E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
 		AF74EB4121E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
 		AF74EB4221E6E336007C3A66 /* Socket.h in Headers */ = {isa = PBXBuildFile; fileRef = AF74EB3F21E6E336007C3A66 /* Socket.h */; };
@@ -133,6 +137,8 @@
 /* Begin PBXFileReference section */
 		8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_Linux.cpp; sourceTree = "<group>"; };
 		8F305C6E21F137450036BE2B /* ThreadLocalPtr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ThreadLocalPtr.h; sourceTree = "<group>"; };
+		8F4D188E22BC1E5000E48517 /* PreprocessorInterpreter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PreprocessorInterpreter.h; sourceTree = "<group>"; };
+		8F4D189022BC1E6400E48517 /* PreprocessorInterpreter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PreprocessorInterpreter.cpp; sourceTree = "<group>"; };
 		8F4DEE9720A8C9D5003EA5FE /* FileSystemMonitor_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Linux.cpp; sourceTree = "<group>"; };
 		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
 		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
@@ -215,6 +221,7 @@
 		8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UTFUtils.cpp; path = ../UTFUtils.cpp; sourceTree = "<group>"; };
 		8FD85D551EA688D1009BD9B0 /* UTFUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UTFUtils.h; path = ../UTFUtils.h; sourceTree = "<group>"; };
 		8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xl_snprintf.cpp; path = ../xl_snprintf.cpp; sourceTree = "<group>"; };
+		AF4C599022123F7600FC8444 /* Optional.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Optional.h; path = ../Optional.h; sourceTree = "<group>"; };
 		AF74EB3E21E6E336007C3A66 /* Socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Socket.cpp; sourceTree = "<group>"; };
 		AF74EB3F21E6E336007C3A66 /* Socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Socket.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -280,6 +287,7 @@
 				8FD85D211EA688D1009BD9B0 /* MiniHeap.h */,
 				8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */,
 				8FD85D231EA688D1009BD9B0 /* Mixins.h */,
+				AF4C599022123F7600FC8444 /* Optional.h */,
 				8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */,
 				8FD85D251EA688D1009BD9B0 /* ParameterBox.h */,
 				8FD85D261EA688D1009BD9B0 /* ParameterPackUtils.h */,
@@ -365,6 +373,8 @@
 				BE7DC0442065832E00685CE6 /* Linux */,
 				8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */,
 				8FD85D341EA688D1009BD9B0 /* PathUtils.h */,
+				8F4D189022BC1E6400E48517 /* PreprocessorInterpreter.cpp */,
+				8F4D188E22BC1E5000E48517 /* PreprocessorInterpreter.h */,
 				8FD85D351EA688D1009BD9B0 /* Serialization.h */,
 				8FD85D361EA688D1009BD9B0 /* Stream.cpp */,
 				8FD85D371EA688D1009BD9B0 /* Stream.h */,
@@ -461,6 +471,8 @@
 				8FD85D781EA688D1009BD9B0 /* CPUProfiler.h in Headers */,
 				8FD85D801EA688D1009BD9B0 /* FileUtils.h in Headers */,
 				8FD85D6E1EA688D1009BD9B0 /* ClassAccessors.h in Headers */,
+				AF4C599122123F7600FC8444 /* Optional.h in Headers */,
+				8F4D188F22BC1E5000E48517 /* PreprocessorInterpreter.h in Headers */,
 				8FD85D5E1EA688D1009BD9B0 /* API.h in Headers */,
 				8FD85D9B1EA688D1009BD9B0 /* ThreadLibrary.h in Headers */,
 				8FD85D941EA688D1009BD9B0 /* StringUtils.h in Headers */,
@@ -534,6 +546,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 8FD85CEF1EA6872D009BD9B0;
@@ -559,6 +572,7 @@
 				8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */,
 				AF74EB4121E6E336007C3A66 /* Socket.cpp in Sources */,
 				8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */,
+				8F4D189222BC1E6400E48517 /* PreprocessorInterpreter.cpp in Sources */,
 				8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */,
 				8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */,
 				8FA3F7C11EDD17DE003EF623 /* FileUtils.cpp in Sources */,
@@ -597,6 +611,7 @@
 				8FD85D6D1EA688D1009BD9B0 /* ClassAccessors.cpp in Sources */,
 				AF74EB4021E6E336007C3A66 /* Socket.cpp in Sources */,
 				8FD85D931EA688D1009BD9B0 /* StringUtils.cpp in Sources */,
+				8F4D189122BC1E6400E48517 /* PreprocessorInterpreter.cpp in Sources */,
 				8FD85D861EA688D1009BD9B0 /* StreamDOM.cpp in Sources */,
 				8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */,
 				8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */,

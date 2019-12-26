@@ -22,7 +22,8 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    static void BindToFramebuffer(
+    void BindToFramebuffer(
+        GLenum frameBufferTarget,
         GLenum attachmentSlot,
         Resource& res, const TextureViewDesc& viewWindow)
     {
@@ -32,17 +33,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
             ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
             if (res.GetRenderBuffer()) {
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachmentSlot, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
+                glFramebufferRenderbuffer(frameBufferTarget, attachmentSlot, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
             } else {
                 if (desc._textureDesc._arrayCount > 1u) {
                     glFramebufferTextureLayer(
-                        GL_FRAMEBUFFER, attachmentSlot,
+                        frameBufferTarget, attachmentSlot,
                         res.GetTexture()->AsRawGLHandle(),
                         viewWindow._mipRange._min,
                         viewWindow._arrayLayerRange._min);
                 } else {
                     glFramebufferTexture2D(
-                        GL_FRAMEBUFFER, attachmentSlot, GL_TEXTURE_2D,
+                        frameBufferTarget, attachmentSlot, GL_TEXTURE_2D,
                         res.GetTexture()->AsRawGLHandle(),
                         viewWindow._mipRange._min);
                 }
@@ -50,7 +51,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
             assert(!res.GetRenderBuffer());     // not rational in this case
             glFramebufferTextureLayer(
-                GL_FRAMEBUFFER, attachmentSlot,
+                frameBufferTarget, attachmentSlot,
                 res.GetTexture()->AsRawGLHandle(),
                 viewWindow._mipRange._min,
                 viewWindow._arrayLayerRange._min);
@@ -58,7 +59,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             assert(!res.GetRenderBuffer());     // not rational in this case
             assert(desc._textureDesc._arrayCount <= 1u);    // cannot render to arrays of cubemaps
             glFramebufferTexture2D(
-                GL_FRAMEBUFFER, attachmentSlot, GL_TEXTURE_CUBE_MAP_POSITIVE_X + viewWindow._arrayLayerRange._min,
+                frameBufferTarget, attachmentSlot, GL_TEXTURE_CUBE_MAP_POSITIVE_X + viewWindow._arrayLayerRange._min,
                 res.GetTexture()->AsRawGLHandle(),
                 viewWindow._mipRange._min);
         } else {
@@ -114,32 +115,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         return bindingPoint;
     }
-
-    static const char* CheckFramebufferStatusToString(GLenum value)
-    {
-        switch (value) {
-        case GL_FRAMEBUFFER_COMPLETE: return "complete";
-        case GL_FRAMEBUFFER_UNDEFINED: return "undefined";
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "incomplete-attachment";
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "incomplete-missing-attachment";
-        case GL_FRAMEBUFFER_UNSUPPORTED: return "unsupported";
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "incomplete-multisample";
-        
-        // Desktop GL problems
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)
-            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "incomplete-layer-targets";
-        #endif
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)
-            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "incomplete-draw-buffer";
-        #endif
-        #if defined(GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)
-            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "incomplete-read-buffer";
-        #endif
-        }
-
-        return "<<error>>";
-    }
-
+    
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -255,7 +231,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         drawBuffers[rtv] = GL_BACK;
                     #endif
                 } else {
-                    BindToFramebuffer(GL_COLOR_ATTACHMENT0 + colorAttachmentIterator, res, sp._rtvs[rtv]._window);
+                    BindToFramebuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachmentIterator, res, sp._rtvs[rtv]._window);
                     drawBuffers[rtv] = GL_COLOR_ATTACHMENT0 + colorAttachmentIterator;
                     ++colorAttachmentIterator;
                 }
@@ -263,7 +239,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (!bindingToBackbuffer && sp._dsv.IsGood()) {
                 auto& res = *sp._dsv.GetResource();
                 const auto& viewWindow = sp._dsv._window;
-                BindToFramebuffer(GetDepthStencilBindingPoint(res, viewWindow), res, viewWindow);
+                BindToFramebuffer(GL_FRAMEBUFFER, GetDepthStencilBindingPoint(res, viewWindow), res, viewWindow);
             }
 
             // Ensure the glReadBuffer state to some reasonable value to prevent state leakage
@@ -304,6 +280,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
 
                     BindToFramebuffer(
+                        GL_FRAMEBUFFER,
                         GL_COLOR_ATTACHMENT0 + c,
                         *(Resource*)resource->QueryInterface(typeid(Resource).hash_code()),
                         attachmentView._window);
@@ -314,8 +291,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                     sp._resolveWidth = desc._textureDesc._width;
                     sp._resolveHeight = desc._textureDesc._height;
                 }
-                if (factory.GetFeatureSet() & FeatureSet::GLES300)
-					glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers);       // glDrawBuffers enters the API in GLES3.0
+                if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                    glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers); // glDrawBuffers enters the API in GLES3.0
+                }
 
                 if (spDesc._depthStencilResolve._resourceName != ~0) {
                     const auto& attachmentView = spDesc._depthStencilResolve;
@@ -324,7 +302,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
 
                     auto& res = *(Resource*)resource->QueryInterface(typeid(Resource).hash_code());
-                    BindToFramebuffer(GetDepthStencilBindingPoint(res, attachmentView._window), res, attachmentView._window);
+                    BindToFramebuffer(GL_FRAMEBUFFER, GetDepthStencilBindingPoint(res, attachmentView._window), res, attachmentView._window);
                     sp._resolveFlags |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
 
                     auto desc = resource->GetDesc();
@@ -385,6 +363,31 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
             }
         #endif
+
+        // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
+        {
+            float width = 0.f;
+            float height = 0.f;
+            if (s._rtvCount > 0 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
+                const auto& textureDesc = s._rtvs[0].GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            } else if (s._dsv.IsGood()) {
+                const auto& textureDesc = s._dsv.GetResource()->GetDesc()._textureDesc;
+                width = textureDesc._width;
+                height = textureDesc._height;
+            }
+
+            context.BeginSubpass(width, height);
+
+            Viewport viewports[1];
+            viewports[0] = Viewport{0.f, 0.f, width, height};
+            // origin of viewport doesn't matter because it is full-size
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};
+            // origin of viewport doesn't matter because it is full-size
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+        }
 
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2 and GL2, we have to drop back to the older API
@@ -561,6 +564,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             glInvalidateFramebuffer(GL_READ_FRAMEBUFFER, invalidateAttachmentCount, invalidateAttachments);
         }
+
+        context.EndSubpass();
     }
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
@@ -587,13 +592,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
         IteratorRange<const ClearValue*> clearValues)
     {
         s_nextSubpass = 0;
         s_clearValues.clear();
         s_clearValues.insert(s_clearValues.end(), clearValues.begin(), clearValues.end());
+        context.BeginRenderPass();
         BeginNextSubpass(context, frameBuffer);
     }
 
@@ -623,6 +627,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
+        context.EndRenderPass();
     }
     
     unsigned GetCurrentSubpassIndex(DeviceContext& context)

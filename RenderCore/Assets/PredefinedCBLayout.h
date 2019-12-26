@@ -5,9 +5,12 @@
 #pragma once
 
 #include "../UniformsStream.h"
+#include "../ShaderLangUtil.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"
+#include <unordered_map>
+#include <string>
 
 namespace RenderCore { class SharedPkt; }
 namespace RenderCore { namespace Assets
@@ -15,33 +18,51 @@ namespace RenderCore { namespace Assets
     class PredefinedCBLayout
     {
     public:
-        unsigned _cbSize;
+        enum AlignmentRules {
+            AlignmentRules_HLSL,            // Basic HLSL alignment; often compatible with GLSL
+            AlignmentRules_GLSL_std140,     // GLSL "std140" layout style
+            AlignmentRules_MSL,             // Apple Metal Shader Language
+            AlignmentRules_Max
+        };
+
         class Element
         {
         public:
             ParameterBox::ParameterNameHash _hash = ~0u;
             uint64_t _hash64 = ~0ull;
             ImpliedTyping::TypeDesc _type;
-            unsigned _offset = 0;
-            unsigned _arrayElementCount = 1;
+            unsigned _arrayElementCount = 0;            // set to zero if this parameter is not actually an array
             unsigned _arrayElementStride = 0;
+            std::string _name;
+            std::string _conditions;
+
+            // Offsets according to the alignment rules for different shader languages
+            unsigned _offsetsByLanguage[AlignmentRules_Max];
+
+			Element()
+			{
+				for (unsigned c=0; c<AlignmentRules_Max; ++c)
+					_offsetsByLanguage[c] = 0;
+			}
         };
-        std::vector<Element> _elements;		// note -- we hash this memory, so make this convenient, we should avoid having any pointers here
-		std::vector<std::string> _elementNames;
+        std::vector<Element> _elements;
         ParameterBox _defaults;
 
-		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 1; };
-		void AppendElements(IteratorRange<const NameAndType*> elements);
+        std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters, ShaderLanguage lang) const;
+        SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters, ShaderLanguage lang) const;
+        unsigned GetSize(ShaderLanguage lang) const;
+        std::vector<ConstantBufferElementDesc> MakeConstantBufferElements(ShaderLanguage lang) const;
 
 		// Reorder the given elements to try to find an ordering that will minimize the
 		// size of the final constant buffer. This accounts for ordering rules such as
 		// preventing vectors from crossing 16 byte boundaries.
-		static void OptimizeElementOrder(IteratorRange<NameAndType*> elements);
+		struct NameAndType { std::string _name; ImpliedTyping::TypeDesc _type; unsigned _arrayElementCount = 0u; std::string _conditions = {}; };
+		static void OptimizeElementOrder(IteratorRange<NameAndType*> elements, ShaderLanguage lang);
+        std::vector<NameAndType> GetNamesAndTypes();
 
-        std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters) const;
-        SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
         uint64_t CalculateHash() const;
-        std::vector<ConstantBufferElementDesc> MakeConstantBufferElements() const;
+
+        PredefinedCBLayout Filter(const std::unordered_map<std::string, int>& definedTokens);
 
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
@@ -61,6 +82,28 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 
         void Parse(StringSection<char> source);
-        void WriteBuffer(void* dst, const ParameterBox& parameters) const;
+        void WriteBuffer(void* dst, const ParameterBox& parameters, ShaderLanguage lang) const;
+
+        // Similar to the offset values, the size of the CB depends on what shader language rules are used
+        unsigned _cbSizeByLanguage[AlignmentRules_Max];
+
+        friend class PredefinedCBLayoutFile;
+    };
+
+    class PredefinedCBLayoutFile
+    {
+    public:
+        std::unordered_map<std::string, std::shared_ptr<PredefinedCBLayout>> _layouts;
+
+        PredefinedCBLayoutFile(
+            StringSection<> inputData,
+            const ::Assets::DirectorySearchRules& searchRules,
+            const ::Assets::DepValPtr& depVal);
+        ~PredefinedCBLayoutFile();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+            { return _validationCallback; }
+    private:
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 }}

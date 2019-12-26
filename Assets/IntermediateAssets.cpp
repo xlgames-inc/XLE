@@ -141,6 +141,11 @@ namespace Assets { namespace IntermediateAssets
         }
     }
 
+    void Store::ClearDependencyData() {
+        ScopedLock(RetainedRecordsLock);
+        RetainedRecords.clear();
+    }
+
     DependentFileState Store::GetDependentFileState(StringSection<ResChar> filename)
     {
         return GetRetainedFileRecord(filename)->_state;

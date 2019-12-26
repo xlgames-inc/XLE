@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include "../../IAnnotator.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
+#include "../../../Externals/Misc/OCPtr.h"
 #include <algorithm>
 #include <memory>
 
@@ -18,7 +20,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 	class DeviceContext;
 	class ObjectFactory;
 
-	class QueryPool
+	class TimeStampQueryPool
 	{
 	public:
 		using QueryId = unsigned;
@@ -42,10 +44,31 @@ namespace RenderCore { namespace Metal_AppleMetal
 		};
 		FrameResults GetFrameResults(DeviceContext& context, FrameId id);
 
-		QueryPool(ObjectFactory& factory);
-		~QueryPool();
+		TimeStampQueryPool(ObjectFactory& factory);
+		~TimeStampQueryPool();
 	private:
 	};
+
+    class SyncEventSet
+    {
+    public:
+        using SyncEvent = uint64_t;
+        SyncEvent SetEvent();
+        SyncEvent NextEventToSet();
+        SyncEvent LastCompletedEvent();
+
+        static bool IsSupported();
+
+        SyncEventSet(IThreadContext *context);
+        ~SyncEventSet();
+        SyncEventSet(const SyncEventSet&) = delete;
+        SyncEventSet& operator=(const SyncEventSet&) = delete;
+    private:
+        IThreadContext *_context;
+        SyncEvent _nextEvent;
+        std::shared_ptr<SyncEvent> _lastCompletedEvent;
+        TBC::OCPtr<id> _listener;
+    };
 
     #if defined(GPUANNOTATIONS_ENABLE)
 
@@ -79,5 +102,20 @@ namespace RenderCore { namespace Metal_AppleMetal
         };
 
     #endif
+
+    class Annotator : public IAnnotator
+    {
+    public:
+        virtual void    Frame_Begin(IThreadContext& primaryContext, unsigned frameID);
+        virtual void    Frame_End(IThreadContext& primaryContext);
+
+        virtual void    Event(IThreadContext& context, const char name[], EventTypes::BitField types);
+
+        virtual unsigned    AddEventListener(const EventListener& callback);
+        virtual void        RemoveEventListener(unsigned listenerId);
+
+        Annotator();
+        virtual ~Annotator();
+    };
 }}
 

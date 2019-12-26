@@ -7,3 +7,6 @@
 [submodule "Foreign/yoga"]
 	path = Foreign/yoga
 	url = git@github.com:facebook/yoga.git
+[submodule "Foreign/cparse"]
+	path = Foreign/cparse
+	url = git@github.com:djewsbury/cparse.git

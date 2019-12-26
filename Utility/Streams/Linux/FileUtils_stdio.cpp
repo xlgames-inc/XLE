@@ -126,8 +126,11 @@ namespace Utility
     
     FileTime	BasicFile::GetFileTime() const never_throws
     {
-        assert(0);
-        return FileTime(0);
+        // There's no way using stdio to get the modification time for a open FILE handle.
+        // There are POSIX commands for retrieving the modification time from a filename; but that
+        // isn't really the purpose of this function -- we want to get the modification time for
+        // the open file handle.
+        return 0;
     }
     
     namespace RawFS

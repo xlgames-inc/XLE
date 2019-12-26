@@ -1,6 +1,5 @@
 
 set(Src
-    AttachableLibrary_WinAPI.cpp
     Console.cpp
     DebugUtil.cpp
     GlobalServices.cpp
@@ -8,6 +7,14 @@ set(Src
     OutputStream.cpp
     Plugins.cpp
     ${CMAKE_BINARY_DIR}/ConsoleRig/Version.cpp)
+
+set(WINDOWS_SRC AttachableLibrary_WinAPI.cpp)
+set(STUB_SRC AttachableLibrary_Stub.cpp)
+if (WIN32)
+    list(APPEND Src ${WINDOWS_SRC})
+elseif(ANDROID)
+    list(APPEND Src ${STUB_SRC})
+endif()
 BasicLibrary(ConsoleRig "${Src}")
 
 target_link_libraries(ConsoleRig ForeignMisc)  # required to pull in interface include directories (etc)

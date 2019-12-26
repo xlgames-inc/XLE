@@ -47,6 +47,118 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
+    TBC::OCPtr<AplMtlSamplerState> ObjectFactory::CreateSamplerState(MTLSamplerDescriptor* samplerDesc)
+    {
+        assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
+        id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
+        if (!(_featureSet & FeatureSet::Flags::SamplerComparisonFn)) {
+            assert(samplerDesc.compareFunction == MTLCompareFunctionNever);
+        }
+
+        return TBC::OCPtr<AplMtlSamplerState>(TBC::moveptr([device newSamplerStateWithDescriptor:samplerDesc]));
+    }
+
+    TBC::OCPtr<AplMtlDepthStencilState> ObjectFactory::CreateDepthStencilState(MTLDepthStencilDescriptor* dss)
+    {
+        assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
+        id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
+
+        return TBC::OCPtr<AplMtlDepthStencilState>(TBC::moveptr([device newDepthStencilStateWithDescriptor:dss]));
+    }
+
+    auto ObjectFactory::CreateRenderPipelineState(MTLRenderPipelineDescriptor* desc, bool makeReflection) -> RenderPipelineState
+    {
+        NSError* error = NULL;
+        MTLAutoreleasedRenderPipelineReflection reflection = nullptr;
+        id<MTLRenderPipelineState> pipelineState = nullptr;
+
+        if (makeReflection) {
+            MTLPipelineOption options = MTLPipelineOptionArgumentInfo;
+            pipelineState = [_mtlDevice.get() newRenderPipelineStateWithDescriptor:desc options:options reflection:&reflection error:&error];
+        } else {
+            pipelineState = [_mtlDevice.get() newRenderPipelineStateWithDescriptor:desc error:&error];
+        }
+
+        assert(reflection);
+
+        return RenderPipelineState { TBC::moveptr(pipelineState), error, reflection };
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static TBC::OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory, bool isDepth)
+    {
+        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        textureDesc.get().textureType = MTLTextureType2D;
+        textureDesc.get().width = 4;
+        textureDesc.get().height = 4;
+        textureDesc.get().usage = MTLTextureUsageShaderRead;
+        
+        if (isDepth) {
+            textureDesc.get().pixelFormat = MTLPixelFormatDepth32Float;
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
+            /* METAL_TODO: depth textures on macOS must have a private storage mode; to populate that texture, we would need to blit to it. */
+            textureDesc.get().storageMode = MTLStorageModePrivate;
+#endif
+        } else {
+            textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
+        }
+
+        unsigned data[4*4];
+        memset(data, 0xff, sizeof(data));
+
+        auto tex = factory.CreateTexture(textureDesc);
+        if (textureDesc.get().storageMode == MTLStorageModeShared) {
+            [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
+                         mipmapLevel:0
+                               slice:0
+                           withBytes:data
+                         bytesPerRow:4*4
+                       bytesPerImage:4*4*4];
+        }
+        return tex;
+    }
+
+    static TBC::OCPtr<AplMtlTexture> CreateStandInCubeTexture(ObjectFactory& factory)
+    {
+        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        textureDesc.get().textureType = MTLTextureTypeCube;
+        textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
+        textureDesc.get().width = 4;
+        textureDesc.get().height = 4;
+        textureDesc.get().usage = MTLTextureUsageShaderRead;
+
+        unsigned data[4*4];
+        memset(data, 0xff, sizeof(data));
+
+        auto tex = factory.CreateTexture(textureDesc);
+        for (unsigned f=0; f<6; ++f) {
+            [tex.get() replaceRegion:MTLRegionMake2D(0, 0, 4, 4)
+                         mipmapLevel:0
+                               slice:f
+                           withBytes:data
+                         bytesPerRow:4*4
+                       bytesPerImage:4*4*4];
+        }
+
+        return tex;
+    }
+
+    static TBC::OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory)
+    {
+        TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
+        desc.get().rAddressMode = MTLSamplerAddressModeRepeat;
+        desc.get().sAddressMode = MTLSamplerAddressModeRepeat;
+        desc.get().tAddressMode = MTLSamplerAddressModeRepeat;
+        desc.get().minFilter = MTLSamplerMinMagFilterLinear;
+        desc.get().magFilter = MTLSamplerMinMagFilterLinear;
+        desc.get().mipFilter = MTLSamplerMipFilterLinear;
+        desc.get().compareFunction = MTLCompareFunctionNever;
+
+        auto samplerState = factory.CreateSamplerState(desc);
+        return samplerState;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static ObjectFactory* s_objectFactory_instance = nullptr;
@@ -56,11 +168,44 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;
+
+        _standIn2DTexture = CreateStandIn2DTexture(*this, false);
+        _standIn2DDepthTexture = CreateStandIn2DTexture(*this, true);
+        _standInCubeTexture = CreateStandInCubeTexture(*this);
+        _standInSamplerState = CreateStandInSamplerState(*this);
+
+        _featureSet = 0;
+
+#if TARGET_OS_IPHONE
+        _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
+#elif TARGET_OS_OSX
+        _featureSet |= [mtlDevice supportsFeatureSet:MTLFeatureSet_OSX_GPUFamily1_v1] ? FeatureSet::Flags::SamplerComparisonFn : 0;
+#endif
     }
     ObjectFactory::~ObjectFactory()
     {
+        _standIn2DTexture = TBC::OCPtr<AplMtlTexture>();
+        _standIn2DDepthTexture = TBC::OCPtr<AplMtlTexture>();
+        _standInCubeTexture = TBC::OCPtr<AplMtlTexture>();
+        _standInSamplerState = TBC::OCPtr<AplMtlSamplerState>();
+
+        {
+            ScopedLock(_compiledShadersLock);
+            decltype(_compiledShaders)().swap(_compiledShaders);
+        }
+
         assert(s_objectFactory_instance == this);
         s_objectFactory_instance = nullptr;
+    }
+    
+    const TBC::OCPtr<AplMtlTexture>& ObjectFactory::GetStandInTexture(unsigned typeInt, bool isDepth) {
+        MTLTextureType type = (MTLTextureType)typeInt;
+        assert(type == MTLTextureType2D || (type == MTLTextureTypeCube && !isDepth));
+        if (type == MTLTextureTypeCube) {
+            return _standInCubeTexture;
+        } else {
+            return isDepth ? _standIn2DDepthTexture : _standIn2DTexture;
+        }
     }
 
     ObjectFactory& GetObjectFactory(IDevice& device) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }

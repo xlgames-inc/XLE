@@ -60,9 +60,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
-        IteratorRange<const ClearValue*> clearValues);
+        IteratorRange<const ClearValue*> clearValues = {});
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);

@@ -7,16 +7,20 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/QueryPool.h"
 #include "Metal/Shader.h"
+#include "../Init.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Optional.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <sstream>
 #include <assert.h>
 #include "Metal/IncludeGLES.h"
+
+#pragma GCC diagnostic ignored "-Wunused-value"
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -418,6 +422,11 @@ namespace RenderCore { namespace ImplOpenGLES
 		return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
 	}
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -478,6 +487,7 @@ namespace RenderCore { namespace ImplOpenGLES
 				// In fake back buffer mode, the caller must give us the format they want explicitly
 				// Otherwise, we'll try to extract it from what the driver created
 				// We can't get the color depth of the true texture, just the number of components & a color space flag
+#if defined(EGL_GL_COLORSPACE)      // DavidJ -- working around an issue related to EGL1.5 defines not being in some headers). 
 				EGLint colorSpace, textureFormat;
 				bool success = eglQuerySurface(display, _surface, EGL_GL_COLORSPACE, &colorSpace);
 				success &= eglQuerySurface(display, _surface, EGL_TEXTURE_FORMAT, &textureFormat);
@@ -489,6 +499,7 @@ namespace RenderCore { namespace ImplOpenGLES
 						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
 					}
 				}
+#endif
 			}
         }
     }
@@ -545,7 +556,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // Ensure that the IDevice still exists. If you run into this issue, it means that the device
         // that created this ThreadContext has already been destroyed -- which will be an issue, because
         // the device deletes _display when it is destroyed.
-        assert(_device.lock());
+        auto device = _device.lock();
+        assert(device);
 
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         assert(!_activeTargetRenderbuffer);
@@ -603,6 +615,12 @@ namespace RenderCore { namespace ImplOpenGLES
             eglSwapBuffers(_display, presChain.GetSurface());
         }
         _activeTargetRenderbuffer = nullptr;
+    }
+
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeTargetRenderbuffer); // If you're actively rendering, you need Present instead
+        glFlush();
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
@@ -666,7 +684,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void ThreadContext::SetFeatureSet(unsigned featureSet)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(_device.lock(), featureSet);
     }
 
     unsigned ThreadContext::GetFeatureSet() const
@@ -679,7 +697,7 @@ namespace RenderCore { namespace ImplOpenGLES
     , _device(device), _currentPresentationChainGUID(0)
     , _clonedContext(true)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, unsigned featureSet, const std::shared_ptr<Device>& device)
@@ -688,7 +706,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         // Build the root context
         EGLint contextAttribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION, GetGLESVersionFromConfig(_display, cfgForNewContext) / 100,
+            EGL_CONTEXT_CLIENT_VERSION, static_cast<EGLint>(GetGLESVersionFromConfig(_display, cfgForNewContext) / 100),
             EGL_NONE, EGL_NONE
         };
         _context = eglCreateContext(_display, cfgForNewContext, rootContext, contextAttribs);
@@ -718,7 +736,7 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
 
         if (featureSet)
-            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContext::~ThreadContext()
@@ -746,6 +764,12 @@ namespace RenderCore { namespace ImplOpenGLES
     render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
         return std::make_shared<DeviceOpenGLES>();
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::OpenGLES, &CreateDevice);
     }
 
 } }

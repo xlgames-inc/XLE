@@ -7,6 +7,7 @@ set(Src
     "Metal/FakeGLES.cpp"
     "Metal/Format.cpp"
     "Metal/FrameBuffer.cpp"
+    "Metal/GPUSyncedAllocator.cpp"
     "Metal/InputLayout.cpp"
     "Metal/ObjectFactory.cpp"
     "Metal/PipelineLayout.cpp"

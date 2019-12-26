@@ -13,7 +13,7 @@
 #include <sstream>
 #include <assert.h>
 
-#include "../../Utility/WinAPI/WinAPIWrapper.h"
+#include "../Utility/WinAPI/WinAPIWrapper.h"
 
 namespace ConsoleRig
 {

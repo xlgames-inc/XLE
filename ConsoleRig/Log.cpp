@@ -6,6 +6,7 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../Foreign/fmt/format.h"
 #include <iostream>
 
@@ -237,10 +238,23 @@ namespace ConsoleRig
         #endif
     };
 
+    static std::shared_ptr<LogCentral> s_instance;
+    static Threading::Mutex s_logCentralInstanceLock;
+    
     const std::shared_ptr<LogCentral>& LogCentral::GetInstance()
     {
-        static std::shared_ptr<LogCentral> instance = std::make_shared<LogCentral>();
-        return instance;
+        if (!s_instance) {
+            ScopedLock(s_logCentralInstanceLock);
+            if (!s_instance) {
+                s_instance = std::make_shared<LogCentral>();
+            }
+        }
+        return s_instance;
+    }
+
+    void LogCentral::DestroyInstance()
+    {
+        s_instance.reset();
     }
 
     void LogCentral::Register(MessageTarget<>& target, StringSection<> id)

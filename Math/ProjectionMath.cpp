@@ -26,7 +26,7 @@ namespace XLEMath
     static Float4x4 InvertWorldToProjection(const Float4x4& input, bool useAccurateInverse)
     {
         if (useAccurateInverse) {
-            return cml::detail::inverse_f<Float4x4, 0>()(input);
+            return cml::inverse(input);
         } else {
             return Inverse(input);
         }
@@ -540,7 +540,7 @@ namespace XLEMath
                 //  This is the OpenGL view of clip space
                 //      -1<z/w<1
             result(2,2) =       -(f+n) / (f-n);
-            result(2,3) =  -(-2.f*f*n) / (f-n);
+            result(2,3) =   -(2.f*f*n) / (f-n);
         }
 
         result(3,2) =   -1.f;    // (-1 required to flip space around from -Z camera forward to (z/w) increasing with distance)
@@ -584,7 +584,10 @@ namespace XLEMath
             result(2,2) =  -1.f / (f-n);            // (note z direction flip here)
             result(2,3) =    -n / (f-n);
         } else {
-            assert(0);
+                //  This is the OpenGL view of clip space
+                //      -1<z/w<1
+            result(2,2) =     -(f+n) / (f*(f-n));
+            result(2,3) =   -(2.f*n) / (f-n);
         }
 
         if (clipSpaceType == ClipSpaceType::PositiveRightHanded) {
@@ -635,11 +638,12 @@ namespace XLEMath
             //      miniProj[3] = B = -(2fn) / (f-n)
             //      n = B / (A - 1)
             //      f = B / (A + 1)
-
         const float A = minimalProjection[2];
         const float B = minimalProjection[3];
         if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
-            return std::make_pair(B / A, B / (A + 1.f));
+            // This is a slightly more accurate way to calculate the
+            // same value as B / (A+1) when A is very near -1.
+            return std::make_pair(B / A, 1.f / (A/B + 1.f/B));
         } else {
             return std::make_pair(B / (A - 1.f), B / (A + 1.f));
         }

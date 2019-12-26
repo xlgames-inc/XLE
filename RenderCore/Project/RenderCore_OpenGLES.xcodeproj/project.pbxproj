@@ -24,8 +24,6 @@
 		8F2D1B7B1FD629380028A531 /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B641FD629370028A531 /* Shader.cpp */; };
 		8F2D1B7C1FD629380028A531 /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B641FD629370028A531 /* Shader.cpp */; };
 		8F2D1B7D1FD629380028A531 /* Resource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B651FD629370028A531 /* Resource.h */; };
-		8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
-		8F2D1B7F1FD629380028A531 /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
 		8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B671FD629370028A531 /* DeviceContext.h */; };
 		8F2D1B811FD629380028A531 /* State.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B681FD629370028A531 /* State.cpp */; };
 		8F2D1B821FD629380028A531 /* State.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B681FD629370028A531 /* State.cpp */; };
@@ -44,6 +42,8 @@
 		8F2D1B901FD629380028A531 /* TextureView.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B721FD629380028A531 /* TextureView.h */; };
 		8F3BAC73201953F900442BBB /* Device_CGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3BAC71201953F900442BBB /* Device_CGL.mm */; };
 		8F3BAC74201953F900442BBB /* Device_CGL.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F3BAC72201953F900442BBB /* Device_CGL.h */; };
+		8F3FD59C22C2AF8E00EBA8FD /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
+		8F3FD59D22C2AF8E00EBA8FD /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B661FD629370028A531 /* InputLayout.cpp */; };
 		8F5DCB8D2023E8FE0022BA7E /* FrameBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F5DCB8B2023E8FD0022BA7E /* FrameBuffer.h */; };
 		8F5DCB8E2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */; };
 		8F5DCB8F2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */; };
@@ -57,6 +57,9 @@
 		8F81670B1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */; };
 		8F81670C1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */; };
 		8F860C961FE8AAA700B77C9F /* Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F860C951FE8AAA700B77C9F /* Forward.h */; };
+		8FA57FF122CADA2700D0327D /* GPUSyncedAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA57FEF22CADA2700D0327D /* GPUSyncedAllocator.cpp */; };
+		8FA57FF222CADA2700D0327D /* GPUSyncedAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA57FEF22CADA2700D0327D /* GPUSyncedAllocator.cpp */; };
+		8FA57FF522CADA5F00D0327D /* GPUSyncedAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA57FF422CADA5F00D0327D /* GPUSyncedAllocator.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -118,6 +121,8 @@
 		8F8167091FDF612100284B80 /* ShaderIntrospection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ShaderIntrospection.h; path = ../OpenGLES/Metal/ShaderIntrospection.h; sourceTree = "<group>"; };
 		8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderIntrospection.cpp; path = ../OpenGLES/Metal/ShaderIntrospection.cpp; sourceTree = "<group>"; };
 		8F860C951FE8AAA700B77C9F /* Forward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Forward.h; path = ../OpenGLES/Metal/Forward.h; sourceTree = "<group>"; };
+		8FA57FEF22CADA2700D0327D /* GPUSyncedAllocator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = GPUSyncedAllocator.cpp; path = ../OpenGLES/Metal/GPUSyncedAllocator.cpp; sourceTree = "<group>"; };
+		8FA57FF422CADA5F00D0327D /* GPUSyncedAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPUSyncedAllocator.h; path = ../OpenGLES/Metal/GPUSyncedAllocator.h; sourceTree = "<group>"; };
 		BE6450922078244E00F97BEB /* Device_EGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Device_EGL.cpp; path = ../OpenGLES/Device_EGL.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -146,12 +151,16 @@
 				8F2D1B621FD629360028A531 /* Buffer.h */,
 				8F2D1B6A1FD629370028A531 /* DeviceContext.cpp */,
 				8F2D1B671FD629370028A531 /* DeviceContext.h */,
+				8F6354DF206417FC008A2A0F /* FakeGLES.cpp */,
+				8F6354E0206417FC008A2A0F /* FakeGLES.h */,
 				8F2D1B631FD629360028A531 /* Format.cpp */,
 				8F2D1B6D1FD629370028A531 /* Format.h */,
 				8F860C951FE8AAA700B77C9F /* Forward.h */,
 				8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */,
 				8F5DCB8B2023E8FD0022BA7E /* FrameBuffer.h */,
 				4A7DD1262126527900C527F9 /* GLWrappers.h */,
+				8FA57FEF22CADA2700D0327D /* GPUSyncedAllocator.cpp */,
+				8FA57FF422CADA5F00D0327D /* GPUSyncedAllocator.h */,
 				4A7DD1242126526900C527F9 /* IncludeGLES.h */,
 				8F2D1B661FD629370028A531 /* InputLayout.cpp */,
 				8F2D1B611FD629360028A531 /* InputLayout.h */,
@@ -172,8 +181,6 @@
 				8F2D1B6C1FD629370028A531 /* TextureView.cpp */,
 				8F2D1B721FD629380028A531 /* TextureView.h */,
 				8F2D1B5F1FD629360028A531 /* Types.h */,
-				8F6354DF206417FC008A2A0F /* FakeGLES.cpp */,
-				8F6354E0206417FC008A2A0F /* FakeGLES.h */,
 			);
 			name = Metal;
 			sourceTree = "<group>";
@@ -238,6 +245,7 @@
 				8F2D1B741FD629380028A531 /* Types.h in Headers */,
 				8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */,
 				8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */,
+				8FA57FF522CADA5F00D0327D /* GPUSyncedAllocator.h in Headers */,
 				8F6576871FFEFA2B009052A0 /* PipelineLayout.h in Headers */,
 				8F2D1B831FD629380028A531 /* State.h in Headers */,
 				8F2D1B7D1FD629380028A531 /* Resource.h in Headers */,
@@ -327,12 +335,13 @@
 			files = (
 				8F81670C1FDF65CA00284B80 /* ShaderIntrospection.cpp in Sources */,
 				8F212B571FD7851200599B22 /* Device_EAGL.mm in Sources */,
+				8F3FD59D22C2AF8E00EBA8FD /* InputLayout.cpp in Sources */,
 				8F2D1B7A1FD629380028A531 /* Format.cpp in Sources */,
 				8F2D1B7C1FD629380028A531 /* Shader.cpp in Sources */,
+				8FA57FF222CADA2700D0327D /* GPUSyncedAllocator.cpp in Sources */,
 				8F2D1B891FD629380028A531 /* TextureView.cpp in Sources */,
 				8F2D1B8D1FD629380028A531 /* ObjectFactory.cpp in Sources */,
 				8F2D1B821FD629380028A531 /* State.cpp in Sources */,
-				8F2D1B7F1FD629380028A531 /* InputLayout.cpp in Sources */,
 				8F2D1B761FD629380028A531 /* Buffer.cpp in Sources */,
 				8F5DCB8F2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */,
 				8F6576891FFEFA31009052A0 /* PipelineLayout.cpp in Sources */,
@@ -350,12 +359,13 @@
 				8F2D1B791FD629380028A531 /* Format.cpp in Sources */,
 				8F2D1B7B1FD629380028A531 /* Shader.cpp in Sources */,
 				8F2D1B881FD629380028A531 /* TextureView.cpp in Sources */,
+				8F3FD59C22C2AF8E00EBA8FD /* InputLayout.cpp in Sources */,
 				8F2D1B8C1FD629380028A531 /* ObjectFactory.cpp in Sources */,
 				8F2D1B811FD629380028A531 /* State.cpp in Sources */,
-				8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */,
 				8F2D1B751FD629380028A531 /* Buffer.cpp in Sources */,
 				8F6576881FFEFA2B009052A0 /* PipelineLayout.cpp in Sources */,
 				8F6354E1206417FC008A2A0F /* FakeGLES.cpp in Sources */,
+				8FA57FF122CADA2700D0327D /* GPUSyncedAllocator.cpp in Sources */,
 				8F5DCB8E2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */,
 				8F2D1B841FD629380028A531 /* DeviceContext.cpp in Sources */,
 				8F8167061FDF32BE00284B80 /* Resource.cpp in Sources */,

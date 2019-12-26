@@ -70,7 +70,10 @@
     }}
     using namespace Utility;
 
-    #define ScopedLock(x)            std::unique_lock<decltype(x)> _autoLockA(x)
+    #define _StringConcat(a, b) a##b
+    #define _ScopedLockInternal(x, c) std::unique_lock<decltype(x)> _StringConcat(_autoLockA, c)(x)
+
+    #define ScopedLock(x)            _ScopedLockInternal(x, __COUNTER__)
     #define ScopedReadLock(x)        std::unique_lock<decltype(x)> _autoLockB(x)
     #define ScopedModifyLock(x)      std::unique_lock<decltype(x)> _autoLockC(x)
 

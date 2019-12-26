@@ -1,4 +1,4 @@
-set(Src
+list(APPEND Src
     Format.cpp
     FrameBufferDesc.cpp
     Init.cpp

@@ -7,10 +7,12 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
-#include <CppUnitTest.h>
 #include <random>
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+#if !defined(XC_TEST_ADAPTER)
+    #include <CppUnitTest.h>
+    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+#endif
 
 namespace UnitTests
 {
@@ -166,12 +168,16 @@ namespace UnitTests
                 Assert::AreEqual(fov, outFOV, fov * tolerance, L"Extracted FOV");
                 Assert::AreEqual(aspect, outAspect, aspect * tolerance, L"Extracted aspect");
                 Assert::AreEqual(near, outNear, near * tolerance, L"Extracted near clip");
-                    // Calculations for the far clip are much less accurate. It seems that depth precision
-                    // right on the far clip plane is just very low.
-                    // The calculations appear to be correct (& they match the shader code).
-                    // It's just that we're reached the bottom of floating point precision.
-                    // It's interesting that the uncertainty can be this large, though.
-                Assert::AreEqual(far, outFar, 3.f, L"Extracted far clip");  
+                    // Calculations for the far clip are much less accurate. We're
+                    // essentially dividing by (-1 + 1/far + 1), so the larger far
+                    // is, the more inaccurate it gets (and the variance in the
+                    // inaccuracy grows even faster, making random measurements
+                    // more fun). We then double the precision loss in our reverse
+                    // math test. Running an independent test of the same math,
+                    // for numbers in the range of [100, 1000], the chances of being
+                    // off by more than 7 should be right around 1 in a million, so...
+                    // within 7.5 should be a good enough test to run 500 times.
+                Assert::AreEqual(far, outFar, 7.5f, L"Extracted far clip");
             }
         }
 

@@ -56,7 +56,7 @@ set(MetaSrc Meta/AccessorSerialize.cpp Meta/ClassAccessors.cpp)
 
 if (WIN32)
     set(WinAPISrc WinAPI/System_WinAPI.cpp Streams/WinAPI/FileSystemMonitor_WinAPI.cpp Streams/WinAPI/FileUtils_WinAPI.cpp Threading/WinAPI/ThreadObject_WinAPI.cpp)
-else()
+elseif (NOT APPLE)
     set(LinuxSrc Linux/System_Linux.cpp Streams/Linux/FileSystemMonitor_Linux.cpp Streams/Linux/FileUtils_Linux.cpp)
 endif()
 

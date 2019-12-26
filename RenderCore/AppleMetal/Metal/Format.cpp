@@ -349,14 +349,51 @@ namespace RenderCore { namespace Metal_AppleMetal
     MTLVertexFormat AsMTLVertexFormat(RenderCore::Format fmt)
     {
         switch (fmt) {
+            case Format::R32_FLOAT: return MTLVertexFormatFloat;
             case Format::R32G32_FLOAT: return MTLVertexFormatFloat2;
             case Format::R32G32B32_FLOAT: return MTLVertexFormatFloat3;
             case Format::R32G32B32A32_FLOAT: return MTLVertexFormatFloat4;
 
+            case Format::R32_SINT: return MTLVertexFormatInt;
+            case Format::R32G32_SINT: return MTLVertexFormatInt2;
+            case Format::R32G32B32_SINT: return MTLVertexFormatInt3;
+            case Format::R32G32B32A32_SINT: return MTLVertexFormatInt4;
+
+            case Format::R32_UINT: return MTLVertexFormatUInt;
+            case Format::R32G32_UINT: return MTLVertexFormatUInt2;
+            case Format::R32G32B32_UINT: return MTLVertexFormatUInt3;
+            case Format::R32G32B32A32_UINT: return MTLVertexFormatUInt4;
+
+            case Format::R8G8_UNORM: return MTLVertexFormatUChar2Normalized;
+            case Format::R8G8B8_UNORM: return MTLVertexFormatUChar3Normalized;
             case Format::R8G8B8A8_UNORM: return MTLVertexFormatUChar4Normalized;
+
+            case Format::R8G8_SNORM: return MTLVertexFormatChar2Normalized;
+            case Format::R8G8B8_SNORM: return MTLVertexFormatChar3Normalized;
+            case Format::R8G8B8A8_SNORM: return MTLVertexFormatChar4Normalized;
+
+            case Format::R16G16_UNORM: return MTLVertexFormatUShort2Normalized;
+            case Format::R16G16B16A16_UNORM: return MTLVertexFormatUShort4Normalized;
+
+            case Format::R16G16_SNORM: return MTLVertexFormatShort2Normalized;
             case Format::R16G16B16A16_SNORM: return MTLVertexFormatShort4Normalized;
 
+            case Format::R16G16_FLOAT: return MTLVertexFormatHalf2;
             case Format::R16G16B16A16_FLOAT: return MTLVertexFormatHalf4;
+
+            case Format::R16G16_UINT: return MTLVertexFormatUShort2;
+            case Format::R16G16B16A16_UINT: return MTLVertexFormatUShort4;
+
+            case Format::R16G16_SINT: return MTLVertexFormatShort2;
+            case Format::R16G16B16A16_SINT: return MTLVertexFormatShort4;
+
+            case Format::R8G8_UINT: return MTLVertexFormatUChar2;
+            case Format::R8G8B8_UINT: return MTLVertexFormatUChar3;
+            case Format::R8G8B8A8_UINT: return MTLVertexFormatUChar4;
+
+            case Format::R8G8_SINT: return MTLVertexFormatChar2;
+            case Format::R8G8B8_SINT: return MTLVertexFormatChar3;
+            case Format::R8G8B8A8_SINT: return MTLVertexFormatChar4;
 
             default: break;
         }
@@ -373,5 +410,67 @@ namespace RenderCore { namespace Metal_AppleMetal
 #endif
 
         return MTLVertexFormatInvalid;
+    }
+
+
+    Utility::ImpliedTyping::TypeDesc AsTypeDesc(MTLDataType fmt)
+    {
+        switch(fmt)
+        {
+        case MTLDataTypeFloat: return { ImpliedTyping::TypeCat::Float };
+        case MTLDataTypeFloat2: return { ImpliedTyping::TypeCat::Float, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeFloat3: return { ImpliedTyping::TypeCat::Float, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeFloat4: return { ImpliedTyping::TypeCat::Float, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeFloat2x2: return { ImpliedTyping::TypeCat::Float, uint16(4), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat2x3: return { ImpliedTyping::TypeCat::Float, uint16(6), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat2x4: return { ImpliedTyping::TypeCat::Float, uint16(8), ImpliedTyping::TypeHint::Matrix };
+
+        case MTLDataTypeFloat3x2: return { ImpliedTyping::TypeCat::Float, uint16(6), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat3x3: return { ImpliedTyping::TypeCat::Float, uint16(9), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat3x4: return { ImpliedTyping::TypeCat::Float, uint16(12), ImpliedTyping::TypeHint::Matrix };
+
+        case MTLDataTypeFloat4x2: return { ImpliedTyping::TypeCat::Float, uint16(8), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat4x3: return { ImpliedTyping::TypeCat::Float, uint16(12), ImpliedTyping::TypeHint::Matrix };
+        case MTLDataTypeFloat4x4: return { ImpliedTyping::TypeCat::Float, uint16(16), ImpliedTyping::TypeHint::Matrix };
+
+        case MTLDataTypeInt: return { ImpliedTyping::TypeCat::Int32 };
+        case MTLDataTypeInt2: return { ImpliedTyping::TypeCat::Int32, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeInt3: return { ImpliedTyping::TypeCat::Int32, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeInt4: return { ImpliedTyping::TypeCat::Int32, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeUInt: return { ImpliedTyping::TypeCat::UInt32 };
+        case MTLDataTypeUInt2: return { ImpliedTyping::TypeCat::UInt32, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUInt3: return { ImpliedTyping::TypeCat::UInt32, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUInt4: return { ImpliedTyping::TypeCat::UInt32, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeShort: return { ImpliedTyping::TypeCat::Int16 };
+        case MTLDataTypeShort2: return { ImpliedTyping::TypeCat::Int16, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeShort3: return { ImpliedTyping::TypeCat::Int16, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeShort4: return { ImpliedTyping::TypeCat::Int16, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeUShort: return { ImpliedTyping::TypeCat::UInt16 };
+        case MTLDataTypeUShort2: return { ImpliedTyping::TypeCat::UInt16, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUShort3: return { ImpliedTyping::TypeCat::UInt16, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUShort4: return { ImpliedTyping::TypeCat::UInt16, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeChar: return { ImpliedTyping::TypeCat::Int8 };
+        case MTLDataTypeChar2: return { ImpliedTyping::TypeCat::Int8, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeChar3: return { ImpliedTyping::TypeCat::Int8, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeChar4: return { ImpliedTyping::TypeCat::Int8, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeUChar: return { ImpliedTyping::TypeCat::UInt8 };
+        case MTLDataTypeUChar2: return { ImpliedTyping::TypeCat::UInt8, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUChar3: return { ImpliedTyping::TypeCat::UInt8, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeUChar4: return { ImpliedTyping::TypeCat::UInt8, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        case MTLDataTypeBool: return { ImpliedTyping::TypeCat::Bool };
+        case MTLDataTypeBool2: return { ImpliedTyping::TypeCat::Bool, uint16(2), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeBool3: return { ImpliedTyping::TypeCat::Bool, uint16(3), ImpliedTyping::TypeHint::Vector };
+        case MTLDataTypeBool4: return { ImpliedTyping::TypeCat::Bool, uint16(4), ImpliedTyping::TypeHint::Vector };
+
+        default:
+            return {};
+        }
     }
 }}

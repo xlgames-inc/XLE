@@ -210,7 +210,7 @@ namespace RenderCore { namespace Techniques
             std::shared_ptr<Metal::FrameBuffer> _fb;
             std::vector<AttachmentName> _poolAttachmentsRemapping;
         };
-        Entry _entries[5];
+        Entry _entries[10];
         unsigned _currentTickId = 0;
 
         void IncreaseTickId();
@@ -237,8 +237,11 @@ namespace RenderCore { namespace Techniques
 		assert(poolAttachments.size() == desc.GetAttachments().size());
 
         uint64_t hashValue = desc.GetHash();
-        for (const auto&a:poolAttachments)
-            hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
+        for (const auto&a:poolAttachments) {
+            auto *res = attachmentPool.GetResource(a).get();
+            assert(res);
+            hashValue = HashCombine(res->GetGUID(), hashValue);
+        }
         assert(hashValue != ~0ull);     // using ~0ull has a sentinel, so this will cause some problems
 
         unsigned earliestEntry = 0;
@@ -369,7 +372,7 @@ namespace RenderCore { namespace Techniques
         _frameBuffer = std::move(fb._frameBuffer);
         _attachmentPoolRemapping = std::vector<AttachmentName>(fb._poolAttachmentsRemapping.begin(), fb._poolAttachmentsRemapping.end());
         _attachmentPool = &attachmentPool;
-        Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, layout, attachmentPool.GetFrameBufferProperties(), beginInfo._clearValues);
+        Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, beginInfo._clearValues);
     }
 
 	RenderPassInstance::RenderPassInstance(
@@ -692,7 +695,7 @@ namespace RenderCore { namespace Techniques
 				// Prefer "typeless" formats when creating the actual attachments
 				// This ensures that we can have complete freedom when we create views
 				auto typelessDesc = r._desc;
-                #if GFXAPI_TARGET != GFXAPI_OPENGLES        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
+                #if (GFXAPI_TARGET != GFXAPI_OPENGLES) && (GFXAPI_TARGET != GFXAPI_APPLEMETAL)        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
 				    typelessDesc._format = AsTypelessFormat(typelessDesc._format);
                 #endif
                 _pimpl->_attachments.push_back(
@@ -757,6 +760,19 @@ namespace RenderCore { namespace Techniques
             });
 		if (existingBinding != _pimpl->_semanticAttachments.end())
 			return existingBinding->_resource;
+		return nullptr;
+	}
+
+	auto AttachmentPool::GetBoundResourceDesc(uint64_t semantic) -> const AttachmentDesc*
+	{
+		auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [semantic](const Pimpl::SemanticAttachment& a) {
+                return a._semantic == semantic;
+            });
+		if (existingBinding != _pimpl->_semanticAttachments.end())
+			return &existingBinding->_desc;
 		return nullptr;
 	}
 
@@ -833,6 +849,34 @@ namespace RenderCore { namespace Techniques
     AttachmentPool::~AttachmentPool()
     {}
     
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	RenderCore::IResourcePtr SemanticNamedAttachments::GetResource(RenderCore::AttachmentName resName) const
+	{
+		assert(resName < _semanticMapping.size());
+        return _pool->GetBoundResource(_semanticMapping[resName]);
+	}
+
+    const RenderCore::AttachmentDesc* SemanticNamedAttachments::GetDesc(RenderCore::AttachmentName resName) const
+	{
+		assert(resName < _semanticMapping.size());
+        return _pool->GetBoundResourceDesc(_semanticMapping[resName]);
+	}
+
+	const FrameBufferProperties& SemanticNamedAttachments::GetFrameBufferProperties() const
+	{
+		return _pool->GetFrameBufferProperties();
+	}
+
+    SemanticNamedAttachments::SemanticNamedAttachments(
+		RenderCore::Techniques::AttachmentPool& pool, 
+		IteratorRange<const uint64_t*> semanticMapping)
+	: _pool(&pool), _semanticMapping(semanticMapping.begin(), semanticMapping.end()) 
+	{}
+
+    SemanticNamedAttachments::~SemanticNamedAttachments()
+	{}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(

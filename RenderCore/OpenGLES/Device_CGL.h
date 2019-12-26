@@ -58,6 +58,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
         virtual void Present(IPresentationChain& presentationChain) override;
+        virtual void CommitHeadless() override;
 
         virtual bool IsImmediate() const override { return false; }
         virtual std::shared_ptr<IDevice> GetDevice() const override;
@@ -113,6 +114,8 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
         virtual FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
+        virtual void Stall() override;
+
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-CGL", "", "" }; }
 
         virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
@@ -134,8 +137,6 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
         virtual unsigned GetNativeFormatCode() override;
         virtual void* QueryInterface(size_t guid) override;
-
-        Metal_OpenGLES::DeviceContext *GetImmediateDeviceContext();
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();

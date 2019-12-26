@@ -6,9 +6,11 @@
 #include "Metal/Format.h"
 #include "Metal/QueryPool.h"
 #include "Metal/Shader.h"
+#include "../Init.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <iostream>
@@ -18,8 +20,117 @@
 #include <OpenGLES/EAGL.h>
 #include <UIKit/UIView.h>
 
+#pragma GCC diagnostic ignored "-Wunused-value"
+
 namespace RenderCore { namespace ImplOpenGLES
 {
+    #if defined(_DEBUG)
+        class BoundContextVerification
+        {
+        public:
+            void BindToCurrentThread(size_t id);
+            void UnbindFromCurrentThread(size_t id);
+            void CheckBinding(size_t id);
+
+            BoundContextVerification();
+            ~BoundContextVerification();
+
+            static BoundContextVerification& GetInstance();
+        private:
+            Threading::Mutex _lock;
+            std::vector<std::pair<Threading::ThreadId, size_t>> _bindings;
+
+            static BoundContextVerification* s_instance;
+        };
+
+        BoundContextVerification* BoundContextVerification::s_instance = nullptr;
+
+        void BoundContextVerification::BindToCurrentThread(size_t id)
+        {
+            auto currentThreadId = Threading::CurrentThreadId();
+
+            ScopedLock(_lock);
+            for (auto&b:_bindings) {
+                if (b.second == id && b.first != currentThreadId) {
+                    assert(0);
+                }
+            }
+
+            for (auto&b:_bindings) {
+                if (b.first == currentThreadId) {
+                    assert(b.second == id);
+                    b.second = id;
+                    return;
+                }
+            }
+
+            _bindings.push_back(std::make_pair(currentThreadId, id));
+        }
+
+        void BoundContextVerification::UnbindFromCurrentThread(size_t id)
+        {
+            auto currentThreadId = Threading::CurrentThreadId();
+
+            ScopedLock(_lock);
+            for (auto i=_bindings.begin(); i!=_bindings.end(); ++i) {
+                if (i->first == currentThreadId) {
+                    assert(i->second == id);
+                    _bindings.erase(i);
+                    return;
+                }
+            }
+
+            assert(0);
+        }
+
+        void BoundContextVerification::CheckBinding(size_t id)
+        {
+            auto currentThreadId = Threading::CurrentThreadId();
+
+            ScopedLock(_lock);
+            for (const auto&b:_bindings) {
+                if (b.first == currentThreadId) {
+                    assert(b.second == id);
+                    return;
+                }
+            }
+
+            assert(0);
+        }
+
+        BoundContextVerification::BoundContextVerification()
+        {
+            assert(s_instance == nullptr);
+            s_instance = this;
+        }
+
+        BoundContextVerification::~BoundContextVerification()
+        {
+            {
+                ScopedLock(_lock);
+                assert(_bindings.empty());
+            }
+            assert(s_instance == this);
+            s_instance = nullptr;
+        }
+
+        BoundContextVerification& BoundContextVerification::GetInstance()
+        {
+            return *s_instance;
+        }
+
+        static EAGLSharegroup * s_mainShareGroup = nil;
+
+        void CheckContextIntegrity()
+        {
+            assert(EAGLContext.currentContext);
+            assert(EAGLContext.currentContext.sharegroup == s_mainShareGroup);
+            BoundContextVerification::GetInstance().CheckBinding((size_t)EAGLContext.currentContext);
+        }
+    #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(EAGLRenderingAPI api)
     {
         Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200;
@@ -53,12 +164,30 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         _sharedContext = TBC::moveptr(t);
         [EAGLContext setCurrentContext:_sharedContext.get()];
+        #if defined(_DEBUG)
+            _boundContextVerification = std::make_unique<BoundContextVerification>();
+            _boundContextVerification->BindToCurrentThread((size_t)_sharedContext.get());
+        #endif
+
+        #if defined(_DEBUG)
+            s_mainShareGroup = _sharedContext.get().sharegroup;
+        #endif
+
         auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);
         _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
     }
 
     Device::~Device()
     {
+        if (EAGLContext.currentContext == _sharedContext.get()) {
+            #if defined(_DEBUG)
+                _boundContextVerification->UnbindFromCurrentThread((size_t)_sharedContext.get());
+            #endif
+            EAGLContext.currentContext = nil;
+        }
+        #if defined(_DEBUG)
+            _boundContextVerification.reset();
+        #endif
     }
 
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc)
@@ -112,6 +241,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
     }
 
+    void Device::Stall()
+    {
+        glFinish();
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
@@ -138,6 +272,7 @@ namespace RenderCore { namespace ImplOpenGLES
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, EAGLContext* eaglContext, const void* platformValue, const PresentationChainDesc& desc)
+    : _eaglContext(eaglContext)
     {
         if (desc._bindFlags & BindFlag::ShaderResource) {
             Throw(std::runtime_error("Readable main color buffer is not supported on iOS; need to use fake backbuffer path"));
@@ -209,8 +344,13 @@ namespace RenderCore { namespace ImplOpenGLES
             _activeFrameContext = _sharedContext;
         }
 
-        if (EAGLContext.currentContext != _activeFrameContext.get())
+        if (EAGLContext.currentContext != _activeFrameContext.get()) {
             [EAGLContext setCurrentContext:_activeFrameContext.get()];
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_activeFrameContext.get());
+            #endif
+        }
+
         return _activeFrameRenderbuffer;
     }
 
@@ -227,8 +367,21 @@ namespace RenderCore { namespace ImplOpenGLES
         _activeFrameRenderbuffer.reset();
         _activeFrameBuffer.reset();
         _activeFrameContext = nullptr;
-        if (EAGLContext.currentContext != _sharedContext.get())
+        if (EAGLContext.currentContext != _sharedContext.get()) {
             [EAGLContext setCurrentContext:_sharedContext.get()];
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_activeFrameContext.get());
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #endif
+        }
+    }
+
+    void ThreadContext::CommitHeadless()
+    {
+        assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
+        if (EAGLContext.currentContext) {
+            glFlush();
+        }
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
@@ -264,6 +417,12 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         auto* t = [[EAGLContext alloc] initWithAPI:_sharedContext.get().API sharegroup:_sharedContext.get().sharegroup];
         _deferredContext = TBC::moveptr(t);
+
+        // All of the contexts within the same share group must have a matching "multiThreaded" flag
+        // without this, we can get strange crashes & unexpected opengl errors
+        _deferredContext.get().multiThreaded = _sharedContext.get().multiThreaded;
+
+        assert(EAGLContext.currentContext != t);        // BoundContextVerification assumes that creating a context doesn't change the currentContext
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +431,7 @@ namespace RenderCore { namespace ImplOpenGLES
         : ThreadContext(sharedContext, device)
     {
         auto featureSet = AsGLESFeatureSet(sharedContext.API);
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(device, featureSet);
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}
@@ -287,6 +446,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
     bool ThreadContextOpenGLES::IsBoundToCurrentThread()
     {
+        #if defined(_DEBUG)
+            CheckContextIntegrity();
+        #endif
         EAGLContext* currentContext = EAGLContext.currentContext;
         if (_activeFrameContext) {
             return currentContext == _activeFrameContext.get();
@@ -299,8 +461,22 @@ namespace RenderCore { namespace ImplOpenGLES
 
     bool ThreadContextOpenGLES::BindToCurrentThread()
     {
+        assert(!_activeFrameContext);
         if (_deferredContext) {
+            // Double check that the "multiThreaded" flag on the deferred context matches the shared context flag
+            // All contexts within the same share group must agree on the state of this flag. If one has
+            // it enabled, but others do not, then strange things will happen.
+            assert(_sharedContext.get().multiThreaded == _deferredContext.get().multiThreaded);
             EAGLContext.currentContext = _deferredContext.get();
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_deferredContext.get());
+            #endif
+            return IsBoundToCurrentThread();
+        } else if (_sharedContext) {
+            EAGLContext.currentContext = _sharedContext.get();
+            #if defined(_DEBUG)
+                BoundContextVerification::GetInstance().BindToCurrentThread((size_t)_sharedContext.get());
+            #endif
             return IsBoundToCurrentThread();
         } else {
             return false;
@@ -312,6 +488,13 @@ namespace RenderCore { namespace ImplOpenGLES
         assert(IsBoundToCurrentThread());
         glFlush();
         EAGLContext.currentContext = nil;
+        #if defined(_DEBUG)
+            if (_deferredContext) {
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_deferredContext.get());
+            } else {
+                BoundContextVerification::GetInstance().UnbindFromCurrentThread((size_t)_sharedContext.get());
+            }
+        #endif
     }
 
     std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()
@@ -324,6 +507,12 @@ namespace RenderCore { namespace ImplOpenGLES
     render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
         return std::make_shared<DeviceOpenGLES>();
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::OpenGLES, &CreateDevice);
     }
 
 } }

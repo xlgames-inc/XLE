@@ -6,12 +6,12 @@
 
 #include "OutputStream.h"
 #include "Console.h"
-#include "../../Utility/Streams/Stream.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/StringUtils.h"
-#include "../../Utility/StringFormat.h"
-#include "../../Utility/Conversion.h"
+#include "../Utility/Streams/Stream.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Conversion.h"
 #include <assert.h>
 #include <algorithm>
 

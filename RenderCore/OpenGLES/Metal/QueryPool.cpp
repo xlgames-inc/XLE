@@ -4,6 +4,7 @@
 
 #include "QueryPool.h"
 #include "DeviceContext.h"
+#include "ObjectFactory.h"
 #include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -28,6 +29,55 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory) {}
     TimeStampQueryPool::~TimeStampQueryPool() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto SyncEventSet::SetEvent() -> SyncEvent
+    {
+        auto glName = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        auto result = _nextEvent++;
+        _pendingSyncs.push_back({glName, result});
+        return result;
+    }
+
+    auto SyncEventSet::LastCompletedEvent() -> SyncEvent
+    {
+        while (!_pendingSyncs.empty()) {
+            auto nextToTest = _pendingSyncs.front();
+            GLint status = GL_UNSIGNALED;
+            GLsizei queriedValues = 0;
+            glGetSynciv(nextToTest.first, GL_SYNC_STATUS, sizeof(status), &queriedValues, &status);
+            if (status == GL_UNSIGNALED) break;
+            _lastCompletedEvent = std::max(_lastCompletedEvent, nextToTest.second);
+            glDeleteSync(nextToTest.first);
+            _pendingSyncs.pop_front();
+        }
+        return _lastCompletedEvent;
+    }
+
+    bool SyncEventSet::IsSupported()
+    {
+        #if !defined(PGDROID)
+            return GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300;
+        #else
+            return false;
+        #endif
+    }
+
+    SyncEventSet::SyncEventSet(IThreadContext *context)
+    {
+        _nextEvent = 1;
+        _lastCompletedEvent = 0;
+    }
+
+    SyncEventSet::~SyncEventSet()
+    {
+        for (auto&s:_pendingSyncs) {
+            glDeleteSync(s.first);
+        }
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if defined(GPUANNOTATIONS_ENABLE)
 

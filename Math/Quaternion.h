@@ -12,7 +12,6 @@
     #pragma warning(push)
     #pragma warning(disable:4512)       // assignment operator could not be generated
     #include <cml/quaternion.h>
-    #include <cml/mathlib/interpolation.h>
     #pragma warning(pop)
 #endif
 
@@ -43,7 +42,21 @@ namespace XLEMath
 
     inline Quaternion SphericalInterpolate(const Quaternion& lhs, const Quaternion& rhs, float alpha)
     {
-        return cml::slerp(lhs, rhs, alpha);
-    }
+		float tolerance = 1e-4f;
+
+		Quaternion qr = rhs;
+		float c = cml::dot(lhs,qr);
+		if (c < 0.f) {
+			qr = -qr;
+			c = -c;
+		}
+
+		float omega = cml::acos_safe(c);
+		float s = std::sin(omega);
+		
+		return (s < tolerance) ?
+			cml::normalize((1.f - alpha) * lhs + alpha * qr) :
+			(float(std::sin((1.f - alpha) * omega)) * lhs + float(std::sin(alpha * omega)) * qr) / s;
+	}
 }
 

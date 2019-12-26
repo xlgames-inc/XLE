@@ -10,6 +10,7 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class Buffer;
     class BoundInputLayout;
     class BoundUniforms;
+    class BoundVertexBuffers;
     class Resource;
     class ShaderProgram;
     class ShaderResourceView;
@@ -23,8 +24,9 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class SamplerStateDesc;
     class SamplerState;
     class BlendState;
-    class ViewportDesc;
     class PipelineLayoutConfig;
     class ObjectFactory;
+    class GraphicsPipeline;
+    class GraphicsPipelineBuilder;
 
 }}

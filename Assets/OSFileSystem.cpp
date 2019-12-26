@@ -13,6 +13,7 @@
 #include "../Core/Exceptions.h"
 #include <sstream>
 #include <vector>
+#include <regex>
 
 namespace Assets
 {
@@ -70,12 +71,20 @@ namespace Assets
 
 	IOReason File_OS::TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
 	{
-		return _file.TryOpen(filename, openMode, shareMode);
+		auto res = _file.TryOpen(filename, openMode, shareMode);
+        if (res == Utility::Exceptions::IOException::Reason::Success) {
+            _fn = filename;
+        }
+        return res;
 	}
 
 	IOReason File_OS::TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
 	{
-		return _file.TryOpen(filename, openMode, shareMode);
+        auto res = _file.TryOpen(filename, openMode, shareMode);
+        if (res == Utility::Exceptions::IOException::Reason::Success) {
+            _fn = Conversion::Convert<std::basic_string<utf8>>(MakeStringSection(filename));
+        }
+        return res;
 	}
 
 	File_OS::File_OS() {}
@@ -83,7 +92,7 @@ namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class FileSystem_OS : public IFileSystem
+	class FileSystem_OS : public IFileSystem, public ISearchableFileSystem
 	{
 	public:
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf8> filename);
@@ -94,6 +103,12 @@ namespace Assets
 		virtual IOReason	TryOpen(MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
+
+        virtual std::vector<IFileSystem::Marker> FindFiles(
+            StringSection<utf8> baseDirectory,
+            StringSection<utf8> regexMatchPattern);
+        virtual std::vector<std::basic_string<utf8>> FindSubDirectories(
+            StringSection<utf8> baseDirectory);
 
 		FileSystem_OS(StringSection<utf8> root, bool ignorePaths);
 		~FileSystem_OS();
@@ -273,6 +288,48 @@ namespace Assets
 
 		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 	}
+
+    std::vector<IFileSystem::Marker> FileSystem_OS::FindFiles(
+        StringSection<utf8> baseDirectory,
+        StringSection<utf8> regexMatchPattern)
+    {
+        auto dir = Conversion::Convert<std::string>(_rootUTF8 + u("/") + baseDirectory.AsString());
+        auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::File);
+        std::vector<IFileSystem::Marker> res;
+        res.reserve(temp.size());
+        std::regex r(regexMatchPattern.Cast<char>().AsString());
+        for (const auto&t:temp) {
+            std::smatch match;
+            if (std::regex_match(t, match, r)) {
+
+                Marker marker;
+                marker.resize(2 + (t.size()+ 1) * sizeof(utf8));
+                auto* out = AsPointer(marker.begin());
+                *(uint16*)out = 1;
+                uint8* dst = (uint8*)PtrAdd(out, 2);
+                std::copy(t.begin(), t.end(), dst);
+                dst[t.size()] = 0;
+
+                res.push_back(marker);
+            }
+        }
+        return res;
+    }
+
+    std::vector<std::basic_string<utf8>> FileSystem_OS::FindSubDirectories(
+        StringSection<utf8> baseDirectory)
+    {
+        auto dir = Conversion::Convert<std::string>(_rootUTF8 + u("/") + baseDirectory.AsString());
+        auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::Directory);
+        std::vector<std::basic_string<utf8>> res;
+        res.reserve(temp.size());
+        auto rootSplit = MakeSplitPath(_rootUTF8);
+        for (const auto&t:temp) {
+            auto asUTF8 = Conversion::Convert<std::basic_string<utf8>>(t);
+            res.push_back(MakeFileNameSplitter(asUTF8).FileAndExtension().AsString());
+        }
+        return res;
+    }
 
 	FileSystem_OS::FileSystem_OS(StringSection<utf8> root, bool ignorePaths)
 	: _ignorePaths(ignorePaths)

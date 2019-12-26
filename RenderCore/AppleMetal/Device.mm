@@ -4,11 +4,15 @@
 
 #include "Device.h"
 #include "../IAnnotator.h"
+#include "../Init.h"
+#include "../../Utility/FunctionUtils.h"
 #include <assert.h>
 
 #include "Metal/IncludeAppleMetal.h"
 #include "Metal/Format.h"
 #include "Metal/DeviceContext.h" // for ObjectFactory
+#include "Metal/QueryPool.h"
+#include "Metal/Shader.h"
 #include <QuartzCore/CAMetalLayer.h>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
@@ -17,50 +21,99 @@
     #include <UIKit/UIView.h>
 #endif
 
+#pragma GCC diagnostic ignored "-Wunused-value"
+
 namespace RenderCore { namespace ImplAppleMetal
 {
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
-        assert(!_activeFrameDrawable);
-        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
-        _activeFrameDrawable = nullptr;
+        assert(_immediateCommandQueue);
+        assert(_commandBuffer);
 
+        _activeFrameDrawable = nullptr;
+        
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
 
         // note -- nextDrawable can stall if the CPU is running too fast
         id<CAMetalDrawable> nextDrawable = [presChain.GetUnderlyingLayer() nextDrawable];
-
         id<MTLTexture> texture = nextDrawable.texture;
-
         _activeFrameDrawable = nextDrawable;
 
-        // Each thread will have its own command buffer, which is provided to the device context to create command encoders
-        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+        // Find a cached GUID for this texture
+        // We keep a limited list of texture pointer to GUID mapping. We assume if we get back
+        // the same pointer value, we can map it onto the same GUID.
+        uint64_t renderTargetGuid = 0;
+        {
+            auto i = std::find_if(
+                presChain._drawableTextureGUIDMapping.begin(),
+                presChain._drawableTextureGUIDMapping.end(),
+                [texture](const std::pair<id, uint64_t> &p) { return p.first == texture; });
+            if (i != presChain._drawableTextureGUIDMapping.end()) {
+                renderTargetGuid = i->second;
 
-        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
+                auto v = *i;
+                presChain._drawableTextureGUIDMapping.erase(i);
+                presChain._drawableTextureGUIDMapping.push_back(v);
+            } else {
+                const unsigned cacheSizeLimit = 32;
+                if (presChain._drawableTextureGUIDMapping.size() >= cacheSizeLimit)
+                    presChain._drawableTextureGUIDMapping.erase(presChain._drawableTextureGUIDMapping.begin());
+
+                renderTargetGuid = Metal_AppleMetal::Resource::ReserveGUID();
+                presChain._drawableTextureGUIDMapping.push_back({texture, renderTargetGuid});
+            }
+        }
 
         // KenD -- This is constructing a RenderBuffer, but we don't really differentiate between RenderBuffer and Texture really.  The binding is specified as RenderTarget.
-        return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture));
+        return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture), renderTargetGuid);
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
     {
-        assert(_commandBuffer);
-        assert(_immediateCommandQueue);
         if (_activeFrameDrawable) {
             [_commandBuffer.get() presentDrawable:_activeFrameDrawable.get()];
         }
-        [_commandBuffer.get() commit];
-
-        GetDeviceContext()->ReleaseCommandBuffer();
-
         _activeFrameDrawable = nullptr;
+        
+        EndHeadlessFrame();
+    }
+
+    void        ThreadContext::CommitHeadless()
+    {
+        EndHeadlessFrame();
+    }
+
+    void        ThreadContext::BeginHeadlessFrame()
+    {
+        assert(!_activeFrameDrawable);
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present on the "immediate" context
+        
+        // Each thread will have its own command buffer, which is provided to the device context to create command encoders
+        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
+    }
+    
+    void        ThreadContext::EndHeadlessFrame()
+    {
+        assert(_commandBuffer);
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present/CommitHeadless on the "immediate" context
+        
+        [_commandBuffer.get() commit];
+        GetDeviceContext()->ReleaseCommandBuffer();
         _commandBuffer = nullptr;
+
+        // Begin a new command buffer immediately
+        _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
+        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
     }
 
     bool                        ThreadContext::IsImmediate() const { return _immediateCommandQueue != nullptr; }
-    ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
+    ThreadContextStateDesc      ThreadContext::GetStateDesc() const
+    {
+        Throw(::Exceptions::BasicLabel("ThreadContext::GetStateDesc is not implemented for Apple Metal because we don't currently support retrieving the viewport"));
+        return {};
+    }
     std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
     void                        ThreadContext::IncrFrameId() {}
     void                        ThreadContext::InvalidateCachedState() const {}
@@ -70,8 +123,7 @@ namespace RenderCore { namespace ImplAppleMetal
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            assert(0);
-            // _annotator = CreateAnnotator(*d);         DavidJ -- update to new IAnnotator interface
+            _annotator = std::make_unique<Metal_AppleMetal::Annotator>();
         }
         return *_annotator;
     }
@@ -80,6 +132,8 @@ namespace RenderCore { namespace ImplAppleMetal
     {
         if (guid == typeid(IThreadContextAppleMetal).hash_code())
             return (IThreadContextAppleMetal*)this;
+        if (guid == typeid(ThreadContext).hash_code())
+            return (ThreadContext*)this;
         return nullptr;
     }
 
@@ -95,10 +149,8 @@ namespace RenderCore { namespace ImplAppleMetal
     : _immediateCommandQueue(immediateCommandQueue)
     , _device(device)
     {
-        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
-
-        // KenD -- needed a way for the device context to access the MTLDevice
-        _devContext->HoldDevice(device->GetUnderlying());
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>(device);
+        BeginHeadlessFrame();
     }
 
     ThreadContext::ThreadContext(
@@ -107,10 +159,7 @@ namespace RenderCore { namespace ImplAppleMetal
     : _device(device)
     , _commandBuffer(commandBuffer)
     {
-        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
-
-        // KenD -- needed a way for the device context to access the MTLDevice
-        _devContext->HoldDevice(device->GetUnderlying());
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>(device);
     }
 
     ThreadContext::~ThreadContext() {
@@ -161,13 +210,23 @@ namespace RenderCore { namespace ImplAppleMetal
 
     std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
     {
-        assert(0);      // DavidJ -- unimplemented
-        return nullptr;
+        return Metal_AppleMetal::CreateLowLevelShaderCompiler(*this);
+    }
+
+    void Device::Stall() {
+        TBC::OCPtr<id> buffer = [_immediateCommandQueue commandBuffer];
+        [buffer commit];
+        [buffer waitUntilCompleted];
     }
 
     DeviceDesc Device::GetDesc()
     {
         return DeviceDesc { "AppleMetal", "", "" };
+    }
+
+    Metal_AppleMetal::FeatureSet::BitField Device::GetFeatureSet()
+    {
+        return _objectFactory->GetFeatureSet();
     }
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
@@ -214,14 +273,9 @@ namespace RenderCore { namespace ImplAppleMetal
 
         _desc = std::make_shared<PresentationChainDesc>(desc);
 
-        /* KenD -- Metal Hack -- a bit of a hack to double the width and height for higher resolation (mimics retina displays);
-         * tried changing the contentsScale of the CAMetalLayer, but that didn't have a noticeable effect. */
-        _desc->_width *= 2.0;
-        _desc->_height *= 2.0;
-
         auto* metalLayer = (CAMetalLayer*)view.layer;
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm; /* Metal TODO -- Currently fixed to using LDR format */
-        metalLayer.framebufferOnly = YES;
+        metalLayer.framebufferOnly = NO; /* This must be false in order to use the BlitCommandEncoder to capture the frame buffer to a texture */
         metalLayer.drawableSize = CGSizeMake(_desc->_width, _desc->_height);
         metalLayer.device = device;
         // metalLayer.colorSpace = nil;     <-- only OSX?
@@ -251,6 +305,12 @@ namespace RenderCore { namespace ImplAppleMetal
         if (!underlyingDevice)
             return nullptr;
         return std::make_shared<Device>(underlyingDevice);
+    }
+
+    void RegisterCreation()
+    {
+        static_constructor<&RegisterCreation>::c;
+        RegisterDeviceCreationFunction(UnderlyingAPI::AppleMetal, &TryCreateDevice);
     }
 
 }}

@@ -43,9 +43,8 @@ namespace Assets
 
     void AssetSetManager::Clear()
     {
-        for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            i->second->Clear();
-        }
+        ScopedLock(_pimpl->_lock);
+        _pimpl->_sets.clear();
     }
 
 	std::vector<AssetHeapRecord> AssetSetManager::LogRecords() const
