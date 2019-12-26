@@ -31,7 +31,7 @@ namespace ShaderSourceParser
 
 	static std::pair<std::string, std::string> SplitArchiveName(const std::string& input)
 	{
-		static std::regex archiveNameRegex(R"--(([\w\.\\/]+)::(\w+))--");
+		static std::regex archiveNameRegex(R"--(([\w\.\\/-]+)::(\w+))--");
 		std::smatch archiveNameMatch;
 		if (std::regex_match(input, archiveNameMatch, archiveNameRegex) && archiveNameMatch.size() >= 3) {
 			return { archiveNameMatch[1].str(), archiveNameMatch[2].str() };

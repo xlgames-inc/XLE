@@ -1,6 +1,7 @@
 
 #include "../MainGeometry.h"
 #include "../gbuffer.h"
+#include "MaterialParam.sh"
 
 float3 CoordinatesToColor(float3 coords);
 float4 AmendColor(VSOutput geo, float4 inputColor);

@@ -9,6 +9,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <set>
+#include <unordered_map>
 
 namespace ShaderSourceParser
 {
@@ -73,31 +74,34 @@ namespace ShaderSourceParser
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
 		std::ostream& warningStream)
 	{
-		using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
-
 		std::vector<std::string> srvs;
 		std::vector<std::string> samplers;
 
-		auto mainCB = std::make_shared<RenderCore::Assets::PredefinedCBLayout>();
-		std::vector<NameAndType> cbElements;
-		cbElements.reserve(captures.size());
-
+		using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
+		struct WorkingCB
+		{
+			std::vector<NameAndType> _cbElements;
+			ParameterBox _defaults;
+		};
+		std::unordered_map<std::string, WorkingCB> workingCBs;
 		std::set<std::string> texturesAlreadyStored;
+
 		// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
-		texturesAlreadyStored.insert("DiffuseTexture");
-		texturesAlreadyStored.insert("NormalsTexture");
+		// texturesAlreadyStored.insert("DiffuseTexture");
+		// texturesAlreadyStored.insert("NormalsTexture");
 
 		for (const auto&c : captures) {
 			auto type = CalculateTypeDescriptor(c._type);
 			if (type != TypeDescriptor::Constant) {
-				if (texturesAlreadyStored.find(c._name) == texturesAlreadyStored.end()) {
-					texturesAlreadyStored.insert(c._name);
+				auto globalName = MakeGlobalName(c._name);
+				if (texturesAlreadyStored.find(globalName) == texturesAlreadyStored.end()) {
+					texturesAlreadyStored.insert(globalName);
 					// This capture must be either an srv or a sampler
 					if (c._direction == GraphLanguage::ParameterDirection::In) {
 						if (type == TypeDescriptor::Resource) {
-							srvs.push_back(c._name);
+							srvs.push_back(globalName);
 						} else
-							samplers.push_back(c._name);					
+							samplers.push_back(globalName);					
 					}
 				}
 				continue;
@@ -109,36 +113,53 @@ namespace ShaderSourceParser
 				continue;
 			}
 
-			auto globalName = MakeGlobalName(c._name);
-			cbElements.push_back(NameAndType{ globalName, fmt });
+			std::string cbName, memberName;
+			auto i = c._name.find('.');
+			if (i != std::string::npos) {
+				cbName = c._name.substr(0, i);
+				memberName = c._name.substr(i+1);
+			} else {
+				cbName = "BasicMaterialConstants";
+				memberName = c._name;
+			}
 
+			auto cbi = workingCBs.find(cbName);
+			if (cbi == workingCBs.end())
+				cbi = workingCBs.insert(std::make_pair(cbName, WorkingCB{})).first;
+
+			cbi->second._cbElements.push_back(NameAndType{ memberName, fmt });
 			if (!c._default.empty())
-				mainCB->_defaults.SetParameter(
-					MakeStringSection(globalName).Cast<utf8>(),
+				cbi->second._defaults.SetParameter(
+					MakeStringSection(memberName).Cast<utf8>(),
 					MakeStringSection(c._default));
 		}
-
-		// Sort first in alphabetical order, and then optimize for
-		// type packing. This ensures that we get the same output layout for a given
-		// input, regardless of the input's original ordering.
-		std::sort(
-			cbElements.begin(), cbElements.end(),
-			[](const NameAndType& lhs, const NameAndType& rhs) {
-				return lhs._name < rhs._name;
-			});
-		RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cbElements));
-
-		mainCB->AppendElements(MakeIteratorRange(cbElements));
 
 		auto result = std::make_shared<MaterialDescriptorSet>();
 		result->_srvs = std::move(srvs);
 		result->_samplers = std::move(samplers);
-		if (!mainCB->_elements.empty())
-			result->_constantBuffers.emplace_back(
-				MaterialDescriptorSet::ConstantBuffer {
-					"BasicMaterialConstants",
-					std::move(mainCB)
+
+		for (auto&cb:workingCBs) {
+			// Sort first in alphabetical order, and then optimize for
+			// type packing. This ensures that we get the same output layout for a given
+			// input, regardless of the input's original ordering.
+			std::sort(
+				cb.second._cbElements.begin(), cb.second._cbElements.end(),
+				[](const NameAndType& lhs, const NameAndType& rhs) {
+					return lhs._name < rhs._name;
 				});
+			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cb.second._cbElements));
+
+			auto layout = std::make_shared<RenderCore::Assets::PredefinedCBLayout>();
+			layout->AppendElements(MakeIteratorRange(cb.second._cbElements));
+
+			if (!layout->_elements.empty())
+				result->_constantBuffers.emplace_back(
+					MaterialDescriptorSet::ConstantBuffer {
+						cb.first,
+						std::move(layout)
+					});
+		}
+
 		return result;
 	}
 }

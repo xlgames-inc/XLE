@@ -172,7 +172,7 @@ namespace GraphLanguage
 		auto graphSyntax = std::make_shared<GraphLanguage::GraphSyntaxFile>(ParseGraphSyntax(inputStr));
 		auto main = graphSyntax->_subGraphs.find(entryPoint.AsString());
 		if (main == graphSyntax->_subGraphs.end())
-			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", filename.AsString().c_str()));
+			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input file (%s)", entryPoint.AsString().c_str(), filename.AsString().c_str()));
 
 		auto sigProvider = MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename), asset.GetDependencyValidation());
 
@@ -445,7 +445,7 @@ extern "C" void Captures_Register(const void* ctx, GraphId gid, const char name[
 	for (const auto& i:sig.GetParameters()) {
 		auto newParam = i;
 		newParam._name = std::string(name) + "." + i._name;
-		newParam._direction = GraphLanguage::ParameterDirection::Out;
+		newParam._direction = GraphLanguage::ParameterDirection::In;
 		ng._signature.AddCapturedParameter(newParam);
 	}
 }

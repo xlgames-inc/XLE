@@ -14,21 +14,9 @@ namespace GraphLanguage
 {
     static std::string LoadSourceFile(StringSection<char> sourceFileName)
     {
-        TRY {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(sourceFileName.AsString().c_str(), "rb");
-
-            file.Seek(0, FileSeekAnchor::End);
-            size_t size = file.TellP();
-            file.Seek(0, FileSeekAnchor::Start);
-
-            std::string result;
-            result.resize(size, '\0');
-            file.Read(&result.at(0), 1, size);
-            return result;
-
-        } CATCH(const std::exception& ) {
-            return std::string();
-        } CATCH_END
+		size_t sizeResult = 0;
+		auto data = ::Assets::TryLoadFileAsMemoryBlock(sourceFileName, &sizeResult);
+		return std::string((const char*)data.get(), (const char*)PtrAdd(data.get(), sizeResult));
     }
 
 	class ShaderFragment
