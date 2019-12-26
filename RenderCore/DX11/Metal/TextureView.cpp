@@ -121,7 +121,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-	ResourcePtr RenderTargetView::GetResource() const
+	IResourcePtr RenderTargetView::GetResource() const
     {
         return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
@@ -195,7 +195,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    ResourcePtr DepthStencilView::GetResource() const
+    IResourcePtr DepthStencilView::GetResource() const
     {
         return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
@@ -284,7 +284,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    ResourcePtr UnorderedAccessView::GetResource() const
+    IResourcePtr UnorderedAccessView::GetResource() const
     {
         return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
@@ -396,7 +396,7 @@ namespace RenderCore { namespace Metal_DX11
             GetObjectFactory(*resource).CreateShaderResourceView(r, &srvDesc));
     }
 
-	ResourcePtr ShaderResourceView::GetResource() const
+	IResourcePtr ShaderResourceView::GetResource() const
     {
         return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }

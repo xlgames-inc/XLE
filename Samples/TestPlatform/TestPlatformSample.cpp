@@ -105,7 +105,7 @@ namespace Sample
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        const RenderCore::ResourcePtr& presentationResource,
+        const RenderCore::IResourcePtr& presentationResource,
 		RenderCore::Techniques::ParsingContext& parsingContext,
         TestPlatformSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
@@ -217,7 +217,7 @@ namespace Sample
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        const RenderCore::ResourcePtr& presentationResource,
+        const RenderCore::IResourcePtr& presentationResource,
 		RenderCore::Techniques::ParsingContext& parsingContext,
         TestPlatformSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,

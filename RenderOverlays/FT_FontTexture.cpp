@@ -131,10 +131,10 @@ namespace RenderOverlays
 		}
 	}
 
-	const RenderCore::ResourcePtr& FontTexture2D::GetUnderlying() const
+	const RenderCore::IResourcePtr& FontTexture2D::GetUnderlying() const
 	{
 		Resolve();
-		static RenderCore::ResourcePtr nullResPtr;
+		static RenderCore::IResourcePtr nullResPtr;
 		return _locator ? _locator->GetUnderlying() : nullResPtr;
 	}
 

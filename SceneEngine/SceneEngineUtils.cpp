@@ -218,7 +218,7 @@ namespace SceneEngine
         return (attenuationScalar*(halfRadius*halfRadius)+1.f) * (1.0f / (1.f-powerFraction));
     }
 
-    ResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
+    IResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
         return RenderCore::Assets::Services::GetDevice().CreateResource(desc);
     }

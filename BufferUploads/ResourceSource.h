@@ -27,8 +27,8 @@ namespace BufferUploads
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
     public:
-        using UnderlyingResource = RenderCore::Resource;
-		using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+        using UnderlyingResource = RenderCore::IResource;
+		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
         intrusive_ptr<ResourceLocator>     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
 
@@ -101,8 +101,8 @@ namespace BufferUploads
     class BatchedResources : public IResourcePool, public std::enable_shared_from_this<BatchedResources>
     {
     public:
-        using UnderlyingResource = RenderCore::Resource;
-		using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+        using UnderlyingResource = RenderCore::IResource;
+		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
         intrusive_ptr<ResourceLocator> Allocate(unsigned size, bool& deviceCreation, const char name[]);
 

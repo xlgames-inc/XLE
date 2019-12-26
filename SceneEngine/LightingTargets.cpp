@@ -50,7 +50,7 @@ namespace SceneEngine
     {
         using namespace RenderCore;
 
-        ResourcePtr gbufferTextures[s_gbufferTextureCount];
+        IResourcePtr gbufferTextures[s_gbufferTextureCount];
         Metal::RenderTargetView gbufferRTV[dimof(gbufferTextures)];
         Metal::ShaderResourceView gbufferSRV[dimof(gbufferTextures)];
         std::fill(gbufferTextures, &gbufferTextures[dimof(gbufferTextures)], nullptr);

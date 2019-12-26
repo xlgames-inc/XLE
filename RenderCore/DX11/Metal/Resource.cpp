@@ -81,7 +81,7 @@ namespace RenderCore { namespace Metal_DX11
         return DuplicateResource(context.GetUnderlying(), inputResource.get());
     }
 
-	ResourcePtr Duplicate(DeviceContext& context, Resource& inputResource)
+	IResourcePtr Duplicate(DeviceContext& context, Resource& inputResource)
 	{
 		auto res = DuplicateResource(context.GetUnderlying(), inputResource.GetUnderlying().get());
 		return AsResourcePtr(std::move(res));
@@ -501,12 +501,12 @@ namespace RenderCore { namespace Metal_DX11
 		return d3dRes->_underlying.get();
 	}
 
-	ResourcePtr AsResourcePtr(ID3D::Resource* res)
+	IResourcePtr AsResourcePtr(ID3D::Resource* res)
 	{
 		return std::make_shared<Resource>(res);
 	}
 
-	ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
+	IResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
 	{
 		return std::make_shared<Resource>(std::move(ptr));
 	}

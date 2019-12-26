@@ -307,7 +307,7 @@ namespace RenderCore { namespace ImplDX11
 		}
 	}
 
-	ResourcePtr Device::CreateResource(
+	IResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& init)
 	{
@@ -469,7 +469,7 @@ namespace RenderCore { namespace ImplDX11
         }
     }
 
-	ResourcePtr PresentationChain::GetPresentationResource()
+	IResourcePtr PresentationChain::GetPresentationResource()
 	{
 		ID3D::Texture2D* backBuffer0Temp = nullptr;
         HRESULT hresult = _underlying->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
@@ -494,7 +494,7 @@ namespace RenderCore { namespace ImplDX11
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+    IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
         auto d = _device.lock();

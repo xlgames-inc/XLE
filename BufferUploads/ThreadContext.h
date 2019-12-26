@@ -18,8 +18,8 @@
 
 namespace BufferUploads
 {
-	using UnderlyingResource = RenderCore::Resource;
-	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+	using UnderlyingResource = RenderCore::IResource;
+	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 	using CommandListPtr = RenderCore::Metal::CommandListPtr;
 
         //////   C O M M I T   S T E P   //////

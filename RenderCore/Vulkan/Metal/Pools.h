@@ -106,9 +106,9 @@ namespace RenderCore { namespace Metal_Vulkan
     class DummyResources
     {
     public:
-        ResourcePtr         _blankTexture;
-        ResourcePtr         _blankUAVImageRes;
-        ResourcePtr         _blankUAVBufferRes;
+        IResourcePtr		_blankTexture;
+        IResourcePtr		_blankUAVImageRes;
+        IResourcePtr		_blankUAVBufferRes;
         ShaderResourceView  _blankSrv;
         UnorderedAccessView _blankUavImage;
         UnorderedAccessView _blankUavBuffer;

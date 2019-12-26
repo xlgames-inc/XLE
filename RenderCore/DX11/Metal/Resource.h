@@ -149,7 +149,7 @@ namespace RenderCore { namespace Metal_DX11
         ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
     intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, intrusive_ptr<ID3D::Resource> inputResource);
-	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
+	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      G E T   D E S C       //
@@ -189,8 +189,8 @@ namespace RenderCore { namespace Metal_DX11
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr);
 	ID3D::Resource* AsID3DResource(IResource&);
-	std::shared_ptr<IResource> AsResourcePtr(ID3D::Resource*);
-	std::shared_ptr<IResource> AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
+	IResourcePtr AsResourcePtr(ID3D::Resource*);
+	IResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
 	Resource& AsResource(IResource& res);
 }}
 

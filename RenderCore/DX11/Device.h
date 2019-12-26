@@ -30,7 +30,7 @@ namespace RenderCore { namespace ImplDX11
         void                AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory);
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-		ResourcePtr GetPresentationResource();
+		IResourcePtr GetPresentationResource();
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
@@ -49,7 +49,7 @@ namespace RenderCore { namespace ImplDX11
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        ResourcePtr BeginFrame(IPresentationChain& presentationChain);
+        IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
         void    Present(IPresentationChain& presentationChain) /*override*/;
 
         bool                        IsImmediate() const;
@@ -92,7 +92,7 @@ namespace RenderCore { namespace ImplDX11
         std::shared_ptr<IThreadContext>         GetImmediateContext();
         std::unique_ptr<IThreadContext>         CreateDeferredContext();
 
-		ResourcePtr CreateResource(
+		IResourcePtr CreateResource(
 			const ResourceDesc& desc,
 			const std::function<SubResourceInitData(SubResourceId)>&);
 

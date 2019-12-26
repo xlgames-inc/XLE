@@ -168,7 +168,7 @@ namespace Sample
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-		const RenderCore::ResourcePtr& presentationResource,
+		const RenderCore::IResourcePtr& presentationResource,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
@@ -344,7 +344,7 @@ namespace Sample
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-		const RenderCore::ResourcePtr& presentationResource,
+		const RenderCore::IResourcePtr& presentationResource,
         SceneEngine::LightingParserContext& parserContext,
         EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,

@@ -462,7 +462,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return AsResource(*resource).GetDesc();
 	}
 
-	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
+	RenderCore::IResourcePtr ExtractResource(const TextureView& res)
 	{
 		return res.GetResource();
 	}
@@ -484,7 +484,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 	}
 
-    ResourcePtr CreateResource(
+    IResourcePtr CreateResource(
         const ObjectFactory& factory,
 		const ResourceDesc& desc,
 		const ResourceInitializer& initData)
@@ -494,11 +494,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
 				Internal::ResourceAllocator(),
 				std::ref(factory), std::ref(desc), std::ref(initData));
-			return *reinterpret_cast<ResourcePtr*>(&res);
+			return *reinterpret_cast<IResourcePtr*>(&res);
 		}
 		else {
 			auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
-			return ResourcePtr(
+			return IResourcePtr(
 				(RenderCore::Resource*)res.release(),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
 		}
@@ -814,12 +814,12 @@ namespace RenderCore { namespace Metal_Vulkan
             resource.GetDesc()._textureDesc, initData);
     }
 
-	ResourcePtr Duplicate(ObjectFactory&, Resource& inputResource) 
+	IResourcePtr Duplicate(ObjectFactory&, Resource& inputResource) 
     { 
         Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
     }
 
-	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource)
+	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource)
 	{
 		Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
 	}

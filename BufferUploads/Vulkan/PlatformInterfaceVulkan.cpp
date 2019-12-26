@@ -266,7 +266,7 @@
         {
         }
 
-        ResourcePtr CreateResource(IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
+        IResourcePtr CreateResource(IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,

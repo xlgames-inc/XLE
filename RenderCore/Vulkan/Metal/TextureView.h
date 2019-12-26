@@ -54,11 +54,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ShaderResourceView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window) {}
-		ShaderResourceView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		ShaderResourceView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window, FormatUsage::SRV) {}
 		explicit ShaderResourceView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window) {}
-		explicit ShaderResourceView(const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		explicit ShaderResourceView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window, FormatUsage::SRV) {}
         ShaderResourceView() {}
     };
@@ -70,11 +70,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         RenderTargetView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window) {}
-		RenderTargetView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		RenderTargetView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window, FormatUsage::RTV) {}
 		explicit RenderTargetView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window) {}
-		explicit RenderTargetView(const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		explicit RenderTargetView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window, FormatUsage::RTV) {}
 		RenderTargetView(DeviceContext&) {}
         RenderTargetView() {}
@@ -87,11 +87,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         DepthStencilView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window) {}
-		DepthStencilView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		DepthStencilView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(factory, image, window, FormatUsage::DSV) {}
 		explicit DepthStencilView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window) {}
-		explicit DepthStencilView(const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		explicit DepthStencilView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
             : TextureView(image, window, FormatUsage::DSV) {}
 		DepthStencilView(DeviceContext&) {}
 		DepthStencilView() {}
@@ -104,11 +104,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		UnorderedAccessView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
 			: TextureView(factory, image, window) {}
-		UnorderedAccessView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		UnorderedAccessView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
 			: TextureView(factory, image, window, FormatUsage::UAV) {}
 		explicit UnorderedAccessView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
 			: TextureView(image, window) {}
-		explicit UnorderedAccessView(const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
+		explicit UnorderedAccessView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
 			: TextureView(image, window, FormatUsage::UAV) {}
 		UnorderedAccessView() {}
     };

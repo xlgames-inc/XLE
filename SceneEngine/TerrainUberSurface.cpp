@@ -218,16 +218,16 @@ namespace SceneEngine
             virtual Addressing  GetAddress(Float2 minCoordWorld, Float2 maxCoordWorld);
             virtual bool        IsFloatFormat() const;
 
-            SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, RenderCore::ResourcePtr gpuCache);
+            SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, RenderCore::IResourcePtr gpuCache);
             ~SurfaceHeightsProvider();
         private:
             Float2 _worldSpaceCacheMin, _worldSpaceCacheMax;
             UInt2 _cacheDims;
-			RenderCore::ResourcePtr _gpuCache;
+			RenderCore::IResourcePtr _gpuCache;
             SRV _srv;
         };
 
-        SurfaceHeightsProvider::SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, RenderCore::ResourcePtr gpuCache)
+        SurfaceHeightsProvider::SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, RenderCore::IResourcePtr gpuCache)
         : _worldSpaceCacheMin(worldSpaceCacheMin), _worldSpaceCacheMax(worldSpaceCacheMax)
         , _cacheDims(cacheDims), _gpuCache(std::move(gpuCache)), _srv(_gpuCache)
         {}

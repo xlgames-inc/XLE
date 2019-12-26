@@ -137,7 +137,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : TextureView(GetObjectFactory(), image, window)
     {}
 
-    TextureView::TextureView(const ResourcePtr& image, const TextureViewDesc& window, FormatUsage formatUsage)
+    TextureView::TextureView(const IResourcePtr& image, const TextureViewDesc& window, FormatUsage formatUsage)
     : TextureView(GetObjectFactory(), image, window, formatUsage)
     { 
     }

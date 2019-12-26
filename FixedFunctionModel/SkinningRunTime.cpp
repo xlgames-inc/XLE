@@ -279,8 +279,8 @@ namespace RenderCore { namespace Assets
     class TBufferTemporaryTexture
     {
     public:
-        RenderCore::ResourcePtr			_resource;
-        RenderCore::ResourcePtr			_stagingResource;
+        RenderCore::IResourcePtr		_resource;
+        RenderCore::IResourcePtr		_stagingResource;
         Metal::ShaderResourceView       _view;
         size_t                          _size;
         unsigned                        _lastAllocatedFrame;

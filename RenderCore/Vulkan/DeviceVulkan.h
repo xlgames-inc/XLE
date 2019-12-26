@@ -117,7 +117,7 @@ namespace RenderCore { namespace ImplVulkan
     {
     public:
 		void	        Present(IPresentationChain&);
-		ResourcePtr     BeginFrame(IPresentationChain& presentationChain);
+		IResourcePtr	BeginFrame(IPresentationChain& presentationChain) override;
 
         bool                        IsImmediate() const;
         ThreadContextStateDesc      GetStateDesc() const;
@@ -188,7 +188,7 @@ namespace RenderCore { namespace ImplVulkan
         Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
 		Metal_Vulkan::ObjectFactory&			GetObjectFactory() { return _objectFactory; }
 
-		ResourcePtr CreateResource(
+		IResourcePtr CreateResource(
 			const ResourceDesc& desc, 
 			const std::function<SubResourceInitData(SubResourceId)>&);
 		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType);

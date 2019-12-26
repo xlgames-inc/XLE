@@ -579,7 +579,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    static ResourcePtr CreateDummyTexture(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyTexture(const ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::ShaderResource, 
@@ -595,7 +595,7 @@ namespace RenderCore { namespace Metal_Vulkan
             });
     }
 
-    static ResourcePtr CreateDummyUAVImage(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyUAVImage(const ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -604,7 +604,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return CreateResource(factory, desc);
     }
 
-    static ResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::StructuredBuffer, 

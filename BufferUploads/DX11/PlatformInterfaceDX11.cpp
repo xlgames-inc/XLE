@@ -587,7 +587,7 @@
             return objFactory.CreateQuery(&queryDesc);
         }
 
-        ResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
+        IResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,

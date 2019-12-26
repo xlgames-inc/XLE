@@ -78,7 +78,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	};
 
     using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-    RenderCore::ResourcePtr CreateResource(
+    RenderCore::IResourcePtr CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
 		const ResourceInitializer& init = ResourceInitializer());
@@ -177,8 +177,8 @@ namespace RenderCore { namespace Metal_Vulkan
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
         ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-	ResourcePtr Duplicate(ObjectFactory&, Resource& inputResource);
-	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
+	IResourcePtr Duplicate(ObjectFactory&, Resource& inputResource);
+	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
 
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
@@ -195,7 +195,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 	ResourceDesc ExtractDesc(const TextureView& res);
-	RenderCore::ResourcePtr ExtractResource(const TextureView&);
+	RenderCore::IResourcePtr ExtractResource(const TextureView&);
 	Resource& AsResource(IResource& res);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

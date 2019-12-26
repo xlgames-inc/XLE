@@ -84,7 +84,7 @@ namespace VulkanTest
 {
     struct texture_object 
     {
-        RenderCore::ResourcePtr _resource;
+        RenderCore::IResourcePtr _resource;
 		RenderCore::Metal_Vulkan::ImageLayout _imageLayout;
     };
 

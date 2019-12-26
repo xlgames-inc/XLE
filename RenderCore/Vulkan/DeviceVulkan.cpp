@@ -790,7 +790,7 @@ namespace RenderCore { namespace ImplVulkan
             Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
 
-	ResourcePtr Device::CreateResource(
+	IResourcePtr Device::CreateResource(
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	{
@@ -977,7 +977,7 @@ namespace RenderCore { namespace ImplVulkan
             auto resDesc = CreateDesc(
                 BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
                 _bufferDesc, "presentationimage");
-            auto resPtr = ResourcePtr(
+            auto resPtr = IResourcePtr(
 				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
             _images.emplace_back(
@@ -1102,7 +1102,7 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+	IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
 		if (_gpuTracker)
 			_gpuTracker->IncrementProducerFrame();
