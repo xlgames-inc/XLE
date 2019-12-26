@@ -685,6 +685,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
         static HexahedronCorners FromFrustumCorners(const Float4x4& worldToProjection);
     };
 
+#pragma warning(push)
+#pragma warning(disable:4701)
     HexahedronCorners HexahedronCorners::FromAABB(const AABoundingBox& box, const Float3x4& localToWorld)
     {
         HexahedronCorners result;
@@ -705,6 +707,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
         return result;
     }
+#pragma warning(pop)
 
     HexahedronCorners HexahedronCorners::FromFrustumCorners(const Float4x4& worldToProjection)
     {

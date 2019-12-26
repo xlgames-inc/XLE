@@ -130,6 +130,12 @@ namespace EntityInterface
 		return 0;
 	}
 
+	void TerrainEntities::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		assert(0);
+		stream << "Terrain Entities (printing not supported)" << std::endl;
+	}
+
 	void TerrainEntities::OnTerrainReload()
     {
         if (!_uberSurfaceDir.empty())

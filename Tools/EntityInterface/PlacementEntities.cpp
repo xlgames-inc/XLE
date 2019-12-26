@@ -347,6 +347,12 @@ namespace EntityInterface
         return 0;
     }
 
+	void PlacementEntities::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		assert(0);
+		stream << "PlacementEntities document (printing not supported)" << std::endl;
+	}
+
     PlacementEntities::PlacementEntities(
         std::shared_ptr<SceneEngine::PlacementsManager> manager,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor,

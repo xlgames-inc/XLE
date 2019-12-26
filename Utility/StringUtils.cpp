@@ -1714,9 +1714,12 @@ template<typename Type>
 	if (s != se)
 		return {};		// did not parse all the way to the end
 
+#pragma warning(push)
+#pragma warning(disable:4146) // unary minus operator applied to unsigned type, result still unsigned
 	if (constant_expression<std::is_signed<Type>::value>::result())
 		if (neg)
 			return (Type)-result;
+#pragma warning(pop)
 	return result;
 }
 

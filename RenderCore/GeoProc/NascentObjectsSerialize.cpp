@@ -9,6 +9,7 @@
 #include "NascentCommandStream.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/NascentChunk.h"
+#include <sstream>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {

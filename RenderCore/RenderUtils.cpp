@@ -156,7 +156,7 @@ namespace RenderCore
                 producerHeap->_writeMarker = producerHeap->_data.data();
                 producerHeap->_resetId = 1;
 
-#if DEBUG
+#if defined(_DEBUG)
                 {
                     ScopedLock(_swapMutex);
                     _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
@@ -181,7 +181,7 @@ namespace RenderCore
                 producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
                 producerHeap->_writeMarker = producerHeap->_data.data();
                 producerHeap->_resetId = 1;
-#if DEBUG
+#if defined(_DEBUG)
                 {
                     ScopedLock(_swapMutex);
                     _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
@@ -233,7 +233,7 @@ namespace RenderCore
 
                 std::swap(*producerHeap, nextMainHeap);
 
-#if DEBUG
+#if defined(_DEBUG)
                 for (auto it = _currentProducerHeapResetIds.begin(); it != _currentProducerHeapResetIds.end(); ++it) {
                     if (*it == nextMainHeap._resetId) {
                         _currentProducerHeapResetIds.erase(it);
@@ -265,7 +265,7 @@ namespace RenderCore
             _logMsg = true;
         }
 
-#if DEBUG
+#if defined(_DEBUG)
         bool IsValidResetId(ResetId resetId) const
         {
             auto* producerHeap = GetThreadLocalProducerHeap();

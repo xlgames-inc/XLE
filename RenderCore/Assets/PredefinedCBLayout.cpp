@@ -171,7 +171,7 @@ namespace RenderCore { namespace Assets
         }
 
         auto endLocation = startLocation;
-        endLocation._charIndex += iterator-startOfToken;
+        endLocation._charIndex += unsigned(iterator-startOfToken);
         return Token { { startOfToken, iterator }, startLocation, endLocation };
     }
 
@@ -622,6 +622,7 @@ namespace RenderCore { namespace Assets
     {
         switch (lang) {
         case ShaderLanguage::MetalShaderLanguage: return PredefinedCBLayout::AlignmentRules_MSL;
+		default:
         case ShaderLanguage::HLSL: return PredefinedCBLayout::AlignmentRules_HLSL;
         case ShaderLanguage::GLSL: return PredefinedCBLayout::AlignmentRules_GLSL_std140;
         }

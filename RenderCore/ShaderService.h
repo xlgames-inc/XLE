@@ -17,6 +17,7 @@
 #include <vector>
 #include <utility>
 #include <assert.h>
+#include <functional>
 
 namespace Assets
 {

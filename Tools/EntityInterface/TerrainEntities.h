@@ -35,6 +35,8 @@ namespace EntityInterface
 		PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
 		ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
+		void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
+
 		void OnTerrainReload();
 			
 		TerrainEntities(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);

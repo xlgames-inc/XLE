@@ -1031,6 +1031,7 @@ namespace SceneEngine
     {
             // colour grading not currently supported...!
         ColorGradingShaderConstants result;
+		XlZeroMemory(result);
         return result;
     }
 

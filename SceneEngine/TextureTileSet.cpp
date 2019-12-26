@@ -101,7 +101,7 @@ namespace SceneEngine
             //  Start a buffer uploads transaction to first load from the file
             //  into a staging texture, and then copy from there into the main
             //  tile set.
-        Int3 address;
+		Int3 address{-1,-1,-1};
         bool foundFreeSpace = false;
         for (auto i=_slices.begin(); i!=_slices.end(); ++i) {
             if (i->_unallocatedCount) {

@@ -8,6 +8,7 @@
 
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/AssetUtils.h"
 #include <vector>
 #include <memory>
 #include <mutex>

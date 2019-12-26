@@ -13,6 +13,7 @@
 #include "../Assets/ModelImmutableData.h"
 #include "../../Assets/NascentChunk.h"
 #include "../../Core/Exceptions.h"
+#include <sstream>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {

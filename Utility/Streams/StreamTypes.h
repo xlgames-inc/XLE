@@ -9,6 +9,7 @@
 #include "../../Core/Types.h"
 #include "Stream.h"
 #include <streambuf>
+#include <sstream>
 
 namespace Utility
 {
