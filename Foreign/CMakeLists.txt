@@ -17,7 +17,7 @@ BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${FmtSrc};${StackWalkerSrc};${Plu
 target_include_directories(ForeignMisc PUBLIC Antlr-3.4/libantlr3c-3.4 Antlr-3.4/libantlr3c-3.4/include)
 target_include_directories(ForeignMisc PUBLIC ${CMAKE_CURRENT_LIST_DIR})        # required to be public because of the way plustache includes it's headers
 target_include_directories(ForeignMisc INTERFACE half-1.9.2/include eigen)
-target_include_directories(ForeignMisc INTERFACE cml-1_0_2)
+target_include_directories(ForeignMisc INTERFACE cml-2_1_2)
 target_include_directories(ForeignMisc INTERFACE LuaBridge/Source/LuaBridge Lua/src)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
