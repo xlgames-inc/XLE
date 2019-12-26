@@ -11,6 +11,7 @@
     <ClCompile Include="..\TransformationMachineOpt.cpp" />
     <ClCompile Include="..\ShaderParser.cpp" />
     <ClCompile Include="..\CBLayoutTests.cpp" />
+    <ClCompile Include="..\ShaderPatchCollection.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\UnitTestHelper.h" />
