@@ -21,11 +21,14 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/ThreadLocalPtr.h"
 
-extern char **environ;
+#if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+	extern char **environ;
+#endif
 
 namespace RenderCore
 {
-    int appleMetalAPIValidationEnabled = -1;
+#if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+	int appleMetalAPIValidationEnabled = -1;
 
     void SetAppleMetalAPIValidationEnabled() {
         // NOTE: The actual (undocumented) details are more complicated than
@@ -72,36 +75,35 @@ namespace RenderCore
     }
 
     void ForceAppleMetalAPIValidation(int level) {
-        #ifndef _WIN32
-            switch (level) {
-                case 0:
-                    // These are the settings used by Xcode 11 for Disabled.
-                    // Xcode 10 sets METAL_DEVICE_WRAPPER_TYPE to 1 instead.
-                    // Either way works, it's just a matter of selecting
-                    // API validation and disabling that vs. disabling nothing
-                    // validation and disabling that.
-                    unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
-                    unsetenv("METAL_DEVICE_WRAPPER_TYPE");
-                    unsetenv("METAL_DEBUG_ERROR_MODE");
-                    return;
-                case 1:
-                    // These are the settings used by both Xcode 10 and Xcode 11
-                    // for Enabled.
-                    unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
-                    setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
-                    setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
-                    return;
-                case 2:
-                    // These are the settings used by Xcode 10 for Extended.
-                    // Xcode 11 no longer has this setting, but its SDKs still
-                    // support it.
-                    setenv("METAL_ERROR_CHECK_EXTENDED_MODE", "0", 1);
-                    setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
-                    setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
-                    return;
-            }
-        #endif
+        switch (level) {
+            case 0:
+                // These are the settings used by Xcode 11 for Disabled.
+                // Xcode 10 sets METAL_DEVICE_WRAPPER_TYPE to 1 instead.
+                // Either way works, it's just a matter of selecting
+                // API validation and disabling that vs. disabling nothing
+                // validation and disabling that.
+                unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                unsetenv("METAL_DEVICE_WRAPPER_TYPE");
+                unsetenv("METAL_DEBUG_ERROR_MODE");
+                return;
+            case 1:
+                // These are the settings used by both Xcode 10 and Xcode 11
+                // for Enabled.
+                unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                return;
+            case 2:
+                // These are the settings used by Xcode 10 for Extended.
+                // Xcode 11 no longer has this setting, but its SDKs still
+                // support it.
+                setenv("METAL_ERROR_CHECK_EXTENDED_MODE", "0", 1);
+                setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                return;
+        }
     }
+#endif
 
     const TextureViewDesc::SubResourceRange TextureViewDesc::All = SubResourceRange{0, Unlimited};
 
