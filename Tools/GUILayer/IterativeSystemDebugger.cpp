@@ -325,7 +325,7 @@ namespace GUILayer
         if (!(*_renderFn)) return;
 
 		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget._renderTarget, parserContext);
-        Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
+		Float2 worldDims { (float)_worldDims[0], (float)_worldDims[1] };
         SetGlobalTransform(threadContext, parserContext, worldDims);
 
         (*_renderFn)(

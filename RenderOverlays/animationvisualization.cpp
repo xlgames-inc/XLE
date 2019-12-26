@@ -132,7 +132,7 @@ namespace RenderOverlays
 
 			auto axis = parentPosition - childPosition;
 			Float3 tangent;
-			if (!Normalize_Checked(&tangent, Cross(cameraForward, axis)))
+			if (!Normalize_Checked<Float3>(&tangent, Cross(cameraForward, axis)))
 				continue;
 
 			float scaleC = 0.33f * 0.01f * (worldToProjection * Expand(childPosition, 1.0f))[3] * s;	// normalize scale for screen space

@@ -30,7 +30,7 @@ namespace RenderCore { namespace Assets
 		IteratorRange<const Float4x4*> skeletonMachineOutput,
 		const SkeletonMachine::OutputInterface& skeletonMachineOutputInterface)
 	{
-		_skeletonMachineOutput = std::vector<Float4x4>{skeletonMachineOutput.begin(), skeletonMachineOutput.end()};
+		_skeletonMachineOutput.insert(_skeletonMachineOutput.end(), skeletonMachineOutput.begin(), skeletonMachineOutput.end());
 		_skeletonBinding = SkeletonBinding{skeletonMachineOutputInterface, _jointInputInterface};
 	}
 

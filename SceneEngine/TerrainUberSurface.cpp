@@ -364,7 +364,7 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& bufferUploads = GetBufferUploads();
 
-        auto dims = bottomRight - topLeft;
+        UInt2 dims = bottomRight - topLeft;
         auto desc = Internal::BuildCacheDesc(dims, AsFormat(_pimpl->_uberSurface->Format()));
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
             _pimpl->_uberSurface->GetData(topLeft), _pimpl->_uberSurface->GetStride(), dims);

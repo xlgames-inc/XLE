@@ -484,10 +484,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		for (auto i:newJointIndices) maxOutputIndex = std::max(maxOutputIndex, i);
 
 		std::vector<std::string> newJointNames(maxOutputIndex+1);
-		std::vector<Float4x4>  newInverseBindMatrices { maxOutputIndex+1 };
-
-		for (unsigned c=0; c<maxOutputIndex+1; ++c)
-			newInverseBindMatrices[c] = Identity<Float4x4>();
+		std::vector<Float4x4>  newInverseBindMatrices;
+		newInverseBindMatrices.resize(size_t(maxOutputIndex+1), Identity<Float4x4>());
 
 		for (unsigned c=0; c<_jointNames.size(); ++c) {
 			assert(newJointNames[newJointIndices[c]].empty() || newJointNames[newJointIndices[c]] == _jointNames[c]);	// ensure that we haven't already mapped to this index

@@ -27,6 +27,8 @@ namespace SceneEngine
     UInt3 As3DDims(UInt3 input)     { return input; }
     UInt3 As3DBorder(UInt3 input)   { return UInt3(1,1,1); }
 
+#pragma warning(push)
+#pragma warning(disable:4701)
     template<typename OutType, typename InType>
         OutType ConvertVector(const InType& in)
         {
@@ -38,26 +40,28 @@ namespace SceneEngine
                 result[i] = (OutType::value_type)0;
             return result;
         }
+#pragma warning(pop)
 
     template<unsigned SamplingFlags, typename Field>
         static typename Field::ValueType AdvectRK4(
             const Field& velFieldT0, const Field& velFieldT1,
             typename Field::Coord pt, typename Field::FloatCoord velScale)
         {
-            const auto s = velScale;
-            const auto halfS = decltype(s)(s / 2);
+            using ValueType = typename Field::ValueType;
+			const ValueType s = velScale;
+            const ValueType halfS = s / 2;
     
-            auto startTap = ConvertVector<typename Field::FloatCoord>(pt);
-            auto k1 = velFieldT0.Load(pt);
-            auto k2 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
-                    + .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
-                    ;
-            auto k3 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
-                    + .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
-                    ;
-            auto k4 = velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(s, k3));
+            ValueType startTap = ConvertVector<typename Field::FloatCoord>(pt);
+            ValueType k1 = velFieldT0.Load(pt);
+            ValueType k2 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
+						+ .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
+						;
+            ValueType k3 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
+						+ .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
+						;
+            ValueType k4 = velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(s, k3));
     
-            auto finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+            ValueType finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
             return startTap + MultiplyAcross(s, finalVel);
         }
 
@@ -66,20 +70,21 @@ namespace SceneEngine
             const Field& velFieldT0, const Field& velFieldT1,
             typename Field::FloatCoord pt, typename Field::FloatCoord velScale)
         {
-            const auto s = velScale;
-            const auto halfS = decltype(s)(s / 2);
+            using ValueType = typename Field::ValueType;
+			const ValueType s = velScale;
+            const ValueType halfS = s / 2;
 
                 // when using a float point input, we need bilinear interpolation
-            auto k1 = velFieldT0.Sample<SamplingFlags>(pt);
-            auto k2 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
-                    + .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
-                    ;
-            auto k3 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
-                    + .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
-                    ;
-            auto k4 = velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(s, k3));
+            ValueType k1 = velFieldT0.Sample<SamplingFlags>(pt);
+            ValueType k2 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
+						+ .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
+						;
+            ValueType k3 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
+						+ .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
+						;
+            ValueType k4 = velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(s, k3));
 
-            auto finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+            ValueType finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
             return pt + MultiplyAcross(s, finalVel);
         }
 
@@ -212,7 +217,7 @@ namespace SceneEngine
                     for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
                         auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                         auto startVel = velFieldT1.Load(coord);
-                        FloatCoord tap = ConvertVector<FloatCoord>(coord) - MultiplyAcross(deltaTime * velFieldScale, startVel);
+                        FloatCoord tap = ConvertVector<FloatCoord>(coord) - MultiplyAcross(FloatCoord(deltaTime * velFieldScale), FloatCoord(startVel));
                         tap = ApplyBoundary<WrappingFlags>(tap, clampMax);
                         dstValues.Write(coord, srcValues.Sample<0>(tap));
                     }
