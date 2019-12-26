@@ -25,12 +25,12 @@ namespace XLEBridgeUtils
                 // Using the C++ layer give us a little more flexibility. 
             if (name->Length < 2) return false;
 
-            if (name->Equals("TechniqueConfig")) {
+            /*if (name->Equals("TechniqueConfig")) {
                 if (type != String::typeid)
                     return false;
                 result = _material->TechniqueConfig;
                 return true;
-            }
+            }*/
 
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;
@@ -78,12 +78,12 @@ namespace XLEBridgeUtils
 
         virtual bool TrySetMember(String^ name, bool caseInsensitive, Object^ value)
         {
-            if (name->Equals("TechniqueConfig")) {
+            /*if (name->Equals("TechniqueConfig")) {
                 String^ input = dynamic_cast<String^>(value);
                 if (!input) return false;
                 _material->TechniqueConfig = input;
                 return true;
-            }
+            }*/
 
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;

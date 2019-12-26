@@ -73,6 +73,7 @@ namespace GUILayer
 	static std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		auto result = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
+		RenderCore::Assets::ShaderPatchCollection patchCollectionResult;
 
         // Our default material settings come from the "Document" object. This
         // give us our starting material and shader properties.
@@ -83,6 +84,7 @@ namespace GUILayer
                 auto nativeName = clix::marshalString<clix::E_UTF8>(s);
 				RenderCore::Assets::MergeIn_Stall(
 					*result,
+					patchCollectionResult,
 					MakeStringSection(nativeName),
 					searchRules,
 					finalMatDeps);

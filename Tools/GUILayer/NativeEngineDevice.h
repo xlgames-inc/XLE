@@ -14,6 +14,7 @@
 namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
 namespace ConsoleRig { class GlobalServices; class CrossModule; }
+namespace RenderCore { namespace Techniques { class ShaderPatchCollectionRegistry; }}
 
 namespace GUILayer
 {
@@ -44,6 +45,8 @@ namespace GUILayer
 		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
 		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
+
+		std::unique_ptr<RenderCore::Techniques::ShaderPatchCollectionRegistry> _shaderPatchCollectionRegistry;
     };
 
 	class RenderTargetWrapper

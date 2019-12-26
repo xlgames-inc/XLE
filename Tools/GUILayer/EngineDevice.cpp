@@ -20,6 +20,7 @@
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/DrawableMaterial.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
@@ -96,6 +97,7 @@ namespace GUILayer
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
+		_shaderPatchCollectionRegistry = std::make_unique<RenderCore::Techniques::ShaderPatchCollectionRegistry>();
 
 		// hack for plugin startup -- need to find the resources for the plugin:
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("res"), ::Assets::CreateFileSystem_OS(u("C:/code/XLEExt/res")));
@@ -116,6 +118,7 @@ namespace GUILayer
 			System::Windows::Forms::Application::RemoveMessageFilter(_messageFilter.get());
 		PlatformRig::SetOSRunLoop(nullptr);
 		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
+		_shaderPatchCollectionRegistry.reset();
 		_divAssets.reset();
         _renderAssetsServices.reset();
         _assetServices.reset();

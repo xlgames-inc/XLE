@@ -711,7 +711,7 @@ namespace GUILayer
 		return (!!_underlying) ? _underlying->GetWorkingAsset() : nullptr;
 	}
 
-    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetWorkingAsset()->_techniqueConfig); }
+    /*String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetWorkingAsset()->_techniqueConfig); }
 
     void RawMaterial::TechniqueConfig::set(String^ value)
     {
@@ -723,7 +723,7 @@ namespace GUILayer
                 _transId = transaction->Commit();
             }
         }
-    }
+    }*/
 
     static RawMaterial::RawMaterial()
     {

@@ -13,7 +13,7 @@
 #include <assert.h>
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
-    #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
+    #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 #endif
 
 // #pragma warning(disable:4127)

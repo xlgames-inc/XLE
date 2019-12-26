@@ -16,7 +16,7 @@
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
 #include "../../SceneEngine/PlacementsManager.h"
-#include "../../FixedFunctionModel/ShaderVariationSet.h"
+#include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"

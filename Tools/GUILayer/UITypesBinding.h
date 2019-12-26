@@ -378,7 +378,7 @@ namespace GUILayer
         
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        property System::String^ TechniqueConfig { System::String^ get(); void set(System::String^); }
+        // property System::String^ TechniqueConfig { System::String^ get(); void set(System::String^); }
 
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 		std::shared_ptr<RenderCore::Assets::RawMaterial> GetUnderlyingPtr();

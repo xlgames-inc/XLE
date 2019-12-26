@@ -422,7 +422,7 @@ namespace GUILayer
 		const ::Assets::DirectorySearchRules& searchRules,
 		const ::Assets::DepValPtr& dependencyValidation)
 	{
-		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules, dependencyValidation);
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
 	}
 
 	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>

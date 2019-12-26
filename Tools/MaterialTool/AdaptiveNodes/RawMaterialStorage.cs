@@ -118,6 +118,17 @@ namespace MaterialTool.AdaptiveNodes
             Material.RemoveConstant(label);
         }
 
+        public string GetString(string label)
+        {
+            return string.Empty;
+        }
+
+        public void SetString(string label, string newValue)
+        {
+        }
+
+        
+
         public GUILayer.RawMaterial Material;
 
         public string Identifier { get { return String.Empty; } }

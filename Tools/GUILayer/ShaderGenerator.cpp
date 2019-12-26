@@ -14,6 +14,7 @@
 #include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
 #include "../../ShaderParser/ShaderInstantiation.h"
+#include "../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -76,10 +77,10 @@ namespace GUILayer
 			nativeGraph.Trim(previewNodeId);
 		}
 
-		ShaderSourceParser::InstantiationParameters instantiationParams {};
+		ShaderSourceParser::InstantiationRequest instantiationParams {};
 		if (previewNodeId != ~0u)
-			instantiationParams._generateDanglingOutputs = previewNodeId;
-		instantiationParams._generateDanglingInputs = true;
+			instantiationParams._options._generateDanglingOutputs = previewNodeId;
+		instantiationParams._options._generateDanglingInputs = true;
 
 		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
 			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
@@ -99,8 +100,9 @@ namespace GUILayer
 						clix::marshalString<clix::E_UTF8>(v.Key),
 						clix::marshalString<clix::E_UTF8>(v.Value)));
 
+		assert(mainInstantiation._entryPoints.size() == 1);	// only tested with a single entry point
 		auto structureForPreview = GenerateStructureForPreview(
-			"preview_graph", mainInstantiation._entryPointSignature, options);
+			"preview_graph", mainInstantiation._entryPoints[0]._signature, options);
 		mainInstantiation._sourceFragments.insert(mainInstantiation._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
 		mainInstantiation._sourceFragments.push_back(structureForPreview);
 		return mainInstantiation;
@@ -296,15 +298,17 @@ namespace GUILayer
 				nodeGraphFile->_settings,
 				nodeGraphFile->_variableRestrictions);
 
-			for (const auto&cb : previewShader._constantBuffers) {
-				if (XlEqString(cb._name, "BasicMaterialConstants")) {
-					auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
-					materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
+			if (previewShader._descriptorSet)
+				for (const auto&cb : previewShader._descriptorSet->_constantBuffers) {
+					if (XlEqString(cb._name, "BasicMaterialConstants")) {
+						auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
+						materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
 
-					auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
-					return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+						auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
+						return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+					}
 				}
-			}
+
 			return nullptr;
 		} catch (const std::exception& e) {
 			Log(Warning) << "Got exception while building material delegate for preview. Exception message follows: " << e.what() << std::endl;

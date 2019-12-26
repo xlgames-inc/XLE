@@ -522,9 +522,9 @@ namespace GUILayer
         auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
 
         auto swtch = std::make_shared<Switch>();
-        swtch->RegisterType(placementsEditor);
-        swtch->RegisterType(terrainEditor);
-        swtch->RegisterType(flexGobInterface);
+        swtch->RegisterInterface(placementsEditor);
+        swtch->RegisterInterface(terrainEditor);
+        swtch->RegisterInterface(flexGobInterface);
         _entities = gcnew EntityLayer(std::move(swtch));
 
         _flexGobInterface = flexGobInterface;
