@@ -7,6 +7,7 @@
 #if !defined(EXCLUDE_Z_LIB)
     #include "../Foreign/zlib/zlib.h"
 #endif
+#include "../Utility/Conversion.h"
 
 namespace Assets
 {
@@ -277,6 +278,127 @@ namespace Assets
 		size_t decompressedSize)
 	{
 		return std::make_unique<FileDecompressOnRead>(archiveFile, memoryRange, decompressedSize);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class FileSystem_Memory : public IFileSystem
+	{
+	public:
+		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf8> filename);
+		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf16> filename);
+
+		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(BasicFile& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
+		virtual	FileDesc	TryGetDesc(const Marker& marker);
+
+		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents);
+		~FileSystem_Memory();
+
+	protected:
+		std::unordered_map<std::string, Blob> _filesAndContents;
+
+		struct MarkerStruct
+		{
+			size_t _fileIdx;
+		};
+	};
+
+	auto FileSystem_Memory::TryTranslate(Marker& result, StringSection<utf8> filename) -> TranslateResult
+	{
+		if (filename.IsEmpty())
+			return TranslateResult::Invalid;
+
+		// Note -- case sensitive lookup here
+		auto i = _filesAndContents.find(filename.Cast<char>().AsString());
+		if (i == _filesAndContents.end())
+			return TranslateResult::Invalid;
+
+		result.resize(sizeof(MarkerStruct));
+		auto* out = (MarkerStruct*)AsPointer(result.begin());
+		out->_fileIdx = std::distance(_filesAndContents.begin(), i);
+		return TranslateResult::Success;
+	}
+
+	auto FileSystem_Memory::TryTranslate(Marker& result, StringSection<utf16> filename) -> TranslateResult
+	{
+		if (filename.IsEmpty())
+			return TranslateResult::Invalid;
+
+		auto converted = Conversion::Convert<std::basic_string<utf8>>(filename);
+		return TryTranslate(result, MakeStringSection(converted));
+	}
+
+	auto FileSystem_Memory::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	{
+		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
+
+		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
+		if (m._fileIdx >= _filesAndContents.size())
+			return IOReason::FileNotFound;
+
+		auto i = _filesAndContents.begin();
+		std::advance(i, m._fileIdx);
+		result = CreateMemoryFile(i->second);
+		return IOReason::Success;
+	}
+
+	auto FileSystem_Memory::TryOpen(BasicFile& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	{
+		// Cannot open memory files in this way
+		return IOReason::Invalid;
+	}
+
+	auto FileSystem_Memory::TryOpen(MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	{
+		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
+
+		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
+		if (m._fileIdx >= _filesAndContents.size())
+			return IOReason::FileNotFound;
+
+		auto i = _filesAndContents.begin();
+		std::advance(i, m._fileIdx);
+		result = MemoryMappedFile(MakeIteratorRange(*i->second), MemoryMappedFile::CloseFn{});
+		return IOReason::Success;
+	}
+
+	auto FileSystem_Memory::TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) -> IOReason
+	{
+		return IOReason::Invalid;
+	}
+
+	FileDesc FileSystem_Memory::TryGetDesc(const Marker& marker)
+	{
+		if (marker.size() < sizeof(MarkerStruct)) return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+
+		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
+		if (m._fileIdx >= _filesAndContents.size())
+			return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+
+		auto i = _filesAndContents.begin();
+		std::advance(i, m._fileIdx);
+
+		return FileDesc
+			{
+				Conversion::Convert<std::basic_string<utf8>>(i->first), FileDesc::State::Normal,
+				0, (uint64_t)i->second->size()
+			};
+	}
+
+	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents)
+	: _filesAndContents(filesAndContents)
+	{		
+	}
+
+	FileSystem_Memory::~FileSystem_Memory() {}
+
+
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents)
+	{
+		return std::make_shared<FileSystem_Memory>(filesAndContents);
 	}
 }
 

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IFileSystem.h"
+#include <unordered_map>
 
 namespace Assets
 {
@@ -19,5 +20,9 @@ namespace Assets
 		const std::shared_ptr<MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
 		size_t decompressedSize);
+
+	// Creates a static case sensitive filesystem containing the given of files (in a single directory)
+	// with the given contents
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents);
 }
 
