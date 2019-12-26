@@ -5,6 +5,7 @@
 #pragma once
 
 #include "NodeGraphSignature.h"
+#include "../RenderCore/ShaderLangUtil.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
@@ -32,6 +33,7 @@ namespace ShaderSourceParser
 
 	std::shared_ptr<MaterialDescriptorSet> MakeMaterialDescriptorSet(
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
+		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream);
 
 	enum class TypeDescriptor { Constant, Resource, Sampler };

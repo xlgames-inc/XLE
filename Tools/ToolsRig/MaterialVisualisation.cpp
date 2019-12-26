@@ -279,7 +279,8 @@ namespace ToolsRig
 					entryPoint = "deferred_pass_main";
 					fragments = ShaderSourceParser::InstantiateShader(
 						psNameSplit.AllExceptParameters(), entryPoint,
-						instParams);
+						instParams,
+						RenderCore::Techniques::GetDefaultShaderLanguage());
 				} else {
 					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
 					overridePerPixel._customProvider = provider;
@@ -289,7 +290,8 @@ namespace ToolsRig
 						psNameSplit.AllExceptParameters(), entryPoint,
 						ShaderSourceParser::InstantiationRequest {
 							{ "perPixel", overridePerPixel }
-						});
+						},
+						RenderCore::Techniques::GetDefaultShaderLanguage());
 				}
 
 				fragments._sourceFragments.insert(fragments._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");

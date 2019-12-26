@@ -248,8 +248,9 @@ namespace FixedFunctionModel
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
                 auto* cbLayout = sharedStateSet.GetCBLayout(i->second._shaderName);
-				if (cbLayout && cbLayout->_cbSize) {
-					auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout->_cbSize, uint8(0));
+				auto lang = RenderCore::Techniques::GetDefaultShaderLanguage();
+				if (cbLayout && cbLayout->GetSize(lang)) {
+					auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants, lang) : std::vector<uint8>(cbLayout->GetSize(lang), uint8(0));
 					cbLayouts.insert(cbLayout);
 
 					i->second._constantBuffer = 

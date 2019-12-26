@@ -84,7 +84,7 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 		
-		ConstantBufferView cbvs[] = { cbLayout.BuildCBDataAsPkt(mat._constants) };
+		ConstantBufferView cbvs[] = { cbLayout.BuildCBDataAsPkt(mat._constants, RenderCore::Techniques::GetDefaultShaderLanguage()) };
 		boundUniforms.Apply(
 			devContext, streamIdx, 
 			UniformsStream {

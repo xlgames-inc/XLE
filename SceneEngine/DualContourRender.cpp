@@ -302,7 +302,7 @@ namespace SceneEngine
             ParameterBox());
 
         const auto& cbLayout = pimpl->_basicMaterial.GetCBLayout(s_techniqueConfig);
-        pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox());
+        pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox(), RenderCore::Techniques::GetDefaultShaderLanguage());
 
         pimpl->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
 		if (cbLayout.GetDependencyValidation())
@@ -343,7 +343,7 @@ namespace SceneEngine
                     MakeLocalTransformPacket(
                         Identity<Float4x4>(),
                         ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                    shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
+                    shader._cbLayout->BuildCBDataAsPkt(ParameterBox(), RenderCore::Techniques::GetDefaultShaderLanguage())
                 };
 				shader._shader.ApplyUniforms(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 

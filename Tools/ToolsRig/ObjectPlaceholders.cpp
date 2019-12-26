@@ -89,13 +89,13 @@ namespace ToolsRig
 	{
 		auto shader = _material.FindVariation(parserContext, techniqueIndex, techniqueConfig);
 		if (shader._shader._shaderProgram) {
-			auto matParams0 = shader._cbLayout->BuildCBDataAsPkt(materialParams);
+			auto matParams0 = shader._cbLayout->BuildCBDataAsPkt(materialParams, RenderCore::Techniques::GetDefaultShaderLanguage());
 			Float3 col0 = Float3(.66f, 0.2f, 0.f);
 			Float3 col1 = Float3(0.44f, 0.6f, 0.1f);
 			static float time = 0.f;
 			time += 3.14159f / 3.f / 60.f;
 			ParameterBox p; p.SetParameter(u("MaterialDiffuse"), LinearInterpolate(col0, col1, 0.5f + 0.5f * XlCos(time)));
-			auto matParams1 = shader._cbLayout->BuildCBDataAsPkt(p);
+			auto matParams1 = shader._cbLayout->BuildCBDataAsPkt(p, RenderCore::Techniques::GetDefaultShaderLanguage());
 
 			if (_drawCalls.size() >= 2) {
 				devContext.Bind(*(Metal::Resource*)_ib->QueryInterface(typeid(Metal::Resource).hash_code()), _ibFormat);
@@ -272,7 +272,7 @@ namespace ToolsRig
 		if (fallbackShader._shader._shaderProgram) {
 			VertexBufferView vbv { visBox._cubeVB, 0 };
 			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
 			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Draw(visBox._cubeVBCount);
 		}
@@ -293,7 +293,7 @@ namespace ToolsRig
 			if (fallbackShader._shader._shaderProgram) {
 				VertexBufferView vbv { visBox._cubeVB, 0 };
 				fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-				ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+				ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
 				fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 				devContext.Draw(visBox._cubeVBCount);
 			}
@@ -307,7 +307,7 @@ namespace ToolsRig
 	{
 		if (generatorShader._shader._shaderProgram) {
 			generatorShader._shader.Apply(devContext, parserContext, {});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			ConstantBufferView cbvs[] = { {params._localTransform}, {generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
 			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Bind(Topology::TriangleList);
 			devContext.Draw(vertexCount);
@@ -317,7 +317,7 @@ namespace ToolsRig
 		if (fallbackShader._shader._shaderProgram) {
 			VertexBufferView vbv { visBox._cubeVB, 0 };
 			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
 			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Draw(visBox._cubeVBCount);
 		}
@@ -372,7 +372,7 @@ namespace ToolsRig
 			{ Techniques::MakeLocalTransformPacket(
                 GetTransform(obj),
 				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)) },
-			{ shader._cbLayout->BuildCBDataAsPkt(ParameterBox()) }
+			{ shader._cbLayout->BuildCBDataAsPkt(ParameterBox{}, RenderCore::Techniques::GetDefaultShaderLanguage()) }
         };
 
 		shader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});

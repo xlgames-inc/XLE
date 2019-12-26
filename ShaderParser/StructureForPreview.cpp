@@ -525,7 +525,7 @@ namespace ShaderSourceParser
             result << "{" << std::endl;
 			for (auto ele=cb->_layout->_elements.begin(); ele!=cb->_layout->_elements.end(); ++ele) {
 				auto idx = std::distance(cb->_layout->_elements.begin(), ele);
-				result << "\t" << RenderCore::AsShaderLangTypeName(ele->_type) << " " << cb->_layout->_elementNames[idx] << ";" << std::endl;
+				result << "\t" << RenderCore::AsShaderLangTypeName(ele->_type) << " " << cb->_layout->_elements[idx]._name << ";" << std::endl;
 			}
 			result << "}" << std::endl;
 		}

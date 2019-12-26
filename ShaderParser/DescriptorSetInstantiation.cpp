@@ -72,6 +72,7 @@ namespace ShaderSourceParser
 
 	std::shared_ptr<MaterialDescriptorSet> MakeMaterialDescriptorSet(
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
+		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream)
 	{
 		std::vector<std::string> srvs;
@@ -147,10 +148,10 @@ namespace ShaderSourceParser
 				[](const NameAndType& lhs, const NameAndType& rhs) {
 					return lhs._name < rhs._name;
 				});
-			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cb.second._cbElements));
+			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cb.second._cbElements), shaderLanguage);
 
-			auto layout = std::make_shared<RenderCore::Assets::PredefinedCBLayout>();
-			layout->AppendElements(MakeIteratorRange(cb.second._cbElements));
+			auto layout = std::make_shared<RenderCore::Assets::PredefinedCBLayout>(
+				MakeIteratorRange(cb.second._cbElements));
 
 			if (!layout->_elements.empty())
 				result->_constantBuffers.emplace_back(

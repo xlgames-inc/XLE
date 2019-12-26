@@ -39,7 +39,7 @@ namespace ShaderSourceParser
 		return { input, std::string{} };
 	}
 
-	static InstantiatedShader InstantiateShader(IteratorRange<const PendingInstantiation*> rootInstantiations)
+	static InstantiatedShader InstantiateShader(IteratorRange<const PendingInstantiation*> rootInstantiations, RenderCore::ShaderLanguage shaderLanguage)
 	{
 		std::set<std::string> includes;
 
@@ -163,6 +163,7 @@ namespace ShaderSourceParser
 			std::stringstream warningMessages;
 			result._descriptorSet = MakeMaterialDescriptorSet(
 				MakeIteratorRange(result._captures),
+				shaderLanguage,
 				warningMessages);
 
 			auto fragment = GenerateDescriptorVariables(*result._descriptorSet, MakeIteratorRange(result._captures));
@@ -189,27 +190,31 @@ namespace ShaderSourceParser
 	InstantiatedShader InstantiateShader(
         const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
-		const InstantiationRequest& instantiationParameters)
+		const InstantiationRequest& instantiationParameters,
+		RenderCore::ShaderLanguage shaderLanguage)
 	{
 		// Note that we end up with a few extra copies of initialGraph, because PendingInstantiation
 		// contains a complete copy of the node graph
 		PendingInstantiation pendingInst { initialGraph, true, true, instantiationParameters };
-		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1));
+		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
 	}
 
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
-		const InstantiationRequest& instantiationParameters)
+		const InstantiationRequest& instantiationParameters,
+		RenderCore::ShaderLanguage shaderLanguage)
 	{
 		PendingInstantiation pendingInst {
 			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true, true,
 			instantiationParameters
 		};
-		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1));
+		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
 	}
 
-	InstantiatedShader InstantiateShader(IteratorRange<const InstantiationRequest_ArchiveName*> request)
+	InstantiatedShader InstantiateShader(
+		IteratorRange<const InstantiationRequest_ArchiveName*> request,
+		RenderCore::ShaderLanguage shaderLanguage)
 	{
 		assert(!request.empty());
 		std::vector<PendingInstantiation> pendingInst;
@@ -222,7 +227,7 @@ namespace ShaderSourceParser
 					r
 				});
 		}
-		return InstantiateShader(MakeIteratorRange(pendingInst));
+		return InstantiateShader(MakeIteratorRange(pendingInst), shaderLanguage);
 	}
 
 	static uint64_t CalculateDepHash(const InstantiationRequest_ArchiveName& dep, uint64_t seed = DefaultSeed64)

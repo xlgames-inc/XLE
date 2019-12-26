@@ -310,7 +310,7 @@ namespace ToolsRig
                 shader._shader.Apply(
 					metalContext, parserContext, {});
 
-				ConstantBufferView cbvs[] = { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams) };
+				ConstantBufferView cbvs[] = { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams, RenderCore::Techniques::GetDefaultShaderLanguage()) };
 				shader._shader._boundUniforms->Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
 
                 auto& commonRes = Techniques::CommonResources();

@@ -46,6 +46,19 @@ namespace RenderCore { namespace Techniques
         #endif
     }
 
+	ShaderLanguage GetDefaultShaderLanguage()
+	{
+		#if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
+            return ShaderLanguage::HLSL;
+        #elif (GFXAPI_ACTIVE == GFXAPI_VULKAN)
+            return ShaderLanguage::HLSL;		// by default, we use HLSL for Vulkan; but of course GLSL could work as well
+		#elif (GFXAPI_ACTIVE == SELECT_OPENGL)
+			return ShaderLanguage::GLSL;
+		#elif (GFXAPI_ACTIVE == GFXAPI_APPLEMETAL)
+            return ShaderLanguage::MetalShaderLanguage;
+        #endif
+	}
+
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, CameraDesc& sceneCamera, 
         const std::pair<Float2, Float2>& viewport)

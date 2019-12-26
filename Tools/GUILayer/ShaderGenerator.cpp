@@ -17,6 +17,7 @@
 #include "../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/MinimalShaderSource.h"
@@ -85,7 +86,8 @@ namespace GUILayer
 		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
 			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
 			false,
-			instantiationParams);
+			instantiationParams,
+			RenderCore::Techniques::GetDefaultShaderLanguage());
 
 		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
 		if (settings) {

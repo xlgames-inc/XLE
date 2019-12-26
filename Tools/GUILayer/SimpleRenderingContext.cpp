@@ -144,7 +144,7 @@ namespace GUILayer
 
 			ConstantBufferView cbvs[] = {
                 Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                variation._cbLayout->BuildCBDataAsPkt(matConstants) };
+                variation._cbLayout->BuildCBDataAsPkt(matConstants, RenderCore::Techniques::GetDefaultShaderLanguage()) };
 			variation._shader._boundUniforms->Apply(devContext, 1, { MakeIteratorRange(cbvs) });
             variation._shader.Apply(devContext, parsingContext, { vb });
             return true;

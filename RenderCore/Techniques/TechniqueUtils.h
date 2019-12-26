@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderUtils.h"
+#include "../ShaderLangUtil.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/ProjectionMath.h"
@@ -81,6 +82,7 @@ namespace RenderCore { namespace Techniques
     Float4x4 Projection(const CameraDesc& sceneCamera, float viewportAspect);
 
     ClipSpaceType GetDefaultClipSpaceType();
+	ShaderLanguage GetDefaultShaderLanguage();
 
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, CameraDesc& sceneCamera, 

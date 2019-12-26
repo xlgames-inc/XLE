@@ -5,6 +5,7 @@
 #pragma once
 
 #include "NodeGraphProvider.h"
+#include "../RenderCore/ShaderLangUtil.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
@@ -101,17 +102,24 @@ namespace ShaderSourceParser
 		std::set<::Assets::DepValPtr> _depVals;
 	};
 
+	// Note -- we pass the shader language here to control how the CB layouts
+	// are optimized
+
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
-		const InstantiationRequest& instantiationParameters);
+		const InstantiationRequest& instantiationParameters,
+		RenderCore::ShaderLanguage shaderLanguage);
 
 	InstantiatedShader InstantiateShader(
 		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
-		const InstantiationRequest& instantiationParameters);
+		const InstantiationRequest& instantiationParameters,
+		RenderCore::ShaderLanguage shaderLanguage);
 
-	InstantiatedShader InstantiateShader(IteratorRange<const InstantiationRequest_ArchiveName*> request);
+	InstantiatedShader InstantiateShader(
+		IteratorRange<const InstantiationRequest_ArchiveName*> request,
+		RenderCore::ShaderLanguage shaderLanguage);
 
         ///////////////////////////////////////////////////////////////
 

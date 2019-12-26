@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompiledShaderPatchCollection.h"
+#include "TechniqueUtils.h"
 #include "../Assets/ShaderPatchCollection.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
@@ -37,7 +38,7 @@ namespace RenderCore { namespace Techniques
 			finalInstRequests.reserve(src.GetPatches().size());
 			for (const auto&i:src.GetPatches()) finalInstRequests.push_back(i.second);
 
-			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests));
+			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), GetDefaultShaderLanguage());
 			_srcCode = Merge(inst._sourceFragments);
 
 			_interface._patches.reserve(inst._entryPoints.size());
