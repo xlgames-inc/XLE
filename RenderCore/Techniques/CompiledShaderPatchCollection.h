@@ -10,7 +10,8 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { namespace Assets { class ShaderPatchCollection; }}
+namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; }}
+namespace ShaderSourceParser { class MaterialDescriptorSet; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -24,12 +25,37 @@ namespace RenderCore { namespace Techniques
 	class CompiledShaderPatchCollection
 	{
 	public:
-		struct Patch 
+
+		/// <summary>Interface properties for this patch collection</summary>
+		/// The interface to the patch collection determines how it interacts with techniques that
+		/// need to use it. Some of these properties are used for optimization (such as the list of
+		/// selectors, which is used for filtering valid selectors). Others are used to determine
+		/// how the patches should be bound to a technique file.
+		class Interface
 		{
-			uint64_t		_implementsHash;
-			std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
+		public:
+			struct Patch 
+			{
+				uint64_t		_implementsHash;
+				std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
+			};
+			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
+
+			const std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet>& GetMaterialDescriptorSet() const { return _descriptorSet; }
+
+			IteratorRange<const std::string*> GetSelectors() const { return MakeIteratorRange(_selectors); }
+
+			bool HasPatchType(uint64_t implementing) const;
+
+		private:
+			std::vector<Patch> _patches;
+			std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet> _descriptorSet;
+			std::vector<std::string> _selectors;
+
+			friend class CompiledShaderPatchCollection;
 		};
-		IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); } 
+
+		const Interface& GetInterface() const { return _interface; }
 
 		const std::string& GetSourceCode() const { return _srcCode; }
 
@@ -54,7 +80,16 @@ namespace RenderCore { namespace Techniques
 	private:
 		uint64_t _guid = 0;
 		std::string _srcCode;
-		std::vector<Patch> _patches;
+		Interface _interface;
 	};
+
+
+	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const
+	{
+		auto perPixel = std::find_if(
+			_patches.begin(), _patches.end(),
+			[implementing](const Patch& patch) { return patch._implementsHash == implementing; });
+		return perPixel != _patches.end();
+	}
 
 }}

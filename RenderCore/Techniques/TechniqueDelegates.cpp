@@ -49,10 +49,10 @@ namespace RenderCore { namespace Techniques
 
 			for (auto fn:redirectedPatchFunctions) {
 				auto i = std::find_if(
-					patchCollection.GetPatches().begin(), patchCollection.GetPatches().end(),
-					[fn](const CompiledShaderPatchCollection::Patch& p) { return p._implementsHash == fn; });
-				assert(i!=patchCollection.GetPatches().end());
-				if (i == patchCollection.GetPatches().end()) {
+					patchCollection.GetInterface().GetPatches().begin(), patchCollection.GetInterface().GetPatches().end(),
+					[fn](const CompiledShaderPatchCollection::Interface::Patch& p) { return p._implementsHash == fn; });
+				assert(i!=patchCollection.GetInterface().GetPatches().end());
+				if (i == patchCollection.GetInterface().GetPatches().end()) {
 					Log(Warning) << "Could not find matching patch function for hash (" << fn << ")" << std::endl;
 					continue;
 				}
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Techniques
 
 			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
 			auto& patchCollection = ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollectionGuid);
-			if (!patchCollection || patchCollection->GetPatches().empty())
+			if (!patchCollection || patchCollection->GetInterface().GetPatches().empty())
 				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));
 
 			std::vector<uint64_t> redirectedPatchFunctions;

@@ -40,11 +40,11 @@ namespace RenderCore { namespace Techniques
 			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests));
 			_srcCode = Merge(inst._sourceFragments);
 
-			_patches.reserve(inst._entryPoints.size());
+			_interface._patches.reserve(inst._entryPoints.size());
 			for (const auto&patch:inst._entryPoints) {
 				if (patch._implementsName.empty()) continue;
 
-				Patch p;
+				Interface::Patch p;
 				p._implementsHash = Hash64(patch._implementsName);
 
 				if (patch._implementsName != patch._name) {
@@ -54,8 +54,10 @@ namespace RenderCore { namespace Techniques
 						ShaderSourceParser::ScaffoldFunctionFlags::ScaffoldeeUsesReturnSlot);
 				}
 
-				_patches.emplace_back(std::move(p));
+				_interface._patches.emplace_back(std::move(p));
 			}
+
+			_interface._descriptorSet = inst._descriptorSet;
 
 			for (const auto&d:inst._depVals)
 				if (d)
@@ -64,14 +66,8 @@ namespace RenderCore { namespace Techniques
 
 		// Setup the precalculated values for the illum delegate
 		_illumDelegate._type = IllumDelegateAttachment::IllumType::NoPerPixel;
-		auto perPixel = std::find_if(
-			_patches.begin(), _patches.end(),
-			[](const RenderCore::Techniques::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_perPixel; });
-		if (perPixel != _patches.end()) {
-			auto earlyRejection = std::find_if(
-				_patches.begin(), _patches.end(),
-				[](const RenderCore::Techniques::CompiledShaderPatchCollection::Patch& patch) { return patch._implementsHash == s_earlyRejectionTest; });
-			if (earlyRejection != _patches.end()) {
+		if (_interface.HasPatchType(s_perPixel)) {
+			if (_interface.HasPatchType(s_earlyRejectionTest)) {
 				_illumDelegate._type = IllumDelegateAttachment::IllumType::PerPixelAndEarlyRejection;
 			} else {
 				_illumDelegate._type = IllumDelegateAttachment::IllumType::PerPixel;
