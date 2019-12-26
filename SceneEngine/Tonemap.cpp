@@ -694,6 +694,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
+			ToneMapShaderBox* shaderBoxForUnbind = nullptr;
             if (settings._flags & ToneMapSettings::Flags::EnableToneMap) {
                 if (luminanceResult._isGood) {
                         //  Bind a pixel shader that will do the tonemap operation
@@ -722,6 +723,7 @@ namespace SceneEngine
 						box._uniforms.Apply(devContext, 1, UniformsStream{MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                         devContext.Bind(*box._shaderProgram);
                         bindCopyShader = false;
+						shaderBoxForUnbind = &box;
                         
                     }
                     CATCH_ASSETS(parserContext)
@@ -745,6 +747,9 @@ namespace SceneEngine
             SetupVertexGeneratorShader(devContext);
             devContext.Bind(Techniques::CommonResources()._blendOpaque);
             devContext.Draw(4);
+
+			if (shaderBoxForUnbind)	// quiet DX11 warnings by explicitly unbinding global resources
+				shaderBoxForUnbind->_uniforms.UnbindShaderResources(devContext, 1);
         CATCH_ASSETS_END(parserContext)
     }
 
