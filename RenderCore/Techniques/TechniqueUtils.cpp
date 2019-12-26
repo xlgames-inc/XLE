@@ -204,6 +204,16 @@ namespace RenderCore { namespace Techniques
 	IMaterialDelegate::~IMaterialDelegate() {}
 	ITechniqueDelegate::~ITechniqueDelegate() {}
 
+
+	RenderCore::Metal::ShaderProgram* ITechniqueDelegate::GetShader(
+		ParsingContext& context,
+		const ParameterBox* shaderSelectors[],
+		const DrawableMaterial& material,
+		unsigned techniqueIndex)
+	{
+		return GetShader(context, shaderSelectors, material);
+	}
+
 	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const InputElementDesc*> ia)
 	{
 		if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }

@@ -371,8 +371,8 @@ namespace SceneEngine
 	public:
 		Metal::ShaderProgram* GetShader(
 			Techniques::ParsingContext& context,
-			StringSection<::Assets::ResChar> techniqueCfgFile,
 			const ParameterBox* shaderSelectors[],
+			const Techniques::DrawableMaterial& material,
 			unsigned techniqueIndex) override;
 
 		TechniqueDelegate_RayTest();
@@ -453,11 +453,11 @@ namespace SceneEngine
 
 	Metal::ShaderProgram* TechniqueDelegate_RayTest::GetShader(
 		Techniques::ParsingContext& context,
-		StringSection<::Assets::ResChar> techniqueCfgFile,
 		const ParameterBox* shaderSelectors[],
+		const Techniques::DrawableMaterial& material,
 		unsigned techniqueIndex)
 	{
-		auto techFuture = ::Assets::MakeAsset<Techniques::Technique>(techniqueCfgFile);
+		auto techFuture = ::Assets::MakeAsset<Techniques::Technique>("xleres/Techniques/Illum.tech");
 		auto tech = techFuture->TryActualize();
 		if (!tech) return nullptr;
 

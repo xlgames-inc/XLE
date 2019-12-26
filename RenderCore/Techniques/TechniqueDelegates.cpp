@@ -361,5 +361,56 @@ namespace RenderCore { namespace Techniques
 		return ::Assets::AssetState::Ready;
 	}
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	RenderCore::Metal::ShaderProgram* TechniqueDelegate_Legacy::GetShader(
+		ParsingContext& context,
+		const ParameterBox* shaderSelectors[],
+		const DrawableMaterial& material,
+		unsigned techniqueIndex)
+	{
+		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
+			return nullptr;
+
+		assert(_variationSet);
+		auto future = _variationSet->FindVariation(techniqueIndex, shaderSelectors);
+		if (!future) return nullptr;
+		return future->TryActualize().get();
+	}
+
+	::Assets::AssetState TechniqueDelegate_Legacy::PrimeTechniqueCfg()
+	{
+		if (!_techniqueSetFuture) return _cfgFileState;
+
+		auto actual = _techniqueSetFuture->TryActualize();
+		if (!actual) {
+			auto state = _techniqueSetFuture->GetAssetState();
+			if (state == ::Assets::AssetState::Invalid) {
+				_cfgFileDepVal = _techniqueSetFuture->GetDependencyValidation();
+				_cfgFileState = ::Assets::AssetState::Invalid;
+				_techniqueSetFuture.reset();
+				_variationSet.reset();
+				return ::Assets::AssetState::Invalid;
+			}
+		}
+
+		_cfgFileDepVal = actual->GetDependencyValidation();
+		_cfgFileState = ::Assets::AssetState::Ready;
+		_techniqueSetFuture.reset();
+
+		_variationSet = std::make_shared<TechniqueShaderVariationSet>(actual);
+		return ::Assets::AssetState::Ready;
+	}
+
+	TechniqueDelegate_Legacy::TechniqueDelegate_Legacy()
+	{
+		_techniqueSetFuture = ::Assets::MakeAsset<Technique>("xleres/Techniques/Illum.tech");
+		_cfgFileState = ::Assets::AssetState::Pending;
+	}
+
+	TechniqueDelegate_Legacy::~TechniqueDelegate_Legacy()
+	{
+	}
+
 }}
 

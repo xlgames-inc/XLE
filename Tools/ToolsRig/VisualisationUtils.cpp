@@ -370,7 +370,7 @@ namespace ToolsRig
 
 		Pimpl()
 		{
-			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();
+			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Legacy>();
 			_materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
 			_stencilPrimeDelegate = std::make_shared<StencilRefDelegate>();
 		}

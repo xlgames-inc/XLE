@@ -67,9 +67,9 @@ namespace RenderCore { namespace Techniques
 
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
-			StringSection<> techniqueCfgFile,
 			const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max
-			unsigned techniqueIndex) { return nullptr; }
+			const DrawableMaterial& material,
+			unsigned techniqueIndex);
 
 		virtual ~ITechniqueDelegate();
 	};

@@ -78,7 +78,7 @@ namespace RenderCore { namespace Techniques
 
 			shaderSelectors[Techniques::ShaderSelectors::Source::Geometry] = &geoSelectors;
 
-			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(parserContext, shaderSelectors, material);
+			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(parserContext, shaderSelectors, material, techniqueIndex);
 			if (!shaderProgram)
 				return;
 

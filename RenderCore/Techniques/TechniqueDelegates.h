@@ -43,5 +43,33 @@ namespace RenderCore { namespace Techniques
 		::Assets::AssetState PrimeTechniqueCfg();
 	};
 
+
+	/** <summary>Backwards compatibility for legacy style techniques</summary>
+	This delegate allows for loading techniques from a legacy fixed function technique file.
+	A default technique file is selected and the type of shader is picked via the technique
+	index value. In this case, the material does now impact the technique selected.
+	*/
+	class TechniqueDelegate_Legacy : public ITechniqueDelegate
+	{
+	public:
+		virtual RenderCore::Metal::ShaderProgram* GetShader(
+			ParsingContext& context,
+			const ParameterBox* shaderSelectors[],
+			const DrawableMaterial& material,
+			unsigned techniqueIndex) override;
+
+		TechniqueDelegate_Legacy();
+		~TechniqueDelegate_Legacy();
+
+	private:
+		::Assets::FuturePtr<Technique> _techniqueSetFuture;
+		::Assets::DepValPtr _cfgFileDepVal;
+		::Assets::AssetState _cfgFileState;
+
+		std::shared_ptr<TechniqueShaderVariationSet> _variationSet;
+
+		::Assets::AssetState PrimeTechniqueCfg();
+	};
+
 }}
 
