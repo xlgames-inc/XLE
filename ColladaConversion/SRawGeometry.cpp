@@ -1022,7 +1022,8 @@ namespace ColladaConversion
         }
 
         if (_weightIndexOffset != ~0u) {
-			assert(_weightIndexOffset < influencesPerVertex);
+			assert(_weightIndexOffset < _bindStride
+				&& (influencesPerVertex*_bindStride + _weightIndexOffset) < dimof(temp));
             for (unsigned v=0; v<influencesPerVertex; ++v) {
                 auto weightIndex = temp[v*_bindStride + _weightIndexOffset];
                 assert(weightIndex < _rawWeights.size());
