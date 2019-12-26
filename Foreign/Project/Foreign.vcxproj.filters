@@ -34,6 +34,9 @@
     <Filter Include="zlib">
       <UniqueIdentifier>{5b15b9f7-c440-4b8e-914d-ca128727c11c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="cparse">
+      <UniqueIdentifier>{0945dff2-a8fb-4d1e-9a63-29088d336f14}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Hash\MurmurHash2.cpp">
@@ -336,6 +339,21 @@
     <ClCompile Include="..\zlib\zutil.c">
       <Filter>zlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\cparse\builtin-features.cpp">
+      <Filter>cparse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cparse\containers.cpp">
+      <Filter>cparse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cparse\functions.cpp">
+      <Filter>cparse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cparse\packToken.cpp">
+      <Filter>cparse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cparse\shunting-yard.cpp">
+      <Filter>cparse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Hash\MurmurHash3.h">
@@ -503,6 +521,21 @@
     <ClInclude Include="..\fmt\format.h">
       <Filter>fmt</Filter>
     </ClInclude>
+    <ClInclude Include="..\cparse\containers.h">
+      <Filter>cparse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cparse\functions.h">
+      <Filter>cparse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cparse\packToken.h">
+      <Filter>cparse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cparse\shunting-yard.h">
+      <Filter>cparse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cparse\shunting-yard-exceptions.h">
+      <Filter>cparse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\fmt\README.rst">
@@ -516,6 +549,9 @@
     </None>
     <None Include="..\fmt\LICENSE.rst">
       <Filter>fmt</Filter>
+    </None>
+    <None Include="..\cparse\builtin-features.inc">
+      <Filter>cparse</Filter>
     </None>
   </ItemGroup>
 </Project>
