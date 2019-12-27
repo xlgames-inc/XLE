@@ -27,6 +27,7 @@ namespace RenderCore { namespace Assets
         {
         public:
             std::string _processedSource;
+			unsigned _processedSourceLineCount = 0;
             std::vector<ILowLevelCompiler::SourceLineMarker> _lineMarkers;
             std::vector<::Assets::DependentFileState> _dependencies;
         };

@@ -101,6 +101,7 @@
     <ClCompile Include="..\GraphSyntaxParse.cpp" />
     <ClCompile Include="..\NodeGraph.cpp" />
     <ClCompile Include="..\NodeGraphSignature.cpp" />
+    <ClCompile Include="..\ShaderAnalysis.cpp" />
     <ClCompile Include="..\ShaderSignatureParser.cpp" />
     <ClCompile Include="..\ShaderInstantiation.cpp" />
     <ClCompile Include="..\ShaderPatcher.cpp" />
@@ -120,6 +121,7 @@
     <ClInclude Include="..\GraphSyntax.h" />
     <ClInclude Include="..\NodeGraphSignature.h" />
     <ClInclude Include="..\NodeGraph.h" />
+    <ClInclude Include="..\ShaderAnalysis.h" />
     <ClInclude Include="..\ShaderInstantiation.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
     <ClInclude Include="..\NodeGraphProvider.h" />

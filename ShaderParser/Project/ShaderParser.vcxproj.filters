@@ -51,6 +51,9 @@
     <ClCompile Include="..\DescriptorSetInstantiation.cpp">
       <Filter>Shaders</Filter>
     </ClCompile>
+    <ClCompile Include="..\ShaderAnalysis.cpp">
+      <Filter>Shaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -87,6 +90,9 @@
       <Filter>Shaders</Filter>
     </ClInclude>
     <ClInclude Include="..\DescriptorSetInstantiation.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShaderAnalysis.h">
       <Filter>Shaders</Filter>
     </ClInclude>
   </ItemGroup>
