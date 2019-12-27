@@ -132,6 +132,19 @@ static const int NonPreprocessorLine0 = 0;
 			}
 		}
 
+		TEST_METHOD(AnalyzeSelectors)
+		{
+			const char exampleShader[] = R"--(
+				#if defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)
+					#if defined(THIRD_SELECTOR)
+					#endif
+				#endif
+			)--";
+			auto analysis = ShaderSourceParser::AnalyzeSelectors(exampleShader);
+			Assert::AreEqual(analysis._selectorRelevance["SOME_SELECTOR"], std::string{"1"});
+			Assert::AreEqual(analysis._selectorRelevance["ANOTHER_SELECTOR"], std::string{"1"});
+			Assert::AreEqual(analysis._selectorRelevance["THIRD_SELECTOR"], std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
+		}
 
 		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
 		static ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
