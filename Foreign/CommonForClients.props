@@ -6,7 +6,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ForeignDir)\half-1.9.2\include;$(ForeignDir)\eigen;$(ForeignDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ForeignDir)\half-1.9.2\include;$(ForeignDir)\eigen;$(ForeignDir)\json\include;$(ForeignDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

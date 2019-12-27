@@ -13,3 +13,6 @@
 [submodule "Foreign/tiny-process-library"]
 	path = Foreign/tiny-process-library
 	url = https://gitlab.com/eidheim/tiny-process-library.git
+[submodule "Foreign/json"]
+	path = Foreign/json
+	url = https://github.com/nlohmann/json.git
