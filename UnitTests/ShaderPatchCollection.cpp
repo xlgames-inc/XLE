@@ -203,7 +203,7 @@ namespace UnitTests
 			for (const auto& p:patchCollection.GetPatches())
 				instantiations.push_back(p.second);
 
-			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations));
+			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), RenderCore::ShaderLanguage::HLSL);
 			::Assert::AreNotEqual(instantiation._sourceFragments.size(), (size_t)0);
 		}
 
