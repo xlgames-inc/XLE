@@ -37,6 +37,9 @@
     <Filter Include="cparse">
       <UniqueIdentifier>{0945dff2-a8fb-4d1e-9a63-29088d336f14}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tiny-process-library">
+      <UniqueIdentifier>{df22c5ed-54dc-4541-9309-5107a74b149c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Hash\MurmurHash2.cpp">
@@ -354,6 +357,12 @@
     <ClCompile Include="..\cparse\shunting-yard.cpp">
       <Filter>cparse</Filter>
     </ClCompile>
+    <ClCompile Include="..\tiny-process-library\process.cpp">
+      <Filter>tiny-process-library</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tiny-process-library\process_win.cpp">
+      <Filter>tiny-process-library</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Hash\MurmurHash3.h">
@@ -535,6 +544,9 @@
     </ClInclude>
     <ClInclude Include="..\cparse\shunting-yard-exceptions.h">
       <Filter>cparse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tiny-process-library\process.hpp">
+      <Filter>tiny-process-library</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -10,3 +10,6 @@
 [submodule "Foreign/cparse"]
 	path = Foreign/cparse
 	url = git@github.com:djewsbury/cparse.git
+[submodule "Foreign/tiny-process-library"]
+	path = Foreign/tiny-process-library
+	url = https://gitlab.com/eidheim/tiny-process-library.git
