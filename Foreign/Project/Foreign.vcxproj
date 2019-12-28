@@ -90,7 +90,6 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\cparse\builtin-features.cpp" />
     <ClCompile Include="..\cparse\containers.cpp" />
     <ClCompile Include="..\cparse\functions.cpp" />
     <ClCompile Include="..\cparse\packToken.cpp" />
@@ -283,7 +282,6 @@
     <ClInclude Include="..\tinyxml2-master\tinyxml2.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\cparse\builtin-features.inc" />
     <None Include="..\fmt\ChangeLog.rst" />
     <None Include="..\fmt\CONTRIBUTING.rst" />
     <None Include="..\fmt\LICENSE.rst" />

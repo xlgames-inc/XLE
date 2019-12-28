@@ -342,9 +342,6 @@
     <ClCompile Include="..\zlib\zutil.c">
       <Filter>zlib</Filter>
     </ClCompile>
-    <ClCompile Include="..\cparse\builtin-features.cpp">
-      <Filter>cparse</Filter>
-    </ClCompile>
     <ClCompile Include="..\cparse\containers.cpp">
       <Filter>cparse</Filter>
     </ClCompile>
@@ -561,9 +558,6 @@
     </None>
     <None Include="..\fmt\LICENSE.rst">
       <Filter>fmt</Filter>
-    </None>
-    <None Include="..\cparse\builtin-features.inc">
-      <Filter>cparse</Filter>
     </None>
   </ItemGroup>
 </Project>
