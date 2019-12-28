@@ -299,6 +299,10 @@ namespace ShaderSourceParser
 			for (const auto&pc:p.second._parametersToCurry)
 				result = Hash64(pc, result);
 		}
+		// Also hash the selectors given. We could filter these
+		// based on what's relevant to the particular include, but that might be overkill
+		result = HashCombine(result, _selectors.GetHash());
+		result = HashCombine(result, _selectors.GetParameterNamesHash());
         return result;
     }
 }

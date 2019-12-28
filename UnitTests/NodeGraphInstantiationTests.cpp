@@ -36,14 +36,14 @@ static const char* s_complicatedGraphFile = R"--(
 	{
 		captures MaterialUniforms = ( float3 DiffuseColor );
 		captures AnotherCaptures = ( float SecondaryCaptures );
-		if "SIMPLE_BIND" return simple_example::Bind_PerPixel(geo:geo).result;
-		return Internal_PerPixel(geo:geo).result;
+		if "defined(SIMPLE_BIND)" return simple_example::Bind_PerPixel(geo:geo).result;
+		if "!defined(SIMPLE_BIND)" return Internal_PerPixel(geo:geo).result;
 	}
 
 	bool Bind_EarlyRejectionTest(VSOutput geo) implements templates::EarlyRejectionTest
 	{
 		captures MaterialUniforms = ( float AlphaWeight = "0.5" );
-		if "ALPHA_TEST" return conditions::LessThan(lhs:MaterialUniforms.AlphaWeight, rhs:"0.5").result;
+		if "defined(ALPHA_TEST)" return conditions::LessThan(lhs:MaterialUniforms.AlphaWeight, rhs:"0.5").result;
 		return "false";
 	}
 )--";
@@ -83,6 +83,8 @@ namespace UnitTests
 				ShaderSourceParser::InstantiationRequest_ArchiveName instRequests[] {
 					{ "ut-data/complicated.graph" }
 				};
+
+				instRequests[0]._selectors.SetParameter(u("SIMPLE_BIND"), 1);
 
 				auto inst = ShaderSourceParser::InstantiateShader(
 					MakeIteratorRange(instRequests), 

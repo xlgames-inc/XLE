@@ -29,6 +29,7 @@ namespace ShaderSourceParser
 	public:
 		std::unordered_map<std::string, InstantiationRequest_ArchiveName>	_parameterBindings;
 		std::vector<std::string>								_parametersToCurry;
+		ParameterBox											_selectors;
 
 		struct SpecialOptions
 		{

@@ -20,6 +20,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/PreprocessorInterpreter.h"
 #include <sstream>
 #include <set>
 #include <assert.h>
@@ -594,6 +595,7 @@ namespace ShaderSourceParser
 		dep._instantiation = InstantiationRequest_ArchiveName { sigRes._finalArchiveName, std::move(callInstantiation) };
 		dep._instantiation._customProvider = sigRes._customProvider;
 		dep._isGraphSyntaxFile = sigRes._isGraphSyntaxFile;
+		dep._instantiation._selectors = instantiationParameters._selectors;		// inherit our selectors
 
 		auto depHash = dep._instantiation.CalculateHash();
         auto existing = std::find_if(
@@ -689,16 +691,33 @@ namespace ShaderSourceParser
         return std::make_tuple(result.str(), std::move(finalInterface), std::move(depTable));
     }
 
+	static NodeGraph FilterGraphWithSelectors(
+		const NodeGraph& graph, const ParameterBox& selectors)
+	{
+		NodeGraph filteredGraph;
+		for (const auto&n:graph.GetNodes())
+			filteredGraph.Add(Node{n});
+		for (const auto&c:graph.GetConnections())
+			if (c._condition.empty() || EvaluatePreprocessorExpression(c._condition, selectors))
+				filteredGraph.Add(Connection{c});
+		return filteredGraph;
+	}
+
     InstantiatedShader GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
         const InstantiationRequest& instantiationParameters,
         INodeGraphProvider& sigProvider)
     {
+		// We must filter the connections in the graph based on the selectors in the instantiation request
+		// The most straightforward way to do this is to just filter them out here, before we call GenerateMainFunctionBody.
+		// We will just remove any connections that have a condition that won't pass given the input selectors
+		auto filteredGraph = FilterGraphWithSelectors(graph, instantiationParameters._selectors);
+
 		std::string mainBody;
 		NodeGraphSignature interf;
         DependencyTable depTable;
 		std::set<::Assets::DepValPtr> depVals;
-		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(graph, {}, instantiationParameters, sigProvider, depVals);
+		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(filteredGraph, {}, instantiationParameters, sigProvider, depVals);
 
 			//
             //      Our graph function is always a "void" function, and all of the output
