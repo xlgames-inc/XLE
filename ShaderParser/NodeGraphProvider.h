@@ -27,7 +27,7 @@ namespace GraphLanguage
 			bool _isGraphSyntax = false;
 			::Assets::DepValPtr _depVal;
         };
-        virtual std::optional<Signature> FindSignature(StringSection<> name) = 0;
+		virtual std::vector<Signature> FindSignatures(StringSection<> name) = 0;
 
 		struct NodeGraph
         {
@@ -40,6 +40,8 @@ namespace GraphLanguage
         virtual std::optional<NodeGraph> FindGraph(StringSection<> name) = 0;
 
 		virtual std::string TryFindAttachedFile(StringSection<> name) = 0;
+		
+		[[deprecated]] virtual std::optional<Signature> FindSignature(StringSection<> name) sealed ;	// legacy interface -- prefer the pural FindSignatures()
 
         virtual ~INodeGraphProvider();
     };
@@ -47,15 +49,17 @@ namespace GraphLanguage
     class BasicNodeGraphProvider : public INodeGraphProvider
     {
     public:
-        std::optional<Signature> FindSignature(StringSection<> name);
-		std::optional<NodeGraph> FindGraph(StringSection<> name);
-		std::string TryFindAttachedFile(StringSection<> name);
+        std::vector<Signature> FindSignatures(StringSection<> name) override;
+		std::optional<NodeGraph> FindGraph(StringSection<> name) override;
+		std::string TryFindAttachedFile(StringSection<> name) override;
 
         BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules);
         ~BasicNodeGraphProvider();
     protected:
-        ::Assets::DirectorySearchRules _searchRules;
-        std::unordered_map<uint64_t, Signature> _cache;        
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+
+		const ::Assets::DirectorySearchRules& GetDirectorySearchRules() const;
     };
 
 	void AddAttachedSchemaFiles(

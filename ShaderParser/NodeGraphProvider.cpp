@@ -25,6 +25,9 @@ namespace GraphLanguage
 		auto GetFunction(StringSection<char> fnName) const -> const NodeGraphSignature*;
 		auto GetUniformBuffer(StringSection<char> structName) const -> const UniformBufferSignature*;
 
+		const ShaderFragmentSignature& GetSignature() const { return _sig; }
+		const std::string& GetSourceFileName() const { return _srcFileName; }
+
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
@@ -33,6 +36,7 @@ namespace GraphLanguage
 	private:
 		ShaderFragmentSignature _sig;
 		::Assets::DepValPtr _depVal;
+		std::string _srcFileName;
 	};
 
 	auto ShaderFragment::GetFunction(StringSection<char> fnName) const -> const NodeGraphSignature*
@@ -56,6 +60,7 @@ namespace GraphLanguage
 	}
 
 	ShaderFragment::ShaderFragment(StringSection<::Assets::ResChar> fn)
+	: _srcFileName(fn.AsString())
 	{
 		auto shaderFile = LoadSourceFile(fn);
 		if (XlEqStringI(MakeFileNameSplitter(fn).Extension(), "graph")) {
@@ -72,67 +77,107 @@ namespace GraphLanguage
 
 	ShaderFragment::~ShaderFragment() {}
 
-    static std::tuple<StringSection<>, StringSection<>> SplitArchiveName(StringSection<> archiveName)
+    static std::pair<StringSection<>, StringSection<>> SplitArchiveName(StringSection<> input)
     {
-        auto pos = std::find(archiveName.begin(), archiveName.end(), ':');
-        if (pos != archiveName.end()) {
-            return std::make_tuple(MakeStringSection(archiveName.begin(), pos), MakeStringSection(pos+1, archiveName.end()));
-        } else {
-            return std::make_tuple(StringSection<>(), archiveName);
-        }
+        auto pos = std::find(input.begin(), input.end(), ':');
+        if (pos != input.end())
+			if ((pos+1) != input.end() && *(pos+1) == ':')
+				return std::make_pair(MakeStringSection(input.begin(), pos), MakeStringSection(pos+2, input.end()));
+
+		return std::make_pair(input, StringSection<>{});
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto BasicNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	class BasicNodeGraphProvider::Pimpl
+	{
+	public:
+        ::Assets::DirectorySearchRules _searchRules;
+        std::unordered_map<uint64_t, std::shared_ptr<ShaderFragment>> _cache;
+	};
+
+    auto BasicNodeGraphProvider::FindSignatures(StringSection<> name) -> std::vector<Signature>
     {
+		if (name.IsEmpty())
+			return {};
+
         auto hash = Hash64(name.begin(), name.end());
-        auto existing = _cache.find(hash);
-        if (existing == _cache.end()) {
-			auto splitName = SplitArchiveName(name);
-			if (!std::get<0>(splitName).IsEmpty()) {
-				char resolvedFile[MaxPath];
-				_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
-				if (resolvedFile[0]) {
-					TRY {
-						auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
-						auto* fn = frag.GetFunction(std::get<1>(splitName));
-						if (fn != nullptr) {
-							existing = _cache.insert({hash, Signature{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile, frag.GetDependencyValidation()}}).first;
-						}
-					} CATCH (const ::Assets::Exceptions::RetrievalError&) {
-					} CATCH_END
-				}
-			}
-        }
+        auto existing = _pimpl->_cache.find(hash);
+        if (existing == _pimpl->_cache.end() || existing->second->GetDependencyValidation() > 0) {
+			char resolvedFile[MaxPath];
+			_pimpl->_searchRules.ResolveFile(resolvedFile, name);
+			if (!resolvedFile)
+				return {};
 
-		if (existing != _cache.end())
-			return existing->second;
+			std::shared_ptr<ShaderFragment> fragment = ::Assets::AutoConstructAsset<ShaderFragment>(resolvedFile);
+			existing = _pimpl->_cache.insert(std::make_pair(hash, fragment)).first;
+		}
 
-		return {};
+		std::vector<Signature> result;
+		for (const auto&fn:existing->second->GetSignature()._functions) {
+			INodeGraphProvider::Signature rSig;
+			rSig._name = fn.first;
+			rSig._signature = fn.second;
+			rSig._sourceFile = existing->second->GetSourceFileName();
+			rSig._isGraphSyntax = existing->second->_isGraphSyntaxFile;
+			rSig._depVal = existing->second->GetDependencyValidation();
+			result.push_back(rSig);
+		}
+		return result;
     }
 
 	auto BasicNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
 	{
 		auto splitName = SplitArchiveName(name);
-		return LoadGraphSyntaxFile(std::get<0>(splitName), std::get<1>(splitName));
+		char resolvedName[MaxPath];
+		_pimpl->_searchRules.ResolveFile(resolvedName, splitName.first);
+		return LoadGraphSyntaxFile(resolvedName, splitName.second);
 	}
 
 	std::string BasicNodeGraphProvider::TryFindAttachedFile(StringSection<> name)
 	{
 		char resolvedName[MaxPath];
-		_searchRules.ResolveFile(resolvedName, name);
+		_pimpl->_searchRules.ResolveFile(resolvedName, name);
 		if (resolvedName[0])
 			return resolvedName;
 		return {};
 	}
 
+	const ::Assets::DirectorySearchRules& BasicNodeGraphProvider::GetDirectorySearchRules() const
+	{
+		return _pimpl->_searchRules;
+	}
+
     BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)
-    : _searchRules(searchRules) {}
+	{
+		_pimpl = std::make_unique<Pimpl>();
+		_pimpl->_searchRules = searchRules;
+	}
         
     BasicNodeGraphProvider::~BasicNodeGraphProvider() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	auto INodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	{
+		// This is the legacy interface, wherein we search for individual signatures at a time
+		// (as opposed to getting all of the signatures from a full file)
+		auto split = SplitArchiveName(name);
+		if (split.second.IsEmpty()) {
+			// To support legacy behaviour, when we're searching for a signature with just a flat name,
+			// and no archive name divider (ie, no ::), we will call FindSignatures with an empty string.
+			// Some implementations of INodeGraphProvider have special behaviour when search for signatures
+			// with an empty string (eg, GraphNodeGraphProvider can look within a root/source node graph file)
+			split.first = {};
+			split.second = name;
+		}
+
+		auto sigs = FindSignatures(split.first);
+		for (const auto&s:sigs)
+			if (XlEqString(MakeStringSection(s._name), split.second))
+				return s;
+		return {};
+	}
 
 	INodeGraphProvider::~INodeGraphProvider() {}
 

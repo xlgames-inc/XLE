@@ -121,9 +121,9 @@ namespace GraphLanguage
 	class GraphNodeGraphProvider : public BasicNodeGraphProvider, public std::enable_shared_from_this<INodeGraphProvider>
     {
     public:
-        std::optional<Signature> FindSignature(StringSection<> name);
-		std::optional<NodeGraph> FindGraph(StringSection<> name);
-		std::string TryFindAttachedFile(StringSection<> name);
+        std::vector<Signature> FindSignatures(StringSection<> name) override;
+		std::optional<NodeGraph> FindGraph(StringSection<> name) override;
+		std::string TryFindAttachedFile(StringSection<> name) override;
 
         GraphNodeGraphProvider(
 			const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
@@ -135,33 +135,28 @@ namespace GraphLanguage
 		::Assets::DepValPtr _parsedGraphFileDepVal;
     };
 
-	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	auto GraphNodeGraphProvider::FindSignatures(StringSection<> name) -> std::vector<Signature>
 	{
-		// Interpret the given string to find a function signature that matches it
-		// First, check to see if it's scoped as an imported function
-		auto *scopingOperator = name.begin() + 1;
-		while (scopingOperator < name.end()) {
-			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
-				break;
-			++scopingOperator;
-		}
-		if (scopingOperator < name.end()) {
-			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
-			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+		// todo -- broken functionality
+		//			-- previously we could pass in a name without a scoped file. If the name
+		//			matched a graph within this graph file, we would just return that directly.
+		//			However, this this doesn't work so cleanly now that we're searching for
+		//			all of the signatures within a file (as opposed to a single signature at
+		//			a time).
 
-			auto importedName = _parsedGraphFile->_imports.find(import);
+		if (!name.IsEmpty()) {
+			auto importedName = _parsedGraphFile->_imports.find(name.AsString());
 			if (importedName != _parsedGraphFile->_imports.end())
-				return BasicNodeGraphProvider::FindSignature(importedName->second + ":" + functionName.AsString());
-			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
+				return BasicNodeGraphProvider::FindSignatures(importedName->second );
+			return BasicNodeGraphProvider::FindSignatures(name);
 		}
 
-		// Look for the function within the parsed graph syntax file
-		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
-		if (i != _parsedGraphFile->_subGraphs.end())
-			return Signature{ i->first, i->second._signature, {}, true };
+		// Look for all of the functions within the parsed graph syntax file
+		std::vector<Signature> result;
+		for (const auto&subGraph:_parsedGraphFile->_subGraphs)
+			result.push_back(Signature{ subGraph.first, subGraph.second._signature, {}, true });
 
-		// Just fallback to default behaviour
-		return BasicNodeGraphProvider::FindSignature(name);
+		return result;
 	}
 
 	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint)
@@ -200,8 +195,8 @@ namespace GraphLanguage
 
 			auto importedName = _parsedGraphFile->_imports.find(import);
 			if (importedName != _parsedGraphFile->_imports.end())
-				return BasicNodeGraphProvider::FindGraph(importedName->second + ":" + functionName.AsString());
-			return BasicNodeGraphProvider::FindGraph(import + ":" + functionName.AsString());
+				return BasicNodeGraphProvider::FindGraph(importedName->second + "::" + functionName.AsString());
+			return BasicNodeGraphProvider::FindGraph(import + "::" + functionName.AsString());
 		}
 
 		// Look for the function within the parsed graph syntax file
@@ -222,9 +217,9 @@ namespace GraphLanguage
 			resolvedName[0] = '\0';
 			XlCatString(resolvedName, importedName->second);
 			XlCatString(resolvedName, splitter.ExtensionWithPeriod());
-			_searchRules.ResolveFile(resolvedName, resolvedName);
+			GetDirectorySearchRules().ResolveFile(resolvedName, resolvedName);
 		} else {
-			_searchRules.ResolveFile(resolvedName, name);
+			GetDirectorySearchRules().ResolveFile(resolvedName, name);
 		}
 		return resolvedName;
 	}
