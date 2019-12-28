@@ -317,7 +317,7 @@ namespace RenderCore { namespace Assets
                     } else if (XlEqString(eleName, u("States"))) {
                         _stateSet = DeserializeStateSet(formatter);
 					} else if (XlEqString(eleName, u("Patches"))) {
-						_patchCollection = DeserializeShaderPatchCollection(formatter);
+						_patchCollection = ShaderPatchCollection(formatter);
                     } else {
                         formatter.SkipElement();
                     }

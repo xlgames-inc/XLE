@@ -169,13 +169,13 @@ namespace UnitTests
 			// Normally a ShaderPatchCollection is deserialized from a material file
 			// We'll test the serialization and deserialization code here, and ensure
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			auto patchCollection = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
 			// Verify that a few things got deserialized correctly
 			Assert::AreEqual(patchCollection.GetPatches()[1].first, std::string("main"));
 			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.size(), (size_t)1);
 			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.begin()->first, std::string("perPixel"));
-			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.begin()->second._archiveName, std::string("xleres/Techniques/Graph/Object_Default.graph::Default_PerPixel"));
+			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.begin()->second._archiveName, std::string("ut-data/perpixel.graph::Default_PerPixel"));
 
 			// Write out the patch collection again
 			MemoryOutputStream<uint8> strm;
@@ -185,7 +185,7 @@ namespace UnitTests
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();
 			InputStreamFormatter<utf8> formattr2 { MemoryMappedInputStream { serializedStream.Begin(), serializedStream.End() } };
-			auto patchCollection2 = RenderCore::Assets::DeserializeShaderPatchCollection(formattr2);
+			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2);
 
 			// we should have the same contents in both patch collections
 			Assert::IsTrue(patchCollection.GetPatches().size() == patchCollection2.GetPatches().size());
@@ -197,7 +197,7 @@ namespace UnitTests
 			// Ensure that we can correctly compile the shader graph in the test data
 			// (otherwise the following tests won't work)
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			auto patchCollection = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
 			std::vector<ShaderSourceParser::InstantiationRequest_ArchiveName> instantiations;
 			for (const auto& p:patchCollection.GetPatches())
@@ -210,7 +210,7 @@ namespace UnitTests
 		TEST_METHOD(CompileShaderPatchCollection1)
 		{
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			auto patchCollection = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection);
@@ -229,7 +229,7 @@ namespace UnitTests
 		TEST_METHOD(CompileShaderPatchCollection2)
 		{
 			InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
-			auto patchCollection = RenderCore::Assets::DeserializeShaderPatchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection);

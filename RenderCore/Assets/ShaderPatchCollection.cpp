@@ -141,29 +141,24 @@ namespace RenderCore { namespace Assets
 		}
 	}
 
-	ShaderPatchCollection DeserializeShaderPatchCollection(InputStreamFormatter<utf8>& formatter)
+	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter)
 	{
-		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>> result;
 		for (;;) {
 			auto next = formatter.PeekNext();
-			switch (next) {
-			case InputStreamFormatter<utf8>::Blob::BeginElement:
-				{
-					StringSection<utf8> name;
-					if (!formatter.TryBeginElement(name))
-						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result.emplace_back(std::make_pair(name.Cast<char>().AsString(), DeserializeInstantiationRequest(formatter)));
+			if (next == InputStreamFormatter<utf8>::Blob::BeginElement) {
 
-					if (!formatter.TryEndElement())
-						Throw(FormatException("Expecting end element", formatter.GetLocation()));
-					continue;
-				}
+				StringSection<utf8> name;
+				if (!formatter.TryBeginElement(name))
+					Throw(FormatException("Could not parse element", formatter.GetLocation()));
+				_patches.emplace_back(std::make_pair(name.Cast<char>().AsString(), DeserializeInstantiationRequest(formatter)));
 
-			case InputStreamFormatter<utf8>::Blob::EndElement:
-			case InputStreamFormatter<utf8>::Blob::None:
-				return result;
+				if (!formatter.TryEndElement())
+					Throw(FormatException("Expecting end element", formatter.GetLocation()));
 
-			default:
+			} else if (	next == InputStreamFormatter<utf8>::Blob::EndElement
+					||	next == InputStreamFormatter<utf8>::Blob::None) {
+				break;
+			} else {
 				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
 			}
 		}
@@ -180,7 +175,7 @@ namespace RenderCore { namespace Assets
 					StringSection<utf8> name;
 					if (!formatter.TryBeginElement(name))
 						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result.emplace_back(DeserializeShaderPatchCollection(formatter));
+					result.emplace_back(ShaderPatchCollection(formatter));
 
 					if (!formatter.TryEndElement())
 						Throw(FormatException("Expecting end element", formatter.GetLocation()));

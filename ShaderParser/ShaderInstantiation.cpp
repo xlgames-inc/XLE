@@ -198,21 +198,6 @@ namespace ShaderSourceParser
 		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
 	}
 
-	/*
-	InstantiatedShader InstantiateShader(
-		StringSection<> entryFile,
-		StringSection<> entryFn,
-		const InstantiationRequest& instantiationParameters,
-		RenderCore::ShaderLanguage shaderLanguage)
-	{
-		PendingInstantiation pendingInst {
-			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true, true,
-			instantiationParameters
-		};
-		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
-	}
-	*/
-
 	InstantiatedShader InstantiateShader(
 		IteratorRange<const InstantiationRequest_ArchiveName*> request,
 		RenderCore::ShaderLanguage shaderLanguage)

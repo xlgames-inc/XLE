@@ -108,14 +108,6 @@ namespace ShaderSourceParser
 	// Note -- we pass the shader language here to control how the CB layouts
 	// are optimized
 
-	/*
-	InstantiatedShader InstantiateShader(
-		StringSection<> entryFile,
-		StringSection<> entryFn,
-		const InstantiationRequest& instantiationParameters,
-		RenderCore::ShaderLanguage shaderLanguage);
-	*/
-
 	InstantiatedShader InstantiateShader(
 		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,

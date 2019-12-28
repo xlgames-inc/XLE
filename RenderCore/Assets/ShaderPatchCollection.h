@@ -30,6 +30,7 @@ namespace RenderCore { namespace Assets
 		friend bool operator<(uint64_t lhs, const ShaderPatchCollection& rhs);
 
 		ShaderPatchCollection();
+		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
 		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> patches);
 		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>>&& patches);
 		~ShaderPatchCollection();
@@ -40,7 +41,7 @@ namespace RenderCore { namespace Assets
 		void SortAndCalculateHash();
 	};
 
-	ShaderPatchCollection DeserializeShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
+	
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
 }}
