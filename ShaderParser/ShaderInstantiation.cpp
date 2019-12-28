@@ -10,7 +10,6 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include <stack>
-#include <regex>
 #include <sstream>
 
 namespace ShaderSourceParser
@@ -29,15 +28,15 @@ namespace ShaderSourceParser
 		InstantiationRequest _instantiationParams;
 	};
 
-	static std::pair<std::string, std::string> SplitArchiveName(const std::string& input)
-	{
-		static std::regex archiveNameRegex(R"--(([\w\.\\/-]+)::(\w+))--");
-		std::smatch archiveNameMatch;
-		if (std::regex_match(input, archiveNameMatch, archiveNameRegex) && archiveNameMatch.size() >= 3) {
-			return { archiveNameMatch[1].str(), archiveNameMatch[2].str() };
-		}
-		return { input, std::string{} };
-	}
+	static std::pair<StringSection<>, StringSection<>> SplitArchiveName(StringSection<> input)
+    {
+        auto pos = std::find(input.begin(), input.end(), ':');
+        if (pos != input.end())
+			if ((pos+1) != input.end() && *(pos+1) == ':')
+				return std::make_pair(MakeStringSection(input.begin(), pos), MakeStringSection(pos+2, input.end()));
+
+		return std::make_pair(input, StringSection<>{});
+    }
 
 	static InstantiatedShader InstantiateShader(IteratorRange<const PendingInstantiation*> rootInstantiations, RenderCore::ShaderLanguage shaderLanguage)
 	{
@@ -144,7 +143,7 @@ namespace ShaderSourceParser
 					// This is just an include of a normal shader header
 					if (instHash!=0) {
 						auto filename = SplitArchiveName(dep._instantiation._archiveName).first;
-						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << instHash));
+						includes.insert(std::string(StringMeld<MaxPath>() << filename.AsString() + "_" << instHash));
 					} else {
 						if (dep._instantiation._customProvider) {
 							auto sig = dep._instantiation._customProvider->FindSignature(dep._instantiation._archiveName);
@@ -199,6 +198,7 @@ namespace ShaderSourceParser
 		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
 	}
 
+	/*
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
@@ -211,21 +211,71 @@ namespace ShaderSourceParser
 		};
 		return InstantiateShader(MakeIteratorRange(&pendingInst, &pendingInst+1), shaderLanguage);
 	}
+	*/
 
 	InstantiatedShader InstantiateShader(
 		IteratorRange<const InstantiationRequest_ArchiveName*> request,
 		RenderCore::ShaderLanguage shaderLanguage)
 	{
+		GraphLanguage::BasicNodeGraphProvider defaultProvider(::Assets::DirectorySearchRules{});
+
 		assert(!request.empty());
 		std::vector<PendingInstantiation> pendingInst;
 		pendingInst.reserve(request.size());
 		for (const auto&r:request) {
+
+			// We can either be instantiating from a full graph file, or from a specific graph within that file
+			// When the request name has an archive name divider (ie, "::"), we will pull out only a single
+			// graph from the file.
+			// Otherwise we will load every graph from within the file
+
 			auto split = SplitArchiveName(r._archiveName);
-			pendingInst.emplace_back(
-				PendingInstantiation {
-					GraphLanguage::LoadGraphSyntaxFile(split.first, split.second), true, true,
-					r
-				});
+			if (split.second.IsEmpty()) {
+				// this is a full filename, we should load all of the node graphs within the given
+				// file
+				std::vector<GraphLanguage::INodeGraphProvider::Signature> signatures;
+				if (r._customProvider) {
+					signatures = r._customProvider->FindSignatures(r._archiveName);
+				} else {
+					signatures = defaultProvider.FindSignatures(r._archiveName);
+				}
+
+				if (signatures.empty())
+					Throw(::Exceptions::BasicLabel("Did not find any node graph signatures for instantiation request (%s)", r._archiveName.c_str()));
+
+				for (const auto&s:signatures) {
+					std::string archiveName = r._archiveName + "::" + s._name;
+
+					std::optional<GraphLanguage::INodeGraphProvider::NodeGraph> nodeGraph;
+					if (r._customProvider) {
+						nodeGraph = r._customProvider->FindGraph(archiveName);
+					} else {
+						nodeGraph = defaultProvider.FindGraph(archiveName);
+					}
+
+					if (!nodeGraph)
+						Throw(::Exceptions::BasicLabel("Failed loading graph with name (%s) in archive (%s)", s._name.c_str(), r._archiveName.c_str()));
+
+					pendingInst.emplace_back(
+						PendingInstantiation { nodeGraph.value(), true, true, r });
+				}
+
+			} else {
+				// this refers to a specific item in graph within an outer graph file
+				std::optional<GraphLanguage::INodeGraphProvider::NodeGraph> nodeGraph;
+				if (r._customProvider) {
+					nodeGraph = r._customProvider->FindGraph(r._archiveName);
+				} else {
+					nodeGraph = defaultProvider.FindGraph(r._archiveName);
+				}
+
+				if (!nodeGraph)
+					Throw(::Exceptions::BasicLabel("Could not instantiate shader with node graph request (%s)", r._archiveName.c_str()));
+
+				pendingInst.emplace_back(
+					PendingInstantiation { nodeGraph.value(), true, true, r });
+			}
+			
 		}
 		return InstantiateShader(MakeIteratorRange(pendingInst), shaderLanguage);
 	}

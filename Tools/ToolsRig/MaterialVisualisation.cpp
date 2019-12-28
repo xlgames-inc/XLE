@@ -264,6 +264,8 @@ namespace ToolsRig
 
 				ShaderSourceParser::InstantiatedShader fragments;
 
+				// todo -- refactor this slightly so that we're instantiating all of the root
+				// functions available in a standard graph file
 				auto psNameSplit = MakeFileNameSplitter(psName);
 				const char* entryPoint;
 				if (structureType == StructureType::DeferredPass) {

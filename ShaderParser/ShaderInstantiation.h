@@ -61,6 +61,8 @@ namespace ShaderSourceParser
 			InstantiationRequest&& moveFrom)
 		: InstantiationRequest(moveFrom), _archiveName(archiveName) {}
 
+		InstantiationRequest_ArchiveName(const std::string& archiveName) : _archiveName(archiveName) {}
+
 		InstantiationRequest_ArchiveName() {}
 		~InstantiationRequest_ArchiveName() {}
 	};
@@ -105,11 +107,13 @@ namespace ShaderSourceParser
 	// Note -- we pass the shader language here to control how the CB layouts
 	// are optimized
 
+	/*
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
 		const InstantiationRequest& instantiationParameters,
 		RenderCore::ShaderLanguage shaderLanguage);
+	*/
 
 	InstantiatedShader InstantiateShader(
 		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
