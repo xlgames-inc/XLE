@@ -260,6 +260,7 @@ namespace UnitTests
 
 		TEST_CLASS_CLEANUP(Shutdown)
 		{
+			_assetServices.reset();
 			_globalServices.reset();
 		}
 	};

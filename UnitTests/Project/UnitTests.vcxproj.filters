@@ -9,11 +9,13 @@
     <ClCompile Include="..\Threading.cpp" />
     <ClCompile Include="..\StreamFormatter.cpp" />
     <ClCompile Include="..\TransformationMachineOpt.cpp" />
-    <ClCompile Include="..\ShaderParser.cpp" />
     <ClCompile Include="..\CBLayoutTests.cpp" />
     <ClCompile Include="..\ShaderPatchCollection.cpp" />
+    <ClCompile Include="..\NodeGraphInstantiationTests.cpp" />
+    <ClCompile Include="..\ShaderParserTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\UnitTestHelper.h" />
+    <ClInclude Include="..\ReusableDataFiles.h" />
   </ItemGroup>
 </Project>

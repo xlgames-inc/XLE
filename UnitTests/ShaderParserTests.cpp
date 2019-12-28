@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "UnitTestHelper.h"
+#include "ReusableDataFiles.h"
 #include "../Assets/IFileSystem.h"
 #include "../ShaderParser/ShaderSignatureParser.h"
 #include "../ShaderParser/NodeGraphSignature.h"
@@ -14,11 +15,17 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Assets/MemoryFile.h"
+#include "../Assets/AssetTraits.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/FileUtils.h"
 #include <CppUnitTest.h>
+
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Assets/LocalCompiledShaderSource.h"
+#include "../ShaderParser/ShaderInstantiation.h"
+#include "../ShaderParser/GraphSyntax.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -65,7 +72,21 @@ static const int NonPreprocessorLine0 = 0;
 				// extended line comment \
 	/*  */		#	INCLUDE		<innershader4.sh>			   
 		// /**/	#  include<ut-data/innershader5.sh>			   random trailing stuff
-			)--"))
+			)--")),
+
+		std::make_pair(
+			"example.tech",
+			::Assets::AsBlob(R"--(
+				~NoPatches
+					~Inherit; xleres/Techniques/Illum.tech:Deferred
+
+				~PerPixel
+					~Inherit; xleres/Techniques/Illum.tech:Deferred
+					PixelShader=xleres/deferred/main.psh:frameworkEntry
+			)--")),
+
+		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile))
 	};
 
     TEST_CLASS(ShaderParser)
@@ -132,7 +153,7 @@ static const int NonPreprocessorLine0 = 0;
 			}
 		}
 
-		TEST_METHOD(AnalyzeSelectors)
+		TEST_METHOD(TestAnalyzeSelectors)
 		{
 			const char exampleShader[] = R"--(
 				#if defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)
@@ -144,6 +165,67 @@ static const int NonPreprocessorLine0 = 0;
 			Assert::AreEqual(analysis._selectorRelevance["SOME_SELECTOR"], std::string{"1"});
 			Assert::AreEqual(analysis._selectorRelevance["ANOTHER_SELECTOR"], std::string{"1"});
 			Assert::AreEqual(analysis._selectorRelevance["THIRD_SELECTOR"], std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
+
+			// Check some filtering conditions
+			{
+				auto filter0 = ShaderSourceParser::FilterSelectors(
+					ParameterBox {
+						std::make_pair(u("THIRD_SELECTOR"), "1"),
+					},
+					analysis._selectorRelevance);
+				Assert::AreEqual(filter0.GetCount(), (size_t)0);
+			}
+
+			{
+				auto filter1 = ShaderSourceParser::FilterSelectors(
+					ParameterBox {
+						std::make_pair(u("SOME_SELECTOR"), "1"),
+						std::make_pair(u("THIRD_SELECTOR"), "1"),
+					},
+					analysis._selectorRelevance);
+				Assert::AreEqual(filter1.GetCount(), (size_t)2);
+			}
+		}
+
+		TEST_METHOD(BindShaderToTechnique)
+		{
+			// Given some shader (either straight-up shader code, or something generated from a shader graph)
+			// bind it to a technique, and produce both the final shader text and required meta-data
+
+			auto tech = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("ut-data/example.tech");
+			const auto* entry = tech->FindEntry(Hash64("PerPixel"));
+			Assert::IsNotNull(entry);
+
+			const std::string exampleGraphFN = "ut-data/example.graph";
+			ShaderSourceParser::InstantiationRequest_ArchiveName instRequests[] {
+				{ exampleGraphFN }
+			};
+			
+			using namespace ShaderSourceParser;
+			// auto graphSyntax = GraphLanguage::ParseGraphSyntax(exampleGraphFN);
+			// InstantiationRequest_ArchiveName instRequest { exampleGraphFN };
+			// auto inst = InstantiateShader(MakeIteratorRange(&instRequest, &instRequest+1), RenderCore::ShaderLanguage::GLSL);
+			// auto inst = InstantiateShader(graphSyntax._subGraphs[0]._graph, true, InstantiationRequest{}, RenderCore::ShaderLanguage::GLSL);
+			auto inst = InstantiateShader(MakeIteratorRange(instRequests), RenderCore::ShaderLanguage::GLSL);
+
+			auto i = std::find_if(
+				inst._entryPoints.begin(), inst._entryPoints.end(),
+				[](const InstantiatedShader::EntryPoint& ep) {
+					return ep._name == "PerPixel";
+				});
+			Assert::IsTrue(i != inst._entryPoints.end());
+
+			// Expand shader and extract the selector relevance table information
+
+			{
+				std::stringstream str;
+				for (const auto&f:inst._sourceFragments)
+					str << f << std::endl;
+
+				auto expanded = ExpandIncludes(str.str(), exampleGraphFN, ::Assets::DefaultDirectorySearchRules(exampleGraphFN));
+				auto relevanceTable = AnalyzeSelectors(expanded._processedSource);
+				(void)relevanceTable;
+			}
 		}
 
 		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
@@ -155,10 +237,12 @@ static const int NonPreprocessorLine0 = 0;
 			_globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 			::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 			::Assets::MainFileSystem::GetMountingTree()->Mount(u("ut-data"), ::Assets::CreateFileSystem_Memory(s_utData));
+			_assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		}
 
 		TEST_CLASS_CLEANUP(Shutdown)
 		{
+			_assetServices.reset();
 			_globalServices.reset();
 		}
     };
