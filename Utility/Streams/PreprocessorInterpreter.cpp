@@ -7,6 +7,7 @@
 #pragma warning(disable:4505) // 'preprocessor_operations::UndefinedOnUndefinedOperation': unreferenced local function has been removed
 
 #include "PreprocessorInterpreter.h"
+#include "../ParameterBox.h"
 #include "../Threading/ThreadingUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../Foreign/cparse/shunting-yard.h"
@@ -206,6 +207,70 @@ namespace Utility
 
         // those that this can throw exceptions back to the caller (for example, if the input can't be parsed)
     }
+
+	bool EvaluatePreprocessorExpression(
+        StringSection<> input,
+        const ParameterBox& definedTokens)
+	{
+		if (!static_hasSetupPreprocOps.load()) {
+            bool threadAssigned = static_setupThreadAssigned.exchange(true);
+            if (!threadAssigned) {
+                preprocessor_operations::Startup();
+                static_hasSetupPreprocOps.store(true);
+            } else {
+                while (!static_hasSetupPreprocOps.load()) {
+                    Threading::YieldTimeSlice();
+                }
+            }
+        }
+
+        TokenMap vars;
+        for (const auto&i:definedTokens) {
+			auto name = i.Name().Cast<char>().AsString();
+			auto type = i.Type();
+
+			// For simple scalar types, attempt conversion to something
+			// we can construct a packToken with
+			if (type._arrayCount <= 1) {
+				if (type._type == ImpliedTyping::TypeCat::Bool) {
+					vars[name] = packToken(*(bool*)i.RawValue().begin());
+					continue;
+				} else if (type._type == ImpliedTyping::TypeCat::Int8
+						|| type._type == ImpliedTyping::TypeCat::UInt8
+						|| type._type == ImpliedTyping::TypeCat::Int16
+						|| type._type == ImpliedTyping::TypeCat::UInt16
+						|| type._type == ImpliedTyping::TypeCat::Int32) {
+					int dest;
+					ImpliedTyping::Cast(
+						AsOpaqueIteratorRange(dest), ImpliedTyping::TypeCat::Int32,
+						i.RawValue(), type._type);
+					vars[name] = packToken(dest);
+					continue;
+				} else if (type._type == ImpliedTyping::TypeCat::UInt32
+						|| type._type == ImpliedTyping::TypeCat::Int64
+						|| type._type == ImpliedTyping::TypeCat::UInt64) {
+					int64_t dest;
+					ImpliedTyping::Cast(
+						AsOpaqueIteratorRange(dest), ImpliedTyping::TypeCat::Int64,
+						i.RawValue(), type._type);
+					vars[name] = packToken(dest);
+					continue;
+				} else if (type._type == ImpliedTyping::TypeCat::Float) {
+					vars[name] = packToken(*(float*)i.RawValue().begin());
+					continue;
+				} else if (type._type == ImpliedTyping::TypeCat::Double) {
+					vars[name] = packToken(*(double*)i.RawValue().begin());
+					continue;
+				}
+			}
+
+			// If we didn't get a match with one of the above types, just 
+			// treat it as a string
+            vars[name] = packToken(i.ValueAsString());
+		}
+
+        return calculator::calculate(input.AsString().c_str(), &vars).asBool();
+	}
 
 
     /* TokenMap vars;

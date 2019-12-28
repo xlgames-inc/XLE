@@ -7,6 +7,7 @@
 #include "../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/PreprocessorInterpreter.h"
 #include "../Utility/StringFormat.h"
 #include <tiny-process-library/process.hpp>
 
@@ -336,6 +337,26 @@ namespace ShaderSourceParser
 		} else {
 			return {};
 		}
+	}
+
+	ParameterBox FilterSelectors(
+		const ParameterBox& unfiltered,
+		const std::unordered_map<std::string, std::string>& relevance)
+	{
+		// Filter selectors based on the given relevance table
+		ParameterBox result;
+		for (const auto&p:unfiltered) {
+			auto i = relevance.find(p.Name().Cast<char>().AsString());
+			if (i == relevance.end())
+				continue;
+
+			auto relevant = EvaluatePreprocessorExpression(MakeStringSection(i->second), unfiltered);
+			if (!relevant)
+				continue;
+
+			result.SetParameter(p.Name(), p.RawValue(), p.Type());
+		}
+		return result;
 	}
 
 }

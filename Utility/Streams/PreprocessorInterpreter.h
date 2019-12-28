@@ -9,9 +9,15 @@
 
 namespace Utility
 {
+	class ParameterBox;
+
     bool EvaluatePreprocessorExpression(
         StringSection<> input,
         const std::unordered_map<std::string, int>& definedTokens);
+
+	bool EvaluatePreprocessorExpression(
+        StringSection<> input,
+        const ParameterBox& definedTokens);
 }
 
 using namespace Utility;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../RenderCore/Assets/LocalCompiledShaderSource.h"
+#include "../Utility/ParameterBox.h"
 #include <unordered_map>
 
 namespace Assets { class DirectorySearchRules; }
@@ -23,4 +24,8 @@ namespace ShaderSourceParser
 	};
 
 	ShaderSelectorAnalysis AnalyzeSelectors(const std::string& sourceCode);
+
+	ParameterBox FilterSelectors(
+		const ParameterBox& unfiltered,
+		const std::unordered_map<std::string, std::string>& relevance);
 }
