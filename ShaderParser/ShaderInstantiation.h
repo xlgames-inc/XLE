@@ -10,12 +10,19 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <unordered_map>
 
 namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {
-	class InstantiationRequest_ArchiveName;
+	struct GenerateFunctionOptions
+	{
+		bool _generateDanglingInputs = false;
+		GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
+		bool _filterWithSelectors = false;
+		ParameterBox _selectors;
+	};
 
 	/// <summary>Parameters used in a shader instantiation operation</summary>
 	/// See the InstantiateShader functions for different ways to use this class.
@@ -27,81 +34,60 @@ namespace ShaderSourceParser
 	class InstantiationRequest
 	{
 	public:
-		std::unordered_map<std::string, InstantiationRequest_ArchiveName>	_parameterBindings;
+		std::string												_archiveName;
+		std::shared_ptr<GraphLanguage::INodeGraphProvider>		_customProvider;
+		std::unordered_map<std::string, InstantiationRequest>	_parameterBindings;
 		std::vector<std::string>								_parametersToCurry;
-		ParameterBox											_selectors;
 
-		struct SpecialOptions
-		{
-			bool _generateDanglingInputs = false;
-			GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
-		};
-		SpecialOptions _options;
-
-		uint64_t CalculateHash() const;
-
-		InstantiationRequest(std::initializer_list<std::pair<const std::string, InstantiationRequest_ArchiveName>> init)
-		: _parameterBindings(init) {}
-		InstantiationRequest() {}
-		~InstantiationRequest() {}
+		uint64_t CalculateInstanceHash() const; ///< Calculate hash value for the parameter bindings (& curried parameters) in the request
 	};
 
-	class InstantiationRequest_ArchiveName : public InstantiationRequest
+	class ShaderEntryPoint
 	{
 	public:
-		std::string			_archiveName;
-		std::shared_ptr<GraphLanguage::INodeGraphProvider> _customProvider;
+		std::string _name;
+		GraphLanguage::NodeGraphSignature _signature;
 
-		InstantiationRequest_ArchiveName(
-			const std::string& archiveName,
-			std::initializer_list<std::pair<const std::string, InstantiationRequest_ArchiveName>> init)
-		: InstantiationRequest(init), _archiveName(archiveName) {}
-
-		InstantiationRequest_ArchiveName(
-			const std::string& archiveName,
-			InstantiationRequest&& moveFrom)
-		: InstantiationRequest(moveFrom), _archiveName(archiveName) {}
-
-		InstantiationRequest_ArchiveName(const std::string& archiveName) : _archiveName(archiveName) {}
-
-		InstantiationRequest_ArchiveName() {}
-		~InstantiationRequest_ArchiveName() {}
+		std::string _implementsName;
+		GraphLanguage::NodeGraphSignature _implementsSignature;
 	};
-
-    class DependencyTable
-    {
-    public:
-        struct Dependency 
-		{ 
-			InstantiationRequest_ArchiveName _instantiation;
-			bool _isGraphSyntaxFile;
-		};
-        std::vector<Dependency> _dependencies;
-    };
 
 	class MaterialDescriptorSet;
 
 	class InstantiatedShader
 	{
 	public:
+		/// These are the source fragments that make up the instantiated shader
+		/// Generally from here they can be fed into the shader compiler
 		std::vector<std::string> _sourceFragments;
 
-		class EntryPoint
-		{
-		public:
-			std::string _name;
-			GraphLanguage::NodeGraphSignature _signature;
+		/// <summary>Describes an entry point function in the instantiated shader</summary>
+		/// A given instantiation can have multiple entry points (for example, for binding
+		/// with different techniques).
+		/// These are like "exported" functions if we think of the instantiated shader
+		/// as a kind of library.
+		std::vector<ShaderEntryPoint> _entryPoints;
 
-			std::string _implementsName;
-			GraphLanguage::NodeGraphSignature _implementsSignature;
-		};
-		std::vector<EntryPoint> _entryPoints;
-
-		DependencyTable _dependencies;
-
-		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
+		/// Instantiated shaders can have a "uniform input" interface. This takes the
+		/// form of a descriptor set, and generally will be filled in with parameters
+		/// from a material file.
 		std::shared_ptr<MaterialDescriptorSet> _descriptorSet;
 
+		/// Relevance table for selectors. This describes what selectors influence the
+		/// shader graph instantiation, and under what circumstances.
+		/// Note that this only contains relevance information for selectors used
+		/// by shader graph files -- not selector used by the pure shader files that
+		/// were included.
+		std::unordered_map<std::string, std::string> _selectorRelevance;
+
+		/// List of included pure shader files.
+		/// Note that this doesn't include any shader graph files that were used
+		/// during the instantiation.
+		/// It will include "root" instantiation -- that is, shader files that were
+		/// part of  the initial request
+		std::set<std::string> _rawShaderFileIncludes;
+
+		/// List of dependency validations, which can be used for change tracking.
 		std::set<::Assets::DepValPtr> _depVals;
 	};
 
@@ -112,17 +98,51 @@ namespace ShaderSourceParser
 		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
 		const InstantiationRequest& instantiationParameters,
+		const GenerateFunctionOptions& generateOptions,
 		RenderCore::ShaderLanguage shaderLanguage);
 
 	InstantiatedShader InstantiateShader(
-		IteratorRange<const InstantiationRequest_ArchiveName*> request,
+		IteratorRange<const InstantiationRequest*> request,
+		const GenerateFunctionOptions& generateOptions,
 		RenderCore::ShaderLanguage shaderLanguage);
 
         ///////////////////////////////////////////////////////////////
 
-    InstantiatedShader GenerateFunction(
+	class DependencyTable
+    {
+    public:
+        struct Dependency 
+		{ 
+			InstantiationRequest _instantiation;
+			bool _isGraphSyntaxFile;
+		};
+        std::vector<Dependency> _dependencies;
+    };
+
+	class GenerateFunctionResult
+	{
+	public:
+		std::vector<std::string> _sourceFragments;
+		ShaderEntryPoint _entryPoint;
+		DependencyTable _dependencies;
+		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
+		std::set<::Assets::DepValPtr> _depVals;
+	};
+
+    GenerateFunctionResult GenerateFunction(
         const GraphLanguage::NodeGraph& graph, StringSection<char> name, 
         const InstantiationRequest& instantiationParameters,
+		const GenerateFunctionOptions& generateOptions,
         GraphLanguage::INodeGraphProvider& sigProvider);
+
+	namespace Internal
+	{
+		/// <summary>Build a selector relevance map from a node graph</summary>
+		/// Intended for internal use and testing only. Normally the selector relevance
+		/// can be collected as a by-product of the InstantiateShader() method
+		void ExtractSelectorRelevance(
+			std::unordered_map<std::string, std::string>& result,
+			const GraphLanguage::NodeGraph& graph);
+	}
 
 }

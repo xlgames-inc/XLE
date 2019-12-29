@@ -199,11 +199,12 @@ namespace UnitTests
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
-			std::vector<ShaderSourceParser::InstantiationRequest_ArchiveName> instantiations;
+			std::vector<ShaderSourceParser::InstantiationRequest> instantiations;
 			for (const auto& p:patchCollection.GetPatches())
 				instantiations.push_back(p.second);
 
-			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), RenderCore::ShaderLanguage::HLSL);
+			ShaderSourceParser::GenerateFunctionOptions generateOptions;
+			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), generateOptions, RenderCore::ShaderLanguage::HLSL);
 			::Assert::AreNotEqual(instantiation._sourceFragments.size(), (size_t)0);
 		}
 

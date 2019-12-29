@@ -33,12 +33,14 @@ namespace RenderCore { namespace Techniques
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = src.GetHash();
 
+		ShaderSourceParser::GenerateFunctionOptions generateOptions;
+
 		if (!src.GetPatches().empty()) {
-			std::vector<ShaderSourceParser::InstantiationRequest_ArchiveName> finalInstRequests;
+			std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;
 			finalInstRequests.reserve(src.GetPatches().size());
 			for (const auto&i:src.GetPatches()) finalInstRequests.push_back(i.second);
 
-			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), GetDefaultShaderLanguage());
+			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
 			_srcCode = Merge(inst._sourceFragments);
 
 			_interface._patches.reserve(inst._entryPoints.size());

@@ -408,6 +408,7 @@ namespace ShaderSourceParser
         const Node& node, 
         const NodeGraph& nodeGraph,
         const InstantiationRequest& instantiationParameters,
+		const GenerateFunctionOptions& generateOptions,
         INodeGraphProvider& sigProvider,
 		std::set<::Assets::DepValPtr>& depVals)
     {
@@ -455,7 +456,7 @@ namespace ShaderSourceParser
 				// There can be values attached as inputs to the instantiation node; they act like curried parameters.
 				auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
 				assert(instantiationNode);
-				auto param = InstantiationRequest_ArchiveName { instantiationNode->ArchiveName(), {} };
+				auto param = InstantiationRequest { instantiationNode->ArchiveName() };
 
 				// Any input parameters to this node that aren't part of the restriction signature should become curried
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
@@ -486,7 +487,7 @@ namespace ShaderSourceParser
 
         std::stringstream result, warnings;
 
-        auto callInstHash = callInstantiation.CalculateHash();
+        auto callInstHash = callInstantiation.CalculateInstanceHash();
         if (!callInstantiation._parameterBindings.empty()) {
             for (const auto& c:callInstantiation._parameterBindings) {
                 result << "\t// Instantiating " << functionName << " with " << c.first << " set to " << c.second._archiveName << std::endl;
@@ -519,7 +520,7 @@ namespace ShaderSourceParser
 		auto n = RemoveTemplateRestrictions(node.ArchiveName());
 		auto parameterBindingsForThisNode = std::find_if(
 			instantiationParameters._parameterBindings.begin(), instantiationParameters._parameterBindings.end(),
-			[n](const std::pair<std::string, InstantiationRequest_ArchiveName>&p) {
+			[n](const std::pair<std::string, InstantiationRequest>&p) {
 				return XlEqString(MakeStringSection(p.first), n);
 			});
 
@@ -553,7 +554,7 @@ namespace ShaderSourceParser
 				}
 			}
 
-            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider, depVals)._expression;
+            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, generateOptions._generateDanglingInputs, sigProvider, depVals)._expression;
         }
 
 		// If the call instantiation itself has curried parameters, they won't appear in the 
@@ -579,7 +580,7 @@ namespace ShaderSourceParser
 					pendingComma = true;
 
 					NodeGraphSignature::Parameter param{"auto", c};
-					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._options._generateDanglingInputs, sigProvider, depVals)._expression;
+					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, generateOptions._generateDanglingInputs, sigProvider, depVals)._expression;
 				}
 			}
 		}
@@ -592,16 +593,16 @@ namespace ShaderSourceParser
 
         // Append the function call to the dependency table
         DependencyTable::Dependency dep;
-		dep._instantiation = InstantiationRequest_ArchiveName { sigRes._finalArchiveName, std::move(callInstantiation) };
+		dep._instantiation = std::move(callInstantiation);
+		dep._instantiation._archiveName = sigRes._finalArchiveName;
 		dep._instantiation._customProvider = sigRes._customProvider;
 		dep._isGraphSyntaxFile = sigRes._isGraphSyntaxFile;
-		dep._instantiation._selectors = instantiationParameters._selectors;		// inherit our selectors
 
-		auto depHash = dep._instantiation.CalculateHash();
+		auto depHash = dep._instantiation.CalculateInstanceHash();
         auto existing = std::find_if(
             workingDependencyTable._dependencies.begin(), workingDependencyTable._dependencies.end(),
             [&dep, depHash](const DependencyTable::Dependency& d) 
-                { return d._instantiation._archiveName == dep._instantiation._archiveName && d._instantiation.CalculateHash() == depHash; });
+                { return d._instantiation._archiveName == dep._instantiation._archiveName && d._instantiation.CalculateInstanceHash() == depHash; });
         if (existing == workingDependencyTable._dependencies.end())
             workingDependencyTable._dependencies.emplace_back(std::move(dep));
 
@@ -620,6 +621,7 @@ namespace ShaderSourceParser
         const NodeGraph& graph,
 		IteratorRange<const NodeGraphSignature::Parameter*> predefinedParameters,
         const InstantiationRequest& instantiationParameters,
+		const GenerateFunctionOptions& generateOptions,
         INodeGraphProvider& sigProvider,
 		std::set<::Assets::DepValPtr>& depVals)
     {
@@ -647,13 +649,13 @@ namespace ShaderSourceParser
                                     graph.GetNodes().cend(), [i](const Node& n) { return n.NodeId() == *i; } );
             if (i2 != graph.GetNodes().cend()) {
                 if (i2->GetType() == Node::Type::Procedure) {
-					auto fnCall = GenerateFunctionCall(interfContext, depTable, *i2, graph, instantiationParameters, sigProvider, depVals);
+					auto fnCall = GenerateFunctionCall(interfContext, depTable, *i2, graph, instantiationParameters, generateOptions, sigProvider, depVals);
                     result << fnCall.first.str();
 
 					// Look for "dangling outputs". These are outputs that have been generated by GenerateFunctionCall, but
 					// are not attached to any other nodes as inputs. If the flag is set, these will become part of the 
 					// function interface (and can be used for preview shaders, etc)
-					if (i2->NodeId() == instantiationParameters._options._generateDanglingOutputs) {
+					if (i2->NodeId() == generateOptions._generateDanglingOutputs) {
 						const auto& fnSig = fnCall.second._signature;
 						for (const auto& p:fnSig.GetParameters()) {
 							if (p._direction == ParameterDirection::Out) {
@@ -670,7 +672,7 @@ namespace ShaderSourceParser
         }
 
         for (const auto& dep:depTable._dependencies)
-            result << "\t//Dependency: " << dep._instantiation._archiveName << " inst hash: " << dep._instantiation.CalculateHash() << std::endl;
+            result << "\t//Dependency: " << dep._instantiation._archiveName << " inst hash: " << dep._instantiation.CalculateInstanceHash() << std::endl;
 
 		FillDirectOutputParameters(result, graph, graph.GetConnections(), interfContext, sigProvider, depVals);
 
@@ -703,21 +705,27 @@ namespace ShaderSourceParser
 		return filteredGraph;
 	}
 
-    InstantiatedShader GenerateFunction(
+    GenerateFunctionResult GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
         const InstantiationRequest& instantiationParameters,
+		const GenerateFunctionOptions& generateOptions,
         INodeGraphProvider& sigProvider)
     {
 		// We must filter the connections in the graph based on the selectors in the instantiation request
 		// The most straightforward way to do this is to just filter them out here, before we call GenerateMainFunctionBody.
 		// We will just remove any connections that have a condition that won't pass given the input selectors
-		auto filteredGraph = FilterGraphWithSelectors(graph, instantiationParameters._selectors);
+		NodeGraph filteredGraph;
+		if (generateOptions._filterWithSelectors) {
+			filteredGraph = FilterGraphWithSelectors(graph, generateOptions._selectors);
+		} else {
+			filteredGraph = graph;
+		}
 
 		std::string mainBody;
 		NodeGraphSignature interf;
         DependencyTable depTable;
 		std::set<::Assets::DepValPtr> depVals;
-		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(filteredGraph, {}, instantiationParameters, sigProvider, depVals);
+		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(filteredGraph, {}, instantiationParameters, generateOptions, sigProvider, depVals);
 
 			//
             //      Our graph function is always a "void" function, and all of the output
@@ -735,14 +743,12 @@ namespace ShaderSourceParser
 
 		std::vector<std::string> fragments;
 		fragments.emplace_back(result.str());
-		std::vector<GraphLanguage::NodeGraphSignature::Parameter> captures { interf.GetCapturedParameters().begin(), interf.GetCapturedParameters().end() };
-		std::vector<InstantiatedShader::EntryPoint> entryPoints;
-		entryPoints.emplace_back(InstantiatedShader::EntryPoint { name.AsString(), std::move(interf) });		
-        return InstantiatedShader {
+
+        return GenerateFunctionResult {
 			std::move(fragments), 
-			std::move(entryPoints),
+			ShaderEntryPoint { name.AsString(), std::move(interf) },
 			std::move(depTable),
-			std::move(captures), {},
+			std::vector<GraphLanguage::NodeGraphSignature::Parameter> { interf.GetCapturedParameters().begin(), interf.GetCapturedParameters().end() },
 			std::move(depVals) };
     }
 

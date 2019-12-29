@@ -197,21 +197,18 @@ static const int NonPreprocessorLine0 = 0;
 			Assert::IsNotNull(entry);
 
 			const std::string exampleGraphFN = "ut-data/example.graph";
-			ShaderSourceParser::InstantiationRequest_ArchiveName instRequests[] {
+			ShaderSourceParser::InstantiationRequest instRequests[] {
 				{ exampleGraphFN }
 			};
 			
 			using namespace ShaderSourceParser;
-			// auto graphSyntax = GraphLanguage::ParseGraphSyntax(exampleGraphFN);
-			// InstantiationRequest_ArchiveName instRequest { exampleGraphFN };
-			// auto inst = InstantiateShader(MakeIteratorRange(&instRequest, &instRequest+1), RenderCore::ShaderLanguage::GLSL);
-			// auto inst = InstantiateShader(graphSyntax._subGraphs[0]._graph, true, InstantiationRequest{}, RenderCore::ShaderLanguage::GLSL);
-			auto inst = InstantiateShader(MakeIteratorRange(instRequests), RenderCore::ShaderLanguage::GLSL);
+			ShaderSourceParser::GenerateFunctionOptions generateOptions;
+			auto inst = InstantiateShader(MakeIteratorRange(instRequests), generateOptions, RenderCore::ShaderLanguage::GLSL);
 
 			auto i = std::find_if(
 				inst._entryPoints.begin(), inst._entryPoints.end(),
-				[](const InstantiatedShader::EntryPoint& ep) {
-					return ep._name == "PerPixel";
+				[](const ShaderEntryPoint& ep) {
+					return ep._name == "Bind_PerPixel" && ep._implementsName == "PerPixel";
 				});
 			Assert::IsTrue(i != inst._entryPoints.end());
 

@@ -269,9 +269,9 @@ namespace ToolsRig
 				auto psNameSplit = MakeFileNameSplitter(psName);
 				const char* entryPoint;
 				if (structureType == StructureType::DeferredPass) {
-					auto earlyRejection = ShaderSourceParser::InstantiationRequest_ArchiveName { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default", {} };
+					auto earlyRejection = ShaderSourceParser::InstantiationRequest { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default", {} };
 
-					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest { psMainName, {} };
 					overridePerPixel._customProvider = provider;
 
 					ShaderSourceParser::InstantiationRequest instParams {
@@ -284,7 +284,7 @@ namespace ToolsRig
 						instParams,
 						RenderCore::Techniques::GetDefaultShaderLanguage());
 				} else {
-					auto overridePerPixel = ShaderSourceParser::InstantiationRequest_ArchiveName { psMainName, {} };
+					auto overridePerPixel = ShaderSourceParser::InstantiationRequest { psMainName, {} };
 					overridePerPixel._customProvider = provider;
 
 					entryPoint = "deferred_pass_color_from_worldcoords";

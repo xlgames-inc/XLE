@@ -10,7 +10,7 @@
 #include "../../Utility/IteratorUtils.h"
 #include <utility>
 
-namespace ShaderSourceParser { class InstantiationRequest_ArchiveName; }
+namespace ShaderSourceParser { class InstantiationRequest; }
 namespace Utility { template<typename Char> class InputStreamFormatter; class OutputStreamFormatter; }
 
 namespace RenderCore { namespace Assets
@@ -18,7 +18,7 @@ namespace RenderCore { namespace Assets
 	class ShaderPatchCollection
 	{
 	public:
-		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> GetPatches() const { return MakeIteratorRange(_patches); }
+		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> GetPatches() const { return MakeIteratorRange(_patches); }
 		uint64_t GetHash() const { return _hash; }
 
 		void MergeInto(ShaderPatchCollection& dest) const;
@@ -31,11 +31,11 @@ namespace RenderCore { namespace Assets
 
 		ShaderPatchCollection();
 		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
-		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> patches);
-		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>>&& patches);
+		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches);
+		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches);
 		~ShaderPatchCollection();
 	private:
-		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>> _patches;
+		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>> _patches;
 		uint64_t _hash = ~0ull;
 
 		void SortAndCalculateHash();

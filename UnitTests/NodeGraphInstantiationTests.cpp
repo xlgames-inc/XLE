@@ -98,12 +98,14 @@ namespace UnitTests
 		{
 			// Test with a simple example graph file
 			{
-				ShaderSourceParser::InstantiationRequest_ArchiveName instRequests[] {
+				ShaderSourceParser::InstantiationRequest instRequests[] {
 					{ "ut-data/example.graph" }
 				};
 
+				ShaderSourceParser::GenerateFunctionOptions generateOptions;
 				auto inst = ShaderSourceParser::InstantiateShader(
 					MakeIteratorRange(instRequests), 
+					generateOptions,
 					RenderCore::ShaderLanguage::GLSL);
 
 				::Assert::AreNotEqual(inst._sourceFragments.size(), (size_t)0);		// ensure that we at least got some output
@@ -114,14 +116,17 @@ namespace UnitTests
 
 			// Test with a slightly more complicated graph file
 			try {
-				ShaderSourceParser::InstantiationRequest_ArchiveName instRequests[] {
+				ShaderSourceParser::InstantiationRequest instRequests[] {
 					{ "ut-data/complicated.graph" }
 				};
 
-				instRequests[0]._selectors.SetParameter(u("SIMPLE_BIND"), 1);
-
+				ShaderSourceParser::GenerateFunctionOptions generateOptions;
+				generateOptions._selectors.SetParameter(u("SIMPLE_BIND"), 1);
+				generateOptions._filterWithSelectors = true;
+				
 				auto inst = ShaderSourceParser::InstantiateShader(
 					MakeIteratorRange(instRequests), 
+					generateOptions,
 					RenderCore::ShaderLanguage::GLSL);
 
 				::Assert::AreNotEqual(inst._sourceFragments.size(), (size_t)0);		// ensure that we at least got some output
@@ -134,7 +139,7 @@ namespace UnitTests
 				for (const char* entryPoint:expectedEntryPoints) {
 					auto i = std::find_if(
 						inst._entryPoints.begin(), inst._entryPoints.end(),
-						[entryPoint](const ShaderSourceParser::InstantiatedShader::EntryPoint& e) {
+						[entryPoint](const ShaderSourceParser::ShaderEntryPoint& e) {
 							return e._name == entryPoint;
 						});
 					::Assert::IsTrue(i != inst._entryPoints.end());
@@ -143,7 +148,7 @@ namespace UnitTests
 				for (const char* entryPoint:expectedImplements) {
 					auto i = std::find_if(
 						inst._entryPoints.begin(), inst._entryPoints.end(),
-						[entryPoint](const ShaderSourceParser::InstantiatedShader::EntryPoint& e) {
+						[entryPoint](const ShaderSourceParser::ShaderEntryPoint& e) {
 							return e._implementsName == entryPoint;
 						});
 					::Assert::IsTrue(i != inst._entryPoints.end());
@@ -177,34 +182,14 @@ namespace UnitTests
 			}
 		}
 
-		static void ExtractSelectorRelevance(
-			std::unordered_map<std::string, std::string>& result,
-			const GraphLanguage::NodeGraph& graph)
-		{
-			std::regex regex(R"(defined\(([a-zA-Z]\w*)\))");
-			for (const auto& connection:graph.GetConnections()) {
-				if (connection._condition.empty())
-					continue;
-
-				// Find everything with "defined()" commands
-				auto words_begin = 
-					std::sregex_iterator(connection._condition.begin(), connection._condition.end(), regex);
-				auto words_end = std::sregex_iterator();
-
-				for (auto i = words_begin; i != words_end; ++i) {
-					// We don't have to worry about combining this with other relevance conditions, because
-					// we can just set it to be always relevant
-					result[(*i)[1].str()] = s_alwaysRelevant;
-				}
-			}
-		}
+		
 
 		static void ExtractSelectorRelevance(
 			std::unordered_map<std::string, std::string>& result,
 			const GraphLanguage::GraphSyntaxFile& graphFile)
 		{
 			for (const auto&sg:graphFile._subGraphs)
-				ExtractSelectorRelevance(result, sg.second._graph);
+				ShaderSourceParser::Internal::ExtractSelectorRelevance(result, sg.second._graph);
 		}
 
 		static void MergeRelevance(

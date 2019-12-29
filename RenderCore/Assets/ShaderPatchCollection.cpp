@@ -15,7 +15,7 @@ namespace RenderCore { namespace Assets
 		for (const auto&p:_patches) {
 			auto i = std::find_if(
 				dest._patches.begin(), dest._patches.end(),
-				[&p](const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>& q) { return q.first == p.first; });
+				[&p](const std::pair<std::string, ShaderSourceParser::InstantiationRequest>& q) { return q.first == p.first; });
 			if (i == dest._patches.end()) {
 				dest._patches.push_back(p);
 			} else {
@@ -31,13 +31,13 @@ namespace RenderCore { namespace Assets
 		_hash = 0;
 	}
 
-	ShaderPatchCollection::ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>*> patches)
+	ShaderPatchCollection::ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches)
 	: _patches(patches.begin(), patches.end())
 	{
 		SortAndCalculateHash();
 	}
 
-	ShaderPatchCollection::ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>>&& patches)
+	ShaderPatchCollection::ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches)
 	: _patches(std::move(patches))
 	{
 		SortAndCalculateHash();
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Assets
 			return;
 		}
 
-		using Pair = std::pair<std::string, ShaderSourceParser::InstantiationRequest_ArchiveName>;
+		using Pair = std::pair<std::string, ShaderSourceParser::InstantiationRequest>;
 		std::stable_sort(
 			_patches.begin(), _patches.end(), 
 			[](const Pair& lhs, const Pair& rhs) { return lhs.second._archiveName < rhs.second._archiveName; });
@@ -62,7 +62,7 @@ namespace RenderCore { namespace Assets
 			// note that p.first doesn't actually contribute to the hash -- it's not used during the merge operation
 			assert(!p.second._customProvider);
 			_hash = HashCombine(Hash64(p.second._archiveName), _hash);
-			_hash = HashCombine(p.second.CalculateHash(), _hash);
+			_hash = HashCombine(p.second.CalculateInstanceHash(), _hash);
 		}
 	}
 
@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
 
 	static void SerializeInstantiationRequest(
 		OutputStreamFormatter& formatter, 
-		const ShaderSourceParser::InstantiationRequest_ArchiveName& instRequest)
+		const ShaderSourceParser::InstantiationRequest& instRequest)
 	{
 		formatter.WriteAttribute(
 			AsPointer(instRequest._archiveName.begin()), AsPointer(instRequest._archiveName.end()), 
@@ -94,9 +94,9 @@ namespace RenderCore { namespace Assets
 		}
 	}
 
-	static ShaderSourceParser::InstantiationRequest_ArchiveName DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter)
+	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter)
 	{
-		ShaderSourceParser::InstantiationRequest_ArchiveName result;
+		ShaderSourceParser::InstantiationRequest result;
 
 		for (;;) {
 			auto next = formatter.PeekNext();
