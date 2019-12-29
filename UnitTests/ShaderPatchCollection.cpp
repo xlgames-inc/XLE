@@ -153,7 +153,7 @@ namespace UnitTests
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
 				import shader = "ut-data/shader_with_selectors.psh"
 
-				auto Default_PerPixel(VSOutput geo) implements templates::PerPixel
+				GBufferValues Default_PerPixel(VSOutput geo) implements templates::PerPixel
 				{
 					return shader::PerPixel(geo:geo).result;
 				}
@@ -238,13 +238,12 @@ namespace UnitTests
 			// Check for some of the recognized properties, in particular look for shader selectors
 			// We're expecting the selectors "RES_HAS_Texture0" and "RES_HAS_Texture1"
 			Assert::AreEqual((unsigned)compiledCollection._illumDelegate._type, (unsigned)CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType::PerPixel);
-			Assert::AreEqual(compiledCollection.GetInterface().GetSelectors().size(), (size_t)2);
 			Assert::IsTrue(
-				std::find(compiledCollection.GetInterface().GetSelectors().begin(), compiledCollection.GetInterface().GetSelectors().end(), std::string{"RES_HAS_Texture0"})
-				!=compiledCollection.GetInterface().GetSelectors().end());
+				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture0")
+				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
 			Assert::IsTrue(
-				std::find(compiledCollection.GetInterface().GetSelectors().begin(), compiledCollection.GetInterface().GetSelectors().end(), std::string{"RES_HAS_Texture1"})
-				!=compiledCollection.GetInterface().GetSelectors().end());
+				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture1")
+				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
 		}
 
 		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;

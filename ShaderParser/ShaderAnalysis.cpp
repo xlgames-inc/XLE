@@ -195,7 +195,7 @@ namespace ShaderSourceParser
 					if (XlEqStringI(MakeStringSection(i2, i3), "include")) {
 						auto includeFile = ParseIncludeDirective(MakeStringSection(i3, lineDetails._line.end()));
 						if (includeFile.IsEmpty())
-							Throw(Utility::FormatException("Could not interpret #include directive", StreamLocation{unsigned(i3-lineDetails._line.begin()), sourceLineIndex}));
+							Throw(::Utility::FormatException("Could not interpret #include directive", StreamLocation{unsigned(i3-lineDetails._line.begin()), sourceLineIndex}));
 
 						// Commit the working block to our output stream
 						// We must also include the text that becomes before the #include on this line -- because it
@@ -359,4 +359,53 @@ namespace ShaderSourceParser
 		return result;
 	}
 
+	static const std::string s_alwaysRelevant { "1" };
+
+	namespace Utility
+	{
+		void MergeRelevance(
+			std::unordered_map<std::string, std::string>& result,
+			const std::unordered_map<std::string, std::string>& src)
+		{
+			for (const auto&s:src) {
+				auto i = result.find(s.first);
+				if (i != result.end()) {
+					if (i->second == s_alwaysRelevant) {
+						// already always relevant; just continue
+					} else if (s.second == s_alwaysRelevant) {
+						// becoming always relevance, no merging necessary
+						result.insert(s);
+					} else if (i->second == s.second) {
+						// the conditions are just the same; just continue
+					} else {
+						std::string merged = std::string("(") + i->second + ") || (" + s.second + ")";
+						result.insert(std::make_pair(s.first, merged));
+					}
+				} else {
+					result.insert(s);
+				}
+			}
+		}
+
+		::Assets::DepValPtr MergeRelevanceFromShaderFiles(
+			std::unordered_map<std::string, std::string>& result,
+			const std::set<std::string>& shaderFileSet)
+		{
+			std::vector<::Assets::DependentFileState> dependencies;
+			for (const auto& rawShader:shaderFileSet) {
+				size_t fileSize = 0;
+				auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(rawShader, &fileSize);
+				auto expanded = ShaderSourceParser::ExpandIncludes(
+					MakeStringSection((char*)blob.get(), (char*)PtrAdd(blob.get(), fileSize)),
+					rawShader, 
+					::Assets::DefaultDirectorySearchRules(rawShader));
+				auto selectors = ShaderSourceParser::AnalyzeSelectors(expanded._processedSource);
+				MergeRelevance(result, selectors._selectorRelevance);
+
+				dependencies.insert(dependencies.end(), expanded._dependencies.begin(), expanded._dependencies.end());
+			}
+
+			return ::Assets::AsDepVal(MakeIteratorRange(dependencies));
+		}
+	}
 }

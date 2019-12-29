@@ -162,6 +162,8 @@ namespace RenderCore { namespace Assets
 				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
 			}
 		}
+
+		SortAndCalculateHash();
 	}
 
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter)

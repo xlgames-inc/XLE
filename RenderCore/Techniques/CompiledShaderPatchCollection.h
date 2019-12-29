@@ -4,14 +4,17 @@
 
 #pragma once
 
+#include "../Assets/ShaderPatchCollection.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; }}
 namespace ShaderSourceParser { class MaterialDescriptorSet; }
+namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -40,28 +43,25 @@ namespace RenderCore { namespace Techniques
 				std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
-
 			const std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet>& GetMaterialDescriptorSet() const { return _descriptorSet; }
-
-			IteratorRange<const std::string*> GetSelectors() const { return MakeIteratorRange(_selectors); }
+			const std::unordered_map<std::string, std::string>& GetSelectorRelevance() const { return _selectorRelevance; }
 
 			bool HasPatchType(uint64_t implementing) const;
 
 		private:
 			std::vector<Patch> _patches;
 			std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet> _descriptorSet;
-			std::vector<std::string> _selectors;
+			std::unordered_map<std::string, std::string> _selectorRelevance;
 
 			friend class CompiledShaderPatchCollection;
 		};
 
 		const Interface& GetInterface() const { return _interface; }
 
-		const std::string& GetSourceCode() const { return _srcCode; }
-
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		::Assets::DepValPtr _depVal;
-		// std::vector<::Assets::DependentFileState> _dependencies;
+
+		std::string GenerateCodeForSelectors(const ParameterBox& selectors) const;
 
 		uint64_t GetGUID() const { return _guid; }
 
@@ -79,8 +79,8 @@ namespace RenderCore { namespace Techniques
 		~CompiledShaderPatchCollection();
 	private:
 		uint64_t _guid = 0;
-		std::string _srcCode;
 		Interface _interface;
+		RenderCore::Assets::ShaderPatchCollection _src;
 	};
 
 

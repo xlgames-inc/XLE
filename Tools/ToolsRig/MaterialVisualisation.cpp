@@ -252,6 +252,14 @@ namespace ToolsRig
 			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
 			TRY
 			{
+				ShaderSourceParser::InstantiatedShader fragments;
+
+				// todo -- refactor this slightly so that we're instantiating all of the root
+				// functions available in a standard graph file
+				auto psNameSplit = MakeFileNameSplitter(psName);
+				const char* entryPoint;
+				assert(0);
+#if 0
 				enum class StructureType { DeferredPass, ColorFromWorldCoords };
 				StructureType structureType = StructureType::DeferredPass;
 
@@ -262,12 +270,6 @@ namespace ToolsRig
 						structureType = StructureType::ColorFromWorldCoords;
 				}
 
-				ShaderSourceParser::InstantiatedShader fragments;
-
-				// todo -- refactor this slightly so that we're instantiating all of the root
-				// functions available in a standard graph file
-				auto psNameSplit = MakeFileNameSplitter(psName);
-				const char* entryPoint;
 				if (structureType == StructureType::DeferredPass) {
 					auto earlyRejection = ShaderSourceParser::InstantiationRequest { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default", {} };
 
@@ -295,6 +297,7 @@ namespace ToolsRig
 						},
 						RenderCore::Techniques::GetDefaultShaderLanguage());
 				}
+#endif
 
 				fragments._sourceFragments.insert(fragments._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
 

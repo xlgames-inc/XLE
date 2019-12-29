@@ -89,8 +89,6 @@ namespace UnitTests
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
 	};
 
-	static const std::string s_alwaysRelevant { "1" };
-
 	TEST_CLASS(NodeGraphInstantiationTests)
 	{
 	public:
@@ -192,30 +190,6 @@ namespace UnitTests
 				ShaderSourceParser::Internal::ExtractSelectorRelevance(result, sg.second._graph);
 		}
 
-		static void MergeRelevance(
-			std::unordered_map<std::string, std::string>& result,
-			const std::unordered_map<std::string, std::string>& src)
-		{
-			for (const auto&s:src) {
-				auto i = result.find(s.first);
-				if (i != result.end()) {
-					if (i->second == s_alwaysRelevant) {
-						// already always relevant; just continue
-					} else if (s.second == s_alwaysRelevant) {
-						// becoming always relevance, no merging necessary
-						result.insert(s);
-					} else if (i->second == s.second) {
-						// the conditions are just the same; just continue
-					} else {
-						std::string merged = std::string("(") + i->second + ") || (" + s.second + ")";
-						result.insert(std::make_pair(s.first, merged));
-					}
-				} else {
-					result.insert(s);
-				}
-			}
-		}
-
 		static ShaderSourceParser::ShaderSelectorAnalysis AnalyzeSelectorsFromGraphFile(StringSection<> fileName)
 		{
 			// Extract the shader relevance information from the given inputs
@@ -243,7 +217,7 @@ namespace UnitTests
 				if (XlEqStringI(MakeFileNameSplitter(resolved).Extension(), "graph")) {
 					// consider this a graph file, and extract relevance from the graph file recursively
 					auto selectors = AnalyzeSelectorsFromGraphFile(resolved);
-					MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
+					ShaderSourceParser::Utility::MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
 				} else {
 					// consider this a shader file, and extract 
 					auto expanded = ShaderSourceParser::ExpandIncludes(
@@ -251,7 +225,7 @@ namespace UnitTests
 						resolved, 
 						::Assets::DefaultDirectorySearchRules(resolved));
 					auto selectors = ShaderSourceParser::AnalyzeSelectors(expanded._processedSource);
-					MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
+					ShaderSourceParser::Utility::MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
 				}
 			}
 
@@ -262,20 +236,65 @@ namespace UnitTests
 
 		TEST_METHOD(TestExtractSelectorRelevance)
 		{
-			auto selector = AnalyzeSelectorsFromGraphFile("ut-data/complicated.graph");
-			::Assert::AreNotEqual(selector._selectorRelevance.size(), (size_t)0);		// ensure that we got at least some
+			auto relevanceFromDirectAnalysis = AnalyzeSelectorsFromGraphFile("ut-data/complicated.graph");
+			::Assert::AreNotEqual(relevanceFromDirectAnalysis._selectorRelevance.size(), (size_t)0);		// ensure that we got at least some
 
 			// We're expecting the analysis to have found the link between SELECTOR_0 and SELECTOR_1
-			::Assert::IsTrue(selector._selectorRelevance["SELECTOR_0"] == "defined(SELECTOR_1)");
-			::Assert::IsTrue(selector._selectorRelevance["SELECTOR_1"] == "defined(SELECTOR_0)");
-			::Assert::IsTrue(selector._selectorRelevance["ALPHA_TEST"] == "1");
-			::Assert::IsTrue(selector._selectorRelevance["SIMPLE_BIND"] == "1");
+			::Assert::IsTrue(relevanceFromDirectAnalysis._selectorRelevance["SELECTOR_0"] == "defined(SELECTOR_1)");
+			::Assert::IsTrue(relevanceFromDirectAnalysis._selectorRelevance["SELECTOR_1"] == "defined(SELECTOR_0)");
+			::Assert::IsTrue(relevanceFromDirectAnalysis._selectorRelevance["ALPHA_TEST"] == "1");
+			::Assert::IsTrue(relevanceFromDirectAnalysis._selectorRelevance["SIMPLE_BIND"] == "1");
 
 			// ensure that there are no selectors that end in "_H" -- these indicate other defines in the shader, not
 			// selectors specifically
-			for (const auto& sel:selector._selectorRelevance)
+			for (const auto& sel:relevanceFromDirectAnalysis._selectorRelevance)
 				if (sel.first.size() > 2 && *(sel.first.end()-2) == '_' && *(sel.first.end()-1) == 'H')
 					::Assert::Fail(ToString(std::string{"Found suspicious selector in selector relevance: "} + sel.first).c_str());
+
+			// Now do something similar using InstantiateShader, and ensure that we get the same result
+			// as we did in the case above
+			// This test might not be 100%, because the order in which we interpret the raw shader #includes
+			// could impact how the relevance expression is finally built up
+
+			using namespace ShaderSourceParser;
+			InstantiationRequest instRequest { "ut-data/complicated.graph" };
+			GenerateFunctionOptions options;
+			auto inst = ShaderSourceParser::InstantiateShader(
+				MakeIteratorRange(&instRequest, &instRequest+1),
+				options, RenderCore::ShaderLanguage::HLSL);
+			auto relevanceViaInstantiateShader = inst._selectorRelevance;
+			ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(relevanceViaInstantiateShader, inst._rawShaderFileIncludes);
+
+			::Assert::AreEqual(relevanceFromDirectAnalysis._selectorRelevance.size(), relevanceViaInstantiateShader.size());
+			for (const auto&r:relevanceFromDirectAnalysis._selectorRelevance)
+				::Assert::AreEqual(r.second, relevanceViaInstantiateShader[r.first]);
+		}
+
+		TEST_METHOD(TestGenerateTechniquePrebindData)
+		{
+			using namespace ShaderSourceParser;
+			InstantiationRequest instRequest { "ut-data/complicated.graph" };
+			GenerateFunctionOptions options;
+			auto inst = ShaderSourceParser::InstantiateShader(
+				MakeIteratorRange(&instRequest, &instRequest+1),
+				options, RenderCore::ShaderLanguage::HLSL);
+
+			//
+			// We need these things for the pre-technique binding
+			//		1. list of entry points (+ "implements" information)
+			//		2. material descriptor set
+			//		3. selector relevance table
+			//		4. raw shader includes (in order to generate shader related relevance information)
+			//		5. dependency validations
+			//
+			// Let's just ensure that we have something for all of these
+			//
+
+			::Assert::IsTrue(!inst._entryPoints.empty());
+			::Assert::IsTrue(!inst._descriptorSet->_constantBuffers.empty());
+			::Assert::IsTrue(!inst._selectorRelevance.empty());
+			::Assert::IsTrue(!inst._rawShaderFileIncludes.empty());
+			::Assert::IsTrue(!inst._depVals.empty());
 		}
 
 		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;

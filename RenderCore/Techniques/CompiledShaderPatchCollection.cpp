@@ -7,25 +7,17 @@
 #include "../Assets/ShaderPatchCollection.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
+#include "../../ShaderParser/ShaderAnalysis.h"
 #include "../../Assets/DepVal.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
-	static std::string Merge(const std::vector<std::string>& v)
-	{
-		size_t size=0;
-		for (const auto&q:v) size += q.size();
-		std::string result;
-		result.reserve(size);
-		for (const auto&q:v) result.insert(result.end(), q.begin(), q.end());
-		return result;
-	}
-
 	static const auto s_perPixel = Hash64("PerPixel");
 	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
 
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src)
+	: _src(src)
 	{
 		// With the given shader patch collection, build the source code and the 
 		// patching functions associated
@@ -41,7 +33,9 @@ namespace RenderCore { namespace Techniques
 			for (const auto&i:src.GetPatches()) finalInstRequests.push_back(i.second);
 
 			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
-			_srcCode = Merge(inst._sourceFragments);
+
+			// Note -- we can build the patches interface here, because we assume that this will not
+			//		even change with selectors
 
 			_interface._patches.reserve(inst._entryPoints.size());
 			for (const auto&patch:inst._entryPoints) {
@@ -65,6 +59,13 @@ namespace RenderCore { namespace Techniques
 			for (const auto&d:inst._depVals)
 				if (d)
 					::Assets::RegisterAssetDependency(_depVal, d);
+
+			_interface._selectorRelevance = inst._selectorRelevance;
+			if (!inst._rawShaderFileIncludes.empty()) {
+				auto relevanceDepVal = ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(_interface._selectorRelevance, inst._rawShaderFileIncludes);
+				if (relevanceDepVal)
+					::Assets::RegisterAssetDependency(_depVal, relevanceDepVal);
+			}
 		}
 
 		// Setup the precalculated values for the illum delegate
@@ -84,5 +85,34 @@ namespace RenderCore { namespace Techniques
 	}
 
 	CompiledShaderPatchCollection::~CompiledShaderPatchCollection() {}
+
+	static std::string Merge(const std::vector<std::string>& v)
+	{
+		size_t size=0;
+		for (const auto&q:v) size += q.size();
+		std::string result;
+		result.reserve(size);
+		for (const auto&q:v) result.insert(result.end(), q.begin(), q.end());
+		return result;
+	}
+
+	std::string CompiledShaderPatchCollection::GenerateCodeForSelectors(const ParameterBox& selectors) const
+	{
+		if (!_src.GetPatches().empty())
+			return {};
+
+		std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;
+		finalInstRequests.reserve(_src.GetPatches().size());
+		for (const auto&i:_src.GetPatches()) finalInstRequests.push_back(i.second);
+
+		ShaderSourceParser::GenerateFunctionOptions generateOptions;
+		if (selectors.GetCount() != 0) {
+			generateOptions._filterWithSelectors = true;
+			generateOptions._selectors = selectors;
+		}
+
+		auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
+		return Merge(inst._sourceFragments);
+	}
 
 }}

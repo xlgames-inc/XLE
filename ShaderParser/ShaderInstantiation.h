@@ -16,14 +16,6 @@ namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {
-	struct GenerateFunctionOptions
-	{
-		bool _generateDanglingInputs = false;
-		GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
-		bool _filterWithSelectors = false;
-		ParameterBox _selectors;
-	};
-
 	/// <summary>Parameters used in a shader instantiation operation</summary>
 	/// See the InstantiateShader functions for different ways to use this class.
 	/// The instantiation request must be attached to some root instantiation (since this
@@ -89,6 +81,16 @@ namespace ShaderSourceParser
 
 		/// List of dependency validations, which can be used for change tracking.
 		std::set<::Assets::DepValPtr> _depVals;
+	};
+
+	class GenerateFunctionOptions
+	{
+	public:
+		ParameterBox _selectors;
+		bool _filterWithSelectors = false;
+
+		bool _generateDanglingInputs = false;
+		GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
 	};
 
 	// Note -- we pass the shader language here to control how the CB layouts

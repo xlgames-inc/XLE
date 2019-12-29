@@ -7,6 +7,8 @@
 #include "../RenderCore/Assets/LocalCompiledShaderSource.h"
 #include "../Utility/ParameterBox.h"
 #include <unordered_map>
+#include <string>
+#include <set>
 
 namespace Assets { class DirectorySearchRules; }
 
@@ -28,4 +30,16 @@ namespace ShaderSourceParser
 	ParameterBox FilterSelectors(
 		const ParameterBox& unfiltered,
 		const std::unordered_map<std::string, std::string>& relevance);
+
+
+	namespace Utility
+	{
+		void MergeRelevance(
+			std::unordered_map<std::string, std::string>& result,
+			const std::unordered_map<std::string, std::string>& src);
+
+		::Assets::DepValPtr MergeRelevanceFromShaderFiles(
+			std::unordered_map<std::string, std::string>& result,
+			const std::set<std::string>& shaderFileSet);
+	}
 }
