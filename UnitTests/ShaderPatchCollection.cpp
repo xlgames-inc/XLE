@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "UnitTestHelper.h"
+#include "ReusableDataFiles.h"
 #include "../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
@@ -13,6 +14,7 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Assets/MemoryFile.h"
+#include "../Assets/DepVal.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
@@ -158,6 +160,12 @@ namespace UnitTests
 					return shader::PerPixel(geo:geo).result;
 				}
 			)--")),
+
+		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
+		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
+		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
+		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
 	};
 
     TEST_CLASS(ShaderPatchCollection)
@@ -246,6 +254,97 @@ namespace UnitTests
 				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
 		}
 
+		static void FakeChange(const char* fn)
+		{
+			// Note - FakeFileChange() just happens to work, even for files in virtual filesystems
+			// this is because even in these cases, we register the name in the main filesystem
+			// monitor (we can monitor both existing and non-existing files). It won't work
+			// correctly with aliasing, but it will at least catch the case where the names match
+			// exactly.
+			// It's a little dodgy; but we get by -- 
+			auto split = MakeFileNameSplitter(fn);
+			Utility::FakeFileChange(split.DriveAndPath().Cast<utf8>(), split.FileAndExtension().Cast<utf8>());
+		}
+
+		TEST_METHOD(TestCompiledShaderDependencyChecking)
+		{
+			// Let's make sure that the CompiledShaderPatchCollection recognizes when it has become 
+			// out-of-date due to a source file change
+			{
+				const char* dependenciesToCheck[] = {
+					"ut-data/shader_with_selectors_adapter.graph",		// root graph
+					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
+					"ut-data/shader_with_selectors.psh",				// shader directly imported by root graph
+					"xleres/gbuffer.h",									// 1st level include from shader
+					"xleres/Binding.h"									// 2nd level include from shader
+				};
+
+				const char* nonDependencies[] = {
+					"xleres/Nodes/Output.sh",				// imported but not used
+					"ut-data/complicated.graph",			// not even referenced
+					"shader_with_selectors_adapter.graph"	// incorrect path
+				};
+
+				InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
+				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+
+				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {
+					RenderCore::Techniques::CompiledShaderPatchCollection compiledCollection(patchCollection);
+					Assert::AreEqual(compiledCollection._depVal->GetValidationIndex(), 0u);
+					
+					if (c < dimof(nonDependencies)) {
+						FakeChange(nonDependencies[c]);
+						Assert::AreEqual(compiledCollection._depVal->GetValidationIndex(), 0u);
+					}
+
+					if (c < dimof(dependenciesToCheck)) {
+						FakeChange(dependenciesToCheck[c]);
+						Assert::IsTrue(compiledCollection._depVal->GetValidationIndex() > 0u);
+					}
+				}
+			}
+
+			// Same thing again, this time with a different shader graph, with a slightly difference
+			// construction process
+			{
+				const char* dependenciesToCheck[] = {
+					"ut-data/complicated.graph",
+					"ut-data/internalComplicatedGraph.graph",
+					"ut-data/example.graph",
+					"ut-data/example-perpixel.psh"
+				};
+
+				const char* nonDependencies[] = {
+					"xleres/CommonResources.h",			// raw shaders will be imported, but will not show up as dep vals from InstantiateShader
+					"xleres/MainGeometry.h"
+				};
+
+				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {
+					using namespace ShaderSourceParser;
+					InstantiationRequest instRequest { "ut-data/complicated.graph" };
+					GenerateFunctionOptions options;
+					auto inst = ShaderSourceParser::InstantiateShader(
+						MakeIteratorRange(&instRequest, &instRequest+1),
+						options, RenderCore::ShaderLanguage::HLSL);
+
+					// Create one dep val that references all of the children
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					for (const auto&d:inst._depVals)
+						::Assets::RegisterAssetDependency(depVal, d);
+
+					if (c < dimof(nonDependencies)) {
+						FakeChange(nonDependencies[c]);
+						Assert::AreEqual(depVal->GetValidationIndex(), 0u);
+					}
+
+					if (c < dimof(dependenciesToCheck)) {
+						FakeChange(dependenciesToCheck[c]);
+						Assert::IsTrue(depVal->GetValidationIndex() > 0u);
+					}
+				}
+			}
+		}
+	
 		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
 		static ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
 

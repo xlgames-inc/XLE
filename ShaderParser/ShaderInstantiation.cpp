@@ -71,6 +71,8 @@ namespace ShaderSourceParser
 			std::stack<PendingInstantiation> _instantiations;
 			std::set<std::pair<std::string, uint64_t>> _previousInstantiation;
 			std::set<std::string> _rawShaderFileIncludes;
+			
+			std::set<::Assets::DepValPtr> _depVals;		// dependencies created in the QueueUp() method
 
 			void QueueUp(
 				IteratorRange<const DependencyTable::Dependency*> dependencies,
@@ -103,6 +105,8 @@ namespace ShaderSourceParser
 							_instantiations.emplace(
 								PendingInstantiation{nodeGraph.value(), true, isRootInstantiation, dep._instantiation});
 							_previousInstantiation.insert({dep._instantiation._archiveName, instHash});
+							assert(nodeGraph.value()._depVal);
+							_depVals.insert(nodeGraph.value()._depVal);
 
 						}
 					} else {
@@ -168,6 +172,8 @@ namespace ShaderSourceParser
 						if (implementsSig) {
 							entryPoint._implementsName = implementsSig.value()._name;
 							entryPoint._implementsSignature = implementsSig.value()._signature;
+							assert(implementsSig.value()._depVal);
+							result._depVals.insert(implementsSig.value()._depVal);
 						}
 					}
 					result._entryPoints.emplace_back(std::move(entryPoint));
@@ -188,6 +194,9 @@ namespace ShaderSourceParser
 			//  - captured parameters
 			//  - selector relevance table
 
+			#if defined(_DEBUG)
+				for (const auto&d:instFn._depVals) { assert(d); }
+			#endif
 			result._depVals.insert(instFn._depVals.begin(), instFn._depVals.end());
 
 			{
@@ -241,6 +250,7 @@ namespace ShaderSourceParser
 		}
 
 		result._rawShaderFileIncludes = std::move(pendingInst._rawShaderFileIncludes);
+		result._depVals.insert(pendingInst._depVals.begin(), pendingInst._depVals.end());
 
 		return result;
 	}

@@ -154,7 +154,7 @@ namespace GraphLanguage
 		// Look for all of the functions within the parsed graph syntax file
 		std::vector<Signature> result;
 		for (const auto&subGraph:_parsedGraphFile->_subGraphs)
-			result.push_back(Signature{ subGraph.first, subGraph.second._signature, {}, true });
+			result.push_back(Signature{ subGraph.first, subGraph.second._signature, {}, true, _parsedGraphFileDepVal });
 
 		return result;
 	}

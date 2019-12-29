@@ -45,3 +45,54 @@ static const char* s_exampleGraphFile = R"--(
 	}
 )--";
 
+static const char* s_complicatedGraphFile = R"--(
+	import simple_example = "example.graph";
+	import simple_example_dupe = "ut-data/example.graph";
+	import example_perpixel = "example-perpixel.psh";
+	import templates = "xleres/nodes/templates.sh";
+	import conditions = "xleres/nodes/conditions.sh";
+	import internalComplicatedGraph = "internalComplicatedGraph.graph";
+
+	GBufferValues Internal_PerPixel(VSOutput geo)
+	{
+		return example_perpixel::PerPixel(geo:geo).result;
+	}
+
+	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
+	{
+		captures MaterialUniforms = ( float3 DiffuseColor );
+		captures AnotherCaptures = ( float SecondaryCaptures );
+		if "defined(SIMPLE_BIND)" return simple_example::Bind_PerPixel(geo:geo).result;
+		if "!defined(SIMPLE_BIND)" return Internal_PerPixel(geo:geo).result;
+	}
+
+	bool Bind_EarlyRejectionTest(VSOutput geo) implements templates::EarlyRejectionTest
+	{
+		captures MaterialUniforms = ( float AlphaWeight = "0.5" );
+		if "defined(ALPHA_TEST)" return conditions::LessThan(lhs:MaterialUniforms.AlphaWeight, rhs:"0.5").result;
+		return internalComplicatedGraph::Bind_EarlyRejectionTest(geo:geo).result;
+	}
+)--";
+
+static const char* s_internalShaderFile = R"--(
+	#include "xleres/MainGeometry.h"
+
+	bool ShouldBeRejected(VSOutput geo, float threshold)
+	{
+		#if defined(SELECTOR_0) && defined(SELECTOR_1)
+			return true;
+		#else
+			return false;
+		#endif
+	}
+)--";
+
+static const char* s_internalComplicatedGraph = R"--(
+	import internal_shader_file = "internalShaderFile.psh";
+	
+	bool Bind_EarlyRejectionTest(VSOutput geo) implements templates::EarlyRejectionTest
+	{
+		captures MaterialUniforms = ( float AnotherHiddenUniform = "0.5" );
+		return internal_shader_file::ShouldBeRejected(geo:geo, threshold:MaterialUniforms.AnotherHiddenUniform).result;
+	}
+)--";

@@ -107,6 +107,7 @@ namespace ShaderSourceParser
             // Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.AsString().c_str()));
 
         const auto& sig = sigResult.value()._signature;
+		assert(sigResult.value()._depVal);
 		depVals.insert(sigResult.value()._depVal);
 
             // find a parameter with the right direction & name
@@ -385,6 +386,7 @@ namespace ShaderSourceParser
 
 			result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
 
+			assert(sigProviderResult.value()._depVal);
 			depVals.insert(sigProviderResult.value()._depVal);
 
             return result;
@@ -398,6 +400,7 @@ namespace ShaderSourceParser
         // result._finalArchiveName = sigProviderResult.value()._sourceFile.empty() ? archiveName : sigProviderResult.value()._sourceFile + ":" + result._name;
 		result._finalArchiveName = archiveName;
 		result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
+		assert(sigProviderResult.value()._depVal);
 		depVals.insert(sigProviderResult.value()._depVal);
         return result;
     }
@@ -460,8 +463,10 @@ namespace ShaderSourceParser
 
 				// Any input parameters to this node that aren't part of the restriction signature should become curried
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
-				if (restrictionSignature)
+				if (restrictionSignature) {
+					assert(restrictionSignature.value()._depVal);
 					depVals.insert(restrictionSignature.value()._depVal);
+				}
 				for (const auto&c:nodeGraph.GetConnections()) {
 					if (c.OutputNodeId() == instantiationNode->NodeId()) {
 						auto paramName = c.OutputParameterName();
