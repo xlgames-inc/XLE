@@ -90,6 +90,8 @@ namespace RenderCore { namespace Metal_DX11
         void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values);
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values);
 
+		bool		InRenderPass();
+
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
         void        ExecuteCommandList(CommandList& commandList, bool preserveRenderState);
@@ -133,6 +135,28 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
         std::vector<NumericUniformsInterface> _numericUniforms;
+
+		// The following API functions are meant for use by the FrameBuffer implementation
+		void    BeginRenderPass();
+        void    EndRenderPass();
+        void    OnEndRenderPass(std::function<void(void)> fn);
+        void    BeginSubpass(unsigned renderTargetWidth, unsigned renderTargetHeight);
+        void    EndSubpass();
+
+		unsigned _renderTargetWidth;
+        unsigned _renderTargetHeight;
+
+        bool _inRenderPass;
+        std::vector<std::function<void(void)>> _onEndRenderPassFunctions;
+
+		friend class FrameBuffer;
+		friend void BeginRenderPass(
+			DeviceContext& context,
+			FrameBuffer& frameBuffer,
+			const FrameBufferDesc& layout,
+			const FrameBufferProperties& props,
+			IteratorRange<const ClearValue*> clearValues);
+		friend void EndRenderPass(DeviceContext& context);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

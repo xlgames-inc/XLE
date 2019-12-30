@@ -152,7 +152,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool    InRenderPass();
         void    OnEndRenderPass(std::function<void(void)> fn);
 
-        void    BeginSubpass(float renderTargetWidth, float renderTargetHeight);
+        void    BeginSubpass(unsigned renderTargetWidth, unsigned renderTargetHeight);
         void    EndSubpass();
 
         void            BeginCommandList();
@@ -181,8 +181,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         std::weak_ptr<IDevice> _device;
 
-        float _renderTargetWidth;
-        float _renderTargetHeight;
+        unsigned _renderTargetWidth;
+        unsigned _renderTargetHeight;
 
         bool _inRenderPass;
         std::vector<std::function<void(void)>> _onEndRenderPassFunctions;

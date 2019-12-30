@@ -416,14 +416,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         _inRenderPass = true;
     }
 
-    void DeviceContext::BeginSubpass(float renderTargetWidth, float renderTargetHeight) {
+    void DeviceContext::BeginSubpass(unsigned renderTargetWidth, unsigned renderTargetHeight) {
         _renderTargetWidth = renderTargetWidth;
         _renderTargetHeight = renderTargetHeight;
     }
 
     void DeviceContext::EndSubpass() {
-        _renderTargetWidth = 0.f;
-        _renderTargetHeight = 0.f;
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
     }
 
     void DeviceContext::EndRenderPass()
@@ -431,8 +431,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         ImplOpenGLES::CheckContextIntegrity();
         assert(_inRenderPass);
         _inRenderPass = false;
-        _renderTargetWidth = 0.f;
-        _renderTargetHeight = 0.f;
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
 
         for (auto fn: _onEndRenderPassFunctions) { fn(); }
         _onEndRenderPassFunctions.clear();
@@ -446,7 +446,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
     {
         if (!_inRenderPass) {
-            _onEndRenderPassFunctions.push_back(fn);
+            _onEndRenderPassFunctions.emplace_back(std::move(fn));
         } else {
             fn();
         }
@@ -486,8 +486,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         _inRenderPass = false;
 
-        _renderTargetWidth = 0.f;
-        _renderTargetHeight = 0.f;
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
 
         _device = device;
     }

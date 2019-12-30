@@ -130,6 +130,8 @@ namespace RenderCore { namespace Metal_DX11
         context.GetUnderlying()->OMSetRenderTargets(s._rtvCount, bindRTVs, bindDSV);
 
 		{
+            context.BeginSubpass(s._initialViewportWidth, s._initialViewportHeight);
+
 			// Ensure that we always initialize the viewports to the maximum size of the subpass when it's
 			// bound. This keeps compatibility with other APIs where the viewports and scissor rects are
 			// effectively rebound on a new subpass (and it's just convenient, anyway)
@@ -140,6 +142,13 @@ namespace RenderCore { namespace Metal_DX11
             context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
 		}
     }
+
+	void FrameBuffer::FinishSubpass(DeviceContext& context, unsigned subpassIndex) const
+    {
+		if (subpassIndex >= (unsigned)_subpasses.size()) return;
+
+		context.EndSubpass();
+	}
 
 	FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
@@ -159,6 +168,7 @@ namespace RenderCore { namespace Metal_DX11
 		s_nextSubpass = 0;
 		s_clearValues.clear();
 		s_clearValues.insert(s_clearValues.end(), clearValues.begin(), clearValues.end());
+		context.BeginRenderPass();
 		BeginNextSubpass(context, frameBuffer);
     }
 
@@ -183,6 +193,7 @@ namespace RenderCore { namespace Metal_DX11
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
 		context.GetUnderlying()->OMSetRenderTargets(0, nullptr, nullptr);
+		context.EndRenderPass();
     }
 
 	unsigned GetCurrentSubpassIndex(DeviceContext& context)

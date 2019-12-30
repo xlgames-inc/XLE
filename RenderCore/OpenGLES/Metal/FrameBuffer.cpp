@@ -366,8 +366,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         // At the start of a subpass, we set the viewport and scissor rect to full-size (based on color or depth attachment)
         {
-            float width = 0.f;
-            float height = 0.f;
+            unsigned width = 0;
+            unsigned height = 0;
             if (s._rtvCount > 0 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
                 const auto& textureDesc = s._rtvs[0].GetResource()->GetDesc()._textureDesc;
                 width = textureDesc._width;

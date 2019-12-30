@@ -191,6 +191,49 @@ namespace RenderCore { namespace Metal_DX11
 		return _numericUniforms[unsigned(stage)];
 	}
 
+	void DeviceContext::BeginRenderPass()
+    {
+        assert(!_inRenderPass);
+        _inRenderPass = true;
+    }
+
+    void DeviceContext::BeginSubpass(unsigned renderTargetWidth, unsigned renderTargetHeight)
+	{
+        _renderTargetWidth = renderTargetWidth;
+        _renderTargetHeight = renderTargetHeight;
+    }
+
+    void DeviceContext::EndSubpass()
+	{
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
+    }
+
+    void DeviceContext::EndRenderPass()
+    {
+        assert(_inRenderPass);
+        _inRenderPass = false;
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
+
+        for (auto fn: _onEndRenderPassFunctions) { fn(); }
+        _onEndRenderPassFunctions.clear();
+    }
+
+    bool DeviceContext::InRenderPass()
+    {
+        return _inRenderPass;
+    }
+
+    void DeviceContext::OnEndRenderPass(std::function<void ()> fn)
+    {
+        if (!_inRenderPass) {
+            _onEndRenderPassFunctions.emplace_back(std::move(fn));
+        } else {
+            fn();
+        }
+    }
+
     DeviceContext::DeviceContext(ID3D::DeviceContext* context)
 	: DeviceContext(intrusive_ptr<ID3D::DeviceContext>(context)) {}
 
@@ -211,6 +254,10 @@ namespace RenderCore { namespace Metal_DX11
 		_numericUniforms.resize(6);
 		for (unsigned c=0; c<_numericUniforms.size(); ++c)
 			_numericUniforms[c] = NumericUniformsInterface{*this, (ShaderStage)c};
+
+		_inRenderPass = false;
+        _renderTargetWidth = 0;
+        _renderTargetHeight = 0;
     }
 
     DeviceContext::~DeviceContext()

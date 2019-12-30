@@ -23,6 +23,8 @@ namespace RenderCore { namespace Metal_DX11
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+		void FinishSubpass(DeviceContext& context, unsigned subpassIndex) const;
+
 		unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
 		FrameBuffer(
