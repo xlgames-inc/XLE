@@ -179,6 +179,53 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class BoundUniforms::InterfaceResourcesHelper
+	{
+	public:
+		struct Resource { unsigned _stage; unsigned _resourceIdex; };
+		std::vector<std::pair<uint64_t, Resource>> _interfaceResources;
+		std::vector<std::pair<uint64_t, Resource>> _samplerInterfaceResources;
+
+		InterfaceResourcesHelper(
+			IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections)
+		{
+			StringSection<> samplerPostFix("_sampler");
+
+			for (unsigned s=0; s<reflections.size(); ++s) {
+				if (!reflections[s]) continue;
+
+				D3D11_SHADER_DESC shaderDesc;
+				auto hresult = reflections[s]->GetDesc(&shaderDesc);
+				if (!SUCCEEDED(hresult))
+					continue;
+
+				for (unsigned c2=0; c2<shaderDesc.BoundResources; ++c2) {
+					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+					hresult = reflections[s]->GetResourceBindingDesc(c2, &bindingDesc);
+					if (SUCCEEDED(hresult)) {
+						if (bindingDesc.Type == D3D_SIT_SAMPLER) {
+							// special case -- check for "_sampler" postfix
+							StringSection<char> n = bindingDesc.Name;
+							if (XlEndsWith(n, samplerPostFix)) {
+								const uint64 hash = ParameterBox::MakeParameterNameHash(MakeStringSection(n.begin(), n.end() - samplerPostFix.Length()));
+								_samplerInterfaceResources.push_back(std::make_pair(hash, Resource{s, c2}));
+							}
+							continue;
+						}
+
+						// To bind correctly, we must use the same name hashing as the parameter box -- so we might as well just
+						// go ahead and call that here
+						const uint64 hash = ParameterBox::MakeParameterNameHash(MakeStringSection(bindingDesc.Name, XlStringEnd(bindingDesc.Name)));
+						_interfaceResources.push_back(std::make_pair(hash, Resource{s, c2}));
+					}
+				}
+			}
+
+			std::sort(_interfaceResources.begin(), _interfaceResources.end(), CompareFirst<uint64_t, Resource>());
+			std::sort(_samplerInterfaceResources.begin(), _samplerInterfaceResources.end(), CompareFirst<uint64_t, Resource>());
+		}
+	};
+
     BoundUniforms::BoundUniforms(
 		const ShaderProgram& shader,
         const PipelineLayoutConfig& pipelineLayout,
@@ -188,7 +235,7 @@ namespace RenderCore { namespace Metal_DX11
         const UniformsStreamInterface& interface3)
     {
 		for (unsigned c=0; c<4; ++c)
-			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = _boundSamplerSlots[0] = 0;
 
 		intrusive_ptr<ID3D::ShaderReflection> reflections[(unsigned)ShaderStage::Max];
 
@@ -200,11 +247,14 @@ namespace RenderCore { namespace Metal_DX11
 				reflections[c] = CreateReflection(compiledCode);
 		}
 
+		InterfaceResourcesHelper helper(MakeIteratorRange(reflections));
+
 		const UniformsStreamInterface* streams[] = { &interface0, &interface1, &interface2, &interface3 };
 		for (unsigned streamIdx=0; streamIdx<dimof(streams); ++streamIdx) {
 			const auto& stream = *streams[streamIdx];
 			for (unsigned slot=0; slot<(unsigned)stream._cbBindings.size(); ++slot) {
 				auto bound = BindConstantBuffer(
+					helper,
 					MakeIteratorRange(reflections),
 					stream._cbBindings[slot]._hashName, slot, streamIdx,
 					MakeIteratorRange(stream._cbBindings[slot]._elements));
@@ -213,10 +263,18 @@ namespace RenderCore { namespace Metal_DX11
 			}
 			for (unsigned slot=0; slot<(unsigned)stream._srvBindings.size(); ++slot) {
 				auto bound = BindShaderResource(
+					helper,
 					MakeIteratorRange(reflections),
 					stream._srvBindings[slot], slot, streamIdx);
 				if (bound)
 					_boundResourceSlots[streamIdx] |= 1ull << uint64_t(slot);
+
+				auto boundSampler = BindSampler(
+					helper,
+					MakeIteratorRange(reflections),
+					stream._srvBindings[slot], slot, streamIdx);
+				if (boundSampler)
+					_boundSamplerSlots[streamIdx] |= 1ull << uint64_t(slot);
 			}
 		}
     }
@@ -230,16 +288,19 @@ namespace RenderCore { namespace Metal_DX11
         const UniformsStreamInterface& interface3)
 	{
 		for (unsigned c=0; c<4; ++c)
-			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = _boundSamplerSlots[0] = 0;
 
 		intrusive_ptr<ID3D::ShaderReflection> reflections[(unsigned)ShaderStage::Max];
 		reflections[(unsigned)ShaderStage::Compute] = CreateReflection(shader.GetCompiledCode());
+
+		InterfaceResourcesHelper helper(MakeIteratorRange(reflections));
 
 		const UniformsStreamInterface* streams[] = { &interface0, &interface1, &interface2, &interface3 };
 		for (unsigned streamIdx=0; streamIdx<dimof(streams); ++streamIdx) {
 			const auto& stream = *streams[streamIdx];
 			for (unsigned slot=0; slot<(unsigned)stream._cbBindings.size(); ++slot) {
 				auto bound = BindConstantBuffer(
+					helper,
 					MakeIteratorRange(reflections),
 					stream._cbBindings[slot]._hashName, slot, streamIdx,
 					MakeIteratorRange(stream._cbBindings[slot]._elements));
@@ -248,10 +309,18 @@ namespace RenderCore { namespace Metal_DX11
 			}
 			for (unsigned slot=0; slot<(unsigned)stream._srvBindings.size(); ++slot) {
 				auto bound = BindShaderResource(
+					helper,
 					MakeIteratorRange(reflections),
 					stream._srvBindings[slot], slot, streamIdx);
 				if (bound)
 					_boundResourceSlots[streamIdx] |= 1ull << uint64_t(slot);
+
+				auto boundSampler = BindSampler(
+					helper,
+					MakeIteratorRange(reflections),
+					stream._srvBindings[slot], slot, streamIdx);
+				if (boundSampler)
+					_boundSamplerSlots[streamIdx] |= 1ull << uint64_t(slot);
 			}
 		}
 	}
@@ -259,128 +328,136 @@ namespace RenderCore { namespace Metal_DX11
     BoundUniforms::BoundUniforms() 
 	{
 		for (unsigned c=0; c<4; ++c)
-			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = _boundSamplerSlots[0] = 0;
 	}
 
     BoundUniforms::~BoundUniforms() {}
 
-    bool BoundUniforms::BindConstantBuffer( 
+    bool BoundUniforms::BindConstantBuffer(
+		const InterfaceResourcesHelper& helper,
 		IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
-		uint64 hashName, unsigned slot, unsigned stream,
+		uint64_t hashName, unsigned slot, unsigned stream,
         IteratorRange<const ConstantBufferElementDesc*> elements)
     {
-		bool functionResult = false;
 
             //
             //    Look for this constant buffer in the shader interface.
             //        If it exists, let's validate that the input layout is similar
             //        to what the shader expects.
             //
-        for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!reflections[s]) continue;
 
-            D3D11_SHADER_DESC shaderDesc;
-            auto hresult = reflections[s]->GetDesc(&shaderDesc);
+		auto range = EqualRange(helper._interfaceResources, hashName);
+		if (range.first == range.second)
+			return false;
 
-			if (SUCCEEDED(hresult)) {
-				for (unsigned c2=0; c2<shaderDesc.BoundResources; ++c2) {
-					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					hresult = reflections[s]->GetResourceBindingDesc(c2, &bindingDesc);
-					if (SUCCEEDED(hresult)) {
-						const auto hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
-						if (hash == hashName) {
-							ID3D::ShaderReflectionConstantBuffer* cbReflection = reflections[s]->GetConstantBufferByName(
-								bindingDesc.Name);
-							if (!cbReflection) 
-								continue;
+		for (auto i=range.first; i!=range.second; ++i) {
+			auto reflection = reflections[i->second._stage];
+			assert(reflection);
 
-							D3D11_SHADER_BUFFER_DESC cbDesc;
-							XlZeroMemory(cbDesc);
-							cbReflection->GetDesc(&cbDesc); // when GetConstantBufferByName() fails, it returns a dummy object that doesn't do anything in GetDesc();
-							if (!cbDesc.Size) 
-								continue;
+			D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
+			assert(SUCCEEDED(hresult));
 
-							assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
+			ID3D::ShaderReflectionConstantBuffer* cbReflection = reflection->GetConstantBufferByName(bindingDesc.Name);
+			if (!cbReflection) 
+				continue;
 
-							#if defined(_DEBUG)
-								for (size_t c=0; c<elements.size(); ++c) {
-									ID3D::ShaderReflectionVariable* variable = nullptr;
+			D3D11_SHADER_BUFFER_DESC cbDesc;
+			XlZeroMemory(cbDesc);
+			cbReflection->GetDesc(&cbDesc); // when GetConstantBufferByName() fails, it returns a dummy object that doesn't do anything in GetDesc();
+			if (!cbDesc.Size) 
+				continue;
 
-									// search through to find a variable a name that matches the hash value
-									for (unsigned v=0; v<cbDesc.Variables; ++v) {
-										auto* var = cbReflection->GetVariableByIndex(v);
-										if (!var) continue;
-										D3D11_SHADER_VARIABLE_DESC desc;
-										hresult = var->GetDesc(&desc);
-										if (!SUCCEEDED(hresult)) continue;
-										auto h = Hash64(desc.Name);
-										if (h == elements[c]._semanticHash) {
-											variable = var;
-											break;
-										}
-									}
+			assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
 
-									assert(variable);
-									if (variable) {
-										D3D11_SHADER_VARIABLE_DESC variableDesc;
-										XlZeroMemory(variableDesc);
-										variable->GetDesc(&variableDesc);
-										assert(variableDesc.Name!=nullptr);
-										assert(variableDesc.StartOffset == elements[c]._offset);
-										assert(variableDesc.Size == std::max(1u, elements[c]._arrayElementCount) * BitsPerPixel(elements[c]._nativeFormat) / 8);
-									}
-								}
-							#endif
+			#if defined(_DEBUG)
+				for (size_t c=0; c<elements.size(); ++c) {
+					ID3D::ShaderReflectionVariable* variable = nullptr;
 
-							StageBinding::Binding newBinding;
-							newBinding._shaderSlot = bindingDesc.BindPoint;
-							newBinding._inputInterfaceSlot = slot | (stream<<16);
-							newBinding._savedCB = MakeConstantBuffer(GetObjectFactory(), cbDesc.Size);
-							_stageBindings[s]._shaderConstantBindings.push_back(newBinding);
-							functionResult = true;
+					// search through to find a variable a name that matches the hash value
+					for (unsigned v=0; v<cbDesc.Variables; ++v) {
+						auto* var = cbReflection->GetVariableByIndex(v);
+						if (!var) continue;
+						D3D11_SHADER_VARIABLE_DESC desc;
+						hresult = var->GetDesc(&desc);
+						if (!SUCCEEDED(hresult)) continue;
+						auto h = Hash64(desc.Name);
+						if (h == elements[c]._semanticHash) {
+							variable = var;
 							break;
 						}
 					}
-				}
-			}
-        }
 
-        return functionResult;
+					assert(variable);
+					if (variable) {
+						D3D11_SHADER_VARIABLE_DESC variableDesc;
+						XlZeroMemory(variableDesc);
+						variable->GetDesc(&variableDesc);
+						assert(variableDesc.Name!=nullptr);
+						assert(variableDesc.StartOffset == elements[c]._offset);
+						assert(variableDesc.Size == std::max(1u, elements[c]._arrayElementCount) * BitsPerPixel(elements[c]._nativeFormat) / 8);
+					}
+				}
+			#endif
+
+			StageBinding::Binding newBinding;
+			newBinding._shaderSlot = bindingDesc.BindPoint;
+			newBinding._inputInterfaceSlot = slot | (stream<<16);
+			newBinding._savedCB = MakeConstantBuffer(GetObjectFactory(), cbDesc.Size);
+			_stageBindings[i->second._stage]._shaderConstantBindings.push_back(newBinding);
+		}
+
+        return true;
     }
 
     bool BoundUniforms::BindShaderResource(
+		const InterfaceResourcesHelper& helper,
 		IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
 		uint64 hashName, unsigned slot, unsigned stream)
     {
-        bool functionResult = false;
-        for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!reflections[s]) continue;
+		auto range = EqualRange(helper._interfaceResources, hashName);
+		if (range.first == range.second)
+			return false;
 
-            D3D11_SHADER_DESC shaderDesc;
-            auto hresult = reflections[s]->GetDesc(&shaderDesc);
+		for (auto i=range.first; i!=range.second; ++i) {
+			auto reflection = reflections[i->second._stage];
+			assert(reflection);
 
+			D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
 			assert(SUCCEEDED(hresult));
-			if (SUCCEEDED(hresult)) {
-				bool gotBinding = false;
-				for (unsigned c=0; c<shaderDesc.BoundResources && !gotBinding; ++c) {
-					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					hresult = reflections[s]->GetResourceBindingDesc(c, &bindingDesc);
-					if (SUCCEEDED(hresult)) {
-						// To bind correctly, we must use the same name hashing as the parameter box -- so we might as well just
-						// go ahead and call that here
-						const uint64 hash = ParameterBox::MakeParameterNameHash(MakeStringSection(bindingDesc.Name, XlStringEnd(bindingDesc.Name)));
-						if (hash == hashName) {
-							StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
-							_stageBindings[s]._shaderResourceBindings.push_back(newBinding);
-							gotBinding = functionResult = true;      // (we should also try to bind against other stages)
-						}
-					}
-				}
-			}
-        }
 
-        return functionResult;
+			StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
+			_stageBindings[i->second._stage]._shaderResourceBindings.push_back(newBinding);
+		}
+
+        return true;
     }
+
+	bool BoundUniforms::BindSampler(
+		const InterfaceResourcesHelper& helper,
+		IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
+		uint64_t hashName, unsigned slot, unsigned stream)
+	{
+		auto range = EqualRange(helper._samplerInterfaceResources, hashName);
+		if (range.first == range.second)
+			return false;
+
+		for (auto i=range.first; i!=range.second; ++i) {
+			auto reflection = reflections[i->second._stage];
+			assert(reflection);
+
+			D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
+			assert(SUCCEEDED(hresult));
+			assert(bindingDesc.Type == D3D_SIT_SAMPLER);
+
+			StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
+			_stageBindings[i->second._stage]._shaderSamplerBindings.push_back(newBinding);
+		}
+
+		return true;
+	}
 
     void BoundUniforms::Apply(  
 		DeviceContext& context, 
@@ -407,6 +484,16 @@ namespace RenderCore { namespace Metal_DX11
             &ID3D::DeviceContext::CSSetShaderResources,
         };
 
+		Internal::SetSamplersFn ss[(unsigned)ShaderStage::Max] = 
+        {
+            &ID3D::DeviceContext::VSSetSamplers,
+            &ID3D::DeviceContext::PSSetSamplers,
+            &ID3D::DeviceContext::GSSetSamplers,
+            &ID3D::DeviceContext::HSSetSamplers,
+            &ID3D::DeviceContext::DSSetSamplers,
+            &ID3D::DeviceContext::CSSetSamplers,
+        };
+
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
             const StageBinding& stage = _stageBindings[s];
 
@@ -421,6 +508,12 @@ namespace RenderCore { namespace Metal_DX11
 						continue;
 
                     unsigned slot = i->_inputInterfaceSlot & 0xff;
+
+					#if defined(_DEBUG)
+						if (slot >= stream._constantBuffers.size())
+							Throw(::Exceptions::BasicLabel("Uniform stream does not include Constant Buffer for bound resource. Expected CB bound at index (%u) of stream (%u). Only (%u) CBs were provided in the UniformsStream passed to BoundUniforms::Apply", slot, streamIdx, stream._constantBuffers.size()));
+					#endif
+
                     if (slot < stream._constantBuffers.size()) {
 						const auto& cb = stream._constantBuffers[slot];
                         if (cb._prebuiltBuffer) {
@@ -445,7 +538,9 @@ namespace RenderCore { namespace Metal_DX11
                                 highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                             }
 
-                        }
+                        } else {
+							Log(Warning) << "Did not find valid CB data to bind in BoundUniforms::Apply for index ("  << slot << ") in stream (" << streamIdx << ")" << std::endl;
+						}
                     }
 
                 }
@@ -455,9 +550,9 @@ namespace RenderCore { namespace Metal_DX11
                         //  We have to clear out the pointers to CBs that aren't explicit set. This is because
                         //  we don't know if those pointers are still valid currently -- they may have been deleted
                         //  somewhere else in the pipeline
-                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
+                    /*for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
                         if (!(setMask & (1<<c)))
-                            currentCBS[c] = nullptr;
+                            currentCBS[c] = nullptr;*/
 
                     Internal::SetConstantBuffersFn fn = scb[s];
                     (context.GetUnderlying()->*fn)(lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1, &currentCBS[lowestShaderSlot]);
@@ -474,8 +569,13 @@ namespace RenderCore { namespace Metal_DX11
 					if ((i->_inputInterfaceSlot >> 16) != streamIdx)
 						continue;
 
-                    unsigned slot = i->_inputInterfaceSlot & 0xff;
-                    if (slot < stream._resources.size() && stream._resources[slot]) {
+					unsigned slot = i->_inputInterfaceSlot & 0xff;
+					#if defined(_DEBUG)
+						if (slot >= stream._resources.size())
+							Throw(::Exceptions::BasicLabel("Uniform stream does not include SRV for bound resource. Expected SRV bound at index (%u) of stream (%u). Only (%u) SRVs were provided in the UniformsStream passed to BoundUniforms::Apply", slot, streamIdx, stream._resources.size()));
+					#endif
+                    
+                    if (stream._resources[slot]) {
                         currentSRVs[i->_shaderSlot] = ((ShaderResourceView*)stream._resources[slot])->GetUnderlying();
                         lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                         highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
@@ -485,14 +585,49 @@ namespace RenderCore { namespace Metal_DX11
 
                 if (lowestShaderSlot <= highestShaderSlot) {
 
-                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
+                    /*for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
                         if (!(setMask & (1<<c)))
-                            currentSRVs[c] = nullptr;
+                            currentSRVs[c] = nullptr;*/
 
                     Internal::SetShaderResourcesFn fn = scr[s];
                     (context.GetUnderlying()->*fn)(
                         lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
                         &currentSRVs[lowestShaderSlot]);
+                }
+            }
+
+			{
+                unsigned lowestShaderSlot = ~unsigned(0x0), highestShaderSlot = 0;
+                auto* currentSSs = context._currentSSs[s];
+                uint32 setMask = 0;
+                for (auto   i =stage._shaderSamplerBindings.cbegin(); 
+                            i!=stage._shaderSamplerBindings.cend(); ++i) {
+
+					if ((i->_inputInterfaceSlot >> 16) != streamIdx)
+						continue;
+
+					unsigned slot = i->_inputInterfaceSlot & 0xff;
+					if (slot >= stream._samplers.size())
+						continue;		// samplers are optionally set; so we just skip in this case (no warning, exception)
+                    
+                    if (stream._samplers[slot]) {
+                        currentSSs[i->_shaderSlot] = ((SamplerState*)stream._samplers[slot])->GetUnderlying();
+                        lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
+                        highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
+                        setMask |= 1<<(i->_shaderSlot);
+                    }
+                }
+
+                if (lowestShaderSlot <= highestShaderSlot) {
+
+                    /*for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
+                        if (!(setMask & (1<<c)))
+                            currentSSs[c] = nullptr;*/
+
+                    Internal::SetSamplersFn fn = ss[s];
+                    (context.GetUnderlying()->*fn)(
+                        lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
+                        &currentSSs[lowestShaderSlot]);
                 }
             }
         }
@@ -526,6 +661,35 @@ namespace RenderCore { namespace Metal_DX11
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
                 context.GetUnderlying()->CSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Compute][b._shaderSlot] = nullptr;
+            }
+        }
+
+		ID3D::SamplerState* ss = nullptr;
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Vertex]._shaderSamplerBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+				context.GetUnderlying()->VSSetSamplers(b._shaderSlot, 1, &ss);
+                context._currentSSs[(unsigned)ShaderStage::Vertex][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Pixel]._shaderSamplerBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+				context.GetUnderlying()->PSSetSamplers(b._shaderSlot, 1, &ss);
+                context._currentSSs[(unsigned)ShaderStage::Pixel][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Geometry]._shaderSamplerBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.GetUnderlying()->GSSetSamplers(b._shaderSlot, 1, &ss);
+                context._currentSSs[(unsigned)ShaderStage::Geometry][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[(unsigned)ShaderStage::Compute]._shaderSamplerBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.GetUnderlying()->CSSetSamplers(b._shaderSlot, 1, &ss);
+                context._currentSSs[(unsigned)ShaderStage::Compute][b._shaderSlot] = nullptr;
             }
         }
     }

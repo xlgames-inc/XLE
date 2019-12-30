@@ -86,6 +86,7 @@ namespace RenderCore { namespace Metal_DX11
 
         uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
+		uint64_t _boundSamplerSlots[4];
 
         BoundUniforms(
             const ShaderProgram& shader,
@@ -121,6 +122,7 @@ namespace RenderCore { namespace Metal_DX11
             };
             std::vector<Binding>    _shaderConstantBindings;
             std::vector<Binding>    _shaderResourceBindings;
+			std::vector<Binding>    _shaderSamplerBindings;
 
 			StageBinding() = default;
             StageBinding(StageBinding&& moveFrom) = default;
@@ -131,13 +133,21 @@ namespace RenderCore { namespace Metal_DX11
 
         StageBinding    _stageBindings[ShaderStage::Max];
 
+		class InterfaceResourcesHelper;
+
 		bool BindConstantBuffer(
+			const InterfaceResourcesHelper& helper,
 			IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
-			uint64 hashName, unsigned slot, unsigned uniformsStream,
+			uint64_t hashName, unsigned slot, unsigned uniformsStream,
             IteratorRange<const ConstantBufferElementDesc*> elements);
         bool BindShaderResource(
+			const InterfaceResourcesHelper& helper,
 			IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
-			uint64 hashName, unsigned slot, unsigned uniformsStream);
+			uint64_t hashName, unsigned slot, unsigned uniformsStream);
+		bool BindSampler(
+			const InterfaceResourcesHelper& helper,
+			IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
+			uint64_t hashName, unsigned slot, unsigned uniformsStream);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +234,8 @@ namespace RenderCore { namespace Metal_DX11
 	{
 		ID3D::SamplerState* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, samplers);
+		for (unsigned c=0; c<Count; ++c)
+            _context->_currentSSs[(unsigned)_stage][samplers._startingPoint+c] = underlyings[c];
 		(_context->GetUnderlying()->*_setSamplers)(samplers._startingPoint, Count, underlyings);
 	}
 

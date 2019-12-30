@@ -109,6 +109,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ID3D::Buffer*               _currentCBs[6][14];
         ID3D::ShaderResourceView*   _currentSRVs[6][32];
+		ID3D::SamplerState*			_currentSSs[6][32];
 
 		ObjectFactory&	GetFactory() { return *_factory; }
 

@@ -142,6 +142,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         XlZeroMemory(_currentCBs);
         XlZeroMemory(_currentSRVs);
+		XlZeroMemory(_currentSSs);
     }
 
 	NumericUniformsInterface& DeviceContext::GetNumericUniforms(ShaderStage stage)
@@ -159,6 +160,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         XlZeroMemory(_currentCBs);
         XlZeroMemory(_currentSRVs);
+		XlZeroMemory(_currentSSs);
         _annotations = QueryInterfaceCast<ID3D::UserDefinedAnnotation>(_underlying);
 
 		ID3D::Device* devRaw = nullptr;
