@@ -10,8 +10,6 @@
 #include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
 
-typedef uint32_t GLenum;
-
 namespace RenderCore { class IDevice; class IResource; }
 
 namespace RenderCore { namespace Metal_OpenGLES

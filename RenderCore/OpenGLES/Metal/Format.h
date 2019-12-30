@@ -6,10 +6,10 @@
 
 #pragma once
 
+#include "Forward.h"
 #include "../../Format.h"
 #include "../../Types.h"
 #include <utility>
-#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
