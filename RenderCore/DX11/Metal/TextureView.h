@@ -17,11 +17,13 @@ namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Metal_DX11
 {
     class DeviceContext;
+	class ObjectFactory;
 
     class RenderTargetView
     {
     public:
         explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+		RenderTargetView(ObjectFactory& objFactory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 		explicit RenderTargetView(DeviceContext& context);
         
         std::shared_ptr<IResource>				GetResource() const;
@@ -47,6 +49,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+		DepthStencilView(ObjectFactory& objFactory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 		explicit DepthStencilView(DeviceContext& context);
 
         std::shared_ptr<IResource>				GetResource() const;
@@ -71,6 +74,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         explicit UnorderedAccessView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+		UnorderedAccessView(ObjectFactory& objFactory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         
         std::shared_ptr<IResource>		GetResource() const;
 
@@ -94,6 +98,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         explicit ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+		ShaderResourceView(ObjectFactory& objFactory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 
         static ShaderResourceView RawBuffer(const std::shared_ptr<IResource>& resource, unsigned sizeBytes, unsigned offsetBytes = 0);
 

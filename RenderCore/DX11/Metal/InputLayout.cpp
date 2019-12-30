@@ -13,6 +13,7 @@
 #include "Shader.h"
 #include "ObjectFactory.h"
 #include "Format.h"
+#include "State.h"
 #include "../../Format.h"
 #include "../../Types.h"
 #include "../../BufferView.h"
@@ -590,7 +591,7 @@ namespace RenderCore { namespace Metal_DX11
 
                         } else if (cb._packet.size()) {
 
-                            i->_savedCB.Update(context, cb._packet.begin(), cb._packet.size());
+                            i->_savedCB.Update(context, cb._packet.begin(), cb._packet.size(), 0, Buffer::UpdateFlags::Internal_Copy);
                             setMask |= 1 << (i->_shaderSlot);
                             if (i->_savedCB.GetUnderlying() != currentCBS[i->_shaderSlot]) {
                                 currentCBS[i->_shaderSlot] = i->_savedCB.GetUnderlying();

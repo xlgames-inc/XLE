@@ -21,7 +21,9 @@ namespace RenderCore { namespace Metal_DX11
 		struct UpdateFlags
         {
             enum Enum {
-                UnsynchronizedWrite = 1 << 0
+                UnsynchronizedWrite = 1 << 0,
+
+				Internal_Copy = 1<<29			// (not cross-API compatible, internal use only)
             };
             using BitField = unsigned;
         };

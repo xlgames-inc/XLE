@@ -40,6 +40,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     RenderTargetView::RenderTargetView(
+		ObjectFactory& factory,
 		const std::shared_ptr<IResource>& iresource,
 		const TextureViewDesc& window)
     {
@@ -48,7 +49,7 @@ namespace RenderCore { namespace Metal_DX11
             Throw(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
         }
 
-		auto& factory = GetObjectFactory(*iresource);
+		assert(&factory == &GetObjectFactory(*iresource));
 
         if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateRenderTargetView(resource);
@@ -134,6 +135,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     DepthStencilView::DepthStencilView(
+		ObjectFactory& factory,
 		const std::shared_ptr<IResource>& iresource,
 		const TextureViewDesc& window)
     {
@@ -142,7 +144,7 @@ namespace RenderCore { namespace Metal_DX11
             Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
         }
 
-		auto& factory = GetObjectFactory(*iresource);
+		assert(&factory == &GetObjectFactory(*iresource));
 
         if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateDepthStencilView(resource);
@@ -209,6 +211,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     UnorderedAccessView::UnorderedAccessView(
+		ObjectFactory& factory,
 		const std::shared_ptr<IResource>& iresource,
 		const TextureViewDesc& window)
     {
@@ -217,7 +220,7 @@ namespace RenderCore { namespace Metal_DX11
             Throw(::Exceptions::BasicLabel("NULL resource passed to UnorderedAccessView constructor"));
         }
 
-		auto& factory = GetObjectFactory(*iresource);
+		assert(&factory == &GetObjectFactory(*iresource));
 
         if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateUnorderedAccessView(resource);
@@ -290,6 +293,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
 	ShaderResourceView::ShaderResourceView(
+		ObjectFactory& factory,
 		const std::shared_ptr<IResource>& iresource,
 		const TextureViewDesc& window)
 	{
@@ -300,7 +304,7 @@ namespace RenderCore { namespace Metal_DX11
 		if (!resource)
 			Throw(::Exceptions::BasicLabel("Null resource passed to ShaderResourceView constructor"));
 
-		auto& factory = GetObjectFactory(*iresource);
+		assert(&factory == &GetObjectFactory(*iresource));
 
         if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateShaderResourceView(resource);
@@ -411,6 +415,10 @@ namespace RenderCore { namespace Metal_DX11
 	RenderTargetView::~RenderTargetView() {}
 	RenderTargetView::RenderTargetView(const RenderTargetView& cloneFrom) : _underlying(cloneFrom._underlying) {}
 	RenderTargetView::RenderTargetView(RenderTargetView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	RenderTargetView::RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
+	: RenderTargetView(GetObjectFactory(*resource), resource, window)
+	{
+	}
 	RenderTargetView& RenderTargetView::operator=(const RenderTargetView& cloneFrom)
 	{
 		_underlying = cloneFrom._underlying;
@@ -430,6 +438,10 @@ namespace RenderCore { namespace Metal_DX11
 	DepthStencilView::~DepthStencilView() {}
 	DepthStencilView::DepthStencilView(const DepthStencilView& cloneFrom) : _underlying(cloneFrom._underlying) {}
 	DepthStencilView::DepthStencilView(DepthStencilView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	DepthStencilView::DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
+	: DepthStencilView(GetObjectFactory(*resource), resource, window)
+	{
+	}
 	DepthStencilView& DepthStencilView::operator=(const DepthStencilView& cloneFrom)
 	{
 		_underlying = cloneFrom._underlying;
@@ -449,6 +461,10 @@ namespace RenderCore { namespace Metal_DX11
 	UnorderedAccessView::~UnorderedAccessView() {}
 	UnorderedAccessView::UnorderedAccessView(const UnorderedAccessView& cloneFrom) : _underlying(cloneFrom._underlying) {}
 	UnorderedAccessView::UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	UnorderedAccessView::UnorderedAccessView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
+	: UnorderedAccessView(GetObjectFactory(*resource), resource, window)
+	{
+	}
 	UnorderedAccessView& UnorderedAccessView::operator=(const UnorderedAccessView& cloneFrom)
 	{
 		_underlying = cloneFrom._underlying;
@@ -468,6 +484,10 @@ namespace RenderCore { namespace Metal_DX11
 	ShaderResourceView::~ShaderResourceView() {}
 	ShaderResourceView::ShaderResourceView(const ShaderResourceView& cloneFrom) : _underlying(cloneFrom._underlying) {}
 	ShaderResourceView::ShaderResourceView(ShaderResourceView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	ShaderResourceView::ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
+	: ShaderResourceView(GetObjectFactory(*resource), resource, window)
+	{
+	}
 	ShaderResourceView& ShaderResourceView::operator=(const ShaderResourceView& cloneFrom)
 	{
 		_underlying = cloneFrom._underlying;

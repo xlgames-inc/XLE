@@ -129,6 +129,16 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
     }
 
+	void DeviceContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+	{
+		_underlying->DrawInstanced(vertexCount, instanceCount, startVertexLocation, 0);
+	}
+
+	void DeviceContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+	{
+		_underlying->DrawIndexedInstanced(indexCount, indexCount, startIndexLocation, baseVertexLocation, 0);
+	}
+
     void DeviceContext::DrawAuto()
     {
         _underlying->DrawAuto();

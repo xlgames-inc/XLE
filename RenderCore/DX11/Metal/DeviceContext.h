@@ -81,6 +81,8 @@ namespace RenderCore { namespace Metal_DX11
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+		void		DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void		DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void        DrawAuto();
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 

@@ -35,7 +35,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	void	Buffer::Update(DeviceContext& context, const void* data, size_t byteCount, size_t writeOffset, UpdateFlags::BitField flags)
 	{
-		if (!(flags & UpdateFlags::UnsynchronizedWrite) && context.InRenderPass()) {
+		if (!(flags & UpdateFlags::UnsynchronizedWrite) && !(flags && UpdateFlags::Internal_Copy) && context.InRenderPass()) {
             Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
         }
 
