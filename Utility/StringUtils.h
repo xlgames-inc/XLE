@@ -654,6 +654,22 @@ namespace Utility
                 && XlEqStringI(StringSection<T>(a.begin(), a.begin() + b.Length()), b);
         }
 
+	template<typename T>
+        bool XlEndsWith(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            return 
+                a.Length() >= b.Length()
+                && XlEqString(StringSection<T>(a.end() - b.Length(), a.end()), b);
+        }
+
+    template<typename T>
+        bool XlEndssWithI(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            return 
+                a.Length() >= b.Length()
+                && XlEqStringI(StringSection<T>(a.end() - b.Length(), a.end()), b);
+        }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if REDIRECT_CLIB_WITH_PREPROCESSOR
