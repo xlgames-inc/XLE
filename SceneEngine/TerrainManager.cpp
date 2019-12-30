@@ -689,7 +689,7 @@ namespace SceneEngine
 
         state->_queuedNodes.erase(state->_queuedNodes.begin(), state->_queuedNodes.end());
         state->_queuedNodes.reserve(2048);
-        state->_currentViewport = Metal::ViewportDesc(*Metal::DeviceContext::Get(context));
+        state->_currentViewport = Metal::DeviceContext::Get(context)->GetBoundViewport();
         _pimpl->CullNodes(parserContext.GetProjectionDesc(), *state);
 
         renderer->QueueUploads(*state);
@@ -804,7 +804,7 @@ namespace SceneEngine
             GetPriorityMode());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
-        state._currentViewport = Metal::ViewportDesc(metalContext);        // (accurate viewport is required to get the lodding right)
+        state._currentViewport = metalContext.GetBoundViewport();        // (accurate viewport is required to get the lodding right)
         const auto& projDesc = parserContext.GetProjectionDesc();
 		_pimpl->CullNodes(projDesc, state);
 

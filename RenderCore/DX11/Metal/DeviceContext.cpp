@@ -71,13 +71,53 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetIndexBuffer((ID3D::Buffer*)ib._underlying.get(), AsDXGIFormat(indexFormat), offset);
     }
 
-    void DeviceContext::Bind(const ViewportDesc& viewport)
+    void DeviceContext::Bind(const Viewport& viewport)
     {
             // ("ViewportDesc" is equivalent to D3D11_VIEWPORT)
             //      --  we could do static_asserts to check the offsets of the members
             //          to make sure.
         _underlying->RSSetViewports(1, (D3D11_VIEWPORT*)&viewport);
     }
+
+	void DeviceContext::SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects)
+	{
+		// "Viewport" is compatible with D3D11_VIEWPORT, but not the same size
+		D3D11_VIEWPORT d3dViewports[D3D11_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
+		auto cnt = std::min(viewports.size(), dimof(d3dViewports));
+		for (unsigned c=0; c<cnt; ++c) {
+			assert(viewports[c].OriginIsUpperLeft);
+			d3dViewports[c] = *(const D3D11_VIEWPORT*)(viewports.begin() + c);
+		}
+		_underlying->RSSetViewports((UINT)cnt, d3dViewports);
+
+		D3D11_RECT rects[D3D11_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
+		cnt = std::min(scissorRects.size(), dimof(rects));
+		for (unsigned c=0; c<cnt; ++c) {
+			assert(scissorRects[c].OriginIsUpperLeft);
+			rects[c].left = scissorRects[c].X;
+			rects[c].top = scissorRects[c].Y;
+			rects[c].right = scissorRects[c].X + scissorRects[c].Width;
+			rects[c].bottom = scissorRects[c].Y + scissorRects[c].Height;
+		}
+		_underlying->RSSetScissorRects((UINT)cnt, rects);
+	}
+
+	static_assert(  offsetof(ViewportDesc, X) == offsetof(D3D11_VIEWPORT, TopLeftX)
+                &&  offsetof(ViewportDesc, Y) == offsetof(D3D11_VIEWPORT, TopLeftY)
+                &&  offsetof(ViewportDesc, Width) == offsetof(D3D11_VIEWPORT, Width)
+                &&  offsetof(ViewportDesc, Height) == offsetof(D3D11_VIEWPORT, Height)
+                &&  offsetof(ViewportDesc, MinDepth) == offsetof(D3D11_VIEWPORT, MinDepth)
+                &&  offsetof(ViewportDesc, MaxDepth) == offsetof(D3D11_VIEWPORT, MaxDepth),
+                "ViewportDesc is no longer compatible with D3D11_VIEWPORT");
+
+	Viewport DeviceContext::GetBoundViewport()
+	{
+		Viewport result;
+		UINT viewportsToGet = 1;
+        GetUnderlying()->RSGetViewports(&viewportsToGet, (D3D11_VIEWPORT*)&result);
+		result.OriginIsUpperLeft = true;
+		return result;
+	}
 
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {

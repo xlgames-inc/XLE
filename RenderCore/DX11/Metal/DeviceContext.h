@@ -17,7 +17,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Prefix.h"
 
-namespace RenderCore { enum class ShaderStage; }
+namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -32,7 +32,6 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilState;
     class DepthStencilView;
     class RenderTargetView;
-    class ViewportDesc;
     class BoundClassInterfaces;
 	class ObjectFactory;
 	class Resource;
@@ -69,7 +68,6 @@ namespace RenderCore { namespace Metal_DX11
         void        Bind(const RasterizerState& rasterizer);
         void        Bind(const BlendState& blender);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
-        void        Bind(const ViewportDesc& viewport);
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
 
@@ -95,6 +93,11 @@ namespace RenderCore { namespace Metal_DX11
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
         void        ExecuteCommandList(CommandList& commandList, bool preserveRenderState);
+
+		void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+		Viewport GetBoundViewport();
+
+		DEPRECATED_ATTRIBUTE void        Bind(const Viewport& viewport);
 
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 

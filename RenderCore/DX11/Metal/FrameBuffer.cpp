@@ -10,6 +10,7 @@
 #include "TextureView.h"
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
+#include "State.h"
 #include "../../Format.h"
 #include "../../ResourceUtils.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -41,6 +42,10 @@ namespace RenderCore { namespace Metal_DX11
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
             const auto& spDesc = subpasses[c];
             auto& sp = _subpasses[c];
+
+			unsigned initialViewportWidth = D3D11_VIEWPORT_BOUNDS_MAX;
+			unsigned initialViewportHeight = D3D11_VIEWPORT_BOUNDS_MAX;
+
             sp._rtvCount = std::min((unsigned)spDesc._output.size(), s_maxMRTs);
             for (unsigned r=0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc._output[r];
@@ -56,6 +61,11 @@ namespace RenderCore { namespace Metal_DX11
 				} else {
 					sp._rtvClearValue[r] = ~0u;
 				}
+
+				auto resDesc = resource->GetDesc();
+				assert(resDesc._type == ResourceDesc::Type::Texture);
+				initialViewportWidth = std::min(resDesc._textureDesc._width, initialViewportWidth);
+				initialViewportHeight = std::min(resDesc._textureDesc._height, initialViewportHeight);
 			}
 
 			if (spDesc._depthStencil._resourceName != ~0u) {
@@ -71,7 +81,15 @@ namespace RenderCore { namespace Metal_DX11
 				} else {
 					sp._dsvClearValue = ~0u;
 				}
+
+				auto resDesc = resource->GetDesc();
+				assert(resDesc._type == ResourceDesc::Type::Texture);
+				initialViewportWidth = std::min(resDesc._textureDesc._width, initialViewportWidth);
+				initialViewportHeight = std::min(resDesc._textureDesc._height, initialViewportHeight);
 			}
+
+			sp._initialViewportWidth = initialViewportWidth;
+			sp._initialViewportHeight = initialViewportHeight;
         }
     }
 
@@ -110,6 +128,17 @@ namespace RenderCore { namespace Metal_DX11
 			bindRTVs[c] = s._rtvs[c].GetUnderlying();
 		bindDSV = s._dsv.GetUnderlying();
         context.GetUnderlying()->OMSetRenderTargets(s._rtvCount, bindRTVs, bindDSV);
+
+		{
+			// Ensure that we always initialize the viewports to the maximum size of the subpass when it's
+			// bound. This keeps compatibility with other APIs where the viewports and scissor rects are
+			// effectively rebound on a new subpass (and it's just convenient, anyway)
+			ViewportDesc viewports[1];
+            viewports[0] = ViewportDesc{0.f, 0.f, (float)s._initialViewportWidth, (float)s._initialViewportHeight};
+            ScissorRect scissorRects[1];
+            scissorRects[0] = ScissorRect{0, 0, s._initialViewportWidth, s._initialViewportHeight};
+            context.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+		}
     }
 
 	FrameBuffer::FrameBuffer() {}

@@ -558,7 +558,7 @@ namespace SceneEngine
         Techniques::ParsingContext& parserContext,
         float refractionStdDev, bool doStepDown)
     {
-        Metal::ViewportDesc mainViewportDesc(metalContext);
+        Metal::ViewportDesc mainViewportDesc = metalContext.GetBoundViewport();
         float scale = doStepDown ? .5f : 1.f;
         auto& refractionBox = ConsoleRig::FindCachedBox2<RefractionsBuffer>(
             unsigned(mainViewportDesc.Width*scale), 

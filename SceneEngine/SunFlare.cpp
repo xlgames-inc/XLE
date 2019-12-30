@@ -223,7 +223,7 @@ namespace SceneEngine
 
 		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
         SavedTargets savedTargets(context);
-        Metal::ViewportDesc savedViewport(context);
+        Metal::ViewportDesc savedViewport = context.GetBoundViewport();
         
         CATCH_ASSETS_BEGIN
 

@@ -772,7 +772,7 @@ namespace SceneEngine
             "xleres/postprocess/debugging.psh:LuminanceValue:vs_*", 
             "xleres/utility/metricsrender.gsh:main:gs_*",
             "xleres/utility/metricsrender.psh:main:ps_*", ""));
-        Metal::ViewportDesc mainViewportDesc(context);
+        Metal::ViewportDesc mainViewportDesc = context.GetBoundViewport();
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
         context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
         context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(resources._propertiesBuffer.SRV()));
@@ -919,7 +919,7 @@ namespace SceneEngine
 
 		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
-        Metal::ViewportDesc viewport(context);
+        Metal::ViewportDesc viewport = context.GetBoundViewport();
         SavedTargets savedTargets(context);
         auto targetsReset = savedTargets.MakeResetMarker(context);
 

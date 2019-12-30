@@ -13,6 +13,88 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// Equivalent to MTLStencilDescriptor or D3D12_DEPTH_STENCILOP_DESC or VkStencilOpState
+    /// Note that OpenGLES2 & Vulkan allow for separate readmask/writemask/reference values per
+    /// face, but DX & Metal do not.
+    class StencilDesc
+    {
+    public:
+        StencilOp       _passOp = StencilOp::Keep;        ///< pass stencil & depth tests
+        StencilOp       _failOp = StencilOp::Keep;        ///< fail stencil test
+        StencilOp       _depthFailOp = StencilOp::Keep;   ///< pass stencil but fail depth tests
+        CompareOp       _comparisonOp = CompareOp::Always;
+    };
+
+    /// Equivalent to MTLDepthStencilDescriptor or D3D12_DEPTH_STENCIL_DESC or VkPipelineDepthStencilStateCreateInfo
+    class DepthStencilDesc
+    {
+    public:
+        CompareOp       _depthTest = CompareOp::LessEqual;
+        bool            _depthWrite = true;
+        bool            _stencilEnable = false;
+        uint8_t         _stencilReadMask = 0x0;
+        uint8_t         _stencilWriteMask = 0x0;
+        uint8_t         _stencilReference = 0x0;
+        StencilDesc     _frontFaceStencil;
+        StencilDesc     _backFaceStencil;
+    };
+
+    /// Similar to VkPipelineRasterizationStateCreateInfo or D3D12_RASTERIZER_DESC
+    /// (Metal just has separate function calls)
+    class RasterizationDesc
+    {
+    public:
+        CullMode        _cullMode = CullMode::Back;
+        FaceWinding     _frontFaceWinding = FaceWinding::CCW;
+    };
+
+    /// Similar to ?
+    class SamplerStateDesc
+    {
+    public:
+        RenderCore::FilterMode _filter = RenderCore::FilterMode::Trilinear;
+        RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
+        RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
+        RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+        bool _enableMipmaps = true;
+    };
+
+    namespace ColorWriteMask
+    {
+        enum Channels
+        {
+            Red     = (1<<0),
+            Green   = (1<<1),
+            Blue    = (1<<2),
+            Alpha   = (1<<3)
+        };
+        using BitField = unsigned;
+
+        const BitField All = (Red | Green | Blue | Alpha);
+        const BitField None = 0;
+    };
+
+    /**
+     * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
+     */
+    class AttachmentBlendDesc
+    {
+    public:
+        bool _blendEnable = false;
+        Blend _srcColorBlendFactor = Blend::One;
+        Blend _dstColorBlendFactor = Blend::Zero;
+        BlendOp _colorBlendOp = BlendOp::Add;
+        Blend _srcAlphaBlendFactor = Blend::One;
+        Blend _dstAlphaBlendFactor = Blend::Zero;
+        BlendOp _alphaBlendOp = BlendOp::Add;
+        ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     class DeviceContext;
 
     /// <summary>States for sampling from textures</summary>
@@ -47,7 +129,8 @@ namespace RenderCore { namespace Metal_DX11
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode filter = FilterMode::Trilinear,
+        SamplerState(const SamplerStateDesc& desc) : SamplerState(desc._filter, desc._addressU, desc._addressV, AddressMode::Wrap, desc._comparison) {}
+		SamplerState(   FilterMode filter = FilterMode::Trilinear,
                         AddressMode addressU = AddressMode::Wrap, 
                         AddressMode addressV = AddressMode::Wrap, 
                         AddressMode addressW = AddressMode::Wrap,
@@ -98,7 +181,8 @@ namespace RenderCore { namespace Metal_DX11
     class RasterizerState
     {
     public:
-        RasterizerState(CullMode cullmode = CullMode::Back, bool frontCounterClockwise = true);
+        RasterizerState(const RasterizationDesc& desc) : RasterizerState(desc._cullMode, desc._frontFaceWinding == FaceWinding::CCW) {}
+		RasterizerState(CullMode cullmode = CullMode::Back, bool frontCounterClockwise = true);
         RasterizerState(
             CullMode cullmode, bool frontCounterClockwise,
             FillMode fillmode,
@@ -161,6 +245,7 @@ namespace RenderCore { namespace Metal_DX11
     class BlendState
     {
     public:
+		BlendState(const AttachmentBlendDesc& desc);
         BlendState( BlendOp blendingOperation = BlendOp::Add, 
                     Blend srcBlend = Blend::SrcAlpha,
                     Blend dstBlend = Blend::InvSrcAlpha);
@@ -191,22 +276,21 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class StencilMode
+	// Deprecated -- for backwards compatibility only
+	class DEPRECATED_ATTRIBUTE StencilMode : public StencilDesc
     {
     public:
-        CompareOp _comparison;
-        StencilOp _onPass;
-        StencilOp _onDepthFail;
-        StencilOp _onStencilFail;
         StencilMode(
 			CompareOp comparison      = CompareOp::Always,
             StencilOp onPass          = StencilOp::Replace,
             StencilOp onStencilFail   = StencilOp::DontWrite,
             StencilOp onDepthFail     = StencilOp::DontWrite)
-            : _comparison(comparison)
-            , _onPass(onPass)
-            , _onStencilFail(onStencilFail)
-            , _onDepthFail(onDepthFail) {}
+		{
+			_passOp = onPass;
+			_failOp = onStencilFail;
+			_depthFailOp = onDepthFail;
+			_comparisonOp = comparison;
+		}
 
         static StencilMode NoEffect;
         static StencilMode AlwaysWrite;
@@ -248,12 +332,13 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilState
     {
     public:
+		DepthStencilState(const DepthStencilDesc& desc);
         explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, CompareOp comparison = CompareOp::LessEqual);
         DepthStencilState(
             bool depthTestEnabled, bool writeEnabled, 
             unsigned stencilReadMask, unsigned stencilWriteMask,
-            const StencilMode& frontFaceStencil = StencilMode::NoEffect,
-            const StencilMode& backFaceStencil = StencilMode::NoEffect);
+            const StencilDesc& frontFaceStencil = StencilMode::NoEffect,
+            const StencilDesc& backFaceStencil = StencilMode::NoEffect);
         DepthStencilState(DeviceContext& context);
         DepthStencilState(DepthStencilState&& moveFrom);
         DepthStencilState& operator=(DepthStencilState&& moveFrom);
@@ -268,46 +353,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DeviceContext;
-
-    /// <summary>Utility for querying low level viewport</summary>
-    ///
-    ///     Pass the device context to the constructor of "ViewportDesc" to
-    ///     query the current low level viewport.
-    ///
-    ///     For example:
-    ///         <code>
-    ///             ViewportDesc currentViewport0(*context);
-    ///             auto width = currentViewport0.Width;
-    ///         </code>
-    ///
-    ///     Note that the type is designed for compatibility with the D3D11 type,
-    ///     D3D11_VIEWPORT (for convenience).
-    ///
-    ///     There can actually be multiple viewports in D3D11. But usually only
-    ///     the 0th viewport is used.
-    class ViewportDesc
-    {
-    public:
-            // (compatible with D3D11_VIEWPORT)
-        float TopLeftX;
-        float TopLeftY;
-        float Width;
-        float Height;
-        float MinDepth;
-        float MaxDepth;
-
-        ViewportDesc(ID3D::DeviceContext* context);
-        ViewportDesc(const DeviceContext& context);
-        ViewportDesc(float topLeftX, float topLeftY, float width, float height, float minDepth=0.f, float maxDepth=1.f)
-            : TopLeftX(topLeftX), TopLeftY(topLeftY), Width(width), Height(height)
-            , MinDepth(minDepth), MaxDepth(maxDepth) {}
-        ViewportDesc() {}
-
-        std::pair<Float2, Float2>   ViewportMinMax() const 
-        {
-            return std::make_pair(Float2(TopLeftX, TopLeftY), Float2(TopLeftX + Width, TopLeftY + Height)); 
-        }
-    };
+	using ViewportDesc = RenderCore::Viewport;
 }}
 

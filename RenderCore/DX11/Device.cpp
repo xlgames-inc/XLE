@@ -473,7 +473,8 @@ namespace RenderCore { namespace ImplDX11
                 //      manually apply SRGB convertion)
             TextureViewDesc viewWindow;
             Metal_DX11::RenderTargetView rtv(Metal_DX11::AsResourcePtr(backBuffer0), viewWindow);
-            context.Bind(Metal_DX11::ViewportDesc(0.f, 0.f, (float)_desc->_width, (float)_desc->_height));
+            Metal_DX11::ViewportDesc vp(0.f, 0.f, (float)_desc->_width, (float)_desc->_height);
+			context.SetViewportAndScissorRects(MakeIteratorRange(&vp, &vp+1), {});
         }
     }
 
@@ -537,7 +538,7 @@ namespace RenderCore { namespace ImplDX11
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
     {
-        Metal_DX11::ViewportDesc viewport(*_underlying.get());
+		auto viewport = _underlying->GetBoundViewport();
 
         ThreadContextStateDesc result;
         result._viewportDimensions = {unsigned(viewport.Width), unsigned(viewport.Height)};

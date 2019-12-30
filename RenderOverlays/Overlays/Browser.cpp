@@ -169,7 +169,7 @@ namespace Overlays
         boundVertexInputLayout.Apply(*context, MakeIteratorRange(vbvs));
         context->Bind(shaderProgram);
 
-        ViewportDesc viewport(*context);
+        ViewportDesc viewport = context->GetBoundViewport();
         float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
         float scrollConstants[] = { scrollAreaMin, scrollAreaMax, 0.f, 0.f };
         auto reciprocalViewportDimensions = MakeConstantBuffer(constants);

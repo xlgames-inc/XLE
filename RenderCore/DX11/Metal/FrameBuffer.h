@@ -46,6 +46,8 @@ namespace RenderCore { namespace Metal_DX11
 			unsigned _rtvClearValue[s_maxMRTs];
 			LoadStore _dsvLoad;
 			unsigned _dsvClearValue;
+
+			unsigned _initialViewportWidth, _initialViewportHeight;
         };
         std::vector<Subpass> _subpasses;
 	};

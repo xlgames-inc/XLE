@@ -169,3 +169,8 @@ template<> struct constant_expression<false>   { static bool result() { return f
 #define T3(A, B, C) template<typename A, typename B, typename C>
 #define T4(A, B, C, D) template<typename A, typename B, typename C, typename D>
 
+#if defined(ERROR_ON_DEPRECATED)
+	#define DEPRECATED_ATTRIBUTE		[[deprecated]]
+#else
+	#define DEPRECATED_ATTRIBUTE
+#endif

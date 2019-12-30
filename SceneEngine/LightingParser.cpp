@@ -348,7 +348,7 @@ namespace SceneEngine
         GPUAnnotation anno(context, "Overlays");
 
 		auto metalContext = Metal::DeviceContext::Get(context);
-        Metal::ViewportDesc mainViewportDesc(*metalContext);
+        Metal::ViewportDesc mainViewportDesc = metalContext->GetBoundViewport();
         auto& refractionBox = ConsoleRig::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*metalContext, parsingContext, 4.f);
         MetalStubs::GetGlobalNumericUniforms(*metalContext, ShaderStage::Pixel).Bind(MakeResourceList(12, refractionBox.GetSRV()));

@@ -60,7 +60,7 @@ namespace SceneEngine
             auto& aoRes = ConsoleRig::FindCachedBox2<AmbientOcclusionResources>(
                 mainTargets.GetDimensions(parserContext)[0], mainTargets.GetDimensions(parserContext)[1], Format::R8_UNORM,
                 useNormals, (useNormals && mainTargets.GetSamplingCount(parserContext) > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
-            ViewportDesc mainViewportDesc(metalContext);
+            ViewportDesc mainViewportDesc = metalContext.GetBoundViewport();
 			auto normalSRV = mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal);
             AmbientOcclusion_Render(
 				&metalContext, parserContext, aoRes, 
@@ -117,7 +117,7 @@ namespace SceneEngine
         const bool isTransparentPass = batch == Techniques::BatchFilter::Transparent;
         if (doTiledRenderingTest && tiledBeamsTransparent == isTransparentPass) {
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
-            ViewportDesc viewport(metalContext);
+            ViewportDesc viewport = metalContext.GetBoundViewport();
 
             TiledLighting_RenderBeamsDebugging(
                 &metalContext, parserContext, doTiledBeams, 

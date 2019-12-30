@@ -171,6 +171,27 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
+	BlendState::BlendState(const AttachmentBlendDesc& desc)
+	{
+		D3D11_BLEND_DESC blendStateDesc;
+        blendStateDesc.AlphaToCoverageEnable = false;
+        blendStateDesc.IndependentBlendEnable = false;
+        for (unsigned c=0; c<dimof(blendStateDesc.RenderTarget); ++c) {
+			// The values of all these enums happen to match up -- 
+            blendStateDesc.RenderTarget[c].BlendEnable = desc._blendEnable;
+            blendStateDesc.RenderTarget[c].SrcBlend = (D3D11_BLEND)desc._srcColorBlendFactor;
+            blendStateDesc.RenderTarget[c].DestBlend = (D3D11_BLEND)desc._dstColorBlendFactor;
+            blendStateDesc.RenderTarget[c].BlendOp = (D3D11_BLEND_OP)desc._colorBlendOp;
+
+            blendStateDesc.RenderTarget[c].SrcBlendAlpha = (D3D11_BLEND)desc._srcAlphaBlendFactor;
+            blendStateDesc.RenderTarget[c].DestBlendAlpha = (D3D11_BLEND)desc._dstAlphaBlendFactor;
+            blendStateDesc.RenderTarget[c].BlendOpAlpha = (D3D11_BLEND_OP)desc._alphaBlendOp;
+            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = (UINT8)desc._colorBlendOp;
+        }
+
+        _underlying = GetObjectFactory().CreateBlendState(&blendStateDesc);
+	}
+
     BlendState::BlendState(BlendOp blendingOperation, Blend srcBlend, Blend dstBlend)
     {
         D3D11_BLEND_DESC blendStateDesc;
@@ -291,11 +312,32 @@ namespace RenderCore { namespace Metal_DX11
     StencilMode StencilMode::NoEffect(CompareOp::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
     StencilMode StencilMode::AlwaysWrite(CompareOp::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
+	DepthStencilState::DepthStencilState(const DepthStencilDesc& desc)
+	{
+		D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
+        depthStencilStateDesc.DepthEnable = (desc._depthTest != CompareOp::Always)|desc._depthWrite;
+        depthStencilStateDesc.DepthWriteMask = desc._depthWrite?D3D11_DEPTH_WRITE_MASK_ALL:D3D11_DEPTH_WRITE_MASK_ZERO;
+        depthStencilStateDesc.DepthFunc = (D3D11_COMPARISON_FUNC)desc._depthTest;
+        depthStencilStateDesc.StencilEnable = true;
+        depthStencilStateDesc.StencilReadMask = (UINT8)desc._stencilReadMask;
+        depthStencilStateDesc.StencilWriteMask = (UINT8)desc._stencilWriteMask;
+        depthStencilStateDesc.FrontFace.StencilFailOp = (D3D11_STENCIL_OP)desc._frontFaceStencil._failOp;
+        depthStencilStateDesc.FrontFace.StencilDepthFailOp = (D3D11_STENCIL_OP)desc._frontFaceStencil._depthFailOp;
+        depthStencilStateDesc.FrontFace.StencilPassOp = (D3D11_STENCIL_OP)desc._frontFaceStencil._passOp;
+        depthStencilStateDesc.FrontFace.StencilFunc = (D3D11_COMPARISON_FUNC)desc._frontFaceStencil._comparisonOp;
+        depthStencilStateDesc.BackFace.StencilFailOp = (D3D11_STENCIL_OP)desc._backFaceStencil._failOp;
+        depthStencilStateDesc.BackFace.StencilDepthFailOp = (D3D11_STENCIL_OP)desc._backFaceStencil._depthFailOp;
+        depthStencilStateDesc.BackFace.StencilPassOp = (D3D11_STENCIL_OP)desc._backFaceStencil._passOp;
+        depthStencilStateDesc.BackFace.StencilFunc = (D3D11_COMPARISON_FUNC)desc._backFaceStencil._comparisonOp;
+
+        _underlying = GetObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
+	}
+
     DepthStencilState::DepthStencilState(
         bool depthTestEnabled, bool writeEnabled,
         unsigned stencilReadMask, unsigned stencilWriteMask,
-        const StencilMode& frontFaceStencil,
-        const StencilMode& backFaceStencil)
+        const StencilDesc& frontFaceStencil,
+        const StencilDesc& backFaceStencil)
     {
         D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
         depthStencilStateDesc.DepthEnable = depthTestEnabled|writeEnabled;
@@ -304,14 +346,14 @@ namespace RenderCore { namespace Metal_DX11
         depthStencilStateDesc.StencilEnable = true;
         depthStencilStateDesc.StencilReadMask = (UINT8)stencilReadMask;
         depthStencilStateDesc.StencilWriteMask = (UINT8)stencilWriteMask;
-        depthStencilStateDesc.FrontFace.StencilFailOp = (D3D11_STENCIL_OP)frontFaceStencil._onStencilFail;
-        depthStencilStateDesc.FrontFace.StencilDepthFailOp = (D3D11_STENCIL_OP)frontFaceStencil._onDepthFail;
-        depthStencilStateDesc.FrontFace.StencilPassOp = (D3D11_STENCIL_OP)frontFaceStencil._onPass;
-        depthStencilStateDesc.FrontFace.StencilFunc = (D3D11_COMPARISON_FUNC)frontFaceStencil._comparison;
-        depthStencilStateDesc.BackFace.StencilFailOp = (D3D11_STENCIL_OP)backFaceStencil._onStencilFail;
-        depthStencilStateDesc.BackFace.StencilDepthFailOp = (D3D11_STENCIL_OP)backFaceStencil._onDepthFail;
-        depthStencilStateDesc.BackFace.StencilPassOp = (D3D11_STENCIL_OP)backFaceStencil._onPass;
-        depthStencilStateDesc.BackFace.StencilFunc = (D3D11_COMPARISON_FUNC)backFaceStencil._comparison;
+        depthStencilStateDesc.FrontFace.StencilFailOp = (D3D11_STENCIL_OP)frontFaceStencil._failOp;
+        depthStencilStateDesc.FrontFace.StencilDepthFailOp = (D3D11_STENCIL_OP)frontFaceStencil._depthFailOp;
+        depthStencilStateDesc.FrontFace.StencilPassOp = (D3D11_STENCIL_OP)frontFaceStencil._passOp;
+        depthStencilStateDesc.FrontFace.StencilFunc = (D3D11_COMPARISON_FUNC)frontFaceStencil._comparisonOp;
+        depthStencilStateDesc.BackFace.StencilFailOp = (D3D11_STENCIL_OP)backFaceStencil._failOp;
+        depthStencilStateDesc.BackFace.StencilDepthFailOp = (D3D11_STENCIL_OP)backFaceStencil._depthFailOp;
+        depthStencilStateDesc.BackFace.StencilPassOp = (D3D11_STENCIL_OP)backFaceStencil._passOp;
+        depthStencilStateDesc.BackFace.StencilFunc = (D3D11_COMPARISON_FUNC)backFaceStencil._comparisonOp;
 
         _underlying = GetObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
     }
@@ -334,30 +376,6 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     DepthStencilState::~DepthStencilState() {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static_assert(  offsetof(ViewportDesc, TopLeftX) == offsetof(D3D11_VIEWPORT, TopLeftX)
-                &&  offsetof(ViewportDesc, TopLeftY) == offsetof(D3D11_VIEWPORT, TopLeftY)
-                &&  offsetof(ViewportDesc, Width) == offsetof(D3D11_VIEWPORT, Width)
-                &&  offsetof(ViewportDesc, Height) == offsetof(D3D11_VIEWPORT, Height)
-                &&  offsetof(ViewportDesc, MinDepth) == offsetof(D3D11_VIEWPORT, MinDepth)
-                &&  offsetof(ViewportDesc, MaxDepth) == offsetof(D3D11_VIEWPORT, MaxDepth),
-                "ViewportDesc is no longer compatible with D3D11_VIEWPORT");
-    ViewportDesc::ViewportDesc(ID3D::DeviceContext* context)
-    {
-        if (context) {
-            UINT viewportsToGet = 1;
-            context->RSGetViewports(&viewportsToGet, (D3D11_VIEWPORT*)this);
-        }
-    }
-
-    ViewportDesc::ViewportDesc(const DeviceContext& context)
-    {
-        UINT viewportsToGet = 1;
-        context.GetUnderlying()->RSGetViewports(&viewportsToGet, (D3D11_VIEWPORT*)this);
-    }
-
 
 }}
 

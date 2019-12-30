@@ -249,7 +249,7 @@ namespace RenderOverlays
 		renderer.Bind(Techniques::CommonResources()._dssDisable);
 		renderer.Bind(Techniques::CommonResources()._cullDisable);
 
-		Metal::ViewportDesc viewportDesc(renderer);
+		Metal::ViewportDesc viewportDesc = renderer.GetBoundViewport();
 		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
             
 		auto packet = RenderCore::MakeSharedPkt(

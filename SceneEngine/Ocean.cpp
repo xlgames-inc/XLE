@@ -67,7 +67,7 @@ namespace SceneEngine
         auto& box = ConsoleRig::FindCachedBox2<DeepOceanSim>(dimensions,dimensions, false, true);
 
         SavedTargets savedTargets(*context);
-        ViewportDesc oldViewport(*context);
+        ViewportDesc oldViewport = context->GetBoundViewport();
 
         ViewportDesc newViewport( 0, 0, float(dimensions), float(dimensions), 0.f, 1.f );
         context->Bind(newViewport);
@@ -625,7 +625,7 @@ namespace SceneEngine
 
         unsigned patchWidth, patchHeight;
         if (screenSpaceGridScale!=0) {
-            ViewportDesc viewport(*context);
+            ViewportDesc viewport = context->GetBoundViewport();
             patchWidth = unsigned(std::ceil(float(viewport.Width / screenSpaceGridScale / 16)) * 16);
             patchHeight = unsigned(std::ceil(float(viewport.Height / screenSpaceGridScale / 16)) * 16);
         } else {
@@ -800,7 +800,7 @@ namespace SceneEngine
 
                 //      We need to take a copy of the back buffer for refractions
                 //      we could blur it here -- but is it better blurred or sharp?
-            ViewportDesc mainViewportDesc(context);
+            ViewportDesc mainViewportDesc = context.GetBoundViewport();
             auto& refractionBox = ConsoleRig::FindCachedBox<RefractionsBuffer>(
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
             refractionBox.Build(context, parserContext, 1.6f);

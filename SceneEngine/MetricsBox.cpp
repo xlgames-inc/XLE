@@ -85,7 +85,7 @@ namespace SceneEngine
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			usi);
 
-        Metal::ViewportDesc viewport(context);
+        Metal::ViewportDesc viewport = context.GetBoundViewport();
         unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
         uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
 		ConstantBufferView cbvs[] = { MakeSharedPkt(globalCB) };

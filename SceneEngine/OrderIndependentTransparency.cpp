@@ -123,7 +123,7 @@ namespace SceneEngine
         Metal::DeviceContext& metalContext, 
         RenderCore::Techniques::ParsingContext&, const Metal::ShaderResourceView& depthBufferDupe)
     {
-        Metal::ViewportDesc mainViewport(metalContext);
+        Metal::ViewportDesc mainViewport = metalContext.GetBoundViewport();
 
         const auto checkInfiniteLoop = Tweakable("OITransCheckInfinite", true);
         auto& transparencyTargets = ConsoleRig::FindCachedBox<TransparencyTargetsBox>(
