@@ -11,6 +11,7 @@
 #include "ObjectFactory.h"
 #include "TextureView.h"
 #include "../IDeviceDX11.h"
+#include "../../ResourceUtils.h"
 
 #pragma warning(disable:4505) // 'RenderCore::Metal_DX11::GetSubResourceIndex': unreferenced local function has been removed
 
@@ -18,10 +19,17 @@ namespace RenderCore { namespace Metal_DX11
 {
 	void Copy(
 		DeviceContext& context, 
-		Resource& dst, Resource& src,
+		Resource& dst, const Resource& src,
 		ImageLayout, ImageLayout)
 	{
 		context.GetUnderlying()->CopyResource(dst.GetUnderlying().get(), src.GetUnderlying().get());
+	}
+
+	void CopyPartial(
+        DeviceContext& context, const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
+        ImageLayout dstLayout, ImageLayout srcLayout)
+	{
+		BlitPass(context).Copy(dst, src);
 	}
 
     static unsigned GetMipLayers(ID3D::Resource* resource)
@@ -54,10 +62,7 @@ namespace RenderCore { namespace Metal_DX11
 		return D3D11CalcSubresource(id._mip, id._arrayLayer, mipLayers);
 	}
 
-    void CopyPartial(
-        DeviceContext& context, 
-        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
-        ImageLayout, ImageLayout)
+    void BlitPass::Copy(const CopyPartial_Dest& dst, const CopyPartial_Src& src)
     {
         bool useSrcBox = false;
         D3D11_BOX srcBox;
@@ -69,12 +74,42 @@ namespace RenderCore { namespace Metal_DX11
             useSrcBox = true;
         }
 
-        context.GetUnderlying()->CopySubresourceRegion(
-            dst._resource->GetUnderlying().get(), GetSubResourceIndex(*dst._resource, dst._subResource),
+		Resource* dstD3DResource = (Resource*)dst._resource->QueryInterface(typeid(Resource).hash_code());
+		if (!dstD3DResource)
+			Throw(std::runtime_error("BltPass::Copy failed because destination resource does not appear to be a compatible type"));
+
+		Resource* srcD3DResource = (Resource*)src._resource->QueryInterface(typeid(Resource).hash_code());
+		if (!srcD3DResource)
+			Throw(std::runtime_error("BltPass::Copy failed because source resource does not appear to be a compatible type"));
+
+        _boundContext->GetUnderlying()->CopySubresourceRegion(
+            dstD3DResource->GetUnderlying().get(), GetSubResourceIndex(*dstD3DResource, dst._subResource),
             dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2],
-            src._resource->GetUnderlying().get(), GetSubResourceIndex(*src._resource, src._subResource),
+            srcD3DResource->GetUnderlying().get(), GetSubResourceIndex(*srcD3DResource, src._subResource),
             useSrcBox ? &srcBox : nullptr);
     }
+
+	void    BlitPass::Write(
+        const CopyPartial_Dest& dst,
+        const SubResourceInitData& srcData,
+        Format srcDataFormat,
+        VectorPattern<unsigned, 3> srcDataDimensions)
+	{
+		// unimplemented for this API
+		assert(0);
+	}
+
+	BlitPass::BlitPass(IThreadContext& threadContext)
+	{
+		_boundContext = DeviceContext::Get(threadContext).get();
+	}
+
+	BlitPass::BlitPass(DeviceContext& devContext)
+	{
+		_boundContext = &devContext;
+	}
+
+	BlitPass::~BlitPass() {}
 
     intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, UnderlyingResourcePtr inputResource)
     {
@@ -107,8 +142,43 @@ namespace RenderCore { namespace Metal_DX11
 
 	std::vector<uint8_t>    Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
 	{
-		assert(0);	// unimplemented
-		return {};
+		auto desc = GetDesc();
+		bool needsCPUMirror = !(desc._cpuAccess & CPUAccess::Read);
+		if (!needsCPUMirror) {
+
+			// map the resource directly, and read straight from there
+			ResourceMap resMap(*DeviceContext::Get(context), *this, ResourceMap::Mode::Read, subRes);
+			if (SUCCEEDED(resMap.GetMapResultCode())) {
+				return std::vector<uint8_t> { (const uint8_t*)resMap.GetData().begin(), (const uint8_t*)resMap.GetData().end() };
+			}
+
+			// Sometimes we can get a map failure , even if the resource is marked for reading. In these
+			// cases, we must fall back to the cpu mirror path
+		}
+
+		// This is a very inefficient path, but we create a temporary copy with CPU access enabled
+		// and extract from there
+		// We could do this more efficiently by duplicating only the specific subresource we're interested in
+		// However, this function is mostly intended for unit tests and debugging purposes, so I'm
+		// not going to overinvest in it
+		auto mirrorDesc = desc;
+		mirrorDesc._cpuAccess = CPUAccess::Read;
+		mirrorDesc._gpuAccess = 0;
+		mirrorDesc._bindFlags = BindFlag::TransferDst;
+		mirrorDesc._allocationRules |= AllocationRules::Staging;
+		auto mirrorResource = context.GetDevice()->CreateResource(mirrorDesc);
+		auto* d3dMirrorResource = (Resource*)mirrorResource->QueryInterface(typeid(Resource).hash_code());
+		Copy(*DeviceContext::Get(context), *d3dMirrorResource, *this);
+
+		// It's tempting to just return mirrorResource->ReadBack(context, subRes); here,
+		// but don't do it because it risks infinite recursion if the map fails on that resource
+
+		ResourceMap resMap(*DeviceContext::Get(context), *d3dMirrorResource, ResourceMap::Mode::Read, subRes);
+		if (SUCCEEDED(resMap.GetMapResultCode())) {
+			return std::vector<uint8_t> { (const uint8_t*)resMap.GetData().begin(), (const uint8_t*)resMap.GetData().end() };
+		} else {
+			Throw(::Exceptions::BasicLabel("DirectX error while attempting to readback data from resource (%s)", desc._name));
+		}
 	}
 
 	static uint64_t s_nextResourceGUID = 1;
@@ -120,7 +190,7 @@ namespace RenderCore { namespace Metal_DX11
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	ResourceMap::ResourceMap(
-		DeviceContext& context, Resource& resource,
+		DeviceContext& context, const Resource& resource,
 		Mode mapMode,
         SubResourceId subResource)
 	{
@@ -130,11 +200,11 @@ namespace RenderCore { namespace Metal_DX11
 		_underlyingResource = resource.GetUnderlying();
 		_map = {};
 
-		auto underlyingMapMap = (mapMode == Mode::Read) ? D3D11_MAP_READ : D3D11_MAP_WRITE_DISCARD;
+		auto underlyingMapType = (mapMode == Mode::Read) ? D3D11_MAP_READ : D3D11_MAP_WRITE_DISCARD;
 
-		D3D11_MAPPED_SUBRESOURCE result;
-        HRESULT hresult = _devContext->Map(_underlyingResource.get(), 0, underlyingMapMap, 0, &result);
-        if (SUCCEEDED(hresult) && result.pData) {
+		D3D11_MAPPED_SUBRESOURCE result { nullptr, 0, 0 };
+        _mapResultCode = _devContext->Map(_underlyingResource.get(), 0, underlyingMapType, 0, &result);
+        if (SUCCEEDED(_mapResultCode) && result.pData) {
 			_map = result;
 		} else {
 			_devContext.reset();
@@ -267,6 +337,16 @@ namespace RenderCore { namespace Metal_DX11
 							uint32 subresourceIndex = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
                             auto initData = init({m, a});
 							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data.begin(), UINT(initData._pitches._rowPitch), UINT(initData._pitches._slicePitch)};
+
+							// If the caller didn't fill in the "pitches" values (ie, just leaving them zero) -- we should
+							// but in the defaults here. This is assuming fully packed data.
+							if (!subResources[subresourceIndex].SysMemPitch || !subResources[subresourceIndex].SysMemSlicePitch) {
+								auto defaultPitches = MakeTexturePitches(CalculateMipMapDesc(desc._textureDesc, m));
+								if (!subResources[subresourceIndex].SysMemPitch)
+									subResources[subresourceIndex].SysMemPitch = defaultPitches._rowPitch;
+								if (!subResources[subresourceIndex].SysMemSlicePitch)
+									subResources[subresourceIndex].SysMemSlicePitch = defaultPitches._slicePitch;
+							}
 						}
 					}
 				}

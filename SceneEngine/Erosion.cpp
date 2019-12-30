@@ -184,10 +184,10 @@ namespace SceneEngine
         auto inputRes = input.GetResource();
         Metal::CopyPartial(
             metalContext,
-            Metal::CopyPartial_Dest(Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying())),
-			Metal::CopyPartial_Src(Metal::AsResource(*inputRes), {}, 
+			Metal::CopyPartial_Dest{_pimpl->_hardMaterials->GetUnderlying().get()},
+			Metal::CopyPartial_Src{inputRes.get(), {}, 
 				{topLeft[0], topLeft[1], 0u}, 
-				{bottomRight[0], bottomRight[1], 1u}));
+			{bottomRight[0], bottomRight[1], 1u}});
     }
 
     void ErosionSimulation::GetHeights(
@@ -198,10 +198,10 @@ namespace SceneEngine
         auto destRes = dest.GetResource();
         Metal::CopyPartial(
             metalContext,
-            Metal::CopyPartial_Dest(Metal::AsResource(*destRes)),
-			Metal::CopyPartial_Src(Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying()), {}, 
+			Metal::CopyPartial_Dest{destRes.get()},
+			Metal::CopyPartial_Src{_pimpl->_hardMaterials->GetUnderlying().get(), {}, 
 				{},
-				{bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u}));
+				{bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u}});
     }
 
     void    ErosionSimulation::Tick(

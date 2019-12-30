@@ -243,15 +243,15 @@
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
                         Metal::CopyPartial(
                             *metalContext,
-                            Metal::CopyPartial_Dest(
-                                Metal::AsResource(finalResource), 
-                                {c, a}, 
-                                {stagingXYOffset[0], stagingXYOffset[1], 0}),
-                            Metal::CopyPartial_Src(
-								Metal::AsResource(staging),
-                                {c-stagingLODOffset, a},
+                            Metal::CopyPartial_Dest{
+                                &finalResource, 
+                                SubResourceId{c, a}, 
+								{stagingXYOffset[0], stagingXYOffset[1], 0}},
+                            Metal::CopyPartial_Src{
+								&staging,
+                                SubResourceId{c-stagingLODOffset, a},
                                 {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
-                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
+								{(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}},
                                 Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined);
                     }
                 }
@@ -386,8 +386,8 @@
                     using namespace RenderCore;
                     Metal::CopyPartial(
                         *metalContext,
-                        Metal::CopyPartial_Dest(Metal::AsResource(*destination), {0, i->_destination}),
-                        Metal::CopyPartial_Src(Metal::AsResource(*source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
+						Metal::CopyPartial_Dest{destination.get(), SubResourceId{}, {0, i->_destination}},
+						Metal::CopyPartial_Src{source.get(), SubResourceId{}, {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}});
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(*metalContext, source, MapType::ReadOnly);

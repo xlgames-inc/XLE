@@ -18,12 +18,19 @@ namespace RenderCore { namespace Metal_DX11
     class Buffer : public Resource
     {
     public:
+		struct UpdateFlags
+        {
+            enum Enum {
+                UnsynchronizedWrite = 1 << 0
+            };
+            using BitField = unsigned;
+        };
+        void Update(DeviceContext& context, const void* data, size_t byteCount, size_t writeOffset = 0u, UpdateFlags::BitField flags = 0u);
+
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,
 				IteratorRange<const void*> initData = {});
         ~Buffer();
-
-		void    Update(DeviceContext& context, const void* data, size_t byteCount);
 
         Buffer(const Buffer& cloneFrom) = default;
         Buffer(Buffer&& moveFrom) never_throws = default;

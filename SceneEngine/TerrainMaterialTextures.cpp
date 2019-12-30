@@ -151,15 +151,15 @@ namespace SceneEngine
 
                 Metal::CopyPartial(
                     context, 
-					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
-					Metal::CopyPartial_Src(Metal::AsResource(*resamplingBuffer->GetUnderlying()), {}));
+					Metal::CopyPartial_Dest{&destinationArray, {m, arrayIndex}},
+					Metal::CopyPartial_Src{resamplingBuffer->GetUnderlying().get(), {}});
 
             } else {
 
                 Metal::CopyPartial(
                     context,
-					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
-					Metal::CopyPartial_Src(Metal::AsResource(*inputRes), {sourceMip, 0}));
+					Metal::CopyPartial_Dest{&destinationArray, {m, arrayIndex}},
+					Metal::CopyPartial_Src{inputRes.get(), {sourceMip, 0}});
 
             }
         }
@@ -180,8 +180,8 @@ namespace SceneEngine
             const auto mipHeight = std::max(destinationDesc._textureDesc._height >> m, minDims);
             Metal::CopyPartial(
                 context,
-				Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
-				Metal::CopyPartial_Src(Metal::AsResource(sourceResource), {}, {}, {mipWidth, mipHeight, 1}));
+				Metal::CopyPartial_Dest{&destinationArray, {m, arrayIndex}},
+				Metal::CopyPartial_Src{&sourceResource, {}, {}, {mipWidth, mipHeight, 1}});
         }
     }
 

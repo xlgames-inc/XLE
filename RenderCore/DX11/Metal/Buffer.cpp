@@ -33,21 +33,25 @@ namespace RenderCore { namespace Metal_DX11
     : Resource(cloneFrom)
     {}
 
-    void    Buffer::Update(DeviceContext& context, const void* data, size_t byteCount)
-    {
-        // context.GetUnderlying()->UpdateSubresource(
-        //     _underlying, 0, nullptr, data, byteCount, byteCount);
+	void	Buffer::Update(DeviceContext& context, const void* data, size_t byteCount, size_t writeOffset, UpdateFlags::BitField flags)
+	{
+		if (!(flags & UpdateFlags::UnsynchronizedWrite) && context.InRenderPass()) {
+            Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
+        }
 
-        D3D11_MAPPED_SUBRESOURCE result;
+		D3D11_MAPPED_SUBRESOURCE result;
         ID3D::DeviceContext* devContext = context.GetUnderlying();
-        HRESULT hresult = devContext->Map(_underlying.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
+		D3D11_MAP mapType = D3D11_MAP_WRITE_DISCARD;
+		if (flags & UpdateFlags::UnsynchronizedWrite)
+			mapType = D3D11_MAP_WRITE_NO_OVERWRITE;
+        HRESULT hresult = devContext->Map(_underlying.get(), 0, mapType, 0, &result);
         if (SUCCEEDED(hresult) && result.pData) {
             XlCopyMemory(result.pData, data, byteCount);
             devContext->Unmap(_underlying.get(), 0);
         } else {
 			assert(0);		// mapping failure
 		}
-    }
+	}
 
 	void* Buffer::QueryInterface(size_t guid)
 	{

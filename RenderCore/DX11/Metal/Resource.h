@@ -74,14 +74,14 @@ namespace RenderCore { namespace Metal_DX11
 	class ResourceMap
 	{
 	public:
-		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
-        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
+		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _map.DepthPitch) }; }
+        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _map.DepthPitch) }; }
 		TexturePitches				GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
 
 		enum class Mode { Read, WriteDiscardPrevious };
 
 		ResourceMap(
-			DeviceContext& context, Resource& resource,
+			DeviceContext& context, const Resource& resource,
 			Mode mapMode,
 			SubResourceId subResource = {});
 		ResourceMap();
@@ -92,10 +92,13 @@ namespace RenderCore { namespace Metal_DX11
 		ResourceMap(ResourceMap&&) never_throws;
 		ResourceMap& operator=(ResourceMap&&) never_throws;
 
+		HRESULT GetMapResultCode() const { return _mapResultCode; }		// (DX specific)
+
 	private:
 		D3D11_MAPPED_SUBRESOURCE _map;
 		intrusive_ptr<ID3D::Resource> _underlyingResource;
 		intrusive_ptr<ID3D::DeviceContext> _devContext;
+		HRESULT _mapResultCode = 0;
 
 		void TryUnmap();
 	};
@@ -111,44 +114,57 @@ namespace RenderCore { namespace Metal_DX11
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void Copy(
-		DeviceContext&, Resource& dst, Resource& src, 
+		DeviceContext&, Resource& dst, const Resource& src, 
 		ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-    using UInt3Pattern = VectorPattern<unsigned, 3>;
-
-    class CopyPartial_Dest
+	class BlitPass
     {
     public:
-        Resource*		_resource;
-        SubResourceId   _subResource;
-        UInt3Pattern    _leftTopFront;
+        class CopyPartial_Dest
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+        };
 
-        CopyPartial_Dest(
-            Resource& dst, SubResourceId subres = {},
-            const UInt3Pattern& leftTopFront = UInt3Pattern())
-        : _resource(&dst), _subResource(subres), _leftTopFront(leftTopFront) {}
+        class CopyPartial_Src
+        {
+        public:
+            IResource*          _resource;
+            SubResourceId       _subResource;
+            VectorPattern<unsigned, 3>      _leftTopFront;
+            VectorPattern<unsigned, 3>      _rightBottomBack;
+        };
+
+        void    Write(
+            const CopyPartial_Dest& dst,
+            const SubResourceInitData& srcData,
+            Format srcDataFormat,
+            VectorPattern<unsigned, 3> srcDataDimensions);
+
+        void    Copy(
+            const CopyPartial_Dest& dst,
+            const CopyPartial_Src& src);
+
+        BlitPass(IThreadContext& threadContext);
+        ~BlitPass();
+
+	private:
+		DeviceContext* _boundContext;
+
+		BlitPass(DeviceContext& devContext);
+
+		friend void CopyPartial(DeviceContext&, const BlitPass::CopyPartial_Dest&, const BlitPass::CopyPartial_Src&, ImageLayout, ImageLayout);
     };
 
-    class CopyPartial_Src
-    {
-    public:
-        Resource*		_resource;
-        SubResourceId   _subResource;
-        UInt3Pattern    _leftTopFront;
-        UInt3Pattern    _rightBottomBack;
-
-        CopyPartial_Src(
-            Resource& dst, SubResourceId subres = {},
-            const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
-            const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
-        : _resource(&dst), _subResource(subres)
-        , _leftTopFront(leftTopFront)
-        , _rightBottomBack(rightBottomBack) {}
-    };
-
-    void CopyPartial(
-        DeviceContext&, const CopyPartial_Dest& dst, const CopyPartial_Src& src,
-        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
+	// (deprecated pre-BlitPass version)
+	using CopyPartial_Dest = BlitPass::CopyPartial_Dest;
+	using CopyPartial_Src = BlitPass::CopyPartial_Src;
+	DEPRECATED_ATTRIBUTE void CopyPartial(
+		DeviceContext&, const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
+		ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
+	
 
     intrusive_ptr<ID3D::Resource> Duplicate(DeviceContext& context, intrusive_ptr<ID3D::Resource> inputResource);
 	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
