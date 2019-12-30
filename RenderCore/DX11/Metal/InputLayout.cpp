@@ -19,6 +19,7 @@
 #include "../../RenderUtils.h"
 #include "../../ShaderService.h"
 #include "../../UniformsStream.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ParameterBox.h"
@@ -26,12 +27,48 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
+	static bool CalculateAllAttributesBound(
+		IteratorRange<const D3D11_INPUT_ELEMENT_DESC*> inputElements,
+		ID3D::ShaderReflection& reflection)
+	{
+		D3D11_SHADER_DESC shaderDesc;
+		auto hresult = reflection.GetDesc(&shaderDesc);
+		assert(SUCCEEDED(hresult));
+
+		auto systemValuePrefix = MakeStringSection("SV_");
+
+		bool allAttributeBound = true;
+		for (unsigned c=0; c<shaderDesc.InputParameters; ++c) {
+
+			D3D11_SIGNATURE_PARAMETER_DESC desc;
+			hresult = reflection.GetInputParameterDesc(c, &desc);
+			assert(SUCCEEDED(hresult));
+
+			if (!desc.SemanticName || XlBeginsWith(MakeStringSection(desc.SemanticName), systemValuePrefix))		// skip system values
+				continue;
+
+			auto i = std::find_if(inputElements.begin(), inputElements.end(),
+				[&desc](const D3D11_INPUT_ELEMENT_DESC& e) { return XlEqString(e.SemanticName, desc.SemanticName) && e.SemanticIndex == desc.SemanticIndex; });
+			if (i != inputElements.end())
+				continue;
+
+			// slot was not found. Log a warning message. We could also early out here,
+			// but we'll continue just for the logging
+			
+			Log(Warning) << "Attribute was not found in CalculateAllAttributesBound : (" << desc.SemanticName << " : " << desc.SemanticIndex << ")" << std::endl;
+			allAttributeBound = false;
+		}
+
+		return allAttributeBound;
+	}
+
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader, bool& allAttributesBound)
 	{
 		auto byteCode = shader.GetByteCode();
 
 		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
+		auto slots = std::min(dimof(nativeLayout), layout.size());
+		for (unsigned c = 0; c<slots; ++c) {
 			nativeLayout[c].SemanticName = layout.first[c]._semanticName.c_str();
 			nativeLayout[c].SemanticIndex = layout.first[c]._semanticIndex;
 			nativeLayout[c].Format = AsDXGIFormat(layout.first[c]._nativeFormat);
@@ -41,8 +78,11 @@ namespace RenderCore { namespace Metal_DX11
 			nativeLayout[c].InstanceDataStepRate = layout.first[c]._instanceDataStepRate;
 		}
 
+		// in DX11 all attributes must be bound anyway, but we can still do the check here --
+		allAttributesBound = CalculateAllAttributesBound(MakeIteratorRange(nativeLayout, nativeLayout+slots), *CreateReflection(shader));
+
 		return GetObjectFactory().CreateInputLayout(
-			nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()),
+			nativeLayout, (unsigned)slots,
 			byteCode.begin(), byteCode.size());
 	}
 
@@ -52,12 +92,13 @@ namespace RenderCore { namespace Metal_DX11
 		D3D11_SHADER_DESC shaderDesc;
 		auto hresult = reflection.GetDesc(&shaderDesc);
 		assert(SUCCEEDED(hresult));
-
+		auto systemValuePrefix = MakeStringSection("SV_");
 		for (unsigned p=0;p<shaderDesc.InputParameters; ++p) {
 			D3D11_SIGNATURE_PARAMETER_DESC desc;
 			hresult = reflection.GetInputParameterDesc(p, &desc);
 			assert(SUCCEEDED(hresult));
-			if (!desc.SemanticName) continue;
+			if (!desc.SemanticName || XlBeginsWith(MakeStringSection(desc.SemanticName), systemValuePrefix))		// skip system values
+				continue;
 			auto hash = Hash64(desc.SemanticName) + desc.SemanticIndex;
 			result.push_back({hash, {desc.SemanticName, desc.SemanticIndex}});
 		}
@@ -65,11 +106,12 @@ namespace RenderCore { namespace Metal_DX11
 		return result;
 	}
 
-	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const BoundInputLayout::SlotBinding*> layouts, const CompiledShaderByteCode& shader)
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const BoundInputLayout::SlotBinding*> layouts, const CompiledShaderByteCode& shader, bool& allAttributesBound)
 	{
 		auto byteCode = shader.GetByteCode();
 		auto reflection = CreateReflection(shader);
 		auto inputParameters = GetInputParameters(*reflection);
+		std::vector<bool> boundAttributes(inputParameters.size(), false);
 
 		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 		unsigned c=0;
@@ -86,6 +128,10 @@ namespace RenderCore { namespace Metal_DX11
 					continue;
 				}
 
+				if (boundAttributes[i-inputParameters.begin()])
+					Throw(::Exceptions::BasicLabel("Input attribute is being bound twice to the same shader input (for semantic %s and index %i)", i->second.first, i->second.second));
+				boundAttributes[i-inputParameters.begin()] = true;
+
 				nativeLayout[c].SemanticName = i->second.first;
 				nativeLayout[c].SemanticIndex = i->second.second;
 				nativeLayout[c].Format = AsDXGIFormat(ele._nativeFormat);
@@ -98,6 +144,14 @@ namespace RenderCore { namespace Metal_DX11
 				accumulatingOffset += BitsPerPixel(ele._nativeFormat) / 8;
 			}
 		}
+
+		// in DX11 all attributes must be bound anyway, but we can still do the check here --
+		allAttributesBound = true;
+		for (unsigned b=0; b<boundAttributes.size(); ++b)
+			if (!boundAttributes[b]) {
+				Log(Warning) << "Attribute was not found in BuildInputLayout : (" << inputParameters[b].second.first << " : " << inputParameters[b].second.second << ")" << std::endl;
+				allAttributesBound = false;
+			}
 
 		return GetObjectFactory().CreateInputLayout(
 			nativeLayout, c,
@@ -136,20 +190,23 @@ namespace RenderCore { namespace Metal_DX11
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
     {
             // need constructor deferring!
-        _underlying = BuildInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex));
+		_allAttributesBound = false;
+        _underlying = BuildInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex), _allAttributesBound);
 		_vertexStrides = CalculateVertexStrides(layout);
     }
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
-        _underlying = BuildInputLayout(layout, shader);
+		_allAttributesBound = false;
+        _underlying = BuildInputLayout(layout, shader, _allAttributesBound);
 		_vertexStrides = CalculateVertexStrides(layout);
     }
 
 	BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& shader)
     {
             // need constructor deferring!
-        _underlying = BuildInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex));
+		_allAttributesBound = false;
+        _underlying = BuildInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex), _allAttributesBound);
 		_vertexStrides = CalculateVertexStrides(layouts);
     }
 
@@ -158,6 +215,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::InputLayout* rawptr = nullptr;
         context.GetUnderlying()->IAGetInputLayout(&rawptr);
         _underlying = moveptr(rawptr);
+		_allAttributesBound = true;
 		// todo -- getting the vertex strides would require also querying the vertex buffer bindings 
     }
 
@@ -167,6 +225,7 @@ namespace RenderCore { namespace Metal_DX11
 	BoundInputLayout::BoundInputLayout(BoundInputLayout&& moveFrom) never_throws
 	: _underlying(std::move(moveFrom._underlying))
 	, _vertexStrides(std::move(moveFrom._vertexStrides))
+	, _allAttributesBound(moveFrom._allAttributesBound)
 	{
 	}
 
@@ -174,6 +233,7 @@ namespace RenderCore { namespace Metal_DX11
 	{
 		_underlying = std::move(moveFrom._underlying);
 		_vertexStrides = std::move(moveFrom._vertexStrides);
+		_allAttributesBound = moveFrom._allAttributesBound;
 		return *this;
 	}
 

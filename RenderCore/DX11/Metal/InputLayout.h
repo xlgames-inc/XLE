@@ -44,6 +44,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
 		void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+		bool AllAttributesBound() const { return _allAttributesBound; }
 
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader);
@@ -70,6 +71,7 @@ namespace RenderCore { namespace Metal_DX11
     private:
         intrusive_ptr<ID3D::InputLayout>	_underlying;
 		std::vector<unsigned>				_vertexStrides;
+		bool								_allAttributesBound = true;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
