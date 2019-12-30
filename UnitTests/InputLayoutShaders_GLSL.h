@@ -128,8 +128,8 @@ namespace UnitTests
                     (fakeMod(in_vertexID, 2) == 1)     ? 0.0f :  1.0f,
                     (fakeMod(in_vertexID/2, 2) == 1) ? 0.0f :  1.0f);
                 gl_Position = vec4(
-                    a_texCoord.x *  2.0f + 1.0f,
-                    a_texCoord.y *  2.0f + 1.0f,
+                    a_texCoord.x *  2.0f - 1.0f,
+                    a_texCoord.y *  2.0f - 1.0f,
                     0.0, 1.0
                 );
             }

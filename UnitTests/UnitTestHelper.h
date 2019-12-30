@@ -11,6 +11,8 @@
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
 
+#pragma warning(disable:4505)		// 'UnitTests::GetStartupConfig': unreferenced local function has been removed
+
 namespace UnitTests
 {
     static ConsoleRig::StartupConfig GetStartupConfig()

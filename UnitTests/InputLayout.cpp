@@ -8,21 +8,42 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/PipelineLayout.h"
-#include "../RenderCore/AppleMetal/Device.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../Math/Vector.h"
 #include <map>
+
+#if !defined(XC_TEST_ADAPTER)
+    #include <CppUnitTest.h>
+    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+	#define ThrowsException ExpectException<const std::exception&>
+#endif
 
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
     #include "InputLayoutShaders_MSL.h"
 #elif GFXAPI_TARGET == GFXAPI_OPENGLES
     #include "InputLayoutShaders_GLSL.h"
+#elif GFXAPI_TARGET == GFXAPI_DX11
+	#include "InputLayoutShaders_HLSL.h"
 #else
     #error Unit test shaders not written for this graphics API
 #endif
 
 namespace UnitTests
 {
+	static bool ComponentsMatch(uint32_t c1, uint32_t c2) {
+		return (c1 == c2 || c1+1 == c2 || c1 == c2+1);
+	}
+
+	static bool ColorsMatch(uint32_t c1, uint32_t c2) {
+		unsigned char *p1 = reinterpret_cast<unsigned char *>(&c1);
+		unsigned char *p2 = reinterpret_cast<unsigned char *>(&c2);
+		return (
+			ComponentsMatch(p1[0], p2[0]) &&
+			ComponentsMatch(p1[1], p2[1]) &&
+			ComponentsMatch(p1[2], p2[2]) &&
+			ComponentsMatch(p1[3], p2[3])
+		);
+	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    T E S T   I N P U T   D A T A
@@ -142,16 +163,24 @@ namespace UnitTests
 	public:
 		std::unique_ptr<MetalTestHelper> _testHelper;
 
-		TEST_CLASS_INITIALIZE(Startup)
+		InputLayout()
 		{
-            #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 			    _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-           #else
+			#elif GFXAPI_TARGET == GFXAPI_OPENGLES
                 _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-           #endif
+			#elif GFXAPI_TARGET == GFXAPI_DX11
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
+			#endif
+
+			#if GFXAPI_TARGET == GFXAPI_DX11
+				// hack -- required for D3D11 currently
+				auto metalContext = RenderCore::Metal::DeviceContext::Get(*_testHelper->_device->GetImmediateContext());
+				metalContext->Bind(RenderCore::Metal::RasterizerState{RenderCore::CullMode::None});
+			#endif
 		}
 
-		TEST_CLASS_CLEANUP(Shutdown)
+		~InputLayout()
 		{
 			_testHelper.reset();
 		}
@@ -488,6 +517,7 @@ namespace UnitTests
                 UniformsStreamInterface usi;
                 usi.BindConstantBuffer(0, {Hash64("Values")});
                 Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+				Assert::AreEqual(uniforms._boundUniformBufferSlots[0], 1ull);
 
                 Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
                 ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
@@ -503,7 +533,7 @@ namespace UnitTests
             // we should have written the same color to every pixel, based on the uniform inputs we gave
             auto colorBreakdown = fbHelper.GetFullColorBreakdown();
             Assert::AreEqual(colorBreakdown.size(), (size_t)1);
-            Assert::AreEqual(colorBreakdown.begin()->first, 0xff198066);
+            Assert::IsTrue(ColorsMatch(colorBreakdown.begin()->first, 0xff198066));
             Assert::AreEqual(colorBreakdown.begin()->second, targetDesc._textureDesc._width * targetDesc._textureDesc._height);
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -520,6 +550,7 @@ namespace UnitTests
                 UniformsStreamInterface usi;
                 usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values) });
                 Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+				Assert::AreEqual(uniforms._boundUniformBufferSlots[0], 1ull);
 
                 Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
                 ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
@@ -533,7 +564,7 @@ namespace UnitTests
             // we should have written the same color to every pixel, based on the uniform inputs we gave
             colorBreakdown = fbHelper.GetFullColorBreakdown();
             Assert::AreEqual(colorBreakdown.size(), (size_t)1);
-            Assert::AreEqual(colorBreakdown.begin()->first, 0xffccb219);
+            Assert::IsTrue(ColorsMatch(colorBreakdown.begin()->first, 0xffccb219));
             Assert::AreEqual(colorBreakdown.begin()->second, targetDesc._textureDesc._width * targetDesc._textureDesc._height);
         }
 
@@ -824,7 +855,9 @@ namespace UnitTests
                 // actually include it into the UniformsStream
                 metalContext.Bind(shaderProgramCB);
 
-                auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+                #if GFXAPI_TARGET != GFXAPI_DX11		// hack DX11 compatibility
+					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+				#endif
 
                 UniformsStreamInterface usi;
                 usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
@@ -845,7 +878,9 @@ namespace UnitTests
                 // actually include it into the UniformsStream
                 metalContext.Bind(shaderProgramSRV);
 
-                auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+                #if GFXAPI_TARGET != GFXAPI_DX11		// hack DX11 compatibility
+					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
+				#endif
 
                 UniformsStreamInterface usi;
                 usi.BindShaderResource(0, Hash64("Texture"));

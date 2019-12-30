@@ -33,6 +33,8 @@
 }
 @end
 
+std::string ToString(const char* input) { return input; }
+
 namespace Assert
 {
     static void IsTrue_(XCTestCase* self, bool comparison)
@@ -108,4 +110,9 @@ namespace Assert
 
         XCTAssertThrows(wrappedBlock());
     }
+
+	static void Fail(const std::string& str)
+	{
+		XCTFail([NSString stringWithUTF8String:str.c_str()]);
+	}
 }

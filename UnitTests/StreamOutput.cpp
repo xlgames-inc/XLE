@@ -71,17 +71,18 @@ namespace UnitTests
     TEST_CLASS(StreamOutput)
 	{
 	public:
-		std:unique_ptr<MetalTestHelper> _testHelper;
-		
+		std::unique_ptr<MetalTestHelper> _testHelper;
+		::Assets::MountingTree::MountID _mountedFS;
 
-		TEST_CLASS_INITIALIZE(Startup)
+		StreamOutput()
 		{
 			_testHelper = std::make_unique<MetalTestHelper>(RenderCore::Techniques::GetTargetAPI());
-			::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+			_mountedFS = ::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 		}
 
-		TEST_CLASS_CLEANUP(Shutdown)
+		~StreamOutput()
 		{
+			::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountedFS);
 			_testHelper.reset();
 		}
 

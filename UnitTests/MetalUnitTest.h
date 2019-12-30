@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../RenderCore/IDevice.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/MinimalShaderSource.h"
 #include "../RenderCore/ShaderService.h"
@@ -14,7 +15,6 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/PipelineLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/AppleMetal/Device.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -41,6 +41,7 @@ namespace UnitTests
 		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
 
         MetalTestHelper(RenderCore::UnderlyingAPI api);
+		MetalTestHelper(const std::shared_ptr<RenderCore::IDevice>& device);
         ~MetalTestHelper();
     };
 

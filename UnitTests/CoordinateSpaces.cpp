@@ -12,10 +12,18 @@
 #include "../RenderCore/ResourceDesc.h"
 #include "../Math/Vector.h"
 
+#if !defined(XC_TEST_ADAPTER)
+    #include <CppUnitTest.h>
+    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+	#define ThrowsException ExpectException<const std::exception&>
+#endif
+
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
     #include "InputLayoutShaders_MSL.h"
 #elif GFXAPI_TARGET == GFXAPI_OPENGLES
     #include "InputLayoutShaders_GLSL.h"
+#elif GFXAPI_TARGET == GFXAPI_DX11
+	#include "InputLayoutShaders_HLSL.h"
 #else
     #error Unit test shaders not written for this graphics API
 #endif
@@ -85,16 +93,18 @@ namespace UnitTests
 	public:
         std::unique_ptr<MetalTestHelper> _testHelper;
 
-        TEST_CLASS_INITIALIZE(Startup)
+        CoordinateSpaces()
         {
             #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-                _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-           #else
-                _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-           #endif
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
+			#elif GFXAPI_TARGET == GFXAPI_DX11
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
+			#else
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
+			#endif
         }
 
-        TEST_CLASS_CLEANUP(Shutdown)
+        ~CoordinateSpaces()
         {
             _testHelper.reset();
         }
@@ -158,7 +168,7 @@ namespace UnitTests
             }
 
             auto data = fbHelper._target->ReadBack(*threadContext);
-            unsigned lastPixel = *(unsigned*)PtrAdd(AsPointer(data.end()), -sizeof(unsigned));
+            unsigned lastPixel = *(unsigned*)PtrAdd(AsPointer(data.end()), -(ptrdiff_t)sizeof(unsigned));
             unsigned firstPixel = *(unsigned*)data.data();
 
             // The orientation of window coordinate space is different in GLES vs other APIs
@@ -399,9 +409,9 @@ namespace UnitTests
             //      clip space {  1,  1, 0, 1 } maps to tex coord { 1, 1 }
             auto data0 = fbHelper0._target->ReadBack(*threadContext);
             auto data1 = fbHelper1._target->ReadBack(*threadContext);
-            unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -sizeof(unsigned));
+            unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
             unsigned firstPixel0 = *(unsigned*)data0.data();
-            unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -sizeof(unsigned));
+            unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));
             unsigned firstPixel1 = *(unsigned*)data1.data();
 
             // This is the same test as WindowCoordSpaceOrientation above
@@ -464,9 +474,9 @@ namespace UnitTests
             // The copy is done via a full texture blit operation
             auto data0 = fbHelper0._target->ReadBack(*threadContext);
             auto data1 = fbHelper1._target->ReadBack(*threadContext);
-            unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -sizeof(unsigned));
+            unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
             unsigned firstPixel0 = *(unsigned*)data0.data();
-            unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -sizeof(unsigned));
+            unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));
             unsigned firstPixel1 = *(unsigned*)data1.data();
 
             // This is the same test as WindowCoordSpaceOrientation above

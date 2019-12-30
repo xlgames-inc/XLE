@@ -73,6 +73,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\CoordinateSpaces.cpp" />
+    <ClCompile Include="..\InputLayout.cpp" />
+    <ClCompile Include="..\MetalUnitTest.cpp" />
+    <ClCompile Include="..\ResourceUpdateAndReadBack.cpp" />
     <ClCompile Include="..\StreamOutput.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -121,6 +125,12 @@
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\InputLayoutShaders_GLSL.h" />
+    <ClInclude Include="..\InputLayoutShaders_HLSL.h" />
+    <ClInclude Include="..\InputLayoutShaders_MSL.h" />
+    <ClInclude Include="..\MetalUnitTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -2,5 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\StreamOutput.cpp" />
+    <ClCompile Include="..\InputLayout.cpp" />
+    <ClCompile Include="..\MetalUnitTest.cpp" />
+    <ClCompile Include="..\CoordinateSpaces.cpp" />
+    <ClCompile Include="..\ResourceUpdateAndReadBack.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\InputLayoutShaders_GLSL.h" />
+    <ClInclude Include="..\InputLayoutShaders_MSL.h" />
+    <ClInclude Include="..\MetalUnitTest.h" />
+    <ClInclude Include="..\InputLayoutShaders_HLSL.h" />
   </ItemGroup>
 </Project>

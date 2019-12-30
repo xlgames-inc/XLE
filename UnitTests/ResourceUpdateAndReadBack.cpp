@@ -11,7 +11,6 @@
 #include "../RenderCore/Metal/QueryPool.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/OpenGLES/IDeviceOpenGLES.h"
-#include "../RenderCore/AppleMetal/Device.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../Math/Vector.h"
 #include "../Math/Transformations.h"
@@ -19,32 +18,43 @@
 #include <deque>
 #include <queue>
 
+#if !defined(XC_TEST_ADAPTER)
+    #include <CppUnitTest.h>
+    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+	#define ThrowsException ExpectException<const std::exception&>
+	#define XCTestCase unsigned
+	static const unsigned self = 0;
+	#pragma warning(disable:4459)
+#endif
+
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
     #include "InputLayoutShaders_MSL.h"
 #elif GFXAPI_TARGET == GFXAPI_OPENGLES
     #include "InputLayoutShaders_GLSL.h"
+#elif GFXAPI_TARGET == GFXAPI_DX11
+	#include "InputLayoutShaders_HLSL.h"
 #else
     #error Unit test shaders not written for this graphics API
 #endif
 
-// See comments in ColorPackedForm below. We can't predict the exact value, so we have to test +/- 1.
-static bool componentsMatch(uint32_t c1, uint32_t c2) {
-    return (c1 == c2 || c1+1 == c2 || c1 == c2+1);
-}
-
-static bool colorsMatch(uint32_t c1, uint32_t c2) {
-    unsigned char *p1 = reinterpret_cast<unsigned char *>(&c1);
-    unsigned char *p2 = reinterpret_cast<unsigned char *>(&c2);
-    return (
-        componentsMatch(p1[0], p2[0]) &&
-        componentsMatch(p1[1], p2[1]) &&
-        componentsMatch(p1[2], p2[2]) &&
-        componentsMatch(p1[3], p2[3])
-    );
-}
-
 namespace UnitTests
 {
+
+	// See comments in ColorPackedForm below. We can't predict the exact value, so we have to test +/- 1.
+	static bool ComponentsMatch(uint32_t c1, uint32_t c2) {
+		return (c1 == c2 || c1+1 == c2 || c1 == c2+1);
+	}
+
+	static bool ColorsMatch(uint32_t c1, uint32_t c2) {
+		unsigned char *p1 = reinterpret_cast<unsigned char *>(&c1);
+		unsigned char *p2 = reinterpret_cast<unsigned char *>(&c2);
+		return (
+			ComponentsMatch(p1[0], p2[0]) &&
+			ComponentsMatch(p1[1], p2[1]) &&
+			ComponentsMatch(p1[2], p2[2]) &&
+			ComponentsMatch(p1[3], p2[3])
+		);
+	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -93,16 +103,18 @@ namespace UnitTests
 	public:
 		std::unique_ptr<MetalTestHelper> _testHelper;
 
-		TEST_CLASS_INITIALIZE(Startup)
+		ResourceUpdateAndReadBack()
 		{
-            #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-			    _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-           #else
-                _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-           #endif
+			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
+			#elif GFXAPI_TARGET == GFXAPI_DX11
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
+			#else
+				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
+			#endif
 		}
 
-		TEST_CLASS_CLEANUP(Shutdown)
+		~ResourceUpdateAndReadBack()
 		{
 			_testHelper.reset();
 		}
@@ -249,7 +261,7 @@ namespace UnitTests
             auto* glesDevice = (IDeviceOpenGLES*)_testHelper->_device->QueryInterface(typeid(IDeviceOpenGLES).hash_code());
             if (glesDevice) {
                 if (!(glesDevice->GetFeatureSet() & Metal_OpenGLES::FeatureSet::GLES300)) {
-                    XCTFail(@"Known issues running this code on non GLES300 OpenGL: unsynchronized writes are simulated with synchronized writes, so we don't get the expected results");
+					Assert::Fail(ToString("Known issues running this code on non GLES300 OpenGL: unsynchronized writes are simulated with synchronized writes, so we don't get the expected results").c_str());
                 }
             }
 
@@ -262,7 +274,7 @@ namespace UnitTests
             Assert::AreEqual(breakdown.size(), (size_t)1);
             for (auto i:breakdown) {
                 auto color = i.first;
-                Assert::IsTrue(colorsMatch(color, testValue3.ColorPackedForm()));
+                Assert::IsTrue(ColorsMatch(color, testValue3.ColorPackedForm()));
             }
 		}
 
@@ -276,8 +288,8 @@ namespace UnitTests
             Assert::AreEqual(breakdown.size(), (size_t)2);
             for (auto i:breakdown) {
                 auto color = i.first;
-                Assert::IsTrue(colorsMatch(color, testValue0.ColorPackedForm()) ||
-                               colorsMatch(color, testValue3.ColorPackedForm()));
+                Assert::IsTrue(ColorsMatch(color, testValue0.ColorPackedForm()) ||
+                               ColorsMatch(color, testValue3.ColorPackedForm()));
             }
         }
 	};

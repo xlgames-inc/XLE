@@ -47,6 +47,15 @@ namespace UnitTests
         _shaderService->AddShaderSource(_shaderSource);
     }
 
+	MetalTestHelper::MetalTestHelper(const std::shared_ptr<RenderCore::IDevice>& device)
+	{
+		_device = device;
+
+		_shaderService = std::make_unique<RenderCore::ShaderService>();
+        _shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_device->CreateShaderCompiler());
+        _shaderService->AddShaderSource(_shaderSource);
+	}
+
     MetalTestHelper::~MetalTestHelper()
     {
         // RenderCore::Techniques::SetThreadContext(nullptr);
