@@ -40,6 +40,8 @@ namespace RenderCore { namespace Metal_DX11
         uint8_t         _stencilReference = 0x0;
         StencilDesc     _frontFaceStencil;
         StencilDesc     _backFaceStencil;
+
+		uint64_t Hash() const;
     };
 
     /// Similar to VkPipelineRasterizationStateCreateInfo or D3D12_RASTERIZER_DESC
@@ -49,6 +51,8 @@ namespace RenderCore { namespace Metal_DX11
     public:
         CullMode        _cullMode = CullMode::Back;
         FaceWinding     _frontFaceWinding = FaceWinding::CCW;
+
+		uint64_t Hash() const;
     };
 
     /// Similar to ?
@@ -91,6 +95,8 @@ namespace RenderCore { namespace Metal_DX11
         Blend _dstAlphaBlendFactor = Blend::Zero;
         BlendOp _alphaBlendOp = BlendOp::Add;
         ColorWriteMask::BitField _writeMask = ColorWriteMask::All;
+
+		uint64_t Hash() const;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,10 +143,10 @@ namespace RenderCore { namespace Metal_DX11
 						CompareOp comparison = CompareOp::Never);
         ~SamplerState();
 
-        SamplerState(SamplerState&& moveFrom);
-        SamplerState& operator=(SamplerState&& moveFrom);
-        SamplerState(const SamplerState& copyFrom);
-        SamplerState& operator=(const SamplerState& copyFrom);
+        SamplerState(SamplerState&& moveFrom) = default;
+        SamplerState& operator=(SamplerState&& moveFrom) = default;
+        SamplerState(const SamplerState& copyFrom) = default;
+        SamplerState& operator=(const SamplerState& copyFrom) = default;
 
         typedef ID3D::SamplerState* UnderlyingType;
         UnderlyingType              GetUnderlying() const  { return _underlying.get(); }
@@ -190,10 +196,10 @@ namespace RenderCore { namespace Metal_DX11
         RasterizerState(DeviceContext&);
         ~RasterizerState();
 
-        RasterizerState(RasterizerState&& moveFrom);
-        RasterizerState& operator=(RasterizerState&& moveFrom);
-        RasterizerState(const RasterizerState& copyFrom);
-        RasterizerState& operator=(const RasterizerState& copyFrom);
+        RasterizerState(RasterizerState&& moveFrom) = default;
+        RasterizerState& operator=(RasterizerState&& moveFrom) = default;
+        RasterizerState(const RasterizerState& copyFrom) = default;
+        RasterizerState& operator=(const RasterizerState& copyFrom) = default;
         RasterizerState(intrusive_ptr<ID3D::RasterizerState>&& moveFrom);
 
         typedef ID3D::RasterizerState*  UnderlyingType;
@@ -257,10 +263,10 @@ namespace RenderCore { namespace Metal_DX11
                     Blend alphaDstBlend);
         ~BlendState();
 
-        BlendState(BlendState&& moveFrom);
-        BlendState& operator=(BlendState&& moveFrom);
-        BlendState(const BlendState& copyFrom);
-        BlendState& operator=(const BlendState& copyFrom);
+        BlendState(BlendState&& moveFrom) = default;
+        BlendState& operator=(BlendState&& moveFrom) = default;
+        BlendState(const BlendState& copyFrom) = default;
+        BlendState& operator=(const BlendState& copyFrom) = default;
         BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom);
         BlendState(DeviceContext& context);
 
@@ -340,8 +346,10 @@ namespace RenderCore { namespace Metal_DX11
             const StencilDesc& frontFaceStencil = StencilMode::NoEffect,
             const StencilDesc& backFaceStencil = StencilMode::NoEffect);
         DepthStencilState(DeviceContext& context);
-        DepthStencilState(DepthStencilState&& moveFrom);
-        DepthStencilState& operator=(DepthStencilState&& moveFrom);
+        DepthStencilState(const DepthStencilState&) = default;
+        DepthStencilState& operator=(const DepthStencilState&) = default;
+		DepthStencilState(DepthStencilState&&) = default;
+        DepthStencilState& operator=(DepthStencilState&&) = default;
         ~DepthStencilState();
 
         typedef ID3D::DepthStencilState*    UnderlyingType;

@@ -130,9 +130,12 @@ namespace RenderCore { namespace Metal_DX11
 		return _classLinkage[(unsigned)stage].get();
 	}
 
+	static uint64_t s_nextShaderProgramGuid = 1;
+
     ShaderProgram::ShaderProgram(	ObjectFactory& factory, 
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& ps)
+	: _guid(s_nextShaderProgramGuid++)
     {
 		///////////////// VS ////////////////////
 		if (vs.DynamicLinkingEnabled())
@@ -222,7 +225,7 @@ namespace RenderCore { namespace Metal_DX11
 		Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
     }
 
-	ShaderProgram::ShaderProgram() {}
+	ShaderProgram::ShaderProgram() : _guid(0) {}
     ShaderProgram::~ShaderProgram() {}
 
     bool ShaderProgram::DynamicLinkingEnabled() const
@@ -231,37 +234,6 @@ namespace RenderCore { namespace Metal_DX11
 			if (_classLinkage[c]) return true;
 		return false;
     }
-
-	ShaderProgram::ShaderProgram(ShaderProgram&& moveFrom) never_throws
-	: _vertexShader(std::move(moveFrom._vertexShader))
-	, _pixelShader(std::move(moveFrom._pixelShader))
-	, _geometryShader(std::move(moveFrom._geometryShader))
-	, _hullShader(std::move(moveFrom._hullShader))
-	, _domainShader(std::move(moveFrom._domainShader))
-	, _validationCallback(std::move(moveFrom._validationCallback))
-	{
-		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
-			_compiledCode[c] = std::move(moveFrom._compiledCode[c]);
-			_classLinkage[c] = std::move(moveFrom._classLinkage[c]);
-		}
-	}
-
-    ShaderProgram& ShaderProgram::operator=(ShaderProgram&& moveFrom) never_throws
-	{
-		_vertexShader = std::move(moveFrom._vertexShader);
-		_pixelShader = std::move(moveFrom._pixelShader);
-		_geometryShader = std::move(moveFrom._geometryShader);
-		_hullShader = std::move(moveFrom._hullShader);
-		_domainShader = std::move(moveFrom._domainShader);
-		_validationCallback = std::move(moveFrom._validationCallback);
-
-		for (unsigned c = 0; c<(unsigned)ShaderStage::Max; ++c) {
-			_compiledCode[c] = std::move(moveFrom._compiledCode[c]);
-			_classLinkage[c] = std::move(moveFrom._classLinkage[c]);
-		}
-		return *this;
-	}
-
 
 	static std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>> MakeByteCodeFuture(ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
 	{

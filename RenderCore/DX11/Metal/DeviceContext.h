@@ -17,7 +17,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Prefix.h"
 
-namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; }
+namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -36,6 +36,9 @@ namespace RenderCore { namespace Metal_DX11
 	class ObjectFactory;
 	class Resource;
 	class NumericUniformsInterface;
+	class AttachmentBlendDesc;
+	class DepthStencilDesc;
+	class RasterizationDesc;
 
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)
@@ -55,30 +58,52 @@ namespace RenderCore { namespace Metal_DX11
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
+	class GraphicsPipeline
+    {
+    public:
+        uint64_t GetGUID() const { return _guid; }
+
+		GraphicsPipeline();
+		~GraphicsPipeline();
+
+		GraphicsPipeline(const GraphicsPipeline&) = delete;
+		GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
+
+		// internal use only -- 
+		const ShaderProgram& GetShaderProgram() const;
+	private:
+		uint64_t _guid;
+    };
+
+    class GraphicsPipelineBuilder
+    {
+    public:
+        void Bind(const ShaderProgram& shaderProgram);
+		void Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
+
+        void Bind(const AttachmentBlendDesc& blendState);
+        void Bind(const DepthStencilDesc& depthStencil);
+        void Bind(Topology topology);
+        void Bind(const RasterizationDesc& desc);
+
+        void SetInputLayout(const BoundInputLayout& inputLayout);
+		void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+
+        const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+
+        GraphicsPipelineBuilder();
+		~GraphicsPipelineBuilder();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+    };
+
     class DeviceContext
     {
     public:
-        template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
-        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
-
-        void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
-        void        Bind(Topology topology);
-        void        Bind(const ComputeShader& computeShader);
-        void        Bind(const ShaderProgram& shaderProgram);
-        void        Bind(const RasterizerState& rasterizer);
-        void        Bind(const BlendState& blender);
-        void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
-
-        void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
-
-		void		UnbindVS();
-		void		UnbindPS();
-		void		UnbindGS();
-		void		UnbindHS();
-		void		UnbindDS();
-		void		UnbindCS();
-		void		UnbindInputLayout();
-
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		// Core Draw / Dispatch / Clear operations
+		///////////////////////////////////////////////////////////////////////////////////////////////////
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 		void		DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
@@ -86,22 +111,63 @@ namespace RenderCore { namespace Metal_DX11
         void        DrawAuto();
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
+		void        Draw(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned startVertexLocation=0);
+        void        DrawIndexed(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+		void		DrawInstances(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+        void		DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+		void        DrawAuto(const GraphicsPipeline& pipeline);
+
         void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& values);
         struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
         void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
         void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values);
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values);
 
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		// Input geometry binding
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		void		Bind(const IndexBufferView& IB);
+		DEPRECATED_ATTRIBUTE void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
+		void		UnbindInputLayout();
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		// Viewport & scissor states
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+		Viewport GetBoundViewport();
+
+		DEPRECATED_ATTRIBUTE void		Bind(const Viewport& viewport);
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		// pre-GraphicsPipelineBuilder binding functions
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		DEPRECATED_ATTRIBUTE void		Bind(Topology topology);
+        DEPRECATED_ATTRIBUTE void		Bind(const ComputeShader& computeShader);
+        DEPRECATED_ATTRIBUTE void		Bind(const ShaderProgram& shaderProgram);
+        DEPRECATED_ATTRIBUTE void		Bind(const RasterizerState& rasterizer);
+        DEPRECATED_ATTRIBUTE void		Bind(const BlendState& blender);
+        DEPRECATED_ATTRIBUTE void		Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
+
+        DEPRECATED_ATTRIBUTE void		Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
+
+		DEPRECATED_ATTRIBUTE void		UnbindVS();
+		DEPRECATED_ATTRIBUTE void		UnbindPS();
+		DEPRECATED_ATTRIBUTE void		UnbindGS();
+		DEPRECATED_ATTRIBUTE void		UnbindHS();
+		DEPRECATED_ATTRIBUTE void		UnbindDS();
+		DEPRECATED_ATTRIBUTE void		UnbindCS();
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		// Legacy pre-render-pass interface
+		///////////////////////////////////////////////////////////////////////////////////////////////////
+		template<int Count> DEPRECATED_ATTRIBUTE void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
+        template<int Count1, int Count2> DEPRECATED_ATTRIBUTE void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
+
 		bool		InRenderPass();
 
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
         void        ExecuteCommandList(CommandList& commandList, bool preserveRenderState);
-
-		void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
-		Viewport GetBoundViewport();
-
-		DEPRECATED_ATTRIBUTE void        Bind(const Viewport& viewport);
 
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 
@@ -159,6 +225,9 @@ namespace RenderCore { namespace Metal_DX11
 			const FrameBufferProperties& props,
 			IteratorRange<const ClearValue*> clearValues);
 		friend void EndRenderPass(DeviceContext& context);
+
+		void Bind(const GraphicsPipeline&);
+		uint64_t _boundGraphicsPipeline;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

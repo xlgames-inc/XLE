@@ -34,6 +34,7 @@ namespace RenderCore { namespace Metal_DX11
 
     class ShaderProgram;
 	class ComputeShader;
+	class GraphicsPipeline;
 	class DeviceContext;
 	class PipelineLayoutConfig
 	{
@@ -104,6 +105,13 @@ namespace RenderCore { namespace Metal_DX11
             const UniformsStreamInterface& interface1 = {},
             const UniformsStreamInterface& interface2 = {},
             const UniformsStreamInterface& interface3 = {});
+		BoundUniforms(
+            const GraphicsPipeline& pipeline,
+            const PipelineLayoutConfig& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
         BoundUniforms();
         ~BoundUniforms();
 
@@ -161,12 +169,16 @@ namespace RenderCore { namespace Metal_DX11
 
         const std::vector<intrusive_ptr<ID3D::ClassInstance>>& GetClassInstances(ShaderStage stage) const;
 
+		uint64_t GetGUID() const { return _guid; }
+
         BoundClassInterfaces(const ShaderProgram& shader);
         BoundClassInterfaces();
         ~BoundClassInterfaces();
 
-        BoundClassInterfaces(BoundClassInterfaces&& moveFrom);
-        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom);
+        BoundClassInterfaces(BoundClassInterfaces&& moveFrom) never_throws = default;
+        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom) never_throws = default;
+		BoundClassInterfaces(const BoundClassInterfaces& moveFrom) = default;
+        BoundClassInterfaces& operator=(const BoundClassInterfaces& moveFrom) = default;
     private:
         class StageBinding
         {
@@ -174,16 +186,11 @@ namespace RenderCore { namespace Metal_DX11
             intrusive_ptr<ID3D::ShaderReflection>   _reflection;
             intrusive_ptr<ID3D::ClassLinkage>       _linkage;
             std::vector<intrusive_ptr<ID3D::ClassInstance>> _classInstanceArray;
-
-            StageBinding();
-            ~StageBinding();
-            StageBinding(StageBinding&& moveFrom);
-            StageBinding& operator=(StageBinding&& moveFrom);
-			StageBinding(const StageBinding& copyFrom);
-			StageBinding& operator=(const StageBinding& copyFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];
+
+		uint64_t _guid;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

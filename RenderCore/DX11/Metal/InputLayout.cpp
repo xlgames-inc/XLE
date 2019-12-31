@@ -386,6 +386,20 @@ namespace RenderCore { namespace Metal_DX11
 		}
 	}
 
+	BoundUniforms::BoundUniforms(
+        const GraphicsPipeline& pipeline,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	: BoundUniforms(
+		pipeline.GetShaderProgram(),
+		pipelineLayout,
+		interface0, interface1, interface2, interface3)
+	{
+	}
+
     BoundUniforms::BoundUniforms() 
 	{
 		for (unsigned c=0; c<4; ++c)
@@ -819,7 +833,10 @@ namespace RenderCore { namespace Metal_DX11
         return _stageBindings[unsigned(stage)]._classInstanceArray;
     }
 
+	static uint64_t s_nextBoundClassInterfaceGuid = 1;
+
     BoundClassInterfaces::BoundClassInterfaces(const ShaderProgram& shader)
+	: _guid(s_nextBoundClassInterfaceGuid++)
     {
 		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
 			auto* classLinkage = shader.GetClassLinkage((ShaderStage)c);
@@ -833,54 +850,8 @@ namespace RenderCore { namespace Metal_DX11
 		}
     }
 
-    BoundClassInterfaces::BoundClassInterfaces() {}
+    BoundClassInterfaces::BoundClassInterfaces() : _guid(0) {}
     BoundClassInterfaces::~BoundClassInterfaces() {}
-
-    BoundClassInterfaces::BoundClassInterfaces(BoundClassInterfaces&& moveFrom)
-    {
-        for (unsigned c=0; c<dimof(_stageBindings); ++c)
-            _stageBindings[c] = std::move(moveFrom._stageBindings[c]);
-    }
-
-    BoundClassInterfaces& BoundClassInterfaces::operator=(BoundClassInterfaces&& moveFrom)
-    {
-        for (unsigned c=0; c<dimof(_stageBindings); ++c)
-            _stageBindings[c] = std::move(moveFrom._stageBindings[c]);
-        return *this;
-    }
-
-
-
-    BoundClassInterfaces::StageBinding::StageBinding() {}
-    BoundClassInterfaces::StageBinding::~StageBinding() {}
-
-    BoundClassInterfaces::StageBinding::StageBinding(StageBinding&& moveFrom)
-    : _reflection(std::move(moveFrom._reflection))
-    , _linkage(std::move(moveFrom._linkage))
-    , _classInstanceArray(std::move(moveFrom._classInstanceArray))
-    {}
-
-    auto BoundClassInterfaces::StageBinding::operator=(StageBinding&& moveFrom) -> StageBinding&
-    {
-        _reflection = std::move(moveFrom._reflection);
-        _linkage = std::move(moveFrom._linkage);
-        _classInstanceArray = std::move(moveFrom._classInstanceArray);
-        return *this;
-    }
-
-	BoundClassInterfaces::StageBinding::StageBinding(const StageBinding& copyFrom)
-	: _reflection(copyFrom._reflection)
-	, _linkage(copyFrom._linkage)
-	, _classInstanceArray(copyFrom._classInstanceArray)
-	{}
-
-	auto BoundClassInterfaces::StageBinding::operator=(const StageBinding& copyFrom) -> StageBinding&
-	{
-		_reflection = copyFrom._reflection;
-		_linkage = copyFrom._linkage;
-		_classInstanceArray = copyFrom._classInstanceArray;
-		return *this;
-	}
 
 	void NumericUniformsInterface::Reset() {}
 

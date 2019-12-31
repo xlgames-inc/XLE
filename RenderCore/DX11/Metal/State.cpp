@@ -48,48 +48,7 @@ namespace RenderCore { namespace Metal_DX11
 
     SamplerState::~SamplerState() {}
 
-    SamplerState::SamplerState(SamplerState&& moveFrom)
-    : _underlying(std::move(moveFrom._underlying))
-    {}
-
-    SamplerState& SamplerState::operator=(SamplerState&& moveFrom)
-    {
-        _underlying = std::move(moveFrom._underlying);
-        return *this;
-    }
-
-    SamplerState::SamplerState(const SamplerState& copyFrom)
-    : _underlying(copyFrom._underlying)
-    {}
-
-    SamplerState& SamplerState::operator=(const SamplerState& copyFrom)
-    {
-        _underlying = copyFrom._underlying;
-        return *this;
-    }
-
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    RasterizerState::RasterizerState(RasterizerState&& moveFrom)
-    : _underlying(std::move(moveFrom._underlying))
-    {}
-
-    RasterizerState& RasterizerState::operator=(RasterizerState&& moveFrom)
-    {
-        _underlying = std::move(moveFrom._underlying);
-        return *this;
-    }
-
-    RasterizerState::RasterizerState(const RasterizerState& copyFrom)
-    : _underlying(copyFrom._underlying)
-    {}
-
-    RasterizerState& RasterizerState::operator=(const RasterizerState& copyFrom)
-    {
-        _underlying = copyFrom._underlying;
-        return *this;
-    }
 
     RasterizerState::RasterizerState(CullMode cullmode, bool frontCounterClockwise)
     {
@@ -147,29 +106,9 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BlendState::BlendState(BlendState&& moveFrom)
-    : _underlying(std::move(moveFrom._underlying))
-    {}
-
     BlendState::BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom)
     : _underlying(std::move(moveFrom))
     {}
-
-    BlendState& BlendState::operator=(BlendState&& moveFrom)
-    {
-        _underlying = std::move(moveFrom._underlying);
-        return *this;
-    }
-
-    BlendState::BlendState(const BlendState& copyFrom)
-    : _underlying(copyFrom._underlying)
-    {}
-
-    BlendState& BlendState::operator=(const BlendState& copyFrom)
-    {
-        _underlying = copyFrom._underlying;
-        return *this;
-    }
 
 	BlendState::BlendState(const AttachmentBlendDesc& desc)
 	{
@@ -365,17 +304,77 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = moveptr(rawdss);
     }
 
-    DepthStencilState::DepthStencilState(DepthStencilState&& moveFrom)
-    : _underlying(std::move(moveFrom._underlying))
-    {}
+    DepthStencilState::~DepthStencilState() {}
 
-    DepthStencilState& DepthStencilState::operator=(DepthStencilState&& moveFrom)
+
+	uint64_t DepthStencilDesc::Hash() const
     {
-        _underlying = std::move(moveFrom._underlying);
-        return *this;
+        assert((unsigned(_depthTest) & ~0xfu) == 0);
+        assert((unsigned(_stencilReadMask) & ~0xffu) == 0);
+        assert((unsigned(_stencilWriteMask) & ~0xffu) == 0);
+        assert((unsigned(_stencilReference) & ~0xffu) == 0);
+        assert((unsigned(_frontFaceStencil._passOp) & ~0xfu) == 0);
+        assert((unsigned(_frontFaceStencil._failOp) & ~0xfu) == 0);
+        assert((unsigned(_frontFaceStencil._depthFailOp) & ~0xfu) == 0);
+        assert((unsigned(_frontFaceStencil._comparisonOp) & ~0xfu) == 0);
+        assert((unsigned(_backFaceStencil._passOp) & ~0xfu) == 0);
+        assert((unsigned(_backFaceStencil._failOp) & ~0xfu) == 0);
+        assert((unsigned(_backFaceStencil._depthFailOp) & ~0xfu) == 0);
+        assert((unsigned(_backFaceStencil._comparisonOp) & ~0xfu) == 0);
+
+        return  ((uint64_t(_depthTest) & 0xf) << 0ull)
+
+            |   ((uint64_t(_frontFaceStencil._passOp) & 0xf) << 4ull)
+            |   ((uint64_t(_frontFaceStencil._failOp) & 0xf) << 8ull)
+            |   ((uint64_t(_frontFaceStencil._depthFailOp) & 0xf) << 12ull)
+            |   ((uint64_t(_frontFaceStencil._comparisonOp) & 0xf) << 16ull)
+
+            |   ((uint64_t(_backFaceStencil._passOp) & 0xf) << 20ull)
+            |   ((uint64_t(_backFaceStencil._failOp) & 0xf) << 24ull)
+            |   ((uint64_t(_backFaceStencil._depthFailOp) & 0xf) << 28ull)
+            |   ((uint64_t(_backFaceStencil._comparisonOp) & 0xf) << 32ull)
+
+            |   ((uint64_t(_stencilReadMask) & 0xf) << 36ull)
+            |   ((uint64_t(_stencilWriteMask) & 0xf) << 44ull)
+            |   ((uint64_t(_stencilReference) & 0xf) << 52ull)      // todo -- remove stencil reference
+
+            |   ((uint64_t(_depthWrite) & 0x1) << 60ull)
+            |   ((uint64_t(_stencilEnable) & 0x1) << 61ull)
+            ;
+
     }
 
-    DepthStencilState::~DepthStencilState() {}
+    uint64_t AttachmentBlendDesc::Hash() const
+    {
+        // Note that we're checking that each element fits in 4 bits, and then space them out
+        // to give each 8 bits (well, there's room for expansion)
+        assert((unsigned(_srcColorBlendFactor) & ~0xfu) == 0);
+        assert((unsigned(_dstColorBlendFactor) & ~0xfu) == 0);
+        assert((unsigned(_colorBlendOp) & ~0xfu) == 0);
+        assert((unsigned(_srcAlphaBlendFactor) & ~0xfu) == 0);
+        assert((unsigned(_dstAlphaBlendFactor) & ~0xfu) == 0);
+        assert((unsigned(_alphaBlendOp) & ~0xfu) == 0);
+        assert((unsigned(_writeMask) & ~0xfu) == 0);
+        return  ((uint64_t(_blendEnable) & 1) << 0ull)
+
+            |   ((uint64_t(_srcColorBlendFactor) & 0xf) << 8ull)
+            |   ((uint64_t(_dstColorBlendFactor) & 0xf) << 16ull)
+            |   ((uint64_t(_colorBlendOp) & 0xf) << 24ull)
+
+            |   ((uint64_t(_srcAlphaBlendFactor) & 0xf) << 32ull)
+            |   ((uint64_t(_dstAlphaBlendFactor) & 0xf) << 40ull)
+            |   ((uint64_t(_alphaBlendOp) & 0xf) << 48ull)
+
+            |   ((uint64_t(_writeMask) & 0xf) << 56ull)
+            ;
+    }
+
+	uint64_t RasterizationDesc::Hash() const
+	{
+		assert((unsigned(_cullMode) & ~0xff) == 0);
+        assert((unsigned(_frontFaceWinding) & ~0xff) == 0);
+		return uint64_t(_cullMode) | (uint64_t(_frontFaceWinding) << 8ull);
+	}
 
 }}
 

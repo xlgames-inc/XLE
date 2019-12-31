@@ -98,11 +98,15 @@ namespace RenderCore { namespace Metal_DX11
 
         bool DynamicLinkingEnabled() const;
 
+		uint64_t GetGUID() const { return _guid; }
+
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
-		ShaderProgram(ShaderProgram&&) never_throws;
-        ShaderProgram& operator=(ShaderProgram&&) never_throws;
+		ShaderProgram(ShaderProgram&&) never_throws = default;
+        ShaderProgram& operator=(ShaderProgram&&) never_throws = default;
 
+		ShaderProgram(const ShaderProgram&) = default;
+        ShaderProgram& operator=(const ShaderProgram&) = default;
 
 		// Legacy asset based API --
 		static void ConstructToFuture(
@@ -138,8 +142,7 @@ namespace RenderCore { namespace Metal_DX11
 		intrusive_ptr<ID3D::ClassLinkage> _classLinkage[ShaderStage::Max];
 		std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 
-        ShaderProgram(const ShaderProgram&) = delete;
-        ShaderProgram& operator=(const ShaderProgram&) = delete;
+		uint64_t _guid;
     };
 
     ///

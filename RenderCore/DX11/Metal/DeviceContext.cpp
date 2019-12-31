@@ -12,13 +12,15 @@
 #include "Buffer.h"
 #include "Resource.h"
 #include "ObjectFactory.h"
-#include "../../ConsoleRig/Log.h"
-#include "../../Utility/Threading/Mutex.h"
-#include "../../Utility/MemoryUtils.h"
+#include "../../BufferView.h"
+#include "../../../ConsoleRig/Log.h"
+#include "../../../Utility/Threading/Mutex.h"
+#include "../../../Utility/MemoryUtils.h"
 
 #include "../IDeviceDX11.h"
 #include "IncludeDX11.h"
 #include "DX11Utils.h"
+#include <map>
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -32,6 +34,7 @@ namespace RenderCore { namespace Metal_DX11
     void DeviceContext::Bind(Topology topology)
     {
         _underlying->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(topology));
+		_boundGraphicsPipeline = 0;
     }
 
     void DeviceContext::Bind(const ComputeShader& computeShader)
@@ -42,30 +45,44 @@ namespace RenderCore { namespace Metal_DX11
     void DeviceContext::Bind(const ShaderProgram& shaderProgram)
     {
 		shaderProgram.Apply(*this);
+		_boundGraphicsPipeline = 0;
     }
 
     void DeviceContext::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage)
     {
 		shaderProgram.Apply(*this, dynLinkage);
+		_boundGraphicsPipeline = 0;
     }
 
     void DeviceContext::Bind(const RasterizerState& rasterizer)
     {
         _underlying->RSSetState(rasterizer.GetUnderlying());
+		_boundGraphicsPipeline = 0;
     }
 
     void DeviceContext::Bind(const BlendState& blender)
     {
         const FLOAT blendFactors[] = {1.f, 1.f, 1.f, 1.f};
         _underlying->OMSetBlendState(blender.GetUnderlying(), blendFactors, 0xffffffff);
+		_boundGraphicsPipeline = 0;
     }
 
     void DeviceContext::Bind(const DepthStencilState& depthStencil, unsigned stencilRef)
     {
         _underlying->OMSetDepthStencilState(depthStencil.GetUnderlying(), stencilRef);
+		_boundGraphicsPipeline = 0;
     }
 
-    void DeviceContext::Bind(const Resource& ib, Format indexFormat, unsigned offset)
+    void DeviceContext::Bind(const IndexBufferView& IB)
+	{
+		assert(IB._resource);
+		auto* d3dResource = (Resource*)const_cast<IResource*>(IB._resource)->QueryInterface(typeid(Resource).hash_code());
+		assert(d3dResource);
+		assert(QueryInterfaceCast<ID3D::Buffer>(d3dResource->_underlying.get()));
+        _underlying->IASetIndexBuffer((ID3D::Buffer*)d3dResource->_underlying.get(), AsDXGIFormat(IB._indexFormat), IB._offset);
+	}
+	
+	void DeviceContext::Bind(const Resource& ib, Format indexFormat, unsigned offset)
     {
 		assert(QueryInterfaceCast<ID3D::Buffer>(ib._underlying.get()));
         _underlying->IASetIndexBuffer((ID3D::Buffer*)ib._underlying.get(), AsDXGIFormat(indexFormat), offset);
@@ -143,6 +160,41 @@ namespace RenderCore { namespace Metal_DX11
     {
         _underlying->DrawAuto();
     }
+
+	void DeviceContext::Draw(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned startVertexLocation)
+	{
+		if (pipeline.GetGUID() != _boundGraphicsPipeline)
+			Bind(pipeline);
+		_underlying->Draw(vertexCount, startVertexLocation);
+	}
+
+    void DeviceContext::DrawIndexed(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+	{
+		if (pipeline.GetGUID() != _boundGraphicsPipeline)
+			Bind(pipeline);
+		_underlying->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
+	}
+
+	void DeviceContext::DrawInstances(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+	{
+		if (pipeline.GetGUID() != _boundGraphicsPipeline)
+			Bind(pipeline);
+		_underlying->DrawInstanced(vertexCount, instanceCount, startVertexLocation, 0);
+	}
+
+    void DeviceContext::DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+	{
+		if (pipeline.GetGUID() != _boundGraphicsPipeline)
+			Bind(pipeline);
+		_underlying->DrawIndexedInstanced(indexCount, indexCount, startIndexLocation, baseVertexLocation, 0);
+	}
+
+	void DeviceContext::DrawAuto(const GraphicsPipeline& pipeline)
+	{
+		if (pipeline.GetGUID() != _boundGraphicsPipeline)
+			Bind(pipeline);
+		_underlying->DrawAuto();
+	}
 
     void DeviceContext::Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& values)
     {
@@ -350,6 +402,174 @@ namespace RenderCore { namespace Metal_DX11
     CommandList::CommandList(intrusive_ptr<ID3D::CommandList>&& underlying)
     :   _underlying(std::forward<intrusive_ptr<ID3D::CommandList>>(underlying))
     {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class RealGraphicsPipeline : public GraphicsPipeline
+	{
+	public:
+		DepthStencilState _depthStencil;
+		RasterizerState _rasterizer;
+		BlendState _blend;
+		Topology _topology;
+
+		ShaderProgram _program;
+		BoundClassInterfaces _boundClassInterfaces;
+
+		RealGraphicsPipeline(
+			const DepthStencilState& depthStencil,
+			const RasterizerState& rasterizer,
+			const BlendState& blend,
+			Topology topology,
+			const ShaderProgram& program,
+			const BoundClassInterfaces& boundClassInterfaces)
+		: _depthStencil(depthStencil)
+		, _rasterizer(rasterizer)
+		, _blend(blend)
+		, _topology(topology)
+		, _program(program)
+		, _boundClassInterfaces(boundClassInterfaces)
+		{}
+	};
+
+	static uint64_t s_nextGraphicsPipelineNextGuid = 1;
+
+	const ShaderProgram& GraphicsPipeline::GetShaderProgram() const
+	{
+		// All GraphicsPipeline objects on D3D are actually "RealGraphicsPipeline", so we can do this trick -- 
+		// It just helps keep the internal objects of the class completely isolated
+		return ((const RealGraphicsPipeline*)this)->_program;
+	}
+
+	GraphicsPipeline::GraphicsPipeline()
+	: _guid(s_nextGraphicsPipelineNextGuid++)
+	{
+	}
+
+	GraphicsPipeline::~GraphicsPipeline()
+	{
+	}
+
+	class GraphicsPipelineBuilder::Pimpl
+	{
+	public:
+		ShaderProgram _program;
+		BoundClassInterfaces _boundClassInterfaces;
+
+		DepthStencilDesc _depthStencil;
+		RasterizationDesc _rasterization;
+		AttachmentBlendDesc _blend;
+		Topology _topology;
+
+		uint64_t _depthStencilHash;
+		uint64_t _rasterizationHash;
+		uint64_t _blendHash;
+
+		std::map<uint64_t, std::shared_ptr<GraphicsPipeline>> _pipelineCache;
+
+		Pimpl()
+		{
+			_depthStencilHash = _depthStencil.Hash();
+			_rasterizationHash = _rasterization.Hash();
+			_blendHash = _blend.Hash();
+			_topology = Topology::TriangleList;
+		}
+	};
+
+	void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
+	{
+		_pimpl->_program = shaderProgram;
+		_pimpl->_boundClassInterfaces = {};
+	}
+
+	void GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage)
+	{
+		_pimpl->_program = shaderProgram;
+		_pimpl->_boundClassInterfaces = dynLinkage;
+	}
+
+    void GraphicsPipelineBuilder::Bind(const AttachmentBlendDesc& blendState)
+	{
+		_pimpl->_blend = blendState;
+		_pimpl->_blendHash = blendState.Hash();
+	}
+
+    void GraphicsPipelineBuilder::Bind(const DepthStencilDesc& depthStencil)
+	{
+		_pimpl->_depthStencil = depthStencil;
+		_pimpl->_depthStencilHash = depthStencil.Hash();
+	}
+
+    void GraphicsPipelineBuilder::Bind(Topology topology)
+	{
+		_pimpl->_topology = topology;
+	}
+
+    void GraphicsPipelineBuilder::Bind(const RasterizationDesc& desc)
+	{
+		_pimpl->_rasterization = desc;
+		_pimpl->_rasterizationHash = desc.Hash();
+	}
+
+	void GraphicsPipelineBuilder::SetInputLayout(const BoundInputLayout& inputLayout)
+	{
+		// not critical on DX11; since we still call BoundInputLayout::Apply() to set VBs and IA state
+	}
+
+    void GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
+	{
+		// this state information not needed in DX11, since this gets configured via the FrameBuffer interface
+	}
+
+    const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory&)
+	{
+		uint64_t finalHash = HashCombine(_pimpl->_depthStencilHash, _pimpl->_rasterizationHash);
+		finalHash = HashCombine(_pimpl->_blendHash, finalHash);
+		finalHash = HashCombine((uint64_t)_pimpl->_topology, finalHash);
+		finalHash = HashCombine(_pimpl->_program.GetGUID(), finalHash);
+		finalHash = HashCombine(_pimpl->_boundClassInterfaces.GetGUID(), finalHash);
+
+		auto i = _pimpl->_pipelineCache.find(finalHash);
+		if (i == _pimpl->_pipelineCache.end()) {
+			auto newPipeline = std::make_shared<RealGraphicsPipeline>(
+				_pimpl->_depthStencil,
+				_pimpl->_rasterization,
+				_pimpl->_blend,
+				_pimpl->_topology,
+				_pimpl->_program,
+				_pimpl->_boundClassInterfaces);
+			i = _pimpl->_pipelineCache.insert(std::make_pair(finalHash, newPipeline)).first;
+		}
+
+		return i->second;
+	}
+
+    GraphicsPipelineBuilder::GraphicsPipelineBuilder()
+	{
+	}
+
+	GraphicsPipelineBuilder::~GraphicsPipelineBuilder()
+	{}
+
+	void DeviceContext::Bind(const GraphicsPipeline& pipeline)
+	{
+		// All GraphicsPipeline objects on D3D are actually "RealGraphicsPipeline"
+		auto& realPipeline = (RealGraphicsPipeline&)pipeline;
+		_underlying->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(realPipeline._topology));
+
+		if (realPipeline._boundClassInterfaces.GetGUID() == 0) {
+			realPipeline._program.Apply(*this);
+		} else {
+			realPipeline._program.Apply(*this, realPipeline._boundClassInterfaces);
+		}
+
+		_underlying->RSSetState(realPipeline._rasterizer.GetUnderlying());
+
+		const FLOAT blendFactors[] = {1.f, 1.f, 1.f, 1.f};
+        _underlying->OMSetBlendState(realPipeline._blend.GetUnderlying(), blendFactors, 0xffffffff);
+		unsigned stencilRef = 0;
+        _underlying->OMSetDepthStencilState(realPipeline._depthStencil.GetUnderlying(), stencilRef);
+	}
 
 }}
 

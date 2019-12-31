@@ -855,13 +855,10 @@ namespace UnitTests
                 // actually include it into the UniformsStream
                 metalContext.Bind(shaderProgramCB);
 
-                #if GFXAPI_TARGET != GFXAPI_DX11		// hack DX11 compatibility
-					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				#endif
-
                 UniformsStreamInterface usi;
                 usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
                 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
                     Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
                 #else
                     Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
@@ -878,13 +875,10 @@ namespace UnitTests
                 // actually include it into the UniformsStream
                 metalContext.Bind(shaderProgramSRV);
 
-                #if GFXAPI_TARGET != GFXAPI_DX11		// hack DX11 compatibility
-					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				#endif
-
                 UniformsStreamInterface usi;
                 usi.BindShaderResource(0, Hash64("Texture"));
                 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
+					auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
                     Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
                 #else
                     Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
