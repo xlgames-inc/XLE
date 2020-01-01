@@ -26,6 +26,21 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
+static const char* s_entryPointsInRawShader = R"--(
+	#include "xleres/MainGeometry.h"
+	#include "xleres/gbuffer.h"
+	#include "xleres/Nodes/Templates.sh"
+
+	GBufferValues PerPixel(VSOutput geo)
+	{
+		return GBufferValues_Default();
+	}
+
+	bool EarlyRejectionTest(VSOutput geo)
+	{
+		return false;
+	}
+)--";
 
 namespace UnitTests
 {
@@ -34,7 +49,8 @@ namespace UnitTests
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
 		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
-		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
+		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
+		std::make_pair("entryPointsInRawShader.psh", ::Assets::AsBlob(s_entryPointsInRawShader))
 	};
 
 	TEST_CLASS(NodeGraphInstantiationTests)
@@ -128,7 +144,34 @@ namespace UnitTests
 			}
 		}
 
-		
+		TEST_METHOD(InstantiateFromRawShader)
+		{
+			ShaderSourceParser::InstantiationRequest instRequests[] {
+				{ "ut-data/entryPointsInRawShader.psh" }
+			};
+
+			ShaderSourceParser::GenerateFunctionOptions generateOptions;
+			auto inst = ShaderSourceParser::InstantiateShader(
+				MakeIteratorRange(instRequests), 
+				generateOptions,
+				RenderCore::ShaderLanguage::GLSL);
+
+			// We're existing 2 entry points
+			// The "name" and "implementsName" should be the same in both cases, since
+			// we don't distinguish between these for raw shader files
+			::Assert::AreEqual(inst._entryPoints.size(), (size_t)2);
+			auto perPixel = std::find_if(
+				inst._entryPoints.begin(), inst._entryPoints.end(),
+				[](const ShaderSourceParser::ShaderEntryPoint& s) { return s._name == "PerPixel"; });
+			::Assert::IsTrue(perPixel != inst._entryPoints.end());
+			::Assert::AreEqual(perPixel->_implementsName, std::string{"PerPixel"});
+
+			auto earlyRejectionTest = std::find_if(
+				inst._entryPoints.begin(), inst._entryPoints.end(),
+				[](const ShaderSourceParser::ShaderEntryPoint& s) { return s._name == "EarlyRejectionTest"; });
+			::Assert::IsTrue(earlyRejectionTest != inst._entryPoints.end());
+			::Assert::AreEqual(earlyRejectionTest->_implementsName, std::string{"EarlyRejectionTest"});
+		}
 
 		static void ExtractSelectorRelevance(
 			std::unordered_map<std::string, std::string>& result,

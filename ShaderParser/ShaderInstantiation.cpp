@@ -71,6 +71,7 @@ namespace ShaderSourceParser
 			std::stack<PendingInstantiation> _instantiations;
 			std::set<std::pair<std::string, uint64_t>> _previousInstantiation;
 			std::set<std::string> _rawShaderFileIncludes;
+			std::vector<ShaderEntryPoint> _entryPointsFromRawShaders;
 			
 			std::set<::Assets::DepValPtr> _depVals;		// dependencies created in the QueueUp() method
 
@@ -115,12 +116,21 @@ namespace ShaderSourceParser
 							auto filename = SplitArchiveName(dep._instantiation._archiveName).first;
 							_rawShaderFileIncludes.insert(std::string(StringMeld<MaxPath>() << filename.AsString() + "_" << instHash));
 						} else {
+							GraphLanguage::INodeGraphProvider::Signature sig;
 							if (dep._instantiation._customProvider) {
-								auto sig = dep._instantiation._customProvider->FindSignature(dep._instantiation._archiveName);
-								_rawShaderFileIncludes.insert(sig.value()._sourceFile);
+								sig = dep._instantiation._customProvider->FindSignature(dep._instantiation._archiveName).value();
+								_rawShaderFileIncludes.insert(sig._sourceFile);
 							} else {
-								auto sig = provider.FindSignature(dep._instantiation._archiveName);
-								_rawShaderFileIncludes.insert(sig.value()._sourceFile);
+								sig = provider.FindSignature(dep._instantiation._archiveName).value();
+								_rawShaderFileIncludes.insert(sig._sourceFile);
+							}
+
+							if (isRootInstantiation) {
+								// If this is a root instantiation, we can include this function as an entry point
+								ShaderEntryPoint entryPoint;
+								entryPoint._name = entryPoint._implementsName = sig._name;
+								entryPoint._signature = entryPoint._implementsSignature = sig._signature;
+								_entryPointsFromRawShaders.emplace_back(std::move(entryPoint));
 							}
 						}
 					}
@@ -249,6 +259,12 @@ namespace ShaderSourceParser
 			result._sourceFragments.insert(result._sourceFragments.begin(), str.str());
 		}
 
+		// append any entry points that came from raw shader includes
+		result._entryPoints.insert(
+			result._entryPoints.end(),
+			pendingInst._entryPointsFromRawShaders.begin(),
+			pendingInst._entryPointsFromRawShaders.end());
+
 		result._rawShaderFileIncludes = std::move(pendingInst._rawShaderFileIncludes);
 		result._depVals.insert(pendingInst._depVals.begin(), pendingInst._depVals.end());
 
@@ -265,7 +281,7 @@ namespace ShaderSourceParser
 		// Note that we end up with a few extra copies of initialGraph, because PendingInstantiation
 		// contains a complete copy of the node graph
 		Internal::PendingInstantiationsHelper pendingInst;
-		pendingInst._instantiations.push(Internal::PendingInstantiation { initialGraph, true, true, instantiationParameters });
+		pendingInst._instantiations.push(Internal::PendingInstantiation { initialGraph, useScaffoldFunction, true, instantiationParameters });
 		return InstantiateShader(pendingInst, generateOptions, shaderLanguage);
 	}
 
@@ -301,13 +317,10 @@ namespace ShaderSourceParser
 					Throw(::Exceptions::BasicLabel("Did not find any node graph signatures for instantiation request (%s)", r._archiveName.c_str()));
 
 				for (const auto&s:signatures) {
-					if (!s._isGraphSyntax)
-						Throw(::Exceptions::BasicLabel("Raw shader file requested in root InstantiateShader operation (%s). Currently extracting entry points from non-graph shader files is not supported.", r._archiveName.c_str()));
-
 					DependencyTable::Dependency dep;
 					dep._instantiation = r;
 					dep._instantiation._archiveName =  r._archiveName + "::" + s._name;
-					dep._isGraphSyntaxFile = true;
+					dep._isGraphSyntaxFile = s._isGraphSyntax;
 					pendingInst.emplace_back(dep);
 				}
 
@@ -315,12 +328,9 @@ namespace ShaderSourceParser
 				// this refers to a specific item in graph within an outer graph file
 				// Just check to make sure it's a graph file
 				auto sig = (r._customProvider ? r._customProvider.get() : &defaultProvider)->FindSignature(r._archiveName);
-				if (!sig.value()._isGraphSyntax)
-					Throw(::Exceptions::BasicLabel("Raw shader file requested in root InstantiateShader operation (%s). Currently extracting entry points from non-graph shader files is not supported.", r._archiveName.c_str()));
-
 				DependencyTable::Dependency dep;
 				dep._instantiation = r;
-				dep._isGraphSyntaxFile = true;
+				dep._isGraphSyntaxFile = sig.value()._isGraphSyntax;
 				pendingInst.emplace_back(dep);
 			}
 			
