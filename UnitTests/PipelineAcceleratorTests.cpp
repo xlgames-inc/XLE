@@ -4,6 +4,7 @@
 
 #include "UnitTestHelper.h"
 #include "ReusableDataFiles.h"
+#include "MetalUnitTest.h"
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Techniques/DrawableDelegates.h"
 #include "../RenderCore/Techniques/DrawableMaterial.h"		// just for ShaderPatchCollectionRegistry
@@ -62,6 +63,34 @@ static const char s_exampleTechniqueFragments[] = R"--(
 		ut-data/complicated.graph::Bind2_PerPixel
 )--";
 
+static const char* s_colorFromSelectorShaderFile = R"--(
+	#include "xleres/MainGeometry.h"
+	#include "xleres/gbuffer.h"
+	#include "xleres/Nodes/Templates.sh"
+
+	GBufferValues PerPixel(VSOutput geo)
+	{
+		GBufferValues result = GBufferValues_Default();
+		#if (OUTPUT_TEXCOORD==1)
+			#if defined(COLOR_RED)
+				result.diffuseAlbedo = float3(1,0,0);
+			#elif defined(COLOR_GREEN)
+				result.diffuseAlbedo = float3(0,1,0);
+			#else
+				#error Intentional compile error
+			#endif
+		#endif
+		result.material.roughness = 1.0;		// (since this is written to SV_Target0.a, ensure it's set to 1)
+		return result;
+	}
+)--";
+
+static const char s_techniqueForColorFromSelector[] = R"--(
+	~main
+		ut-data/colorFromSelector.psh::PerPixel
+)--";
+
+
 namespace UnitTests
 {
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
@@ -70,7 +99,8 @@ namespace UnitTests
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
 		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
-		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
+		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
+		std::make_pair("colorFromSelector.psh", ::Assets::AsBlob(s_colorFromSelectorShaderFile))
 	};
 
 	static RenderCore::FrameBufferDesc MakeSimpleFrameBufferDesc()
@@ -87,9 +117,41 @@ namespace UnitTests
 		return FrameBufferDesc { std::move(attachments), std::move(subpasses) };
 	}
 
+	class VertexPCT
+    {
+    public:
+        Float3      _position;
+        unsigned    _color;
+        Float2      _texCoord;
+    };
+
+    static VertexPCT vertices_fullViewport[] = {
+        // Counter clockwise-winding triangle
+        VertexPCT { Float3 {  -1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
+
+        // Counter clockwise-winding triangle
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {   1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 1.f } }
+    };
+
 	TEST_CLASS(PipelineAcceleratorTests)
 	{
 	public:
+		static std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> GetCompiledPatchCollectionFromText(StringSection<> techniqueText)
+		{
+			using namespace RenderCore;
+
+			InputStreamFormatter<utf8> formattr { techniqueText.Cast<utf8>() };
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+			// return std::make_shared<Techniques::CompiledShaderPatchCollection>(patchCollection);
+
+			// todo -- avoid the need for this global registry
+			Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(patchCollection);
+			return Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection.GetHash());
+		}
 
 		TEST_METHOD(ConfigurationAndCreation)
 		{
@@ -107,31 +169,125 @@ namespace UnitTests
 				FrameBufferProperties { 1024, 1024, TextureSamples::Create() },
 				MakeSimpleFrameBufferDesc());
 
-			std::shared_ptr<Techniques::CompiledShaderPatchCollection> compiledPatches;
-			Techniques::ShaderPatchCollectionRegistry globalRegistry;
+				//
+				//	Create a pipeline, and ensure that we get something valid out of it
+				//
 			{
-				InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
-				// compiledPatches = std::make_shared<Techniques::CompiledShaderPatchCollection>(patchCollection);
+				auto compiledPatches = GetCompiledPatchCollectionFromText(s_exampleTechniqueFragments);
+				auto pipelineAccelerator = mainPool.CreatePipelineAccelerator(
+					compiledPatches,
+					ParameterBox { std::make_pair(u("SIMPLE_BIND"), "1") },
+					GlobalInputLayouts::PNT,
+					Topology::TriangleList,
+					Metal::DepthStencilDesc{},
+					Metal::AttachmentBlendDesc{},
+					Metal::RasterizationDesc{ CullMode::None });
 
-				// todo -- avoid the need for this global registry
-				Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(patchCollection);
-				compiledPatches = Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection.GetHash());
+				auto finalPipeline = pipelineAccelerator->GetPipeline(cfgId);
+				finalPipeline->StallWhilePending();
+				::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				auto pipelineActual = finalPipeline->Actualize();
+				::Assert::IsNotNull(pipelineActual.get());
 			}
 
-			auto pipelineAccelerator = mainPool.CreatePipelineAccelerator(
-				compiledPatches,
-				ParameterBox { std::make_pair(u("SIMPLE_BIND"), "1") },
-				GlobalInputLayouts::PNT,
-				Topology::TriangleList,
-				Metal::DepthStencilDesc{},
-				Metal::AttachmentBlendDesc{},
-				Metal::RasterizationDesc{});
+				//
+				//	Now create another pipeline, this time one that will react to some of the
+				//	selectors as we change them
+				//
+			{
+				auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueForColorFromSelector);
+				auto pipelineNoTexCoord = mainPool.CreatePipelineAccelerator(
+					compiledPatches,
+					ParameterBox {},
+					GlobalInputLayouts::P,
+					Topology::TriangleList,
+					Metal::DepthStencilDesc{},
+					Metal::AttachmentBlendDesc{},
+					Metal::RasterizationDesc{ CullMode::None });
 
-			auto finalPipeline = pipelineAccelerator->GetPipeline(cfgId);
-			finalPipeline->StallWhilePending();
-			auto pipelineActual = finalPipeline->Actualize();
-			::Assert::IsNotNull(pipelineActual.get());
+				{
+						//
+						//	We should get a valid pipeline in this case; since there are no texture coordinates
+						//	on the geometry, this disables the code that triggers a compiler warning
+						//
+					auto finalPipeline = pipelineNoTexCoord->GetPipeline(cfgId);
+					finalPipeline->StallWhilePending();
+					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				}
+
+				auto pipelineWithTexCoord = mainPool.CreatePipelineAccelerator(
+					compiledPatches,
+					ParameterBox {},
+					GlobalInputLayouts::PCT,
+					Topology::TriangleList,
+					Metal::DepthStencilDesc{},
+					Metal::AttachmentBlendDesc{},
+					Metal::RasterizationDesc{ CullMode::None });
+
+				{
+						//
+						//	Here, the pipeline will fail to compile. We should ensure we get a reasonable
+						//	error message -- that is the shader compile error should propagate through
+						//	to the pipeline error log
+						//
+					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgId);
+					finalPipeline->StallWhilePending();
+					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Invalid);
+					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
+					::Assert::IsTrue(!log.empty());
+				}
+
+				// Now we'll create a new sequencer config, and we're actually going to use
+				// this to render
+				
+				auto threadContext = _device->GetImmediateContext();
+				auto targetDesc = CreateDesc(
+					BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+					TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
+					"temporary-out");
+				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
+				auto cfgIdWithColor = mainPool.AddSequencerConfig(
+					techniqueDelegate,
+					ParameterBox { std::make_pair(u("COLOR_RED"), "1") },
+					FrameBufferProperties { 64, 64, TextureSamples::Create() },
+					MakeSimpleFrameBufferDesc());
+
+				{
+					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgIdWithColor);
+					finalPipeline->StallWhilePending();
+					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+
+					auto rpi = fbHelper.BeginRenderPass();
+					RenderQuad(*threadContext, MakeIteratorRange(vertices_fullViewport), *finalPipeline->Actualize());
+				}
+
+				// We should have filled the entire framebuffer with red 
+				// (due to the COLOR_RED selector in the sequencer config)
+				auto breakdown0 = fbHelper.GetFullColorBreakdown();
+				Assert::IsTrue(breakdown0.size() == 1);
+				Assert::IsTrue(breakdown0.begin()->first == 0xff0000ff);
+
+				// Change the sequencer config to now set the COLOR_GREEN selector
+				mainPool.UpdateSequencerConfig(
+					cfgIdWithColor,
+					techniqueDelegate,
+					ParameterBox { std::make_pair(u("COLOR_GREEN"), "1") },
+					FrameBufferProperties { 64, 64, TextureSamples::Create() },
+					MakeSimpleFrameBufferDesc());
+
+				{
+					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgIdWithColor);
+					finalPipeline->StallWhilePending();
+					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+
+					auto rpi = fbHelper.BeginRenderPass();
+					RenderQuad(*threadContext, MakeIteratorRange(vertices_fullViewport), *finalPipeline->Actualize());
+				}
+
+				auto breakdown1 = fbHelper.GetFullColorBreakdown();
+				Assert::IsTrue(breakdown1.size() == 1);
+				Assert::IsTrue(breakdown1.begin()->first == 0xff00ff00);
+			}
 		}
 
 		ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
@@ -139,6 +295,7 @@ namespace UnitTests
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderCoreAssetServices;
+		std::unique_ptr<RenderCore::Techniques::ShaderPatchCollectionRegistry> _shaderPatchCollectionRegistry;
 
 		PipelineAcceleratorTests()
 		{
@@ -159,15 +316,62 @@ namespace UnitTests
 			_device = RenderCore::CreateDevice(api);
 
 			_renderCoreAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_device);
+
+			_shaderPatchCollectionRegistry = std::make_unique<RenderCore::Techniques::ShaderPatchCollectionRegistry>();
 		}
 
 		~PipelineAcceleratorTests()
 		{
+			_shaderPatchCollectionRegistry.reset();
 			_renderCoreAssetServices.reset();
 			_device.reset();
 			_assetServices.reset();
 			_globalServices.reset();
 		}
+
+		static void BindPassThroughTransform(
+			RenderCore::Metal::DeviceContext& metalContext,
+			const RenderCore::Metal::GraphicsPipeline& pipeline)
+		{
+			// Bind the 2 main transform packets ("GlobalTransformConstants" and "LocalTransformConstants")
+			// with identity transforms for local to clip
+			static const auto GlobalTransformConstants = Hash64("GlobalTransform");
+			static const auto LocalTransformConstants = Hash64("LocalTransform");
+			using namespace RenderCore;
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {GlobalTransformConstants});
+			usi.BindConstantBuffer(1, {LocalTransformConstants});
+
+			auto globalTransformPkt = MakeSharedPktSize(sizeof(Techniques::GlobalTransformConstants));
+			auto& globalTransform = *(Techniques::GlobalTransformConstants*)globalTransformPkt.get();
+			XlZeroMemory(globalTransform);
+			globalTransform._worldToClip = Identity<Float4x4>();
+			auto localTransformPkt = Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), Float3{0.f, 0.f, 0.f});
+
+			Metal::BoundUniforms boundUniforms(
+				pipeline, Metal::PipelineLayoutConfig{},
+				usi);
+
+			ConstantBufferView cbvs[] = { globalTransformPkt, localTransformPkt };
+			boundUniforms.Apply(metalContext, 0, UniformsStream{MakeIteratorRange(cbvs)});
+		}
+
+		static void RenderQuad(
+            RenderCore::IThreadContext& threadContext,
+            IteratorRange<const VertexPCT*> vertices,
+            const RenderCore::Metal::GraphicsPipeline& pipeline)
+        {
+			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+            RenderCore::Metal::BoundInputLayout inputLayout(RenderCore::GlobalInputLayouts::PCT, pipeline.GetShaderProgram());
+
+            auto vertexBuffer = CreateVB(*threadContext.GetDevice(), vertices);
+			RenderCore::VertexBufferView vbv { vertexBuffer.get() };
+            inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+
+			BindPassThroughTransform(metalContext, pipeline);
+
+            metalContext.Draw(pipeline, (unsigned)vertices.size());
+        }
 	};
 }
 

@@ -33,57 +33,57 @@ namespace UnitTests
     class VertexPCT
     {
     public:
-        Float4      _position;
+        Float3      _position;
         unsigned    _color;
         Float2      _texCoord;
     };
 
     static VertexPCT vertices_topLeftQuad[] = {
         // Clockwise-winding triangle
-        VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
-        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  0.5f,  0.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
 
         // Counter clockwise-winding triangle
-        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
-        VertexPCT { Float4 {   1.0f,  0.5f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } }
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  0.5f,  0.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  0.5f,  0.0f }, 0xffffffff, Float2 { 1.f, 0.f } }
     };
 
     static VertexPCT vertices_fullViewport[] = {
         // Counter clockwise-winding triangle
-        VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
-        VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
-        VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
 
         // Counter clockwise-winding triangle
-        VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
-        VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
-        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f }, 0xffffffff, Float2 { 1.f, 1.f } }
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {   1.0f, -1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xffffffff, Float2 { 1.f, 1.f } }
     };
 
     static VertexPCT vertices_topLeftQuad_Red[] = {
-        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 0.f } },
-        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 0.f } },
-        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  0.0f,  0.0f }, 0xff0000ff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  0.0f,  0.0f }, 0xff0000ff, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xff0000ff, Float2 { 1.f, 1.f } },
 
-        VertexPCT { Float4 {   1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 1.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f,  1.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xff0000ff, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  1.0f,  0.0f }, 0xff0000ff, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  1.0f,  0.0f }, 0xff0000ff, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  0.0f,  0.0f }, 0xff0000ff, Float2 { 0.f, 0.f } },
     };
 
     static VertexPCT vertices_bottomLeftQuad_Blue[] = {
-        VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 0.f } },
-        VertexPCT { Float4 {   1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 0.f } },
-        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f, -1.0f,  0.0f }, 0xffff0000, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f, -1.0f,  0.0f }, 0xffff0000, Float2 { 1.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  0.0f,  0.0f }, 0xffff0000, Float2 { 1.f, 1.f } },
 
-        VertexPCT { Float4 {   1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 1.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f,  0.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 1.f } },
-        VertexPCT { Float4 {  -1.0f, -1.0f,  0.0f,  1.0f}, 0xffff0000, Float2 { 0.f, 0.f } },
+        VertexPCT { Float3 {   1.0f,  0.0f,  0.0f }, 0xffff0000, Float2 { 1.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f,  0.0f,  0.0f }, 0xffff0000, Float2 { 0.f, 1.f } },
+        VertexPCT { Float3 {  -1.0f, -1.0f,  0.0f }, 0xffff0000, Float2 { 0.f, 0.f } },
     };
 
     static RenderCore::InputElementDesc inputElePCT[] = {
-        RenderCore::InputElementDesc { "position", 0, RenderCore::Format::R32G32B32A32_FLOAT },
+        RenderCore::InputElementDesc { "position", 0, RenderCore::Format::R32G32B32_FLOAT },
         RenderCore::InputElementDesc { "color", 0, RenderCore::Format::R8G8B8A8_UNORM },
         RenderCore::InputElementDesc { "texCoord", 0, RenderCore::Format::R32G32_FLOAT }
     };

@@ -25,11 +25,6 @@ namespace RenderCore { namespace Techniques
 		uint64_t _fbRelevanceValue;
 	};
 
-	class Pipeline
-	{
-	public:
-	};
-
 	class RealPipelineAccelerator : public PipelineAccelerator, public std::enable_shared_from_this<RealPipelineAccelerator>
 	{
 	public:
@@ -117,7 +112,6 @@ namespace RenderCore { namespace Techniques
 		auto shader = cfg._delegate->GetShader(
 			_shaderPatches,
 			MakeIteratorRange(paramBoxes));
-
 		
 		auto state = shader->GetAssetState();
 		if (state == ::Assets::AssetState::Invalid) {
@@ -296,18 +290,6 @@ namespace RenderCore { namespace Techniques
 		return std::make_shared<SequencerConfig>(std::move(cfg));
 	}
 
-	/*
-	static uint64_t Hash(IteratorRange<const PipelineAcceleratorPool::SlotBinding*> inputAssembly)
-	{
-		uint64_t result = DefaultSeed64;
-		for (const auto&s:inputAssembly) {
-			result = Hash64(s._elements.begin(), s._elements.end(), result);
-			result = HashCombine(s._instanceStepDataRate, result);
-		}
-		return result;
-	}
-	*/
-
 	static uint64_t Hash(IteratorRange<const InputElementDesc*> inputAssembly)
 	{
 		auto norm = NormalizeInputAssembly(inputAssembly);
@@ -383,8 +365,8 @@ namespace RenderCore { namespace Techniques
 		const FrameBufferDesc& fbDesc,
 		unsigned subpassIndex) -> SequencerConfigId
 	{
-		auto cfg = _pimpl->MakeUniqueSequencerConfig(delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
-		_pimpl->_sequencerConfigById.emplace_back(std::move(cfg));
+		auto& cfg = _pimpl->_sequencerConfigById.emplace_back(
+			_pimpl->MakeUniqueSequencerConfig(delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex));
 
 		auto cfgId = SequencerConfigId(_pimpl->_sequencerConfigById.size()-1) | (SequencerConfigId(_guid) << 32ull);
 
@@ -414,14 +396,14 @@ namespace RenderCore { namespace Techniques
 		if (sequencerIdx >= _pimpl->_sequencerConfigById.size())
 			Throw(std::runtime_error("Invalid sequencer config id passed to PipelineAcceleratorPool::UpdateSequencerConfig"));
 
-		_pimpl->_sequencerConfigById[sequencerIdx] = _pimpl->MakeUniqueSequencerConfig(
+		auto& cfg = _pimpl->_sequencerConfigById[sequencerIdx] = _pimpl->MakeUniqueSequencerConfig(
 			delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
 
 		// Update sates for all accelerators
 		for (auto& accelerator:_pimpl->_pipelineAccelerators) {
 			auto a = accelerator.second.lock();
 			if (a)
-				a->CreatePipelineForSequencerState(cfgId, *_pimpl->_sequencerConfigById[sequencerIdx], _pimpl->_globalSelectors);
+				a->CreatePipelineForSequencerState(cfgId, *cfg, _pimpl->_globalSelectors);
 		}
 	}
 
