@@ -343,6 +343,8 @@ namespace ShaderSourceParser
 		const ParameterBox& unfiltered,
 		const std::unordered_map<std::string, std::string>& relevance)
 	{
+		const ParameterBox* unfilteredAsArray[] = { &unfiltered };
+
 		// Filter selectors based on the given relevance table
 		ParameterBox result;
 		for (const auto&p:unfiltered) {
@@ -350,7 +352,7 @@ namespace ShaderSourceParser
 			if (i == relevance.end())
 				continue;
 
-			auto relevant = EvaluatePreprocessorExpression(MakeStringSection(i->second), unfiltered);
+			auto relevant = EvaluatePreprocessorExpression(MakeStringSection(i->second), MakeIteratorRange(unfilteredAsArray));
 			if (!relevant)
 				continue;
 

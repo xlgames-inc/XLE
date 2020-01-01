@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../StringUtils.h"
+#include "../IteratorUtils.h"
 #include <unordered_map>
 
 namespace Utility
@@ -17,7 +18,7 @@ namespace Utility
 
 	bool EvaluatePreprocessorExpression(
         StringSection<> input,
-        const ParameterBox& definedTokens);
+        IteratorRange<const ParameterBox**> definedTokens);
 }
 
 using namespace Utility;

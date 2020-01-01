@@ -701,11 +701,13 @@ namespace ShaderSourceParser
 	static NodeGraph FilterGraphWithSelectors(
 		const NodeGraph& graph, const ParameterBox& selectors)
 	{
+		const ParameterBox* selectorsAsArray[] = { &selectors };
+
 		NodeGraph filteredGraph;
 		for (const auto&n:graph.GetNodes())
 			filteredGraph.Add(Node{n});
 		for (const auto&c:graph.GetConnections())
-			if (c._condition.empty() || EvaluatePreprocessorExpression(c._condition, selectors))
+			if (c._condition.empty() || EvaluatePreprocessorExpression(c._condition, MakeIteratorRange(selectorsAsArray)))
 				filteredGraph.Add(Connection{c});
 		return filteredGraph;
 	}
