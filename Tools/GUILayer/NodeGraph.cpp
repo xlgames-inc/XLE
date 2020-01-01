@@ -402,7 +402,7 @@ namespace GUILayer
 	class GraphNodeGraphProvider : public GraphLanguage::BasicNodeGraphProvider, public std::enable_shared_from_this<GraphNodeGraphProvider>
     {
     public:
-        std::optional<Signature> FindSignature(StringSection<> name);
+        std::vector<Signature> FindSignatures(StringSection<> name);
 		std::optional<NodeGraph> FindGraph(StringSection<> name);
 		std::string TryFindAttachedFile(StringSection<> name);
 
@@ -425,36 +425,29 @@ namespace GUILayer
 		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
 	}
 
-	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	auto GraphNodeGraphProvider::FindSignatures(StringSection<> name) -> std::vector<Signature>
 	{
 		// Interpret the given string to find a function signature that matches it
 		// First, check to see if it's scoped as an imported function
-		auto *scopingOperator = name.begin() + 1;
-		while (scopingOperator < name.end()) {
-			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
-				break;
-			++scopingOperator;
-		}
-		if (scopingOperator < name.end()) {
-			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
-			auto functionName = MakeStringSection(scopingOperator+1, name.end());
-
-			auto importedName = _imports.find(import);
+		// There's similar logic in the "GraphNodeGraphProvider" implementation in GraphSyntaxParse
+		if (!name.IsEmpty()) {
+			auto importedName = _imports.find(name.AsString());
 			if (importedName != _imports.end())
-				return BasicNodeGraphProvider::FindSignature(importedName->second + ":" + functionName.AsString());
-			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
+				return BasicNodeGraphProvider::FindSignatures(importedName->second);
+			return BasicNodeGraphProvider::FindSignatures(name);
 		}
 
-		// Look for the function within the parsed graph syntax file
-		NodeGraphFile::SubGraph^ subGraph = nullptr;
-		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
-		if (_parsedGraphFile->SubGraphs->TryGetValue(str, subGraph)) {
+		// Look for all of the the function within the parsed graph syntax file
+		std::vector<Signature> result;
+		for each(KeyValuePair<String^, NodeGraphFile::SubGraph^> subGraph in _parsedGraphFile->SubGraphs) {	
 			ConversionContext convContext;
-			return Signature{ name.AsString(), subGraph->Signature->ConvertToNative(convContext), std::string(), true };
+			result.push_back(
+				Signature{ 
+					clix::marshalString<clix::E_UTF8>(subGraph.Key), 
+					subGraph.Value->Signature->ConvertToNative(convContext), 
+					std::string{}, true });
 		}
-
-		// Just fallback to default behaviour
-		return BasicNodeGraphProvider::FindSignature(name);
+		return result;
 	}
 
 	auto GraphNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
@@ -471,8 +464,8 @@ namespace GUILayer
 
 			auto importedName = _imports.find(import);
 			if (importedName != _imports.end())
-				return BasicNodeGraphProvider::FindGraph(importedName->second + ":" + functionName.AsString());
-			return BasicNodeGraphProvider::FindGraph(import + ":" + functionName.AsString());
+				return BasicNodeGraphProvider::FindGraph(importedName->second + "::" + functionName.AsString());
+			return BasicNodeGraphProvider::FindGraph(import + "::" + functionName.AsString());
 		}
 
 		// Look for the function within the parsed graph syntax file
@@ -503,9 +496,9 @@ namespace GUILayer
 			resolvedName[0] = '\0';
 			XlCatString(resolvedName, importedName->second);
 			XlCatString(resolvedName, splitter.ExtensionWithPeriod());
-			_searchRules.ResolveFile(resolvedName, resolvedName);
+			GetDirectorySearchRules().ResolveFile(resolvedName, resolvedName);
 		} else {
-			_searchRules.ResolveFile(resolvedName, name);
+			GetDirectorySearchRules().ResolveFile(resolvedName, name);
 		}
 		return resolvedName;
 	}

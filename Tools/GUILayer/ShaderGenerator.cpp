@@ -78,15 +78,17 @@ namespace GUILayer
 			nativeGraph.Trim(previewNodeId);
 		}
 
-		ShaderSourceParser::InstantiationRequest instantiationParams {};
+		ShaderSourceParser::InstantiationRequest instantiationReq {};
+		ShaderSourceParser::GenerateFunctionOptions generateOptions;
 		if (previewNodeId != ~0u)
-			instantiationParams._options._generateDanglingOutputs = previewNodeId;
-		instantiationParams._options._generateDanglingInputs = true;
+			generateOptions._generateDanglingOutputs = previewNodeId;
+		generateOptions._generateDanglingInputs = true;
 
 		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
 			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
 			false,
-			instantiationParams,
+			instantiationReq,
+			generateOptions,
 			RenderCore::Techniques::GetDefaultShaderLanguage());
 
 		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
@@ -172,9 +174,9 @@ namespace GUILayer
 	public:
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			RenderCore::Techniques::ParsingContext& context,
-			StringSection<::Assets::ResChar> techniqueCfgFile,
 			const ParameterBox* shaderSelectors[],
-			unsigned techniqueIndex)
+			const RenderCore::Techniques::DrawableMaterial& material,
+			unsigned techniqueIndex) override
 		{
 			std::string definesTable, shaderCode;
 
@@ -208,9 +210,9 @@ namespace GUILayer
 			auto psCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Pixel);
 			if (vsCode.GetStage() != RenderCore::ShaderStage::Vertex || psCode.GetStage() != RenderCore::ShaderStage::Pixel) return nullptr;
 
-			static RenderCore::Metal::ShaderProgram result;
-			result = RenderCore::Metal::ShaderProgram { RenderCore::Metal::GetObjectFactory(), vsCode, psCode };
-			return &result;
+			static std::unique_ptr<RenderCore::Metal::ShaderProgram> result;
+			result = std::make_unique<RenderCore::Metal::ShaderProgram>(RenderCore::Metal::GetObjectFactory(), vsCode, psCode);
+			return result.get();
 		}
 
 		TechniqueDelegate(

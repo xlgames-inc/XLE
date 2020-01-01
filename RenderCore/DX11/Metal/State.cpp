@@ -125,7 +125,7 @@ namespace RenderCore { namespace Metal_DX11
             blendStateDesc.RenderTarget[c].SrcBlendAlpha = (D3D11_BLEND)desc._srcAlphaBlendFactor;
             blendStateDesc.RenderTarget[c].DestBlendAlpha = (D3D11_BLEND)desc._dstAlphaBlendFactor;
             blendStateDesc.RenderTarget[c].BlendOpAlpha = (D3D11_BLEND_OP)desc._alphaBlendOp;
-            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = (UINT8)desc._colorBlendOp;
+            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = (UINT8)desc._writeMask;
         }
 
         _underlying = GetObjectFactory().CreateBlendState(&blendStateDesc);
