@@ -142,6 +142,7 @@ namespace Utility
         using value_type = CharType;
 
         InputStreamFormatter(const MemoryMappedInputStream& stream);
+		InputStreamFormatter(StringSection<CharType> inputData) : InputStreamFormatter(MemoryMappedInputStream{inputData.begin(), inputData.end()}) {}
         ~InputStreamFormatter();
 
 		InputStreamFormatter();

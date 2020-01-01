@@ -75,7 +75,7 @@ namespace RenderCore { namespace Assets
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
 
 		InputStreamFormatter<utf8> formatter(
-			{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
+			StringSection<utf8>{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
 		_patchCollections = DeserializeShaderPatchCollectionSet(formatter);
 
 		for (const auto&p:_patchCollections)
