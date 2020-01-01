@@ -20,6 +20,7 @@
 #include "../../Utility/StringFormat.h"
 #include <sstream>
 #include <regex>
+#include <cctype>
 
 namespace RenderCore { namespace Techniques
 {
@@ -36,7 +37,8 @@ namespace RenderCore { namespace Techniques
 		static SourceCodeWithRemapping AssembleShader(
 			const CompiledShaderPatchCollection& patchCollection,
 			IteratorRange<const uint64_t*> redirectedPatchFunctions,
-			StringSection<> entryPointFileName)
+			StringSection<> entryPointFileName,
+			StringSection<> definesTable)
 		{
 			// We can assemble the final shader in 3 fragments:
 			//  1) the source code in CompiledShaderPatchCollection
@@ -45,7 +47,32 @@ namespace RenderCore { namespace Techniques
 
 			std::stringstream output;
 
-			output << patchCollection.GetSourceCode();
+			// Extremely awkwardly; we must go from the "definesTable" format back into a ParameterBox
+			// The defines table itself was probably built from a ParameterBox. But we can't pass complex
+			// types through the asset compiler interface, so we always end up having to pass them in some
+			// kind of string form
+			ParameterBox paramBoxSelectors;
+			auto p = definesTable.begin();
+            while (p != definesTable.end()) {
+                while (p != definesTable.end() && std::isspace(*p)) ++p;
+
+                auto definition = std::find(p, definesTable.end(), '=');
+                auto defineEnd = std::find(p, definesTable.end(), ';');
+
+                auto endOfName = std::min(defineEnd, definition);
+                while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+
+                if (definition < defineEnd) {
+                    auto e = definition+1;
+                    while (e < defineEnd && std::isspace(*e)) ++e;
+					paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), MakeStringSection(e, defineEnd));
+                } else {
+					paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), {}, ImpliedTyping::TypeCat::Void);
+                }
+
+                p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
+            }
+			output << patchCollection.GenerateCodeForSelectors(paramBoxSelectors);
 
 			for (auto fn:redirectedPatchFunctions) {
 				auto i = std::find_if(
@@ -119,7 +146,7 @@ namespace RenderCore { namespace Techniques
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
 				redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
 
-			return AssembleShader(*patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second));
+			return AssembleShader(*patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second), definesTable);
 		}
 
 		InstantiateShaderGraphPreprocessor() {}
@@ -203,7 +230,11 @@ namespace RenderCore { namespace Techniques
 							TryRegisterDependency(depVal, vsCode);
 							TryRegisterDependency(depVal, gsCode);
 							TryRegisterDependency(depVal, psCode);
-							thatFuture.SetInvalidAsset(depVal, nullptr);
+							std::stringstream log;
+							if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
+							if (gsState == ::Assets::AssetState::Invalid) log << "Geometry shader is invalid with message: " << std::endl << ::Assets::AsString(gsCode->GetActualizationLog()) << std::endl;
+							if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
+							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
 							return false;
 						}
 						return true;
@@ -228,7 +259,10 @@ namespace RenderCore { namespace Techniques
 							auto depVal = std::make_shared<::Assets::DependencyValidation>();
 							TryRegisterDependency(depVal, vsCode);
 							TryRegisterDependency(depVal, psCode);
-							thatFuture.SetInvalidAsset(depVal, nullptr);
+							std::stringstream log;
+							if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
+							if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
+							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
 							return false;
 						}
 						return true;
@@ -295,12 +329,8 @@ namespace RenderCore { namespace Techniques
 		return variation._shaderFuture->TryActualize().get();
 	}
 
-	TechniqueDelegate_Illum::TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources)
-	: _sharedResources(sharedResources)
+	static void CheckPreprocessInstalled()
 	{
-		_techniqueSetFuture = ::Assets::MakeAsset<TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
-		_cfgFileState = ::Assets::AssetState::Pending;
-
 		static bool installedPreprocessor = false;
 		if (!installedPreprocessor) {
 			auto shaderSource = std::make_shared<RenderCore::Assets::LocalCompiledShaderSource>(
@@ -313,6 +343,15 @@ namespace RenderCore { namespace Techniques
 			
 			installedPreprocessor = true;
 		}
+	}
+
+	TechniqueDelegate_Illum::TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources)
+	: _sharedResources(sharedResources)
+	{
+		_techniqueSetFuture = ::Assets::MakeAsset<TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		_cfgFileState = ::Assets::AssetState::Pending;
+
+		CheckPreprocessInstalled();
 	}
 
 	static std::shared_ptr<TechniqueSharedResources> s_mainSharedResources = std::make_shared<TechniqueSharedResources>();
@@ -411,6 +450,93 @@ namespace RenderCore { namespace Techniques
 	TechniqueDelegate_Legacy::~TechniqueDelegate_Legacy()
 	{
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//		T E C H N I Q U E   D E L E G A T E
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class TechniqueDelegatePrototype : public ITechniqueDelegate_New
+	{
+	public:
+		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> GetShader(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors) override;
+
+		TechniqueDelegatePrototype(
+			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+			const std::shared_ptr<TechniqueSharedResources>& sharedResources);
+		~TechniqueDelegatePrototype();
+	private:
+		std::shared_ptr<TechniqueSharedResources> _sharedResources;
+
+		std::shared_ptr<TechniqueSetFile> _techniqueSet;
+		TechniqueEntry _noPatches;
+		TechniqueEntry _perPixel;
+		TechniqueEntry _perPixelAndEarlyRejection;
+	};
+
+	::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> TechniqueDelegatePrototype::GetShader(
+		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+		IteratorRange<const ParameterBox**> selectors)
+	{
+		IteratorRange<const uint64_t*> patchExpansions = {};
+		const TechniqueEntry* techEntry = &_noPatches;
+		using IllumType = CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType;
+		switch (shaderPatches->_illumDelegate._type) {
+		case IllumType::PerPixel:
+			techEntry = &_perPixel;
+			patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+			break;
+		case IllumType::PerPixelAndEarlyRejection:
+			techEntry = &_perPixelAndEarlyRejection;
+			patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+			break;
+		default:
+			break;
+		}
+
+		ShaderPatchFactory factory(*techEntry, shaderPatches.get(), patchExpansions);
+		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
+			selectors,
+			techEntry->_baseSelectors._selectors[0], 
+			shaderPatches->GetInterface().GetSelectorRelevance(),
+			factory);
+		return variation._shaderFuture;
+	}
+
+	TechniqueDelegatePrototype::TechniqueDelegatePrototype(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources)
+	: _sharedResources(sharedResources)
+	, _techniqueSet(techniqueSet)
+	{
+		const auto noPatchesHash = Hash64("NoPatches");
+		const auto perPixelHash = Hash64("PerPixel");
+		const auto perPixelAndEarlyRejectionHash = Hash64("PerPixelAndEarlyRejection");
+		auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+		auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
+		auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
+		if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+			Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+		}
+
+		_noPatches = *noPatchesSrc;
+		_perPixel = *perPixelSrc;
+		_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+
+		CheckPreprocessInstalled();
+	}
+
+	TechniqueDelegatePrototype::~TechniqueDelegatePrototype() {}
+
+	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegatePrototype(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources)
+	{
+		return std::make_shared<TechniqueDelegatePrototype>(techniqueSet, sharedResources);
+	}
+
+	ITechniqueDelegate_New::~ITechniqueDelegate_New() {}
 
 }}
 

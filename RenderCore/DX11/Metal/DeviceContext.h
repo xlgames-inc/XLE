@@ -18,6 +18,7 @@
 #include "../../../Core/Prefix.h"
 
 namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; }
+namespace Assets { class DependencyValidation; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -69,6 +70,8 @@ namespace RenderCore { namespace Metal_DX11
 		GraphicsPipeline(const GraphicsPipeline&) = delete;
 		GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
 
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const;
+
 		// internal use only -- 
 		const ShaderProgram& GetShaderProgram() const;
 	private:
@@ -87,9 +90,11 @@ namespace RenderCore { namespace Metal_DX11
         void Bind(const RasterizationDesc& desc);
 
         void SetInputLayout(const BoundInputLayout& inputLayout);
-		void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+		void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass = 0);
 
         const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
+
+		static uint64_t CalculateFrameBufferRelevance(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass = 0);
 
         GraphicsPipelineBuilder();
 		~GraphicsPipelineBuilder();

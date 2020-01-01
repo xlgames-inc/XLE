@@ -6,6 +6,8 @@
 
 #include "Techniques.h"
 #include "../Metal/Forward.h"
+#include <unordered_map>
+#include <string>
 
 namespace RenderCore { namespace Techniques 
 {
@@ -25,6 +27,8 @@ namespace RenderCore { namespace Techniques
 		virtual ~IShaderVariationFactory();
 	};
 
+	using SelectorRelevanceMap = std::unordered_map<std::string, std::string>;
+
 	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
 	///
 	/// Sometimes 2 different sets of construction parameters for a shader can result in equivalent final byte code.
@@ -41,9 +45,15 @@ namespace RenderCore { namespace Techniques
 			uint64_t		_variationHash;
 			ShaderFuture	_shaderFuture;
 		};
-		const Variation& FindVariation(
+		DEPRECATED_ATTRIBUTE const Variation& FindVariation(
 			const ShaderSelectors& baseSelectors,
 			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			IShaderVariationFactory& factory) const;
+
+		const Variation& FindVariation(
+			IteratorRange<const ParameterBox**> selectors,
+			const ParameterBox& baseTechniqueSelectors,
+			const SelectorRelevanceMap& relevance,
 			IShaderVariationFactory& factory) const;
 
 		UniqueShaderVariationSet();

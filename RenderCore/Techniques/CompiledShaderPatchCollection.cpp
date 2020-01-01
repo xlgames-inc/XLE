@@ -98,7 +98,7 @@ namespace RenderCore { namespace Techniques
 
 	std::string CompiledShaderPatchCollection::GenerateCodeForSelectors(const ParameterBox& selectors) const
 	{
-		if (!_src.GetPatches().empty())
+		if (_src.GetPatches().empty())
 			return {};
 
 		std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;

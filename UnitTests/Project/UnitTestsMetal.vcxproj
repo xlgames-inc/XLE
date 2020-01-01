@@ -76,6 +76,7 @@
     <ClCompile Include="..\CoordinateSpaces.cpp" />
     <ClCompile Include="..\InputLayout.cpp" />
     <ClCompile Include="..\MetalUnitTest.cpp" />
+    <ClCompile Include="..\PipelineAcceleratorTests.cpp" />
     <ClCompile Include="..\ResourceUpdateAndReadBack.cpp" />
     <ClCompile Include="..\StreamOutput.cpp" />
   </ItemGroup>

@@ -441,6 +441,11 @@ namespace RenderCore { namespace Metal_DX11
 		return ((const RealGraphicsPipeline*)this)->_program;
 	}
 
+	const std::shared_ptr<::Assets::DependencyValidation>& GraphicsPipeline::GetDependencyValidation() const 
+	{ 
+		return GetShaderProgram().GetDependencyValidation(); 
+	}
+
 	GraphicsPipeline::GraphicsPipeline()
 	: _guid(s_nextGraphicsPipelineNextGuid++)
 	{
@@ -521,6 +526,14 @@ namespace RenderCore { namespace Metal_DX11
 		// this state information not needed in DX11, since this gets configured via the FrameBuffer interface
 	}
 
+	uint64_t GraphicsPipelineBuilder::CalculateFrameBufferRelevance(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
+	{
+		// This function should normally filter what parts of the fbDesc are actually important to the graphics pipeline, and return
+		// a hash based on that.
+		// But for DX11, nothing is important, so we'll just return a constant
+		return 0;
+	}
+
     const std::shared_ptr<GraphicsPipeline>& GraphicsPipelineBuilder::CreatePipeline(ObjectFactory&)
 	{
 		uint64_t finalHash = HashCombine(_pimpl->_depthStencilHash, _pimpl->_rasterizationHash);
@@ -546,6 +559,7 @@ namespace RenderCore { namespace Metal_DX11
 
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	{
+		_pimpl = std::make_unique<Pimpl>();
 	}
 
 	GraphicsPipelineBuilder::~GraphicsPipelineBuilder()

@@ -23,6 +23,7 @@
       <Filter>DrawableMaterial</Filter>
     </ClInclude>
     <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
+    <ClInclude Include="..\Techniques\PipelineAccelerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -43,6 +44,7 @@
       <Filter>DrawableMaterial</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\ShaderVariationSet.cpp" />
+    <ClCompile Include="..\Techniques\PipelineAccelerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DrawableMaterial">

@@ -74,4 +74,16 @@ namespace RenderCore { namespace Techniques
 		virtual ~ITechniqueDelegate();
 	};
 
+	class CompiledShaderPatchCollection;
+
+	class ITechniqueDelegate_New
+	{
+	public:
+		virtual ::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> GetShader(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors) = 0;
+
+		virtual ~ITechniqueDelegate_New();
+	};
+
 }}

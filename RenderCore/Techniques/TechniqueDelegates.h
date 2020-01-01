@@ -29,10 +29,6 @@ namespace RenderCore { namespace Techniques
 	private:
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;
 
-		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(
-			const TechniqueEntry& techEntry,
-			StringSection<> defines);
-
 		::Assets::FuturePtr<TechniqueSetFile> _techniqueSetFuture;
 		::Assets::DepValPtr _cfgFileDepVal;
 		::Assets::AssetState _cfgFileState;
@@ -70,6 +66,10 @@ namespace RenderCore { namespace Techniques
 
 		::Assets::AssetState PrimeTechniqueCfg();
 	};
+
+	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegatePrototype(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources);
 
 }}
 

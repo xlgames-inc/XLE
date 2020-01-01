@@ -76,6 +76,7 @@
     <ClInclude Include="..\Techniques\DrawableDelegates.h" />
     <ClInclude Include="..\Techniques\DrawableMaterial.h" />
     <ClInclude Include="..\Techniques\Drawables.h" />
+    <ClInclude Include="..\Techniques\PipelineAccelerator.h" />
     <ClInclude Include="..\Techniques\RenderPass.h" />
     <ClInclude Include="..\Techniques\RenderPassUtils.h" />
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
@@ -93,6 +94,7 @@
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp" />
     <ClCompile Include="..\Techniques\Drawables.cpp" />
+    <ClCompile Include="..\Techniques\PipelineAccelerator.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
     <ClCompile Include="..\Techniques\ParsingContext.cpp" />
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
