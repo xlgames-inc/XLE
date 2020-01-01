@@ -54,6 +54,7 @@ namespace RenderCore
 
     unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> elements, unsigned slot);
 	std::vector<unsigned> CalculateVertexStrides(IteratorRange<const InputElementDesc*> layout);
+	std::vector<InputElementDesc> NormalizeInputAssembly(IteratorRange<const InputElementDesc*> layout);
     unsigned HasElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[]);
     unsigned FindElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[], unsigned semanticIndex = 0);
    

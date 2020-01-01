@@ -20,6 +20,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/ThreadLocalPtr.h"
+#include <cctype>
 
 #if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
 	extern char **environ;
@@ -609,6 +610,42 @@ namespace RenderCore
 				stride = std::max(stride, a._alignedByteOffset + bytes);
 			}
 		}
+		return result;
+	}
+
+	std::vector<InputElementDesc> NormalizeInputAssembly(IteratorRange<const InputElementDesc*> layout)
+	{
+		// Transform the given InputElementDesc into a "normalized" form
+		//   1) convert any cases where the _alignedByteOffset is ~0u to the true offset
+		//   2) make all semantics uppercase
+		//	 3) sort by input slot & data offset
+
+		std::vector<InputElementDesc> result(layout.begin(), layout.end());
+
+		std::vector<unsigned> runningSizes;
+		for (auto& a:result) {
+			if (runningSizes.size() <= a._inputSlot)
+				runningSizes.resize(a._inputSlot + 1, 0);
+			unsigned& runningSize = runningSizes[a._inputSlot];
+			auto bytes = BitsPerPixel(a._nativeFormat) / 8;
+			if (a._alignedByteOffset == ~0u)
+				a._alignedByteOffset = runningSize;
+
+			runningSize = std::max(runningSize, a._alignedByteOffset + bytes);
+
+			std::transform(
+				a._semanticName.begin(), a._semanticName.end(), a._semanticName.begin(),
+				[](char c) { return (char)std::toupper(c); });
+		}
+
+		std::sort(
+			result.begin(), result.end(),
+			[](const InputElementDesc& lhs, const InputElementDesc& rhs) {
+				if (lhs._inputSlot < rhs._inputSlot) return true;
+				if (lhs._inputSlot > rhs._inputSlot) return false;
+				return lhs._alignedByteOffset < rhs._alignedByteOffset;
+			});
+
 		return result;
 	}
 

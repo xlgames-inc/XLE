@@ -1639,6 +1639,14 @@ namespace Utility
         return combinedStrings;
     }
 
+	std::string BuildFlatStringTable(const ParameterBox& box)
+	{
+		std::stringstream str;
+		for (const auto&i:box)
+			str << i.Name().Cast<char>() << '=' << i.ValueAsString() << ';';
+		return str.str();
+	}
+
     IteratorRange<const void*> ParameterBox::Iterator::Value::RawValue() const
     {
 		const auto& offsets = _box->_offsets[_index];

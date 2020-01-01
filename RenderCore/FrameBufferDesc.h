@@ -196,6 +196,8 @@ namespace RenderCore
 
 	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect = TextureViewDesc::Aspect::UndefinedAspect);
 
+	FrameBufferDesc SeparateSingleSubpass(const FrameBufferDesc& input, unsigned subpassIdx);
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline ClearValue MakeClearValue(const VectorPattern<float, 4>& v)

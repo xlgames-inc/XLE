@@ -191,7 +191,7 @@ namespace Utility
 
             void operator++();
 			const Value& operator*() const;
-			const Value& operator->() const;
+			const Value* operator->() const;
 			friend bool operator==(const Iterator&, const Iterator&);
 			friend bool operator!=(const Iterator&, const Iterator&);
 
@@ -372,7 +372,7 @@ namespace Utility
     }
 
 	inline auto ParameterBox::Iterator::operator*() const -> const Value& { return _value; }
-	inline auto ParameterBox::Iterator::operator->() const -> const Value& { return _value; }
+	inline auto ParameterBox::Iterator::operator->() const -> const Value* { return &_value; }
 
 	inline bool operator==(const ParameterBox::Iterator& lhs, const ParameterBox::Iterator& rhs)
 	{
@@ -396,9 +396,10 @@ namespace Utility
     }
 
     using StringTable = std::vector<std::pair<const utf8*, std::string>>;
-    void    BuildStringTable(StringTable& defines, const ParameterBox& box);
-    void    OverrideStringTable(StringTable& defines, const ParameterBox& box);
-    std::string FlattenStringTable(const StringTable& stringTable);
+    DEPRECATED_ATTRIBUTE void    BuildStringTable(StringTable& defines, const ParameterBox& box);
+    DEPRECATED_ATTRIBUTE void    OverrideStringTable(StringTable& defines, const ParameterBox& box);
+    DEPRECATED_ATTRIBUTE std::string FlattenStringTable(const StringTable& stringTable);
+	std::string BuildFlatStringTable(const ParameterBox& box);
 }
 
 using namespace Utility;

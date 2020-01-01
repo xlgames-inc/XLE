@@ -105,5 +105,55 @@ namespace RenderCore
         return result;
     }
 
+	FrameBufferDesc SeparateSingleSubpass(const FrameBufferDesc& input, unsigned subpassIdx)
+	{
+		// Take out a single subpass from the input frame buffer desc.
+		// Simplify the attachment list down so that it no longer contains any attachments that
+		// are now not referenced.
+		assert(subpassIdx < input.GetSubpasses().size());
+		std::vector<SubpassDesc> newSubpasses;
+		newSubpasses.push_back(input.GetSubpasses()[subpassIdx]);
+
+		std::vector<AttachmentName> attachmentRemap;
+		attachmentRemap.resize(input.GetAttachments().size(), ~0u);
+		unsigned nextRemapIndex = 0;
+		for (auto&a:newSubpasses[0]._output) {
+			if (attachmentRemap[a._resourceName] == ~0u)
+				attachmentRemap[a._resourceName] = nextRemapIndex++;
+			a._resourceName = attachmentRemap[a._resourceName];
+		}
+
+		if (attachmentRemap[newSubpasses[0]._depthStencil._resourceName] == ~0u)
+			attachmentRemap[newSubpasses[0]._depthStencil._resourceName] = nextRemapIndex++;
+		newSubpasses[0]._depthStencil._resourceName = attachmentRemap[newSubpasses[0]._depthStencil._resourceName];
+
+		if (attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] == ~0u)
+			attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] = nextRemapIndex++;
+		newSubpasses[0]._depthStencilResolve._resourceName = attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName];
+
+		for (auto&a:newSubpasses[0]._input) {
+			if (attachmentRemap[a._resourceName] == ~0u)
+				attachmentRemap[a._resourceName] = nextRemapIndex++;
+			a._resourceName = attachmentRemap[a._resourceName];
+		}
+		for (auto&a:newSubpasses[0]._resolve) {
+			if (attachmentRemap[a._resourceName] == ~0u)
+				attachmentRemap[a._resourceName] = nextRemapIndex++;
+			a._resourceName = attachmentRemap[a._resourceName];
+		}
+
+		// note -- ignoring the "preserve" bindings; because those make less sense with a single subpass
+
+		std::vector<FrameBufferDesc::Attachment> newAttachments;
+		newAttachments.resize(nextRemapIndex);
+		for (unsigned c=0; c<input.GetAttachments().size(); ++c)
+			if (attachmentRemap[c] != ~0u)
+				newAttachments[attachmentRemap[c]] = input.GetAttachments()[c];
+
+		return FrameBufferDesc(
+			std::move(newAttachments),
+			std::move(newSubpasses));
+	}
+
 }
 
