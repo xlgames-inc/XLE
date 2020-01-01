@@ -381,7 +381,7 @@ namespace RenderCore { namespace Assets
 			TRY
 			{
 				if (c->_preprocessor) {
-					auto preprocessedOutput = c->_preprocessor->RunPreprocessor(resId._filename);
+					auto preprocessedOutput = c->_preprocessor->RunPreprocessor(resId._filename, MakeStringSection(definesTable));
 					if (preprocessedOutput._processedSource.empty())
 						Throw(std::runtime_error("Preprocessed output is empty"));
 

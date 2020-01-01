@@ -32,7 +32,7 @@ namespace RenderCore { namespace Assets
             std::vector<::Assets::DependentFileState> _dependencies;
         };
 
-        virtual SourceCodeWithRemapping RunPreprocessor(const char filename[]) = 0;
+        virtual SourceCodeWithRemapping RunPreprocessor(StringSection<> filename, StringSection<> definesTable) = 0;
     };
 
     class LocalCompiledShaderSource 

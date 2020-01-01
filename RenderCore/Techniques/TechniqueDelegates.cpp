@@ -99,14 +99,14 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
-		virtual SourceCodeWithRemapping RunPreprocessor(const char filename[])
+		virtual SourceCodeWithRemapping RunPreprocessor(StringSection<> filename, StringSection<> definesTable) override
 		{
 			// Encoded in the filename is the guid for the CompiledShaderPatchCollection, the list of functions that require
 			// redirection and the entry point shader filename
 			
 			static std::regex filenameExp(R"--(([^-]+)-([0-9,a-f,A-F]{1,16})(?:-([0-9,a-f,A-F]{1,16}))*)--");
 			std::cmatch matches;
-			if (!std::regex_match(filename, XlStringEnd(filename), matches, filenameExp) || matches.size() < 3)
+			if (!std::regex_match(filename.begin(), filename.end(), matches, filenameExp) || matches.size() < 3)
 				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
 
 			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
