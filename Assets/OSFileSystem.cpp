@@ -293,7 +293,15 @@ namespace Assets
         StringSection<utf8> baseDirectory,
         StringSection<utf8> regexMatchPattern)
     {
-        auto dir = Conversion::Convert<std::string>(_rootUTF8 + u("/") + baseDirectory.AsString());
+        std::string dir;
+		if (!baseDirectory.IsEmpty()) {
+			dir = Conversion::Convert<std::string>(_rootUTF8 + baseDirectory.AsString());
+			if (baseDirectory[baseDirectory.size()-1] != '/' && baseDirectory[baseDirectory.size()-1] != '\\')
+				dir += '/';
+		} else {
+			dir = Conversion::Convert<std::string>(_rootUTF8);
+		}
+		dir += "*";
         auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::File);
         std::vector<IFileSystem::Marker> res;
         res.reserve(temp.size());
@@ -319,7 +327,15 @@ namespace Assets
     std::vector<std::basic_string<utf8>> FileSystem_OS::FindSubDirectories(
         StringSection<utf8> baseDirectory)
     {
-        auto dir = Conversion::Convert<std::string>(_rootUTF8 + u("/") + baseDirectory.AsString());
+        std::string dir;
+		if (!baseDirectory.IsEmpty()) {
+			dir = Conversion::Convert<std::string>(_rootUTF8 + baseDirectory.AsString());
+			if (baseDirectory[baseDirectory.size()-1] != '/' && baseDirectory[baseDirectory.size()-1] != '\\')
+				dir += '/';
+		} else {
+			dir = Conversion::Convert<std::string>(_rootUTF8);
+		}
+		dir += "*";
         auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::Directory);
         std::vector<std::basic_string<utf8>> res;
         res.reserve(temp.size());

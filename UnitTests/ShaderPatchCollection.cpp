@@ -180,10 +180,16 @@ namespace UnitTests
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
 
 			// Verify that a few things got deserialized correctly
-			Assert::AreEqual(patchCollection.GetPatches()[1].first, std::string("main"));
-			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.size(), (size_t)1);
-			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.begin()->first, std::string("perPixel"));
-			Assert::AreEqual(patchCollection.GetPatches()[1].second._parameterBindings.begin()->second._archiveName, std::string("ut-data/perpixel.graph::Default_PerPixel"));
+			auto i = std::find_if(
+				patchCollection.GetPatches().begin(),
+				patchCollection.GetPatches().end(),
+				[](const std::pair<std::string, ShaderSourceParser::InstantiationRequest>& r) {
+					return r.first == "main";
+				});
+			Assert::IsTrue(i!=patchCollection.GetPatches().end());
+			Assert::AreEqual(i->second._parameterBindings.size(), (size_t)1);
+			Assert::AreEqual(i->second._parameterBindings.begin()->first, std::string("perPixel"));
+			Assert::AreEqual(i->second._parameterBindings.begin()->second._archiveName, std::string("ut-data/perpixel.graph::Default_PerPixel"));
 
 			// Write out the patch collection again
 			MemoryOutputStream<uint8> strm;

@@ -20,6 +20,9 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Conversion.h"
+#include <cctype>
 #include <CppUnitTest.h>
 
 #include "../RenderCore/Techniques/Techniques.h"
@@ -92,35 +95,46 @@ static const int NonPreprocessorLine0 = 0;
     TEST_CLASS(ShaderParser)
 	{
 	public:
-		TEST_METHOD(ParserAllShaderSources)
+		static void FindShaderSources(
+			std::vector<std::string>& dest,
+			const ::Assets::FileSystemWalker& walker)
 		{
-            UnitTest_SetWorkingDirectory();
-            ConsoleRig::GlobalServices services(GetStartupConfig());
+			for (auto file = walker.begin_files(); file != walker.end_files(); ++file) {
+				auto naturalName = Conversion::Convert<std::string>(file.Desc()._naturalName);
+				auto splitter = MakeFileNameSplitter(naturalName);
+				if (	XlEqStringI(splitter.Extension(), "h")
+					||	XlEqStringI(splitter.Extension(), "sh")
+					||	(splitter.Extension().size() == 3 && std::tolower(splitter.Extension()[1]) == 's' && std::tolower(splitter.Extension()[1]) == 'h')) {
+					dest.push_back(naturalName);
+				}
+			}
+			for (auto dir = walker.begin_directories(); dir != walker.end_directories(); ++dir) {
+				if (dir.Name().empty() || dir.Name()[0] == '.') continue;
+				FindShaderSources(dest, *dir);
+			}
+		}
 
+		TEST_METHOD(ParseAllSystemShaderSources)
+		{
                 // Search for all of the shader sources in the xleres directory
-            auto inputFiles = RawFS::FindFilesHierarchical("xleres", "*.h", RawFS::FindFilesFilter::File);
-            auto inputFiles1 = RawFS::FindFilesHierarchical("xleres", "*.sh", RawFS::FindFilesFilter::File);
-            auto inputFiles2 = RawFS::FindFilesHierarchical("xleres", "*.?sh", RawFS::FindFilesFilter::File);
-
-            inputFiles.insert(inputFiles.end(), inputFiles1.begin(), inputFiles1.end());
-            inputFiles.insert(inputFiles.end(), inputFiles2.begin(), inputFiles2.end());
-
-                // Now try to parse each one using the shader parser...
-                // Look for parsing errors and unsupported syntax
-
+			std::vector<std::string> inputFiles;
+			FindShaderSources(inputFiles, ::Assets::MainFileSystem::BeginWalk(u("xleres")));
             for (auto& i:inputFiles) {
-                size_t blockSize = 0;
-                auto memBlock = ::Assets::TryLoadFileAsMemoryBlock(MakeStringSection(i), &blockSize);
+                auto memBlock = ::Assets::TryLoadFileAsBlob(MakeStringSection(i));
 
                 const char* flgId = "FunctionLinkingGraph";
-                if (blockSize > XlStringLen(flgId) && 
-                    XlEqString(MakeStringSection((const char*)memBlock.get(), (const char*)&memBlock[XlStringLen(flgId)]), flgId))
+                if (XlFindString(MakeStringSection((const char*)AsPointer(memBlock->begin()), (const char*)AsPointer(memBlock->end())), flgId))
                     continue;
 
-                auto signature = ShaderSourceParser::ParseHLSL(
-                    MakeStringSection((const char*)memBlock.get(), (const char*)PtrAdd(memBlock.get(), blockSize)));
+				try
+				{
+					auto signature = ShaderSourceParser::ParseHLSL(
+						MakeStringSection((const char*)AsPointer(memBlock->begin()), (const char*)AsPointer(memBlock->end())));
 
-                (void)signature;
+					(void)signature;
+				} catch (const std::exception& e) {
+					Log(Warning) << "Got parsing exception in (" << i << ")" << std::endl << e.what() << std::endl;
+				}
             }
         }
 

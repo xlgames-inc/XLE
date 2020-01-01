@@ -19,7 +19,7 @@ static const char* s_examplePerPixelShaderFile = R"--(
 		float4 HairColor;
 	}
 
-	GBufferValues PerPixel(VSOutput geo)
+	GBufferValues PerPixelInShaderFile(VSOutput geo)
 	{
 		GBufferValues result = GBufferValues_Default();
 
@@ -41,7 +41,7 @@ static const char* s_exampleGraphFile = R"--(
 
 	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
 	{
-		return example_perpixel::PerPixel(geo:geo).result;
+		return example_perpixel::PerPixelInShaderFile(geo:geo).result;
 	}
 )--";
 
@@ -55,10 +55,10 @@ static const char* s_complicatedGraphFile = R"--(
 
 	GBufferValues Internal_PerPixel(VSOutput geo)
 	{
-		return example_perpixel::PerPixel(geo:geo).result;
+		return example_perpixel::PerPixelInShaderFile(geo:geo).result;
 	}
 
-	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
+	GBufferValues Bind2_PerPixel(VSOutput geo) implements templates::PerPixel
 	{
 		captures MaterialUniforms = ( float3 DiffuseColor );
 		captures AnotherCaptures = ( float SecondaryCaptures );

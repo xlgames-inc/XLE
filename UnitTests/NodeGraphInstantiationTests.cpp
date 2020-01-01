@@ -79,7 +79,7 @@ namespace UnitTests
 				::Assert::AreEqual(inst._entryPoints.size(), (size_t)3);
 
 				// We must have all of the following entry points, and "implements" behaviour
-				const char* expectedEntryPoints[] = { "Internal_PerPixel", "Bind_PerPixel", "Bind_EarlyRejectionTest" };
+				const char* expectedEntryPoints[] = { "Internal_PerPixel", "Bind2_PerPixel", "Bind_EarlyRejectionTest" };
 				const char* expectedImplements[] = { "PerPixel", "EarlyRejectionTest" };
 
 				for (const char* entryPoint:expectedEntryPoints) {

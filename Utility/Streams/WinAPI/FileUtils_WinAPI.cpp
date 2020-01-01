@@ -502,7 +502,7 @@ namespace Utility
 			char buffer[256];
 			XlDirname(buffer, dimof(buffer), searchPath.c_str());
 			std::string basePath = buffer;
-			if (!basePath.empty() && basePath[basePath.size()-1]!='/') {
+			if (!basePath.empty() && basePath[basePath.size()-1]!='/' && basePath[basePath.size()-1]!='\\') {
 				basePath += "/";
 			}
 			WIN32_FIND_DATAA findData;
@@ -524,7 +524,7 @@ namespace Utility
 		static std::vector<std::string> FindAllDirectories(const std::string& rootDirectory)
 		{
 			std::string basePath = rootDirectory;
-			if (!basePath.empty() && basePath[basePath.size()-1]!='/') {
+			if (!basePath.empty() && basePath[basePath.size()-1]!='/' && basePath[basePath.size()-1]!='\\') {
 				basePath += "/";
 			}
 			std::vector<std::string> result;
