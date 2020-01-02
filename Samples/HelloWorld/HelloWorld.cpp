@@ -58,8 +58,8 @@ namespace Sample
             lightingParserContext = LightingParser_ExecuteScene(
                 threadContext, renderTarget, parsingContext, *_scene, 
 				CalculateCameraDesc(_inputListener->_rotations, _inputListener->_zoomFactor, _lightingDelegate->GetTimeValue()),
-                SceneEngine::RenderSceneSettings {
-                    (Tweakable("LightingModel", 0) == 0) ? SceneEngine::RenderSceneSettings::LightingModel::Deferred : SceneEngine::RenderSceneSettings::LightingModel::Forward,
+                SceneEngine::SceneTechniqueDesc {
+                    (Tweakable("LightingModel", 0) == 0) ? SceneEngine::SceneTechniqueDesc::LightingModel::Deferred : SceneEngine::SceneTechniqueDesc::LightingModel::Forward,
 					_lightingDelegate.get(),
 					{},
 					samples._sampleCount, samples._samplingQuality } );

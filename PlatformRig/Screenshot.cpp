@@ -73,7 +73,7 @@ namespace PlatformRig
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
-        const RenderSceneSettings& qualitySettings,
+        const SceneTechniqueDesc& qualitySettings,
         UInt2 sampleCount,
         Format format, bool interleavedTiles)
     {
@@ -377,7 +377,7 @@ namespace PlatformRig
 		Techniques::ParsingContext& parserContext,
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
-        const RenderSceneSettings& qualitySettings,
+        const SceneTechniqueDesc& qualitySettings,
         UInt2 sampleCount)
     {
         auto preFilterFormat = Format::R16G16B16A16_FLOAT;
@@ -433,7 +433,7 @@ namespace PlatformRig
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::IScene& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const SceneEngine::RenderSceneSettings& qualitySettings,
+        const SceneEngine::SceneTechniqueDesc& qualitySettings,
         UInt2 sampleCount) {}
 }
 

@@ -12,7 +12,7 @@
 namespace SceneEngine
 {
     class IScene;
-    class RenderSceneSettings;
+    class SceneTechniqueDesc;
 }
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class CameraDesc; } }
@@ -24,7 +24,7 @@ namespace PlatformRig
 		RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::IScene& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const SceneEngine::RenderSceneSettings& qualitySettings,
+        const SceneEngine::SceneTechniqueDesc& qualitySettings,
         UInt2 sampleCount);
 }
 

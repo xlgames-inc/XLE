@@ -265,10 +265,10 @@ namespace GUILayer
 				lightingPlugins.push_back(vegetationPlugin);
 			lightingPlugins.push_back(_scene->_volumeFogManager->GetParserPlugin());
 
-			auto qualSettings = SceneEngine::RenderSceneSettings{
+			auto qualSettings = SceneEngine::SceneTechniqueDesc{
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
-					? RenderSceneSettings::LightingModel::Deferred 
-					: RenderSceneSettings::LightingModel::Forward,
+					? SceneTechniqueDesc::LightingModel::Deferred 
+					: SceneTechniqueDesc::LightingModel::Forward,
 				&lightingDelegate,
 				MakeIteratorRange(lightingPlugins)};
 

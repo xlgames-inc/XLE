@@ -169,8 +169,8 @@ namespace ToolsRig
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
-			auto qualSettings = SceneEngine::RenderSceneSettings{
-				SceneEngine::RenderSceneSettings::LightingModel::Deferred,
+			auto qualSettings = SceneEngine::SceneTechniqueDesc{
+				SceneEngine::SceneTechniqueDesc::LightingModel::Deferred,
 				&lightingParserDelegate,
 				MakeIteratorRange(lightingPlugins)};
 
@@ -273,16 +273,16 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
+	static SceneEngine::SceneTechniqueDesc::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
 	{
 		switch (lightingType) {
 		case VisEnvSettings::LightingType::Deferred:
-			return SceneEngine::RenderSceneSettings::LightingModel::Deferred;
+			return SceneEngine::SceneTechniqueDesc::LightingModel::Deferred;
 		case VisEnvSettings::LightingType::Forward:
-			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
+			return SceneEngine::SceneTechniqueDesc::LightingModel::Forward;
 		default:
 		case VisEnvSettings::LightingType::Direct:
-			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
+			return SceneEngine::SceneTechniqueDesc::LightingModel::Direct;
 		}
 	}
 
@@ -303,7 +303,7 @@ namespace ToolsRig
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
-			SceneEngine::RenderSceneSettings qualSettings{
+			SceneEngine::SceneTechniqueDesc qualSettings{
 				AsLightingModel(envSettings._lightingType),
 				&lightingParserDelegate,
 				MakeIteratorRange(lightingPlugins)};

@@ -23,7 +23,7 @@ namespace SceneEngine
     class PreparedRTShadowFrustum;
 	class ILightingParserDelegate;
     class ILightingParserPlugin;
-	class RenderSceneSettings;
+	class SceneTechniqueDesc;
 	class PreparedScene;
 	class MainTargets;
 

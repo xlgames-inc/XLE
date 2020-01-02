@@ -28,7 +28,7 @@ namespace SceneEngine
 
     namespace ShaderLightDesc { class BasicEnvironment; }
 
-    class RenderSceneSettings
+    class SceneTechniqueDesc
     {
     public:
         enum class LightingModel

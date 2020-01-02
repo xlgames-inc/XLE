@@ -20,7 +20,7 @@ namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class RenderSceneSettings;
+    class SceneTechniqueDesc;
 
     class LightingResolveShaders
     {
