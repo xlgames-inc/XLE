@@ -121,6 +121,8 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
+		assert(0);
+#if 0
         using namespace SceneEngine;
 
 		if (_pimpl->_sceneFuture) {
@@ -221,6 +223,7 @@ namespace ToolsRig
 			if (!_pimpl->_envSettingsErrorMessage.empty())
 				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
 		}
+#endif
     }
 
     void ModelVisLayer::Set(const VisEnvSettings& envSettings)
@@ -294,6 +297,8 @@ namespace ToolsRig
 		VisEnvSettings& envSettings,
 		SceneEngine::IScene& scene)
     {
+		assert(0);
+#if 0
         try
         {
 			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
@@ -323,6 +328,7 @@ namespace ToolsRig
         }
         catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
         catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
+#endif
 
         return std::make_pair(DrawPreviewResult::Error, std::string());
     }
@@ -582,6 +588,8 @@ namespace ToolsRig
         std::pair<Float3, Float3> worldSpaceRay,
 		SceneEngine::IScene& scene)
 	{
+		return {};
+
 		using namespace RenderCore;
 
 		Techniques::ParsingContext parserContext { techniqueContext };

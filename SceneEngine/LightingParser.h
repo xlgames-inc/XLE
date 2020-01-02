@@ -9,14 +9,21 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/TextureView.h"
+#include "../RenderCore/Metal/TextureView.h"		// for some ShaderResourceViews in LightingResolveContext
+#include "../RenderCore/ResourceDesc.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Utility/IteratorUtils.h"
 #include <functional>
+#include <memory>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; enum class BatchFilter; } }
+namespace RenderCore { namespace Techniques { 
+	class CameraDesc; class ProjectionDesc; 
+	class ParsingContext; 
+	enum class BatchFilter; 
+	class PipelineAcceleratorPool; 
+}}
 
 namespace SceneEngine
 {
@@ -39,13 +46,15 @@ namespace SceneEngine
         };
 
         LightingModel _lightingModel = LightingModel::Deferred;
-
-		const ILightingParserDelegate* _lightingDelegate;
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
 
-		unsigned    _samplingCount = 1u;
-		unsigned	_samplingQuality = 0u;
+		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create(0);
     };
+
+	class CompiledSceneTechnique;
+	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
+		const SceneTechniqueDesc& techniqueDesc,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
@@ -68,7 +77,7 @@ namespace SceneEngine
     ///     renderDevice->BeginFrame(presentationChain.get());
     ///
     ///     auto presChainDesc = presentationChain->GetDesc();
-	///     SceneEngine::RenderSceneSettings qualitySettings {
+	///     SceneEngine::SceneTechniqueDesc qualitySettings {
 	///			UInt2(presChainDesc._width, presChainDesc._height) };
 	///
     ///     auto lightingParserContext = SceneEngine::LightingParser_Execute(
@@ -81,9 +90,10 @@ namespace SceneEngine
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parserContext,
+		const CompiledSceneTechnique& technique,
+		const ILightingParserDelegate& lightingDelegate,
 		IScene& scene,
-        const RenderCore::Techniques::CameraDesc& camera,
-        const RenderSceneSettings& qualitySettings);
+        const RenderCore::Techniques::CameraDesc& camera);
 
     void LightingParser_Overlays(
         RenderCore::IThreadContext& context,

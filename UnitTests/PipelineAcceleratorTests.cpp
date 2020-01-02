@@ -35,29 +35,6 @@
 	#define ThrowsException ExpectException<const std::exception&>
 #endif
 
-static const char* s_basicTechniqueFile = R"--(
-	~Shared
-		~Parameters
-			~GlobalEnvironment
-				CLASSIFY_NORMAL_MAP
-				SKIP_MATERIAL_DIFFUSE=0
-
-	~NoPatches
-		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/basic.psh:main
-
-	~PerPixel
-		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/main.psh:frameworkEntry
-
-	~PerPixelAndEarlyRejection
-		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/main.psh:frameworkEntryWithEarlyRejection
-)--";
-
 static const char s_exampleTechniqueFragments[] = R"--(
 	~main
 		ut-data/complicated.graph::Bind2_PerPixel

@@ -36,6 +36,79 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+	class CompiledSceneTechnique
+	{
+	public:
+
+		std::vector<std::shared_ptr<IViewDelegate>> _viewDelegates;
+		std::vector<std::shared_ptr<ILightingParserPlugin>> _lightingPlugins;
+
+		std::shared_ptr<IRenderStep> _mainSceneRenderStep;
+		std::vector<std::shared_ptr<IRenderStep>> _renderSteps;
+
+		unsigned _gbufferType;
+		bool _precisionTargets;
+		RenderCore::TextureSamples _sampling;
+
+		CompiledSceneTechnique(
+			const SceneTechniqueDesc& techniqueDesc,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
+		~CompiledSceneTechnique();
+	
+	};
+
+	CompiledSceneTechnique::CompiledSceneTechnique(
+		const SceneTechniqueDesc& techniqueDesc,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
+	{
+		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
+		const bool precisionTargets = Tweakable("PrecisionTargets", false);
+
+		// 
+		//		Setup render steps
+		//
+		if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred) {
+			_mainSceneRenderStep = std::make_shared<RenderStep_GBuffer>(enableParametersBuffer?1:2, precisionTargets);
+		} else if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Forward) {
+			_mainSceneRenderStep = std::make_shared<RenderStep_Forward>(precisionTargets);
+		} else {
+			_mainSceneRenderStep = std::make_shared<RenderStep_Direct>();
+		}
+
+		_renderSteps.push_back(_mainSceneRenderStep);
+
+		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
+		if (techniqueDesc._lightingModel != SceneTechniqueDesc::LightingModel::Direct) {
+			if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred)
+				_renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
+			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
+			_renderSteps.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
+			_renderSteps.push_back(resolveHDR);
+		}
+
+		// 
+		//		Other configuration & state
+		//
+		_lightingPlugins.insert(
+			_lightingPlugins.begin(),
+			techniqueDesc._lightingPlugins.begin(), techniqueDesc._lightingPlugins.end());
+
+		_gbufferType = enableParametersBuffer?1:2;
+		_precisionTargets = precisionTargets;
+		_sampling = techniqueDesc._sampling;
+	}
+
+	CompiledSceneTechnique::~CompiledSceneTechnique()
+	{
+	}
+
+	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
+		const SceneTechniqueDesc& techniqueDesc,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
+	{
+		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators);
+	}
+
     void LightingParser_InitBasicLightEnv(
         RenderCore::IThreadContext& context,
         Techniques::ParsingContext& parsingContext,
@@ -45,42 +118,30 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
         const ILightingParserDelegate& delegate,
-		const RenderSceneSettings& qualitySettings,
+		const CompiledSceneTechnique& technique,
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
 	LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& threadContext, 
 		const RenderCore::IResourcePtr& renderTarget,
         Techniques::ParsingContext& parsingContext,
+		const CompiledSceneTechnique& technique,
+		const ILightingParserDelegate& lightingDelegate,
         IScene& scene,
-        const RenderCore::Techniques::CameraDesc& camera,
-        const RenderSceneSettings& renderSettings)
+        const RenderCore::Techniques::CameraDesc& camera)
     {
 		auto targetTextureDesc = renderTarget->GetDesc()._textureDesc;
 
 		// First, setup the views so we can do the "ExecuteScene" step
 		auto mainSceneProjection = RenderCore::Techniques::BuildProjectionDesc(camera, UInt2{targetTextureDesc._width, targetTextureDesc._height});
 
-		std::shared_ptr<IRenderStep> mainSceneRenderStep;
-		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-		const bool precisionTargets = Tweakable("PrecisionTargets", false);
-
 		SceneExecuteContext executeContext;
-		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred) {
-			mainSceneRenderStep = std::make_shared<RenderStep_GBuffer>(enableParametersBuffer?1:2, precisionTargets);
-		} else if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Forward) {
-			mainSceneRenderStep = std::make_shared<RenderStep_Forward>(precisionTargets);
-		} else {
-			mainSceneRenderStep = std::make_shared<RenderStep_Direct>();
-		}
-
 		executeContext.AddView(
 			SceneView{mainSceneProjection},
-			mainSceneRenderStep->CreateViewDelegate());
+			technique._mainSceneRenderStep->CreateViewDelegate());
 
-		auto& delegate = *renderSettings._lightingDelegate;
-		for (unsigned s=0; s<delegate.GetShadowProjectionCount(); ++s) {
-			auto proj = delegate.GetShadowProjectionDesc(s, mainSceneProjection);
+		for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
+			auto proj = lightingDelegate.GetShadowProjectionDesc(s, mainSceneProjection);
 			// todo -- what's the correct projection to give to this view?
 			executeContext.AddView(
 				SceneView{/*proj*/mainSceneProjection, SceneView::Type::Shadow},
@@ -98,8 +159,7 @@ namespace SceneEngine
         // Update(), because this gives some time for the background thread to run.
         GetBufferUploads().FramePriority_Barrier();
 
-		auto lightingParserContext = LightingParser_SetupContext(threadContext, parsingContext, delegate, renderSettings);
-		lightingParserContext._gbufferType = enableParametersBuffer?1:2;
+		auto lightingParserContext = LightingParser_SetupContext(threadContext, parsingContext, lightingDelegate, technique);
         LightingParser_SetGlobalTransform(threadContext, parsingContext, mainSceneProjection);
 
 		PreparedScene preparedScene;
@@ -158,18 +218,6 @@ namespace SceneEngine
 
         GetBufferUploads().Update(threadContext, true);
 
-		std::vector<std::shared_ptr<IRenderStep>> renderSteps;
-		renderSteps.push_back(mainSceneRenderStep);
-
-		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
-		if (renderSettings._lightingModel != RenderSceneSettings::LightingModel::Direct) {
-			if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred)
-				renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
-			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
-			renderSteps.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
-			renderSteps.push_back(resolveHDR);
-		}
-
 		std::vector<std::pair<uint64_t, RenderCore::IResourcePtr>> workingAttachments = {
 			{ Techniques::AttachmentSemantics::ColorLDR, renderTarget }
 		};
@@ -177,17 +225,17 @@ namespace SceneEngine
 		parsingContext.GetNamedResources().Bind(
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
-				TextureSamples::Create((uint8_t)renderSettings._samplingCount, (uint8_t)renderSettings._samplingQuality) } );
+				technique._sampling });
 
-		auto renderStepIterator = renderSteps.begin();
-		while (renderStepIterator != renderSteps.end()) {
+		auto renderStepIterator = technique._renderSteps.begin();
+		while (renderStepIterator != technique._renderSteps.end()) {
 			std::vector<Techniques::FrameBufferDescFragment> fragments;
 			auto renderStepEnd = renderStepIterator;
 			auto& firstInterface = (*renderStepEnd)->GetInterface();
 			auto pipelineType = firstInterface._pipelineType;
 			fragments.push_back(firstInterface);
 			++renderStepEnd;
-			for (; renderStepEnd != renderSteps.end(); ++renderStepEnd) {
+			for (; renderStepEnd != technique._renderSteps.end(); ++renderStepEnd) {
 				auto& interf = (*renderStepEnd)->GetInterface();
 				if (interf._pipelineType != pipelineType) break;
 				fragments.push_back(interf);
@@ -220,7 +268,7 @@ namespace SceneEngine
 				CATCH_ASSETS_BEGIN
 					Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
 					IViewDelegate* viewDelegate = nullptr;
-					if (c==0 && renderStepIterator == renderSteps.begin()) viewDelegate = executeContext.GetViewDelegates()[0].get();
+					if (c==0 && renderStepIterator == technique._renderSteps.begin()) viewDelegate = executeContext.GetViewDelegates()[0].get();
 					renderStepIterator[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
 				CATCH_ASSETS_END(parsingContext)
 			}
@@ -314,7 +362,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
         const ILightingParserDelegate& delegate,
-		const RenderSceneSettings& qualitySettings,
+		const CompiledSceneTechnique& technique,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
         struct GlobalCBuffer
@@ -331,12 +379,14 @@ namespace SceneEngine
 		lightingParserContext._delegate = &delegate;
 		lightingParserContext._plugins.insert(
 			lightingParserContext._plugins.end(),
-			qualitySettings._lightingPlugins.begin(), qualitySettings._lightingPlugins.end());
+			technique._lightingPlugins.begin(), technique._lightingPlugins.end());
         LightingParser_InitBasicLightEnv(context, parsingContext, lightingParserContext);
 
         auto& metricsBox = ConsoleRig::FindCachedBox2<MetricsBox>();
         metalContext.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
         lightingParserContext.SetMetricsBox(&metricsBox);
+
+		lightingParserContext._gbufferType = technique._gbufferType;
 
         return lightingParserContext;
     }
