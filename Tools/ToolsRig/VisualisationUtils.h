@@ -16,6 +16,7 @@
 namespace RenderCore { namespace Techniques { 
 	class CameraDesc; class TechniqueContext; class Technique; 
 	class IMaterialDelegate; class ITechniqueDelegate; class IRenderStateDelegate;
+	class PipelineAcceleratorPool;
 }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
@@ -149,7 +150,7 @@ namespace ToolsRig
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
 
-        ModelVisLayer();
+        ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
         ~ModelVisLayer();
     protected:
         class Pimpl;

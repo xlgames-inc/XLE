@@ -165,14 +165,14 @@ namespace UnitTests
 		{
 			using namespace RenderCore;
 			auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueForColorFromSelector);
+			RenderCore::Assets::RenderStateSet stateSet;
+			stateSet._doubleSided = true;
 			_pipelineAccelerator = pipelineAccelerators.CreatePipelineAccelerator(
 				compiledPatches,
 				ParameterBox { std::make_pair(u("COLOR_GREEN"), "1") },
 				ToolsRig::Vertex3D_InputLayout,
 				Topology::TriangleList,
-				Metal::DepthStencilDesc{},
-				Metal::AttachmentBlendDesc{},
-				Metal::RasterizationDesc{ CullMode::None });
+				stateSet);
 
 			auto vertices = ToolsRig::BuildGeodesicSphere();
 			auto vertexBuffer = CreateVB(device, MakeIteratorRange(vertices));
@@ -204,8 +204,16 @@ namespace UnitTests
 			auto mainPool = std::make_shared<Techniques::PipelineAcceleratorPool>();
 			auto scene = std::make_shared<BasicScene>(*_device, *mainPool);
 
+			auto targetDesc = CreateDesc(
+				BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+				TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_TYPELESS),
+				"temporary-out");
+
 			SceneEngine::SceneTechniqueDesc sceneTechniqueDesc;
-			auto compiledSceneTechnique = SceneEngine::CreateCompiledSceneTechnique(sceneTechniqueDesc, mainPool);
+			auto compiledSceneTechnique = SceneEngine::CreateCompiledSceneTechnique(
+				sceneTechniqueDesc, mainPool,
+				AsAttachmentDesc(targetDesc),
+				FrameBufferProperties{});
 
 			Techniques::CameraDesc camera;
 			camera._cameraToWorld = MakeCameraToWorld(
@@ -218,10 +226,6 @@ namespace UnitTests
 
 			{
 				auto threadContext = _device->GetImmediateContext();
-				auto targetDesc = CreateDesc(
-					BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
-					TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_TYPELESS),
-					"temporary-out");
 				auto target = _device->CreateResource(targetDesc);
 
 				{

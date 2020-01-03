@@ -8,6 +8,7 @@
 #include "LayerControl.h"
 #include "IWindowRig.h"
 #include "GUILayerUtil.h"
+#include "NativeEngineDevice.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/MaterialVisualisation.h"
@@ -83,8 +84,9 @@ namespace GUILayer
 
 	void VisLayerController::SetModelSettings(ModelVisSettings^ settings)
 	{
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 		_pimpl->_modelSettings = *settings->GetUnderlying();
-		_pimpl->_scene = ToolsRig::MakeScene(_pimpl->_modelSettings);
+		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_modelSettings);
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
@@ -212,11 +214,13 @@ namespace GUILayer
 
 	VisLayerController::VisLayerController()
 	{
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+
 		_pimpl.reset(new VisLayerControllerPimpl());
 		_pimpl->_mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		_pimpl->_animState = std::make_shared<ToolsRig::VisAnimationState>();
 
-		_pimpl->_modelLayer = std::make_shared<ToolsRig::ModelVisLayer>();
+		_pimpl->_modelLayer = std::make_shared<ToolsRig::ModelVisLayer>(pipelineAcceleratorPool);
 		_pimpl->_modelLayer->Set(ToolsRig::VisEnvSettings{});
 
 		_pimpl->_visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(

@@ -230,6 +230,7 @@ namespace GUILayer
 
         EditorSceneOverlay(
             const std::shared_ptr<EditorScene>& sceneParser,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings,
             const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
@@ -238,6 +239,7 @@ namespace GUILayer
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<EditorScene> _scene;
+		clix::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
 		clix::shared_ptr<ToolsRig::VisCameraSettings> _camera;
         EditorSceneRenderSettings^ _renderSettings;
         clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCells;
@@ -265,12 +267,16 @@ namespace GUILayer
 				lightingPlugins.push_back(vegetationPlugin);
 			lightingPlugins.push_back(_scene->_volumeFogManager->GetParserPlugin());
 
-			auto qualSettings = SceneEngine::SceneTechniqueDesc{
+			auto sceneTechniqueDesc = SceneEngine::SceneTechniqueDesc{
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
 					? SceneTechniqueDesc::LightingModel::Deferred 
 					: SceneTechniqueDesc::LightingModel::Forward,
-				&lightingDelegate,
 				MakeIteratorRange(lightingPlugins)};
+
+			auto compiledSceneTechnique = CreateCompiledSceneTechnique(
+				sceneTechniqueDesc, _pipelineAcceleratorPool.GetNativePtr(),
+				RenderCore::AsAttachmentDesc(renderTarget._renderTarget->GetDesc()),
+				RenderCore::FrameBufferProperties{});
 
 			auto camera = ToolsRig::AsCameraDesc(*_camera.get());
 
@@ -279,13 +285,14 @@ namespace GUILayer
                 PlatformRig::TiledScreenshot(
                     threadContext, parserContext,
                     sceneParser, camera,
-                    qualSettings, UInt2(screenshot, screenshot));
+                    sceneTechniqueDesc, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
-            
+
             SceneEngine::LightingParser_ExecuteScene(
-                threadContext, renderTarget._renderTarget, parserContext, sceneParser, 
-                camera, qualSettings);
+                threadContext, renderTarget._renderTarget, parserContext, 
+				*compiledSceneTechnique, lightingDelegate,
+				sceneParser, camera);
         }
 
         if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
@@ -309,6 +316,7 @@ namespace GUILayer
 
     EditorSceneOverlay::EditorSceneOverlay(
         const std::shared_ptr<EditorScene>& sceneParser,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
         EditorSceneRenderSettings^ renderSettings,
         const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
@@ -316,6 +324,7 @@ namespace GUILayer
         const std::shared_ptr<SceneEngine::PlacementsRenderer>& placementsRenderer)
     {
         _scene = sceneParser;
+		_pipelineAcceleratorPool = pipelineAcceleratorPool;
 		_camera = camera;
         _renderSettings = renderSettings;
         _placementCells = placementCells;
@@ -330,11 +339,13 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             const std::shared_ptr<EditorScene>& scene, 
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
             const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings)
         {
             return gcnew EditorSceneOverlay(
                 scene, 
+				pipelineAcceleratorPool,
 				camera,
                 renderSettings, scene->_placementsCells, scene->_placementsCellsHidden,
                 scene->_placementsManager->GetRenderer());

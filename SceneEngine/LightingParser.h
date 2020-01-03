@@ -25,6 +25,8 @@ namespace RenderCore { namespace Techniques {
 	class PipelineAcceleratorPool; 
 }}
 
+namespace RenderCore { class AttachmentDesc; class FrameBufferProperties; }
+
 namespace SceneEngine
 {
 	class LightingParserContext;
@@ -48,13 +50,15 @@ namespace SceneEngine
         LightingModel _lightingModel = LightingModel::Deferred;
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
 
-		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create(0);
+		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create();
     };
 
 	class CompiledSceneTechnique;
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const RenderCore::AttachmentDesc& targetAttachmentDesc,
+		const RenderCore::FrameBufferProperties& fbProps);
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.

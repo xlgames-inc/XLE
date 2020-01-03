@@ -17,7 +17,8 @@ namespace RenderCore { namespace Techniques
 {
     class CompiledRenderStateSet;
 
-    class IRenderStateDelegate
+	// We should now use ITechniqueDelegate_New to do this transformation
+    DEPRECATED_ATTRIBUTE class IRenderStateDelegate
     {
     public:
         /// <summary>Given the current global state settings and a technique, build the low-level states for draw call<summary>

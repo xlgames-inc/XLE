@@ -177,7 +177,9 @@ namespace GUILayer
 			ToolsRig::ModelVisSettings modelSettings;
 			// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 			// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			sceneFuture = ToolsRig::MakeScene(modelSettings);
+
+			auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+			sceneFuture = ToolsRig::MakeScene(pipelineAcceleratorPool, modelSettings);
 		}
 
 		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
@@ -205,8 +207,8 @@ namespace GUILayer
 
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
 
-		if (techniqueDelegate)
-			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+		/*if (techniqueDelegate)
+			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());*/
 		if (materialDelegate)
 			parserContext.SetMaterialDelegate(materialDelegate->_materialDelegate.GetNativePtr());
 

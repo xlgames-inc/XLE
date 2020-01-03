@@ -14,7 +14,7 @@
 #include <string>
 
 namespace Utility { class ParameterBox; }
-namespace RenderCore { class IThreadContext; class MiniInputElementDesc; class UniformsStreamInterface; }
+namespace RenderCore { class IThreadContext; class MiniInputElementDesc; class UniformsStreamInterface; class UniformsStream; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -24,6 +24,8 @@ namespace RenderCore { namespace Techniques
 	class IMaterialDelegate;
 	class ITechniqueDelegate;
 	class IRenderStateDelegate;
+	class PipelineAccelerator;
+	class PipelineAcceleratorPool;
 
 	class SequencerTechnique
 	{
@@ -32,8 +34,10 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
 
 		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
-		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
+		// std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
 		std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
+
+		uint64_t	_sequencerConfigId = ~0ull;
 	};
 
 	class DrawableGeo
@@ -73,14 +77,30 @@ namespace RenderCore { namespace Techniques
 	class Drawable
 	{
 	public:
-        std::shared_ptr<DrawableMaterial>	_material;
-        std::shared_ptr<DrawableGeo>		_geo;
+        std::shared_ptr<PipelineAccelerator>	_pipeline;
+		std::shared_ptr<DrawableMaterial>		_material;
+        std::shared_ptr<DrawableGeo>			_geo;
+
+		class DrawFunctionContext
+		{
+		public:
+			Metal::DeviceContext*			_metalContext;
+			const Metal::GraphicsPipeline*	_pipeline;
+			const Metal::BoundUniforms*		_boundUniforms;
+
+			void		ApplyUniforms(const UniformsStream&) const;
+
+			void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
+			void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
+			void		DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0) const;
+			void		DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
+			void        DrawAuto() const;
+		};
 
         typedef void (ExecuteDrawFn)(
-            Metal::DeviceContext&,
 			ParsingContext& parserContext,
-            const Drawable&, const Metal::BoundUniforms&,
-            const Metal::ShaderProgram&);
+			const DrawFunctionContext& drawFnContext,
+            const Drawable&);
         ExecuteDrawFn*						_drawFn;
 
         std::shared_ptr<UniformsStreamInterface>  _uniformsInterface;

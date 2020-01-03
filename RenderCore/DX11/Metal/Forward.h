@@ -13,6 +13,7 @@ namespace RenderCore { class SharedPkt; class Viewport; }
 namespace RenderCore { namespace Metal_DX11
 {
     class ShaderProgram;
+	class GraphicsPipeline;
 
     class Buffer;
 

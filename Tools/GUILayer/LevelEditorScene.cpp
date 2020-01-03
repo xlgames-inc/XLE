@@ -556,13 +556,17 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             const std::shared_ptr<EditorScene>& scene, 
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
             const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings);
     }
 
     IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings)
     {
+		assert(0);		// we have to get the PipelineAcceleratorPool from somewhere
         return Internal::CreateOverlaySystem(
-            _scene.GetNativePtr(), camera->GetUnderlying(), renderSettings);
+            _scene.GetNativePtr(), 
+			nullptr,
+			camera->GetUnderlying(), renderSettings);
     }
 }

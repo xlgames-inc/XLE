@@ -12,7 +12,7 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawableMaterial; class DrawablesPacket; class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawableMaterial; class DrawablesPacket; class ParsingContext; class PipelineAcceleratorPool; class PipelineAccelerator; }}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
@@ -56,6 +56,7 @@ namespace RenderCore { namespace Assets
 		const std::string& GetMaterialScaffoldName() const { return _materialScaffoldName; }
 
 		SimpleModelRenderer(
+			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<ModelScaffold>& modelScaffold,
 			const std::shared_ptr<MaterialScaffold>& materialScaffold,
 			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {},
@@ -68,12 +69,14 @@ namespace RenderCore { namespace Assets
 		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
+			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName,
 			StringSection<> materialScaffoldName,
 			StringSection<> deformOperations = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
+			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName);
 
 		struct DeformOp;
@@ -87,8 +90,14 @@ namespace RenderCore { namespace Assets
 		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _geos;
 		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _boundSkinnedControllers;
 
-		std::vector<std::shared_ptr<Techniques::DrawableMaterial>> _geoMaterials;
-		std::vector<std::shared_ptr<Techniques::DrawableMaterial>> _boundSkinnedControllerMaterials;
+		struct GeoCall
+		{
+			std::shared_ptr<Techniques::PipelineAccelerator> _pipelineAccelerator;
+			std::shared_ptr<Techniques::DrawableMaterial> _material;
+		};
+
+		std::vector<GeoCall> _geoCalls;
+		std::vector<GeoCall> _boundSkinnedControllerGeoCalls;
 
 		SkeletonBinding _skeletonBinding;
 

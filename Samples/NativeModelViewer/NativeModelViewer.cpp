@@ -7,11 +7,14 @@
 #include "../../Tools/ToolsRig/ModelVisualisation.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/ToolsRig/BasicManipulators.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include <iomanip>
+
+#pragma warning(disable:4505) // 'Sample::RenderTrackingOverlay': unreferenced local function has been removed
 
 namespace Sample
 {
@@ -45,15 +48,19 @@ namespace Sample
 
 	void NativeModelViewerOverlay::OnStartup(const SampleGlobals& globals)
 	{
-		auto modelLayer = std::make_shared<ToolsRig::ModelVisLayer>();
+		auto modelLayer = std::make_shared<ToolsRig::ModelVisLayer>(_pipelineAccelerators);
 
 		ToolsRig::ModelVisSettings visSettings;
+		// visSettings._modelName = "game/model/character/skin.dae";
+		// visSettings._materialName = "game/model/character/skin.dae";
+		// visSettings._animationFileName = "game/model/character/animations.daelst";
 			 
-		auto scene = ToolsRig::MakeScene(visSettings);
+		auto scene = ToolsRig::MakeScene(_pipelineAccelerators, visSettings);
 		modelLayer->Set(scene);
 		modelLayer->Set(ToolsRig::VisEnvSettings{});
 		AddSystem(modelLayer);
 
+		/*
 		auto mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		ToolsRig::VisOverlaySettings overlaySettings;
 		overlaySettings._colourByMaterial = 2;
@@ -72,6 +79,7 @@ namespace Sample
 			modelLayer->GetCamera(), &RenderTrackingOverlay);
 		trackingOverlay->Set(scene);
 		AddSystem(trackingOverlay);
+		*/
 
 		{
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), globals._techniqueContext);
@@ -102,6 +110,7 @@ namespace Sample
 
 	NativeModelViewerOverlay::NativeModelViewerOverlay()
 	{
+		_pipelineAccelerators = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
 	}
 
 	NativeModelViewerOverlay::~NativeModelViewerOverlay()

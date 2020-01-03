@@ -66,9 +66,10 @@ namespace SceneEngine
 
 	ExecuteDrawablesContext::ExecuteDrawablesContext(RenderCore::Techniques::ParsingContext& parserContext)
 	{
-		_sequencerTechnique._techniqueDelegate = parserContext.GetTechniqueDelegate();
+		/*_sequencerTechnique._techniqueDelegate = parserContext.GetTechniqueDelegate();
 		if (!_sequencerTechnique._techniqueDelegate)
-			_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();
+			_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();*/
+		_sequencerTechnique._sequencerConfigId = parserContext._sequencerConfigId;
 		_sequencerTechnique._materialDelegate = parserContext.GetMaterialDelegate();
 		if (!_sequencerTechnique._materialDelegate)
 			_sequencerTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();

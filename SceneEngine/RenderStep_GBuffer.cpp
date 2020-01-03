@@ -23,10 +23,12 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../Assets/AssetTraits.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/FunctionUtils.h"
 
@@ -45,6 +47,11 @@ namespace SceneEngine
 	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_GBuffer::GetInterface() const
 	{
 		return _createGBuffer;
+	}
+
+	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> RenderStep_GBuffer::GetTechniqueDelegate() const
+	{
+		return _deferredIllumDelegate;
 	}
 
 	RenderStep_GBuffer::RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets)
@@ -128,6 +135,12 @@ namespace SceneEngine
 				});
 
         }
+
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegatePrototype(
+			techniqueSetFile,
+			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
 	}
 
 	RenderStep_GBuffer::~RenderStep_GBuffer() {}

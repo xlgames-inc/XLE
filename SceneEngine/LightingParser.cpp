@@ -21,6 +21,7 @@
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
@@ -46,20 +47,39 @@ namespace SceneEngine
 		std::shared_ptr<IRenderStep> _mainSceneRenderStep;
 		std::vector<std::shared_ptr<IRenderStep>> _renderSteps;
 
+		class RenderPass
+		{
+		public:
+			RenderCore::PipelineType _pipelineType;
+			RenderCore::FrameBufferDesc _fbDesc;
+			size_t _beginRenderStep = 0;
+			size_t _endRenderStep = 0;
+
+			std::vector<RenderCore::Techniques::SequencerConfigId> _perStepSequencerConfigIds;
+			std::vector<Techniques::FrameBufferFragmentMapping> _perStepRemappings;
+			std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
+		};
+		std::vector<RenderPass> _renderPasses;
+
 		unsigned _gbufferType;
 		bool _precisionTargets;
 		RenderCore::TextureSamples _sampling;
+		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
 
 		CompiledSceneTechnique(
 			const SceneTechniqueDesc& techniqueDesc,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+			const RenderCore::AttachmentDesc& targetAttachmentDesc,
+			const RenderCore::FrameBufferProperties& fbProps);
 		~CompiledSceneTechnique();
-	
 	};
 
 	CompiledSceneTechnique::CompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const RenderCore::AttachmentDesc& targetAttachmentDesc,
+		const RenderCore::FrameBufferProperties& fbProps)
+	: _pipelineAccelerators(pipelineAccelerators)
 	{
 		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
 		const bool precisionTargets = Tweakable("PrecisionTargets", false);
@@ -86,6 +106,94 @@ namespace SceneEngine
 			_renderSteps.push_back(resolveHDR);
 		}
 
+		//
+		//		Figure out the frame buffers and render passes required
+		//		Iterate through each render step and check it's input/output interface
+		//		Where we can merge multiple render steps into a single renderpass, do so
+		//			-- however, render passes can use different pipeline types, so (for example
+		//			a compute pass can break up a graphics pipeline pass
+		//
+
+		std::vector<Techniques::PreregisteredAttachment> workingAttachments = {
+			Techniques::PreregisteredAttachment { 
+				Techniques::AttachmentSemantics::ColorLDR,
+				targetAttachmentDesc,
+				Techniques::PreregisteredAttachment::State::Uninitialized
+			}
+		};
+
+		auto renderStepIterator = _renderSteps.begin();
+		while (renderStepIterator != _renderSteps.end()) {
+			std::vector<Techniques::FrameBufferDescFragment> fragments;
+			auto renderStepEnd = renderStepIterator;
+			auto& firstInterface = (*renderStepEnd)->GetInterface();
+			auto pipelineType = firstInterface._pipelineType;
+			fragments.push_back(firstInterface);
+			++renderStepEnd;
+			for (; renderStepEnd != _renderSteps.end(); ++renderStepEnd) {
+				auto& interf = (*renderStepEnd)->GetInterface();
+				if (interf._pipelineType != pipelineType) break;
+				fragments.push_back(interf);
+			}
+		
+			auto merged = Techniques::MergeFragments(
+				MakeIteratorRange(workingAttachments),
+				MakeIteratorRange(fragments),
+				UInt2{fbProps._outputWidth, fbProps._outputHeight});
+			auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
+
+			workingAttachments.reserve(merged._outputAttachments.size());
+			for (const auto&o:merged._outputAttachments) {
+				auto i = std::find_if(
+					workingAttachments.begin(), workingAttachments.end(),
+					[&o](const Techniques::PreregisteredAttachment& p) { return p._semantic == o.first; });
+				if (i != workingAttachments.end()) {
+					assert(merged._mergedFragment._attachments[o.second]._outputSemanticBinding == o.first);
+					i->_desc = merged._mergedFragment._attachments[o.second]._desc;
+					i->_state = i->_stencilState = Techniques::PreregisteredAttachment::State::Initialized;
+				} else {
+					assert(merged._mergedFragment._attachments[o.second]._outputSemanticBinding == o.first);
+					workingAttachments.push_back(
+						Techniques::PreregisteredAttachment { 
+							o.first,
+							merged._mergedFragment._attachments[o.second]._desc,
+							Techniques::PreregisteredAttachment::State::Initialized,
+							Techniques::PreregisteredAttachment::State::Initialized
+						});
+				}
+			}
+
+			RenderPass newRenderPass;
+			newRenderPass._fbDesc = std::move(fbDesc);
+			newRenderPass._pipelineType = pipelineType;
+			newRenderPass._beginRenderStep = std::distance(_renderSteps.begin(), renderStepIterator);
+			newRenderPass._endRenderStep = std::distance(_renderSteps.begin(), renderStepEnd);
+			newRenderPass._perStepRemappings = std::move(merged._remapping);
+			newRenderPass._outputAttachments = std::move(merged._outputAttachments);
+
+			// Fill in the SequencerConfigId for each render step
+			size_t subpassCounter = 0;
+			for (auto step=renderStepIterator; step!=renderStepEnd; ++step) {
+				auto techniqueDel = (*step)->GetTechniqueDelegate();
+				if (techniqueDel) {
+					auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
+						techniqueDel,
+						ParameterBox {},		// sequencerSelectors,
+						fbProps,
+						newRenderPass._fbDesc,
+						(unsigned)subpassCounter);		// note -- this records the first subpass requested by this step
+					newRenderPass._perStepSequencerConfigIds.push_back(sequencerConfig);
+				} else {
+					newRenderPass._perStepSequencerConfigIds.push_back(~0ull);
+				}
+
+				subpassCounter += fragments[step-renderStepIterator]._subpasses.size();
+			}
+
+			_renderPasses.emplace_back(std::move(newRenderPass));
+			renderStepIterator = renderStepEnd;
+		}
+
 		// 
 		//		Other configuration & state
 		//
@@ -104,9 +212,11 @@ namespace SceneEngine
 
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const RenderCore::AttachmentDesc& targetAttachmentDesc,
+		const RenderCore::FrameBufferProperties& fbProps)
 	{
-		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators);
+		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators, targetAttachmentDesc, fbProps);
 	}
 
     void LightingParser_InitBasicLightEnv(
@@ -221,81 +331,49 @@ namespace SceneEngine
 		std::vector<std::pair<uint64_t, RenderCore::IResourcePtr>> workingAttachments = {
 			{ Techniques::AttachmentSemantics::ColorLDR, renderTarget }
 		};
+		parsingContext.GetNamedResources().Bind(
+			Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 
 		parsingContext.GetNamedResources().Bind(
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
 				technique._sampling });
 
-		auto renderStepIterator = technique._renderSteps.begin();
-		while (renderStepIterator != technique._renderSteps.end()) {
-			std::vector<Techniques::FrameBufferDescFragment> fragments;
-			auto renderStepEnd = renderStepIterator;
-			auto& firstInterface = (*renderStepEnd)->GetInterface();
-			auto pipelineType = firstInterface._pipelineType;
-			fragments.push_back(firstInterface);
-			++renderStepEnd;
-			for (; renderStepEnd != technique._renderSteps.end(); ++renderStepEnd) {
-				auto& interf = (*renderStepEnd)->GetInterface();
-				if (interf._pipelineType != pipelineType) break;
-				fragments.push_back(interf);
-			}
-		
-			std::vector<Techniques::PreregisteredAttachment> preregistered;
-			preregistered.reserve(workingAttachments.size());
-			for (const auto&w:workingAttachments)	// todo -- set "initialized / uninitialized" flags correctly
-				preregistered.push_back({w.first, AsAttachmentDesc(w.second->GetDesc()), RenderCore::Techniques::PreregisteredAttachment::State::Initialized});
-			auto merged = Techniques::MergeFragments(
-				MakeIteratorRange(preregistered),
-				MakeIteratorRange(fragments),
-				UInt2(targetTextureDesc._width, targetTextureDesc._height));
-			auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
-
-			for (const auto&w:workingAttachments)
-				parsingContext.GetNamedResources().Bind(w.first, w.second);
-
+		for (const auto&rp:technique._renderPasses) {
 			Techniques::RenderPassInstance rpi;
-			if (pipelineType == PipelineType::Graphics) {
-				rpi = Techniques::RenderPassInstance { threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources() };
-				metalContext.Bind(Metal::ViewportDesc { 0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height) });
+			if (rp._pipelineType == PipelineType::Graphics) {
+				rpi = Techniques::RenderPassInstance { threadContext, rp._fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources() };
+				// metalContext.Bind(Metal::ViewportDesc { 0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height) });
 			} else {
 				// construct a "non-metal" render pass instance. This just handles attachment remapping logic, but doesn't create an renderpass
 				// in the underlying graphics API
-				rpi = Techniques::RenderPassInstance { fbDesc, parsingContext.GetNamedResources() };
+				rpi = Techniques::RenderPassInstance { rp._fbDesc, parsingContext.GetNamedResources() };
 			}
 
-			for (unsigned c=0; c<std::distance(renderStepIterator, renderStepEnd); ++c) {
+			auto stepRemappingIterator = rp._perStepRemappings.begin();
+			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
 				CATCH_ASSETS_BEGIN
-					Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
+					Techniques::RenderPassFragment rpf(rpi, *stepRemappingIterator);
 					IViewDelegate* viewDelegate = nullptr;
-					if (c==0 && renderStepIterator == technique._renderSteps.begin()) viewDelegate = executeContext.GetViewDelegates()[0].get();
-					renderStepIterator[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+					if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
+
+					// todo - do this more sensibly
+					parsingContext._sequencerConfigId = rp._perStepSequencerConfigIds[step-rp._beginRenderStep];
+					parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
+
+					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
 				CATCH_ASSETS_END(parsingContext)
 			}
 
-			// todo -- erase resources that are "exhausted" by this render pass -- ie, input but not output
-			/*for (const auto&w:workingAttachments)
-				parsingContext.GetNamedResources().Unbind(*w.second);*/
-
-			// workingAttachments.clear();
-			workingAttachments.reserve(merged._outputAttachments.size());
-			for (const auto&o:merged._outputAttachments) {
-				auto i = std::find_if(
-					workingAttachments.begin(), workingAttachments.end(),
-					[&o](const std::pair<uint64_t, RenderCore::IResourcePtr>& p) { return p.first == o.first; });
-				if (i != workingAttachments.end()) {
-					i->second = rpi.GetResource(o.second);
-				} else {
-					workingAttachments.push_back(std::make_pair(o.first, rpi.GetResource(o.second)));
-				}
-			}
-
-			renderStepIterator = renderStepEnd;
+			// Bind the output attachments from the render pass
+			// Note -- we never unbind any "exhausted" attachments. All attachments
+			//		that are written to end up here.
+			for (const auto&w:rp._outputAttachments)
+				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResource(w.second));
 		}
 
-		// Bind the final outputs
-		for (const auto&w:workingAttachments)
-			parsingContext.GetNamedResources().Bind(w.first, w.second);
+		parsingContext._sequencerConfigId = ~0ull;
+		parsingContext._pipelineAcceleratorPool = nullptr;
 
 		// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
 		/*if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)

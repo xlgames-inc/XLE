@@ -458,9 +458,10 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegatePrototype : public ITechniqueDelegate_New
 	{
 	public:
-		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> GetShader(
+		ResolvedTechnique Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-			IteratorRange<const ParameterBox**> selectors) override;
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& input) override;
 
 		TechniqueDelegatePrototype(
 			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
@@ -475,9 +476,10 @@ namespace RenderCore { namespace Techniques
 		TechniqueEntry _perPixelAndEarlyRejection;
 	};
 
-	::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> TechniqueDelegatePrototype::GetShader(
+	auto TechniqueDelegatePrototype::Resolve(
 		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-		IteratorRange<const ParameterBox**> selectors)
+		IteratorRange<const ParameterBox**> selectors,
+		const RenderCore::Assets::RenderStateSet& input) -> ResolvedTechnique
 	{
 		IteratorRange<const uint64_t*> patchExpansions = {};
 		const TechniqueEntry* techEntry = &_noPatches;
@@ -501,7 +503,11 @@ namespace RenderCore { namespace Techniques
 			techEntry->_baseSelectors._selectors[0], 
 			shaderPatches->GetInterface().GetSelectorRelevance(),
 			factory);
-		return variation._shaderFuture;
+
+		ResolvedTechnique result;
+		result._shaderProgram = variation._shaderFuture;
+		// default render states for now
+		return result;
 	}
 
 	TechniqueDelegatePrototype::TechniqueDelegatePrototype(

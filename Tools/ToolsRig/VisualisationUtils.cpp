@@ -24,6 +24,7 @@
 #include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -113,6 +114,8 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 		std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _renderStateDelegate;
+
+		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
 		
     };
 
@@ -121,8 +124,6 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		assert(0);
-#if 0
         using namespace SceneEngine;
 
 		if (_pimpl->_sceneFuture) {
@@ -171,15 +172,20 @@ namespace ToolsRig
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
-			auto qualSettings = SceneEngine::SceneTechniqueDesc{
+			auto techniqueDesc = SceneEngine::SceneTechniqueDesc{
 				SceneEngine::SceneTechniqueDesc::LightingModel::Deferred,
-				&lightingParserDelegate,
 				MakeIteratorRange(lightingPlugins)};
+
+			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
+				techniqueDesc,
+				_pimpl->_pipelineAccelerators,
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
+				parserContext.GetNamedResources().GetFrameBufferProperties());
 
 			LightingParserContext lightingParserContext;
 			{
 				// Setup delegates to override the material & technique values (if we've been given overrides for them)
-				AutoCleanup materialDelegateCleanup, techniqueDelegateCleanup;
+				AutoCleanup materialDelegateCleanup /*, techniqueDelegateCleanup*/;
 				if (_pimpl->_materialDelegate) {
 					auto oldDelegate = parserContext.SetMaterialDelegate(_pimpl->_materialDelegate);
 					materialDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
@@ -187,26 +193,26 @@ namespace ToolsRig
 					}};
 				}
 
-				if (_pimpl->_techniqueDelegate) {
+				/*if (_pimpl->_techniqueDelegate) {
 					auto oldDelegate = parserContext.SetTechniqueDelegate(_pimpl->_techniqueDelegate);
 					techniqueDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
 						parserContext.SetTechniqueDelegate(oldDelegate);
 					}};
-				}
+				}*/
 
 				auto& screenshot = Tweakable("Screenshot", 0);
 				if (screenshot) {
 					PlatformRig::TiledScreenshot(
 						threadContext, parserContext,
 						*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
-						qualSettings, UInt2(screenshot, screenshot));
+						techniqueDesc, UInt2(screenshot, screenshot));
 					screenshot = 0;
 				}
 
 				lightingParserContext = LightingParser_ExecuteScene(
 					threadContext, renderTarget, parserContext, 
-					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
-					qualSettings);
+					*compiledTechnique, lightingParserDelegate,
+					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera));
 			}
 
 			// Draw debugging overlays -- 
@@ -223,7 +229,6 @@ namespace ToolsRig
 			if (!_pimpl->_envSettingsErrorMessage.empty())
 				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
 		}
-#endif
     }
 
     void ModelVisLayer::Set(const VisEnvSettings& envSettings)
@@ -266,10 +271,11 @@ namespace ToolsRig
 		}
 	}
 	
-    ModelVisLayer::ModelVisLayer()
+    ModelVisLayer::ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
+		_pimpl->_pipelineAccelerators = pipelineAccelerators;
     }
 
     ModelVisLayer::~ModelVisLayer() {}
@@ -411,7 +417,7 @@ namespace ToolsRig
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings) return;
 
 		RenderCore::Techniques::SequencerTechnique sequencerTechnique;
-		sequencerTechnique._techniqueDelegate = _pimpl->_techniqueDelegate;
+		// sequencerTechnique._techniqueDelegate = _pimpl->_techniqueDelegate;
 		sequencerTechnique._materialDelegate = _pimpl->_materialDelegate;
 		sequencerTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
 

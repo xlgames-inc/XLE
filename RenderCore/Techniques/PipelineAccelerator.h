@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../Metal/InputLayout.h"
+#include "../Metal/Forward.h"		// (for Metal::GraphicsPipeline)
 #include "../Types.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Utility/ParameterBox.h"
@@ -18,6 +18,8 @@ namespace RenderCore
 	class FrameBufferProperties;
 	class InputElementDesc;
 }
+
+namespace RenderCore { namespace Assets { class RenderStateSet; } }
 
 namespace RenderCore { namespace Techniques
 {
@@ -38,25 +40,14 @@ namespace RenderCore { namespace Techniques
 	class PipelineAcceleratorPool
 	{
 	public:
-		// todo -- avoid the "metal" references here
 		std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
-			const RenderCore::Metal::DepthStencilDesc& depthStencil,
-			const RenderCore::Metal::AttachmentBlendDesc& blend,
-			const RenderCore::Metal::RasterizationDesc& rasterization);
+			const RenderCore::Assets::RenderStateSet& stateSet);
 
-		SequencerConfigId AddSequencerConfig(
-			const std::shared_ptr<ITechniqueDelegate_New>& delegate,
-			const ParameterBox& sequencerSelectors,
-			const FrameBufferProperties& fbProps,
-			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex = 0);
-
-		void UpdateSequencerConfig(
-			SequencerConfigId sequencerConfig,
+		SequencerConfigId CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate_New>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
@@ -73,6 +64,8 @@ namespace RenderCore { namespace Techniques
 		~PipelineAcceleratorPool();
 		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
 		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
+
+		uint64_t GetHash() const { return _guid; }	// GetHash() function for Assets::Internal::HashParam expansion
 	private:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
@@ -87,5 +80,6 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, AsOpaqueIteratorRange(value), insertType);
 	}
 
-
+	std::shared_ptr<PipelineAcceleratorPool> CreatePipelineAcceleratorPool();
 }}
+

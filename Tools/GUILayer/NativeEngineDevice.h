@@ -14,7 +14,7 @@
 namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
 namespace ConsoleRig { class GlobalServices; class CrossModule; }
-namespace RenderCore { namespace Techniques { class ShaderPatchCollectionRegistry; }}
+namespace RenderCore { namespace Techniques { class ShaderPatchCollectionRegistry; class PipelineAcceleratorPool; }}
 
 namespace GUILayer
 {
@@ -31,6 +31,8 @@ namespace GUILayer
         int                         GetCreationThreadId() { return _creationThreadId; }
         RenderCore::Assets::Services* GetRenderAssetServices() { return _renderAssetsServices.get(); }
 
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& GetMainPipelineAcceleratorPool() { return _pipelineAcceleratorPool; }
+
         NativeEngineDevice();
         ~NativeEngineDevice();
 
@@ -45,6 +47,7 @@ namespace GUILayer
 		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
 		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
+		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
 
 		std::unique_ptr<RenderCore::Techniques::ShaderPatchCollectionRegistry> _shaderPatchCollectionRegistry;
     };

@@ -5,6 +5,8 @@
 #include "PipelineAccelerator.h"
 #include "../FrameBufferDesc.h"
 #include "../Metal/DeviceContext.h"
+#include "../Metal/InputLayout.h"
+#include "../Assets/MaterialScaffold.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <cctype>
@@ -23,6 +25,8 @@ namespace RenderCore { namespace Techniques
 		FrameBufferProperties _fbProps;
 		FrameBufferDesc _fbDesc;
 		uint64_t _fbRelevanceValue;
+
+		uint64_t _hash;
 	};
 
 	class RealPipelineAccelerator : public PipelineAccelerator, public std::enable_shared_from_this<RealPipelineAccelerator>
@@ -39,9 +43,7 @@ namespace RenderCore { namespace Techniques
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
-			const RenderCore::Metal::DepthStencilDesc& depthStencil,
-			const RenderCore::Metal::AttachmentBlendDesc& blend,
-			const RenderCore::Metal::RasterizationDesc& rasterization);
+			const RenderCore::Assets::RenderStateSet& stateSet);
 		~RealPipelineAccelerator();
 	
 		struct Pipeline
@@ -57,21 +59,22 @@ namespace RenderCore { namespace Techniques
 
 		std::vector<InputElementDesc> _inputAssembly;
 		RenderCore::Topology _topology;
-		RenderCore::Metal::DepthStencilDesc _depthStencil;
-		RenderCore::Metal::AttachmentBlendDesc _blend;
-		RenderCore::Metal::RasterizationDesc _rasterization;
+		RenderCore::Assets::RenderStateSet _stateSet;
 
 		unsigned _ownerPoolId;
 
 		std::shared_ptr<Metal::GraphicsPipeline> InternalCreatePipeline(
 			const Metal::ShaderProgram& shader,
+			const RenderCore::DepthStencilDesc& depthStencil,
+			const RenderCore::AttachmentBlendDesc& blend,
+			const RenderCore::RasterizationDesc& rasterization,
 			const SequencerConfig& sequencerCfg)
 		{
 			Metal::GraphicsPipelineBuilder builder;
 			builder.Bind(shader);
-			builder.Bind(_blend);
-			builder.Bind(_depthStencil);
-			builder.Bind(_rasterization);
+			builder.Bind(blend);
+			builder.Bind(depthStencil);
+			builder.Bind(rasterization);
 			builder.Bind(_topology);
 
 			Metal::BoundInputLayout ia(MakeIteratorRange(_inputAssembly), shader);
@@ -109,19 +112,20 @@ namespace RenderCore { namespace Techniques
 			&globalSelectors
 		};
 
-		auto shader = cfg._delegate->GetShader(
+		auto shader = cfg._delegate->Resolve(
 			_shaderPatches,
-			MakeIteratorRange(paramBoxes));
+			MakeIteratorRange(paramBoxes),
+			_stateSet);
 		
-		auto state = shader->GetAssetState();
+		auto state = shader._shaderProgram->GetAssetState();
 		if (state == ::Assets::AssetState::Invalid) {
-			result._future->SetInvalidAsset(shader->GetDependencyValidation(), shader->GetActualizationLog());
+			result._future->SetInvalidAsset(shader._shaderProgram->GetDependencyValidation(), shader._shaderProgram->GetActualizationLog());
 		} else if (state == ::Assets::AssetState::Ready) {
 			//
 			// Since we're ready, let's take an accelerated path and just construct
 			// the pipeline right here and now
 			//
-			auto pipeline = InternalCreatePipeline(*shader->Actualize(), cfg);
+			auto pipeline = InternalCreatePipeline(*shader._shaderProgram->Actualize(), shader._depthStencil, shader._blend, shader._rasterization, cfg);
 			result._actualized = pipeline;
 			result._future->SetAsset(std::move(pipeline), nullptr);
 		} else {
@@ -133,11 +137,11 @@ namespace RenderCore { namespace Techniques
 			std::weak_ptr<RealPipelineAccelerator> weakThis = shared_from_this();
 			result._future->SetPollingFunction(
 				[shader, cfg, weakThis](::Assets::AssetFuture<Metal::GraphicsPipeline>& thatFuture) {
-					auto shaderActual = shader->TryActualize();
+					auto shaderActual = shader._shaderProgram->TryActualize();
 					if (!shaderActual) {
-						auto state = shader->GetAssetState();
+						auto state = shader._shaderProgram->GetAssetState();
 						if (state == ::Assets::AssetState::Invalid) {
-							thatFuture.SetInvalidAsset(shader->GetDependencyValidation(), shader->GetActualizationLog());
+							thatFuture.SetInvalidAsset(shader._shaderProgram->GetDependencyValidation(), shader._shaderProgram->GetActualizationLog());
 							return false;
 						}
 						return true;
@@ -151,7 +155,7 @@ namespace RenderCore { namespace Techniques
 						return false;
 					}
 
-					auto pipeline = containingPipelineAccelerator->InternalCreatePipeline(*shader->Actualize(), cfg);
+					auto pipeline = containingPipelineAccelerator->InternalCreatePipeline(*shader._shaderProgram->Actualize(), shader._depthStencil, shader._blend, shader._rasterization, cfg);
 					thatFuture.SetAsset(std::move(pipeline), nullptr);
 					return false;
 				});
@@ -168,16 +172,12 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
 		RenderCore::Topology topology,
-		const RenderCore::Metal::DepthStencilDesc& depthStencil,
-		const RenderCore::Metal::AttachmentBlendDesc& blend,
-		const RenderCore::Metal::RasterizationDesc& rasterization)
+		const RenderCore::Assets::RenderStateSet& stateSet)
 	: _shaderPatches(shaderPatches)
 	, _materialSelectors(materialSelectors)
 	, _inputAssembly(inputAssembly.begin(), inputAssembly.end())
 	, _topology(topology)
-	, _depthStencil(depthStencil)
-	, _blend(blend)
-	, _rasterization(rasterization)
+	, _stateSet(stateSet)
 	, _ownerPoolId(ownerPoolId)
 	{
 		std::vector<InputElementDesc> sortedIA = _inputAssembly;
@@ -238,7 +238,7 @@ namespace RenderCore { namespace Techniques
 				Throw(std::runtime_error("Bad sequencer config id"));
 		#endif
 		
-		return rpa._finalPipelines[sequencerIdx]._actualized.get();
+		return rpa._finalPipelines[sequencerIdx]._future->TryActualize().get();
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +252,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::shared_ptr<SequencerConfig>> _sequencerConfigById;
 		std::vector<std::pair<uint64_t, std::weak_ptr<RealPipelineAccelerator>>> _pipelineAccelerators;
 
-		std::shared_ptr<SequencerConfig> MakeUniqueSequencerConfig(
+		SequencerConfig MakeSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate_New>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
@@ -263,7 +263,7 @@ namespace RenderCore { namespace Techniques
 		void RebuildAllPipelines(unsigned poolGuid, RealPipelineAccelerator& pipeline);
 	};
 
-	std::shared_ptr<SequencerConfig> PipelineAcceleratorPool::Pimpl::MakeUniqueSequencerConfig(
+	SequencerConfig PipelineAcceleratorPool::Pimpl::MakeSequencerConfig(
 		const std::shared_ptr<ITechniqueDelegate_New>& delegate,
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
@@ -279,7 +279,7 @@ namespace RenderCore { namespace Techniques
 			delegate,
 			sequencerSelectors,
 			fbProps, fbDesc,
-			0
+			0, 0
 		};
 
 		if (subpassIndex != 0 || fbDesc.GetSubpasses().size() != 1)
@@ -287,7 +287,10 @@ namespace RenderCore { namespace Techniques
 
 		cfg._fbRelevanceValue = Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(cfg._fbProps, cfg._fbDesc);
 
-		return std::make_shared<SequencerConfig>(std::move(cfg));
+		cfg._hash = HashCombine(sequencerSelectors.GetHash(), sequencerSelectors.GetParameterNamesHash());
+		cfg._hash = HashCombine(cfg._fbRelevanceValue, cfg._hash);
+
+		return cfg;
 	}
 
 	static uint64_t Hash(IteratorRange<const InputElementDesc*> inputAssembly)
@@ -322,16 +325,12 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
 		RenderCore::Topology topology,
-		const RenderCore::Metal::DepthStencilDesc& depthStencil,
-		const RenderCore::Metal::AttachmentBlendDesc& blend,
-		const RenderCore::Metal::RasterizationDesc& rasterization)
+		const RenderCore::Assets::RenderStateSet& stateSet)
 	{
 		uint64_t hash = HashCombine(materialSelectors.GetHash(), materialSelectors.GetParameterNamesHash());
 		hash = HashCombine(Hash(inputAssembly), hash);
 		hash = HashCombine((unsigned)topology, hash);
-		hash = HashCombine(depthStencil.Hash(), hash);
-		hash = HashCombine(blend.Hash(), hash);
-		hash = HashCombine(rasterization.Hash(), hash);
+		hash = HashCombine(stateSet.GetHash(), hash);
 
 		// If it already exists in the cache, just return it now
 		auto i = LowerBound(_pimpl->_pipelineAccelerators, hash);
@@ -345,7 +344,7 @@ namespace RenderCore { namespace Techniques
 			_guid,
 			shaderPatches, materialSelectors,
 			inputAssembly, topology,
-			depthStencil, blend, rasterization);
+			stateSet);
 
 		if (i != _pimpl->_pipelineAccelerators.end() && i->first == hash) {
 			i->second = newAccelerator;		// (we replaced one that expired)
@@ -358,53 +357,35 @@ namespace RenderCore { namespace Techniques
 		return newAccelerator;
 	}
 
-	auto PipelineAcceleratorPool::AddSequencerConfig(
+	auto PipelineAcceleratorPool::CreateSequencerConfig(
 		const std::shared_ptr<ITechniqueDelegate_New>& delegate,
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
 		const FrameBufferDesc& fbDesc,
 		unsigned subpassIndex) -> SequencerConfigId
 	{
-		auto& cfg = _pimpl->_sequencerConfigById.emplace_back(
-			_pimpl->MakeUniqueSequencerConfig(delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex));
+		auto cfg = _pimpl->MakeSequencerConfig(delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
 
+		// Look for an existing configuration with the same settings
+		//	-- todo, not checking the delegate here!
+		for (auto i=_pimpl->_sequencerConfigById.begin(); i!=_pimpl->_sequencerConfigById.end(); ++i) {
+			if ((*i)->_hash == cfg._hash) {
+				auto cfgId = SequencerConfigId(i - _pimpl->_sequencerConfigById.begin()) | (SequencerConfigId(_guid) << 32ull);
+				return cfgId;
+			}
+		}
+
+		auto& finalCfg = _pimpl->_sequencerConfigById.emplace_back(std::make_shared<SequencerConfig>(std::move(cfg)));
 		auto cfgId = SequencerConfigId(_pimpl->_sequencerConfigById.size()-1) | (SequencerConfigId(_guid) << 32ull);
 
 		// trigger creation of pipeline states for all accelerators
 		for (auto& accelerator:_pimpl->_pipelineAccelerators) {
 			auto a = accelerator.second.lock();
 			if (a)
-				a->CreatePipelineForSequencerState(cfgId, *cfg, _pimpl->_globalSelectors);
+				a->CreatePipelineForSequencerState(cfgId, *finalCfg, _pimpl->_globalSelectors);
 		}
 
 		return cfgId;
-	}
-
-	void PipelineAcceleratorPool::UpdateSequencerConfig(
-		SequencerConfigId cfgId,
-		const std::shared_ptr<ITechniqueDelegate_New>& delegate,
-		const ParameterBox& sequencerSelectors,
-		const FrameBufferProperties& fbProps,
-		const FrameBufferDesc& fbDesc,
-		unsigned subpassIndex)
-	{
-		unsigned poolId = unsigned(cfgId >> 32ull);
-		unsigned sequencerIdx = unsigned(cfgId);
-		if (poolId != _guid)
-			Throw(std::runtime_error("Sequencer Config id is from a different pipeline accelerator pool"));
-
-		if (sequencerIdx >= _pimpl->_sequencerConfigById.size())
-			Throw(std::runtime_error("Invalid sequencer config id passed to PipelineAcceleratorPool::UpdateSequencerConfig"));
-
-		auto& cfg = _pimpl->_sequencerConfigById[sequencerIdx] = _pimpl->MakeUniqueSequencerConfig(
-			delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
-
-		// Update sates for all accelerators
-		for (auto& accelerator:_pimpl->_pipelineAccelerators) {
-			auto a = accelerator.second.lock();
-			if (a)
-				a->CreatePipelineForSequencerState(cfgId, *cfg, _pimpl->_globalSelectors);
-		}
 	}
 
 	void PipelineAcceleratorPool::Pimpl::RebuildAllPipelines(unsigned poolGuid, RealPipelineAccelerator& pipeline)
@@ -445,5 +426,11 @@ namespace RenderCore { namespace Techniques
 	}
 
 	PipelineAcceleratorPool::~PipelineAcceleratorPool() {}
+
+
+	std::shared_ptr<PipelineAcceleratorPool> CreatePipelineAcceleratorPool()
+	{
+		return std::make_shared<PipelineAcceleratorPool>();
+	}
 
 }}

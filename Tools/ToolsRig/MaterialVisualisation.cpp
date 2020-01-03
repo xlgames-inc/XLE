@@ -74,26 +74,26 @@ namespace ToolsRig
 		unsigned	_vertexCount;
 
 		static void DrawFn(
-			Metal::DeviceContext& metalContext,
 			Techniques::ParsingContext& parserContext,
-			const MaterialSceneParserDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
-			const Metal::ShaderProgram&)
+			const DrawFunctionContext& drawFnContext,
+			const MaterialSceneParserDrawable& drawable)
 		{
-			if (boundUniforms._boundUniformBufferSlots[3] != 0) {
+			if (drawFnContext._boundUniforms->_boundUniformBufferSlots[3] != 0) {
 				ConstantBufferView cbvs[] = {
 					Techniques::MakeLocalTransformPacket(
 						Identity<Float4x4>(), 
 						ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
-				boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
+				drawFnContext.ApplyUniforms(UniformsStream{MakeIteratorRange(cbvs)});
 			}
 
 				// disable blending to avoid problem when rendering single component stuff 
                 //  (ie, nodes that output "float", not "float4")
-            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
+			assert(!drawFnContext._pipeline);	// note -- won't work with pipelines
+            drawFnContext._metalContext->Bind(Techniques::CommonResources()._blendOpaque);
 
 			assert(!drawable._geo->_ib);
-			metalContext.Bind(drawable._topology);
-			metalContext.Draw(drawable._vertexCount);
+			// drawFnCon.Bind(drawable._topology);
+			drawFnContext.Draw(drawable._vertexCount);
 		}
 	};
 

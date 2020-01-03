@@ -100,6 +100,7 @@ namespace RenderCore { namespace Techniques
         return oldResolver;
     }
 
+	/*
 	std::shared_ptr<ITechniqueDelegate> ParsingContext::SetTechniqueDelegate(
         const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate)
     {
@@ -107,6 +108,7 @@ namespace RenderCore { namespace Techniques
         _techniqueDelegate = std::move(techniqueDelegate);
         return oldDelegate;
     }
+	*/
 
 	std::shared_ptr<IMaterialDelegate> ParsingContext::SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate)
 	{

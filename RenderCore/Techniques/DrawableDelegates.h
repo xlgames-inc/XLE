@@ -13,6 +13,7 @@
 #include "../../Utility/StringUtils.h"
 
 namespace RenderCore { class IResource; class ConstantBufferView; }
+namespace RenderCore { namespace Assets { class RenderStateSet; } }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -41,7 +42,7 @@ namespace RenderCore { namespace Techniques
         virtual ~IShaderResourceDelegate();
     };
 
-    class IMaterialDelegate
+    DEPRECATED_ATTRIBUTE class IMaterialDelegate
     {
     public:
         virtual UniformsStreamInterface GetInterface(const void* objectContext) const = 0;
@@ -58,7 +59,7 @@ namespace RenderCore { namespace Techniques
 
 	class DrawableMaterial;
 
-	class ITechniqueDelegate
+	DEPRECATED_ATTRIBUTE class ITechniqueDelegate
 	{
 	public:
 		virtual Metal::ShaderProgram* GetShader(
@@ -80,9 +81,19 @@ namespace RenderCore { namespace Techniques
 	class ITechniqueDelegate_New
 	{
 	public:
-		virtual ::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> GetShader(
+		struct ResolvedTechnique
+		{
+			::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> _shaderProgram;
+
+			RenderCore::DepthStencilDesc	_depthStencil;
+			RenderCore::AttachmentBlendDesc _blend;
+			RenderCore::RasterizationDesc	_rasterization;
+		};
+
+		virtual ResolvedTechnique Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-			IteratorRange<const ParameterBox**> selectors) = 0;
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& renderStates) = 0;
 
 		virtual ~ITechniqueDelegate_New();
 	};

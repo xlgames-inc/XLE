@@ -29,6 +29,7 @@ namespace RenderCore { namespace Techniques
 	class IUniformBufferDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
+	class PipelineAcceleratorPool;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -56,8 +57,11 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(const std::shared_ptr<IRenderStateDelegate>& stateSetDelegate);
         const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
 
-		std::shared_ptr<ITechniqueDelegate> SetTechniqueDelegate(const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate);
-        const std::shared_ptr<ITechniqueDelegate>& GetTechniqueDelegate()            { return _techniqueDelegate; }
+		// std::shared_ptr<ITechniqueDelegate> SetTechniqueDelegate(const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate);
+        // const std::shared_ptr<ITechniqueDelegate>& GetTechniqueDelegate()            { return _techniqueDelegate; }
+
+		uint64_t _sequencerConfigId = ~0ull;
+		RenderCore::Techniques::PipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
 
 		std::shared_ptr<IMaterialDelegate> SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate);
         const std::shared_ptr<IMaterialDelegate>& GetMaterialDelegate()            { return _materialDelegate; }

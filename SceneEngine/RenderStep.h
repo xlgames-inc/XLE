@@ -15,6 +15,7 @@ namespace RenderCore { namespace Techniques
 {
 	class FrameBufferDescFragment;
 	class RenderPassFragment;
+	class ITechniqueDelegate_New;
 }}
 
 namespace SceneEngine
@@ -33,6 +34,7 @@ namespace SceneEngine
 	public:
 		virtual std::shared_ptr<IViewDelegate> CreateViewDelegate();
 		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const = 0;
+		virtual std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> GetTechniqueDelegate() const { return nullptr; }
 		virtual void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
@@ -83,20 +85,22 @@ namespace SceneEngine
 	class RenderStep_GBuffer : public IRenderStep
 	{
 	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate();
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> GetTechniqueDelegate() const override;
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override;
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
 		~RenderStep_GBuffer();
 	private:
 		RenderCore::Techniques::FrameBufferDescFragment _createGBuffer;
 		unsigned _gbufferType;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> _deferredIllumDelegate;
 	};
 
 	class RenderStep_PrepareDMShadows : public IRenderStep

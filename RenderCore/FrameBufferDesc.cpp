@@ -123,13 +123,17 @@ namespace RenderCore
 			a._resourceName = attachmentRemap[a._resourceName];
 		}
 
-		if (attachmentRemap[newSubpasses[0]._depthStencil._resourceName] == ~0u)
-			attachmentRemap[newSubpasses[0]._depthStencil._resourceName] = nextRemapIndex++;
-		newSubpasses[0]._depthStencil._resourceName = attachmentRemap[newSubpasses[0]._depthStencil._resourceName];
+		if (newSubpasses[0]._depthStencil._resourceName != ~0u) {
+			if (attachmentRemap[newSubpasses[0]._depthStencil._resourceName] == ~0u)
+				attachmentRemap[newSubpasses[0]._depthStencil._resourceName] = nextRemapIndex++;
+			newSubpasses[0]._depthStencil._resourceName = attachmentRemap[newSubpasses[0]._depthStencil._resourceName];
+		}
 
-		if (attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] == ~0u)
-			attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] = nextRemapIndex++;
-		newSubpasses[0]._depthStencilResolve._resourceName = attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName];
+		if (newSubpasses[0]._depthStencilResolve._resourceName != ~0u) {
+			if (attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] == ~0u)
+				attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] = nextRemapIndex++;
+			newSubpasses[0]._depthStencilResolve._resourceName = attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName];
+		}
 
 		for (auto&a:newSubpasses[0]._input) {
 			if (attachmentRemap[a._resourceName] == ~0u)

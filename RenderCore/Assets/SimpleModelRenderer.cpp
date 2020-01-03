@@ -15,6 +15,8 @@
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonBindings.h"
+#include "../Techniques/PipelineAccelerator.h"
+#include "../Techniques/DrawableMaterial.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"
@@ -26,6 +28,7 @@
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/VariantUtils.h"
+#include <utility>
 
 // #define BAD_MATERIAL_FALLBACK
 
@@ -59,23 +62,22 @@ namespace RenderCore { namespace Assets
 	};
 
 	static void DrawFn_SimpleModelStatic(
-        Metal::DeviceContext& metalContext,
 		Techniques::ParsingContext& parserContext,
-        const SimpleModelDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
-        const Metal::ShaderProgram&)
+		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+        const SimpleModelDrawable& drawable)
 	{
 		ConstantBufferView cbvs[2];
 		cbvs[0] = {
 			Techniques::MakeLocalTransformPacket(
 				drawable._objectToWorld, 
 				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
-		if (boundUniforms._boundUniformBufferSlots[3] & (1<<1)) {
+		if (drawFnContext._boundUniforms->_boundUniformBufferSlots[3] & (1<<1)) {
 			cbvs[1] = MakeSharedPkt(DrawCallProperties{drawable._materialGuid, drawable._drawCallIdx});
 		}
-		boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
+		drawFnContext.ApplyUniforms(UniformsStream{MakeIteratorRange(cbvs)});
 
-		metalContext.Bind(drawable._drawCall._topology);
-        metalContext.DrawIndexed(drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
+        drawFnContext.DrawIndexed(
+			drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
 	}
 
 	#if defined(BAD_MATERIAL_FALLBACK)
@@ -101,7 +103,7 @@ namespace RenderCore { namespace Assets
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
-		auto materialIterator = _geoMaterials.begin();
+		auto geoCallIterator = _geoCalls.begin();
         for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
@@ -113,7 +115,8 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = *materialIterator++;
+				drawable._material = geoCallIterator->_material;
+				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -131,10 +134,11 @@ namespace RenderCore { namespace Assets
                 drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 				++drawCallCounter;
+				++geoCallIterator;
             }
         }
 
-		materialIterator = _boundSkinnedControllerMaterials.begin();
+		geoCallIterator = _boundSkinnedControllerGeoCalls.begin();
         for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
@@ -151,7 +155,8 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = *materialIterator++;
+				drawable._material = geoCallIterator->_material;
+				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -169,6 +174,7 @@ namespace RenderCore { namespace Assets
                 drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 				++drawCallCounter;
+				++geoCallIterator;
             }
         }
 	}
@@ -182,14 +188,13 @@ namespace RenderCore { namespace Assets
 	};
 
 	static void DrawFn_SimpleModelDelegate(
-        Metal::DeviceContext& metalContext,
 		Techniques::ParsingContext& parserContext,
-        const SimpleModelDrawable_Delegate& drawable, const Metal::BoundUniforms& boundUniforms,
-        const Metal::ShaderProgram& shader)
+		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+        const SimpleModelDrawable_Delegate& drawable)
 	{
-		bool delegateResult = drawable._delegate->OnDraw(metalContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
+		bool delegateResult = drawable._delegate->OnDraw(*drawFnContext._metalContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
 		if (delegateResult)
-			DrawFn_SimpleModelStatic(metalContext, parserContext, drawable, boundUniforms, shader);
+			DrawFn_SimpleModelStatic(parserContext, drawFnContext, drawable);
 	}
 
 	void SimpleModelRenderer::BuildDrawables(
@@ -208,7 +213,7 @@ namespace RenderCore { namespace Assets
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
-		auto materialIterator = _geoMaterials.begin();
+		auto geoCallIterator = _geoCalls.begin();
         for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
@@ -220,7 +225,8 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = *materialIterator++;
+				drawable._material = geoCallIterator->_material;
+				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -241,11 +247,12 @@ namespace RenderCore { namespace Assets
                     drawable._objectToWorld = localToWorld;
                 }
 
+				++geoCallIterator;
 				++drawCallCounter;
             }
         }
 
-        materialIterator = _boundSkinnedControllerMaterials.begin();
+		geoCallIterator = _boundSkinnedControllerGeoCalls.begin();
 		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
@@ -262,7 +269,8 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = *materialIterator++;
+				drawable._material = geoCallIterator->_material;
+				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -281,6 +289,7 @@ namespace RenderCore { namespace Assets
 					localToWorld);
 
 				++drawCallCounter;
+				++geoCallIterator;
             }
         }
 	}
@@ -422,7 +431,44 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
+	static std::pair<std::string, unsigned> Dehash(uint64_t hash, IteratorRange<const uint64_t*> hashedNames, IteratorRange<const RenderCore::Assets::VertexElement*> ve)
+	{
+		assert(hashedNames.size() == ve.size());
+		for (auto i=hashedNames.begin(); i!=hashedNames.end(); ++i)
+			if (hash == *i)
+				return {ve[i-hashedNames.begin()]._semanticName, ve[i-hashedNames.begin()]._semanticIndex};
+		return {"Unknown", 0};
+	}
+
+	static std::vector<InputElementDesc> RebuildInputElements(
+		IteratorRange<const Techniques::DrawableGeo::VertexStream*> compiledVertexStreams,
+		const RenderCore::Assets::GeoInputAssembly& rawIA)
+	{
+		// Generate an array of InputElementDesc from the given compiled vertex stream
+		std::vector<uint64_t> hashedNames;
+		hashedNames.reserve(rawIA._elements.size());
+		for (const auto&ele:rawIA._elements) hashedNames.push_back(Hash64(ele._semanticName) + ele._semanticIndex);
+
+		std::vector<InputElementDesc> result;
+		for (auto vi=compiledVertexStreams.begin(); vi!=compiledVertexStreams.end(); ++vi) {
+			size_t workingOffset = 0;
+			for (const auto&e:vi->_vertexElements) {
+				InputElementDesc ele;
+				std::tie(ele._semanticName, ele._semanticIndex) = Dehash(e._semanticHash, MakeIteratorRange(hashedNames), MakeIteratorRange(rawIA._elements));
+				ele._nativeFormat = e._nativeFormat;
+				ele._inputSlot = unsigned(vi-compiledVertexStreams.begin());
+				ele._alignedByteOffset = (unsigned)workingOffset;
+				ele._instanceDataStepRate = vi->_instanceStepDataRate;
+				ele._inputSlotClass = (vi->_instanceStepDataRate==0) ? InputDataRate::PerVertex : InputDataRate::PerInstance;
+				result.emplace_back(std::move(ele));
+				workingOffset += BitsPerPixel(e._nativeFormat) / 8;
+			}
+		}
+		return result;
+	}
+
 	SimpleModelRenderer::SimpleModelRenderer(
+		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
 		IteratorRange<const DeformOperationInstantiation*> deformAttachments,
@@ -451,7 +497,7 @@ namespace RenderCore { namespace Assets
 		unsigned dynVBIterator = 0;
 
 		_geos.reserve(modelScaffold->ImmutableData()._geoCount);
-		_geoMaterials.reserve(modelScaffold->ImmutableData()._geoCount);
+		_geoCalls.reserve(modelScaffold->ImmutableData()._geoCount);
 		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._geoCount; ++geo) {
 			const auto& rg = modelScaffold->ImmutableData()._geos[geo];
 
@@ -476,7 +522,7 @@ namespace RenderCore { namespace Assets
 		}
 
 		_boundSkinnedControllers.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
-		_boundSkinnedControllerMaterials.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
+		_boundSkinnedControllerGeoCalls.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
 		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._boundSkinnedControllerCount; ++geo) {
 			const auto& rg = modelScaffold->ImmutableData()._boundSkinnedControllers[geo];
 
@@ -507,20 +553,52 @@ namespace RenderCore { namespace Assets
 		const auto& cmdStream = _modelScaffold->CommandStream();
 		for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
+
+			auto& rawGeo = modelScaffold->ImmutableData()._geos[geoCall._geoId];
+			auto& compiledGeo = _geos[geoCall._geoId];
+
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				auto materialGuid = geoCall._materialGuids[d];
 				auto i = LowerBound(drawableMaterials, materialGuid);
+
+				GeoCall resultGeoCall;
+
 				if (i != drawableMaterials.end() && i->first == materialGuid) {
-					_geoMaterials.push_back(i->second);
+					resultGeoCall._material = i->second;
 				} else {
 					auto& mat = *_materialScaffold->GetMaterial(materialGuid);
-					auto m = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
-					_geoMaterials.push_back(m);
-					drawableMaterials.insert(i, std::make_pair(materialGuid, m));
+					resultGeoCall._material = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
+					drawableMaterials.insert(i, std::make_pair(materialGuid, resultGeoCall._material));
 				}
+
+				// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
+				// for the same geo object must share the same toplogy mode
+				assert(!rawGeo._drawCalls.empty());
+				auto topology = rawGeo._drawCalls[0]._topology;
+				#if defined(_DEBUG)
+					for (auto r=rawGeo._drawCalls.begin()+1; r!=rawGeo._drawCalls.end(); ++r)
+						assert(topology == r->_topology);
+				#endif
+
+				// Unfortunately, we don't have the input elements in exactly the right format we need to pass to CreatePipelineAccelerator
+				// we've got to rebuild them from the vertex streams
+				auto inputElements = RebuildInputElements(
+					MakeIteratorRange(compiledGeo->_vertexStreams, compiledGeo->_vertexStreams+compiledGeo->_vertexStreamCount),
+					rawGeo._vb._ia);
+
+				resultGeoCall._pipelineAccelerator =
+					pipelineAcceleratorPool->CreatePipelineAccelerator(
+						resultGeoCall._material->_patchCollection,
+						resultGeoCall._material->_material._constants,
+						MakeIteratorRange(inputElements),
+						topology,
+						resultGeoCall._material->_material._stateSet);
+
+				_geoCalls.emplace_back(std::move(resultGeoCall));
 			}
 		}
 
+		/*
 		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
@@ -536,6 +614,7 @@ namespace RenderCore { namespace Assets
 				}
 			}
 		}
+		*/
 
 		// Create the dynamic VB and assign it to all of the slots it needs to go to
 		if (dynVBIterator) {
@@ -573,6 +652,7 @@ namespace RenderCore { namespace Assets
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
+		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		StringSection<> modelScaffoldName,
 		StringSection<> materialScaffoldName,
 		StringSection<> deformOperations)
@@ -585,9 +665,10 @@ namespace RenderCore { namespace Assets
 
 		std::string modelScaffoldNameString = modelScaffoldName.AsString();
 		std::string materialScaffoldNameString = materialScaffoldName.AsString();
+		auto paPool = pipelineAcceleratorPool;
 
 		future.SetPollingFunction(
-			[scaffoldFuture, materialFuture, deformFuture, modelScaffoldNameString, materialScaffoldNameString](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
+			[scaffoldFuture, materialFuture, deformFuture, modelScaffoldNameString, materialScaffoldNameString, paPool](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
 
 			auto scaffoldActual = scaffoldFuture->TryActualize();
 			auto materialActual = materialFuture->TryActualize();
@@ -625,7 +706,7 @@ namespace RenderCore { namespace Assets
 				return true;
 			}
 
-			auto newModel = std::make_shared<SimpleModelRenderer>(scaffoldActual, materialActual, MakeIteratorRange(deformFuture->_deformOps), modelScaffoldNameString, materialScaffoldNameString);
+			auto newModel = std::make_shared<SimpleModelRenderer>(paPool, scaffoldActual, materialActual, MakeIteratorRange(deformFuture->_deformOps), modelScaffoldNameString, materialScaffoldNameString);
 			thatFuture.SetAsset(std::move(newModel), {});
 			return false;
 		});
@@ -633,9 +714,10 @@ namespace RenderCore { namespace Assets
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
+		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		StringSection<> modelScaffoldName)
 	{
-		ConstructToFuture(future, modelScaffoldName, modelScaffoldName);
+		ConstructToFuture(future, pipelineAcceleratorPool, modelScaffoldName, modelScaffoldName);
 	}
 
 	static IResourcePtr LoadVertexBuffer(

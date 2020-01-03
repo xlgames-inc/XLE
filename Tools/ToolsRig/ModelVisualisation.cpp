@@ -11,6 +11,7 @@
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
 #include "../../RenderCore/Assets/SimpleModelDeform.h"
 #include "../../RenderCore/Assets/SkinDeformer.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderOverlays/AnimationVisualization.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../Assets/Assets.h"
@@ -199,9 +200,10 @@ namespace ToolsRig
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<ModelScene>& future,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const ModelVisSettings& settings)
 		{
-			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(settings._modelName, settings._materialName, "skin");
+			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(pipelineAcceleratorPool, settings._modelName, settings._materialName, "skin");
 
 			::Assets::FuturePtr<AnimationSetScaffold> animationSetFuture;
 			::Assets::FuturePtr<SkeletonScaffold> skeletonFuture;
@@ -334,10 +336,12 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const ModelVisSettings& settings)
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const ModelVisSettings& settings)
 	{
 		auto modelScene = std::make_shared<::Assets::AssetFuture<ModelScene>>("ModelVisualization");
-		::Assets::AutoConstructToFuture(*modelScene, settings);
+		::Assets::AutoConstructToFuture(*modelScene, pipelineAcceleratorPool, settings);
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(modelScene);
 	}
 

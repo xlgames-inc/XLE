@@ -11,6 +11,7 @@
 #include "RenderStateResolver.h"
 #include "TechniqueMaterial.h"
 #include "CompiledRenderStateSet.h"
+#include "PipelineAccelerator.h"
 #include "../UniformsStream.h"
 #include "../BufferView.h"
 #include "../Metal/DeviceContext.h"
@@ -68,6 +69,7 @@ namespace RenderCore { namespace Techniques
 
 		// this part would normally be a loop -- 
 		{
+#if 0
 			auto& material = *drawable._material;
 			shaderSelectors[Techniques::ShaderSelectors::Source::Material] = 
 				sequencerTechnique._materialDelegate->GetShaderSelectors(&material);
@@ -91,6 +93,11 @@ namespace RenderCore { namespace Techniques
 				metalContext.Bind(resolvedStates._blendState);
 				metalContext.Bind(resolvedStates._rasterizerState);
 			}
+#else
+			auto* pipeline = drawable._pipeline->TryGetPipeline(sequencerTechnique._sequencerConfigId);
+			if (!pipeline)
+				return;
+#endif
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +111,7 @@ namespace RenderCore { namespace Techniques
 				slotBinding[c]._instanceStepDataRate = stream._instanceStepDataRate;
 			}
 
-			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), *shaderProgram };
+			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), pipeline->GetShaderProgram() };
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbv));
 
 			if (drawable._geo->_ib)
@@ -115,11 +122,11 @@ namespace RenderCore { namespace Techniques
 			//////////////////////////////////////////////////////////////////////////////
 
 			Metal::BoundUniforms boundUniforms{
-				*shaderProgram,
+				*pipeline,
 				Metal::PipelineLayoutConfig{},
 				sequencerInterface,
-				sequencerTechnique._materialDelegate->GetInterface(&material),
-				UniformsStreamInterface{},	// geo stream,
+				UniformsStreamInterface{},	// mat stream -- sequencerTechnique._materialDelegate->GetInterface(&material),
+				UniformsStreamInterface{},	// geo stream
 				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{}};
 
 			boundUniforms.Apply(
@@ -128,16 +135,49 @@ namespace RenderCore { namespace Techniques
 					MakeIteratorRange(sequencerCbvs),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSrvs)),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSamplerStates))});
-			sequencerTechnique._materialDelegate->ApplyUniforms(
+			/*sequencerTechnique._materialDelegate->ApplyUniforms(
 				parserContext, metalContext, 
-				boundUniforms, 1, &material);
+				boundUniforms, 1, &material);*/
+
+			// todo -- bind material descriptor set
 
 			//////////////////////////////////////////////////////////////////////////////
 
 			drawable._drawFn(
-				metalContext, parserContext, 
-				drawable, boundUniforms, *shaderProgram);
+				parserContext, 
+				Drawable::DrawFunctionContext { &metalContext, pipeline, &boundUniforms },
+				drawable);
 		}
+	}
+
+	void Drawable::DrawFunctionContext::ApplyUniforms(const UniformsStream& stream) const
+	{
+		_boundUniforms->Apply(*_metalContext, 3, stream);
+	}
+
+	void Drawable::DrawFunctionContext::Draw(unsigned vertexCount, unsigned startVertexLocation) const
+	{
+		_metalContext->Draw(*_pipeline, vertexCount, startVertexLocation);
+	}
+
+	void Drawable::DrawFunctionContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
+	{
+		_metalContext->DrawIndexed(*_pipeline, indexCount, startIndexLocation, baseVertexLocation);
+	}
+
+	void Drawable::DrawFunctionContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation) const
+	{
+		_metalContext->DrawInstances(*_pipeline, vertexCount, instanceCount, startVertexLocation);
+	}
+
+	void Drawable::DrawFunctionContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
+	{
+		_metalContext->DrawIndexedInstances(*_pipeline, indexCount, instanceCount, startIndexLocation, baseVertexLocation);
+	}
+
+	void Drawable::DrawFunctionContext::DrawAuto() const
+	{
+		_metalContext->DrawAuto(*_pipeline);
 	}
 
 }}

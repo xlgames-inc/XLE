@@ -140,11 +140,14 @@ namespace UnitTests
 
 			Techniques::PipelineAcceleratorPool mainPool;
 			mainPool.SetGlobalSelector("GLOBAL_SEL", 55);
-			auto cfgId = mainPool.AddSequencerConfig(
+			auto cfgId = mainPool.CreateSequencerConfig(
 				techniqueDelegate,
 				ParameterBox { std::make_pair(u("SEQUENCER_SEL"), "37") },
 				FrameBufferProperties { 1024, 1024, TextureSamples::Create() },
 				MakeSimpleFrameBufferDesc());
+
+			RenderCore::Assets::RenderStateSet doubledSidedStateSet;
+			doubledSidedStateSet._doubleSided = true;
 
 				//
 				//	Create a pipeline, and ensure that we get something valid out of it
@@ -156,9 +159,7 @@ namespace UnitTests
 					ParameterBox { std::make_pair(u("SIMPLE_BIND"), "1") },
 					GlobalInputLayouts::PNT,
 					Topology::TriangleList,
-					Metal::DepthStencilDesc{},
-					Metal::AttachmentBlendDesc{},
-					Metal::RasterizationDesc{ CullMode::None });
+					doubledSidedStateSet);
 
 				auto finalPipeline = pipelineAccelerator->GetPipeline(cfgId);
 				finalPipeline->StallWhilePending();
@@ -178,9 +179,7 @@ namespace UnitTests
 					ParameterBox {},
 					GlobalInputLayouts::P,
 					Topology::TriangleList,
-					Metal::DepthStencilDesc{},
-					Metal::AttachmentBlendDesc{},
-					Metal::RasterizationDesc{ CullMode::None });
+					doubledSidedStateSet);
 
 				{
 						//
@@ -197,9 +196,7 @@ namespace UnitTests
 					ParameterBox {},
 					GlobalInputLayouts::PCT,
 					Topology::TriangleList,
-					Metal::DepthStencilDesc{},
-					Metal::AttachmentBlendDesc{},
-					Metal::RasterizationDesc{ CullMode::None });
+					doubledSidedStateSet);
 
 				{
 						//
@@ -223,7 +220,7 @@ namespace UnitTests
 					TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 					"temporary-out");
 				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
-				auto cfgIdWithColor = mainPool.AddSequencerConfig(
+				auto cfgIdWithColor = mainPool.CreateSequencerConfig(
 					techniqueDelegate,
 					ParameterBox { std::make_pair(u("COLOR_RED"), "1") },
 					FrameBufferProperties { 64, 64, TextureSamples::Create() },
@@ -245,8 +242,7 @@ namespace UnitTests
 				Assert::IsTrue(breakdown0.begin()->first == 0xff0000ff);
 
 				// Change the sequencer config to now set the COLOR_GREEN selector
-				mainPool.UpdateSequencerConfig(
-					cfgIdWithColor,
+				cfgIdWithColor = mainPool.CreateSequencerConfig(
 					techniqueDelegate,
 					ParameterBox { std::make_pair(u("COLOR_GREEN"), "1") },
 					FrameBufferProperties { 64, 64, TextureSamples::Create() },
