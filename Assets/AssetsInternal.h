@@ -51,7 +51,14 @@ namespace Assets
 
 		template<typename Param, typename std::enable_if<std::is_integral<Param>::value>::type* = nullptr>
 			uint64_t HashParam(const Param& p, uint64_t seed) { return HashCombine(p, seed); }
-		template<typename Param, typename std::enable_if<!std::is_integral<Param>::value>::type* = nullptr>
+
+		template<typename Param, decltype(std::declval<Param>().GetHash())* = nullptr>
+			uint64_t HashParam(const Param& p, uint64_t seed) { return HashCombine(p.GetHash(), seed); }
+
+		template<typename Param, decltype(std::declval<Param>()->GetHash())* = nullptr>
+			uint64_t HashParam(const Param& p, uint64_t seed) { return HashCombine(p->GetHash(), seed); }
+
+		template<typename Param, decltype(Hash64(std::declval<const Param&>(), 0ull))* = nullptr>
 			uint64_t HashParam(const Param& p, uint64_t seed) { return Hash64(p, seed); }
 
 		template <typename... Params>
