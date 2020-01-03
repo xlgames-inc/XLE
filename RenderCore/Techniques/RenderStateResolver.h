@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Types.h"
+#include "../StateDesc.h"
 #include "../../Core/Types.h"
 #include <memory>
 

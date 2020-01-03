@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "../Metal/State.h"
 #include "../Metal/InputLayout.h"
+#include "../Types.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/IteratorUtils.h"

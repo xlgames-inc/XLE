@@ -88,6 +88,9 @@
     <ClInclude Include="..\VertexUtil.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\StateDesc.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -122,6 +125,9 @@
     </ClCompile>
     <ClCompile Include="..\Init.cpp" />
     <ClCompile Include="..\UniformsStream.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\StateDesc.cpp">
       <Filter>Util</Filter>
     </ClCompile>
   </ItemGroup>

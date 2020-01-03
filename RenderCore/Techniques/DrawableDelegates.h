@@ -7,6 +7,7 @@
 #include "../UniformsStream.h"
 #include "../RenderUtils.h"
 #include "../Metal/Forward.h"
+#include "../StateDesc.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"

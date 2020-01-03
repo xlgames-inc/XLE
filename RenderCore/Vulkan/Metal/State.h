@@ -8,7 +8,7 @@
 
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"      // required because we're deriving from Vulkan types
-#include "../../Types.h"
+#include "../../StateDesc.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan

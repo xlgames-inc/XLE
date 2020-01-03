@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "../RenderCore/Types.h"
+#include "../RenderCore/StateDesc.h"
+#include "../RenderCore/Format.h"
 #include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"

@@ -17,7 +17,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Prefix.h"
 
-namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; }
+namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; }
 namespace Assets { class DependencyValidation; }
 
 namespace RenderCore { namespace Metal_DX11
@@ -37,9 +37,6 @@ namespace RenderCore { namespace Metal_DX11
 	class ObjectFactory;
 	class Resource;
 	class NumericUniformsInterface;
-	class AttachmentBlendDesc;
-	class DepthStencilDesc;
-	class RasterizationDesc;
 
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)

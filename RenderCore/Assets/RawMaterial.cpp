@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RawMaterial.h"
-#include "../Types.h"
+#include "../StateDesc.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../Assets/DeferredConstruction.h"
