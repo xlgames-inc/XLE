@@ -72,7 +72,7 @@ namespace RenderCore { namespace Techniques
 
                 p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
             }
-			output << patchCollection.GenerateCodeForSelectors(paramBoxSelectors);
+			output << patchCollection.InstantiateShader(paramBoxSelectors);
 
 			for (auto fn:redirectedPatchFunctions) {
 				auto i = std::find_if(

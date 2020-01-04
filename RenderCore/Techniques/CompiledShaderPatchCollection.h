@@ -60,7 +60,7 @@ namespace RenderCore { namespace Techniques
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		::Assets::DepValPtr _depVal;
 
-		std::string GenerateCodeForSelectors(const ParameterBox& selectors) const;
+		std::string InstantiateShader(const ParameterBox& selectors) const;
 
 		uint64_t GetGUID() const { return _guid; }
 

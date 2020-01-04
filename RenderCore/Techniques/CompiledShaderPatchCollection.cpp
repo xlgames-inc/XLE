@@ -32,7 +32,7 @@ namespace RenderCore { namespace Techniques
 			finalInstRequests.reserve(src.GetPatches().size());
 			for (const auto&i:src.GetPatches()) finalInstRequests.push_back(i.second);
 
-			auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
+			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
 
 			// Note -- we can build the patches interface here, because we assume that this will not
 			//		even change with selectors
@@ -96,7 +96,7 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	std::string CompiledShaderPatchCollection::GenerateCodeForSelectors(const ParameterBox& selectors) const
+	std::string CompiledShaderPatchCollection::InstantiateShader(const ParameterBox& selectors) const
 	{
 		if (_src.GetPatches().empty())
 			return {};
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Techniques
 			generateOptions._selectors = selectors;
 		}
 
-		auto inst = InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
+		auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
 		return Merge(inst._sourceFragments);
 	}
 
