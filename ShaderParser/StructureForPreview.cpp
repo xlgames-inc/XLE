@@ -496,8 +496,8 @@ namespace ShaderSourceParser
 	{
 		std::stringstream result;
 
-		for (auto i=descriptorSet._srvs.begin(); i!=descriptorSet._srvs.end(); ++i) {
-			auto descriptorIdx = std::distance(descriptorSet._srvs.begin(), i);
+		for (auto i=descriptorSet._resources.begin(); i!=descriptorSet._resources.end(); ++i) {
+			auto descriptorIdx = std::distance(descriptorSet._resources.begin(), i);
 			std::string type = "<<unknown type>>";
 			auto cap = std::find_if(
 				captures.begin(), captures.end(),
@@ -505,15 +505,15 @@ namespace ShaderSourceParser
 				{ 
 					auto dot = p._name.find_first_of('.');
 					if (dot != std::string::npos) {	// we must ignore the captures name before the dot, if it exists
-						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), *i);
+						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), i->_name);
 					} else {
-						return p._name == *i; 
+						return p._name == i->_name; 
 					}
 				});
 			if (cap != captures.end())
 				type = cap->_type;
 
-			result << type << " " << *i << " BIND_MAT_T" << descriptorIdx << ";" << std::endl;
+			result << type << " " << i->_name << " BIND_MAT_T" << descriptorIdx << ";" << std::endl;
 		}
 
 		for (auto i=descriptorSet._samplers.begin(); i!=descriptorSet._samplers.end(); ++i) {
@@ -525,15 +525,15 @@ namespace ShaderSourceParser
 				{ 
 					auto dot = p._name.find_first_of('.');	// we must ignore the captures name before the dot, if it exists
 					if (dot != std::string::npos) {
-						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), *i);
+						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), i->_name);
 					} else {
-						return p._name == *i; 
+						return p._name == i->_name; 
 					}
 				});
 			if (cap != captures.end())
 				type = cap->_type;
 
-			result << type << " " << *i << " BIND_MAT_S" << descriptorIdx << ";" << std::endl;
+			result << type << " " << i->_name << " BIND_MAT_S" << descriptorIdx << ";" << std::endl;
 		}
 
 		for (auto cb=descriptorSet._constantBuffers.begin(); cb!=descriptorSet._constantBuffers.end(); ++cb) {

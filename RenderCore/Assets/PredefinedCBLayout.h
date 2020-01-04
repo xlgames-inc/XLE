@@ -88,9 +88,12 @@ namespace RenderCore { namespace Assets
         unsigned _cbSizeByLanguage[AlignmentRules_Max];
 
         friend class PredefinedCBLayoutFile;
+		friend class PredefinedDescriptorSetLayout;
     };
 
-    class PredefinedCBLayoutFile
+	/// <summary>A file that can contain multiple PredefinedCBLayout</summary>
+	/// Deprecated interface. Prefer PredefinedDescriptorSetLayout instead.
+    DEPRECATED_ATTRIBUTE class PredefinedCBLayoutFile
     {
     public:
         std::unordered_map<std::string, std::shared_ptr<PredefinedCBLayout>> _layouts;

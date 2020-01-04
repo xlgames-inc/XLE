@@ -75,8 +75,8 @@ namespace ShaderSourceParser
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream)
 	{
-		std::vector<std::string> srvs;
-		std::vector<std::string> samplers;
+		std::vector<RenderCore::Assets::PredefinedDescriptorSetLayout::Resource> srvs;
+		std::vector<RenderCore::Assets::PredefinedDescriptorSetLayout::Sampler> samplers;
 
 		using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
 		struct WorkingCB
@@ -100,9 +100,9 @@ namespace ShaderSourceParser
 					// This capture must be either an srv or a sampler
 					if (c._direction == GraphLanguage::ParameterDirection::In) {
 						if (type == TypeDescriptor::Resource) {
-							srvs.push_back(globalName);
+							srvs.push_back({globalName, {}});
 						} else
-							samplers.push_back(globalName);					
+							samplers.push_back({globalName, {}});					
 					}
 				}
 				continue;
@@ -136,7 +136,7 @@ namespace ShaderSourceParser
 		}
 
 		auto result = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
-		result->_srvs = std::move(srvs);
+		result->_resources = std::move(srvs);
 		result->_samplers = std::move(samplers);
 
 		for (auto&cb:workingCBs) {

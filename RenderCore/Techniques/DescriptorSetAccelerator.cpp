@@ -53,13 +53,14 @@ namespace RenderCore { namespace Techniques
 
 		// Trigger loading of shader resources
 		std::vector<::Assets::FuturePtr<DeferredShaderResource>> pendingSRVs;
-		pendingSRVs.resize(layout._srvs.size());
-		for (unsigned c=0; c<layout._srvs.size(); ++c) {
-			auto bindingName = resourceBindings.GetString<char>(MakeStringSection(layout._srvs[c]));
+		pendingSRVs.resize(layout._resources.size());
+		for (unsigned c=0; c<layout._resources.size(); ++c) {
+			assert(layout._resources[c]._conditions.empty());		// note -- ignoring conditions on this object currently (this was added for when the descriptor set is parsed from a file, which isn't the usual path to get to here)
+			auto bindingName = resourceBindings.GetString<char>(MakeStringSection(layout._resources[c]._name));
 			if (!bindingName.empty()) {
 				pendingSRVs[c] = ::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(bindingName));
 			}
-			usi.BindShaderResource(c, Hash64(layout._srvs[c]));
+			usi.BindShaderResource(c, Hash64(layout._resources[c]._name));
 		}
 
 		auto& device = RenderCore::Assets::Services::GetDevice();
