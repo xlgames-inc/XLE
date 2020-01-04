@@ -5,33 +5,18 @@
 #pragma once
 
 #include "NodeGraphSignature.h"
+#include "../RenderCore/Assets/PredefinedDescriptorSetLayout.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
-#include <string>
-#include <vector>
 #include <ios>
 
-namespace RenderCore { namespace Assets { class PredefinedCBLayout; }}
+namespace RenderCore { namespace Assets { class PredefinedDescriptorSetLayout; }}
 
 namespace ShaderSourceParser
 {
-	class MaterialDescriptorSet
-	{
-	public:
-		struct ConstantBuffer
-		{
-			std::string _name;
-			std::shared_ptr<RenderCore::Assets::PredefinedCBLayout> _layout;
-		};
-
-		std::vector<ConstantBuffer> _constantBuffers;
-		std::vector<std::string> _srvs;
-		std::vector<std::string> _samplers;
-	};
-
-	std::shared_ptr<MaterialDescriptorSet> MakeMaterialDescriptorSet(
+	std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> MakeMaterialDescriptorSet(
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream);

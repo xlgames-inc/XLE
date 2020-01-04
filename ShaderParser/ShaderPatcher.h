@@ -16,13 +16,12 @@
 #include <iosfwd>
 
 namespace GraphLanguage { class NodeGraph; class NodeGraphSignature; }
-namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; class PredefinedDescriptorSetLayout; } }
 
 namespace ShaderSourceParser
 {
-	class MaterialDescriptorSet;
 	std::string GenerateDescriptorVariables(
-		const MaterialDescriptorSet& descriptorSet, 
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& descriptorSet, 
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures);
 
     struct PreviewOptions

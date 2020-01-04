@@ -46,6 +46,7 @@
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
     <ClCompile Include="..\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\Assets\PredefinedDescriptorSetLayout.cpp" />
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\Assets\RawMaterial.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
@@ -75,6 +76,7 @@
     <ClInclude Include="..\Assets\ModelScaffold.h" />
     <ClInclude Include="..\Assets\ModelScaffoldInternal.h" />
     <ClInclude Include="..\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\Assets\PredefinedDescriptorSetLayout.h" />
     <ClInclude Include="..\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\Assets\RawMaterial.h" />
     <ClInclude Include="..\Assets\Services.h" />

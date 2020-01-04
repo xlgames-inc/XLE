@@ -70,7 +70,7 @@ namespace ShaderSourceParser
 		return str;
 	}
 
-	std::shared_ptr<MaterialDescriptorSet> MakeMaterialDescriptorSet(
+	std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> MakeMaterialDescriptorSet(
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream)
@@ -135,7 +135,7 @@ namespace ShaderSourceParser
 					MakeStringSection(c._default));
 		}
 
-		auto result = std::make_shared<MaterialDescriptorSet>();
+		auto result = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
 		result->_srvs = std::move(srvs);
 		result->_samplers = std::move(samplers);
 
@@ -151,11 +151,11 @@ namespace ShaderSourceParser
 			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cb.second._cbElements), shaderLanguage);
 
 			auto layout = std::make_shared<RenderCore::Assets::PredefinedCBLayout>(
-				MakeIteratorRange(cb.second._cbElements));
+				MakeIteratorRange(cb.second._cbElements), cb.second._defaults);
 
 			if (!layout->_elements.empty())
 				result->_constantBuffers.emplace_back(
-					MaterialDescriptorSet::ConstantBuffer {
+					RenderCore::Assets::PredefinedDescriptorSetLayout::ConstantBuffer {
 						cb.first,
 						std::move(layout)
 					});

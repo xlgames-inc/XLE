@@ -491,7 +491,7 @@ namespace ShaderSourceParser
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	std::string GenerateDescriptorVariables(
-		const MaterialDescriptorSet& descriptorSet, 
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& descriptorSet, 
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures)
 	{
 		std::stringstream result;

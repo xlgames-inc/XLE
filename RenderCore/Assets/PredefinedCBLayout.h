@@ -67,7 +67,7 @@ namespace RenderCore { namespace Assets
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
         PredefinedCBLayout(StringSection<char> source, bool);
-        PredefinedCBLayout(IteratorRange<const NameAndType*> elements);
+		PredefinedCBLayout(IteratorRange<const NameAndType*> elements, const ParameterBox& defaults = {});
         ~PredefinedCBLayout();
         
         PredefinedCBLayout(const PredefinedCBLayout&) = default;

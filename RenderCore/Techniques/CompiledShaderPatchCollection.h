@@ -12,8 +12,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; }}
-namespace ShaderSourceParser { class MaterialDescriptorSet; }
+namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; class PredefinedDescriptorSetLayout; }}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques
@@ -43,14 +42,14 @@ namespace RenderCore { namespace Techniques
 				std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
-			const std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet>& GetMaterialDescriptorSet() const { return _descriptorSet; }
+			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetMaterialDescriptorSet() const { return _descriptorSet; }
 			const std::unordered_map<std::string, std::string>& GetSelectorRelevance() const { return _selectorRelevance; }
 
 			bool HasPatchType(uint64_t implementing) const;
 
 		private:
 			std::vector<Patch> _patches;
-			std::shared_ptr<ShaderSourceParser::MaterialDescriptorSet> _descriptorSet;
+			std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _descriptorSet;
 			std::unordered_map<std::string, std::string> _selectorRelevance;
 
 			friend class CompiledShaderPatchCollection;

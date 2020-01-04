@@ -722,7 +722,8 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements)
+    PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements, const ParameterBox& defaults)
+	: _defaults(defaults)
     {
         unsigned cbIterator[AlignmentRules_Max] = { 0, 0, 0 };
 

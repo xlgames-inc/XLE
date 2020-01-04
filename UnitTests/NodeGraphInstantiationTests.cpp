@@ -121,7 +121,7 @@ namespace UnitTests
 				auto i = std::find_if(
 					inst._descriptorSet->_constantBuffers.begin(),
 					inst._descriptorSet->_constantBuffers.end(),
-					[](const ShaderSourceParser::MaterialDescriptorSet::ConstantBuffer& cb) {
+					[](const ShaderSourceParser::PredefinedDescriptorSetLayout::ConstantBuffer& cb) {
 						return cb._name == "MaterialUniforms";
 					});
 				::Assert::IsTrue(i != inst._descriptorSet->_constantBuffers.end());

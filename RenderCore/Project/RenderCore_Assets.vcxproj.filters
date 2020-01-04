@@ -82,6 +82,7 @@
     <ClCompile Include="..\Assets\ShaderPatchCollection.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\PredefinedDescriptorSetLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -160,5 +161,6 @@
     <ClInclude Include="..\Assets\ShaderPatchCollection.h">
       <Filter>Assets\Material</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\PredefinedDescriptorSetLayout.h" />
   </ItemGroup>
 </Project>

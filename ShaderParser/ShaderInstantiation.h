@@ -12,7 +12,7 @@
 #include <set>
 #include <unordered_map>
 
-namespace RenderCore { namespace Assets { class PredefinedCBLayout; } }
+namespace RenderCore { namespace Assets { class PredefinedCBLayout; class PredefinedDescriptorSetLayout; } }
 
 namespace ShaderSourceParser
 {
@@ -44,8 +44,6 @@ namespace ShaderSourceParser
 		GraphLanguage::NodeGraphSignature _implementsSignature;
 	};
 
-	class MaterialDescriptorSet;
-
 	class InstantiatedShader
 	{
 	public:
@@ -63,7 +61,7 @@ namespace ShaderSourceParser
 		/// Instantiated shaders can have a "uniform input" interface. This takes the
 		/// form of a descriptor set, and generally will be filled in with parameters
 		/// from a material file.
-		std::shared_ptr<MaterialDescriptorSet> _descriptorSet;
+		std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _descriptorSet;
 
 		/// Relevance table for selectors. This describes what selectors influence the
 		/// shader graph instantiation, and under what circumstances.
