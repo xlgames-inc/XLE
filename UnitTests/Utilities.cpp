@@ -13,6 +13,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
 #include <stdexcept>
@@ -270,6 +271,35 @@ namespace UnitTests
                 ConstHash64<'1234', '5678', '90qw', 'erty'>::Value,
                 ConstHash64FromString(s1.begin(), s1.end()));
         }
+
+		TEST_METHOD(ConditionalPreprocessingTest)
+		{
+			const char* input = R"--(
+				Token0 Token1
+				#if SELECTOR_0 || SELECTOR_1
+					#if SELECTOR_2
+						Token2
+					#endif
+					Token3
+				#endif
+			)--";
+
+			ConditionalProcessingTokenizer tokenizer(input);
+
+			Assert::AreEqual(std::string("Token0"), tokenizer.GetNextToken()._value.AsString());
+			Assert::AreEqual(std::string(""), tokenizer._preprocessorContext.GetCurrentConditionString());
+
+			Assert::AreEqual(std::string("Token1"), tokenizer.GetNextToken()._value.AsString());
+			Assert::AreEqual(std::string(""), tokenizer._preprocessorContext.GetCurrentConditionString());
+
+			Assert::AreEqual(std::string("Token2"), tokenizer.GetNextToken()._value.AsString());
+			Assert::AreEqual(std::string("(SELECTOR_2) && (SELECTOR_0 || SELECTOR_1)"), tokenizer._preprocessorContext.GetCurrentConditionString());
+
+			Assert::AreEqual(std::string("Token3"), tokenizer.GetNextToken()._value.AsString());
+			Assert::AreEqual(std::string("(SELECTOR_0 || SELECTOR_1)"), tokenizer._preprocessorContext.GetCurrentConditionString());
+
+			Assert::IsTrue(tokenizer.PeekNextToken()._value.IsEmpty());
+		}
     };
 }
 

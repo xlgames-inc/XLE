@@ -73,7 +73,7 @@ namespace ShaderSourceParser
 
 	static LineDetails ParseLineDetails(StringSection<> src, LineDetails::LineType prevLineType)
 	{
-		// Note -- there's a bit of overlap between this behaviour and what we do in the "Tokenizer" class
+		// Note -- there's a bit of overlap between this behaviour and what we do in the "ConditionalProcessingTokenizer" class
 		// in PredefinedCBLayout.cpp. It would be nice if we could combine the parsing together somehow
 		bool inBlockComment = prevLineType == LineDetails::LineType::EndsInBlockComment;
 		bool inLineComment = prevLineType == LineDetails::LineType::EndsInTrailingLineComment;
