@@ -14,7 +14,7 @@
 
 namespace RenderCore { namespace Techniques 
 { 
-	class Drawable; class DrawableGeo; class DrawableMaterial; 
+	class Drawable; class DrawableGeo;
 	class DrawablesPacket; 
 	class ParsingContext; 
 	class PipelineAcceleratorPool; 

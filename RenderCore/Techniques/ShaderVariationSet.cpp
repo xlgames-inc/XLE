@@ -82,10 +82,9 @@ namespace RenderCore { namespace Techniques
 		selectorsWithBaseTechnique.push_back(&baseTechniqueSelectors);
 		selectorsWithBaseTechnique.insert(selectorsWithBaseTechnique.begin(), selectors.begin(), selectors.end());
 
-		ParameterBox filteredBox = baseTechniqueSelectors;
+		ParameterBox filteredBox;
 
 		for (const auto&b:selectors) {
-
 			auto baseTechniqueIterator = baseTechniqueSelectors.begin();
 			for (auto sourceIterator = b->begin(); sourceIterator != b->end(); ++sourceIterator) {
 
@@ -95,9 +94,20 @@ namespace RenderCore { namespace Techniques
 
 				bool foundInBaseTechnique = baseTechniqueIterator != baseTechniqueSelectors.end() && baseTechniqueIterator->HashName() == sourceIterator->HashName();
 				if (foundInBaseTechnique) {
-					// We found it in the base technique, so it's automatically relevant
-					filteredBox.SetParameter(sourceIterator->Name(), sourceIterator->RawValue(), sourceIterator->Type());
-					continue;		// early out since we've already determined we're relevant
+					// If the value we're setting is the same as what's assigned in the base technique, then we can skip this selector
+					// This just make it easier to shorten in the selector sets in some cases, because where setting a selector to
+					// a specific value is equivalent to skipping that selector entirely, we should prefer to skip the selector
+					bool identicalToBaseValue = false;
+					if (baseTechniqueIterator->Type()._type != ImpliedTyping::TypeCat::Void
+						&& sourceIterator->Type()._type != ImpliedTyping::TypeCat::Void) {
+						identicalToBaseValue = baseTechniqueIterator->ValueAsString() == sourceIterator->ValueAsString();
+					}
+
+					if (!identicalToBaseValue) {
+						// We found it in the base technique, so it's automatically relevant
+						filteredBox.SetParameter(sourceIterator->Name(), sourceIterator->RawValue(), sourceIterator->Type());
+						continue;		// early out since we've already determined we're relevant
+					}
 				}
 
 				// see if we can pass the relevance check

@@ -19,6 +19,7 @@
 #include "../Techniques/DescriptorSetAccelerator.h"
 #include "../Techniques/DrawableMaterial.h"
 #include "../Techniques/CompiledShaderPatchCollection.h"
+#include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"
@@ -31,10 +32,6 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/VariantUtils.h"
 #include <utility>
-
-// #define BAD_MATERIAL_FALLBACK
-
-#pragma warning(disable:4505)
 
 namespace RenderCore { namespace Assets 
 {
@@ -82,19 +79,6 @@ namespace RenderCore { namespace Assets
 			drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
 	}
 
-	#if defined(BAD_MATERIAL_FALLBACK)
-		static Techniques::ScaffoldMaterial& GetDummyMaterial()
-		{
-			static Techniques::ScaffoldMaterial dummyMaterial;
-			static bool dummyMaterialIsInitialized = false;
-			if (!dummyMaterialIsInitialized) {
-				XlCopyString(dummyMaterial._techniqueConfig, "xleres/techniques/illum.tech");
-				dummyMaterialIsInitialized = true;
-			}
-			return dummyMaterial;
-		}
-	#endif
-
 	void SimpleModelRenderer::BuildDrawables(
 		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld) const
@@ -113,22 +97,16 @@ namespace RenderCore { namespace Assets
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
+				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
-				drawable._materialGuid = materialGuid;
+				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
-
-				#if defined(BAD_MATERIAL_FALLBACK)
-					if (!drawable._material)
-						drawable._material = &GetDummyMaterial();
-					assert(drawable._material);
-				#endif
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 assert(machineOutput < _baseTransformCount);
@@ -147,7 +125,6 @@ namespace RenderCore { namespace Assets
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 
                     // now we have at least once piece of geometry
                     // that we want to render... We need to bind the material,
@@ -157,17 +134,12 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
+				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
-				drawable._materialGuid = materialGuid;
+				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
-
-				#if defined(BAD_MATERIAL_FALLBACK)
-					if (!drawable._material)
-						drawable._material = &GetDummyMaterial();
-					assert(drawable._material);
-				#endif
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 assert(machineOutput < _baseTransformCount);
@@ -221,23 +193,17 @@ namespace RenderCore { namespace Assets
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
+				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
-				drawable._materialGuid = materialGuid;
+				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
-
-				#if defined(BAD_MATERIAL_FALLBACK)
-					if (!drawable._material)
-						drawable._material = &GetDummyMaterial();
-					assert(drawable._material);
-				#endif
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 if (machineOutput < _baseTransformCount) {
@@ -259,7 +225,6 @@ namespace RenderCore { namespace Assets
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 
                     // now we have at least once piece of geometry
                     // that we want to render... We need to bind the material,
@@ -269,18 +234,13 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
+				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
-				drawable._materialGuid = materialGuid;
+				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
-
-				#if defined(BAD_MATERIAL_FALLBACK)
-					if (!drawable._material)
-						drawable._material = &GetDummyMaterial();
-					assert(drawable._material);
-				#endif
 
                 drawable._objectToWorld = Combine(
 					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
@@ -465,6 +425,11 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
+	static const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
+	{
+		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
+	}
+
 	SimpleModelRenderer::SimpleModelRenderer(
 		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
@@ -550,6 +515,7 @@ namespace RenderCore { namespace Assets
 		{
 			std::shared_ptr<Techniques::CompiledShaderPatchCollection> _compiledPatchCollection;
 			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
+			std::vector<std::string> _descriptorSetResources;
 		};
 		std::vector<std::pair<uint64_t, WorkingMaterial>> drawableMaterials;
 
@@ -562,29 +528,37 @@ namespace RenderCore { namespace Assets
 
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				auto materialGuid = geoCall._materialGuids[d];
-				auto i = LowerBound(drawableMaterials, materialGuid);
 
 				GeoCall resultGeoCall;
-				std::shared_ptr<Techniques::CompiledShaderPatchCollection> compiledPatchCollection;
 				auto& mat = *_materialScaffold->GetMaterial(materialGuid);
 
+				auto i = LowerBound(drawableMaterials, materialGuid);
 				if (i != drawableMaterials.end() && i->first == materialGuid) {
-					compiledPatchCollection = i->second._compiledPatchCollection;
 					resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
 				} else {
 					auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
 					assert(patchCollection);
 					Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(*patchCollection);
-					compiledPatchCollection = Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection->GetHash());
+					auto compiledPatchCollection = Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection->GetHash());
 
-					const auto& matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet();
-					if (matDescriptorSet) {
-						resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
-							mat._constants, mat._bindings,
-							*matDescriptorSet,
-							materialScaffoldName);
+					const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
+					if (!matDescriptorSet) {
+						// If we don't have a material descriptor set in the patch collection, and no
+						// patches -- then let's try falling back to a default built-in descriptor set
+						matDescriptorSet = &GetFallbackMaterialDescriptorSetLayout();
 					}
-					drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet}));
+
+					resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
+						mat._constants, mat._bindings,
+						*matDescriptorSet,
+						materialScaffoldName);
+
+					// Collect up the list of resources in the descriptor set -- we'll use this to filter the "RES_HAS_" selectors
+					std::vector<std::string> resourceNames;
+					for (const auto&r:matDescriptorSet->_resources)
+						resourceNames.push_back(r._name);
+
+					i = drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet, std::move(resourceNames)}));
 				}
 
 				// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
@@ -602,10 +576,16 @@ namespace RenderCore { namespace Assets
 					MakeIteratorRange(compiledGeo->_vertexStreams, compiledGeo->_vertexStreams+compiledGeo->_vertexStreamCount),
 					rawGeo._vb._ia);
 
+				auto matSelectors = mat._matParams;
+				// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
+				for (const auto&r:i->second._descriptorSetResources)
+					if (mat._bindings.HasParameter(MakeStringSection(r)))
+						matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r).Cast<utf8>(), 1);
+
 				resultGeoCall._pipelineAccelerator =
 					pipelineAcceleratorPool->CreatePipelineAccelerator(
-						compiledPatchCollection,
-						mat._constants,
+						i->second._compiledPatchCollection,
+						matSelectors,
 						MakeIteratorRange(inputElements),
 						topology,
 						mat._stateSet);

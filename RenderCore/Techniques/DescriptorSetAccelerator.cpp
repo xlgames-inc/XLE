@@ -83,7 +83,7 @@ namespace RenderCore { namespace Techniques
 			usi.BindConstantBuffer(c, {Hash64(cb._name), MakeIteratorRange(eles)});
 		}
 
-		assert(layout._samplers.empty());
+		// Not really doing anything with samplers
 
 		result->SetPollingFunction(
 			[pendingSRVs, constantBuffers, usi](::Assets::AssetFuture<DescriptorSetAccelerator>& thatFuture) -> bool {
@@ -106,7 +106,7 @@ namespace RenderCore { namespace Techniques
 						finalDescriptorSet->_shaderResources.push_back(nullptr);
 					}
 
-					if (d->GetDependencyValidation())
+					if (d && d->GetDependencyValidation())
 						::Assets::RegisterAssetDependency(finalDescriptorSet->_depVal, d->GetDependencyValidation());
 				}
 

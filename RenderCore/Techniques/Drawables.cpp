@@ -74,6 +74,9 @@ namespace RenderCore { namespace Techniques
 			if (!pipeline)
 				return;
 
+			if (!drawable._descriptorSet)
+				return;
+
 			//////////////////////////////////////////////////////////////////////////////
 
 			Metal::BoundInputLayout::SlotBinding slotBinding[4];

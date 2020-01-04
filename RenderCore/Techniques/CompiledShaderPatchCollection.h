@@ -85,10 +85,10 @@ namespace RenderCore { namespace Techniques
 
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const
 	{
-		auto perPixel = std::find_if(
+		auto iterator = std::find_if(
 			_patches.begin(), _patches.end(),
 			[implementing](const Patch& patch) { return patch._implementsHash == implementing; });
-		return perPixel != _patches.end();
+		return iterator != _patches.end();
 	}
 
 }}

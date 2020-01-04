@@ -497,10 +497,15 @@ namespace RenderCore { namespace Techniques
 			break;
 		}
 
+		// todo -- combine all of the selectors into a single box in the technique object itself (rather than having to do a merge here)
+		auto mergedTechniqueShaders = techEntry->_baseSelectors._selectors[0];
+		for (unsigned c=1; c<dimof(techEntry->_baseSelectors._selectors); ++c)
+			mergedTechniqueShaders.MergeIn(techEntry->_baseSelectors._selectors[c]);
+
 		ShaderPatchFactory factory(*techEntry, shaderPatches.get(), patchExpansions);
 		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
 			selectors,
-			techEntry->_baseSelectors._selectors[0], 
+			mergedTechniqueShaders,
 			shaderPatches->GetInterface().GetSelectorRelevance(),
 			factory);
 
