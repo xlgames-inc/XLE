@@ -74,8 +74,8 @@ namespace RenderCore { namespace Metal_DX11
 	class ResourceMap
 	{
 	public:
-		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _map.DepthPitch) }; }
-        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _map.DepthPitch) }; }
+		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _mapSize) }; }
+        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _mapSize) }; }
 		TexturePitches				GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
 
 		enum class Mode { Read, WriteDiscardPrevious };
@@ -96,6 +96,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	private:
 		D3D11_MAPPED_SUBRESOURCE _map;
+		size_t _mapSize;
 		intrusive_ptr<ID3D::Resource> _underlyingResource;
 		intrusive_ptr<ID3D::DeviceContext> _devContext;
 		HRESULT _mapResultCode = 0;

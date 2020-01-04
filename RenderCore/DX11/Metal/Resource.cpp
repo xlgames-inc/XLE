@@ -199,6 +199,7 @@ namespace RenderCore { namespace Metal_DX11
 		_devContext = context.GetUnderlying();
 		_underlyingResource = resource.GetUnderlying();
 		_map = {};
+		_mapSize = 0;
 
 		auto underlyingMapType = (mapMode == Mode::Read) ? D3D11_MAP_READ : D3D11_MAP_WRITE_DISCARD;
 
@@ -206,6 +207,15 @@ namespace RenderCore { namespace Metal_DX11
         _mapResultCode = _devContext->Map(_underlyingResource.get(), 0, underlyingMapType, 0, &result);
         if (SUCCEEDED(_mapResultCode) && result.pData) {
 			_map = result;
+			_mapSize = result.DepthPitch;
+
+			// D3D11 seems to align up the DepthPitch for buffers; so shrink
+			// down to the size of the buffer if needed
+			D3D11_RESOURCE_DIMENSION resDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+			_underlyingResource->GetType(&resDim);
+			if (resDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+				_mapSize = std::min(result.DepthPitch, resource.GetDesc()._linearBufferDesc._sizeInBytes);
+			}
 		} else {
 			_devContext.reset();
 			_underlyingResource.reset();
