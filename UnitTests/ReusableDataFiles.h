@@ -60,8 +60,8 @@ static const char* s_complicatedGraphFile = R"--(
 
 	GBufferValues Bind2_PerPixel(VSOutput geo) implements templates::PerPixel
 	{
-		captures MaterialUniforms = ( float3 DiffuseColor );
-		captures AnotherCaptures = ( float SecondaryCaptures );
+		captures MaterialUniforms = ( float3 DiffuseColor, float SomeFloat = "0.25" );
+		captures AnotherCaptures = ( float2 Test0, float4 Test2 = "{1,2,3,4}", float SecondaryCaptures = "0.7f" );
 		if "defined(SIMPLE_BIND)" return simple_example::Bind_PerPixel(geo:geo).result;
 		if "!defined(SIMPLE_BIND)" return Internal_PerPixel(geo:geo).result;
 	}

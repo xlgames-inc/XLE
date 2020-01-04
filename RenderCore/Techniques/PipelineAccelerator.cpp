@@ -49,7 +49,6 @@ namespace RenderCore { namespace Techniques
 		struct Pipeline
 		{
 			::Assets::FuturePtr<Metal::GraphicsPipeline> _future;
-			std::shared_ptr<Metal::GraphicsPipeline> _actualized;
 		};
 		std::vector<Pipeline> _finalPipelines;
 
@@ -126,7 +125,6 @@ namespace RenderCore { namespace Techniques
 			// the pipeline right here and now
 			//
 			auto pipeline = InternalCreatePipeline(*shader._shaderProgram->Actualize(), shader._depthStencil, shader._blend, shader._rasterization, cfg);
-			result._actualized = pipeline;
 			result._future->SetAsset(std::move(pipeline), nullptr);
 		} else {
 			//

@@ -119,7 +119,7 @@ namespace ToolsRig
                 };
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._material = RenderCore::Techniques::MakeDrawableMaterial(*_material, {});
+				// drawable._material = RenderCore::Techniques::MakeDrawableMaterial(*_material, {});
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -143,7 +143,7 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._material = Techniques::MakeDrawableMaterial(*_material.get(), {});
+				// drawable._material = Techniques::MakeDrawableMaterial(*_material.get(), {});
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;

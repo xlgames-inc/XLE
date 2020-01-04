@@ -501,7 +501,15 @@ namespace ShaderSourceParser
 			std::string type = "<<unknown type>>";
 			auto cap = std::find_if(
 				captures.begin(), captures.end(),
-				[i](const GraphLanguage::NodeGraphSignature::Parameter&p) { return p._name == *i; });
+				[i](const GraphLanguage::NodeGraphSignature::Parameter&p) 
+				{ 
+					auto dot = p._name.find_first_of('.');
+					if (dot != std::string::npos) {	// we must ignore the captures name before the dot, if it exists
+						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), *i);
+					} else {
+						return p._name == *i; 
+					}
+				});
 			if (cap != captures.end())
 				type = cap->_type;
 
@@ -513,7 +521,15 @@ namespace ShaderSourceParser
 			std::string type = "<<unknown type>>";
 			auto cap = std::find_if(
 				captures.begin(), captures.end(),
-				[i](const GraphLanguage::NodeGraphSignature::Parameter&p) { return p._name == *i; });
+				[i](const GraphLanguage::NodeGraphSignature::Parameter&p)
+				{ 
+					auto dot = p._name.find_first_of('.');	// we must ignore the captures name before the dot, if it exists
+					if (dot != std::string::npos) {
+						return XlEqString(MakeStringSection(p._name.begin()+dot+1, p._name.end()), *i);
+					} else {
+						return p._name == *i; 
+					}
+				});
 			if (cap != captures.end())
 				type = cap->_type;
 

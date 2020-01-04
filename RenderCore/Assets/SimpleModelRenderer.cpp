@@ -16,7 +16,9 @@
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/PipelineAccelerator.h"
+#include "../Techniques/DescriptorSetAccelerator.h"
 #include "../Techniques/DrawableMaterial.h"
+#include "../Techniques/CompiledShaderPatchCollection.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"
@@ -115,7 +117,6 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = geoCallIterator->_material;
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
@@ -155,7 +156,6 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = geoCallIterator->_material;
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
@@ -225,7 +225,6 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = geoCallIterator->_material;
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
@@ -269,7 +268,6 @@ namespace RenderCore { namespace Assets
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = geoCallIterator->_material;
 				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
@@ -547,8 +545,13 @@ namespace RenderCore { namespace Assets
 			_boundSkinnedControllers.push_back(std::move(drawableGeo));
 		}
 
-		// Setup the DrawableMaterials
-		std::vector<std::pair<uint64_t, std::shared_ptr<Techniques::DrawableMaterial>>> drawableMaterials;
+		// Setup the materials
+		struct WorkingMaterial
+		{
+			std::shared_ptr<Techniques::CompiledShaderPatchCollection> _compiledPatchCollection;
+			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
+		};
+		std::vector<std::pair<uint64_t, WorkingMaterial>> drawableMaterials;
 
 		const auto& cmdStream = _modelScaffold->CommandStream();
 		for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
@@ -562,13 +565,26 @@ namespace RenderCore { namespace Assets
 				auto i = LowerBound(drawableMaterials, materialGuid);
 
 				GeoCall resultGeoCall;
+				std::shared_ptr<Techniques::CompiledShaderPatchCollection> compiledPatchCollection;
+				auto& mat = *_materialScaffold->GetMaterial(materialGuid);
 
 				if (i != drawableMaterials.end() && i->first == materialGuid) {
-					resultGeoCall._material = i->second;
+					compiledPatchCollection = i->second._compiledPatchCollection;
+					resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
 				} else {
-					auto& mat = *_materialScaffold->GetMaterial(materialGuid);
-					resultGeoCall._material = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
-					drawableMaterials.insert(i, std::make_pair(materialGuid, resultGeoCall._material));
+					auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
+					assert(patchCollection);
+					Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(*patchCollection);
+					compiledPatchCollection = Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection->GetHash());
+
+					const auto& matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet();
+					if (matDescriptorSet) {
+						resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
+							mat._constants, mat._bindings,
+							*matDescriptorSet,
+							materialScaffoldName);
+					}
+					drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet}));
 				}
 
 				// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
@@ -588,11 +604,11 @@ namespace RenderCore { namespace Assets
 
 				resultGeoCall._pipelineAccelerator =
 					pipelineAcceleratorPool->CreatePipelineAccelerator(
-						resultGeoCall._material->_patchCollection,
-						resultGeoCall._material->_material._constants,
+						compiledPatchCollection,
+						mat._constants,
 						MakeIteratorRange(inputElements),
 						topology,
-						resultGeoCall._material->_material._stateSet);
+						mat._stateSet);
 
 				_geoCalls.emplace_back(std::move(resultGeoCall));
 			}

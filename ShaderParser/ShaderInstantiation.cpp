@@ -254,8 +254,9 @@ namespace ShaderSourceParser
 		// Build a fragment containing all of the #include statements needed
 		{
 			std::stringstream str;
+			str << "#include \"xleres/System/Prefix.h\"" << std::endl;
 			for (const auto&i:pendingInst._rawShaderFileIncludes)
-				str << "#include <" << i << ">" << std::endl;
+				str << "#include \"" << i << "\"" << std::endl;
 			result._sourceFragments.insert(result._sourceFragments.begin(), str.str());
 		}
 

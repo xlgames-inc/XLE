@@ -151,7 +151,7 @@ namespace UnitTests
 			using namespace RenderCore;
 			auto& drawable = *pkts[unsigned(Techniques::BatchFilter::General)]->_drawables.Allocate<Drawable>();
 			RenderCore::Assets::MaterialScaffoldMaterial mat;
-			drawable._material = Techniques::MakeDrawableMaterial(mat, {});
+			// drawable._material = Techniques::MakeDrawableMaterial(mat, {});
 			drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 			drawable._geo->_vertexStreams[0]._resource = _vertexBuffer;
 			drawable._geo->_vertexStreams[0]._vertexElements = ToolsRig::Vertex3D_MiniInputLayout;

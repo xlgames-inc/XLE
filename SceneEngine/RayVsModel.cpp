@@ -259,7 +259,8 @@ namespace SceneEngine
 	Techniques::SequencerTechnique ModelIntersectionStateContext::MakeRayTestSequencerTechnique()
 	{
 		Techniques::SequencerTechnique sequencer;
-		sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
+		assert(0);	// have to assign the correct technique delegate for this operation
+		// sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
 		sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
 
 		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();

@@ -24,6 +24,7 @@
     </ClInclude>
     <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
     <ClInclude Include="..\Techniques\PipelineAccelerator.h" />
+    <ClInclude Include="..\Techniques\DescriptorSetAccelerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -45,6 +46,7 @@
     </ClCompile>
     <ClCompile Include="..\Techniques\ShaderVariationSet.cpp" />
     <ClCompile Include="..\Techniques\PipelineAccelerator.cpp" />
+    <ClCompile Include="..\Techniques\DescriptorSetAccelerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DrawableMaterial">

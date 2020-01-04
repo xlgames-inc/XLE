@@ -12,6 +12,7 @@
 #include "TechniqueMaterial.h"
 #include "CompiledRenderStateSet.h"
 #include "PipelineAccelerator.h"
+#include "DescriptorSetAccelerator.h"
 #include "../UniformsStream.h"
 #include "../BufferView.h"
 #include "../Metal/DeviceContext.h"
@@ -69,35 +70,9 @@ namespace RenderCore { namespace Techniques
 
 		// this part would normally be a loop -- 
 		{
-#if 0
-			auto& material = *drawable._material;
-			shaderSelectors[Techniques::ShaderSelectors::Source::Material] = 
-				sequencerTechnique._materialDelegate->GetShaderSelectors(&material);
-
-			ParameterBox geoSelectors;
-			for (unsigned v=0; v<drawable._geo->_vertexStreamCount; ++v)
-				SetGeoSelectors(geoSelectors, MakeIteratorRange(drawable._geo->_vertexStreams[v]._vertexElements));
-
-			shaderSelectors[Techniques::ShaderSelectors::Source::Geometry] = &geoSelectors;
-
-			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(parserContext, shaderSelectors, material, techniqueIndex);
-			if (!shaderProgram)
-				return;
-
-			shaderProgram->Apply(metalContext);
-
-			//////////////////////////////////////////////////////////////////////////////
-
-			if (sequencerTechnique._renderStateDelegate) {
-				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._material._stateSet, techniqueIndex);
-				metalContext.Bind(resolvedStates._blendState);
-				metalContext.Bind(resolvedStates._rasterizerState);
-			}
-#else
 			auto* pipeline = drawable._pipeline->TryGetPipeline(sequencerTechnique._sequencerConfigId);
 			if (!pipeline)
 				return;
-#endif
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -125,8 +100,8 @@ namespace RenderCore { namespace Techniques
 				*pipeline,
 				Metal::PipelineLayoutConfig{},
 				sequencerInterface,
-				UniformsStreamInterface{},	// mat stream -- sequencerTechnique._materialDelegate->GetInterface(&material),
-				UniformsStreamInterface{},	// geo stream
+				drawable._descriptorSet->_usi,	// mat stream
+				UniformsStreamInterface{},		// geo stream
 				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{}};
 
 			boundUniforms.Apply(
@@ -135,11 +110,7 @@ namespace RenderCore { namespace Techniques
 					MakeIteratorRange(sequencerCbvs),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSrvs)),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSamplerStates))});
-			/*sequencerTechnique._materialDelegate->ApplyUniforms(
-				parserContext, metalContext, 
-				boundUniforms, 1, &material);*/
-
-			// todo -- bind material descriptor set
+			drawable._descriptorSet->Apply(metalContext, boundUniforms, 1);
 
 			//////////////////////////////////////////////////////////////////////////////
 

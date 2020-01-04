@@ -12,7 +12,15 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawableMaterial; class DrawablesPacket; class ParsingContext; class PipelineAcceleratorPool; class PipelineAccelerator; }}
+namespace RenderCore { namespace Techniques 
+{ 
+	class Drawable; class DrawableGeo; class DrawableMaterial; 
+	class DrawablesPacket; 
+	class ParsingContext; 
+	class PipelineAcceleratorPool; 
+	class PipelineAccelerator; 
+	class DescriptorSetAccelerator;
+}}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
@@ -93,7 +101,7 @@ namespace RenderCore { namespace Assets
 		struct GeoCall
 		{
 			std::shared_ptr<Techniques::PipelineAccelerator> _pipelineAccelerator;
-			std::shared_ptr<Techniques::DrawableMaterial> _material;
+			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
 		};
 
 		std::vector<GeoCall> _geoCalls;

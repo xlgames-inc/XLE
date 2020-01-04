@@ -25,7 +25,7 @@ namespace RenderCore { namespace Techniques
 	class ITechniqueDelegate;
 	class IRenderStateDelegate;
 	class PipelineAccelerator;
-	class PipelineAcceleratorPool;
+	class DescriptorSetAccelerator;
 
 	class SequencerTechnique
 	{
@@ -77,9 +77,9 @@ namespace RenderCore { namespace Techniques
 	class Drawable
 	{
 	public:
-        std::shared_ptr<PipelineAccelerator>	_pipeline;
-		std::shared_ptr<DrawableMaterial>		_material;
-        std::shared_ptr<DrawableGeo>			_geo;
+        std::shared_ptr<PipelineAccelerator>		_pipeline;
+		std::shared_ptr<DescriptorSetAccelerator>	_descriptorSet;
+        std::shared_ptr<DrawableGeo>				_geo;
 
 		class DrawFunctionContext
 		{

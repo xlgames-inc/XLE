@@ -10,6 +10,7 @@
 #include "../RenderCore/Techniques/DrawableMaterial.h"		// just for ShaderPatchCollectionRegistry
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../RenderCore/Techniques/DescriptorSetAccelerator.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -17,6 +18,7 @@
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/FrameBufferDesc.h"
+#include "../BufferUploads/BufferUploads_Manager.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
@@ -24,6 +26,7 @@
 #include "../Assets/MemoryFile.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/AssetTraits.h"
+#include "../Assets/AssetSetManager.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
@@ -67,6 +70,32 @@ static const char s_techniqueForColorFromSelector[] = R"--(
 		ut-data/colorFromSelector.psh::PerPixel
 )--";
 
+static const char* s_basicTexturingGraph = R"--(
+	import templates = "xleres/nodes/templates.sh"
+	import output = "xleres/nodes/output.sh"
+	import texture = "xleres/nodes/texture.sh"
+	import basic = "xleres/nodes/basic.sh"
+	import materialParam = "xleres/nodes/materialparam.sh"
+
+	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
+	{
+		captures MaterialUniforms = ( float3 Multiplier = "{1,1,1}", Texture2D BoundTexture );
+		node loadFromTexture = texture::LoadAbsolute(
+			inputTexture:MaterialUniforms.BoundTexture, 
+			pixelCoords:texture::GetPixelCoords(geo:geo).result);
+		node multiply = basic::Multiply3(lhs:loadFromTexture.result, rhs:MaterialUniforms.Multiplier);
+		node mat = materialParam::CommonMaterialParam_Make(roughness:"1", specular:"1", metal:"1");
+		return output::Output_PerPixel(
+			diffuseAlbedo:multiply.result, 
+			material:mat.result).result;
+	}
+)--";
+
+static const char s_techniqueBasicTexturing[] = R"--(
+	~main
+		ut-data/basicTexturingGraph.graph::Bind_PerPixel
+)--";
+
 
 namespace UnitTests
 {
@@ -77,7 +106,8 @@ namespace UnitTests
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
 		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
-		std::make_pair("colorFromSelector.psh", ::Assets::AsBlob(s_colorFromSelectorShaderFile))
+		std::make_pair("colorFromSelector.psh", ::Assets::AsBlob(s_colorFromSelectorShaderFile)),
+		std::make_pair("basicTexturingGraph.graph", ::Assets::AsBlob(s_basicTexturingGraph))
 	};
 
 	static RenderCore::FrameBufferDesc MakeSimpleFrameBufferDesc()
@@ -263,6 +293,163 @@ namespace UnitTests
 			}
 		}
 
+		TEST_METHOD(DescriptorSetAcceleratorConstruction)
+		{
+			{
+				// Create a CompiledShaderPatchCollection from a typical input, and get the 
+				// descriptor set layout from that.
+				// Construct a DestructorSetAccelerator from it
+				auto compiledPatches = GetCompiledPatchCollectionFromText(s_exampleTechniqueFragments);
+				auto descriptorSetLayout = compiledPatches->GetInterface().GetMaterialDescriptorSet();
+
+				ParameterBox constantBindings;
+				constantBindings.SetParameter(u("DiffuseColor"), Float3{1.0f, 0.5f, 0.2f});
+
+				ParameterBox resourceBindings;
+				auto descriptorSetAcceleratorFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+					constantBindings, resourceBindings,
+					*descriptorSetLayout,
+					"TestDescriptorSet");
+				descriptorSetAcceleratorFuture->StallWhilePending();
+				auto descriptorSetAccelerator = descriptorSetAcceleratorFuture->Actualize();
+
+				// we should have 2 constant buffers and no shader resources
+				Assert::IsTrue(descriptorSetAccelerator->_shaderResources.size() == 0);
+				Assert::IsTrue(descriptorSetAccelerator->_constantBuffers.size() == 2);
+				Assert::IsTrue(descriptorSetAccelerator->_usi._srvBindings.size() == 0);
+				Assert::IsTrue(descriptorSetAccelerator->_usi._cbBindings.size() == 2);
+
+				struct MaterialUniformsExpected
+				{
+					Float3 DiffuseColor; float SomeFloat;
+				};
+
+				struct AnotherCapturesExpected
+				{
+					Float4 Test2;	// note; the system will automatically rearrange the members in optimized order (regardless of how they appear in the original shader text)
+					Float2 Test0;
+					float SecondaryCaptures;
+					unsigned _dummy;
+				};
+
+				auto materialUniformsI = 
+					std::find_if(
+						descriptorSetAccelerator->_usi._cbBindings.begin(), descriptorSetAccelerator->_usi._cbBindings.end(),
+						[](const RenderCore::UniformsStreamInterface::RetainedCBBinding& cb) {
+							return cb._hashName == Hash64("MaterialUniforms");
+						});
+
+				auto anotherCapturesI = 
+					std::find_if(
+						descriptorSetAccelerator->_usi._cbBindings.begin(), descriptorSetAccelerator->_usi._cbBindings.end(),
+						[](const RenderCore::UniformsStreamInterface::RetainedCBBinding& cb) {
+							return cb._hashName == Hash64("AnotherCaptures");
+						});
+
+
+				Assert::IsTrue(materialUniformsI != descriptorSetAccelerator->_usi._cbBindings.end());
+				Assert::IsTrue(anotherCapturesI != descriptorSetAccelerator->_usi._cbBindings.end());
+
+				// Check the data in the constants buffers we would bind
+				// here, we're checking that the layout is what we expect, and that values (either from constantBindings or preset defaults)
+				// actually got through
+
+				auto threadContext = _device->GetImmediateContext();
+				auto materialUniformsData = descriptorSetAccelerator->_constantBuffers[materialUniformsI-descriptorSetAccelerator->_usi._cbBindings.begin()]->ReadBack(*threadContext);
+				Assert::IsTrue(materialUniformsData.size() == sizeof(MaterialUniformsExpected));
+				auto& mu = *(const MaterialUniformsExpected*)AsPointer(materialUniformsData.begin());
+				Assert::IsTrue(Equivalent(mu.DiffuseColor, Float3{1.0f, 0.5f, 0.2f}, 1e-3f));
+				Assert::IsTrue(Equivalent(mu.SomeFloat, 0.25f, 1e-3f));
+
+				auto anotherCapturesData = descriptorSetAccelerator->_constantBuffers[anotherCapturesI-descriptorSetAccelerator->_usi._cbBindings.begin()]->ReadBack(*threadContext);
+				Assert::IsTrue(anotherCapturesData.size() == sizeof(AnotherCapturesExpected));
+				auto& ac = *(const AnotherCapturesExpected*)AsPointer(anotherCapturesData.begin());
+				Assert::IsTrue(Equivalent(ac.Test2, Float4{1.0f, 2.0f, 3.0f, 4.0f}, 1e-3f));
+				Assert::IsTrue(Equivalent(ac.Test0, Float2{0.0f, 0.0f}, 1e-3f));
+				Assert::IsTrue(Equivalent(ac.SecondaryCaptures, 0.7f, 1e-3f));
+			}
+
+			// try actually rendering (including background loading of textures)
+			{
+				auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueBasicTexturing);
+				auto descriptorSetLayout = compiledPatches->GetInterface().GetMaterialDescriptorSet();
+
+				ParameterBox constantBindings;
+				constantBindings.SetParameter(u("Multiplier"), Float3{1.0f, 0.5f, 0.0f});
+
+				ParameterBox resourceBindings;
+				resourceBindings.SetParameter(u("BoundTexture"), "xleres/DefaultResources/waternoise.png");
+
+				auto descriptorSetAcceleratorFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+					constantBindings, resourceBindings,
+					*descriptorSetLayout,
+					"TestDescriptorSet");
+
+				// Put together the pieces we need to create a pipeline
+				using namespace RenderCore;
+				std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
+
+				Techniques::PipelineAcceleratorPool mainPool;
+				auto cfgId = mainPool.CreateSequencerConfig(
+					Techniques::CreateTechniqueDelegatePrototype(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
+					ParameterBox {},
+					FrameBufferProperties { 64, 64, TextureSamples::Create() },
+					MakeSimpleFrameBufferDesc());
+
+				RenderCore::Assets::RenderStateSet doubledSidedStateSet;
+				doubledSidedStateSet._doubleSided = true;
+
+				auto pipelineWithTexCoord = mainPool.CreatePipelineAccelerator(
+					compiledPatches,
+					ParameterBox {},
+					GlobalInputLayouts::PCT,
+					Topology::TriangleList,
+					doubledSidedStateSet);
+
+				auto threadContext = _device->GetImmediateContext();
+				auto targetDesc = CreateDesc(
+					BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+					TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
+					"temporary-out");
+				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
+				
+				{
+					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgId);
+					finalPipeline->StallWhilePending();
+					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
+					Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+
+					for (;;) {
+						auto state = descriptorSetAcceleratorFuture->StallWhilePending(std::chrono::milliseconds(10));
+						if (state.has_value() && state.value() != ::Assets::AssetState::Pending) break;
+
+						// we have to cycle these if anything is actually going to complete --
+						_renderCoreAssetServices->GetBufferUploads().Update(*threadContext, false);
+						::Assets::Services::GetAssetSets().OnFrameBarrier();
+					}
+					Assert::IsTrue(descriptorSetAcceleratorFuture->GetAssetState() == ::Assets::AssetState::Ready);
+
+					auto rpi = fbHelper.BeginRenderPass();
+					RenderQuad(*threadContext, MakeIteratorRange(vertices_fullViewport), *finalPipeline->Actualize(), descriptorSetAcceleratorFuture->Actualize().get());
+				}
+
+				auto breakdown = fbHelper.GetFullColorBreakdown();
+				
+				// If it's successful, we should get a lot of different color. And in each one, the blue channel will be zero
+				// Because we're checking that there are a number of unique colors (and because the alpha values are fixed)
+				// this can only succeed if the red and/or green channels have non-zero data for at least some pixels
+				Assert::IsTrue(breakdown.size() > 32);
+				for (const auto&c:breakdown)
+					Assert::IsTrue((c.first & 0x00ff0000) == 0);
+			}
+
+			// check that depvals react to texture updates
+
+			// check rendering "invalid" textures
+
+			// default descriptor set for "legacy" techniques
+		}
+
 		ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
 		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
 
@@ -304,7 +491,8 @@ namespace UnitTests
 
 		static void BindPassThroughTransform(
 			RenderCore::Metal::DeviceContext& metalContext,
-			const RenderCore::Metal::GraphicsPipeline& pipeline)
+			const RenderCore::Metal::GraphicsPipeline& pipeline,
+			const RenderCore::Techniques::DescriptorSetAccelerator* descSet = nullptr)
 		{
 			// Bind the 2 main transform packets ("GlobalTransformConstants" and "LocalTransformConstants")
 			// with identity transforms for local to clip
@@ -323,16 +511,21 @@ namespace UnitTests
 
 			Metal::BoundUniforms boundUniforms(
 				pipeline, Metal::PipelineLayoutConfig{},
-				usi);
+				usi,
+				descSet ? descSet->_usi : UniformsStreamInterface{});
 
 			ConstantBufferView cbvs[] = { globalTransformPkt, localTransformPkt };
 			boundUniforms.Apply(metalContext, 0, UniformsStream{MakeIteratorRange(cbvs)});
+
+			if (descSet)
+				descSet->Apply(metalContext, boundUniforms, 1);
 		}
 
 		static void RenderQuad(
             RenderCore::IThreadContext& threadContext,
             IteratorRange<const VertexPCT*> vertices,
-            const RenderCore::Metal::GraphicsPipeline& pipeline)
+            const RenderCore::Metal::GraphicsPipeline& pipeline,
+			const RenderCore::Techniques::DescriptorSetAccelerator* descSet = nullptr)
         {
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
             RenderCore::Metal::BoundInputLayout inputLayout(RenderCore::GlobalInputLayouts::PCT, pipeline.GetShaderProgram());
@@ -341,7 +534,7 @@ namespace UnitTests
 			RenderCore::VertexBufferView vbv { vertexBuffer.get() };
             inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
 
-			BindPassThroughTransform(metalContext, pipeline);
+			BindPassThroughTransform(metalContext, pipeline, descSet);
 
             metalContext.Draw(pipeline, (unsigned)vertices.size());
         }

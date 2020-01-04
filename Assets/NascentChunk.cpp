@@ -48,7 +48,7 @@ namespace Assets
 
 	std::string AsString(const Blob& blob)
 	{
-		assert(blob);
+		if (!blob) return {};
 		return std::string((const char*)AsPointer(blob->begin()), (const char*)AsPointer(blob->end()));
 	}
 
