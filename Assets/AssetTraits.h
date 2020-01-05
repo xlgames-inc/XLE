@@ -57,6 +57,7 @@ namespace Assets
 			using DivAsset = DivergentAsset<AssetType>;
 
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
+			static const bool Constructor_TextFile = std::is_constructible<AssetType, StringSection<>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
 			static const bool Constructor_FileSystem = std::is_constructible<AssetType, IFileInterface&, const DirectorySearchRules&, const DepValPtr&>::value;
 
@@ -206,6 +207,34 @@ namespace Assets
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
 			return std::make_unique<AssetType>(
 				*file,
+				DefaultDirectorySearchRules(initializer),
+				depVal);
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH_END
+	}
+
+	//
+	//		Auto construct to:
+	//			(StringSection<utf8>&, const DirectorySearchRules&, const DepValPtr&)
+	//
+	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_TextFile)>
+		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
+	{
+		auto depVal = std::make_shared<DependencyValidation>();
+		RegisterFileDependency(depVal, initializer);
+		TRY { 
+			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
+			file->Seek(0, FileSeekAnchor::End);
+			auto size = file->TellP();
+			auto block = std::make_unique<char[]>(size);
+			file->Seek(0);
+			auto readCount = file->Read(block.get(), size);
+			assert(readCount == 1);
+			return std::make_unique<AssetType>(
+				MakeStringSection(block.get(), PtrAdd(block.get(), size)),
 				DefaultDirectorySearchRules(initializer),
 				depVal);
 		} CATCH (const Exceptions::ConstructionError& e) {
