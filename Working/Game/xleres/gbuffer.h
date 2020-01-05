@@ -107,6 +107,10 @@ float3 DecompressGBufferNormal(float3 gBufferNormalSample)
     return rangeAdj * mult;
 }
 
+#if !defined(GBUFFER_TYPE)
+    #define GBUFFER_TYPE 1
+#endif
+
 #if GBUFFER_TYPE & 1
     #define HAS_PROPERTIES_BUFFER 1
 #else

@@ -66,8 +66,7 @@ namespace SceneEngine
 	void ExecuteSceneRaw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
-		const RenderCore::Techniques::SequencerTechnique& sequencerTechnique,
-		unsigned techniqueIndex,
+		const RenderCore::Techniques::SequencerContext& sequencerTechnique,
 		const SceneView& view,
 		IScene& scene);
 

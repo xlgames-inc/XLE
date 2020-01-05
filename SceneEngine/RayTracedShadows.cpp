@@ -240,12 +240,11 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
-			ExecuteDrawablesContext executeDrawblesContext(parserContext);
+			// ExecuteDrawablesContext executeDrawblesContext(parserContext);
             ExecuteDrawables(
                 threadContext, parserContext,
-				executeDrawblesContext,
+				MakeSequencerContext(parserContext, ~0ull, TechniqueIndex_RTShadowGen),
 				inputDrawables._general,
-                TechniqueIndex_RTShadowGen,
 				"RTShadowGen");
         CATCH_ASSETS_END(parserContext)
 

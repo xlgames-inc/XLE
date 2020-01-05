@@ -49,9 +49,13 @@ namespace SceneEngine
 		return _createGBuffer;
 	}
 
-	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> RenderStep_GBuffer::GetTechniqueDelegate() const
+	auto RenderStep_GBuffer::GetTechniqueDelegate(unsigned subpassIdx) const -> TechniqueDelegate
 	{
-		return _deferredIllumDelegate;
+		ParameterBox box;
+		box.SetParameter((const utf8*)"GBUFFER_TYPE", _gbufferType);
+		return TechniqueDelegate {
+			_deferredIllumDelegate,
+			std::move(box) };
 	}
 
 	RenderStep_GBuffer::RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets)
@@ -200,20 +204,13 @@ namespace SceneEngine
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		RenderCore::Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
 		assert(viewDelegate);
 		const auto& drawables = *checked_cast<ViewDelegate_Deferred*>(viewDelegate);
-
-			//
-        //////////////////////////////////////////////////////////////////////////////////////
-            //      Get the gbuffer render targets for this frame
-            //
-
-        auto& globalState = parsingContext.GetTechniqueContext()._globalEnvironmentState;
-        globalState.SetParameter((const utf8*)"GBUFFER_TYPE", _gbufferType);
 
             //
         //////////////////////////////////////////////////////////////////////////////////////
@@ -223,32 +220,23 @@ namespace SceneEngine
 		ReturnToSteadyState(metalContext);
 
         CATCH_ASSETS_BEGIN {
-			RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._deferred);
-			ExecuteDrawablesContext executeDrawablesContext(parsingContext);
+			// RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._deferred);
+			// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
-				threadContext, parsingContext, executeDrawablesContext,
+				threadContext, parsingContext, 
+				MakeSequencerContext(parsingContext, sequencerConfigs[0], TechniqueIndex_Deferred),
 				drawables._gbufferOpaque,
-				TechniqueIndex_Deferred, "MainScene-OpaqueGBuffer");
+				"MainScene-OpaqueGBuffer");
         } CATCH_ASSETS_END(parsingContext)
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(threadContext, parsingContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_Deferred);
 
-            //
-        //////////////////////////////////////////////////////////////////////////////////////
-            //      Now resolve lighting
-            //
-
-        /*CATCH_ASSETS_BEGIN {
-            LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext);
-        } CATCH_ASSETS_END(parsingContext)
-
-            // Post lighting resolve operations... (must rebind the depth buffer)
-        metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
-
+        /*
         CATCH_ASSETS_BEGIN
             LightingParser_DeferredPostGBuffer(threadContext, parsingContext, lightingParserContext, sceneParser, preparedScene, mainTargets);
-        CATCH_ASSETS_END(parsingContext)*/
+        CATCH_ASSETS_END(parsingContext)
+		*/
 	}
 
 	void LightingParser_PreTranslucency(
@@ -308,7 +296,8 @@ namespace SceneEngine
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
-		ViewDelegate_Deferred& executedScene)
+		ViewDelegate_Deferred& executedScene,
+		uint64_t sequencerCfgId)
     {
 		auto& mainTargets = lightingParserContext.GetMainTargets();
 
@@ -362,21 +351,23 @@ namespace SceneEngine
             // The depth pre-pass helps a little bit for stochastic transparency,
             // but it's not clear that it helps overall.
         if (oiMode == OIMode::SortedRef && Tweakable("TransPrePass", false) && BatchHasContent(executedScene._transparentPreDepth)) {
-            RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
-			ExecuteDrawablesContext executeDrawablesContext(parserContext);
+            // RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
+			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
-                context, parserContext, executeDrawablesContext,
+                context, parserContext,
+				MakeSequencerContext(parserContext, sequencerCfgId, TechniqueIndex_DepthOnly),
                 executedScene._transparentPreDepth,
-                TechniqueIndex_DepthOnly, "MainScene-TransPreDepth");
+                "MainScene-TransPreDepth");
         }
 
         if (BatchHasContent(executedScene._transparent)) {
-            RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
-			ExecuteDrawablesContext executeDrawablesContext(parserContext);
+            // RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
+			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
-                context, parserContext, executeDrawablesContext,
+                context, parserContext,
+				MakeSequencerContext(parserContext, sequencerCfgId, TechniqueIndex_General),
                 executedScene._transparent,
-                TechniqueIndex_General, "MainScene-PostGBuffer");
+                "MainScene-PostGBuffer");
         }
         
 #if 0 // platformtemp

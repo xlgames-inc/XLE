@@ -16,6 +16,7 @@ namespace RenderCore { namespace Techniques
 	class FrameBufferDescFragment;
 	class RenderPassFragment;
 	class ITechniqueDelegate_New;
+	using SequencerConfigId = uint64_t;
 }}
 
 namespace SceneEngine
@@ -34,12 +35,18 @@ namespace SceneEngine
 	public:
 		virtual std::shared_ptr<IViewDelegate> CreateViewDelegate();
 		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const = 0;
-		virtual std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> GetTechniqueDelegate() const { return nullptr; }
+		struct TechniqueDelegate
+		{
+			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> _techniqueDelegate;
+			ParameterBox _sequencerSelectors;
+		};
+		virtual TechniqueDelegate GetTechniqueDelegate(unsigned subpassIdx) const { return {}; }
 		virtual void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 			IViewDelegate* viewDelegate) = 0;
 		virtual ~IRenderStep();
 	};
@@ -49,14 +56,15 @@ namespace SceneEngine
 	class RenderStep_Forward : public IRenderStep
 	{
 	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate();
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override;
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_Forward(bool precisionTargets);
 		~RenderStep_Forward();
@@ -67,14 +75,15 @@ namespace SceneEngine
 	class RenderStep_Direct : public IRenderStep
 	{
 	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate();
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override;
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_Direct();
 		~RenderStep_Direct();
@@ -86,13 +95,14 @@ namespace SceneEngine
 	{
 	public:
 		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> GetTechniqueDelegate() const override;
+		TechniqueDelegate GetTechniqueDelegate(unsigned subpassIdx) const override;
 		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override;
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 			IViewDelegate* viewDelegate) override;
 
 		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
@@ -106,13 +116,14 @@ namespace SceneEngine
 	class RenderStep_PrepareDMShadows : public IRenderStep
 	{
 	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override { return _fragment; }
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderCore::IResourcePtr _resource;
 
@@ -125,13 +136,14 @@ namespace SceneEngine
 	class RenderStep_PrepareRTShadows : public IRenderStep
 	{
 	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override { return _fragment; }
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_PrepareRTShadows();
 		~RenderStep_PrepareRTShadows();
@@ -153,13 +165,14 @@ namespace SceneEngine
 	class RenderStep_LightingResolve : public IRenderStep
 	{
 	public:
-		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override { return _fragment; }
 		virtual void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_LightingResolve(bool precisionTargets);
 	private:
@@ -169,12 +182,13 @@ namespace SceneEngine
 	class RenderStep_ResolveHDR : public IRenderStep
 	{
 	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override { return _fragment; }
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 			IViewDelegate* viewDelegate);
 
 		void SetLuminanceResult(LuminanceResult&&);
@@ -189,13 +203,14 @@ namespace SceneEngine
 	class RenderStep_SampleLuminance : public IRenderStep
 	{
 	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const override { return _fragment; }
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
 			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+			IViewDelegate* viewDelegate) override;
 
 		RenderStep_SampleLuminance(const std::shared_ptr<RenderStep_ResolveHDR>& downstream);
 		~RenderStep_SampleLuminance();

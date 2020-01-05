@@ -55,7 +55,7 @@ namespace SceneEngine
 			size_t _beginRenderStep = 0;
 			size_t _endRenderStep = 0;
 
-			std::vector<RenderCore::Techniques::SequencerConfigId> _perStepSequencerConfigIds;
+			std::vector<RenderCore::Techniques::SequencerConfigId> _perSubpassSequencerConfigIds;
 			std::vector<Techniques::FrameBufferFragmentMapping> _perStepRemappings;
 			std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
 		};
@@ -174,20 +174,21 @@ namespace SceneEngine
 			// Fill in the SequencerConfigId for each render step
 			size_t subpassCounter = 0;
 			for (auto step=renderStepIterator; step!=renderStepEnd; ++step) {
-				auto techniqueDel = (*step)->GetTechniqueDelegate();
-				if (techniqueDel) {
-					auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
-						techniqueDel,
-						ParameterBox {},		// sequencerSelectors,
-						fbProps,
-						newRenderPass._fbDesc,
-						(unsigned)subpassCounter);		// note -- this records the first subpass requested by this step
-					newRenderPass._perStepSequencerConfigIds.push_back(sequencerConfig);
-				} else {
-					newRenderPass._perStepSequencerConfigIds.push_back(~0ull);
+				for (unsigned subpass=0; subpass<unsigned(fragments[step-renderStepIterator]._subpasses.size()); ++subpass) {
+					auto techniqueDel = (*step)->GetTechniqueDelegate(subpass);
+					if (techniqueDel._techniqueDelegate) {
+						auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
+							techniqueDel._techniqueDelegate,
+							techniqueDel._sequencerSelectors,
+							fbProps,
+							newRenderPass._fbDesc,
+							(unsigned)subpassCounter);
+						newRenderPass._perSubpassSequencerConfigIds.push_back(sequencerConfig);
+					} else {
+						newRenderPass._perSubpassSequencerConfigIds.push_back(~0ull);
+					}
+					++subpassCounter;
 				}
-
-				subpassCounter += fragments[step-renderStepIterator]._subpasses.size();
 			}
 
 			_renderPasses.emplace_back(std::move(newRenderPass));
@@ -316,11 +317,11 @@ namespace SceneEngine
 							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
 						renderStep._resource = shadowsAttachmentPool.GetResource(0);
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, {}, &shadowDelegate);
 					} else {
 						RenderStep_PrepareRTShadows renderStep;
 						Techniques::RenderPassFragment rpf;
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, {}, &shadowDelegate);
 					}
 				CATCH_ASSETS_END(parsingContext)
 			}
@@ -339,6 +340,9 @@ namespace SceneEngine
 				targetTextureDesc._width, targetTextureDesc._height, 
 				technique._sampling });
 
+		auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
+		parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
+
 		for (const auto&rp:technique._renderPasses) {
 			Techniques::RenderPassInstance rpi;
 			if (rp._pipelineType == PipelineType::Graphics) {
@@ -350,6 +354,7 @@ namespace SceneEngine
 				rpi = Techniques::RenderPassInstance { rp._fbDesc, parsingContext.GetNamedResources() };
 			}
 
+			unsigned subpassCounter = 0;
 			auto stepRemappingIterator = rp._perStepRemappings.begin();
 			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
 				CATCH_ASSETS_BEGIN
@@ -357,11 +362,9 @@ namespace SceneEngine
 					IViewDelegate* viewDelegate = nullptr;
 					if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
 
-					// todo - do this more sensibly
-					parsingContext._sequencerConfigId = rp._perStepSequencerConfigIds[step-rp._beginRenderStep];
-					parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
-
-					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+					auto range = MakeIteratorRange(AsPointer(rp._perSubpassSequencerConfigIds.begin() + subpassCounter), AsPointer(rp._perSubpassSequencerConfigIds.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
+					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, range, viewDelegate);
+					subpassCounter += (unsigned)range.size();
 				CATCH_ASSETS_END(parsingContext)
 			}
 
@@ -372,8 +375,7 @@ namespace SceneEngine
 				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResource(w.second));
 		}
 
-		parsingContext._sequencerConfigId = ~0ull;
-		parsingContext._pipelineAcceleratorPool = nullptr;
+		parsingContext._pipelineAcceleratorPool = prevPipelineAccelerator;
 
 		// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
 		/*if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
@@ -613,8 +615,7 @@ namespace SceneEngine
 	void ExecuteSceneRaw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
-		const RenderCore::Techniques::SequencerTechnique& sequencerTechnique,
-		unsigned techniqueIndex,
+		const RenderCore::Techniques::SequencerContext& sequencerTechnique,
 		const SceneView& view,
 		IScene& scene)
 	{
@@ -630,7 +631,6 @@ namespace SceneEngine
 		for (auto d=begin; d!=end; ++d)
 			Techniques::Draw(
 				threadContext, parserContext, 
-				techniqueIndex,
 				sequencerTechnique, 
 				*(Techniques::Drawable*)d.get());
 	}

@@ -17,7 +17,7 @@
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/PipelineAccelerator.h"
 #include "../Techniques/DescriptorSetAccelerator.h"
-#include "../Techniques/DrawableMaterial.h"
+#include "../Techniques/DrawableMaterial.h"		// for ShaderPatchCollectionRegistry
 #include "../Techniques/CompiledShaderPatchCollection.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../Types.h"

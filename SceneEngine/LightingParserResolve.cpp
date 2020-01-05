@@ -684,6 +684,7 @@ namespace SceneEngine
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		RenderCore::Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi);

@@ -62,6 +62,7 @@ namespace SceneEngine
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		RenderCore::Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
@@ -112,6 +113,7 @@ namespace SceneEngine
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		RenderCore::Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
@@ -166,17 +168,19 @@ namespace SceneEngine
         ReturnToSteadyState(metalContext);
 
 		if (BatchHasContent(executedScene._preDepth)) {
-			RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._depthOnly);
-			ExecuteDrawablesContext executeDrawablesContext(parsingContext);
+			// RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._depthOnly);
+			// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
-				threadContext, parsingContext, executeDrawablesContext, executedScene._preDepth,
-				TechniqueIndex_DepthOnly, "MainScene-DepthOnly");
+				threadContext, parsingContext, MakeSequencerContext(parsingContext, ~0ull, TechniqueIndex_DepthOnly),
+				executedScene._preDepth,
+				"MainScene-DepthOnly");
 			ReturnToSteadyState(metalContext);
 		}
 
             /////
 
-        RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._forward);
+		assert(0); // -- these state settings back to be set in the technique delegate
+        // RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._forward);
 
             //  We must disable z write (so all shaders can be early-depth-stencil)
             //      (this is because early-depth-stencil will normally write to the depth
@@ -184,14 +188,15 @@ namespace SceneEngine
             //      will switch early-depth-stencil on and off as necessary, but in the second
             //      pass we want it on permanently because the depth reject will end up performing
             //      the same job as alpha testing)
-        metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
+        // metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
             /////
             
-		ExecuteDrawablesContext executeDrawablesContext(parsingContext);
+		// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
         ExecuteDrawables(
-            threadContext, parsingContext, executeDrawablesContext, executedScene._general,
-            TechniqueIndex_General, "MainScene-General");
+            threadContext, parsingContext, MakeSequencerContext(parsingContext, ~0ull, TechniqueIndex_General),
+			executedScene._general,
+			"MainScene-General");
 
             /////
 

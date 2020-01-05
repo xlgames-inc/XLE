@@ -29,6 +29,7 @@ namespace SceneEngine
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		RenderCore::Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
@@ -106,6 +107,7 @@ namespace SceneEngine
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate*)
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");

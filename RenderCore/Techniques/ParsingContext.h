@@ -54,17 +54,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		UniformsStream			GetGlobalUniformsStream() const;
         
-        std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(const std::shared_ptr<IRenderStateDelegate>& stateSetDelegate);
-        const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
-
-		// std::shared_ptr<ITechniqueDelegate> SetTechniqueDelegate(const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate);
-        // const std::shared_ptr<ITechniqueDelegate>& GetTechniqueDelegate()            { return _techniqueDelegate; }
-
-		uint64_t _sequencerConfigId = ~0ull;
 		RenderCore::Techniques::PipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
-
-		std::shared_ptr<IMaterialDelegate> SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate);
-        const std::shared_ptr<IMaterialDelegate>& GetMaterialDelegate()            { return _materialDelegate; }
 
 		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
 		void RemoveUniformDelegate(uint64_t binding);
@@ -115,10 +105,6 @@ namespace RenderCore { namespace Techniques
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
         std::unique_ptr<ProjectionDesc>             _projectionDesc;
-
-        std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
-		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
-		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
 
 		ParameterBox								_subframeShaderSelectors;
 

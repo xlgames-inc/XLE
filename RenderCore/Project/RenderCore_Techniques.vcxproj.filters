@@ -5,7 +5,6 @@
     <ClInclude Include="..\Techniques\Techniques.h" />
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
-    <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\CommonBindings.h" />
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
     <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />

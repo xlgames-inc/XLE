@@ -520,8 +520,9 @@ namespace SceneEngine
     {
             // Draw the opaque & translucent parts of models that were previously prepared
         {
+			assert(0); // render state delegate no longer on the parser context
             auto capture = _cache->GetSharedStateSet().CaptureState(
-				context, parserContext.GetRenderStateDelegate(), {});
+				context, nullptr/*parserContext.GetRenderStateDelegate()*/, {});
             FixedFunctionModel::ModelRenderer::RenderPrepared(
                 FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, delayStep);

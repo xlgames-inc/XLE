@@ -256,12 +256,12 @@ namespace SceneEngine
 			FrustumDefinitionUniformDelegate::Buffer { frustum };
     }
 
-	Techniques::SequencerTechnique ModelIntersectionStateContext::MakeRayTestSequencerTechnique()
+	Techniques::SequencerContext ModelIntersectionStateContext::MakeRayTestSequencerTechnique()
 	{
-		Techniques::SequencerTechnique sequencer;
+		Techniques::SequencerContext sequencer;
 		assert(0);	// have to assign the correct technique delegate for this operation
 		// sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
-		sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
+		// sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
 
 		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)

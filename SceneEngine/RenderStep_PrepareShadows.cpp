@@ -96,13 +96,14 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-		RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
-		ExecuteDrawablesContext executeDrawablesContext(parserContext);
+		// RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
+		// ExecuteDrawablesContext executeDrawablesContext(parserContext);
         metalContext.Bind(resources._rasterizerState);
         ExecuteDrawables(
-            threadContext, parserContext, executeDrawablesContext,
+            threadContext, parserContext,
+			MakeSequencerContext(parserContext, ~0ull, TechniqueIndex_ShadowGen),
             executedScene._general,
-            TechniqueIndex_ShadowGen, "ShadowGen-Prepare");
+            "ShadowGen-Prepare");
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(threadContext, parserContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_ShadowGen);
@@ -115,6 +116,7 @@ namespace SceneEngine
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
@@ -156,6 +158,7 @@ namespace SceneEngine
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
 		Techniques::RenderPassFragment& rpi,
+		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);

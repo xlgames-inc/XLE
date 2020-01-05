@@ -26,7 +26,6 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Format.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -188,7 +187,7 @@ namespace ToolsRig
 
             // Render the model onto our cube map surface
         {
-			auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), {});
+			// auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), {});
             TRY {
                 FixedFunctionModel::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
                 renderer.Prepare(

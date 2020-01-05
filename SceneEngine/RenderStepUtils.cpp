@@ -20,9 +20,8 @@ namespace SceneEngine
 	void ExecuteDrawables(
         IThreadContext& threadContext,
 		Techniques::ParsingContext& parserContext,
-		ExecuteDrawablesContext& context,
-		const RenderCore::Techniques::DrawablesPacket& drawables,
-        unsigned techniqueIndex,
+		const Techniques::SequencerContext& sequencerContext,
+		const Techniques::DrawablesPacket& drawables,
 		const char name[])
     {
 		using namespace RenderCore;
@@ -32,8 +31,7 @@ namespace SceneEngine
 				RenderCore::Techniques::Draw(
 					threadContext, 
 					parserContext,
-					techniqueIndex,
-					context._sequencerTechnique,
+					sequencerContext,
 					*(Techniques::Drawable*)d.get());
         CATCH_ASSETS_END(parserContext)
     }
@@ -42,15 +40,6 @@ namespace SceneEngine
     {
         return !drawables._drawables.empty();
     }
-
-	StateSetResolvers::StateSetResolvers(const Desc&)
-    {
-        _forward = Techniques::CreateRenderStateDelegate_Forward();
-        _deferred = Techniques::CreateRenderStateDelegate_Deferred();
-        _depthOnly = Techniques::CreateRenderStateDelegate_DepthOnly();
-    }
-
-	StateSetResolvers& GetStateSetResolvers() { return ConsoleRig::FindCachedBox2<StateSetResolvers>(); }
 
 	void LightingParser_SetGlobalTransform(
         RenderCore::IThreadContext& context, 
@@ -64,25 +53,16 @@ namespace SceneEngine
             &globalTransform, sizeof(globalTransform));
     }
 
-	ExecuteDrawablesContext::ExecuteDrawablesContext(RenderCore::Techniques::ParsingContext& parserContext)
+	RenderCore::Techniques::SequencerContext MakeSequencerContext(
+		RenderCore::Techniques::ParsingContext& parserContext,
+		uint64_t sequencerCfgId,
+		unsigned techniqueIndex)
 	{
-		/*_sequencerTechnique._techniqueDelegate = parserContext.GetTechniqueDelegate();
-		if (!_sequencerTechnique._techniqueDelegate)
-			_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Illum>();*/
-		_sequencerTechnique._sequencerConfigId = parserContext._sequencerConfigId;
-		_sequencerTechnique._materialDelegate = parserContext.GetMaterialDelegate();
-		if (!_sequencerTechnique._materialDelegate)
-			_sequencerTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
-		_sequencerTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
-
-		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
-			_sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
-
-		for (const auto& d:parserContext.GetUniformDelegates())
-			_sequencerTechnique._sequencerUniforms.push_back({d.first, d.second});
+		RenderCore::Techniques::SequencerContext result;
+		result._sequencerConfigId = sequencerCfgId;
+		// techniqueIndex is not read in the newest iteration of Techniques::Draw. Consider using CreateTechniqueDelegateLegacy()
+		(void)techniqueIndex;
+		return result;
 	}
-
-	ExecuteDrawablesContext::~ExecuteDrawablesContext() {}
 
 }

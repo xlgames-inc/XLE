@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "TechniqueMaterial.h"
 #include "../IDevice.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/VariantUtils.h"
@@ -15,6 +14,7 @@
 
 namespace Utility { class ParameterBox; }
 namespace RenderCore { class IThreadContext; class MiniInputElementDesc; class UniformsStreamInterface; class UniformsStream; }
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class ShaderPatchCollection; } }
 
 namespace RenderCore { namespace Techniques
 {
@@ -27,15 +27,11 @@ namespace RenderCore { namespace Techniques
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
 
-	class SequencerTechnique
+	class SequencerContext
 	{
 	public:
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
 		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
-
-		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
-		// std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
-		std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
 
 		uint64_t	_sequencerConfigId = ~0ull;
 	};
@@ -115,8 +111,7 @@ namespace RenderCore { namespace Techniques
 	void Draw(
 		IThreadContext& context,
         Techniques::ParsingContext& parserContext,
-		unsigned techniqueIndex,
-		const SequencerTechnique& sequencerTechnique,
+		const SequencerContext& sequencerTechnique,
 		const Drawable& drawable);
 
 	enum class BatchFilter

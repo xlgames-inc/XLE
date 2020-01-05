@@ -12,59 +12,19 @@ namespace RenderCore { namespace Techniques { class ParsingContext; class IRende
 
 namespace SceneEngine
 {
-	class RenderStateDelegateChangeMarker
-    {
-    public:
-        RenderStateDelegateChangeMarker(
-            RenderCore::Techniques::ParsingContext& parsingContext,
-            std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> newResolver)
-        {
-            _parsingContext = &parsingContext;
-            _oldResolver = parsingContext.SetRenderStateDelegate(std::move(newResolver));
-        }
-        ~RenderStateDelegateChangeMarker()
-        {
-            if (_parsingContext)
-                _parsingContext->SetRenderStateDelegate(std::move(_oldResolver));
-        }
-        RenderStateDelegateChangeMarker(const RenderStateDelegateChangeMarker&) = delete;
-        RenderStateDelegateChangeMarker& operator=(const RenderStateDelegateChangeMarker&) = delete;
-    private:
-        std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _oldResolver;
-        RenderCore::Techniques::ParsingContext* _parsingContext;
-    };
-
-	class ExecuteDrawablesContext
-	{
-	public:
-		RenderCore::Techniques::SequencerTechnique _sequencerTechnique;
-
-		ExecuteDrawablesContext(RenderCore::Techniques::ParsingContext& parserContext);
-		~ExecuteDrawablesContext();
-	};
+	RenderCore::Techniques::SequencerContext MakeSequencerContext(
+		RenderCore::Techniques::ParsingContext& parserContext,
+		uint64_t sequencerCfgId,
+		unsigned techniqueIndex);
 
     void ExecuteDrawables(
         RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
-		ExecuteDrawablesContext& context,
+		const RenderCore::Techniques::SequencerContext& sequencerContext,
 		const RenderCore::Techniques::DrawablesPacket& drawables,
-        unsigned techniqueIndex,
 		const char name[]);
 
     bool BatchHasContent(const RenderCore::Techniques::DrawablesPacket& drawables);
-
-	class StateSetResolvers
-    {
-    public:
-        class Desc {};
-
-        using Resolver = std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>;
-        Resolver _forward, _deferred, _depthOnly;
-
-        StateSetResolvers(const Desc&);
-    };
-
-    StateSetResolvers& GetStateSetResolvers();
 
 	class LightResolveResourcesRes
     {

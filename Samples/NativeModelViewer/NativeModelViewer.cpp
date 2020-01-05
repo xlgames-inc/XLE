@@ -8,6 +8,7 @@
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/ToolsRig/BasicManipulators.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
@@ -60,7 +61,6 @@ namespace Sample
 		modelLayer->Set(ToolsRig::VisEnvSettings{});
 		AddSystem(modelLayer);
 
-		/*
 		auto mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		ToolsRig::VisOverlaySettings overlaySettings;
 		overlaySettings._colourByMaterial = 2;
@@ -79,7 +79,6 @@ namespace Sample
 			modelLayer->GetCamera(), &RenderTrackingOverlay);
 		trackingOverlay->Set(scene);
 		AddSystem(trackingOverlay);
-		*/
 
 		{
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), globals._techniqueContext);
@@ -105,7 +104,9 @@ namespace Sample
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
 	{
+		parserContext._pipelineAcceleratorPool = _pipelineAccelerators.get();
 		OverlaySystemSet::Render(threadContext, renderTarget, parserContext);
+		parserContext._pipelineAcceleratorPool = nullptr;
 	}
 
 	NativeModelViewerOverlay::NativeModelViewerOverlay()

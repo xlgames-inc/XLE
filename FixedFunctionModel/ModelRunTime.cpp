@@ -16,7 +16,6 @@
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
-#include "../RenderCore/Techniques/TechniqueMaterial.h"
 
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"

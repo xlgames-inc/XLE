@@ -402,19 +402,50 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	RenderCore::Metal::ShaderProgram* TechniqueDelegate_Legacy::GetShader(
-		ParsingContext& context,
-		const ParameterBox* shaderSelectors[],
-		const DrawableMaterial& material,
-		unsigned techniqueIndex)
+	class TechniqueDelegate_Legacy : public ITechniqueDelegate_New
+	{
+	public:
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& input) override;
+
+		TechniqueDelegate_Legacy(
+			unsigned techniqueIndex,
+			const RenderCore::AttachmentBlendDesc& blend,
+			const RenderCore::RasterizationDesc& rasterization,
+			const RenderCore::DepthStencilDesc& depthStencil);
+		~TechniqueDelegate_Legacy();
+	private:
+		unsigned _techniqueIndex;
+		RenderCore::AttachmentBlendDesc _blend;
+		RenderCore::RasterizationDesc _rasterization;
+		RenderCore::DepthStencilDesc _depthStencil;
+
+		::Assets::FuturePtr<Technique> _techniqueSetFuture;
+		::Assets::DepValPtr _cfgFileDepVal;
+		::Assets::AssetState _cfgFileState;
+
+		std::shared_ptr<TechniqueShaderVariationSet> _variationSet;
+
+		::Assets::AssetState PrimeTechniqueCfg();
+	};
+
+	auto TechniqueDelegate_Legacy::Resolve(
+		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+		IteratorRange<const ParameterBox**> selectors,
+		const RenderCore::Assets::RenderStateSet& input) -> ResolvedTechnique
 	{
 		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
-			return nullptr;
+			return {};
 
 		assert(_variationSet);
-		auto future = _variationSet->FindVariation(techniqueIndex, shaderSelectors);
-		if (!future) return nullptr;
-		return future->TryActualize().get();
+		ResolvedTechnique result;
+		result._shaderProgram = _variationSet->FindVariation(_techniqueIndex, selectors.begin());
+		result._blend = _blend;
+		result._rasterization = _rasterization;
+		result._depthStencil = _depthStencil;
+		return result;
 	}
 
 	::Assets::AssetState TechniqueDelegate_Legacy::PrimeTechniqueCfg()
@@ -441,7 +472,15 @@ namespace RenderCore { namespace Techniques
 		return ::Assets::AssetState::Ready;
 	}
 
-	TechniqueDelegate_Legacy::TechniqueDelegate_Legacy()
+	TechniqueDelegate_Legacy::TechniqueDelegate_Legacy(
+		unsigned techniqueIndex,
+		const RenderCore::AttachmentBlendDesc& blend,
+		const RenderCore::RasterizationDesc& rasterization,
+		const RenderCore::DepthStencilDesc& depthStencil)
+	: _techniqueIndex(techniqueIndex)
+	, _blend(blend)
+	, _rasterization(rasterization)
+	, _depthStencil(depthStencil)
 	{
 		_techniqueSetFuture = ::Assets::MakeAsset<Technique>("xleres/Techniques/Illum.tech");
 		_cfgFileState = ::Assets::AssetState::Pending;
@@ -449,6 +488,15 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueDelegate_Legacy::~TechniqueDelegate_Legacy()
 	{
+	}
+
+	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegateLegacy(
+		unsigned techniqueIndex,
+		const RenderCore::AttachmentBlendDesc& blend,
+		const RenderCore::RasterizationDesc& rasterization,
+		const RenderCore::DepthStencilDesc& depthStencil)
+	{
+		return std::make_shared<TechniqueDelegate_Legacy>(techniqueIndex, blend, rasterization, depthStencil);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

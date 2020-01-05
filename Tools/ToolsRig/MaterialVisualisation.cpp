@@ -25,6 +25,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/ShaderPatchCollection.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../RenderCore/UniformsStream.h"
@@ -186,14 +187,14 @@ namespace ToolsRig
 		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
 		bool HasActiveAnimation() const { return false; }
 
-        MaterialVisualizationScene(
+		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
-			const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
+			const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
         : _settings(settings), _material(material)
 		{
 			_depVal = std::make_shared<::Assets::DependencyValidation>();
 			if (!_material) {
-				_material = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
+				_material = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
 				// XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
 			}
 		}
@@ -202,13 +203,13 @@ namespace ToolsRig
 
     protected:
         MaterialVisSettings  _settings;
-		std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> _material;
+		std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
 		::Assets::DepValPtr _depVal;
     };
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
 		const MaterialVisSettings& visObject,
-		const std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial>& material)
+		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
 	{
 		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
 		::Assets::AutoConstructToFuture(*result, visObject, material);

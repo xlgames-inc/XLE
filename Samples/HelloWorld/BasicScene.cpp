@@ -197,13 +197,13 @@ namespace Sample
             *_sharedStateSet, Identity<Float4x4>());
     }
 
-	RenderCore::Techniques::SequencerTechnique MakeSequencerTechnique(
+	RenderCore::Techniques::SequencerContext MakeSequencerTechnique(
 		RenderCore::Techniques::ParsingContext& parserContext)
 	{
-		RenderCore::Techniques::SequencerTechnique result;
-		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
-		result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
-		result._renderStateDelegate = parserContext.GetRenderStateDelegate();
+		RenderCore::Techniques::SequencerContext result;
+		// result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+		// result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+		// result._renderStateDelegate = parserContext.GetRenderStateDelegate();
 
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)

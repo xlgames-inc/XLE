@@ -9,10 +9,10 @@
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
 #include "RenderStateResolver.h"
-#include "TechniqueMaterial.h"
 #include "CompiledRenderStateSet.h"
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
+#include "BasicDelegates.h"
 #include "../UniformsStream.h"
 #include "../BufferView.h"
 #include "../Metal/DeviceContext.h"
@@ -28,18 +28,19 @@ namespace RenderCore { namespace Techniques
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static void SetupDefaultUniforms(
+		Techniques::ParsingContext& parserContext,
+		UniformsStreamInterface sequencerInterface,
+		std::vector<ConstantBufferView>& sequencerCbvs,
+		unsigned& cbSlot);
+
 	void Draw(
 		IThreadContext& context,
         Techniques::ParsingContext& parserContext,
-		unsigned techniqueIndex,
-		const SequencerTechnique& sequencerTechnique,
+		const SequencerContext& sequencerTechnique,
 		const Drawable& drawable)
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(context);
-
-		const ParameterBox* shaderSelectors[Techniques::ShaderSelectors::Source::Max] = {nullptr, nullptr, nullptr, nullptr};
-		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = &parserContext.GetSubframeShaderSelectors();
-		shaderSelectors[Techniques::ShaderSelectors::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
 
 		UniformsStreamInterface sequencerInterface;
 		std::vector<ConstantBufferView> sequencerCbvs;
@@ -51,6 +52,8 @@ namespace RenderCore { namespace Techniques
 				sequencerInterface.BindConstantBuffer(cbSlot++, {d.first, d.second->GetLayout()});
 				sequencerCbvs.push_back(d.second->WriteBuffer(parserContext, nullptr));
 			}
+
+			SetupDefaultUniforms(parserContext, sequencerInterface, sequencerCbvs, cbSlot);
 
 			for (auto& d:sequencerTechnique._sequencerResources) {
 				auto bindings = d->GetBindings();
@@ -121,6 +124,28 @@ namespace RenderCore { namespace Techniques
 				parserContext, 
 				Drawable::DrawFunctionContext { &metalContext, pipeline, &boundUniforms },
 				drawable);
+		}
+	}
+
+	void SetupDefaultUniforms(
+		Techniques::ParsingContext& parserContext,
+		UniformsStreamInterface sequencerInterface,
+		std::vector<ConstantBufferView>& sequencerCbvs,
+		unsigned& cbSlot)
+	{
+		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c) {
+			auto bindingName = techUSI._cbBindings[c]._hashName;
+			RenderCore::Techniques::GlobalCBDelegate delegate{c};
+			sequencerInterface.BindConstantBuffer(cbSlot++, {bindingName, delegate.GetLayout()});
+			sequencerCbvs.push_back(delegate.WriteBuffer(parserContext, nullptr));
+		}
+
+		for (const auto& d:parserContext.GetUniformDelegates()) {
+			auto bindingName = d.first;
+			auto& delegate = *d.second;
+			sequencerInterface.BindConstantBuffer(cbSlot++, {bindingName, delegate.GetLayout()});
+			sequencerCbvs.push_back(delegate.WriteBuffer(parserContext, nullptr));
 		}
 	}
 

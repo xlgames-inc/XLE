@@ -18,7 +18,6 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/MinimalShaderSource.h"
@@ -70,9 +69,9 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static std::shared_ptr<RenderCore::Techniques::ScaffoldMaterial> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
+	static std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		auto result = std::make_shared<RenderCore::Techniques::ScaffoldMaterial>();
+		auto result = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
 		RenderCore::Assets::ShaderPatchCollection patchCollectionResult;
 
         // Our default material settings come from the "Document" object. This

@@ -184,22 +184,6 @@ namespace ToolsRig
 
 			LightingParserContext lightingParserContext;
 			{
-				// Setup delegates to override the material & technique values (if we've been given overrides for them)
-				AutoCleanup materialDelegateCleanup /*, techniqueDelegateCleanup*/;
-				if (_pimpl->_materialDelegate) {
-					auto oldDelegate = parserContext.SetMaterialDelegate(_pimpl->_materialDelegate);
-					materialDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
-						parserContext.SetMaterialDelegate(oldDelegate);
-					}};
-				}
-
-				/*if (_pimpl->_techniqueDelegate) {
-					auto oldDelegate = parserContext.SetTechniqueDelegate(_pimpl->_techniqueDelegate);
-					techniqueDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
-						parserContext.SetTechniqueDelegate(oldDelegate);
-					}};
-				}*/
-
 				auto& screenshot = Tweakable("Screenshot", 0);
 				if (screenshot) {
 					PlatformRig::TiledScreenshot(
@@ -376,14 +360,10 @@ namespace ToolsRig
 		std::shared_ptr<SceneEngine::IScene> _scene;
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
 
-		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>		_materialDelegate;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>		_techniqueDelegate;
 		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> _stencilPrimeDelegate;
 
 		Pimpl()
 		{
-			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Legacy>();
-			_materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
 			_stencilPrimeDelegate = std::make_shared<StencilRefDelegate>();
 		}
     };
@@ -416,10 +396,7 @@ namespace ToolsRig
 
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings) return;
 
-		RenderCore::Techniques::SequencerTechnique sequencerTechnique;
-		// sequencerTechnique._techniqueDelegate = _pimpl->_techniqueDelegate;
-		sequencerTechnique._materialDelegate = _pimpl->_materialDelegate;
-		sequencerTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
+		RenderCore::Techniques::SequencerContext sequencerTechnique;
 
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
@@ -451,12 +428,23 @@ namespace ToolsRig
 				parserContext.GetFrameBufferPool(),
 				parserContext.GetNamedResources() };
 
+			static auto visWireframeDelegate =
+				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
+					Techniques::TechniqueIndex::VisWireframe, {}, {}, {});
+			static auto visNormals =
+				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
+					Techniques::TechniqueIndex::VisNormals, {}, {}, {});
+			static auto depthOnly =
+				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
+					Techniques::TechniqueIndex::DepthOnly, {}, {}, {});
+
 			if (_pimpl->_settings._drawWireframe) {
 				CATCH_ASSETS_BEGIN
+					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+						visWireframeDelegate, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
-						Techniques::TechniqueIndex::VisWireframe,
 						sceneView,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
@@ -464,10 +452,11 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawNormals) {
 				CATCH_ASSETS_BEGIN
+					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+						visNormals, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
-						Techniques::TechniqueIndex::VisNormals,
 						sceneView,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
@@ -491,10 +480,11 @@ namespace ToolsRig
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				CATCH_ASSETS_BEGIN
 					// Prime the stencil buffer with draw call indices
+					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+						depthOnly, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
-						Techniques::TechniqueIndex::DepthOnly,
 						sceneView,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
@@ -607,10 +597,11 @@ namespace ToolsRig
 		
 		CATCH_ASSETS_BEGIN
 		
+			auto sequencerTechnique = stateContext.MakeRayTestSequencerTechnique();
+			// sequencerTechnique._techniqueIndex = Techniques::TechniqueIndex::DepthOnly;
 			SceneEngine::ExecuteSceneRaw(
 				threadContext, parserContext, 
-				stateContext.MakeRayTestSequencerTechnique(),
-				Techniques::TechniqueIndex::DepthOnly,
+				sequencerTechnique,
 				{RenderCore::Techniques::ProjectionDesc{}, SceneEngine::SceneView::Type::Other},
 				scene);
 

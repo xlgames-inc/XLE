@@ -92,31 +92,6 @@ namespace RenderCore { namespace Techniques
 		}
     }
 
-    std::shared_ptr<IRenderStateDelegate> ParsingContext::SetRenderStateDelegate(
-        const std::shared_ptr<IRenderStateDelegate>& stateSetResolver)
-    {
-        std::shared_ptr<IRenderStateDelegate> oldResolver = std::move(_renderStateDelegate);
-        _renderStateDelegate = std::move(stateSetResolver);
-        return oldResolver;
-    }
-
-	/*
-	std::shared_ptr<ITechniqueDelegate> ParsingContext::SetTechniqueDelegate(
-        const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate)
-    {
-        std::shared_ptr<ITechniqueDelegate> oldDelegate = std::move(_techniqueDelegate);
-        _techniqueDelegate = std::move(techniqueDelegate);
-        return oldDelegate;
-    }
-	*/
-
-	std::shared_ptr<IMaterialDelegate> ParsingContext::SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate)
-	{
-		std::shared_ptr<IMaterialDelegate> oldDelegate = std::move(_materialDelegate);
-        _materialDelegate = std::move(materialDelegate);
-        return oldDelegate;
-	}
-
 	void ParsingContext::AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>& dele)
 	{
 		for (auto&d:_uniformDelegates)
@@ -148,7 +123,6 @@ namespace RenderCore { namespace Techniques
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
-        _renderStateDelegate = _techniqueContext->_defaultRenderStateDelegate;
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
 		_frameBufferPool = frameBufferPool;

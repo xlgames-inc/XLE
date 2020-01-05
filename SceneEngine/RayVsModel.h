@@ -17,7 +17,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
 	class ITechniqueDelegate;
-	class SequencerTechnique;
+	class SequencerContext;
 }}
 
 namespace SceneEngine
@@ -43,7 +43,7 @@ namespace SceneEngine
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
         void SetFrustum(const Float4x4& frustum);
 
-		RenderCore::Techniques::SequencerTechnique MakeRayTestSequencerTechnique();
+		RenderCore::Techniques::SequencerContext MakeRayTestSequencerTechnique();
 
         enum TestType { RayTest = 0, FrustumTest = 1 };
 

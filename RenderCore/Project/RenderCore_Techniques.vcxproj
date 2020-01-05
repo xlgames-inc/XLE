@@ -84,7 +84,6 @@
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
     <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
-    <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
   </ItemGroup>
