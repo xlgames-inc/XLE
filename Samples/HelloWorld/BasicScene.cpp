@@ -10,6 +10,7 @@
 #include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/SimpleModelRenderer.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../FixedFunctionModel/ModelRunTime.h"
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
@@ -31,8 +32,8 @@
 
 #include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Assets/SkinDeformer.h"
-#include "../../RenderCore/Assets/SimpleModelDeform.h"
+#include "../../RenderCore/Techniques/SkinDeformer.h"
+#include "../../RenderCore/Techniques/SimpleModelDeform.h"
 
 namespace Sample
 {
@@ -48,13 +49,13 @@ namespace Sample
 			RenderCore::IThreadContext& context, 
             SceneEngine::SceneExecuteContext& executeContext);
 
-        Model();
+        Model(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool);
         ~Model();
     protected:
         std::unique_ptr<FixedFunctionModel::SharedStateSet> _sharedStateSet;
         mutable std::unique_ptr<FixedFunctionModel::ModelRenderer> _modelRenderer;
 
-		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
+		::Assets::FuturePtr<RenderCore::Techniques::SimpleModelRenderer> _simpleModelRenderer;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,9 +67,9 @@ namespace Sample
         _model->RenderOpaque_SimpleModelRenderer(context, executeContext);
     }
 
-	BasicSceneParser::BasicSceneParser()
+	BasicSceneParser::BasicSceneParser(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool)
 	{
-		_model = std::make_unique<Model>();
+		_model = std::make_unique<Model>(pipelineAcceleratorPool);
 	}
 
 	BasicSceneParser::~BasicSceneParser()
@@ -76,13 +77,14 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BasicSceneParser::Model::Model()
+    BasicSceneParser::Model::Model(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool)
     {
         _sharedStateSet = std::make_unique<FixedFunctionModel::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());
 
-		RenderCore::Assets::SkinDeformer::Register();
-		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Assets::SimpleModelRenderer>(
+		RenderCore::Techniques::SkinDeformer::Register();
+		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Techniques::SimpleModelRenderer>(
+			pipelineAcceleratorPool,
 			"game/model/character/skin.dae",
 			"game/model/character/skin.dae",
 			"skin");
@@ -189,7 +191,7 @@ namespace Sample
             //  capture once and render multiple times with the same capture.
         auto captureMarker = _sharedStateSet->CaptureState(
 			context, 
-			parserContext.GetRenderStateDelegate(), {});
+			/*parserContext.GetRenderStateDelegate()*/nullptr, {});
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
@@ -250,7 +252,7 @@ namespace Sample
 				&params);
 
 			for (unsigned c=0; c<renderer->DeformOperationCount(); ++c) {
-				auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&renderer->DeformOperation(c));
+				auto* skinDeformOp = dynamic_cast<RenderCore::Techniques::SkinDeformer*>(&renderer->DeformOperation(c));
 				if (!skinDeformOp) continue;
 				skinDeformOp->FeedInSkeletonMachineResults(
 					MakeIteratorRange(skeletonMachineOutput),

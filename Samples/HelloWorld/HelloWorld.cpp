@@ -7,6 +7,8 @@
 #include "../Shared/SampleRig.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../ConsoleRig/Console.h"
@@ -54,15 +56,24 @@ namespace Sample
         SceneEngine::LightingParserContext lightingParserContext;
 		if (_scene) {
 			auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
-			// auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
+			
+			auto techniqueDesc = SceneEngine::SceneTechniqueDesc{
+				(Tweakable("LightingModel", 0) == 0) ? SceneEngine::SceneTechniqueDesc::LightingModel::Deferred : SceneEngine::SceneTechniqueDesc::LightingModel::Forward,
+				{},
+				samples};
+
+			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
+				techniqueDesc,
+				_pipelineAcceleratorPool,
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
+				parsingContext.GetNamedResources().GetFrameBufferProperties());
+
+			auto camera = CalculateCameraDesc(_inputListener->_rotations, _inputListener->_zoomFactor, _lightingDelegate->GetTimeValue());
+
             lightingParserContext = LightingParser_ExecuteScene(
-                threadContext, renderTarget, parsingContext, *_scene, 
-				CalculateCameraDesc(_inputListener->_rotations, _inputListener->_zoomFactor, _lightingDelegate->GetTimeValue()),
-                SceneEngine::SceneTechniqueDesc {
-                    (Tweakable("LightingModel", 0) == 0) ? SceneEngine::SceneTechniqueDesc::LightingModel::Deferred : SceneEngine::SceneTechniqueDesc::LightingModel::Forward,
-					_lightingDelegate.get(),
-					{},
-					samples._sampleCount, samples._samplingQuality } );
+                threadContext, renderTarget, parsingContext, 
+				*compiledTechnique, *_lightingDelegate.get(),
+				*_scene, camera);
         }
 
 		{
@@ -84,7 +95,8 @@ namespace Sample
 
 	void HelloWorldOverlay::OnStartup(const SampleGlobals& globals)
 	{
-		_scene = std::make_shared<BasicSceneParser>();
+		_pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
+		_scene = std::make_shared<BasicSceneParser>(_pipelineAcceleratorPool);
 		_lightingDelegate = std::make_shared<SampleLightingDelegate>();
 		_inputListener = std::make_shared<InputListener>();
 	}

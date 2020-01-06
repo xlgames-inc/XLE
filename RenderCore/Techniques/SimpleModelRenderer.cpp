@@ -31,6 +31,7 @@
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
 #include <utility>
+#include <map>
 
 namespace RenderCore { namespace Techniques 
 {
@@ -388,46 +389,152 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	static std::pair<std::string, unsigned> Dehash(uint64_t hash, IteratorRange<const uint64_t*> hashedNames, IteratorRange<const RenderCore::Assets::VertexElement*> ve)
+	namespace Internal
 	{
-		assert(hashedNames.size() == ve.size());
-		for (auto i=hashedNames.begin(); i!=hashedNames.end(); ++i)
-			if (hash == *i)
-				return {ve[i-hashedNames.begin()]._semanticName, ve[i-hashedNames.begin()]._semanticIndex};
-		return {"Unknown", 0};
-	}
-
-	static std::vector<InputElementDesc> RebuildInputElements(
-		IteratorRange<const Techniques::DrawableGeo::VertexStream*> compiledVertexStreams,
-		const RenderCore::Assets::GeoInputAssembly& rawIA)
-	{
-		// Generate an array of InputElementDesc from the given compiled vertex stream
-		std::vector<uint64_t> hashedNames;
-		hashedNames.reserve(rawIA._elements.size());
-		for (const auto&ele:rawIA._elements) hashedNames.push_back(Hash64(ele._semanticName) + ele._semanticIndex);
-
-		std::vector<InputElementDesc> result;
-		for (auto vi=compiledVertexStreams.begin(); vi!=compiledVertexStreams.end(); ++vi) {
-			size_t workingOffset = 0;
-			for (const auto&e:vi->_vertexElements) {
-				InputElementDesc ele;
-				std::tie(ele._semanticName, ele._semanticIndex) = Dehash(e._semanticHash, MakeIteratorRange(hashedNames), MakeIteratorRange(rawIA._elements));
-				ele._nativeFormat = e._nativeFormat;
-				ele._inputSlot = unsigned(vi-compiledVertexStreams.begin());
-				ele._alignedByteOffset = (unsigned)workingOffset;
-				ele._instanceDataStepRate = vi->_instanceStepDataRate;
-				ele._inputSlotClass = (vi->_instanceStepDataRate==0) ? InputDataRate::PerVertex : InputDataRate::PerInstance;
-				result.emplace_back(std::move(ele));
-				workingOffset += BitsPerPixel(e._nativeFormat) / 8;
-			}
+		using DehashElement = std::pair<std::string, unsigned>;
+		static void AddToDehashTable(
+			std::map<uint64_t, DehashElement>& result,
+			IteratorRange<const RenderCore::Assets::VertexElement*> ve)
+		{
+			for (const auto&ele:ve) result[Hash64(ele._semanticName) + ele._semanticIndex] = std::make_pair(ele._semanticName, ele._semanticIndex);
 		}
-		return result;
+
+		static void AddToDehashTable(
+			std::map<uint64_t, DehashElement>& result,
+			const Assets::RawGeometry& rawGeo)
+		{
+			AddToDehashTable(result, MakeIteratorRange(rawGeo._vb._ia._elements));
+		}
+
+		static void AddToDehashTable(
+			std::map<uint64_t, DehashElement>& result,
+			const Assets::BoundSkinnedGeometry& rawGeo)
+		{
+			AddToDehashTable(result, MakeIteratorRange(rawGeo._vb._ia._elements));
+			AddToDehashTable(result, MakeIteratorRange(rawGeo._animatedVertexElements._ia._elements));
+			AddToDehashTable(result, MakeIteratorRange(rawGeo._skeletonBinding._ia._elements));		// note -- we probably don't need the skeleton binding, but adding for good measure
+		}
+
+		static std::pair<std::string, unsigned> Dehash(uint64_t hash, const std::map<uint64_t, DehashElement>& dehashTable)
+		{
+			auto i = dehashTable.find(hash);
+			if (i != dehashTable.end())
+				return i->second;
+			return {"UNKNOWN", 0};
+		}
+
+		static std::vector<InputElementDesc> RebuildInputElements(
+			IteratorRange<const Techniques::DrawableGeo::VertexStream*> compiledVertexStreams,
+			const std::map<uint64_t, DehashElement>& dehashTable)
+		{
+			std::vector<InputElementDesc> result;
+			for (auto vi=compiledVertexStreams.begin(); vi!=compiledVertexStreams.end(); ++vi) {
+				size_t workingOffset = 0;
+				for (const auto&e:vi->_vertexElements) {
+					InputElementDesc ele;
+					std::tie(ele._semanticName, ele._semanticIndex) = Dehash(e._semanticHash, dehashTable);
+					ele._nativeFormat = e._nativeFormat;
+					ele._inputSlot = unsigned(vi-compiledVertexStreams.begin());
+					ele._alignedByteOffset = (unsigned)workingOffset;
+					ele._instanceDataStepRate = vi->_instanceStepDataRate;
+					ele._inputSlotClass = (vi->_instanceStepDataRate==0) ? InputDataRate::PerVertex : InputDataRate::PerInstance;
+					result.emplace_back(std::move(ele));
+					workingOffset += BitsPerPixel(e._nativeFormat) / 8;
+				}
+			}
+			return result;
+		}
 	}
 
 	static const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
 	{
 		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
 	}
+
+	class SimpleModelRenderer::GeoCallBuilder
+	{
+	public:
+		std::shared_ptr<Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		const RenderCore::Assets::MaterialScaffold* _materialScaffold;
+		std::string _materialScaffoldName;
+
+		struct WorkingMaterial
+		{
+			std::shared_ptr<Techniques::CompiledShaderPatchCollection> _compiledPatchCollection;
+			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
+			std::vector<std::string> _descriptorSetResources;
+		};
+		std::vector<std::pair<uint64_t, WorkingMaterial>> drawableMaterials;
+
+		template<typename RawGeoType>
+			GeoCall MakeGeoCall(
+				uint64_t materialGuid,
+				const RawGeoType& rawGeo, const DrawableGeo& compiledGeo)
+		{
+			GeoCall resultGeoCall;
+			auto& mat = *_materialScaffold->GetMaterial(materialGuid);
+
+			auto i = LowerBound(drawableMaterials, materialGuid);
+			if (i != drawableMaterials.end() && i->first == materialGuid) {
+				resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
+			} else {
+				auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
+				assert(patchCollection);
+				auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
+
+				const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
+				if (!matDescriptorSet) {
+					// If we don't have a material descriptor set in the patch collection, and no
+					// patches -- then let's try falling back to a default built-in descriptor set
+					matDescriptorSet = &GetFallbackMaterialDescriptorSetLayout();
+				}
+
+				resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
+					mat._constants, mat._bindings,
+					*matDescriptorSet,
+					_materialScaffoldName);
+
+				// Collect up the list of resources in the descriptor set -- we'll use this to filter the "RES_HAS_" selectors
+				std::vector<std::string> resourceNames;
+				for (const auto&r:matDescriptorSet->_resources)
+					resourceNames.push_back(r._name);
+
+				i = drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet, std::move(resourceNames)}));
+			}
+
+			// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
+			// for the same geo object must share the same toplogy mode
+			assert(!rawGeo._drawCalls.empty());
+			auto topology = rawGeo._drawCalls[0]._topology;
+			#if defined(_DEBUG)
+				for (auto r=rawGeo._drawCalls.begin()+1; r!=rawGeo._drawCalls.end(); ++r)
+					assert(topology == r->_topology);
+			#endif
+
+			// Unfortunately, we don't have the input elements in exactly the right format we need to pass to CreatePipelineAccelerator
+			// we've got to rebuild them from the vertex streams
+			std::map<uint64_t, Internal::DehashElement> vertexEleDehashTable;
+			Internal::AddToDehashTable(vertexEleDehashTable, rawGeo);
+			auto inputElements = Internal::RebuildInputElements(
+				MakeIteratorRange(compiledGeo._vertexStreams, compiledGeo._vertexStreams+compiledGeo._vertexStreamCount),
+				vertexEleDehashTable);
+
+			auto matSelectors = mat._matParams;
+			// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
+			for (const auto&r:i->second._descriptorSetResources)
+				if (mat._bindings.HasParameter(MakeStringSection(r)))
+					matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r).Cast<utf8>(), 1);
+
+			resultGeoCall._pipelineAccelerator =
+				_pipelineAcceleratorPool->CreatePipelineAccelerator(
+					i->second._compiledPatchCollection,
+					matSelectors,
+					MakeIteratorRange(inputElements),
+					topology,
+					mat._stateSet);
+			return resultGeoCall;
+		}
+	};
 
 	SimpleModelRenderer::SimpleModelRenderer(
 		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
@@ -510,105 +617,26 @@ namespace RenderCore { namespace Techniques
 		}
 
 		// Setup the materials
-		struct WorkingMaterial
-		{
-			std::shared_ptr<Techniques::CompiledShaderPatchCollection> _compiledPatchCollection;
-			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
-			std::vector<std::string> _descriptorSetResources;
-		};
-		std::vector<std::pair<uint64_t, WorkingMaterial>> drawableMaterials;
+		GeoCallBuilder geoCallBuilder { pipelineAcceleratorPool, _materialScaffold.get(), _materialScaffoldName };
 
 		const auto& cmdStream = _modelScaffold->CommandStream();
 		for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetGeoCall(c);
-
 			auto& rawGeo = modelScaffold->ImmutableData()._geos[geoCall._geoId];
 			auto& compiledGeo = _geos[geoCall._geoId];
-
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
-				auto materialGuid = geoCall._materialGuids[d];
-
-				GeoCall resultGeoCall;
-				auto& mat = *_materialScaffold->GetMaterial(materialGuid);
-
-				auto i = LowerBound(drawableMaterials, materialGuid);
-				if (i != drawableMaterials.end() && i->first == materialGuid) {
-					resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
-				} else {
-					auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
-					assert(patchCollection);
-					auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
-
-					const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
-					if (!matDescriptorSet) {
-						// If we don't have a material descriptor set in the patch collection, and no
-						// patches -- then let's try falling back to a default built-in descriptor set
-						matDescriptorSet = &GetFallbackMaterialDescriptorSetLayout();
-					}
-
-					resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
-						mat._constants, mat._bindings,
-						*matDescriptorSet,
-						materialScaffoldName);
-
-					// Collect up the list of resources in the descriptor set -- we'll use this to filter the "RES_HAS_" selectors
-					std::vector<std::string> resourceNames;
-					for (const auto&r:matDescriptorSet->_resources)
-						resourceNames.push_back(r._name);
-
-					i = drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet, std::move(resourceNames)}));
-				}
-
-				// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
-				// for the same geo object must share the same toplogy mode
-				assert(!rawGeo._drawCalls.empty());
-				auto topology = rawGeo._drawCalls[0]._topology;
-				#if defined(_DEBUG)
-					for (auto r=rawGeo._drawCalls.begin()+1; r!=rawGeo._drawCalls.end(); ++r)
-						assert(topology == r->_topology);
-				#endif
-
-				// Unfortunately, we don't have the input elements in exactly the right format we need to pass to CreatePipelineAccelerator
-				// we've got to rebuild them from the vertex streams
-				auto inputElements = RebuildInputElements(
-					MakeIteratorRange(compiledGeo->_vertexStreams, compiledGeo->_vertexStreams+compiledGeo->_vertexStreamCount),
-					rawGeo._vb._ia);
-
-				auto matSelectors = mat._matParams;
-				// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
-				for (const auto&r:i->second._descriptorSetResources)
-					if (mat._bindings.HasParameter(MakeStringSection(r)))
-						matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r).Cast<utf8>(), 1);
-
-				resultGeoCall._pipelineAccelerator =
-					pipelineAcceleratorPool->CreatePipelineAccelerator(
-						i->second._compiledPatchCollection,
-						matSelectors,
-						MakeIteratorRange(inputElements),
-						topology,
-						mat._stateSet);
-
-				_geoCalls.emplace_back(std::move(resultGeoCall));
+				_geoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, *compiledGeo));
 			}
 		}
 
-		/*
 		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
+			auto& rawGeo = modelScaffold->ImmutableData()._boundSkinnedControllers[geoCall._geoId];
+			auto& compiledGeo = _boundSkinnedControllers[geoCall._geoId];
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
-				auto materialGuid = geoCall._materialGuids[d];
-				auto i = LowerBound(drawableMaterials, materialGuid);
-				if (i != drawableMaterials.end() && i->first == materialGuid) {
-					_boundSkinnedControllerMaterials.push_back(i->second);
-				} else {
-					auto& mat = *_materialScaffold->GetMaterial(materialGuid);
-					auto m = Techniques::MakeDrawableMaterial(mat, *_materialScaffold->GetShaderPatchCollection(mat._patchCollection));
-					_boundSkinnedControllerMaterials.push_back(m);
-					drawableMaterials.insert(i, std::make_pair(materialGuid, m));
-				}
+				_boundSkinnedControllerGeoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, *compiledGeo));
 			}
 		}
-		*/
 
 		// Create the dynamic VB and assign it to all of the slots it needs to go to
 		if (dynVBIterator) {

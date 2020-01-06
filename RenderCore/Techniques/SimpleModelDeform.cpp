@@ -38,18 +38,19 @@ namespace RenderCore { namespace Techniques
 		}
 	}
 
-	DeformOperationFactory* DeformOperationFactory::s_instance = nullptr;
-		
 	DeformOperationFactory::DeformOperationFactory()
 	{
-		assert(!s_instance);
-		s_instance = this;
 	}
 
 	DeformOperationFactory::~DeformOperationFactory()
 	{
-		assert(s_instance == this);
-		s_instance = nullptr;
+	}
+
+	bool DeformOperationFactory::HasInstance() { return true; }
+	DeformOperationFactory& DeformOperationFactory::GetInstance()
+	{
+		static DeformOperationFactory instance;
+		return instance;
 	}
 
 	IDeformOperation::~IDeformOperation() {}

@@ -44,13 +44,12 @@ namespace RenderCore { namespace Techniques
 		using InitiationFunction = std::function<InstantiationSet(StringSection<>, const std::shared_ptr<RenderCore::Assets::ModelScaffold>&)>;
 		void RegisterDeformOperation(StringSection<> name, InitiationFunction&& fn);
 		
-		static bool HasInstance() { return s_instance != nullptr; }
-		static DeformOperationFactory& GetInstance() { assert(s_instance); return *s_instance; }
+		static bool HasInstance();
+		static DeformOperationFactory& GetInstance();
 
 		DeformOperationFactory();
 		~DeformOperationFactory();
 	private:
-		static DeformOperationFactory* s_instance;
 		std::vector<std::pair<uint64_t, InitiationFunction>> _instantiationFunctions;
 	};
 
