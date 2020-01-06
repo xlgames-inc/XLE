@@ -49,11 +49,9 @@ namespace RenderOverlays
 		class Desc {};
 		SkeletonPreviewResourceBox(const Desc&)
 		{
-			auto shaderFuture = ::Assets::MakeAsset<Metal::ShaderProgram>( 
+			_shader = ::Assets::ActualizePtr<Metal::ShaderProgram>( 
 				"xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
 				"xleres/forward/unlit.psh:main", "GEO_HAS_COLOUR=1");
-			shaderFuture->StallWhilePending();
-			_shader = shaderFuture->Actualize();
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});

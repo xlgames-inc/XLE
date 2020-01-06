@@ -26,6 +26,14 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params>
+		const std::shared_ptr<AssetType>& ActualizePtr(Params... initialisers)
+	{
+		auto future = MakeAsset<AssetType>(initialisers...);
+		future->StallWhilePending();
+		return future->Actualize();
+	}
+
+	template<typename AssetType, typename... Params>
 		const AssetType& GetAsset(Params... initialisers) { return Actualize<AssetType>(std::forward<Params>(initialisers)...); }
 
 	template<typename AssetType, typename... Params>

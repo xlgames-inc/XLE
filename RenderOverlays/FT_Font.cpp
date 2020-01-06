@@ -242,9 +242,7 @@ namespace RenderOverlays
 
 	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
 	{
-		auto future = ::Assets::MakeAsset<FTFont>(path, size);
-		future->StallWhilePending();
-		return future->Actualize();
+		return ::Assets::ActualizePtr<FTFont>(path, size);
 	}
 
 	std::shared_ptr<Font> GetDefaultFont(unsigned size)
