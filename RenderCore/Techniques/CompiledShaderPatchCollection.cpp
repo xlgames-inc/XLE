@@ -13,9 +13,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-	static const auto s_perPixel = Hash64("PerPixel");
-	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
-
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src)
 	: _src(src)
 	{
@@ -65,16 +62,6 @@ namespace RenderCore { namespace Techniques
 				auto relevanceDepVal = ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(_interface._selectorRelevance, inst._rawShaderFileIncludes);
 				if (relevanceDepVal)
 					::Assets::RegisterAssetDependency(_depVal, relevanceDepVal);
-			}
-		}
-
-		// Setup the precalculated values for the illum delegate
-		_illumDelegate._type = IllumDelegateAttachment::IllumType::NoPerPixel;
-		if (_interface.HasPatchType(s_perPixel)) {
-			if (_interface.HasPatchType(s_earlyRejectionTest)) {
-				_illumDelegate._type = IllumDelegateAttachment::IllumType::PerPixelAndEarlyRejection;
-			} else {
-				_illumDelegate._type = IllumDelegateAttachment::IllumType::PerPixel;
 			}
 		}
 	}

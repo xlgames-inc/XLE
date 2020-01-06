@@ -336,6 +336,19 @@ namespace RenderCore { namespace Techniques
 	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
 	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
 
+	enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
+	static IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection)
+	{
+		if (patchCollection.GetInterface().HasPatchType(s_perPixel)) {
+			if (patchCollection.GetInterface().HasPatchType(s_earlyRejectionTest)) {
+				return IllumType::PerPixelAndEarlyRejection;
+			} else {
+				return IllumType::PerPixel;
+			}
+		}
+		return IllumType::NoPerPixel;
+	}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class TechniqueDelegate_Legacy : public ITechniqueDelegate
@@ -467,8 +480,7 @@ namespace RenderCore { namespace Techniques
 	{
 		IteratorRange<const uint64_t*> patchExpansions = {};
 		const TechniqueEntry* techEntry = &_noPatches;
-		using IllumType = CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType;
-		switch (shaderPatches->_illumDelegate._type) {
+		switch (CalculateIllumType(*shaderPatches)) {
 		case IllumType::PerPixel:
 			techEntry = &_perPixel;
 			patchExpansions = MakeIteratorRange(s_patchExp_perPixel);

@@ -64,15 +64,6 @@ namespace RenderCore { namespace Techniques
 
 		uint64_t GetGUID() const { return _guid; }
 
-		// Settings for the illum delegate. We calculate and store this here. This will allow for
-		// very efficient access by the illum delegate when we go to render this object.
-		struct IllumDelegateAttachment
-		{
-			enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
-			IllumType _type = IllumType::NoPerPixel;
-		};
-		IllumDelegateAttachment _illumDelegate;
-
 		CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src);
 		CompiledShaderPatchCollection();
 		~CompiledShaderPatchCollection();
