@@ -149,6 +149,8 @@ namespace RenderCore { namespace Techniques
 			_globalToFiltered.insert(i, {inputHash, filteredHashValue});
 		}
 
+		filteredHashValue = HashCombine(filteredHashValue, factory._factoryGuid);
+
 		auto i3 = std::lower_bound(
 			_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashValue,
 			[](const Variation& v, uint64_t h) { return v._variationHash < h; });
