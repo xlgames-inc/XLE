@@ -9,6 +9,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include <utility>
+#include <iosfwd>
 
 namespace ShaderSourceParser { class InstantiationRequest; }
 namespace Utility { template<typename Char> class InputStreamFormatter; class OutputStreamFormatter; }
@@ -34,15 +35,17 @@ namespace RenderCore { namespace Assets
 		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches);
 		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches);
 		~ShaderPatchCollection();
+
 	private:
 		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>> _patches;
 		uint64_t _hash = ~0ull;
 
 		void SortAndCalculateHash();
 	};
-
 	
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
+
+	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection);
 }}
 

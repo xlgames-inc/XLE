@@ -3,7 +3,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueDelegates.h"
-#include "DrawableMaterial.h"
 #include "CompiledShaderPatchCollection.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
@@ -137,8 +136,12 @@ namespace RenderCore { namespace Techniques
 				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
 
 			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
-			auto& patchCollection = ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollectionGuid);
-			if (!patchCollection || patchCollection->GetInterface().GetPatches().empty())
+			auto i = LowerBound(_registry, patchCollectionGuid);
+			if (i == _registry.end() || i->first != patchCollectionGuid)
+				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
+
+			auto& patchCollection = *i->second;
+			if (patchCollection.GetInterface().GetPatches().empty())
 				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));
 
 			std::vector<uint64_t> redirectedPatchFunctions;
@@ -146,12 +149,41 @@ namespace RenderCore { namespace Techniques
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
 				redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
 
-			return AssembleShader(*patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second), definesTable);
+			return AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second), definesTable);
 		}
 
 		InstantiateShaderGraphPreprocessor() {}
 		~InstantiateShaderGraphPreprocessor() {}
+
+		void Register(uint64_t id, const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection)
+		{
+			auto i = LowerBound(_registry, id);
+			if (i != _registry.end() && i->first == id) {
+				assert(i->second == patchCollection);
+			} else {
+				_registry.insert(i, std::make_pair(id, patchCollection));
+			}
+		}
+
+	private:
+		std::vector<std::pair<uint64_t, std::shared_ptr<CompiledShaderPatchCollection>>> _registry;
 	};
+
+	static const std::shared_ptr<InstantiateShaderGraphPreprocessor>& GetInstantiateShaderGraphPreprocessor()
+	{
+		static std::shared_ptr<InstantiateShaderGraphPreprocessor> singleton;
+		if (!singleton) {
+			singleton = std::make_shared<InstantiateShaderGraphPreprocessor>();
+			auto shaderSource = std::make_shared<RenderCore::Assets::LocalCompiledShaderSource>(
+				RenderCore::Assets::Services::GetDevice().CreateShaderCompiler(),
+				singleton,
+				RenderCore::Assets::Services::GetDevice().GetDesc(),
+				CompileProcess_InstantiateShaderGraph);
+			RenderCore::ShaderService::GetInstance().AddShaderSource(shaderSource);
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(shaderSource);
+		}
+		return singleton;
+	}
 
 	static void TryRegisterDependency(
 		::Assets::DepValPtr& dst,
@@ -280,125 +312,29 @@ namespace RenderCore { namespace Techniques
 
 		ShaderPatchFactory(
 			const TechniqueEntry& techEntry, 
-			const CompiledShaderPatchCollection* patchCollection,
+			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
 			IteratorRange<const uint64_t*> patchExpansions)
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
 		, _patchExpansions(patchExpansions)
 		{
+			if (_patchCollection) {
+				GetInstantiateShaderGraphPreprocessor()->Register(
+					_patchCollection->GetGUID(),
+					_patchCollection);
+			}
+
 			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;
 		}
 		ShaderPatchFactory() {}
 	private:
 		const TechniqueEntry* _entry;
-		const CompiledShaderPatchCollection* _patchCollection;
+		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
 		IteratorRange<const uint64_t*> _patchExpansions;
 	};
 
 	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
 	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
-
-	RenderCore::Metal::ShaderProgram* TechniqueDelegate_Illum::GetShader(
-		ParsingContext& context,
-		const ParameterBox* shaderSelectors[],
-		const DrawableMaterial& material)
-	{
-		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
-			return nullptr;
-
-		IteratorRange<const uint64_t*> patchExpansions = {};
-		const TechniqueEntry* techEntry = &_noPatches;
-		using IllumType = CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType;
-		switch (material._patchCollection->_illumDelegate._type) {
-		case IllumType::PerPixel:
-			techEntry = &_perPixel;
-			patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
-			break;
-		case IllumType::PerPixelAndEarlyRejection:
-			techEntry = &_perPixelAndEarlyRejection;
-			patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
-			break;
-		default:
-			break;
-		}
-
-		ShaderPatchFactory factory(*techEntry, material._patchCollection.get(), patchExpansions);
-		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
-			techEntry->_baseSelectors, shaderSelectors, factory);
-		if (!variation._shaderFuture) return nullptr;
-		return variation._shaderFuture->TryActualize().get();
-	}
-
-	static void CheckPreprocessInstalled()
-	{
-		static bool installedPreprocessor = false;
-		if (!installedPreprocessor) {
-			auto shaderSource = std::make_shared<RenderCore::Assets::LocalCompiledShaderSource>(
-				RenderCore::Assets::Services::GetDevice().CreateShaderCompiler(),
-				std::make_shared<InstantiateShaderGraphPreprocessor>(),
-				RenderCore::Assets::Services::GetDevice().GetDesc(),
-				CompileProcess_InstantiateShaderGraph);
-			RenderCore::ShaderService::GetInstance().AddShaderSource(shaderSource);
-			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(shaderSource);
-			
-			installedPreprocessor = true;
-		}
-	}
-
-	TechniqueDelegate_Illum::TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources)
-	: _sharedResources(sharedResources)
-	{
-		_techniqueSetFuture = ::Assets::MakeAsset<TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
-		_cfgFileState = ::Assets::AssetState::Pending;
-
-		CheckPreprocessInstalled();
-	}
-
-	static std::shared_ptr<TechniqueSharedResources> s_mainSharedResources = std::make_shared<TechniqueSharedResources>();
-
-	TechniqueDelegate_Illum::TechniqueDelegate_Illum()
-	: TechniqueDelegate_Illum(s_mainSharedResources)
-	{
-	}
-
-	TechniqueDelegate_Illum::~TechniqueDelegate_Illum()
-	{}
-
-	::Assets::AssetState TechniqueDelegate_Illum::PrimeTechniqueCfg()
-	{
-		if (!_techniqueSetFuture) return _cfgFileState;
-
-		auto actual = _techniqueSetFuture->TryActualize();
-		if (!actual) {
-			auto state = _techniqueSetFuture->GetAssetState();
-			if (state == ::Assets::AssetState::Invalid) {
-				_cfgFileDepVal = _techniqueSetFuture->GetDependencyValidation();
-				_cfgFileState = ::Assets::AssetState::Invalid;
-				_techniqueSetFuture.reset();
-				return ::Assets::AssetState::Invalid;
-			}
-		}
-
-		_cfgFileDepVal = actual->GetDependencyValidation();
-		_cfgFileState = ::Assets::AssetState::Ready;
-		_techniqueSetFuture.reset();
-		const auto noPatchesHash = Hash64("NoPatches");
-		const auto perPixelHash = Hash64("PerPixel");
-		const auto perPixelAndEarlyRejectionHash = Hash64("PerPixelAndEarlyRejection");
-		auto* noPatchesSrc = actual->FindEntry(noPatchesHash);
-		auto* perPixelSrc = actual->FindEntry(perPixelHash);
-		auto* perPixelAndEarlyRejectionSrc = actual->FindEntry(perPixelAndEarlyRejectionHash);
-		if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
-			_cfgFileState = ::Assets::AssetState::Invalid;
-			return ::Assets::AssetState::Invalid;
-		}
-
-		_noPatches = *noPatchesSrc;
-		_perPixel = *perPixelSrc;
-		_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
-
-		return ::Assets::AssetState::Ready;
-	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -550,7 +486,7 @@ namespace RenderCore { namespace Techniques
 		for (unsigned c=1; c<dimof(techEntry->_baseSelectors._selectors); ++c)
 			mergedTechniqueShaders.MergeIn(techEntry->_baseSelectors._selectors[c]);
 
-		ShaderPatchFactory factory(*techEntry, shaderPatches.get(), patchExpansions);
+		ShaderPatchFactory factory(*techEntry, shaderPatches, patchExpansions);
 		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
 			selectors,
 			mergedTechniqueShaders,
@@ -582,8 +518,6 @@ namespace RenderCore { namespace Techniques
 		_noPatches = *noPatchesSrc;
 		_perPixel = *perPixelSrc;
 		_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
-
-		CheckPreprocessInstalled();
 	}
 
 	TechniqueDelegatePrototype::~TechniqueDelegatePrototype() {}

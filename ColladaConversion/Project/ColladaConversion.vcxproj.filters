@@ -75,6 +75,9 @@
     <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\RenderCore\Assets\PredefinedDescriptorSetLayout.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Scaffold.h">
@@ -148,6 +151,9 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\Assets\PredefinedDescriptorSetLayout.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

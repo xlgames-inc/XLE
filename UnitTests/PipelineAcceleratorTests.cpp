@@ -7,7 +7,6 @@
 #include "MetalUnitTest.h"
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Techniques/DrawableDelegates.h"
-#include "../RenderCore/Techniques/DrawableMaterial.h"		// just for ShaderPatchCollectionRegistry
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../RenderCore/Techniques/DescriptorSetAccelerator.h"
@@ -16,6 +15,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/PipelineLayout.h"
 #include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../BufferUploads/BufferUploads_Manager.h"
@@ -27,6 +27,7 @@
 #include "../Assets/DepVal.h"
 #include "../Assets/AssetTraits.h"
 #include "../Assets/AssetSetManager.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
@@ -153,11 +154,7 @@ namespace UnitTests
 
 			InputStreamFormatter<utf8> formattr { techniqueText.Cast<utf8>() };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
-			// return std::make_shared<Techniques::CompiledShaderPatchCollection>(patchCollection);
-
-			// todo -- avoid the need for this global registry
-			Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(patchCollection);
-			return Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection.GetHash());
+			return ::Assets::ActualizePtr<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
 		}
 
 		TEST_METHOD(ConfigurationAndCreation)
@@ -455,7 +452,6 @@ namespace UnitTests
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderCoreAssetServices;
-		std::unique_ptr<RenderCore::Techniques::ShaderPatchCollectionRegistry> _shaderPatchCollectionRegistry;
 
 		PipelineAcceleratorTests()
 		{
@@ -476,13 +472,10 @@ namespace UnitTests
 			_device = RenderCore::CreateDevice(api);
 
 			_renderCoreAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_device);
-
-			_shaderPatchCollectionRegistry = std::make_unique<RenderCore::Techniques::ShaderPatchCollectionRegistry>();
 		}
 
 		~PipelineAcceleratorTests()
 		{
-			_shaderPatchCollectionRegistry.reset();
 			_renderCoreAssetServices.reset();
 			_device.reset();
 			_assetServices.reset();

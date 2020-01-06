@@ -87,6 +87,7 @@
     <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\PredefinedDescriptorSetLayout.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawMaterial.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\ShaderPatchCollection.cpp" />
@@ -114,6 +115,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\..\RenderCore\Assets\PredefinedCBLayout.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\PredefinedDescriptorSetLayout.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawMaterial.h" />
     <ClInclude Include="..\..\RenderCore\Assets\ShaderPatchCollection.h" />

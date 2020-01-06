@@ -12,8 +12,6 @@
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Streams/PathUtils.h"
 
-#include "../Techniques/DrawableMaterial.h"		// temp -- just for ShaderPatchCollectionRegistry
-
 namespace RenderCore { namespace Assets
 {
 	class MaterialImmutableData
@@ -77,9 +75,6 @@ namespace RenderCore { namespace Assets
 		InputStreamFormatter<utf8> formatter(
 			StringSection<utf8>{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
 		_patchCollections = DeserializeShaderPatchCollectionSet(formatter);
-
-		for (const auto&p:_patchCollections)
-			Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(p);
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws

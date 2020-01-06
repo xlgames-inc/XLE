@@ -207,9 +207,9 @@ namespace GUILayer
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
 
 		/*if (techniqueDelegate)
-			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());*/
+			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
 		if (materialDelegate)
-			parserContext.SetMaterialDelegate(materialDelegate->_materialDelegate.GetNativePtr());
+			parserContext.SetMaterialDelegate(materialDelegate->_materialDelegate.GetNativePtr());*/
 
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.

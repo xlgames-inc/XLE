@@ -238,7 +238,7 @@ namespace UnitTests
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[0]._layout->_elements.size(), (size_t)2);
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[1]._name, std::string{"SecondUnifomBuffer"});
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[1]._layout->_elements.size(), (size_t)1);
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_srvs.size(), (size_t)3);
+			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_resources.size(), (size_t)3);
 		}
 
 		TEST_METHOD(CompileShaderPatchCollection2)

@@ -15,30 +15,6 @@ namespace RenderCore { namespace Techniques
 		UniqueShaderVariationSet _mainVariationSet;
 	};
 
-	class TechniqueDelegate_Illum : public ITechniqueDelegate
-	{
-	public:
-		virtual RenderCore::Metal::ShaderProgram* GetShader(
-			ParsingContext& context,
-			const ParameterBox* shaderSelectors[],
-			const DrawableMaterial& material) override;
-
-		TechniqueDelegate_Illum(const std::shared_ptr<TechniqueSharedResources>& sharedResources);
-		TechniqueDelegate_Illum();
-		~TechniqueDelegate_Illum();
-	private:
-		std::shared_ptr<TechniqueSharedResources> _sharedResources;
-
-		::Assets::FuturePtr<TechniqueSetFile> _techniqueSetFuture;
-		::Assets::DepValPtr _cfgFileDepVal;
-		::Assets::AssetState _cfgFileState;
-		TechniqueEntry _noPatches;
-		TechniqueEntry _perPixel;
-		TechniqueEntry _perPixelAndEarlyRejection;
-
-		::Assets::AssetState PrimeTechniqueCfg();
-	};
-
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources);

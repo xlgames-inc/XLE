@@ -48,8 +48,6 @@ namespace GUILayer
         int _creationThreadId;
 		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
 		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
-
-		std::unique_ptr<RenderCore::Techniques::ShaderPatchCollectionRegistry> _shaderPatchCollectionRegistry;
     };
 
 	class RenderTargetWrapper

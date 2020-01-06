@@ -21,8 +21,6 @@ namespace RenderCore { namespace Techniques
 	class ParsingContext;
 	class IUniformBufferDelegate;
 	class IShaderResourceDelegate;
-	class IMaterialDelegate;
-	class IRenderStateDelegate;
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
 
@@ -63,11 +61,6 @@ namespace RenderCore { namespace Techniques
         };
         Flags::BitField     _flags = 0u;
     };
-
-	class DrawableMaterial;
-	std::shared_ptr<DrawableMaterial> MakeDrawableMaterial(
-		const RenderCore::Assets::MaterialScaffoldMaterial& mat,
-		const RenderCore::Assets::ShaderPatchCollection& patchCollection);
 
 	class Drawable
 	{

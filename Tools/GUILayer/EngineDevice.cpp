@@ -20,7 +20,6 @@
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/DrawableMaterial.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
@@ -102,7 +101,6 @@ namespace GUILayer
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
-		_shaderPatchCollectionRegistry = std::make_unique<RenderCore::Techniques::ShaderPatchCollectionRegistry>();
 		_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 
 		// hack for plugin startup -- need to find the resources for the plugin:
@@ -125,7 +123,6 @@ namespace GUILayer
 		PlatformRig::SetOSRunLoop(nullptr);
 		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
 		_pipelineAcceleratorPool.reset();
-		_shaderPatchCollectionRegistry.reset();
 		_divAssets.reset();
         _renderAssetsServices.reset();
         _assetServices.reset();

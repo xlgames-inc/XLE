@@ -205,5 +205,11 @@ namespace RenderCore { namespace Assets
 		}
 	}	
 
+	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection)
+	{
+		str << "PatchCollection[" << patchCollection.GetHash() << "]";
+		return str;
+	}
+
 }}
 

@@ -228,9 +228,7 @@ namespace ToolsRig
 			unsigned techniqueIndex)
 		{
 			if (_technique->GetDependencyValidation()->GetValidationIndex() != 0) {
-				auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
-				future->StallWhilePending();
-				_technique = future->Actualize();
+				_technique = ::Assets::ActualizePtr<RenderCore::Techniques::Technique>(s_techFile);
 			}
 
 			/*const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);

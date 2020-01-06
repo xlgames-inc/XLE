@@ -17,7 +17,6 @@
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/PipelineAccelerator.h"
 #include "../Techniques/DescriptorSetAccelerator.h"
-#include "../Techniques/DrawableMaterial.h"		// for ShaderPatchCollectionRegistry
 #include "../Techniques/CompiledShaderPatchCollection.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../Types.h"
@@ -538,8 +537,7 @@ namespace RenderCore { namespace Assets
 				} else {
 					auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
 					assert(patchCollection);
-					Techniques::ShaderPatchCollectionRegistry::GetInstance().RegisterShaderPatchCollection(*patchCollection);
-					auto compiledPatchCollection = Techniques::ShaderPatchCollectionRegistry::GetInstance().GetCompiledShaderPatchCollection(patchCollection->GetHash());
+					auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
 
 					const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
 					if (!matDescriptorSet) {
