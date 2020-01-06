@@ -83,6 +83,9 @@
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
     <ClInclude Include="..\Techniques\ParsingContext.h" />
     <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
+    <ClInclude Include="..\Techniques\SimpleModelDeform.h" />
+    <ClInclude Include="..\Techniques\SimpleModelRenderer.h" />
+    <ClInclude Include="..\Techniques\SkinDeformer.h" />
     <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
@@ -101,6 +104,9 @@
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\ShaderVariationSet.cpp" />
+    <ClCompile Include="..\Techniques\SimpleModelDeform.cpp" />
+    <ClCompile Include="..\Techniques\SimpleModelRenderer.cpp" />
+    <ClCompile Include="..\Techniques\SkinDeformer.cpp" />
     <ClCompile Include="..\Techniques\TechniqueDelegates.cpp" />
     <ClCompile Include="..\Techniques\Techniques.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />

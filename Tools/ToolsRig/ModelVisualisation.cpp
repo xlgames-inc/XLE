@@ -8,9 +8,9 @@
 #include "VisualisationUtils.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../RenderCore/Assets/SimpleModelRenderer.h"
-#include "../../RenderCore/Assets/SimpleModelDeform.h"
-#include "../../RenderCore/Assets/SkinDeformer.h"
+#include "../../RenderCore/Techniques/SkinDeformer.h"
+#include "../../RenderCore/Techniques/SimpleModelRenderer.h"
+#include "../../RenderCore/Techniques/SimpleModelDeform.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderOverlays/AnimationVisualization.h"
 #include "../../SceneEngine/SceneParser.h"
@@ -27,7 +27,7 @@ namespace ToolsRig
 	using RenderCore::Assets::AnimationSetScaffold;
 	using RenderCore::Assets::SkeletonScaffold;
     using RenderCore::Assets::SkeletonMachine;
-	using RenderCore::Assets::SimpleModelRenderer;
+	using RenderCore::Techniques::SimpleModelRenderer;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,7 +40,7 @@ namespace ToolsRig
 		return Hash64(name);
 	}
 
-	class MaterialFilterDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
+	class MaterialFilterDelegate : public RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate
 	{
 	public:
 		virtual bool OnDraw( 
@@ -95,7 +95,7 @@ namespace ToolsRig
 			}
 
 			for (unsigned c=0; c<_renderer->DeformOperationCount(); ++c) {
-				auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&_renderer->DeformOperation(c));
+				auto* skinDeformOp = dynamic_cast<RenderCore::Techniques::SkinDeformer*>(&_renderer->DeformOperation(c));
 				if (!skinDeformOp) continue;
 				skinDeformOp->FeedInSkeletonMachineResults(
 					MakeIteratorRange(skeletonMachineOutput),

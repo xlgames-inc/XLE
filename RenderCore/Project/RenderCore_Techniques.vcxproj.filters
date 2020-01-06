@@ -1,55 +1,147 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="..\Techniques\CommonResources.h" />
-    <ClInclude Include="..\Techniques\Techniques.h" />
-    <ClInclude Include="..\Techniques\ParsingContext.h" />
-    <ClInclude Include="..\Techniques\TechniqueUtils.h" />
-    <ClInclude Include="..\Techniques\CommonBindings.h" />
-    <ClInclude Include="..\Techniques\RenderStateResolver.h" />
-    <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
-    <ClInclude Include="..\Techniques\RenderPass.h" />
-    <ClInclude Include="..\Techniques\DrawableDelegates.h" />
-    <ClInclude Include="..\Techniques\Drawables.h" />
-    <ClInclude Include="..\Techniques\BasicDelegates.h" />
-    <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
-    <ClInclude Include="..\Techniques\RenderPassUtils.h" />
-    <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
     <ClInclude Include="..\Techniques\DrawableMaterial.h">
-      <Filter>DrawableMaterial</Filter>
+      <Filter>Drawables</Filter>
     </ClInclude>
     <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h">
-      <Filter>DrawableMaterial</Filter>
+      <Filter>Drawables</Filter>
     </ClInclude>
-    <ClInclude Include="..\Techniques\ShaderVariationSet.h" />
-    <ClInclude Include="..\Techniques\PipelineAccelerator.h" />
-    <ClInclude Include="..\Techniques\DescriptorSetAccelerator.h" />
+    <ClInclude Include="..\Techniques\Drawables.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\DrawableDelegates.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\DescriptorSetAccelerator.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\PipelineAccelerator.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\BasicDelegates.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\CommonBindings.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\CommonResources.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\CompiledRenderStateSet.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\DeferredShaderResource.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\RenderStateResolver.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\TechniqueDelegates.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\Techniques.h">
+      <Filter>TechniquesCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\TechniqueUtils.h">
+      <Filter>TechniquesCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\ParsingContext.h">
+      <Filter>TechniquesCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\ShaderVariationSet.h">
+      <Filter>TechniquesCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\RenderPassUtils.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\RenderPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\SimpleModelDeform.h">
+      <Filter>Model Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\SimpleModelRenderer.h">
+      <Filter>Model Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Techniques\SkinDeformer.h">
+      <Filter>Model Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Techniques\Techniques.cpp" />
-    <ClCompile Include="..\Techniques\CommonResources.cpp" />
-    <ClCompile Include="..\Techniques\ParsingContext.cpp" />
-    <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
-    <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
-    <ClCompile Include="..\Techniques\RenderPass.cpp" />
-    <ClCompile Include="..\Techniques\Drawables.cpp" />
-    <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
-    <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
-    <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
-    <ClCompile Include="..\Techniques\TechniqueDelegates.cpp" />
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
-      <Filter>DrawableMaterial</Filter>
+      <Filter>Drawables</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp">
-      <Filter>DrawableMaterial</Filter>
+      <Filter>Drawables</Filter>
     </ClCompile>
-    <ClCompile Include="..\Techniques\ShaderVariationSet.cpp" />
-    <ClCompile Include="..\Techniques\PipelineAccelerator.cpp" />
-    <ClCompile Include="..\Techniques\DescriptorSetAccelerator.cpp" />
+    <ClCompile Include="..\Techniques\Drawables.cpp">
+      <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\DescriptorSetAccelerator.cpp">
+      <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\PipelineAccelerator.cpp">
+      <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\BasicDelegates.cpp">
+      <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\CommonResources.cpp">
+      <Filter>Resources &amp; states</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\DeferredShaderResource.cpp">
+      <Filter>Resources &amp; states</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\RenderStateResolver.cpp">
+      <Filter>Resources &amp; states</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\TechniqueDelegates.cpp">
+      <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\Techniques.cpp">
+      <Filter>TechniquesCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\TechniqueUtils.cpp">
+      <Filter>TechniquesCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\ParsingContext.cpp">
+      <Filter>TechniquesCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\ShaderVariationSet.cpp">
+      <Filter>TechniquesCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\RenderPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\RenderPassUtils.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\SimpleModelDeform.cpp">
+      <Filter>Model Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\SimpleModelRenderer.cpp">
+      <Filter>Model Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\SkinDeformer.cpp">
+      <Filter>Model Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="DrawableMaterial">
+    <Filter Include="Drawables">
       <UniqueIdentifier>{f1879710-2466-4488-8b25-d81e50de387c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TechniquesCore">
+      <UniqueIdentifier>{7af6d91d-e2c6-41e4-a9b4-afdedfd5a232}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderPasses">
+      <UniqueIdentifier>{4cf11034-c952-4daa-81ab-537ad7942207}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources &amp; states">
+      <UniqueIdentifier>{e69801ca-ce63-4880-b869-52a554ef160f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Model Rendering">
+      <UniqueIdentifier>{2a90e56d-b3d7-4a90-9d84-70bfc75120db}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

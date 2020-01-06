@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../RenderCore/Assets/SimpleModelRenderer.h"
+#include "../../RenderCore/Techniques/SimpleModelRenderer.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
@@ -115,7 +115,7 @@ namespace ToolsRig
 	public:
 		virtual std::pair<Float3, Float3> GetBoundingBox() const = 0;
 
-		virtual std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
+		virtual std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
 		virtual void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 

@@ -3,14 +3,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SkinDeformer.h"
-#include "ModelScaffold.h"
-#include "ModelScaffoldInternal.h"
-#include "ModelImmutableData.h"
+#include "../Assets/ModelScaffold.h"
+#include "../Assets/ModelScaffoldInternal.h"
+#include "../Assets/ModelImmutableData.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/AssetTraits.h"
 #include <assert.h>
 
-namespace RenderCore { namespace Assets
+namespace RenderCore { namespace Techniques
 {
 	void SkinDeformer::WriteJointTransforms(	IteratorRange<Float3x4*>		destination,
 												IteratorRange<const Float4x4*>	skeletonMachineResult) const
@@ -28,10 +28,10 @@ namespace RenderCore { namespace Assets
 
 	void SkinDeformer::FeedInSkeletonMachineResults(
 		IteratorRange<const Float4x4*> skeletonMachineOutput,
-		const SkeletonMachine::OutputInterface& skeletonMachineOutputInterface)
+		const RenderCore::Assets::SkeletonMachine::OutputInterface& skeletonMachineOutputInterface)
 	{
 		_skeletonMachineOutput.insert(_skeletonMachineOutput.end(), skeletonMachineOutput.begin(), skeletonMachineOutput.end());
-		_skeletonBinding = SkeletonBinding{skeletonMachineOutputInterface, _jointInputInterface};
+		_skeletonBinding = RenderCore::Assets::SkeletonBinding{skeletonMachineOutputInterface, _jointInputInterface};
 	}
 
 	void SkinDeformer::Execute(IteratorRange<const VertexElementRange*> destinationElements) const
@@ -146,7 +146,7 @@ namespace RenderCore { namespace Assets
 	{
 	}
 
-	std::vector<RenderCore::Assets::DeformOperationInstantiation> CreateSkinDeformAttachments(
+	std::vector<RenderCore::Techniques::DeformOperationInstantiation> CreateSkinDeformAttachments(
 		StringSection<> initializer,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold)
 	{
@@ -156,7 +156,7 @@ namespace RenderCore { namespace Assets
 		auto positionEle = Hash64("POSITION");
 		auto weightsEle = Hash64("WEIGHTS");
 		auto jointIndicesEle = Hash64("JOINTINDICES");
-		std::vector<RenderCore::Assets::DeformOperationInstantiation> result;
+		std::vector<RenderCore::Techniques::DeformOperationInstantiation> result;
 		auto& immData = modelScaffold->ImmutableData();
 		for (unsigned c=0; c<immData._boundSkinnedControllerCount; ++c) {
 
@@ -165,7 +165,7 @@ namespace RenderCore { namespace Assets
 			//			StringSection<>(sep+1, initializer.end()
 
 			result.push_back(
-				RenderCore::Assets::DeformOperationInstantiation {
+				RenderCore::Techniques::DeformOperationInstantiation {
 					std::make_shared<SkinDeformer>(*modelScaffold, c),
 					unsigned(immData._geoCount) + c,
 					{MiniInputElementDesc{positionEle, Format::R32G32B32_FLOAT}},
@@ -178,7 +178,7 @@ namespace RenderCore { namespace Assets
 
 	void SkinDeformer::Register()
 	{
-		auto& factory = RenderCore::Assets::DeformOperationFactory::GetInstance();
+		auto& factory = RenderCore::Techniques::DeformOperationFactory::GetInstance();
 		factory.RegisterDeformOperation("skin", CreateSkinDeformAttachments);
 	}
 

@@ -179,7 +179,7 @@ namespace ToolsRig
 		{
 			return { {}, {} };
 		}
-		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>& delegate) { return nullptr; }
+		std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate>& delegate) { return nullptr; }
 		void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 

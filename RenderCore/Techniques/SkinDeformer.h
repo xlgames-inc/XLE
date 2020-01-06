@@ -2,27 +2,28 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ModelScaffoldInternal.h"
-#include "SkeletonScaffoldInternal.h"
-#include "ModelImmutableData.h"
+#include "SimpleModelDeform.h"
+#include "../Assets/ModelScaffoldInternal.h"
+#include "../Assets/SkeletonScaffoldInternal.h"
+#include "../Assets/ModelImmutableData.h"
 #include "../Format.h"
-#include "../Assets/SimpleModelDeform.h"
+#include "../Techniques/SimpleModelDeform.h"
 #include "../Math/Vector.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
 namespace RenderCore { class VertexElementIterator; }
 
-namespace RenderCore { namespace Assets
+namespace RenderCore { namespace Techniques
 {
-	class SkinDeformer : public RenderCore::Assets::IDeformOperation
+	class SkinDeformer : public IDeformOperation
 	{
 	public:
 		virtual void Execute(IteratorRange<const VertexElementRange*> destinationElements) const;
 
 		void FeedInSkeletonMachineResults(
 			IteratorRange<const Float4x4*> skeletonMachineOutput,
-			const SkeletonMachine::OutputInterface& skeletonMachineOutputInterface);
+			const RenderCore::Assets::SkeletonMachine::OutputInterface& skeletonMachineOutputInterface);
 		
 		SkinDeformer(
 			const RenderCore::Assets::ModelScaffold& modelScaffold,
@@ -35,14 +36,14 @@ namespace RenderCore { namespace Assets
 		std::vector<Float4> _jointWeights;
 		std::vector<UInt4>	_jointIndices;
 
-		ModelCommandStream::InputInterface _jointInputInterface;
+		RenderCore::Assets::ModelCommandStream::InputInterface _jointInputInterface;
 
-		IteratorRange<const DrawCallDesc*> _preskinningDrawCalls;
+		IteratorRange<const RenderCore::Assets::DrawCallDesc*> _preskinningDrawCalls;
 		IteratorRange<const Float4x4*> _bindShapeByInverseBindMatrices;
 		Float4x4 _bindShapeMatrix;
 		IteratorRange<const uint16_t*> _jointMatrices;
 		std::vector<Float4x4> _skeletonMachineOutput;
-		SkeletonBinding _skeletonBinding;
+		RenderCore::Assets::SkeletonBinding _skeletonBinding;
 
 		void WriteJointTransforms(	IteratorRange<Float3x4*>		destination,
 									IteratorRange<const Float4x4*>	skeletonMachineResult) const;

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "ModelImmutableData.h"		// for SkeletonBinding
+#include "../Assets/ModelImmutableData.h"		// for SkeletonBinding
 #include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/AssetsCore.h"
@@ -12,22 +12,22 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques 
+namespace RenderCore { namespace Assets 
 { 
+	class ModelScaffold;
+	class MaterialScaffold;
+}}
+namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
+namespace Utility { class VariantArray; }
+
+namespace RenderCore { namespace Techniques 
+{
 	class Drawable; class DrawableGeo;
 	class DrawablesPacket; 
 	class ParsingContext; 
 	class PipelineAcceleratorPool; 
 	class PipelineAccelerator; 
 	class DescriptorSetAccelerator;
-}}
-namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
-namespace Utility { class VariantArray; }
-
-namespace RenderCore { namespace Assets 
-{
-	class ModelScaffold;
-	class MaterialScaffold;
 	class DeformOperationInstantiation;
 	class IDeformOperation;
 
@@ -35,21 +35,21 @@ namespace RenderCore { namespace Assets
 	{
 	public:
 		void BuildDrawables(
-			IteratorRange<Techniques::DrawablesPacket** const> pkts,
+			IteratorRange<DrawablesPacket** const> pkts,
 			const Float4x4& localToWorld = Identity<Float4x4>()) const;
 
 		class IPreDrawDelegate
 		{
 		public:
 			virtual bool OnDraw(
-				Metal::DeviceContext&, Techniques::ParsingContext&,
-				const Techniques::Drawable&,
+				Metal::DeviceContext&, ParsingContext&,
+				const Drawable&,
 				uint64_t materialGuid, unsigned drawCallIdx) = 0;
 			virtual ~IPreDrawDelegate();
 		};
 
 		void BuildDrawables(
-			IteratorRange<Techniques::DrawablesPacket** const> pkts,
+			IteratorRange<DrawablesPacket** const> pkts,
 			const Float4x4& localToWorld,
 			const std::shared_ptr<IPreDrawDelegate>& delegate) const;
 
@@ -58,15 +58,15 @@ namespace RenderCore { namespace Assets
 		IDeformOperation& DeformOperation(unsigned idx);
 		const ::Assets::DepValPtr& GetDependencyValidation();
 
-		const std::shared_ptr<ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
-		const std::shared_ptr<MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
+		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
+		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
 		const std::string& GetModelScaffoldName() const { return _modelScaffoldName; }
 		const std::string& GetMaterialScaffoldName() const { return _materialScaffoldName; }
 
 		SimpleModelRenderer(
-			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
-			const std::shared_ptr<ModelScaffold>& modelScaffold,
-			const std::shared_ptr<MaterialScaffold>& materialScaffold,
+			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
+			const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
 			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {},
 			const std::string& modelScaffoldName = {},
 			const std::string& materialScaffoldName = {});
@@ -77,37 +77,37 @@ namespace RenderCore { namespace Assets
 		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName,
 			StringSection<> materialScaffoldName,
 			StringSection<> deformOperations = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName);
 
 		struct DeformOp;
 	private:
-		std::shared_ptr<ModelScaffold> _modelScaffold;
-		std::shared_ptr<MaterialScaffold> _materialScaffold;
+		std::shared_ptr<RenderCore::Assets::ModelScaffold> _modelScaffold;
+		std::shared_ptr<RenderCore::Assets::MaterialScaffold> _materialScaffold;
 
 		std::unique_ptr<Float4x4[]> _baseTransforms;
 		unsigned _baseTransformCount;
 
-		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _geos;
-		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _boundSkinnedControllers;
+		std::vector<std::shared_ptr<DrawableGeo>> _geos;
+		std::vector<std::shared_ptr<DrawableGeo>> _boundSkinnedControllers;
 
 		struct GeoCall
 		{
-			std::shared_ptr<Techniques::PipelineAccelerator> _pipelineAccelerator;
-			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
+			std::shared_ptr<PipelineAccelerator> _pipelineAccelerator;
+			::Assets::FuturePtr<DescriptorSetAccelerator> _compiledDescriptorSet;
 		};
 
 		std::vector<GeoCall> _geoCalls;
 		std::vector<GeoCall> _boundSkinnedControllerGeoCalls;
 
-		SkeletonBinding _skeletonBinding;
+		RenderCore::Assets::SkeletonBinding _skeletonBinding;
 
 		std::shared_ptr<UniformsStreamInterface> _usi;
 

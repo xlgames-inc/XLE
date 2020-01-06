@@ -4,35 +4,35 @@
 
 #include "SimpleModelRenderer.h"
 #include "SimpleModelDeform.h"
-#include "ModelScaffold.h"
-#include "ModelScaffoldInternal.h"
-#include "ModelImmutableData.h"
-#include "MaterialScaffold.h"
-#include "AssetUtils.h"
-#include "Services.h"
-#include "ShaderPatchCollection.h"
-#include "../Techniques/Drawables.h"
-#include "../Techniques/TechniqueUtils.h"
-#include "../Techniques/ParsingContext.h"
-#include "../Techniques/CommonBindings.h"
-#include "../Techniques/PipelineAccelerator.h"
-#include "../Techniques/DescriptorSetAccelerator.h"
-#include "../Techniques/CompiledShaderPatchCollection.h"
+#include "Drawables.h"
+#include "TechniqueUtils.h"
+#include "ParsingContext.h"
+#include "CommonBindings.h"
+#include "PipelineAccelerator.h"
+#include "DescriptorSetAccelerator.h"
+#include "CompiledShaderPatchCollection.h"
+#include "../Assets/ModelScaffold.h"
+#include "../Assets/ModelScaffoldInternal.h"
+#include "../Assets/ModelImmutableData.h"
+#include "../Assets/MaterialScaffold.h"
+#include "../Assets/AssetUtils.h"
+#include "../Assets/Services.h"
+#include "../Assets/ShaderPatchCollection.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"
 #include "../UniformsStream.h"
+#include "../BufferView.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/Resource.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../Utility/VariantUtils.h"
 #include <utility>
 
-namespace RenderCore { namespace Assets 
+namespace RenderCore { namespace Techniques 
 {
 	static IResourcePtr LoadVertexBuffer(
         const RenderCore::Assets::ModelScaffold& scaffold,
@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets
 	class SimpleModelDrawable : public Techniques::Drawable
 	{
 	public:
-		DrawCallDesc _drawCall;
+		RenderCore::Assets::DrawCallDesc _drawCall;
 		Float4x4 _objectToWorld;
 		uint64_t _materialGuid;
 		unsigned _drawCallIdx;
@@ -304,11 +304,11 @@ namespace RenderCore { namespace Assets
 
 	static Techniques::DrawableGeo::VertexStream MakeVertexStream(
 		const RenderCore::Assets::ModelScaffold& modelScaffold,
-		const VertexData& vertices,
+		const RenderCore::Assets::VertexData& vertices,
 		IteratorRange<const uint64_t*> suppressedElements = {})
 	{
 		Techniques::DrawableGeo::VertexStream vStream;
-		vStream._vertexElements = BuildLowLevelInputAssembly(MakeIteratorRange(vertices._ia._elements));
+		vStream._vertexElements = RenderCore::Assets::BuildLowLevelInputAssembly(MakeIteratorRange(vertices._ia._elements));
 
 		// Remove any elements listed in the suppressedElements array (note that we're assuming
 		// this is in sorted order)

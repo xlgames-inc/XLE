@@ -48,7 +48,6 @@ namespace RenderCore { namespace Assets
         ::Assets::DirectorySearchRules _techConfDirs;
         static Services* s_instance;
 
-		std::unique_ptr<DeformOperationFactory> _deformOpsFactory;
 		std::shared_ptr<::Assets::IAssetCompiler> _modelCompilers;
     };
 }}

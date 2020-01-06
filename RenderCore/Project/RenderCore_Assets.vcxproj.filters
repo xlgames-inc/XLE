@@ -63,15 +63,6 @@
     <ClCompile Include="..\Assets\MaterialScaffold.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\SimpleModelRenderer.cpp">
-      <Filter>Assets\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\SimpleModelDeform.cpp">
-      <Filter>Assets\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\SkinDeformer.cpp">
-      <Filter>Assets\Anim</Filter>
-    </ClCompile>
     <ClCompile Include="..\GeoProc\NascentModel.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
@@ -139,17 +130,8 @@
     <ClInclude Include="..\Assets\MaterialScaffold.h">
       <Filter>Assets\Material</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\SimpleModelRenderer.h">
-      <Filter>Assets\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\SimpleModelDeform.h">
-      <Filter>Assets\Model</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\ModelScaffold.h">
       <Filter>Assets\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\SkinDeformer.h">
-      <Filter>Assets\Anim</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentModel.h">
       <Filter>GeoProc</Filter>

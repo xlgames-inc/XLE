@@ -5,7 +5,7 @@
 #include "SimpleModelDeform.h"
 #include "../../Utility/MemoryUtils.h"
 
-namespace RenderCore { namespace Assets
+namespace RenderCore { namespace Techniques
 {
 	auto DeformOperationFactory::CreateDeformOperations(
 		StringSection<> initializer,

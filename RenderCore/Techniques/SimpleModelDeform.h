@@ -11,10 +11,10 @@
 #include <vector>
 #include <functional>
 
-namespace RenderCore { namespace Assets 
-{
-	class ModelScaffold;
+namespace RenderCore { namespace Assets { class ModelScaffold; }}
 
+namespace RenderCore { namespace Techniques 
+{
 	class IDeformOperation
 	{
 	public:

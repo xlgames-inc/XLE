@@ -325,7 +325,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class StencilRefDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
+	class StencilRefDelegate : public RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate
 	{
 	public:
 		virtual bool OnDraw( 
@@ -360,7 +360,7 @@ namespace ToolsRig
 		std::shared_ptr<SceneEngine::IScene> _scene;
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
 
-		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> _stencilPrimeDelegate;
+		std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> _stencilPrimeDelegate;
 
 		Pimpl()
 		{
@@ -475,7 +475,7 @@ namespace ToolsRig
 
 			if (doColorByMaterial) {
 				auto *visContent = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
-				std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> oldDelegate;
+				std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> oldDelegate;
 				if (visContent)
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				CATCH_ASSETS_BEGIN
