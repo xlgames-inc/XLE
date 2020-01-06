@@ -240,34 +240,31 @@ namespace Utility
             StringMeldInPlace(const StringMeldInPlace&) = delete;
             StringMeldInPlace& operator=(const StringMeldInPlace&) = delete;
         };
-    }
 
-    namespace
-    {
         template<typename Type, typename CharType> 
-            const Internal::StringMeldInPlace<CharType>& 
-                operator<<(const Internal::StringMeldInPlace<CharType>& meld, const Type& type)
+            const StringMeldInPlace<CharType>& 
+                operator<<(const StringMeldInPlace<CharType>& meld, const Type& type)
             {
                 meld._stream << type;
                 return meld;
             }
 
 		template<typename CharType>
-			const Internal::StringMeldInPlace<CharType>& operator<<(const Internal::StringMeldInPlace<CharType>& meld, const std::basic_string<CharType>& str)
+			const StringMeldInPlace<CharType>& operator<<(const StringMeldInPlace<CharType>& meld, const std::basic_string<CharType>& str)
 			{
 				// See the StringMeld case for details about what is happening here
-				meld._stream << *reinterpret_cast<const std::basic_string<typename Internal::DemoteCharType<CharType>::Value>*>(&str);
+				meld._stream << *reinterpret_cast<const std::basic_string<typename DemoteCharType<CharType>::Value>*>(&str);
 				return meld;
 			}
 
 		template<typename CharType>
-			const Internal::StringMeldInPlace<CharType>& operator<<(const Internal::StringMeldInPlace<CharType>& meld, StringSection<CharType> section)
+			const StringMeldInPlace<CharType>& operator<<(const StringMeldInPlace<CharType>& meld, StringSection<CharType> section)
 			{
-				using Demoted = typename Internal::DemoteCharType<CharType>::Value;
+				using Demoted = typename DemoteCharType<CharType>::Value;
 				meld._stream.write((const Demoted*)section.begin(), section.size());
 				return meld;
 			}
-    }
+	}
     
     template<typename CharType, int Count>
         Internal::StringMeldInPlace<CharType> StringMeldInPlace(CharType (&buffer)[Count])
@@ -295,14 +292,10 @@ namespace Utility
         return Internal::StringMeldInPlace<CharType>(&bufferStart[len], bufferEnd);
     }
 
-}
-
-namespace std
-{
 	template<typename CharType>
-		basic_ostream<CharType>& operator<<(basic_ostream<CharType>& stream, Utility::StringSection<CharType> section)
+		std::basic_ostream<CharType>& operator<<(std::basic_ostream<CharType>& stream, StringSection<CharType> section)
 	{
-		using Demoted = typename Utility::Internal::DemoteCharType<CharType>::Value;
+		using Demoted = typename Internal::DemoteCharType<CharType>::Value;
 		stream.write((const Demoted*)section.begin(), section.size());
 		return stream;
 	}
