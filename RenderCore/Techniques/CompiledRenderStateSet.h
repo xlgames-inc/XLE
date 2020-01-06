@@ -11,7 +11,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-	// Should no longer be used, because ITechniqueDelegate_New now takes over this transformation
+	// Should no longer be used, because ITechniqueDelegate now takes over this transformation
     DEPRECATED_ATTRIBUTE class CompiledRenderStateSet
     {
     public:

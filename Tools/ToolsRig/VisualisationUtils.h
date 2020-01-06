@@ -15,7 +15,7 @@
 
 namespace RenderCore { namespace Techniques { 
 	class CameraDesc; class TechniqueContext; class Technique; 
-	class IMaterialDelegate; class ITechniqueDelegate; class IRenderStateDelegate;
+	class IMaterialDelegate; class ITechniqueDelegate_Old; class IRenderStateDelegate;
 	class PipelineAcceleratorPool;
 }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
@@ -144,7 +144,7 @@ namespace ToolsRig
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 
 		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>&);
-		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>&);
+		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>&);
 		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>&);
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();

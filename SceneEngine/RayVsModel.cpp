@@ -367,7 +367,7 @@ namespace SceneEngine
 
     static const unsigned s_soStrides[] = { sizeof(ModelIntersectionStateContext::ResultEntry) };
 
-	class TechniqueDelegate_RayTest : public Techniques::ITechniqueDelegate
+	class TechniqueDelegate_RayTest : public Techniques::ITechniqueDelegate_Old
 	{
 	public:
 		Metal::ShaderProgram* GetShader(
@@ -475,7 +475,7 @@ namespace SceneEngine
 	TechniqueDelegate_RayTest::~TechniqueDelegate_RayTest()
 	{}
 
-	std::shared_ptr<Techniques::ITechniqueDelegate> CreateRayTestTechniqueDelegate()
+	std::shared_ptr<Techniques::ITechniqueDelegate_Old> CreateRayTestTechniqueDelegate()
 	{
 		return std::make_shared<TechniqueDelegate_RayTest>();
 	}

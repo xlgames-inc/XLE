@@ -24,7 +24,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext;
     class IRenderStateDelegate;
-	class ITechniqueDelegate;
+	class ITechniqueDelegate_Old;
 	class IMaterialDelegate;
 	class IUniformBufferDelegate;
     class AttachmentPool;

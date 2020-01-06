@@ -19,7 +19,7 @@ namespace RenderCore { namespace Techniques
 	class SequencerConfig
 	{
 	public:
-		std::shared_ptr<ITechniqueDelegate_New> _delegate;
+		std::shared_ptr<ITechniqueDelegate> _delegate;
 		ParameterBox _sequencerSelectors;
 
 		FrameBufferProperties _fbProps;
@@ -251,7 +251,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::pair<uint64_t, std::weak_ptr<RealPipelineAccelerator>>> _pipelineAccelerators;
 
 		SequencerConfig MakeSequencerConfig(
-			const std::shared_ptr<ITechniqueDelegate_New>& delegate,
+			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
 			const FrameBufferDesc& fbDesc,
@@ -262,7 +262,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	SequencerConfig PipelineAcceleratorPool::Pimpl::MakeSequencerConfig(
-		const std::shared_ptr<ITechniqueDelegate_New>& delegate,
+		const std::shared_ptr<ITechniqueDelegate>& delegate,
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
 		const FrameBufferDesc& fbDesc,
@@ -356,7 +356,7 @@ namespace RenderCore { namespace Techniques
 	}
 
 	auto PipelineAcceleratorPool::CreateSequencerConfig(
-		const std::shared_ptr<ITechniqueDelegate_New>& delegate,
+		const std::shared_ptr<ITechniqueDelegate>& delegate,
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
 		const FrameBufferDesc& fbDesc,

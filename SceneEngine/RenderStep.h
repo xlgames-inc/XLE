@@ -15,7 +15,7 @@ namespace RenderCore { namespace Techniques
 {
 	class FrameBufferDescFragment;
 	class RenderPassFragment;
-	class ITechniqueDelegate_New;
+	class ITechniqueDelegate;
 	using SequencerConfigId = uint64_t;
 }}
 
@@ -37,7 +37,7 @@ namespace SceneEngine
 		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const = 0;
 		struct TechniqueDelegate
 		{
-			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> _techniqueDelegate;
+			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 			ParameterBox _sequencerSelectors;
 		};
 		virtual TechniqueDelegate GetTechniqueDelegate(unsigned subpassIdx) const { return {}; }
@@ -110,7 +110,7 @@ namespace SceneEngine
 	private:
 		RenderCore::Techniques::FrameBufferDescFragment _createGBuffer;
 		unsigned _gbufferType;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_New> _deferredIllumDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _deferredIllumDelegate;
 	};
 
 	class RenderStep_PrepareDMShadows : public IRenderStep

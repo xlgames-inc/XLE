@@ -39,7 +39,7 @@ namespace RenderCore { namespace Techniques
 		::Assets::AssetState PrimeTechniqueCfg();
 	};
 
-	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegatePrototype(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources);
 
@@ -48,7 +48,7 @@ namespace RenderCore { namespace Techniques
 	A default technique file is selected and the type of shader is picked via the technique
 	index value. In this case, the material does now impact the technique selected.
 	*/
-	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegateLegacy(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegateLegacy(
 		unsigned techniqueIndex,
 		const RenderCore::AttachmentBlendDesc& blend,
 		const RenderCore::RasterizationDesc& rasterization,

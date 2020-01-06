@@ -112,7 +112,7 @@ namespace ToolsRig
 		std::shared_ptr<VisCameraSettings> _camera;
 
 		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> _techniqueDelegate;
 		std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _renderStateDelegate;
 
 		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
@@ -231,7 +231,7 @@ namespace ToolsRig
 		_pimpl->_materialDelegate = delegate;
 	}
 
-	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& delegate)
+	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& delegate)
 	{
 		_pimpl->_techniqueDelegate = delegate;
 	}

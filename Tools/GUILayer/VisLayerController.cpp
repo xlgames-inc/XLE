@@ -169,7 +169,7 @@ namespace GUILayer
 		if (techniqueDelegate) {
 			_pimpl->_modelLayer->SetOverrides(techniqueDelegate->_techniqueDelegate.GetNativePtr());
 		} else {
-			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>{});
+			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>{});
 		}
 	}
 

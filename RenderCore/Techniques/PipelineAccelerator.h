@@ -26,7 +26,7 @@ namespace RenderCore { namespace Techniques
 	class ShaderSelectors;
 	class CompiledShaderPatchCollection;
 	class PipelineAccelerator;
-	class ITechniqueDelegate_New;
+	class ITechniqueDelegate;
 
 	using SequencerConfigId = uint64_t;
 
@@ -48,7 +48,7 @@ namespace RenderCore { namespace Techniques
 			const RenderCore::Assets::RenderStateSet& stateSet);
 
 		SequencerConfigId CreateSequencerConfig(
-			const std::shared_ptr<ITechniqueDelegate_New>& delegate,
+			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
 			const FrameBufferDesc& fbDesc,

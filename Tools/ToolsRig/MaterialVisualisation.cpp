@@ -218,7 +218,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate_Old
 	{
 	public:
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
@@ -440,7 +440,7 @@ namespace ToolsRig
 
 	const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
 
-	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 		const std::string& psMainName,
 		const std::shared_ptr<MessageRelay>& logMessages)

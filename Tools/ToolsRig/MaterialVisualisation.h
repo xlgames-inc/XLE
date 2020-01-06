@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
+namespace RenderCore { namespace Techniques { class ITechniqueDelegate_Old; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace GraphLanguage { class INodeGraphProvider; }
 namespace Utility { class OnChangeCallback; }
@@ -45,7 +45,7 @@ namespace ToolsRig
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
-	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 		const std::string& psMainName,
 		const std::shared_ptr<MessageRelay>& logMessages);

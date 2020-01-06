@@ -166,7 +166,7 @@ namespace UnitTests
 
 			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 			auto techniqueSharedResources = std::make_shared<Techniques::TechniqueSharedResources>();
-			auto techniqueDelegate = Techniques::CreateTechniqueDelegatePrototype(techniqueSetFile, techniqueSharedResources);
+			auto techniqueDelegate = Techniques::CreateTechniqueDelegate(techniqueSetFile, techniqueSharedResources);
 
 			Techniques::PipelineAcceleratorPool mainPool;
 			mainPool.SetGlobalSelector("GLOBAL_SEL", 55);
@@ -391,7 +391,7 @@ namespace UnitTests
 
 				Techniques::PipelineAcceleratorPool mainPool;
 				auto cfgId = mainPool.CreateSequencerConfig(
-					Techniques::CreateTechniqueDelegatePrototype(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
+					Techniques::CreateTechniqueDelegate(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
 					ParameterBox {},
 					FrameBufferProperties { 64, 64, TextureSamples::Create() },
 					MakeSimpleFrameBufferDesc());

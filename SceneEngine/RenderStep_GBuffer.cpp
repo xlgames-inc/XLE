@@ -142,7 +142,7 @@ namespace SceneEngine
 
 		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
 
-		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegatePrototype(
+		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate(
 			techniqueSetFile,
 			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
 	}

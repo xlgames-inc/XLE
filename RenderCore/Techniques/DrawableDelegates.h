@@ -59,7 +59,7 @@ namespace RenderCore { namespace Techniques
 
 	class DrawableMaterial;
 
-	DEPRECATED_ATTRIBUTE class ITechniqueDelegate
+	DEPRECATED_ATTRIBUTE class ITechniqueDelegate_Old
 	{
 	public:
 		virtual Metal::ShaderProgram* GetShader(
@@ -73,12 +73,12 @@ namespace RenderCore { namespace Techniques
 			const DrawableMaterial& material,
 			unsigned techniqueIndex);
 
-		virtual ~ITechniqueDelegate();
+		virtual ~ITechniqueDelegate_Old();
 	};
 
 	class CompiledShaderPatchCollection;
 
-	class ITechniqueDelegate_New
+	class ITechniqueDelegate
 	{
 	public:
 		struct ResolvedTechnique
@@ -95,7 +95,7 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& renderStates) = 0;
 
-		virtual ~ITechniqueDelegate_New();
+		virtual ~ITechniqueDelegate();
 	};
 
 }}

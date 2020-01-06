@@ -9,7 +9,7 @@
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; class IMaterialDelegate; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate_Old; class IMaterialDelegate; } }
 namespace SceneEngine 
 {
     class IntersectionTestScene; 
@@ -52,10 +52,10 @@ namespace GUILayer
 	public ref class TechniqueDelegateWrapper
 	{
 	public:
-		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> _techniqueDelegate;
 
-        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
-		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
+        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& techniqueDelegate);
+		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate_Old* techniqueDelegate);
         ~TechniqueDelegateWrapper();
 	};
 

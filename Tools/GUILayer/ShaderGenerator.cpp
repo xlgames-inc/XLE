@@ -169,7 +169,7 @@ namespace GUILayer
 			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};
 	}
 
-	class TechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	class TechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate_Old
 	{
 	public:
 		virtual RenderCore::Metal::ShaderProgram* GetShader(

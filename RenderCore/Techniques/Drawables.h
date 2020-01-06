@@ -22,7 +22,6 @@ namespace RenderCore { namespace Techniques
 	class IUniformBufferDelegate;
 	class IShaderResourceDelegate;
 	class IMaterialDelegate;
-	class ITechniqueDelegate;
 	class IRenderStateDelegate;
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;

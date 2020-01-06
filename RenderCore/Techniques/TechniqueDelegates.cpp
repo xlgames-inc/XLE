@@ -402,7 +402,7 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class TechniqueDelegate_Legacy : public ITechniqueDelegate_New
+	class TechniqueDelegate_Legacy : public ITechniqueDelegate
 	{
 	public:
 		ResolvedTechnique Resolve(
@@ -490,7 +490,7 @@ namespace RenderCore { namespace Techniques
 	{
 	}
 
-	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegateLegacy(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegateLegacy(
 		unsigned techniqueIndex,
 		const RenderCore::AttachmentBlendDesc& blend,
 		const RenderCore::RasterizationDesc& rasterization,
@@ -503,7 +503,7 @@ namespace RenderCore { namespace Techniques
 		//		T E C H N I Q U E   D E L E G A T E
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class TechniqueDelegatePrototype : public ITechniqueDelegate_New
+	class TechniqueDelegatePrototype : public ITechniqueDelegate
 	{
 	public:
 		ResolvedTechnique Resolve(
@@ -588,14 +588,14 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueDelegatePrototype::~TechniqueDelegatePrototype() {}
 
-	std::shared_ptr<ITechniqueDelegate_New> CreateTechniqueDelegatePrototype(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources)
 	{
 		return std::make_shared<TechniqueDelegatePrototype>(techniqueSet, sharedResources);
 	}
 
-	ITechniqueDelegate_New::~ITechniqueDelegate_New() {}
+	ITechniqueDelegate::~ITechniqueDelegate() {}
 
 }}
 

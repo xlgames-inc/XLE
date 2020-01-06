@@ -113,11 +113,11 @@ namespace GUILayer
         _techniqueContext.reset();
     }
 
-	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate)
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& techniqueDelegate)
 	: _techniqueDelegate(techniqueDelegate)
 	{}
 
-	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate)
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate_Old* techniqueDelegate)
 	: _techniqueDelegate(techniqueDelegate)
 	{
 	}

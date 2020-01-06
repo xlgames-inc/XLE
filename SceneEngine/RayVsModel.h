@@ -16,7 +16,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
-	class ITechniqueDelegate;
+	class ITechniqueDelegate_Old;
 	class SequencerContext;
 }}
 
@@ -61,6 +61,6 @@ namespace SceneEngine
         static const unsigned s_maxResultCount = 256;
     };
 
-	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateRayTestTechniqueDelegate();
+	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> CreateRayTestTechniqueDelegate();
 }
 
