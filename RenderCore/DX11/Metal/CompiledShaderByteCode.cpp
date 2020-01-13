@@ -1230,9 +1230,6 @@ namespace RenderCore { namespace Metal_DX11
             });
         if (chunk != compoundChunks.end()) {
 
-            dependencies.push_back(
-                ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));
-
                 // This a FunctionLinkingGraph definition
                 // look for the version number, and then parse this file as
                 // a simple script language.
@@ -1302,9 +1299,9 @@ namespace RenderCore { namespace Metal_DX11
                     shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 
-            dependencies = includeHandler.GetIncludeFiles();
-            dependencies.push_back(
-                ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));   // also need a dependency for the base file
+            dependencies.insert(
+				dependencies.end(),
+				includeHandler.GetIncludeFiles().begin(), includeHandler.GetIncludeFiles().end());
 
             return SUCCEEDED(hresult);
 
