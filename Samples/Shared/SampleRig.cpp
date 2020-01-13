@@ -148,13 +148,14 @@ namespace Sample
         }
 
 		sampleOverlay.reset();		// (ensure this gets destroyed before the engine is shutdown)
+		sampleGlobals._mainInputHander.reset();
+		sampleGlobals._debugScreens.reset();
 
             //  There are some manual destruction operations we need to perform...
             //  (note that currently some shutdown steps might get skipped if we get 
             //  an unhandled exception)
             //  Before we go too far, though, let's log a list of active assets.
         Log(Verbose) << "Starting shutdown" << std::endl;
-		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
         // assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), sampleGlobals._presentationChain.get());
 
@@ -163,6 +164,8 @@ namespace Sample
 
 		renderAssetServices.reset();
         assetServices.reset();
+
+		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
     }
 
 	static void InitProfilerDisplays(

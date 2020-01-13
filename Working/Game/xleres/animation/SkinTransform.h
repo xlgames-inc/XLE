@@ -40,7 +40,7 @@ cbuffer BoneTransforms : register(b6)
 		//												much in D3D11. We can do big cbuffer and tbuffer loads
 		//												efficiently now.
 		//
-#if SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
+#if !defined(SKIN_TRANSFORMS) || SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
 
 	row_major float3x4 BoneTransforms[BoneCountMax];
 

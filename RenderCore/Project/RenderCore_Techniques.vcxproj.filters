@@ -34,9 +34,6 @@
     <ClInclude Include="..\Techniques\DeferredShaderResource.h">
       <Filter>Resources &amp; states</Filter>
     </ClInclude>
-    <ClInclude Include="..\Techniques\RenderStateResolver.h">
-      <Filter>Resources &amp; states</Filter>
-    </ClInclude>
     <ClInclude Include="..\Techniques\TechniqueDelegates.h">
       <Filter>Drawables</Filter>
     </ClInclude>
@@ -67,6 +64,9 @@
     <ClInclude Include="..\Techniques\SkinDeformer.h">
       <Filter>Model Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="..\Techniques\RenderStateResolver.h">
+      <Filter>Drawables</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
@@ -91,9 +91,6 @@
       <Filter>Resources &amp; states</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp">
-      <Filter>Resources &amp; states</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Techniques\RenderStateResolver.cpp">
       <Filter>Resources &amp; states</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\TechniqueDelegates.cpp">
@@ -125,6 +122,9 @@
     </ClCompile>
     <ClCompile Include="..\Techniques\SkinDeformer.cpp">
       <Filter>Model Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\RenderStateResolver.cpp">
+      <Filter>Drawables</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
