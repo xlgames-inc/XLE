@@ -163,7 +163,7 @@ namespace UnitTests
 
 			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 			auto techniqueSharedResources = std::make_shared<Techniques::TechniqueSharedResources>();
-			auto techniqueDelegate = Techniques::CreateTechniqueDelegate(techniqueSetFile, techniqueSharedResources);
+			auto techniqueDelegate = Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, techniqueSharedResources);
 
 			Techniques::PipelineAcceleratorPool mainPool;
 			mainPool.SetGlobalSelector("GLOBAL_SEL", 55);
@@ -188,7 +188,7 @@ namespace UnitTests
 					Topology::TriangleList,
 					doubledSidedStateSet);
 
-				auto finalPipeline = pipelineAccelerator->GetPipeline(cfgId);
+				auto finalPipeline = mainPool.GetPipeline(*pipelineAccelerator, *cfgId);
 				finalPipeline->StallWhilePending();
 				::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 				auto pipelineActual = finalPipeline->Actualize();
@@ -213,7 +213,7 @@ namespace UnitTests
 						//	We should get a valid pipeline in this case; since there are no texture coordinates
 						//	on the geometry, this disables the code that triggers a compiler warning
 						//
-					auto finalPipeline = pipelineNoTexCoord->GetPipeline(cfgId);
+					auto finalPipeline = mainPool.GetPipeline(*pipelineNoTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 				}
@@ -231,7 +231,7 @@ namespace UnitTests
 						//	error message -- that is the shader compile error should propagate through
 						//	to the pipeline error log
 						//
-					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgId);
+					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Invalid);
 					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
@@ -254,7 +254,7 @@ namespace UnitTests
 					MakeSimpleFrameBufferDesc());
 
 				{
-					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgIdWithColor);
+					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 
@@ -276,7 +276,7 @@ namespace UnitTests
 					MakeSimpleFrameBufferDesc());
 
 				{
-					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgIdWithColor);
+					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 
@@ -388,7 +388,7 @@ namespace UnitTests
 
 				Techniques::PipelineAcceleratorPool mainPool;
 				auto cfgId = mainPool.CreateSequencerConfig(
-					Techniques::CreateTechniqueDelegate(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
+					Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
 					ParameterBox {},
 					FrameBufferProperties { 64, 64, TextureSamples::Create() },
 					MakeSimpleFrameBufferDesc());
@@ -411,7 +411,7 @@ namespace UnitTests
 				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
 				
 				{
-					auto finalPipeline = pipelineWithTexCoord->GetPipeline(cfgId);
+					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
 					Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);

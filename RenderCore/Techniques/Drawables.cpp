@@ -29,7 +29,7 @@ namespace RenderCore { namespace Techniques
 
 	static void SetupDefaultUniforms(
 		Techniques::ParsingContext& parserContext,
-		UniformsStreamInterface sequencerInterface,
+		UniformsStreamInterface& sequencerInterface,
 		std::vector<ConstantBufferView>& sequencerCbvs,
 		unsigned& cbSlot);
 
@@ -39,6 +39,8 @@ namespace RenderCore { namespace Techniques
 		const SequencerContext& sequencerTechnique,
 		const Drawable& drawable)
 	{
+		assert(sequencerTechnique._sequencerConfig);
+
 		auto& metalContext = *Metal::DeviceContext::Get(context);
 
 		UniformsStreamInterface sequencerInterface;
@@ -72,7 +74,9 @@ namespace RenderCore { namespace Techniques
 
 		// this part would normally be a loop -- 
 		{
-			auto* pipeline = drawable._pipeline->TryGetPipeline(sequencerTechnique._sequencerConfigId);
+			auto* pipeline = parserContext._pipelineAcceleratorPool->TryGetPipeline(
+				*drawable._pipeline,
+				*sequencerTechnique._sequencerConfig);
 			if (!pipeline)
 				return;
 
@@ -128,7 +132,7 @@ namespace RenderCore { namespace Techniques
 
 	void SetupDefaultUniforms(
 		Techniques::ParsingContext& parserContext,
-		UniformsStreamInterface sequencerInterface,
+		UniformsStreamInterface& sequencerInterface,
 		std::vector<ConstantBufferView>& sequencerCbvs,
 		unsigned& cbSlot)
 	{

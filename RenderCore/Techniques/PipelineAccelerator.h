@@ -27,15 +27,7 @@ namespace RenderCore { namespace Techniques
 	class CompiledShaderPatchCollection;
 	class PipelineAccelerator;
 	class ITechniqueDelegate;
-
-	using SequencerConfigId = uint64_t;
-
-	class PipelineAccelerator
-	{
-	public:
-		const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(SequencerConfigId cfgId) const;
-		const Metal::GraphicsPipeline* TryGetPipeline(SequencerConfigId cfgId) const;
-	};
+	class SequencerConfig;
 
 	class PipelineAcceleratorPool
 	{
@@ -47,18 +39,23 @@ namespace RenderCore { namespace Techniques
 			RenderCore::Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet);
 
-		SequencerConfigId CreateSequencerConfig(
+		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex = 0);
 
+		const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const;
+		const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const;
+
 		void			SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type);
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
 		void			RemoveGlobalSelector(StringSection<> name);
 
 		unsigned		GetGUID() const { return _guid; }
+
+		void			RebuildAllOutOfDatePipelines();
 
 		PipelineAcceleratorPool();
 		~PipelineAcceleratorPool();

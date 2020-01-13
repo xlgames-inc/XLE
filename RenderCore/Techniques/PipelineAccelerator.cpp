@@ -16,41 +16,44 @@
 
 namespace RenderCore { namespace Techniques
 {
+	using SequencerConfigId = uint64_t;
+
 	class SequencerConfig
 	{
 	public:
+		SequencerConfigId _cfgId = ~0ull;
+
 		std::shared_ptr<ITechniqueDelegate> _delegate;
 		ParameterBox _sequencerSelectors;
 
 		FrameBufferProperties _fbProps;
 		FrameBufferDesc _fbDesc;
-		uint64_t _fbRelevanceValue;
-
-		uint64_t _hash;
+		uint64_t _fbRelevanceValue = 0;
 	};
 
-	class RealPipelineAccelerator : public PipelineAccelerator, public std::enable_shared_from_this<RealPipelineAccelerator>
+	class PipelineAccelerator : public std::enable_shared_from_this<PipelineAccelerator>
 	{
 	public:
-		void CreatePipelineForSequencerState(
-			SequencerConfigId cfgId,
-			const SequencerConfig& cfg,
-			const ParameterBox& globalSelectors);
-
-		RealPipelineAccelerator(
+		PipelineAccelerator(
 			unsigned ownerPoolId,
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet);
-		~RealPipelineAccelerator();
+		~PipelineAccelerator();
 	
 		struct Pipeline
 		{
 			::Assets::FuturePtr<Metal::GraphicsPipeline> _future;
 		};
 		std::vector<Pipeline> _finalPipelines;
+
+		Pipeline CreatePipelineForSequencerState(
+			const SequencerConfig& cfg,
+			const ParameterBox& globalSelectors);
+
+		Pipeline& PipelineForCfgId(SequencerConfigId cfgId);
 
 		const std::shared_ptr<CompiledShaderPatchCollection> _shaderPatches;
 		ParameterBox _materialSelectors;
@@ -86,16 +89,10 @@ namespace RenderCore { namespace Techniques
 
 	};
 
-	void RealPipelineAccelerator::CreatePipelineForSequencerState(
-		SequencerConfigId cfgId,
+	auto PipelineAccelerator::CreatePipelineForSequencerState(
 		const SequencerConfig& cfg,
-		const ParameterBox& globalSelectors)
+		const ParameterBox& globalSelectors) -> Pipeline
 	{
-		unsigned poolId = unsigned(cfgId >> 32ull);
-		unsigned sequencerIdx = unsigned(cfgId);
-		if (poolId != _ownerPoolId)
-			Throw(std::runtime_error("Mixing a pipeline accelerator from an incorrect pool"));
-
 		Pipeline result;
 		result._future = std::make_shared<::Assets::AssetFuture<Metal::GraphicsPipeline>>("PipelineAccelerator Pipeline");
 
@@ -132,7 +129,7 @@ namespace RenderCore { namespace Techniques
 			// We can create a future that will trigger and complete processing after
 			// the shader has finished compilating
 			//
-			std::weak_ptr<RealPipelineAccelerator> weakThis = shared_from_this();
+			std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
 			result._future->SetPollingFunction(
 				[shader, cfg, weakThis](::Assets::AssetFuture<Metal::GraphicsPipeline>& thatFuture) {
 					auto shaderActual = shader._shaderProgram->TryActualize();
@@ -158,13 +155,23 @@ namespace RenderCore { namespace Techniques
 					return false;
 				});
 		}
+		
+		return result;
+	}
+
+	auto PipelineAccelerator::PipelineForCfgId(SequencerConfigId cfgId) -> Pipeline&
+	{
+		unsigned poolId = unsigned(cfgId >> 32ull);
+		unsigned sequencerIdx = unsigned(cfgId);
+		if (poolId != _ownerPoolId)
+			Throw(std::runtime_error("Mixing a pipeline accelerator from an incorrect pool"));
 
 		if (_finalPipelines.size() < sequencerIdx+1)
 			_finalPipelines.resize(sequencerIdx+1);
-		_finalPipelines[sequencerIdx] = std::move(result);
+		return _finalPipelines[sequencerIdx];
 	}
 
-	RealPipelineAccelerator::RealPipelineAccelerator(
+	PipelineAccelerator::PipelineAccelerator(
 		unsigned ownerPoolId,
 		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
@@ -204,39 +211,39 @@ namespace RenderCore { namespace Techniques
 		}
 	}
 
-	RealPipelineAccelerator::~RealPipelineAccelerator()
+	PipelineAccelerator::~PipelineAccelerator()
 	{}
 
-	const ::Assets::FuturePtr<Metal::GraphicsPipeline>& PipelineAccelerator::GetPipeline(SequencerConfigId cfgId) const
+	const ::Assets::FuturePtr<Metal::GraphicsPipeline>& PipelineAcceleratorPool::GetPipeline(
+		PipelineAccelerator& pipelineAccelerator, 
+		const SequencerConfig& sequencerConfig) const
 	{
-		// all PipelineAccelerators are really "RealPipelineAccelerator"
-		auto& rpa = *(RealPipelineAccelerator*)this;
-		unsigned sequencerIdx = unsigned(cfgId);
+		unsigned sequencerIdx = unsigned(sequencerConfig._cfgId);
 		#if defined(_DEBUG)
-			unsigned poolId = unsigned(cfgId >> 32ull);
-			if (poolId != rpa._ownerPoolId)
+			unsigned poolId = unsigned(sequencerConfig._cfgId >> 32ull);
+			if (poolId != pipelineAccelerator._ownerPoolId)
 				Throw(std::runtime_error("Mixing a pipeline accelerator from an incorrect pool"));
-			if (sequencerIdx >= rpa._finalPipelines.size())
+			if (sequencerIdx >= pipelineAccelerator._finalPipelines.size())
 				Throw(std::runtime_error("Bad sequencer config id"));
 		#endif
 		
-		return rpa._finalPipelines[sequencerIdx]._future;
+		return pipelineAccelerator._finalPipelines[sequencerIdx]._future;
 	}
 
-	const Metal::GraphicsPipeline* PipelineAccelerator::TryGetPipeline(SequencerConfigId cfgId) const
+	const Metal::GraphicsPipeline* PipelineAcceleratorPool::TryGetPipeline(
+		PipelineAccelerator& pipelineAccelerator, 
+		const SequencerConfig& sequencerConfig) const
 	{
-		// all PipelineAccelerators are really "RealPipelineAccelerator"
-		auto& rpa = *(RealPipelineAccelerator*)this;
-		unsigned sequencerIdx = unsigned(cfgId);
+		unsigned sequencerIdx = unsigned(sequencerConfig._cfgId);
 		#if defined(_DEBUG)
-			unsigned poolId = unsigned(cfgId >> 32ull);
-			if (poolId != rpa._ownerPoolId)
+			unsigned poolId = unsigned(sequencerConfig._cfgId >> 32ull);
+			if (poolId != pipelineAccelerator._ownerPoolId)
 				Throw(std::runtime_error("Mixing a pipeline accelerator from an incorrect pool"));
-			if (sequencerIdx >= rpa._finalPipelines.size())
+			if (sequencerIdx >= pipelineAccelerator._finalPipelines.size())
 				Throw(std::runtime_error("Bad sequencer config id"));
 		#endif
 		
-		return rpa._finalPipelines[sequencerIdx]._future->TryActualize().get();
+		return pipelineAccelerator._finalPipelines[sequencerIdx]._future->TryActualize().get();
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,10 +254,11 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		ParameterBox _globalSelectors;
-		std::vector<std::shared_ptr<SequencerConfig>> _sequencerConfigById;
-		std::vector<std::pair<uint64_t, std::weak_ptr<RealPipelineAccelerator>>> _pipelineAccelerators;
+		std::vector<std::pair<uint64_t, std::weak_ptr<SequencerConfig>>> _sequencerConfigById;
+		std::vector<std::pair<uint64_t, std::weak_ptr<PipelineAccelerator>>> _pipelineAccelerators;
 
 		SequencerConfig MakeSequencerConfig(
+			/*out*/ uint64_t& hash,
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferProperties& fbProps,
@@ -258,10 +266,11 @@ namespace RenderCore { namespace Techniques
 			unsigned subpassIndex);
 
 		void RebuildAllPipelines(unsigned poolGuid);
-		void RebuildAllPipelines(unsigned poolGuid, RealPipelineAccelerator& pipeline);
+		void RebuildAllPipelines(unsigned poolGuid, PipelineAccelerator& pipeline);
 	};
 
 	SequencerConfig PipelineAcceleratorPool::Pimpl::MakeSequencerConfig(
+		/*out*/ uint64_t& hash,
 		const std::shared_ptr<ITechniqueDelegate>& delegate,
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
@@ -270,23 +279,24 @@ namespace RenderCore { namespace Techniques
 	{
 		// Search for an identical sequencer config already registered, and return it
 		// if it's here already. Other create it and return the result
+		assert(!fbDesc.GetSubpasses().empty());
 
-		assert(fbDesc.GetSubpasses().size() >= 1);
+		SequencerConfig cfg;
+		cfg._delegate = delegate;
+		cfg._sequencerSelectors = sequencerSelectors;
+		cfg._fbProps = fbProps;
 
-		SequencerConfig cfg {
-			delegate,
-			sequencerSelectors,
-			fbProps, fbDesc,
-			0, 0
-		};
-
-		if (subpassIndex != 0 || fbDesc.GetSubpasses().size() != 1)
+		cfg._fbDesc = fbDesc;
+		if (subpassIndex != 0 || fbDesc.GetSubpasses().size() > 1)
 			cfg._fbDesc = SeparateSingleSubpass(fbDesc, subpassIndex);
 
 		cfg._fbRelevanceValue = Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(cfg._fbProps, cfg._fbDesc);
 
-		cfg._hash = HashCombine(sequencerSelectors.GetHash(), sequencerSelectors.GetParameterNamesHash());
-		cfg._hash = HashCombine(cfg._fbRelevanceValue, cfg._hash);
+		hash = HashCombine(sequencerSelectors.GetHash(), sequencerSelectors.GetParameterNamesHash());
+		hash = HashCombine(cfg._fbRelevanceValue, hash);
+
+		// todo -- we must take into account the delegate itself; it must impact the hash
+		hash = HashCombine(uint64_t(&delegate), hash);
 
 		return cfg;
 	}
@@ -338,7 +348,7 @@ namespace RenderCore { namespace Techniques
 				return l;
 		}
 
-		auto newAccelerator = std::make_shared<RealPipelineAccelerator>(
+		auto newAccelerator = std::make_shared<PipelineAccelerator>(
 			_guid,
 			shaderPatches, materialSelectors,
 			inputAssembly, topology,
@@ -360,37 +370,55 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox& sequencerSelectors,
 		const FrameBufferProperties& fbProps,
 		const FrameBufferDesc& fbDesc,
-		unsigned subpassIndex) -> SequencerConfigId
+		unsigned subpassIndex) -> std::shared_ptr<SequencerConfig>
 	{
-		auto cfg = _pimpl->MakeSequencerConfig(delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
+		uint64_t hash = 0;
+		auto cfg = _pimpl->MakeSequencerConfig(hash, delegate, sequencerSelectors, fbProps, fbDesc, subpassIndex);
 
 		// Look for an existing configuration with the same settings
 		//	-- todo, not checking the delegate here!
 		for (auto i=_pimpl->_sequencerConfigById.begin(); i!=_pimpl->_sequencerConfigById.end(); ++i) {
-			if ((*i)->_hash == cfg._hash) {
+			if (i->first == hash) {
 				auto cfgId = SequencerConfigId(i - _pimpl->_sequencerConfigById.begin()) | (SequencerConfigId(_guid) << 32ull);
-				return cfgId;
+				
+				auto result = i->second.lock();
+
+				// The configuration may have expired. In this case, we should just create it again, and reset
+				// our pointer. Note that we only even hold a weak pointer, so if the caller doesn't hold
+				// onto the result, it's just going to expire once more
+				if (!result) {
+					result = std::make_shared<SequencerConfig>(std::move(cfg));
+					result->_cfgId = cfgId;
+					i->second = result;
+				}
+				
+				return result;
 			}
 		}
 
-		auto& finalCfg = _pimpl->_sequencerConfigById.emplace_back(std::make_shared<SequencerConfig>(std::move(cfg)));
-		auto cfgId = SequencerConfigId(_pimpl->_sequencerConfigById.size()-1) | (SequencerConfigId(_guid) << 32ull);
+		auto cfgId = SequencerConfigId(_pimpl->_sequencerConfigById.size()) | (SequencerConfigId(_guid) << 32ull);
+		auto result = std::make_shared<SequencerConfig>(std::move(cfg));
+		result->_cfgId = cfgId;
+
+		_pimpl->_sequencerConfigById.emplace_back(std::make_pair(hash, result));		// (note; only holding onto a weak pointer here)
 
 		// trigger creation of pipeline states for all accelerators
 		for (auto& accelerator:_pimpl->_pipelineAccelerators) {
 			auto a = accelerator.second.lock();
 			if (a)
-				a->CreatePipelineForSequencerState(cfgId, *finalCfg, _pimpl->_globalSelectors);
+				a->PipelineForCfgId(cfgId) = a->CreatePipelineForSequencerState(*result, _pimpl->_globalSelectors);
 		}
 
-		return cfgId;
+		return result;
 	}
 
-	void PipelineAcceleratorPool::Pimpl::RebuildAllPipelines(unsigned poolGuid, RealPipelineAccelerator& pipeline)
+	void PipelineAcceleratorPool::Pimpl::RebuildAllPipelines(unsigned poolGuid, PipelineAccelerator& pipeline)
 	{
 		for (unsigned c=0; c<_sequencerConfigById.size(); ++c) {
 			auto cfgId = SequencerConfigId(c) | (SequencerConfigId(poolGuid) << 32ull);
-			pipeline.CreatePipelineForSequencerState(cfgId, *_sequencerConfigById[c], _globalSelectors);
+			auto l = _sequencerConfigById[c].second.lock();
+			if (l) 
+				pipeline.PipelineForCfgId(cfgId) = pipeline.CreatePipelineForSequencerState(*l, _globalSelectors);
 		}
 	}
 
@@ -400,6 +428,35 @@ namespace RenderCore { namespace Techniques
 			auto a = accelerator.second.lock();
 			if (a)
 				RebuildAllPipelines(poolGuid, *a);
+		}
+	}
+
+	void PipelineAcceleratorPool::RebuildAllOutOfDatePipelines()
+	{
+		// Look through every pipeline registered in this pool, and 
+		// trigger a rebuild of any that appear to be out of date.
+		// This allows us to support hotreloading when files change, etc
+		std::vector<std::shared_ptr<SequencerConfig>> lockedSequencerConfigs;
+		lockedSequencerConfigs.reserve(_pimpl->_sequencerConfigById.size());
+		for (unsigned c=0; c<_pimpl->_sequencerConfigById.size(); ++c) {
+			auto l = _pimpl->_sequencerConfigById[c].second.lock();
+			lockedSequencerConfigs.emplace_back(std::move(l));
+		}
+					
+		for (auto& accelerator:_pimpl->_pipelineAccelerators) {
+			auto a = accelerator.second.lock();
+			if (a) {
+				for (unsigned c=0; c<std::min(_pimpl->_sequencerConfigById.size(), a->_finalPipelines.size()); ++c) {
+					if (!lockedSequencerConfigs[c])
+						continue;
+
+					auto& p = a->_finalPipelines[c];
+					if (p._future->GetAssetState() != ::Assets::AssetState::Pending && p._future->GetDependencyValidation()->GetValidationIndex() != 0) {
+						// It's out of date -- let's rebuild and reassign it
+						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _pimpl->_globalSelectors);
+					}
+				}
+			}
 		}
 	}
 

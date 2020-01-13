@@ -23,6 +23,7 @@ namespace RenderCore { namespace Techniques
 	class IShaderResourceDelegate;
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
+	class SequencerConfig;
 
 	class SequencerContext
 	{
@@ -30,7 +31,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
 		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
 
-		uint64_t	_sequencerConfigId = ~0ull;
+		const SequencerConfig*	_sequencerConfig = nullptr;
 	};
 
 	class DrawableGeo
