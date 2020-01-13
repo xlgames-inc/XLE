@@ -155,7 +155,7 @@ namespace FixedFunctionModel
     {
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
 		RenderCore::Techniques::ShaderVariationFactory_Basic factory(techEntry);
-        auto& base = _variationSet.FindVariation(techEntry._baseSelectors, shaderSelectors, factory);
+        auto& base = _variationSet.FindVariation(techEntry._selectorFiltering, shaderSelectors, factory);
 
 		auto& boundShaders = _entries[techniqueIndex]._boundShaders;
 		auto i = LowerBound(boundShaders, base._variationHash);

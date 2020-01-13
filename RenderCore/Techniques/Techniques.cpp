@@ -22,9 +22,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-    static const char* s_parameterBoxNames[] = 
-        { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
-
     using Formatter = InputStreamFormatter<utf8>;
 
     static bool Is(const char name[], Utility::InputStreamFormatter<utf8>::InteriorSection section)
@@ -89,35 +86,55 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    static void LoadParameterBoxes(Formatter& source, ParameterBox dst[4])
+    static void LoadSelectorFiltering(Formatter& source, ShaderSelectors& dst)
     {
         for (;;) {
             auto next = source.PeekNext();
             if (next == Formatter::Blob::EndElement) return;
-            if (next != Formatter::Blob::BeginElement)
-                Throw(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
 
-            Formatter::InteriorSection eleName;
-            if (!source.TryBeginElement(eleName))
-                Throw(FormatException("Bad begin element in parameter box list", source.GetLocation()));
+			if (next == Formatter::Blob::BeginElement) {
+				Formatter::InteriorSection selectorName;
+				if (!source.TryBeginElement(selectorName))
+					Throw(FormatException("Bad begin element in parameter box list", source.GetLocation()));
 
-            bool matched = false;
-            for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q)
-                if (Is(s_parameterBoxNames[q], eleName)) {
-                        // When a value is not specified, we should default to "0u"
-                        // This works well with the C preprocessor; it just means
-                        // things will generally default to off
-                    unsigned zero = 0u;
-                    dst[q].MergeIn(ParameterBox(source, AsOpaqueIteratorRange(zero), ImpliedTyping::TypeOf<unsigned>()));
-                    matched = true;
-                }
+				for (;;) {
+					auto next2 = source.PeekNext();
+					if (next2 == Formatter::Blob::EndElement) break;
+					if (next2 != Formatter::Blob::AttributeName)
+						Throw(FormatException("Expected attribute in selector filtering section", source.GetLocation()));
 
-            if (!matched)
-                Throw(FormatException("Unknown parameter box name", source.GetLocation()));
+					Formatter::InteriorSection filterType, value;
+					if (!source.TryAttribute(filterType, value))
+						Throw(FormatException("Bad attribute in selector filtering section", source.GetLocation()));
 
-            if (!source.TryEndElement())
-                Throw(FormatException("Bad end element in parameter box list", source.GetLocation()));
+					if (XlEqStringI(filterType, u("relevance"))) {
+						dst._relevanceMap[selectorName.Cast<char>().AsString()] = value.Cast<char>().AsString();
+					} else if (XlEqStringI(filterType, u("set"))) {
+						dst._setValues.SetParameter(selectorName, value.Cast<char>());
+					} else {
+						Throw(FormatException("Expecting \"whitelist\", \"blacklist\" or \"set\"", source.GetLocation()));
+					}
+				}
+
+				if (!source.TryEndElement())
+					Throw(FormatException("Bad end element in parameter box list", source.GetLocation()));
+			} else if (next == Formatter::Blob::AttributeName) {
+				// a selector name alone becomes a whitelist setting
+				Formatter::InteriorSection selectorName, value;
+				if (!source.TryAttribute(selectorName, value))
+					Throw(FormatException("Bad attribute in parameter box list", source.GetLocation()));
+
+				if (!value.IsEmpty()) {
+					dst._setValues.SetParameter(selectorName, value.Cast<char>());
+				} else {
+					dst._relevanceMap[selectorName.Cast<char>().AsString()] = "1";
+				}
+			} else {
+				Throw(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
+			}
         }
+
+		dst.GenerateHash();
     }
     
     static TechniqueEntry ParseTechniqueEntry(
@@ -139,8 +156,8 @@ namespace RenderCore { namespace Techniques
 
                     if (Is("Inherit", eleName)) {
                         LoadInheritedParameterBoxes(result, formatter, localSettings, searchRules, inherited);
-                    } else if (Is("Parameters", eleName)) {
-                        LoadParameterBoxes(formatter, result._baseSelectors._selectors);
+                    } else if (Is("Selectors", eleName)) {
+                        LoadSelectorFiltering(formatter, result._selectorFiltering);
                     } else break;
 
                     if (!formatter.TryEndElement()) break;
@@ -236,12 +253,10 @@ namespace RenderCore { namespace Techniques
         if (!source._pixelShaderName.empty()) _pixelShaderName = source._pixelShaderName;
         if (!source._geometryShaderName.empty()) _geometryShaderName = source._geometryShaderName;
 
-        for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
-            const auto& s = source._baseSelectors._selectors[c];
-            auto& d = _baseSelectors._selectors[c];
-            for (const auto& i:s)
-                d.SetParameter(i.Name(), i.RawValue(), i.Type());
-        }
+		_selectorFiltering._setValues.MergeIn(source._selectorFiltering._setValues);
+		for (const auto&i:source._selectorFiltering._relevanceMap)
+			_selectorFiltering._relevanceMap[i.first] = i.second;
+		_selectorFiltering.GenerateHash();
 
 		GenerateHash();
     }
@@ -281,19 +296,12 @@ namespace RenderCore { namespace Techniques
 		entry.GenerateHash();
 	}
 
-    TechniqueEntry::TechniqueEntry() 
+	void ShaderSelectors::GenerateHash()
 	{
-			//
-            //      There are some parameters that will we always have an effect on the
-            //      binding. We need to make sure these are initialized with sensible
-            //      values.
-            //
-        /*auto& globalParam = _baseSelectors._selectors[ShaderSelectors::Source::GlobalEnvironment];
-        globalParam.SetParameter((const utf8*)"vs_", 50);
-        globalParam.SetParameter((const utf8*)"ps_", 50);*/
+		_hash = HashCombine(_setValues.GetHash(), _setValues.GetParameterNamesHash());
+		for (const auto&r:_relevanceMap)
+			_hash = HashCombine(HashCombine(Hash64(r.first), Hash64(r.second)), _hash);
 	}
-
-    TechniqueEntry::~TechniqueEntry() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -507,42 +515,6 @@ namespace RenderCore { namespace Techniques
 		assert(idx < dimof(_entries));
 		return _entries[idx];
 	}
-
-        //////////////////////-------//////////////////////
-
-    uint64      ShaderSelectors::CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const
-    {
-		uint64 filteredState = _selectors[0].CalculateFilteredHashValue(*globalState[0]);
-        for (unsigned c=1; c<Source::Max; ++c) {
-              // filteredState ^= _selectors[c].TranslateHash(*globalState[c]) << (c*6);     // we have to be careful of cases where 2 boxes have their filtered tables sort of swapped... Those cases should produce distinctive hashes
-
-			filteredState = HashCombine(_selectors[c].CalculateFilteredHashValue(*globalState[c]), filteredState);
-        }
-        return filteredState;
-    }
-
-    uint64      ShaderSelectors::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const
-    {
-            //      Find a local state to match
-        auto i = LowerBound(_globalToFilteredTable, inputHash);
-        if (i!=_globalToFilteredTable.cend() && i->first == inputHash) {
-            return i->second;
-        }
-
-            //  The call to "CalculateFilteredHash" here is quite expensive... Ideally we should only get here during
-            //  initialisation steps (or perhaps on the first few frames. We ideally don't want to be going through
-            //  all of this during normal frames.
-        uint64 filteredState = CalculateFilteredHash(globalState);
-        _globalToFilteredTable.insert(i, std::make_pair(inputHash, filteredState));
-        return filteredState;
-    }
-
-    void        ShaderSelectors::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
-    {
-        for (unsigned c=0; c<dimof(_selectors); ++c) {
-            Utility::BuildStringTable(defines, _selectors[c]);
-        }
-    }
 
 		        //////////////////////-------//////////////////////
 

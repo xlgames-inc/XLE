@@ -995,9 +995,11 @@ namespace Utility
                 i2->_valueBegin += sizeChange;
             }
 
-            _values.erase(
-                _values.cbegin()+dstOffsets._valueBegin,
-                _values.cbegin()+dstOffsets._valueBegin+prevSize);
+			if (prevSize != 0) {
+				_values.erase(
+					_values.cbegin()+dstOffsets._valueBegin,
+					_values.cbegin()+dstOffsets._valueBegin+prevSize);
+			}
             _values.insert(
                 _values.cbegin()+dstOffsets._valueBegin, 
                 (uint8*)value.begin(), (uint8*)value.end());
@@ -1019,9 +1021,11 @@ namespace Utility
 
 		{
 			auto prevSize = _offsets[index]._valueSize;
-			_values.erase(
-                _values.cbegin() + _offsets[index]._valueBegin,
-                _values.cbegin() + _offsets[index]._valueBegin + prevSize);
+			if (prevSize != 0) {
+				_values.erase(
+					_values.cbegin() + _offsets[index]._valueBegin,
+					_values.cbegin() + _offsets[index]._valueBegin + prevSize);
+			}
 
             signed sizeChange = 0 - signed(prevSize);
             for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2)
@@ -1030,6 +1034,7 @@ namespace Utility
 
 		{
 			auto prevSize = _offsets[index]._nameSize;
+			assert(prevSize != 0);
 			_names.erase(
                 _names.cbegin() + _offsets[index]._nameBegin,
                 _names.cbegin() + _offsets[index]._nameBegin + prevSize);

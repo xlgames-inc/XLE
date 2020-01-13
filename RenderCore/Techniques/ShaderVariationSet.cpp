@@ -37,87 +37,61 @@ namespace RenderCore { namespace Techniques
 		return inputHash;
 	}
 
-	auto UniqueShaderVariationSet::FindVariation(
-		const ShaderSelectors& baseSelectors,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-		IShaderVariationFactory& factory) const -> const Variation&
-	{
-		auto inputHash = Hash(MakeIteratorRange(shaderSelectors, shaderSelectors + ShaderSelectors::Source::Max));
-        
-		uint64_t filteredHashValue;
-        auto i = LowerBound(_globalToFiltered, inputHash);
-        if (i!=_globalToFiltered.cend() && i->first == inputHash) {
-            filteredHashValue = i->second;
-        } else {
-			filteredHashValue = baseSelectors.CalculateFilteredHash(inputHash, shaderSelectors);
-			_globalToFiltered.insert(i, {inputHash, filteredHashValue});
-		}
-
-		filteredHashValue = HashCombine(filteredHashValue, factory._factoryGuid);
-
-		auto i3 = std::lower_bound(
-			_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashValue,
-			[](const Variation& v, uint64_t h) { return v._variationHash < h; });
-        if (i3!=_filteredToResolved.cend() && i3->_variationHash == filteredHashValue) {
-			if (i3->_shaderFuture->GetDependencyValidation() && i3->_shaderFuture->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->_shaderFuture = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
-        } else {
-			auto newVariation = MakeShaderVariation(baseSelectors, shaderSelectors, factory);
-			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
-		}
-
-		return *i3;
-	}
-
-	static std::string MakeFilteredDefinesTable(
+	std::string MakeFilteredDefinesTable(
 		IteratorRange<const ParameterBox**> selectors,
-		const ParameterBox& baseTechniqueSelectors,
+		const ShaderSelectors& techniqueFiltering,
 		const SelectorRelevanceMap& relevance)
 	{
 		// Selectors are considered relevant only if they appear in the 
 		// baseTechniqueSelectors, or the condition in the relevance map succeeds
 
+		ParameterBox pBoxValue;
+
 		std::vector<const ParameterBox*> selectorsWithBaseTechnique;
-		selectorsWithBaseTechnique.reserve(1+selectors.size());
-		selectorsWithBaseTechnique.push_back(&baseTechniqueSelectors);
+		selectorsWithBaseTechnique.reserve(2+selectors.size());
+		selectorsWithBaseTechnique.push_back(&pBoxValue);
+		selectorsWithBaseTechnique.push_back(&techniqueFiltering._setValues);
 		selectorsWithBaseTechnique.insert(selectorsWithBaseTechnique.begin(), selectors.begin(), selectors.end());
 
-		ParameterBox filteredBox;
+		ParameterBox filteredBox = techniqueFiltering._setValues;
 
 		for (const auto&b:selectors) {
-			auto baseTechniqueIterator = baseTechniqueSelectors.begin();
+			auto setIterator = techniqueFiltering._setValues.begin();
 			for (auto sourceIterator = b->begin(); sourceIterator != b->end(); ++sourceIterator) {
 
-				// Look for the same selector in baseTechniqueSelectors
-				while (baseTechniqueIterator != baseTechniqueSelectors.end() && baseTechniqueIterator->HashName() < sourceIterator->HashName()) 
-					++baseTechniqueIterator;
+				bool hasSetValue = false;
+				bool passesRelevanceMap = false;
+				bool passesTechniqueRelevanceMap = false;
 
-				bool foundInBaseTechnique = baseTechniqueIterator != baseTechniqueSelectors.end() && baseTechniqueIterator->HashName() == sourceIterator->HashName();
-				if (foundInBaseTechnique) {
-					// If the value we're setting is the same as what's assigned in the base technique, then we can skip this selector
-					// This just make it easier to shorten in the selector sets in some cases, because where setting a selector to
-					// a specific value is equivalent to skipping that selector entirely, we should prefer to skip the selector
-					bool identicalToBaseValue = false;
-					if (baseTechniqueIterator->Type()._type != ImpliedTyping::TypeCat::Void
-						&& sourceIterator->Type()._type != ImpliedTyping::TypeCat::Void) {
-						identicalToBaseValue = baseTechniqueIterator->ValueAsString() == sourceIterator->ValueAsString();
-					}
+				// Set values (note -- blacklist doesn't apply here)
+				while (setIterator != techniqueFiltering._setValues.end() && setIterator->HashName() < sourceIterator->HashName()) 
+					++setIterator;
+				if (setIterator != techniqueFiltering._setValues.end() && setIterator->HashName() == sourceIterator->HashName()) {
+					hasSetValue = true;
+					passesTechniqueRelevanceMap = true;		// considered relevant, unless we explicitly fail in the condition just below
+				}
 
-					if (!identicalToBaseValue) {
-						// We found it in the base technique, so it's automatically relevant
-						filteredBox.SetParameter(sourceIterator->Name(), sourceIterator->RawValue(), sourceIterator->Type());
-						continue;		// early out since we've already determined we're relevant
-					}
+				auto relevanceI = techniqueFiltering._relevanceMap.find(sourceIterator->Name().Cast<char>().AsString());
+				if (relevanceI != techniqueFiltering._relevanceMap.end()) {
+					// Set a key called "value" to the new value we want to set
+					pBoxValue.SetParameter(u("value"), sourceIterator->RawValue(), sourceIterator->Type());
+					passesTechniqueRelevanceMap = EvaluatePreprocessorExpression(
+						relevanceI->second,
+						MakeIteratorRange(selectorsWithBaseTechnique));
 				}
 
 				// see if we can pass the relevance check
-				auto relevanceI = relevance.find(sourceIterator->Name().Cast<char>().AsString());
+				relevanceI = relevance.find(sourceIterator->Name().Cast<char>().AsString());
 				if (relevanceI != relevance.end()) {
-					bool relevant = EvaluatePreprocessorExpression(
+					passesRelevanceMap = EvaluatePreprocessorExpression(
 						relevanceI->second,
-						MakeIteratorRange(selectorsWithBaseTechnique));
-					if (relevant)
-						filteredBox.SetParameter(sourceIterator->Name(), sourceIterator->RawValue(), sourceIterator->Type());
+						MakeIteratorRange(AsPointer(selectorsWithBaseTechnique.begin()+1), AsPointer(selectorsWithBaseTechnique.end())));
+				}
+
+				if (passesRelevanceMap || passesTechniqueRelevanceMap) {
+					filteredBox.SetParameter(sourceIterator->Name(), sourceIterator->RawValue(), sourceIterator->Type());
+				} else {
+					filteredBox.RemoveParameter(sourceIterator->Name());
 				}
 			}
 
@@ -128,13 +102,12 @@ namespace RenderCore { namespace Techniques
 
 	auto UniqueShaderVariationSet::FindVariation(
 		IteratorRange<const ParameterBox**> selectors,
-		const ParameterBox& baseTechniqueSelectors,
+		const ShaderSelectors& techniqueFiltering,
 		const SelectorRelevanceMap& relevance,
 		IShaderVariationFactory& factory) const -> const Variation&
 	{
 		auto inputHash = Hash(selectors);
-		inputHash = HashCombine(baseTechniqueSelectors.GetParameterNamesHash(), inputHash);
-		inputHash = HashCombine(baseTechniqueSelectors.GetHash(), inputHash);
+		inputHash = HashCombine(techniqueFiltering.GetHash(), inputHash);
 		// todo -- we must include the relevance map in the hash
 
 		std::string filteredDefinesTable;
@@ -144,7 +117,7 @@ namespace RenderCore { namespace Techniques
         if (i!=_globalToFiltered.cend() && i->first == inputHash) {
             filteredHashValue = i->second;
         } else {
-			filteredDefinesTable = MakeFilteredDefinesTable(selectors, baseTechniqueSelectors, relevance);
+			filteredDefinesTable = MakeFilteredDefinesTable(selectors, techniqueFiltering, relevance);
 			filteredHashValue = Hash64(filteredDefinesTable);
 			_globalToFiltered.insert(i, {inputHash, filteredHashValue});
 		}
@@ -165,19 +138,16 @@ namespace RenderCore { namespace Techniques
 		return *i3;
 	}
 
-	auto UniqueShaderVariationSet::MakeShaderVariation(
-		const ShaderSelectors& baseSelectors,
+	auto UniqueShaderVariationSet::FindVariation(
+		const ShaderSelectors& techniqueFiltering,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
-		IShaderVariationFactory& factory) const -> ShaderFuture
+		IShaderVariationFactory& factory) const -> const Variation&
 	{
-		std::vector<std::pair<const utf8*, std::string>> defines;
-		baseSelectors.BuildStringTable(defines);
-		for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
-			OverrideStringTable(defines, *shaderSelectors[c]);
-		}
-
-		auto combinedStrings = FlattenStringTable(defines);
-		return factory.MakeShaderVariation(MakeStringSection(combinedStrings));
+		return FindVariation(
+			MakeIteratorRange(shaderSelectors, shaderSelectors + ShaderSelectors::Source::Max),
+			techniqueFiltering, 
+			{},
+			factory);
 	}
 
 	UniqueShaderVariationSet::UniqueShaderVariationSet()  {}
@@ -191,7 +161,7 @@ namespace RenderCore { namespace Techniques
 	{
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
 		ShaderVariationFactory_Basic factory(techEntry);
-        return _variationSet.FindVariation(techEntry._baseSelectors, shaderSelectors, factory)._shaderFuture;
+        return _variationSet.FindVariation(techEntry._selectorFiltering, shaderSelectors, factory)._shaderFuture;
 	}
 
 	TechniqueShaderVariationSet::TechniqueShaderVariationSet(const std::shared_ptr<Technique>& technique)

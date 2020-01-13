@@ -8,6 +8,7 @@
     <ClCompile Include="..\ResourceUpdateAndReadBack.cpp" />
     <ClCompile Include="..\PipelineAcceleratorTests.cpp" />
     <ClCompile Include="..\LightingParserExecuteTests.cpp" />
+    <ClCompile Include="..\TechniqueFileTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\InputLayoutShaders_GLSL.h" />

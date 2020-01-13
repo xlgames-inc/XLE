@@ -12,6 +12,7 @@
 #include "../../Utility/ParameterBox.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace RenderCore { class UniformsStreamInterface; class IThreadContext; }
 
@@ -23,16 +24,14 @@ namespace RenderCore { namespace Techniques
     {
     public:
         struct Source { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
-        ParameterBox    _selectors[Source::Max];
 
-        uint64      CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const;
-        void        BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const;
+		ParameterBox    _setValues;
+		std::unordered_map<std::string, std::string> _relevanceMap;
 
-    private:
-        uint64      CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const;
-        mutable std::vector<std::pair<uint64, uint64>>  _globalToFilteredTable;
+		uint64_t GetHash() const { return _hash; }
 
-        friend class Technique;
+		void GenerateHash();
+		uint64_t _hash = 0ull;
     };
 
         //////////////////////////////////////////////////////////////////
@@ -50,14 +49,11 @@ namespace RenderCore { namespace Techniques
         bool IsValid() const { return !_vertexShaderName.empty(); }
         void MergeIn(const TechniqueEntry& source);
 
-        ShaderSelectors		_baseSelectors;
+        ShaderSelectors		_selectorFiltering;
         ::Assets::rstring   _vertexShaderName;
         ::Assets::rstring   _pixelShaderName;
         ::Assets::rstring   _geometryShaderName;
 		uint64_t			_shaderNamesHash = 0;		// hash of the shader names, but not _baseSelectors
-
-        TechniqueEntry();
-        ~TechniqueEntry();
 
 		void GenerateHash();
     };
@@ -79,7 +75,7 @@ namespace RenderCore { namespace Techniques
 		::Assets::DepValPtr _depVal;
 	};
 
-	class Technique
+	DEPRECATED_ATTRIBUTE class Technique
 	{
 	public:
 		auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }

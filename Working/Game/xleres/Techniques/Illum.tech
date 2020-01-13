@@ -6,15 +6,13 @@
 
 ~Silhouette
     ~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
-    ~Parameters
-        ~Geometry
-            GEO_HAS_COLOUR
-            GEO_HAS_TEXCOORD
-            GEO_HAS_NORMAL
-        ~Material
-            MAT_ALPHA_TEST
-            RES_HAS_DiffuseTexture
-            MAT_VCOLOR_IS_ANIM_PARAM
+    ~Selectors
+        GEO_HAS_COLOR
+        GEO_HAS_TEXCOORD
+        GEO_HAS_NORMAL
+        MAT_ALPHA_TEST
+        RES_HAS_DiffuseTexture
+        MAT_VCOLOR_IS_ANIM_PARAM
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -23,16 +21,14 @@
     ~~      the object in it's "main" visual look -- with all of the assigned material, texture & lighting properties
 
 ~Illum
-    ~Inherit; Silhouette; shared.tech:CommonMaterial; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_PER_VERTEX_AO
-        ~GlobalEnvironment
-            CLASSIFY_NORMAL_MAP
-            SKIP_MATERIAL_DIFFUSE=0
+    ~Inherit; Silhouette; shared.tech:LegacyCommonMaterial; shared.tech:System
+    ~Selectors
+        GEO_HAS_TEXBITANGENT
+        GEO_HAS_NORMAL
+        GEO_HAS_TEXTANGENT
+        GEO_HAS_PER_VERTEX_AO
+        CLASSIFY_NORMAL_MAP
+        ~SKIP_MATERIAL_DIFFUSE; relevance=value!=0
 
 ~Forward
     ~Inherit; Illum; shared.tech:Forward
@@ -51,11 +47,10 @@
 
 ~StochasticTransparency
     ~Inherit; Illum; shared.tech:Forward
-    ~Parameters
-        ~Runtime
-            STOCHASTIC_SAMPLE_COUNT=8
-            STOCHASTIC_TRANS_PRIMITIVEID
-            STOCHASTIC_TRANS_OPACITY
+    ~Selectors
+        STOCHASTIC_SAMPLE_COUNT=8
+        STOCHASTIC_TRANS_PRIMITIVEID
+        STOCHASTIC_TRANS_OPACITY
     VertexShader=xleres/forward/illum.vsh:main
     PixelShader=xleres/forward/transparency/illum.psh:main_stochastic
 
@@ -71,48 +66,40 @@
 
 ~DepthOnly
     ~Inherit; Silhouette
-    ~Parameters
-        ~Material
-            MAT_ALPHA_TEST_PREDEPTH
-        ~Runtime
-            STOCHASTIC_TRANS
-            STOCHASTIC_TRANS_PRIMITIVEID
-            STOCHASTIC_TRANS_OPACITY
+    ~Selectors
+        MAT_ALPHA_TEST_PREDEPTH
+        STOCHASTIC_TRANS
+        STOCHASTIC_TRANS_PRIMITIVEID
+        STOCHASTIC_TRANS_OPACITY
     VertexShader=xleres/forward/illum.vsh:main
     PixelShader=xleres/forward/depthonly.psh:main
 
 ~ShadowGen
     ~Inherit; Silhouette
-    ~Parameters
-        ~Material
-            MAT_ALPHA_DITHER_SHADOWS
-        ~Runtime
-            FRUSTUM_FILTER=63
-            SHADOW_CASCADE_MODE
-            OUTPUT_SHADOW_PROJECTION_COUNT=6
-            SHADOW_ENABLE_NEAR_CASCADE
+    ~Selectors
+        MAT_ALPHA_DITHER_SHADOWS
+        FRUSTUM_FILTER=63
+        SHADOW_CASCADE_MODE
+        OUTPUT_SHADOW_PROJECTION_COUNT=6
+        SHADOW_ENABLE_NEAR_CASCADE
     VertexShader=xleres/shadowgen/depthonly.vsh:main
     GeometryShader=xleres/shadowgen/depthonly.gsh:main
     PixelShader=xleres/shadowgen/depthonly.psh:main
 
 ~RayTest
     ~Inherit; Silhouette
-    ~Parameters
-        ~Geometry
-            OUTPUT_WORLD_POSITION=1
-        ~Runtime
-            INTERSECTION_TEST
+    ~Selectors
+        OUTPUT_WORLD_POSITION=1
+        INTERSECTION_TEST
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/forward/raytest.gsh:triangles
     PixelShader=null
 
 ~WriteTriangleIndex
     ~Inherit; Silhouette
-    ~Parameters
-        ~Geometry
-            OUTPUT_WORLD_POSITION=0
-        ~Runtime
-            SHADOW_CASCADE_MODE
+    ~Selectors
+        OUTPUT_WORLD_POSITION=0
+        SHADOW_CASCADE_MODE
     VertexShader=xleres/shadowgen/rtwritetiles.sh:vs_writetris
     GeometryShader=xleres/shadowgen/rtwritetiles.sh:gs_writetris
     PixelShader=null
@@ -120,24 +107,21 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ~VisNormals
-    ~Parameters
-        ~Geometry
-            OUTPUT_WORLD_POSITION=1
-            OUTPUT_NORMAL=1
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
-            GEO_HAS_NORMAL
-        ~Material
-            RES_HAS_NormalsTexture
+    ~Selectors
+        OUTPUT_WORLD_POSITION=1
+        OUTPUT_NORMAL=1
+        GEO_HAS_TEXTANGENT
+        GEO_HAS_TEXBITANGENT
+        GEO_HAS_NORMAL
+        RES_HAS_NormalsTexture
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents
     PixelShader=xleres/basic.psh:PC
 
 ~VisWireframe
-    ~Parameters
-        ~Geometry
-            GEO_HAS_TEXCOORD
-            OUTPUT_WORLD_POSITION=1
+    ~Selectors
+        GEO_HAS_TEXCOORD
+        OUTPUT_WORLD_POSITION=1
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/solidwireframe.gsh:main
     PixelShader=xleres/solidwireframe.psh:main

@@ -99,10 +99,9 @@ static const char* s_internalComplicatedGraph = R"--(
 
 static const char* s_basicTechniqueFile = R"--(
 	~Shared
-		~Parameters
-			~GlobalEnvironment
-				CLASSIFY_NORMAL_MAP
-				SKIP_MATERIAL_DIFFUSE=0
+		~Selectors
+			CLASSIFY_NORMAL_MAP
+			SKIP_MATERIAL_DIFFUSE=0
 
 	~NoPatches
 		~Inherit; Shared

@@ -29,6 +29,11 @@ namespace RenderCore { namespace Techniques
 
 	using SelectorRelevanceMap = std::unordered_map<std::string, std::string>;
 
+	std::string MakeFilteredDefinesTable(
+		IteratorRange<const ParameterBox**> selectors,
+		const ShaderSelectors& techniqueFiltering,
+		const SelectorRelevanceMap& relevance);
+
 	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
 	///
 	/// Sometimes 2 different sets of construction parameters for a shader can result in equivalent final byte code.
@@ -52,7 +57,7 @@ namespace RenderCore { namespace Techniques
 
 		const Variation& FindVariation(
 			IteratorRange<const ParameterBox**> selectors,
-			const ParameterBox& baseTechniqueSelectors,
+			const ShaderSelectors& techniqueFiltering,
 			const SelectorRelevanceMap& relevance,
 			IShaderVariationFactory& factory) const;
 
@@ -61,11 +66,6 @@ namespace RenderCore { namespace Techniques
 	protected:
 		mutable std::vector<Variation>							_filteredToResolved;
 		mutable std::vector<std::pair<uint64_t, uint64_t>>		_globalToFiltered;
-
-		ShaderFuture MakeShaderVariation(
-			const ShaderSelectors& baseSelectors,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max],
-			IShaderVariationFactory& factory) const;
 	};
 
 	/// <summary>Provides convenient management of shader variations generated from a technique file</summary>

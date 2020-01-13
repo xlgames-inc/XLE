@@ -80,6 +80,7 @@
     <ClCompile Include="..\PipelineAcceleratorTests.cpp" />
     <ClCompile Include="..\ResourceUpdateAndReadBack.cpp" />
     <ClCompile Include="..\StreamOutput.cpp" />
+    <ClCompile Include="..\TechniqueFileTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
