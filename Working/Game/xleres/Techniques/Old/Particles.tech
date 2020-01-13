@@ -1,7 +1,7 @@
 ~Illum
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             GEO_HAS_PARTICLE_INPUTS=1
         ~Material
@@ -29,7 +29,7 @@
 ~Deferred
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             GEO_HAS_PARTICLE_INPUTS=1
         ~GlobalEnvironment
@@ -48,7 +48,7 @@
 ~OrderIndependentTransparency
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             OUTPUT_LOCAL_NORMAL=1
             OUTPUT_LOCAL_VIEW_VECTOR=1

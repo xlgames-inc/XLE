@@ -29,7 +29,7 @@ VSShadowOutput main(VSInput input)
 
 		// note that when rendering shadows, we actually only need the normal
 		// for doing the vertex wind animation
-	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
+	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TEXTANGENT==1)
 		worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
 	#endif
 

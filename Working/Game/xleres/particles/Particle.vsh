@@ -12,7 +12,7 @@ ParticleVStoGS main(VSInput input)
 	ParticleVStoGS output;
 	output.position = input.position;
 
-	#if GEO_HAS_COLOUR==1
+	#if GEO_HAS_COLOR==1
 		output.colour 		= VSIn_GetColour(input);
 	#endif
 

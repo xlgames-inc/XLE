@@ -47,8 +47,8 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
         output.texCoord = VSIn_GetTexCoord(input);
     #endif
 
-    #if (GEO_HAS_NORMAL==1) || (GEO_HAS_TANGENT_FRAME==1)
-        #if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
+    #if (GEO_HAS_NORMAL==1) || (GEO_HAS_TEXTANGENT==1)
+        #if (GEO_HAS_NORMAL==0) && (GEO_HAS_TEXTANGENT==1)
             worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
         #endif
 

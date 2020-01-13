@@ -223,12 +223,12 @@ namespace RenderCore { namespace Techniques
 	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const InputElementDesc*> ia)
 	{
 		if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
-        if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOR", 1); }
         if (HasElement(ia, "NORMAL"))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
-        if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
-        if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXTANGENT", 1); }
+        if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXBITANGENT", 1); }
         if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
-            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_BONEWEIGHTS", 1); }
         if (HasElement(ia, "PER_VERTEX_AO"))
             { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
 	}
@@ -245,12 +245,12 @@ namespace RenderCore { namespace Techniques
 		static auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
 
 		if (HasElement(ia, TEXCOORD))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
-        if (HasElement(ia, COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOR", 1); }
         if (HasElement(ia, NORMAL))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
-        if (HasElement(ia, TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
-        if (HasElement(ia, TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXTANGENT", 1); }
+        if (HasElement(ia, TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXBITANGENT", 1); }
         if (HasElement(ia, BONEINDICES) && HasElement(ia, BONEWEIGHTS))
-            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_BONEWEIGHTS", 1); }
         if (HasElement(ia, PER_VERTEX_AO))
             { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
 	}

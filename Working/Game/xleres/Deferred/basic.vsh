@@ -33,7 +33,7 @@ VSOutput main(VSInput input)
 		output.texCoord 	= VSIn_GetTexCoord(input);
 	#endif
 
-	#if GEO_HAS_TANGENT_FRAME==1
+	#if GEO_HAS_TEXTANGENT==1
 		TangentFrameStruct worldSpaceTangentFrame = VSIn_GetWorldTangentFrame(input);
 
 		#if OUTPUT_TANGENT_FRAME==1

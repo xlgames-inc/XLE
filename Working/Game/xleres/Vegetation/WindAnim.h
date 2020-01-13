@@ -13,7 +13,7 @@ float3 PerformWindBending(
     float3 posWorld, float3 normalWorld, float3 objCentreWorld,
     float3 instanceWindVector, float3 animParams)
 {
-    #if (MAT_VCOLOR_IS_ANIM_PARAM!=0) && (GEO_HAS_COLOUR!=0)
+    #if (MAT_VCOLOR_IS_ANIM_PARAM!=0) && (GEO_HAS_COLOR!=0)
         // Distort the input position with the wind
         // Derived from method freely published in GPU Gems 3.
         //  See:

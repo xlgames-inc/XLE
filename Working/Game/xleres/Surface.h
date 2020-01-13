@@ -25,7 +25,7 @@ Texture2D		NormalsTexture          BIND_MAT_T1;
 
 float3 VSIn_GetLocalPosition(VSInput input)
 {
-	#if GEO_HAS_SKIN_WEIGHTS
+	#if GEO_HAS_BONEWEIGHTS
 		return TransformPositionThroughSkinning(input, input.position.xyz);
 	#else
 		return input.position.xyz;
@@ -34,7 +34,7 @@ float3 VSIn_GetLocalPosition(VSInput input)
 
 float4 VSIn_GetLocalTangent(VSInput input)
 {
-    #if (GEO_HAS_TANGENT_FRAME==1)
+    #if (GEO_HAS_TEXTANGENT==1)
         return float4(TransformDirectionVectorThroughSkinning(input, input.tangent.xyz), input.tangent.w);
     #else
         return 0.0.xxxx;
@@ -54,9 +54,9 @@ float4 VSIn_GetLocalTangent(VSInput input)
 
 float3 VSIn_GetLocalBitangent(VSInput input)
 {
-	#if (GEO_HAS_BITANGENT==1)
+	#if (GEO_HAS_TEXBITANGENT==1)
 		return TransformDirectionVectorThroughSkinning(input, input.bitangent.xyz);
-    #elif (GEO_HAS_TANGENT_FRAME==1) && (GEO_HAS_NORMAL==1)
+    #elif (GEO_HAS_TEXTANGENT==1) && (GEO_HAS_NORMAL==1)
 		float4 tangent = VSIn_GetLocalTangent(input);
 		float3 normal = VSIn_GetLocalNormal(input);
 		return cross(tangent.xyz, normal) * GetWorldTangentFrameHandiness(tangent);
@@ -68,7 +68,7 @@ float3 VSIn_GetLocalBitangent(VSInput input)
 #if GEO_HAS_NORMAL!=1
 	float3 VSIn_GetLocalNormal(VSInput input)
 	{
-	    #if GEO_HAS_TANGENT_FRAME==1
+	    #if GEO_HAS_TEXTANGENT==1
 	            //  if the tangent and bitangent are unit-length and perpendicular, then we
 	            //  shouldn't have to normalize here. Since the inputs are coming from the
 	            //  vertex buffer, let's assume it's ok
@@ -81,7 +81,7 @@ float3 VSIn_GetLocalBitangent(VSInput input)
 	}
 #endif
 
-#if (GEO_HAS_TANGENT_FRAME==1)
+#if (GEO_HAS_TEXTANGENT==1)
     TangentFrameStruct VSIn_GetWorldTangentFrame(VSInput input)
     {
         	//	If we can guarantee no scale on local-to-world, we can skip normalize of worldtangent/worldbitangent

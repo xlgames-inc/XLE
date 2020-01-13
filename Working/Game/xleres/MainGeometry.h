@@ -36,7 +36,7 @@ struct VSInput //////////////////////////////////////////////////////
 {
     float3 position : POSITION0;
 
-    #if GEO_HAS_COLOUR==1
+    #if GEO_HAS_COLOR==1
         float4 colour : COLOR0;
 
             // vertex is used only in the vertex shader when
@@ -60,10 +60,10 @@ struct VSInput //////////////////////////////////////////////////////
         #endif
     #endif
 
-    #if GEO_HAS_TANGENT_FRAME==1
+    #if GEO_HAS_TEXTANGENT==1
         float4 tangent : TEXTANGENT;
         #if RES_HAS_NormalsTexture==1
-            #if TANGENT_PROCESS_IN_PS==1
+            #if defined(TANGENT_PROCESS_IN_PS) && TANGENT_PROCESS_IN_PS==1
                 #if !defined(OUTPUT_LOCAL_TANGENT_FRAME)
                     #define OUTPUT_LOCAL_TANGENT_FRAME 1
                 #endif
@@ -75,7 +75,7 @@ struct VSInput //////////////////////////////////////////////////////
         #endif
     #endif
 
-    #if GEO_HAS_BITANGENT==1
+    #if GEO_HAS_TEXBITANGENT==1
         float3 bitangent : TEXBITANGENT;
     #endif
 
@@ -86,7 +86,7 @@ struct VSInput //////////////////////////////////////////////////////
         #endif
     #endif
 
-    #if GEO_HAS_SKIN_WEIGHTS==1
+    #if GEO_HAS_BONEWEIGHTS==1
         uint4 boneIndices : BONEINDICES;
         float4 boneWeights : BONEWEIGHTS;
     #endif
@@ -123,7 +123,7 @@ struct VSInput //////////////////////////////////////////////////////
     #endif
 #endif
 
-#if GEO_HAS_COLOUR==1 ///////////////////////////////////////////////
+#if GEO_HAS_COLOR==1 ///////////////////////////////////////////////
     float4 VSIn_GetColour(VSInput input) { return input.colour; }
 #else
     float4 VSIn_GetColour(VSInput input) { return 1.0.xxxx; }
@@ -135,7 +135,7 @@ struct VSInput //////////////////////////////////////////////////////
     float2 VSIn_GetTexCoord(VSInput input) { return 0.0.xx; }
 #endif //////////////////////////////////////////////////////////////
 
-#if (GEO_HAS_NORMAL==1 || GEO_HAS_TANGENT_FRAME==1) && (AUTO_COTANGENT==1)
+#if (GEO_HAS_NORMAL==1 || GEO_HAS_TEXTANGENT==1) && (AUTO_COTANGENT==1)
     #undef OUTPUT_TANGENT_FRAME
     #undef OUTPUT_LOCAL_TANGENT_FRAME
 

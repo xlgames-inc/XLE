@@ -794,7 +794,7 @@ namespace RenderCore { namespace Assets
 
         const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
             "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-            "xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
+            "xleres/forward/illum.psh:main", "GEO_HAS_COLOR=1");
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
         metalContext->Bind(shaderProgram);
 

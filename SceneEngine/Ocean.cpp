@@ -501,7 +501,7 @@ namespace SceneEngine
             auto& shader = ::Assets::GetAsset<ShaderProgram>(
                 "xleres/forward/illum.vsh:main:vs_*", 
                 "xleres/forward/illum.psh:main:ps_*",
-                "GEO_HAS_COLOUR=1");
+                "GEO_HAS_COLOR=1");
             auto localTransform = Techniques::MakeLocalTransform(
                 Identity<Float4x4>(), 
                 ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));

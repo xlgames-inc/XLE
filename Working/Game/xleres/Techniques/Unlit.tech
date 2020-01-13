@@ -62,8 +62,8 @@
             OUTPUT_WORLD_POSITION=1
             OUTPUT_NORMAL=1
             OUTPUT_TANGENT_FRAME=1
-            GEO_HAS_TANGENT_FRAME
-            GEO_HAS_BITANGENT
+            GEO_HAS_TEXTANGENT
+            GEO_HAS_TEXBITANGENT
             GEO_HAS_NORMAL
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents

@@ -2,9 +2,9 @@
     ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_TEXTANGENT
             GEO_HAS_NORMAL
         ~GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE=0
@@ -25,9 +25,9 @@
     ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System; ../techniques/shared.tech:Deferred
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_TEXTANGENT
             GEO_HAS_NORMAL
         ~GlobalEnvironment
             CLASSIFY_NORMAL_MAP
@@ -39,7 +39,7 @@
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_NORMAL
         ~Material
             MAT_ALPHA_TEST
@@ -56,9 +56,9 @@
     ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System
     ~Parameters
         ~Geometry
-            GEO_HAS_COLOUR
+            GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
-            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_TEXTANGENT
             GEO_HAS_NORMAL
             OUTPUT_LOCAL_NORMAL=1
             OUTPUT_LOCAL_VIEW_VECTOR=1

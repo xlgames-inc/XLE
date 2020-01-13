@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#undef GEO_HAS_COLOUR
-
 #include "../Transform.h"
 #include "../MainGeometry.h"
 #include "../TransformAlgorithm.h"

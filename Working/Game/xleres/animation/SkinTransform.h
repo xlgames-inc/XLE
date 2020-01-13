@@ -76,7 +76,7 @@ float3 TransformPoint_QT(float2x4 qt, float3 inputPosition)
 
 float3 TransformPositionThroughSkinning(VSInput input, float3 position)
 {
-    #if GEO_HAS_SKIN_WEIGHTS
+    #if GEO_HAS_BONEWEIGHTS
         float3 result = 0.0.xxx;
         #if SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
 
@@ -99,7 +99,7 @@ float3 TransformPositionThroughSkinning(VSInput input, float3 position)
 
 float3 TransformDirectionVectorThroughSkinning(VSInput input, float3 directionVector)
 {
-    #if GEO_HAS_SKIN_WEIGHTS
+    #if GEO_HAS_BONEWEIGHTS
         float3 result = 0.0.xxx;
         #if SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
 

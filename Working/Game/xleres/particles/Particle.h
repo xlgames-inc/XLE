@@ -11,7 +11,7 @@ struct ParticleVStoGS
 {
     float3 position : POSITION0;
 	
-	#if GEO_HAS_COLOUR==1
+	#if GEO_HAS_COLOR==1
 		float4 colour : COLOR0;
 	#endif
 
