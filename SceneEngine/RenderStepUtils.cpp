@@ -55,11 +55,21 @@ namespace SceneEngine
 
 	RenderCore::Techniques::SequencerContext MakeSequencerContext(
 		RenderCore::Techniques::ParsingContext& parserContext,
-		uint64_t sequencerCfgId,
+		const RenderCore::Techniques::SequencerConfig& sequencerConfig,
 		unsigned techniqueIndex)
 	{
 		RenderCore::Techniques::SequencerContext result;
-		result._sequencerConfigId = sequencerCfgId;
+		result._sequencerConfig = &sequencerConfig;
+		// techniqueIndex is not read in the newest iteration of Techniques::Draw. Consider using CreateTechniqueDelegateLegacy()
+		(void)techniqueIndex;
+		return result;
+	}
+
+	RenderCore::Techniques::SequencerContext MakeSequencerContext(
+		RenderCore::Techniques::ParsingContext& parserContext,
+		unsigned techniqueIndex)
+	{
+		RenderCore::Techniques::SequencerContext result;
 		// techniqueIndex is not read in the newest iteration of Techniques::Draw. Consider using CreateTechniqueDelegateLegacy()
 		(void)techniqueIndex;
 		return result;

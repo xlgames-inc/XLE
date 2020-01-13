@@ -251,7 +251,7 @@ namespace RenderCore { namespace Techniques
 
         RenderPassFragment(const RenderPassFragment&) = delete;
         RenderPassFragment& operator=(const RenderPassFragment&) = delete;
-    private:
+    protected:
         RenderPassInstance* _rpi;
         const FrameBufferFragmentMapping* _mapping;
         unsigned _currentPassIndex;

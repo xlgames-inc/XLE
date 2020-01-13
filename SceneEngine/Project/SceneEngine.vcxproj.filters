@@ -342,6 +342,8 @@
     </ClInclude>
     <ClInclude Include="..\RenderStep.h" />
     <ClInclude Include="..\RenderStepUtils.h" />
+    <ClInclude Include="..\RenderStep_PrepareShadows.h" />
+    <ClInclude Include="..\RenderStep_ResolveHDR.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

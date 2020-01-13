@@ -258,7 +258,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             const auto& globalDesc = delegate.GetGlobalLightingDesc();
-            result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS_G(context, 11);
+            result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS_G(context, 6);
 
             if (globalDesc._diffuseIBL[0]) {
                 MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(7, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._diffuseIBL)->Actualize()->GetShaderResource()));
@@ -679,18 +679,34 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class RenderStep_LightingResolve : public IRenderStep
+	{
+	public:
+		const RenderStepFragmentInterface& GetInterface() const override { return _fragment; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
+
+		RenderStep_LightingResolve(bool precisionTargets);
+	private:
+		RenderStepFragmentInterface _fragment;
+	};
+
 	void RenderStep_LightingResolve::Execute(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi);
 	}
 
 	RenderStep_LightingResolve::RenderStep_LightingResolve(bool precisionTargets)
+	: _fragment(RenderCore::PipelineType::Graphics)
 	{
 		// Now, this is awkward because we want to first write to the stencil buffer using the depth information,
         // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
@@ -718,37 +734,43 @@ namespace SceneEngine
 			TextureDesc::Dimensionality::Undefined,
 			TextureViewDesc::Flags::JustDepth};
 
-		SubpassDesc firstSubpass {
-			{AttachmentViewDesc{lightResolveTarget, LoadStore::DontCare, LoadStore::Retain}}, 
-			AttachmentViewDesc{depthTarget, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}};
+		SubpassDesc firstSubpass;
+		firstSubpass.AppendOutput(lightResolveTarget, LoadStore::DontCare, LoadStore::Retain);
+		firstSubpass.SetDepthStencil(depthTarget, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil);
 
 			// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
-		SubpassDesc secondSubpass {
-			{AttachmentViewDesc { lightResolveTarget, LoadStore::Retain, LoadStore::Retain } }, 
-			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justStencilWindow } };
+		SubpassDesc secondSubpass;
+		secondSubpass.AppendOutput(lightResolveTarget, LoadStore::Retain, LoadStore::Retain);
+		secondSubpass.SetDepthStencil({ depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justStencilWindow });
+
 		auto gbufferStore = LoadStore::Retain;	// (technically only need retain when we're going to use these for debugging)
 		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
-		secondSubpass._input.push_back(
+		secondSubpass.AppendInput(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse),
 				LoadStore::Retain, gbufferStore,
 				{diffuseAspect}
 			});
-		secondSubpass._input.push_back(
+		secondSubpass.AppendInput(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal),
 				LoadStore::Retain, gbufferStore
 			});
-		secondSubpass._input.push_back(
+		secondSubpass.AppendInput(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter),
 				LoadStore::Retain, gbufferStore
 			});
-		secondSubpass._input.push_back(
+		secondSubpass.AppendInput(
 			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justDepthWindow });
 
 		_fragment.AddSubpass(std::move(firstSubpass));
 		_fragment.AddSubpass(std::move(secondSubpass));
+	}
+
+	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(bool precisionTargets)
+	{
+		return std::make_shared<RenderStep_LightingResolve>(precisionTargets);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -12,9 +12,11 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/PtrUtils.h"
 
@@ -45,9 +47,30 @@ namespace SceneEngine
         IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
         LightingParserContext& lightingParserContext,
+		RenderStepFragmentInstance& rpi,
 		ViewDelegate_Forward& executedScene);
 
-	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Forward::GetInterface() const
+	class RenderStep_Forward : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderStepFragmentInterface& GetInterface() const override;
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
+
+		RenderStep_Forward(bool precisionTargets);
+		~RenderStep_Forward();
+	private:
+		RenderStepFragmentInterface _forward;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _depthOnlyDelegate;
+	};
+
+	const RenderStepFragmentInterface& RenderStep_Forward::GetInterface() const
 	{
 		return _forward;
 	}
@@ -61,16 +84,31 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
-		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
+		ForwardLightingModel_Render(
+			threadContext, parsingContext, lightingParserContext,
+			rpi,
+			*checked_cast<ViewDelegate_Forward*>(viewDelegate));
 	}
 
 	RenderStep_Forward::RenderStep_Forward(bool precisionTargets)
+	: _forward(RenderCore::PipelineType::Graphics)
 	{
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+
+			//  We must disable z write (so all shaders can be early-depth-stencil)
+            //      (this is because early-depth-stencil will normally write to the depth
+            //      buffer before the alpha test has been performed. The pre-depth pass
+            //      will switch early-depth-stencil on and off as necessary, but in the second
+            //      pass we want it on permanently because the depth reject will end up performing
+            //      the same job as alpha testing)
+		_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(techniqueSetFile, sharedResources, RenderCore::Techniques::TechniqueDelegateForwardFlags::DisableDepthWrite);
+		_depthOnlyDelegate = RenderCore::Techniques::CreateTechniqueDelegate_DepthOnly(techniqueSetFile, sharedResources);
+
 		AttachmentDesc lightResolveAttachmentDesc =
 			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
@@ -78,27 +116,49 @@ namespace SceneEngine
 				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
 
 		AttachmentDesc msDepthDesc =
-            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil };
 
         auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
 		auto depth = _forward.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
 
-		_forward.AddSubpass(
-			SubpassDesc {
-				std::vector<AttachmentViewDesc> {
-					{ output, LoadStore::Clear, LoadStore::Retain },
-				},
-				{depth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
-			});
+		SubpassDesc depthOnlySubpass;
+		depthOnlySubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
+
+		SubpassDesc mainSubpass;
+		mainSubpass.AppendOutput(output, LoadStore::Clear);
+		mainSubpass.SetDepthStencil(depth);
+
+		_forward.AddSubpass(depthOnlySubpass.SetName("DepthOnly"), _depthOnlyDelegate);
+		_forward.AddSubpass(mainSubpass.SetName("MainForward"), _forwardIllumDelegate);
 	}
 
 	RenderStep_Forward::~RenderStep_Forward() {}
 
+	std::shared_ptr<IRenderStep> CreateRenderStep_Forward(bool precisionTargets) { return std::make_shared<RenderStep_Forward>(precisionTargets); }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Direct::GetInterface() const
+	class RenderStep_Direct : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderStepFragmentInterface& GetInterface() const override;
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
+
+		RenderStep_Direct();
+		~RenderStep_Direct();
+	private:
+		RenderStepFragmentInterface _direct;
+	};
+
+	const RenderStepFragmentInterface& RenderStep_Direct::GetInterface() const
 	{
 		return _direct;
 	}
@@ -112,34 +172,41 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
-		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
+		ForwardLightingModel_Render(
+			threadContext, parsingContext, lightingParserContext, 
+			rpi,
+			*checked_cast<ViewDelegate_Forward*>(viewDelegate));
 	}
 
 	RenderStep_Direct::RenderStep_Direct()
+	: _direct(RenderCore::PipelineType::Graphics)
 	{
 		AttachmentDesc msDepthDesc =
-            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil };
 
         auto output = _direct.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 		auto depth = _direct.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
 
-		_direct.AddSubpass(
-			SubpassDesc {
-				std::vector<AttachmentViewDesc> {
-					{ output, LoadStore::Clear, LoadStore::Retain },
-				},
-				{depth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
-			});
+		SubpassDesc depthOnlySubpass;
+		depthOnlySubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
+
+		SubpassDesc mainSubpass;
+		mainSubpass.AppendOutput(output, LoadStore::Clear);
+		mainSubpass.SetDepthStencil(depth);
+
+		_direct.AddSubpass(depthOnlySubpass.SetName("DepthOnly"));
+		_direct.AddSubpass(mainSubpass.SetName("MainForward"));
 	}
 
 	RenderStep_Direct::~RenderStep_Direct() {}
+
+	std::shared_ptr<IRenderStep> CreateRenderStep_Direct() { return std::make_shared<RenderStep_Direct>(); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -147,6 +214,7 @@ namespace SceneEngine
         IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
         LightingParserContext& lightingParserContext,
+		RenderStepFragmentInstance& rpi,
 		ViewDelegate_Forward& executedScene)
     {
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -171,30 +239,19 @@ namespace SceneEngine
 			// RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._depthOnly);
 			// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
-				threadContext, parsingContext, MakeSequencerContext(parsingContext, ~0ull, TechniqueIndex_DepthOnly),
+				threadContext, parsingContext, MakeSequencerContext(parsingContext, *rpi.GetSequencerConfig(), TechniqueIndex_DepthOnly),
 				executedScene._preDepth,
 				"MainScene-DepthOnly");
 			ReturnToSteadyState(metalContext);
 		}
 
-            /////
-
-		assert(0); // -- these state settings back to be set in the technique delegate
-        // RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._forward);
-
-            //  We must disable z write (so all shaders can be early-depth-stencil)
-            //      (this is because early-depth-stencil will normally write to the depth
-            //      buffer before the alpha test has been performed. The pre-depth pass
-            //      will switch early-depth-stencil on and off as necessary, but in the second
-            //      pass we want it on permanently because the depth reject will end up performing
-            //      the same job as alpha testing)
-        // metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
+		rpi.NextSubpass();
 
             /////
             
 		// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
         ExecuteDrawables(
-            threadContext, parsingContext, MakeSequencerContext(parsingContext, ~0ull, TechniqueIndex_General),
+            threadContext, parsingContext, MakeSequencerContext(parsingContext, *rpi.GetSequencerConfig(), TechniqueIndex_General),
 			executedScene._general,
 			"MainScene-General");
 

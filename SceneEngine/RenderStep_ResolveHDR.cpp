@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 
-#include "RenderStep.h"
+#include "RenderStep_ResolveHDR.h"
 #include "LightingTargets.h"
 #include "LightingParserContext.h"
 #include "LightingParser.h"
@@ -28,8 +28,7 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
@@ -49,13 +48,13 @@ namespace SceneEngine
 
 	RenderStep_SampleLuminance::RenderStep_SampleLuminance(const std::shared_ptr<RenderStep_ResolveHDR>& downstream)
 	: _downstream(downstream)
+	, _fragment(PipelineType::Compute)
 	{
 		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
 
 		SubpassDesc subpass;
 		subpass.AppendInput(hdrInput);
 		_fragment.AddSubpass(std::move(subpass));
-		_fragment._pipelineType = PipelineType::Compute;
 	}
 
 	RenderStep_SampleLuminance::~RenderStep_SampleLuminance()
@@ -65,6 +64,7 @@ namespace SceneEngine
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	RenderStep_ResolveHDR::RenderStep_ResolveHDR()
+	: _fragment(RenderCore::PipelineType::Graphics)
 	{
 		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
 		auto ldrOutput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
@@ -106,8 +106,7 @@ namespace SceneEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate*)
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");

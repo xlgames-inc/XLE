@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RayTracedShadows.h"
+#include "RenderStep_PrepareShadows.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
@@ -243,7 +244,7 @@ namespace SceneEngine
 			// ExecuteDrawablesContext executeDrawblesContext(parserContext);
             ExecuteDrawables(
                 threadContext, parserContext,
-				MakeSequencerContext(parserContext, ~0ull, TechniqueIndex_RTShadowGen),
+				MakeSequencerContext(parserContext, TechniqueIndex_RTShadowGen),
 				inputDrawables._general,
 				"RTShadowGen");
         CATCH_ASSETS_END(parserContext)

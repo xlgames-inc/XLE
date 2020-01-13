@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "RenderStep.h"
+#include "RenderStep_PrepareShadows.h"
 #include "LightingParserContext.h"
 #include "LightingParser.h"		// (for ILightingParserPlugin);
 #include "SceneEngineUtils.h"
@@ -101,7 +101,7 @@ namespace SceneEngine
         metalContext.Bind(resources._rasterizerState);
         ExecuteDrawables(
             threadContext, parserContext,
-			MakeSequencerContext(parserContext, ~0ull, TechniqueIndex_ShadowGen),
+			MakeSequencerContext(parserContext, TechniqueIndex_ShadowGen),
             executedScene._general,
             "ShadowGen-Prepare");
 
@@ -111,12 +111,13 @@ namespace SceneEngine
         return preparedResult;
     }
 
+	
+
 	void RenderStep_PrepareDMShadows::Execute(
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
@@ -132,6 +133,7 @@ namespace SceneEngine
 	}
 
 	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount)
+	: _fragment(RenderCore::PipelineType::Graphics)
 	{
 		auto output = _fragment.DefineAttachment(
 			Techniques::AttachmentSemantics::ShadowDepthMap, 
@@ -157,8 +159,7 @@ namespace SceneEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
@@ -170,8 +171,10 @@ namespace SceneEngine
 	}
 
 	RenderStep_PrepareRTShadows::RenderStep_PrepareRTShadows()
+	: _fragment(RenderCore::PipelineType::Graphics)
 	{
 	}
+
 	RenderStep_PrepareRTShadows::~RenderStep_PrepareRTShadows()
 	{
 	}

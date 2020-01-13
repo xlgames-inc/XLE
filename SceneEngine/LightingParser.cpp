@@ -13,6 +13,8 @@
 #include "LightingTargets.h"
 #include "LightInternal.h"
 #include "RenderStep.h"
+#include "RenderStep_PrepareShadows.h"
+#include "RenderStep_ResolveHDR.h"
 #include "PreparedScene.h"
 
 #include "RefractionsBuffer.h"
@@ -55,7 +57,7 @@ namespace SceneEngine
 			size_t _beginRenderStep = 0;
 			size_t _endRenderStep = 0;
 
-			std::vector<RenderCore::Techniques::SequencerConfigId> _perSubpassSequencerConfigIds;
+			std::vector<std::shared_ptr<RenderCore::Techniques::SequencerConfig>> _perSubpassSequencerConfigs;
 			std::vector<Techniques::FrameBufferFragmentMapping> _perStepRemappings;
 			std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
 		};
@@ -88,11 +90,11 @@ namespace SceneEngine
 		//		Setup render steps
 		//
 		if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred) {
-			_mainSceneRenderStep = std::make_shared<RenderStep_GBuffer>(enableParametersBuffer?1:2, precisionTargets);
+			_mainSceneRenderStep = CreateRenderStep_GBuffer(enableParametersBuffer?1:2, precisionTargets);
 		} else if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Forward) {
-			_mainSceneRenderStep = std::make_shared<RenderStep_Forward>(precisionTargets);
+			_mainSceneRenderStep = CreateRenderStep_Forward(precisionTargets);
 		} else {
-			_mainSceneRenderStep = std::make_shared<RenderStep_Direct>();
+			_mainSceneRenderStep = CreateRenderStep_Direct();
 		}
 
 		_renderSteps.push_back(_mainSceneRenderStep);
@@ -100,7 +102,7 @@ namespace SceneEngine
 		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
 		if (techniqueDesc._lightingModel != SceneTechniqueDesc::LightingModel::Direct) {
 			if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred)
-				_renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
+				_renderSteps.push_back(CreateRenderStep_LightingResolve(precisionTargets));
 			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
 			_renderSteps.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
 			_renderSteps.push_back(resolveHDR);
@@ -125,15 +127,21 @@ namespace SceneEngine
 		auto renderStepIterator = _renderSteps.begin();
 		while (renderStepIterator != _renderSteps.end()) {
 			std::vector<Techniques::FrameBufferDescFragment> fragments;
+			std::vector<RenderStepFragmentInterface::SubpassExtension> subpassExtensions;
+
 			auto renderStepEnd = renderStepIterator;
 			auto& firstInterface = (*renderStepEnd)->GetInterface();
-			auto pipelineType = firstInterface._pipelineType;
-			fragments.push_back(firstInterface);
+			auto pipelineType = firstInterface.GetFrameBufferDescFragment()._pipelineType;
+			fragments.push_back(firstInterface.GetFrameBufferDescFragment());
+			subpassExtensions.insert(subpassExtensions.end(), firstInterface.GetSubpassAddendums().begin(), firstInterface.GetSubpassAddendums().end());
+			assert(firstInterface.GetSubpassAddendums().size() == firstInterface.GetFrameBufferDescFragment()._subpasses.size());
 			++renderStepEnd;
 			for (; renderStepEnd != _renderSteps.end(); ++renderStepEnd) {
 				auto& interf = (*renderStepEnd)->GetInterface();
-				if (interf._pipelineType != pipelineType) break;
-				fragments.push_back(interf);
+				if (interf.GetFrameBufferDescFragment()._pipelineType != pipelineType) break;
+				fragments.push_back(interf.GetFrameBufferDescFragment());
+				subpassExtensions.insert(subpassExtensions.end(), interf.GetSubpassAddendums().begin(), interf.GetSubpassAddendums().end());
+				assert(interf.GetSubpassAddendums().size() == interf.GetFrameBufferDescFragment()._subpasses.size());
 			}
 		
 			auto merged = Techniques::MergeFragments(
@@ -171,23 +179,21 @@ namespace SceneEngine
 			newRenderPass._perStepRemappings = std::move(merged._remapping);
 			newRenderPass._outputAttachments = std::move(merged._outputAttachments);
 
-			// Fill in the SequencerConfigId for each render step
-			size_t subpassCounter = 0;
+			// Fill in the SequencerConfig for each render step
+			auto subpassIterator = subpassExtensions.begin();
 			for (auto step=renderStepIterator; step!=renderStepEnd; ++step) {
-				for (unsigned subpass=0; subpass<unsigned(fragments[step-renderStepIterator]._subpasses.size()); ++subpass) {
-					auto techniqueDel = (*step)->GetTechniqueDelegate(subpass);
-					if (techniqueDel._techniqueDelegate) {
+				for (unsigned subpass=0; subpass<unsigned(fragments[step-renderStepIterator]._subpasses.size()); ++subpass, ++subpassIterator) {
+					if (subpassIterator->_techniqueDelegate) {
 						auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
-							techniqueDel._techniqueDelegate,
-							techniqueDel._sequencerSelectors,
+							subpassIterator->_techniqueDelegate,
+							subpassIterator->_sequencerSelectors,
 							fbProps,
 							newRenderPass._fbDesc,
-							(unsigned)subpassCounter);
-						newRenderPass._perSubpassSequencerConfigIds.push_back(sequencerConfig);
+							(unsigned)(subpassIterator - subpassExtensions.begin()));
+						newRenderPass._perSubpassSequencerConfigs.push_back(sequencerConfig);
 					} else {
-						newRenderPass._perSubpassSequencerConfigIds.push_back(~0ull);
+						newRenderPass._perSubpassSequencerConfigs.push_back({});
 					}
-					++subpassCounter;
 				}
 			}
 
@@ -219,6 +225,56 @@ namespace SceneEngine
 	{
 		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators, targetAttachmentDesc, fbProps);
 	}
+
+	RenderCore::AttachmentName RenderStepFragmentInterface::DefineAttachment(uint64_t semantic, const RenderCore::AttachmentDesc& request)
+	{
+		return _frameBufferDescFragment.DefineAttachment(semantic, request);
+	}
+
+	RenderCore::AttachmentName RenderStepFragmentInterface::DefineTemporaryAttachment(const RenderCore::AttachmentDesc& request)
+	{
+		return _frameBufferDescFragment.DefineTemporaryAttachment(request);
+	}
+
+    void RenderStepFragmentInterface::AddSubpass(
+		RenderCore::SubpassDesc&& subpass,
+		const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate,
+		ParameterBox&& sequencerSelectors)
+	{
+		_frameBufferDescFragment.AddSubpass(std::move(subpass));
+		_subpassExtensions.emplace_back(
+			SubpassExtension {
+				techniqueDelegate, std::move(sequencerSelectors)
+			});
+	}
+
+	RenderStepFragmentInterface::RenderStepFragmentInterface(RenderCore::PipelineType pipelineType)
+	{
+		_frameBufferDescFragment._pipelineType = pipelineType;
+	}
+
+	RenderStepFragmentInterface::~RenderStepFragmentInterface() {}
+
+
+	const RenderCore::Techniques::SequencerConfig* RenderStepFragmentInstance::GetSequencerConfig() const
+	{
+		if (_currentPassIndex >= _sequencerConfigs.size())
+			return nullptr;
+		return _sequencerConfigs[_currentPassIndex].get();
+	}
+
+	RenderStepFragmentInstance::RenderStepFragmentInstance(
+		RenderCore::Techniques::RenderPassInstance& rpi,
+        const RenderCore::Techniques::FrameBufferFragmentMapping& mapping,
+		IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> sequencerConfigs)
+	: RenderCore::Techniques::RenderPassFragment(rpi, mapping)
+	{
+		_sequencerConfigs = sequencerConfigs;
+	}
+
+	RenderStepFragmentInstance::RenderStepFragmentInstance() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void LightingParser_InitBasicLightEnv(
         RenderCore::IThreadContext& context,
@@ -306,22 +362,22 @@ namespace SceneEngine
 						auto interf = renderStep.GetInterface();
 
 						auto merged = Techniques::MergeFragments(
-							{}, MakeIteratorRange(&interf, &interf+1));
+							{}, MakeIteratorRange(&interf.GetFrameBufferDescFragment(), &interf.GetFrameBufferDescFragment()+1));
 
 						Techniques::AttachmentPool shadowsAttachmentPool;
 						auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 
 						Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), shadowsAttachmentPool);
-						Techniques::RenderPassFragment rpf(rpi, merged._remapping[0]);
+						RenderStepFragmentInstance rpf(rpi, merged._remapping[0], {});
 						Metal::DeviceContext::Get(threadContext)->Bind(
 							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
 						renderStep._resource = shadowsAttachmentPool.GetResource(0);
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, {}, &shadowDelegate);
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
 					} else {
 						RenderStep_PrepareRTShadows renderStep;
-						Techniques::RenderPassFragment rpf;
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, {}, &shadowDelegate);
+						RenderStepFragmentInstance rpf;
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
 					}
 				CATCH_ASSETS_END(parsingContext)
 			}
@@ -343,6 +399,8 @@ namespace SceneEngine
 		auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
 		parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
 
+		technique._pipelineAccelerators->RebuildAllOutOfDatePipelines();		// (check for pipelines that need hot reloading)
+
 		for (const auto&rp:technique._renderPasses) {
 			Techniques::RenderPassInstance rpi;
 			if (rp._pipelineType == PipelineType::Graphics) {
@@ -358,12 +416,12 @@ namespace SceneEngine
 			auto stepRemappingIterator = rp._perStepRemappings.begin();
 			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
 				CATCH_ASSETS_BEGIN
-					Techniques::RenderPassFragment rpf(rpi, *stepRemappingIterator);
+					auto range = MakeIteratorRange(AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter), AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
+					RenderStepFragmentInstance rpf(rpi, *stepRemappingIterator, range);
 					IViewDelegate* viewDelegate = nullptr;
 					if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
 
-					auto range = MakeIteratorRange(AsPointer(rp._perSubpassSequencerConfigIds.begin() + subpassCounter), AsPointer(rp._perSubpassSequencerConfigIds.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
-					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, range, viewDelegate);
+					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
 					subpassCounter += (unsigned)range.size();
 				CATCH_ASSETS_END(parsingContext)
 			}

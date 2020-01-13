@@ -8,13 +8,17 @@
 #include <memory>
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class IRenderStateDelegate; class ProjectionDesc; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class IRenderStateDelegate; class ProjectionDesc; class SequencerConfig; }}
 
 namespace SceneEngine
 {
 	RenderCore::Techniques::SequencerContext MakeSequencerContext(
 		RenderCore::Techniques::ParsingContext& parserContext,
-		uint64_t sequencerCfgId,
+		const RenderCore::Techniques::SequencerConfig& sequencerConfig,
+		unsigned techniqueIndex);
+
+	RenderCore::Techniques::SequencerContext MakeSequencerContext(
+		RenderCore::Techniques::ParsingContext& parserContext,
 		unsigned techniqueIndex);
 
     void ExecuteDrawables(

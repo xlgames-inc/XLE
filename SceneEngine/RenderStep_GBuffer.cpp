@@ -44,23 +44,36 @@ namespace SceneEngine
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext);
 	
-	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_GBuffer::GetInterface() const
+	class RenderStep_GBuffer : public IRenderStep
 	{
-		return _createGBuffer;
-	}
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderStepFragmentInterface& GetInterface() const override { return _createGBuffer; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
 
-	auto RenderStep_GBuffer::GetTechniqueDelegate(unsigned subpassIdx) const -> TechniqueDelegate
-	{
-		ParameterBox box;
-		box.SetParameter((const utf8*)"GBUFFER_TYPE", _gbufferType);
-		return TechniqueDelegate {
-			_deferredIllumDelegate,
-			std::move(box) };
-	}
+		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
+		~RenderStep_GBuffer();
+	private:
+		RenderStepFragmentInterface _createGBuffer;
+		unsigned _gbufferType;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _deferredIllumDelegate;
+	};
 
 	RenderStep_GBuffer::RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets)
 	: _gbufferType(gbufferType)
+	, _createGBuffer(RenderCore::PipelineType::Graphics)
 	{
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Deferred(
+			techniqueSetFile,
+			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
+
 		// This render pass will include just rendering to the gbuffer and doing the initial
         // lighting resolve.
         //
@@ -114,37 +127,16 @@ namespace SceneEngine
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 
 		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
+		SubpassDesc subpass;
+		subpass.AppendOutput({ diffuse, LoadStore::Clear, LoadStore::Retain, {diffuseAspect} });
+		subpass.AppendOutput(normal, LoadStore::Clear, LoadStore::Retain);
+		if (gbufferType == 1)
+			subpass.AppendOutput(parameter, LoadStore::Clear, LoadStore::Retain);
+		subpass.SetDepthStencil(msDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain);
 
-        if (gbufferType == 1) {
-
-			_createGBuffer.AddSubpass(
-				SubpassDesc {
-					std::vector<AttachmentViewDesc> {
-						{ diffuse, LoadStore::Clear, LoadStore::Retain, {diffuseAspect} },
-						{ normal, LoadStore::Clear, LoadStore::Retain },
-						{ parameter, LoadStore::Clear, LoadStore::Retain }
-					},
-					{msDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
-				});
-            
-        } else {
-
-			_createGBuffer.AddSubpass(
-				SubpassDesc {
-					std::vector<AttachmentViewDesc> {
-						{ diffuse, LoadStore::DontCare, LoadStore::Retain, {diffuseAspect} },
-						{ normal, LoadStore::DontCare, LoadStore::Retain },
-					},
-					{msDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
-				});
-
-        }
-
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
-
-		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate(
-			techniqueSetFile,
-			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
+		ParameterBox box;
+		box.SetParameter((const utf8*)"GBUFFER_TYPE", _gbufferType);
+		_createGBuffer.AddSubpass(std::move(subpass), _deferredIllumDelegate, std::move(box));
 	}
 
 	RenderStep_GBuffer::~RenderStep_GBuffer() {}
@@ -203,8 +195,7 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IteratorRange<const RenderCore::Techniques::SequencerConfigId*> sequencerConfigs,
+		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -224,7 +215,7 @@ namespace SceneEngine
 			// ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
 				threadContext, parsingContext, 
-				MakeSequencerContext(parsingContext, sequencerConfigs[0], TechniqueIndex_Deferred),
+				MakeSequencerContext(parsingContext, *rpi.GetSequencerConfig(), TechniqueIndex_Deferred),
 				drawables._gbufferOpaque,
 				"MainScene-OpaqueGBuffer");
         } CATCH_ASSETS_END(parsingContext)
@@ -237,6 +228,11 @@ namespace SceneEngine
             LightingParser_DeferredPostGBuffer(threadContext, parsingContext, lightingParserContext, sceneParser, preparedScene, mainTargets);
         CATCH_ASSETS_END(parsingContext)
 		*/
+	}
+
+	std::shared_ptr<IRenderStep> CreateRenderStep_GBuffer(unsigned gbufferType, bool precisionTargets)
+	{
+		return std::make_shared<RenderStep_GBuffer>(gbufferType, precisionTargets);
 	}
 
 	void LightingParser_PreTranslucency(
@@ -297,7 +293,7 @@ namespace SceneEngine
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
 		ViewDelegate_Deferred& executedScene,
-		uint64_t sequencerCfgId)
+		const RenderCore::Techniques::SequencerConfig& sequencerCfg)
     {
 		auto& mainTargets = lightingParserContext.GetMainTargets();
 
@@ -355,7 +351,7 @@ namespace SceneEngine
 			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
                 context, parserContext,
-				MakeSequencerContext(parserContext, sequencerCfgId, TechniqueIndex_DepthOnly),
+				MakeSequencerContext(parserContext, sequencerCfg, TechniqueIndex_DepthOnly),
                 executedScene._transparentPreDepth,
                 "MainScene-TransPreDepth");
         }
@@ -365,7 +361,7 @@ namespace SceneEngine
 			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
                 context, parserContext,
-				MakeSequencerContext(parserContext, sequencerCfgId, TechniqueIndex_General),
+				MakeSequencerContext(parserContext, sequencerCfg, TechniqueIndex_General),
                 executedScene._transparent,
                 "MainScene-PostGBuffer");
         }
