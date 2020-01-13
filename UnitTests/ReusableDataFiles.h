@@ -103,17 +103,17 @@ static const char* s_basicTechniqueFile = R"--(
 			CLASSIFY_NORMAL_MAP
 			SKIP_MATERIAL_DIFFUSE=0
 
-	~NoPatches
+	~Deferred_NoPatches
 		~Inherit; Shared
 		VertexShader=xleres/deferred/basic.vsh:main
 		PixelShader=xleres/deferred/basic.psh:main
 
-	~PerPixel
+	~Deferred_PerPixel
 		~Inherit; Shared
 		VertexShader=xleres/deferred/basic.vsh:main
 		PixelShader=xleres/deferred/main.psh:frameworkEntry
 
-	~PerPixelAndEarlyRejection
+	~Deferred_PerPixelAndEarlyRejection
 		~Inherit; Shared
 		VertexShader=xleres/deferred/basic.vsh:main
 		PixelShader=xleres/deferred/main.psh:frameworkEntryWithEarlyRejection

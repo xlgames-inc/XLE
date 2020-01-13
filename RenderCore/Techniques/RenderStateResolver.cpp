@@ -16,7 +16,7 @@ namespace RenderCore { namespace Techniques
 
     IRenderStateDelegate::~IRenderStateDelegate() {}
 
-    Metal::RasterizerState BuildDefaultRastizerState(const Assets::RenderStateSet& states)
+    RasterizationDesc BuildDefaultRastizerDesc(const Assets::RenderStateSet& states)
     {
         auto cullMode = CullMode::Back;
         auto fillMode = FillMode::Solid;
@@ -31,8 +31,18 @@ namespace RenderCore { namespace Techniques
             fillMode = states._wireframe ? FillMode::Wireframe : FillMode::Solid;
         }
 
-        return Metal::RasterizerState(cullMode, true, fillMode, depthBias, 0.f, 0.f);
+		RasterizationDesc result;
+		result._cullMode = cullMode;
+		result._depthBiasConstantFactor = (float)depthBias;
+		result._depthBiasClamp = 0.f;
+		result._depthBiasSlopeFactor = 0.f;
+        return result;
     }
+
+	Metal::RasterizerState BuildDefaultRastizerState(const RenderCore::Assets::RenderStateSet& states)
+	{
+		return BuildDefaultRastizerDesc(states);
+	}
 
     class StateSetResolver_Default : public IRenderStateDelegate
     {

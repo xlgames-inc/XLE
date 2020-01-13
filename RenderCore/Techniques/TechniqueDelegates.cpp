@@ -4,12 +4,14 @@
 
 #include "TechniqueDelegates.h"
 #include "CompiledShaderPatchCollection.h"
+#include "CommonResources.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
 #include "../Assets/Services.h"
 #include "../Metal/Shader.h"
 #include "../Metal/ObjectFactory.h"
 #include "../IDevice.h"
+#include "../Format.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
@@ -23,12 +25,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-	static const auto s_perPixel = Hash64("PerPixel");
-	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
-	
-	static bool HasReturn(const GraphLanguage::NodeGraphSignature&);
-
-	static uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
+	static const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 
 	class InstantiateShaderGraphPreprocessor : public RenderCore::Assets::ISourceCodePreprocessor
 	{
@@ -185,9 +182,17 @@ namespace RenderCore { namespace Techniques
 		return singleton;
 	}
 
+	class CompiledShaderByteCode_InstantiateShaderGraph : public RenderCore::CompiledShaderByteCode
+	{
+	public:
+		static const uint64 CompileProcessType = CompileProcess_InstantiateShaderGraph;
+
+		using CompiledShaderByteCode::CompiledShaderByteCode;
+	};
+
 	static void TryRegisterDependency(
 		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode_InstantiateShaderGraph>>& future)
 	{
 		auto futureDepVal = future->GetDependencyValidation();
 		if (futureDepVal)
@@ -197,7 +202,7 @@ namespace RenderCore { namespace Techniques
 	class ShaderPatchFactory : public IShaderVariationFactory
 	{
 	public:
-		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
+		::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> MakeByteCodeFuture(
 			ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
 		{
 			char temp[MaxPath];
@@ -206,8 +211,10 @@ namespace RenderCore { namespace Techniques
 			meld << MakeStringSection(initializer.begin(), sep);
 
 			// patch collection & expansions
-			meld << "-" << std::hex << _patchCollection->GetGUID();
-			for (auto exp:_patchExpansions) meld << "-" << exp;
+			if (!XlEqString(MakeStringSection(initializer.begin(), sep), "null")) {
+				meld << "-" << std::hex << _patchCollection->GetGUID();
+				for (auto exp:_patchExpansions) meld << "-" << exp;
+			}
 
 			meld << MakeStringSection(sep, initializer.end());
 
@@ -227,27 +234,25 @@ namespace RenderCore { namespace Techniques
 				}
 			}
 
-			StringSection<> initializers[] = { MakeStringSection(temp), definesTable };
-			auto future = std::make_shared<::Assets::AssetFuture<CompiledShaderByteCode>>(temp);
-			::Assets::DefaultCompilerConstruction<CompiledShaderByteCode>(
-				*future,
-				initializers, dimof(initializers),
-				CompileProcess_InstantiateShaderGraph);
-			return future;
+			return ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable);
 		}
 
 		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines)
 		{
-			::Assets::FuturePtr<CompiledShaderByteCode> vsCode, psCode, gsCode;
+			::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> vsCode, psCode, gsCode;
 			vsCode = MakeByteCodeFuture(ShaderStage::Vertex, _entry->_vertexShaderName, defines);
 			psCode = MakeByteCodeFuture(ShaderStage::Pixel, _entry->_pixelShaderName, defines);
-			if (!_entry->_geometryShaderName.empty())
-				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, defines);
+			if (!_entry->_geometryShaderName.empty()) {
+				auto finalDefines = defines.AsString() + _soExtraDefines;
+				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, finalDefines);
+			}
 
 			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPatchFactory");
 			if (gsCode) {
+				std::vector<RenderCore::InputElementDesc> soElements = _soElements;
+				std::vector<unsigned> soStrides = _soStrides;
 				future->SetPollingFunction(
-					[vsCode, gsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
+					[vsCode, gsCode, psCode, soElements, soStrides](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
 
 					auto vsActual = vsCode->TryActualize();
 					auto gsActual = gsCode->TryActualize();
@@ -272,8 +277,12 @@ namespace RenderCore { namespace Techniques
 						return true;
 					}
 
+					StreamOutputInitializers soInit;
+					soInit._outputElements = MakeIteratorRange(soElements);
+					soInit._outputBufferStrides = MakeIteratorRange(soStrides);
+
 					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
-						RenderCore::Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual);
+						RenderCore::Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, soInit);
 					thatFuture.SetAsset(std::move(newShaderProgram), {});
 					return false;
 				});
@@ -313,7 +322,8 @@ namespace RenderCore { namespace Techniques
 		ShaderPatchFactory(
 			const TechniqueEntry& techEntry, 
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
-			IteratorRange<const uint64_t*> patchExpansions)
+			IteratorRange<const uint64_t*> patchExpansions,
+			const StreamOutputInitializers& so = {})
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
 		, _patchExpansions(patchExpansions)
@@ -325,29 +335,35 @@ namespace RenderCore { namespace Techniques
 			}
 
 			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;
+
+			if (!so._outputElements.empty() && !so._outputBufferStrides.empty()) {
+				std::stringstream str;
+				str << ";SO_OFFSETS=";
+				unsigned rollingOffset = 0;
+				for (const auto&e:so._outputElements) {
+					assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
+					if (rollingOffset!=0) str << ",";
+					str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
+					rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
+				}
+				_soExtraDefines = str.str();
+				_soElements = std::vector<RenderCore::InputElementDesc>(so._outputElements.begin(), so._outputElements.end());
+				_soStrides = std::vector<unsigned>(so._outputBufferStrides.begin(), so._outputBufferStrides.end());
+
+				_factoryGuid = HashCombine(Hash64(_soExtraDefines), _factoryGuid);
+				_factoryGuid = HashCombine(Hash64(so._outputBufferStrides.begin(), so._outputBufferStrides.end()), _factoryGuid);
+			}
 		}
 		ShaderPatchFactory() {}
 	private:
 		const TechniqueEntry* _entry;
 		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
 		IteratorRange<const uint64_t*> _patchExpansions;
+
+		std::string _soExtraDefines;
+		std::vector<RenderCore::InputElementDesc> _soElements;
+		std::vector<unsigned> _soStrides;
 	};
-
-	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
-	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
-
-	enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
-	static IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection)
-	{
-		if (patchCollection.GetInterface().HasPatchType(s_perPixel)) {
-			if (patchCollection.GetInterface().HasPatchType(s_earlyRejectionTest)) {
-				return IllumType::PerPixelAndEarlyRejection;
-			} else {
-				return IllumType::PerPixel;
-			}
-		}
-		return IllumType::NoPerPixel;
-	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -452,93 +468,332 @@ namespace RenderCore { namespace Techniques
 		//		T E C H N I Q U E   D E L E G A T E
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class TechniqueDelegatePrototype : public ITechniqueDelegate
+	class TechniqueDelegate_Base : public ITechniqueDelegate
+	{
+	protected:
+		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> ResolveVariation(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const TechniqueEntry& techEntry,
+			IteratorRange<const uint64_t*> patchExpansions)
+		{
+			StreamOutputInitializers soInit;
+			soInit._outputElements = MakeIteratorRange(_soElements);
+			soInit._outputBufferStrides = MakeIteratorRange(_soStrides);
+
+			ShaderPatchFactory factory(techEntry, shaderPatches, patchExpansions, soInit);
+			const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
+				selectors,
+				techEntry._selectorFiltering,
+				shaderPatches->GetInterface().GetSelectorRelevance(),
+				factory);
+			return variation._shaderFuture;
+		}
+
+		std::shared_ptr<TechniqueSharedResources> _sharedResources;
+		std::vector<RenderCore::InputElementDesc> _soElements;
+		std::vector<unsigned> _soStrides;
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static const auto s_perPixel = Hash64("PerPixel");
+	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
+	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
+	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
+	static uint64_t s_patchExp_earlyRejection[] = { s_earlyRejectionTest };
+
+	enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
+	static IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection)
+	{
+		if (patchCollection.GetInterface().HasPatchType(s_perPixel)) {
+			if (patchCollection.GetInterface().HasPatchType(s_earlyRejectionTest)) {
+				return IllumType::PerPixelAndEarlyRejection;
+			} else {
+				return IllumType::PerPixel;
+			}
+		}
+		return IllumType::NoPerPixel;
+	}
+
+	class TechniqueDelegate_Deferred : public TechniqueDelegate_Base
 	{
 	public:
 		ResolvedTechnique Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
-			const RenderCore::Assets::RenderStateSet& input) override;
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			IteratorRange<const uint64_t*> patchExpansions = {};
+			const TechniqueEntry* techEntry = &_noPatches;
+			switch (CalculateIllumType(*shaderPatches)) {
+			case IllumType::PerPixel:
+				techEntry = &_perPixel;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+				break;
+			case IllumType::PerPixelAndEarlyRejection:
+				techEntry = &_perPixelAndEarlyRejection;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+				break;
+			default:
+				break;
+			}
 
-		TechniqueDelegatePrototype(
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._rasterization = BuildDefaultRastizerDesc(stateSet);
+
+			bool deferredDecal = 
+					(stateSet._flag & Assets::RenderStateSet::Flag::BlendType)
+				&&	(stateSet._blendType == Assets::RenderStateSet::BlendType::DeferredDecal);
+			result._blend = deferredDecal
+				? CommonResources()._abStraightAlpha
+				: CommonResources()._abOpaque;
+			return result;
+		}
+
+		TechniqueDelegate_Deferred(
 			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
-			const std::shared_ptr<TechniqueSharedResources>& sharedResources);
-		~TechniqueDelegatePrototype();
-	private:
-		std::shared_ptr<TechniqueSharedResources> _sharedResources;
+			const std::shared_ptr<TechniqueSharedResources>& sharedResources)
+		: _techniqueSet(techniqueSet)
+		{
+			_sharedResources = sharedResources;
 
+			const auto noPatchesHash = Hash64("Deferred_NoPatches");
+			const auto perPixelHash = Hash64("Deferred_PerPixel");
+			const auto perPixelAndEarlyRejectionHash = Hash64("Deferred_PerPixelAndEarlyRejection");
+			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+			auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
+			auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
+			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+			}
+
+			_noPatches = *noPatchesSrc;
+			_perPixel = *perPixelSrc;
+			_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+		}
+	private:
 		std::shared_ptr<TechniqueSetFile> _techniqueSet;
 		TechniqueEntry _noPatches;
 		TechniqueEntry _perPixel;
 		TechniqueEntry _perPixelAndEarlyRejection;
 	};
 
-	auto TechniqueDelegatePrototype::Resolve(
-		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-		IteratorRange<const ParameterBox**> selectors,
-		const RenderCore::Assets::RenderStateSet& input) -> ResolvedTechnique
-	{
-		IteratorRange<const uint64_t*> patchExpansions = {};
-		const TechniqueEntry* techEntry = &_noPatches;
-		switch (CalculateIllumType(*shaderPatches)) {
-		case IllumType::PerPixel:
-			techEntry = &_perPixel;
-			patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
-			break;
-		case IllumType::PerPixelAndEarlyRejection:
-			techEntry = &_perPixelAndEarlyRejection;
-			patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
-			break;
-		default:
-			break;
-		}
-
-		// todo -- combine all of the selectors into a single box in the technique object itself (rather than having to do a merge here)
-		auto mergedTechniqueShaders = techEntry->_baseSelectors._selectors[0];
-		for (unsigned c=1; c<dimof(techEntry->_baseSelectors._selectors); ++c)
-			mergedTechniqueShaders.MergeIn(techEntry->_baseSelectors._selectors[c]);
-
-		ShaderPatchFactory factory(*techEntry, shaderPatches, patchExpansions);
-		const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
-			selectors,
-			mergedTechniqueShaders,
-			shaderPatches->GetInterface().GetSelectorRelevance(),
-			factory);
-
-		ResolvedTechnique result;
-		result._shaderProgram = variation._shaderFuture;
-		// default render states for now
-		return result;
-	}
-
-	TechniqueDelegatePrototype::TechniqueDelegatePrototype(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
-		const std::shared_ptr<TechniqueSharedResources>& sharedResources)
-	: _sharedResources(sharedResources)
-	, _techniqueSet(techniqueSet)
-	{
-		const auto noPatchesHash = Hash64("NoPatches");
-		const auto perPixelHash = Hash64("PerPixel");
-		const auto perPixelAndEarlyRejectionHash = Hash64("PerPixelAndEarlyRejection");
-		auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
-		auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
-		auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
-		if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
-			Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
-		}
-
-		_noPatches = *noPatchesSrc;
-		_perPixel = *perPixelSrc;
-		_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
-	}
-
-	TechniqueDelegatePrototype::~TechniqueDelegatePrototype() {}
-
-	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources)
 	{
-		return std::make_shared<TechniqueDelegatePrototype>(techniqueSet, sharedResources);
+		return std::make_shared<TechniqueDelegate_Deferred>(techniqueSet, sharedResources);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class TechniqueDelegate_Forward : public TechniqueDelegate_Base
+	{
+	public:
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			IteratorRange<const uint64_t*> patchExpansions = {};
+			const TechniqueEntry* techEntry = &_noPatches;
+			switch (CalculateIllumType(*shaderPatches)) {
+			case IllumType::PerPixel:
+				techEntry = &_perPixel;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+				break;
+			case IllumType::PerPixelAndEarlyRejection:
+				techEntry = &_perPixelAndEarlyRejection;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+				break;
+			default:
+				break;
+			}
+
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._rasterization = BuildDefaultRastizerDesc(stateSet);
+
+			if (stateSet._flag & Assets::RenderStateSet::Flag::ForwardBlend) {
+                result._blend = AttachmentBlendDesc {
+					stateSet._forwardBlendOp != BlendOp::NoBlending,
+					stateSet._forwardBlendSrc, stateSet._forwardBlendDst, stateSet._forwardBlendOp };
+            } else {
+                result._blend = Techniques::CommonResources()._abOpaque;
+            }
+			result._depthStencil = _depthStencil;
+			return result;
+		}
+
+		TechniqueDelegate_Forward(
+			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+			TechniqueDelegateForwardFlags::BitField flags)
+		: _techniqueSet(techniqueSet)
+		{
+			_sharedResources = sharedResources;
+
+			_depthStencil = {};
+			if (flags & TechniqueDelegateForwardFlags::DisableDepthWrite) {
+				_depthStencil = Techniques::CommonResources()._dsReadOnly;
+			}
+
+			const auto noPatchesHash = Hash64("Forward_NoPatches");
+			const auto perPixelHash = Hash64("Forward_PerPixel");
+			const auto perPixelAndEarlyRejectionHash = Hash64("Forward_PerPixelAndEarlyRejection");
+			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+			auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
+			auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
+			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+			}
+
+			_noPatches = *noPatchesSrc;
+			_perPixel = *perPixelSrc;
+			_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+		}
+	private:
+		std::shared_ptr<TechniqueSetFile> _techniqueSet;
+		TechniqueEntry _noPatches;
+		TechniqueEntry _perPixel;
+		TechniqueEntry _perPixelAndEarlyRejection;
+		DepthStencilDesc _depthStencil;
+	};
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Forward(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		TechniqueDelegateForwardFlags::BitField flags)
+	{
+		return std::make_shared<TechniqueDelegate_Forward>(techniqueSet, sharedResources, flags);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class TechniqueDelegate_DepthOnly : public TechniqueDelegate_Base
+	{
+	public:
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			IteratorRange<const uint64_t*> patchExpansions = {};
+			const TechniqueEntry* techEntry = &_noPatches;
+			if (shaderPatches->GetInterface().HasPatchType(s_earlyRejectionTest)) {
+				techEntry = &_earlyRejectionSrc;
+				patchExpansions = MakeIteratorRange(s_patchExp_earlyRejection);
+			}
+
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+
+			unsigned cullDisable    = !!(stateSet._flag & Assets::RenderStateSet::Flag::DoubleSided);
+			result._rasterization = _rs[cullDisable];
+			return result;
+		}
+
+		TechniqueDelegate_DepthOnly(
+			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+			const RSDepthBias& singleSidedBias,
+			const RSDepthBias& doubleSidedBias,
+			CullMode cullMode)
+		: _techniqueSet(techniqueSet)
+		{
+			_sharedResources = sharedResources;
+
+			_rs[0x0] = RasterizationDesc{cullMode,        FaceWinding::CCW, (float)singleSidedBias._depthBias, singleSidedBias._depthBiasClamp, singleSidedBias._slopeScaledBias};
+            _rs[0x1] = RasterizationDesc{CullMode::None,  FaceWinding::CCW, (float)doubleSidedBias._depthBias, doubleSidedBias._depthBiasClamp, doubleSidedBias._slopeScaledBias};
+
+			const auto noPatchesHash = Hash64("DepthOnly_NoPatches");
+			const auto earlyRejectionHash = Hash64("DepthOnly_EarlyRejection");
+			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
+			if (!noPatchesSrc || !earlyRejectionSrc) {
+				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+			}
+
+			_noPatches = *noPatchesSrc;
+			_earlyRejectionSrc = *earlyRejectionSrc;
+		}
+	private:
+		std::shared_ptr<TechniqueSetFile> _techniqueSet;
+		TechniqueEntry _noPatches;
+		TechniqueEntry _earlyRejectionSrc;
+
+		RasterizationDesc _rs[2];
+	};
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_DepthOnly(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const RSDepthBias& singleSidedBias,
+        const RSDepthBias& doubleSidedBias,
+        CullMode cullMode)
+	{
+		return std::make_shared<TechniqueDelegate_DepthOnly>(techniqueSet, sharedResources, singleSidedBias, doubleSidedBias, cullMode);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class TechniqueDelegate_RayTest : public TechniqueDelegate_Base
+	{
+	public:
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			IteratorRange<const uint64_t*> patchExpansions = {};
+			const TechniqueEntry* techEntry = &_noPatches;
+			if (shaderPatches->GetInterface().HasPatchType(s_earlyRejectionTest)) {
+				techEntry = &_earlyRejectionSrc;
+				patchExpansions = MakeIteratorRange(s_patchExp_earlyRejection);
+			}
+
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._depthStencil = CommonResources()._dsDisable;
+			// result._rasterization = CommonResources()._rsDisable;
+			return result;
+		}
+
+		TechniqueDelegate_RayTest(
+			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+			const StreamOutputInitializers& soInit)
+		: _techniqueSet(techniqueSet)
+		{
+			_sharedResources = sharedResources;
+			_soElements = std::vector<RenderCore::InputElementDesc>(soInit._outputElements.begin(), soInit._outputElements.end());
+			_soStrides = std::vector<unsigned>(soInit._outputBufferStrides.begin(), soInit._outputBufferStrides.end());
+
+			const auto noPatchesHash = Hash64("RayTest_NoPatches");
+			const auto earlyRejectionHash = Hash64("RayTest_EarlyRejection");
+			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
+			if (!noPatchesSrc || !earlyRejectionSrc) {
+				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+			}
+
+			_noPatches = *noPatchesSrc;
+			_earlyRejectionSrc = *earlyRejectionSrc;
+		}
+	private:
+		std::shared_ptr<TechniqueSetFile> _techniqueSet;
+		TechniqueEntry _noPatches;
+		TechniqueEntry _earlyRejectionSrc;
+	};
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const StreamOutputInitializers& soInit)
+	{
+		return std::make_shared<TechniqueDelegate_RayTest>(techniqueSet, sharedResources, soInit);
 	}
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}

@@ -6,6 +6,9 @@
 
 #include "DrawableDelegates.h"
 #include "ShaderVariationSet.h"
+#include "RenderStateResolver.h"		// (for RSDepthBias)
+
+namespace RenderCore { class StreamOutputInitializers; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -15,9 +18,30 @@ namespace RenderCore { namespace Techniques
 		UniqueShaderVariationSet _mainVariationSet;
 	};
 
-	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate(
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources);
+
+	namespace TechniqueDelegateForwardFlags { 
+		enum { DisableDepthWrite = 1<<0 };
+		using BitField = unsigned;
+	}
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Forward(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		TechniqueDelegateForwardFlags::BitField flags = 0);
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_DepthOnly(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const RSDepthBias& singleSidedBias = RSDepthBias(),
+        const RSDepthBias& doubleSidedBias = RSDepthBias(),
+        CullMode cullMode = CullMode::Back);
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const StreamOutputInitializers& soInit);
 
 	/** <summary>Backwards compatibility for legacy style techniques</summary>
 	This delegate allows for loading techniques from a legacy fixed function technique file.
@@ -29,6 +53,8 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::AttachmentBlendDesc& blend,
 		const RenderCore::RasterizationDesc& rasterization,
 		const RenderCore::DepthStencilDesc& depthStencil);
+
+	RasterizationDesc BuildDefaultRastizerDesc(const Assets::RenderStateSet& states);
 
 }}
 
