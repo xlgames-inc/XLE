@@ -75,7 +75,7 @@ namespace Sample
 		AddSystem(visOverlay);
 
 		auto trackingOverlay = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-			mouseOver, globals._techniqueContext,
+			mouseOver, globals._techniqueContext, _pipelineAccelerators,
 			modelLayer->GetCamera(), &RenderTrackingOverlay);
 		trackingOverlay->Set(scene);
 		AddSystem(trackingOverlay);

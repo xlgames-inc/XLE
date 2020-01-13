@@ -24,6 +24,8 @@
 #include "../RenderCore/Techniques/DrawableDelegates.h"
 #include "../RenderCore/Techniques/BasicDelegates.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../FixedFunctionModel/PreboundShaders.h"
 #include "../BufferUploads/IBufferUploads.h"
@@ -37,6 +39,10 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
+
+	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources);
 
 	class RayDefinitionUniformDelegate : public Techniques::IUniformBufferDelegate
 	{
@@ -78,6 +84,8 @@ namespace SceneEngine
 
 		Techniques::RenderPassInstance _rpi;
 		unsigned _queryId = ~0u;
+
+		std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
     };
 
     class ModelIntersectionResources
@@ -96,9 +104,6 @@ namespace SceneEngine
 
 		std::unique_ptr<RenderCore::Metal::QueryPool> _streamOutputQueryPool;
 
-		Metal::DepthStencilState _dds;
-		Metal::RasterizerState _rs;
-
 		std::shared_ptr<RayDefinitionUniformDelegate> _rayDefinition;
 		std::shared_ptr<FrustumDefinitionUniformDelegate> _frustumDefinition;
 		Techniques::AttachmentPool _dummyAttachmentPool;
@@ -108,8 +113,6 @@ namespace SceneEngine
     };
 
     ModelIntersectionResources::ModelIntersectionResources(const Desc& desc)
-	: _dds{false, false}
-	, _rs{Metal::RasterizerState::Null()}
     {
         auto& device = RenderCore::Assets::Services::GetDevice();
 
@@ -259,9 +262,7 @@ namespace SceneEngine
 	Techniques::SequencerContext ModelIntersectionStateContext::MakeRayTestSequencerTechnique()
 	{
 		Techniques::SequencerContext sequencer;
-		assert(0);	// have to assign the correct technique delegate for this operation
-		// sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
-		// sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
+		sequencer._sequencerConfig = _pimpl->_sequencerConfig.get();
 
 		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
@@ -333,8 +334,19 @@ namespace SceneEngine
 			metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
 		#endif
 
-		metalContext.Bind(_pimpl->_res->_dds);
-		metalContext.Bind(_pimpl->_res->_rs);
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+		auto techDelegate = CreateTechniqueDelegate(techniqueSetFile, sharedResources);
+
+		std::vector<SubpassDesc> subpasses;
+		subpasses.emplace_back(SubpassDesc{});
+		FrameBufferDesc fbDesc { {}, std::move(subpasses) };
+		_pimpl->_sequencerConfig = parsingContext._pipelineAcceleratorPool->CreateSequencerConfig(
+			techDelegate,
+			{}, {}, fbDesc);
+
+		// metalContext.Bind(_pimpl->_res->_dds);
+		// metalContext.Bind(_pimpl->_res->_rs);
     }
 
     ModelIntersectionStateContext::~ModelIntersectionStateContext()
@@ -367,117 +379,15 @@ namespace SceneEngine
 
     static const unsigned s_soStrides[] = { sizeof(ModelIntersectionStateContext::ResultEntry) };
 
-	class TechniqueDelegate_RayTest : public Techniques::ITechniqueDelegate_Old
+	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources)
 	{
-	public:
-		Metal::ShaderProgram* GetShader(
-			Techniques::ParsingContext& context,
-			const ParameterBox* shaderSelectors[],
-			const Techniques::DrawableMaterial& material,
-			unsigned techniqueIndex) override;
-
-		TechniqueDelegate_RayTest();
-		~TechniqueDelegate_RayTest();
-	private:
-		Techniques::UniqueShaderVariationSet _resolvedShaders;
-	};
-
-	static const std::string s_pixelShaderName = "null";
-	static const std::string s_geometryShaderName = "xleres/forward/raytest.gsh:triangles:gs_*";
-
-	static void TryRegisterDependency(
-		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
-	{
-		auto futureDepVal = future->GetDependencyValidation();
-		if (futureDepVal)
-			::Assets::RegisterAssetDependency(dst, futureDepVal);
-	}
-
-	class ShaderVariationFactory_RayTest : public Techniques::IShaderVariationFactory
-	{
-	public:
-		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines) 
-		{
-			std::string definesTable = defines.AsString() + ";OUTPUT_WORLD_POSITION=1";
-			auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(_entry->_vertexShaderName, definesTable);
-			auto psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_pixelShaderName, definesTable);
-
-			std::stringstream str;
-			str << ";SO_OFFSETS=";
-			unsigned rollingOffset = 0;
-			for (const auto&e:s_soEles) {
-				assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
-				if (rollingOffset!=0) str << ",";
-				str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
-				rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
-			}
-			definesTable += str.str();
-			auto gsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(s_geometryShaderName, definesTable);
-
-			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("RayTestShader");
-			future->SetPollingFunction(
-				[vsCode, gsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
-
-				auto vsActual = vsCode->TryActualize();
-				auto gsActual = gsCode->TryActualize();
-				auto psActual = psCode->TryActualize();
-
-				if (!vsActual || !gsActual || !psActual) {
-					auto vsState = vsCode->GetAssetState();
-					auto gsState = gsCode->GetAssetState();
-					auto psState = psCode->GetAssetState();
-					if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-						auto depVal = std::make_shared<::Assets::DependencyValidation>();
-						TryRegisterDependency(depVal, vsCode);
-						TryRegisterDependency(depVal, gsCode);
-						TryRegisterDependency(depVal, psCode);
-						thatFuture.SetInvalidAsset(depVal, nullptr);
-						return false;
-					}
-					return true;
-				}
-
-				StreamOutputInitializers so { MakeIteratorRange(s_soEles), MakeIteratorRange(s_soStrides) };
-				auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, so);
-				thatFuture.SetAsset(std::move(newShaderProgram), {});
-				return false;
-			});
-
-			return future;
-		}
-
-		ShaderVariationFactory_RayTest(const Techniques::TechniqueEntry& entry) : _entry(&entry) {}
-	private:
-		const Techniques::TechniqueEntry* _entry;
-	};
-
-	Metal::ShaderProgram* TechniqueDelegate_RayTest::GetShader(
-		Techniques::ParsingContext& context,
-		const ParameterBox* shaderSelectors[],
-		const Techniques::DrawableMaterial& material,
-		unsigned techniqueIndex)
-	{
-		auto techFuture = ::Assets::MakeAsset<Techniques::Technique>("xleres/Techniques/Illum.tech");
-		auto tech = techFuture->TryActualize();
-		if (!tech) return nullptr;
-
-		auto& entry = tech->GetEntry(techniqueIndex);
-		ShaderVariationFactory_RayTest factory(entry);
-		const auto& variation = _resolvedShaders.FindVariation(entry._baseSelectors, shaderSelectors, factory);
-		if (!variation._shaderFuture) return nullptr;
-		return variation._shaderFuture->TryActualize().get();
-	}
-
-	TechniqueDelegate_RayTest::TechniqueDelegate_RayTest()
-	{}
-
-	TechniqueDelegate_RayTest::~TechniqueDelegate_RayTest()
-	{}
-
-	std::shared_ptr<Techniques::ITechniqueDelegate_Old> CreateRayTestTechniqueDelegate()
-	{
-		return std::make_shared<TechniqueDelegate_RayTest>();
+		return RenderCore::Techniques::CreateTechniqueDelegate_RayTest(
+			techniqueSet, sharedResources, 
+			StreamOutputInitializers {
+				MakeIteratorRange(s_soEles),
+				MakeIteratorRange(s_soStrides)});
 	}
 }
 

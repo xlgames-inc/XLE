@@ -259,7 +259,7 @@ namespace GUILayer
 		{
 			_pimpl->_trackingLayer = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
 				_pimpl->_mouseOver,
-				techContext,
+				techContext, pipelineAcceleratorPool,
 				_pimpl->_modelLayer->GetCamera(), &RenderTrackingOverlay);
 		}
 

@@ -206,6 +206,7 @@ namespace ToolsRig
         MouseOverTrackingOverlay(
             const std::shared_ptr<VisMouseOver>& mouseOver,
             const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
             const std::shared_ptr<VisCameraSettings>& camera,
             OverlayFn&& overlayFn);
         ~MouseOverTrackingOverlay();
@@ -232,6 +233,7 @@ namespace ToolsRig
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
 		SceneEngine::IScene& scene);

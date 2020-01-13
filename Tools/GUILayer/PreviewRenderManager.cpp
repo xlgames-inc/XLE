@@ -133,6 +133,8 @@ namespace GUILayer
 		RenderCore::Techniques::FrameBufferPool frameBufferPool;
 		attachmentPool.Bind(FrameBufferProperties{(unsigned)width, (unsigned)height, TextureSamples::Create()});
 
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+
             ////////////
 
         ToolsRig::VisCameraSettings camSettings;
@@ -176,8 +178,6 @@ namespace GUILayer
 			ToolsRig::ModelVisSettings modelSettings;
 			// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 			// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-
-			auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 			sceneFuture = ToolsRig::MakeScene(pipelineAcceleratorPool, modelSettings);
 		}
 
@@ -214,7 +214,7 @@ namespace GUILayer
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.
         auto result = DrawPreview(
-			context, target, parserContext, 
+			context, target, parserContext, pipelineAcceleratorPool,
 			camSettings, envSettings,
 			*actualScene);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {

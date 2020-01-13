@@ -60,7 +60,5 @@ namespace SceneEngine
 
         static const unsigned s_maxResultCount = 256;
     };
-
-	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> CreateRayTestTechniqueDelegate();
 }
 

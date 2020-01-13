@@ -116,7 +116,6 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _renderStateDelegate;
 
 		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
-		
     };
 
     void ModelVisLayer::Render(
@@ -283,12 +282,11 @@ namespace ToolsRig
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
 		SceneEngine::IScene& scene)
     {
-		assert(0);
-#if 0
         try
         {
 			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
@@ -298,14 +296,21 @@ namespace ToolsRig
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
-			SceneEngine::SceneTechniqueDesc qualSettings{
+			SceneEngine::SceneTechniqueDesc techniqueDesc{
 				AsLightingModel(envSettings._lightingType),
-				&lightingParserDelegate,
 				MakeIteratorRange(lightingPlugins)};
+
+			auto compiledTechnique = CreateCompiledSceneTechnique(
+				techniqueDesc,
+				pipelineAccelerators,
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
+				parserContext.GetNamedResources().GetFrameBufferProperties());
 
 			SceneEngine::LightingParser_ExecuteScene(
 				context, renderTarget, parserContext,
-				scene, AsCameraDesc(cameraSettings), qualSettings);
+				*compiledTechnique,
+				lightingParserDelegate,
+				scene, AsCameraDesc(cameraSettings));
 
             if (parserContext.HasErrorString())
 				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
@@ -318,7 +323,6 @@ namespace ToolsRig
         }
         catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
         catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
-#endif
 
         return std::make_pair(DrawPreviewResult::Error, std::string());
     }
@@ -434,14 +438,20 @@ namespace ToolsRig
 			static auto visNormals =
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
 					Techniques::TechniqueIndex::VisNormals, {}, {}, {});
-			static auto depthOnly =
+
+			DepthStencilDesc ds;
+			ds._stencilEnable = true;
+			ds._stencilWriteMask = 0xff;
+			ds._frontFaceStencil = StencilDesc::AlwaysWrite;
+			static auto primeStencilBuffer =
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
-					Techniques::TechniqueIndex::DepthOnly, {}, {}, {});
+					Techniques::TechniqueIndex::DepthOnly, {}, {}, ds);
 
 			if (_pimpl->_settings._drawWireframe) {
 				CATCH_ASSETS_BEGIN
-					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
 						visWireframeDelegate, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
@@ -452,8 +462,9 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawNormals) {
 				CATCH_ASSETS_BEGIN
-					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
 						visNormals, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
@@ -480,8 +491,9 @@ namespace ToolsRig
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				CATCH_ASSETS_BEGIN
 					// Prime the stencil buffer with draw call indices
-					sequencerTechnique._sequencerConfigId = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
-						depthOnly, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+						primeStencilBuffer, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					sequencerTechnique._sequencerConfig = sequencerCfg.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
 						sequencerTechnique,
@@ -581,14 +593,14 @@ namespace ToolsRig
 	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
 		const RenderCore::Techniques::TechniqueContext& techniqueContext,
+		RenderCore::Techniques::PipelineAcceleratorPool& pipelineAccelerators,
         std::pair<Float3, Float3> worldSpaceRay,
 		SceneEngine::IScene& scene)
 	{
-		return {};
-
 		using namespace RenderCore;
 
 		Techniques::ParsingContext parserContext { techniqueContext };
+		parserContext._pipelineAcceleratorPool = &pipelineAccelerators;
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,
@@ -598,7 +610,6 @@ namespace ToolsRig
 		CATCH_ASSETS_BEGIN
 		
 			auto sequencerTechnique = stateContext.MakeRayTestSequencerTechnique();
-			// sequencerTechnique._techniqueIndex = Techniques::TechniqueIndex::DepthOnly;
 			SceneEngine::ExecuteSceneRaw(
 				threadContext, parserContext, 
 				sequencerTechnique,
@@ -708,7 +719,7 @@ namespace ToolsRig
 				scene = _sceneFuture->TryActualize().get();
 			    
             if (scene) {
-				auto intr = FirstRayIntersection(*RenderCore::Techniques::GetThreadContext(), *_techniqueContext, worldSpaceRay, *scene);
+				auto intr = FirstRayIntersection(*RenderCore::Techniques::GetThreadContext(), *_techniqueContext, *_pipelineAccelerators, worldSpaceRay, *scene);
 				if (intr._type != 0) {
 					if (        intr._drawCallIndex != _mouseOver->_drawCallIndex
 							||  intr._materialGuid != _mouseOver->_materialGuid
@@ -741,16 +752,19 @@ namespace ToolsRig
         MouseOverTrackingListener(
             const std::shared_ptr<VisMouseOver>& mouseOver,
             const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
             const std::shared_ptr<VisCameraSettings>& camera)
-            : _mouseOver(std::move(mouseOver))
-            , _techniqueContext(std::move(techniqueContext))
-            , _camera(std::move(camera))
+        : _mouseOver(mouseOver)
+        , _techniqueContext(techniqueContext)
+		, _pipelineAccelerators(pipelineAccelerators)
+        , _camera(camera)
         {}
         MouseOverTrackingListener::~MouseOverTrackingListener() {}
 
     protected:
         std::shared_ptr<VisMouseOver> _mouseOver;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
         std::shared_ptr<VisCameraSettings> _camera;
         
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
@@ -795,15 +809,17 @@ namespace ToolsRig
     MouseOverTrackingOverlay::MouseOverTrackingOverlay(
         const std::shared_ptr<VisMouseOver>& mouseOver,
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
         const std::shared_ptr<VisCameraSettings>& camera,
         OverlayFn&& overlayFn)
     : _overlayFn(std::move(overlayFn))
     {
         _mouseOver = mouseOver;
         _inputListener = std::make_shared<MouseOverTrackingListener>(
-            std::move(mouseOver),
-            std::move(techniqueContext), 
-            std::move(camera));
+            mouseOver,
+            techniqueContext, 
+			pipelineAccelerators,
+            camera);
     }
 
     MouseOverTrackingOverlay::~MouseOverTrackingOverlay() {}
