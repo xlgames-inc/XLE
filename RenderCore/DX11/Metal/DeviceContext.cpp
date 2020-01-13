@@ -71,6 +71,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         _underlying->OMSetDepthStencilState(depthStencil.GetUnderlying(), stencilRef);
 		_boundGraphicsPipeline = 0;
+		_boundStencilRefValue = stencilRef;
     }
 
     void DeviceContext::Bind(const IndexBufferView& IB)
@@ -263,6 +264,7 @@ namespace RenderCore { namespace Metal_DX11
 	{
         _renderTargetWidth = renderTargetWidth;
         _renderTargetHeight = renderTargetHeight;
+		_boundStencilRefValue = 0;		// reset this to some default value, to try to prevent state leakage
     }
 
     void DeviceContext::EndSubpass()
@@ -320,6 +322,7 @@ namespace RenderCore { namespace Metal_DX11
 		_inRenderPass = false;
         _renderTargetWidth = 0;
         _renderTargetHeight = 0;
+		_boundStencilRefValue = 0;
     }
 
     DeviceContext::~DeviceContext()
@@ -581,8 +584,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		const FLOAT blendFactors[] = {1.f, 1.f, 1.f, 1.f};
         _underlying->OMSetBlendState(realPipeline._blend.GetUnderlying(), blendFactors, 0xffffffff);
-		unsigned stencilRef = 0;
-        _underlying->OMSetDepthStencilState(realPipeline._depthStencil.GetUnderlying(), stencilRef);
+        _underlying->OMSetDepthStencilState(realPipeline._depthStencil.GetUnderlying(), _boundStencilRefValue);		// (reuse the stencil ref that was last passed to the DSS Bind() function)
 	}
 
 }}

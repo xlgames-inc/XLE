@@ -230,6 +230,8 @@ namespace RenderCore { namespace Metal_DX11
 
 		void Bind(const GraphicsPipeline&);
 		uint64_t _boundGraphicsPipeline;
+
+		unsigned _boundStencilRefValue;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
