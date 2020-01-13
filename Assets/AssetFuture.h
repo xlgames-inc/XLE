@@ -281,6 +281,23 @@ namespace Assets
 	template<typename AssetType>
 		void AssetFuture<AssetType>::SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&& newFunction)
 	{
+		// We can often just resolve the polling operation immediately. So go ahead and
+		// execute it now to see if we can resolve the polling operation straight out of the block
+		if (!newFunction(*this)) {
+			ScopedLock(_lock);
+			assert(_state == AssetState::Pending);
+			if (_pendingState != AssetState::Pending) {
+				_actualized = std::move(_pending);
+				_actualizationLog = std::move(_pendingActualizationLog);
+				_actualizedDepVal = std::move(_pendingDepVal);
+				// Note that we must change "_state" last -- because another thread can access _actualized without a mutex lock
+				// when _state is set to AssetState::Ready
+				// we should also consider a cache flush here to ensure the CPU commits in the correct order
+				_state = _pendingState;
+			}
+			return;
+		}
+
 		ScopedLock(_lock);
 		assert(!_pollingFunction);
 		assert(_state == AssetState::Pending);
