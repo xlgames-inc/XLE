@@ -149,6 +149,9 @@ namespace RenderCore
         StencilOp       _failOp = StencilOp::Keep;        ///< fail stencil test
         StencilOp       _depthFailOp = StencilOp::Keep;   ///< pass stencil but fail depth tests
         CompareOp       _comparisonOp = CompareOp::Always;
+
+		static StencilDesc NoEffect;
+		static StencilDesc AlwaysWrite;
     };
 
     /// Equivalent to MTLDepthStencilDescriptor or D3D12_DEPTH_STENCIL_DESC or VkPipelineDepthStencilStateCreateInfo
@@ -174,6 +177,9 @@ namespace RenderCore
     public:
         CullMode        _cullMode = CullMode::Back;
         FaceWinding     _frontFaceWinding = FaceWinding::CCW;
+		float			_depthBiasConstantFactor = 0.f;		///< truncated to integer on DX11 or DX12
+		float			_depthBiasClamp = 0.f;				///< zero means no clamping
+		float			_depthBiasSlopeFactor = 0.f;
 
 		uint64_t Hash() const;
     };

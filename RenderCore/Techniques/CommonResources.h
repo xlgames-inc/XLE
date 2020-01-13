@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../StateDesc.h"
 #include "../Metal/State.h"
 #include "../Metal/Buffer.h"
 
@@ -39,6 +40,20 @@ namespace RenderCore { namespace Techniques
         Metal::SamplerState _pointClampSampler;
 
         Metal::ConstantBuffer _localTransformBuffer;
+
+		///////////////////////////////////////
+
+		DepthStencilDesc _dsReadWrite;
+        DepthStencilDesc _dsReadOnly;
+        DepthStencilDesc _dsDisable;
+        DepthStencilDesc _dsReadWriteWriteStencil;
+        DepthStencilDesc _dsWriteOnly;
+
+		AttachmentBlendDesc _abStraightAlpha;
+		AttachmentBlendDesc _abAlphaPremultiplied;
+		AttachmentBlendDesc _abOpaque;
+		AttachmentBlendDesc _abOneSrcAlpha;
+		AttachmentBlendDesc _abAdditive;
 
     private:
         CommonResourceBox(CommonResourceBox&);

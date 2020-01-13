@@ -35,6 +35,18 @@ namespace RenderCore { namespace Techniques
         _pointClampSampler = SamplerState(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp);
 
         _localTransformBuffer = MakeConstantBuffer(GetObjectFactory(), sizeof(LocalTransformConstants));
+
+		_dsReadWrite = DepthStencilDesc {};
+		_dsReadOnly = DepthStencilDesc { CompareOp::LessEqual, false };
+        _dsDisable = DepthStencilDesc { CompareOp::Always, false };
+        _dsReadWriteWriteStencil = DepthStencilDesc { CompareOp::LessEqual, true, true, 0xff, 0xff, 0xff, StencilDesc::AlwaysWrite, StencilDesc::AlwaysWrite };
+		_dsWriteOnly = DepthStencilDesc { CompareOp::Always, true };
+
+		_abStraightAlpha = AttachmentBlendDesc { true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add };
+		_abAlphaPremultiplied = AttachmentBlendDesc { true, Blend::One, Blend::InvSrcAlpha, BlendOp::Add };
+		_abOneSrcAlpha = AttachmentBlendDesc { true, Blend::One, Blend::SrcAlpha, BlendOp::Add };
+		_abAdditive = AttachmentBlendDesc { true, Blend::One, Blend::One, BlendOp::Add };
+		_abOpaque = AttachmentBlendDesc { };
     }
 
     CommonResourceBox& CommonResources()

@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "StateDesc.h"
+#include "../Utility/MemoryUtils.h"
 #include <cassert>
 
 namespace RenderCore
@@ -69,11 +70,29 @@ namespace RenderCore
             ;
     }
 
+	static unsigned int FloatBits(float input)
+    {
+            // (or just use a reinterpret cast)
+        union Converter { float f; unsigned int i; };
+        Converter c; c.f = input; 
+        return c.i;
+    }
+
 	uint64_t RasterizationDesc::Hash() const
 	{
 		assert((unsigned(_cullMode) & ~0xff) == 0);
         assert((unsigned(_frontFaceWinding) & ~0xff) == 0);
-		return uint64_t(_cullMode) | (uint64_t(_frontFaceWinding) << 8ull);
+		uint64_t p0 = 
+			  uint64_t(_cullMode) 
+			| (uint64_t(_frontFaceWinding) << 8ull)
+			| (uint64_t(FloatBits(_depthBiasConstantFactor)) << 32ull);
+		uint64_t p1 = 
+				uint64_t(FloatBits(_depthBiasClamp))
+			|	(uint64_t(FloatBits(_depthBiasSlopeFactor)) << 32ull);
+		return HashCombine(p0, p1);
 	}
+
+	StencilDesc StencilDesc::NoEffect { StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
+	StencilDesc StencilDesc::AlwaysWrite { StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
 }
 

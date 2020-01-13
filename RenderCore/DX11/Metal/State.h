@@ -109,7 +109,7 @@ namespace RenderCore { namespace Metal_DX11
     class RasterizerState
     {
     public:
-        RasterizerState(const RasterizationDesc& desc) : RasterizerState(desc._cullMode, desc._frontFaceWinding == FaceWinding::CCW) {}
+        RasterizerState(const RasterizationDesc& desc) : RasterizerState(desc._cullMode, desc._frontFaceWinding == FaceWinding::CCW, FillMode::Solid, (int)desc._depthBiasConstantFactor, desc._depthBiasClamp, desc._depthBiasSlopeFactor) {}
 		RasterizerState(CullMode cullmode = CullMode::Back, bool frontCounterClockwise = true);
         RasterizerState(
             CullMode cullmode, bool frontCounterClockwise,
