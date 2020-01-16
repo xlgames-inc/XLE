@@ -10,7 +10,7 @@ endif()
 file(GLOB PlustacheSrc "plustache/*.cpp")
 file(GLOB ZLibSrc "zlib/*.c" "zlib/*.h")
 set(StamSimpleFluidSrc StamSimpleFluid/solver.c)
-set(CParseSource cparse/builtin-features.cpp cparse/containers.cpp cparse/functions.cpp cparse/packToken.cpp cparse/shunting-yard.cpp)
+set(CParseSource cparse/containers.cpp cparse/functions.cpp cparse/packToken.cpp cparse/shunting-yard.cpp)
 
 BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${FmtSrc};${StackWalkerSrc};${PlustacheSrc};${StamSimpleFluidSrc};${ZLibSrc};${AntlrSrc};${CParseSource}")
 
@@ -21,6 +21,7 @@ target_include_directories(ForeignMisc PUBLIC ${CMAKE_CURRENT_LIST_DIR})        
 target_include_directories(ForeignMisc INTERFACE half-1.9.2/include eigen)
 target_include_directories(ForeignMisc INTERFACE cml-2_1_2)
 target_include_directories(ForeignMisc INTERFACE LuaBridge/Source/LuaBridge Lua/src)
+target_include_directories(ForeignMisc INTERFACE json/include)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(ForeignMisc PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)

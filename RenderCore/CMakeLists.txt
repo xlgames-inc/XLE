@@ -7,6 +7,7 @@ list(APPEND Src
     ResourceUtils.cpp
     ShaderLangUtil.cpp
     ShaderService.cpp
+    StateDesc.cpp
     UniformsStream.cpp)
 file(GLOB Headers "*.h")
 

@@ -42,6 +42,7 @@ set(Headers
     VariantUtils.h)
 set(NetworkingSrc Networking/socket.cpp)
 set(StreamsSrc 
+    Streams/ConditionalPreprocessingTokenizer.cpp
     Streams/Data.cpp
     Streams/DataSerialize.cpp
     Streams/FileUtils.cpp

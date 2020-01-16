@@ -3,13 +3,18 @@ set(Src
     CommonResources.cpp
     CompiledShaderPatchCollection.cpp
     DeferredShaderResource.cpp
+    DescriptorSetAccelerator.cpp
     DrawableMaterial.cpp
     Drawables.cpp
     ParsingContext.cpp
+    PipelineAccelerator.cpp
     RenderPass.cpp
     RenderPassUtils.cpp
     RenderStateResolver.cpp
     ShaderVariationSet.cpp
+    SimpleModelDeform.cpp
+    SimpleModelRenderer.cpp
+    SkinDeformer.cpp
     TechniqueDelegates.cpp
     Techniques.cpp
     TechniqueUtils.cpp)
@@ -24,10 +29,14 @@ set(Headers
     DrawableMaterial.h
     Drawables.h
     ParsingContext.h
+    PipelineAccelerator.h
     RenderPass.h
     RenderPassUtils.h
     RenderStateResolver.h
     ShaderVariationSet.h
+    SimpleModelDeform.h
+    SimpleModelRenderer.h
+    SkinDeformer.h
     TechniqueDelegates.h
     TechniqueMaterial.h
     Techniques.h

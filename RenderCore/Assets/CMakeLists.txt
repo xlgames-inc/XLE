@@ -5,13 +5,11 @@ set(Src
     MaterialScaffold.cpp
     ModelScaffold.cpp
     PredefinedCBLayout.cpp
+    PredefinedDescriptorSetLayout.cpp
     RawAnimationCurve.cpp
     RawMaterial.cpp
     # Services.cpp  (*1 see above)
     ShaderPatchCollection.cpp
-    SimpleModelDeform.cpp
-    # SimpleModelRenderer.cpp  (*1 see above)
-    SkinDeformer.cpp
     SkinningScaffold.cpp
     TransformationCommands.cpp
     ../GeoProc/GeometryAlgorithm.cpp
@@ -31,14 +29,12 @@ set(Headers
     ModelImmutableData.h
     ModelScaffold.h
     PredefinedCBLayout.h
+    PredefinedDescriptorSetLayout.h
     RawAnimationCurve.h
     RawMaterial.h
     Services.h
     ShaderPatchCollection.h
-    SimpleModelDeform.h
-    SimpleModelRenderer.h
     SkeletonScaffoldInternal.h
-    SkinDeformer.h
     TransformationCommands.h
     ../GeoProc/GeometryAlgorithm.h
     ../GeoProc/GeoProcUtil.h
@@ -54,5 +50,5 @@ set(Headers
 BasicLibrary(RenderCoreAssets "${Src};${Headers}")
 target_link_libraries(RenderCoreAssets ForeignMisc)  # required to pull in interface include directories (etc)
 
-BasicLibrary(RenderCoreAssetsServices "AssetUtils.cpp;Services.cpp;SimpleModelRenderer.cpp")
+BasicLibrary(RenderCoreAssetsServices "AssetUtils.cpp;Services.cpp")
 target_link_libraries(RenderCoreAssetsServices ForeignMisc)  # required to pull in interface include directories (etc)
