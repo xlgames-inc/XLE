@@ -196,7 +196,7 @@ namespace RenderCore { namespace Assets
 	template <>
 		Float3 CurveElementDequantDecompressor<Float3>::operator()(const void* data) const {
 			assert(_fmt == Format::R16_UNORM);
-			Float3 result = _dequantBlock->_mins;
+			Float3 result { _dequantBlock->_mins[0], _dequantBlock->_mins[1], _dequantBlock->_mins[2] };
 			auto* v = (const uint16*)data;
 			// Dequantize each element separately
 			if (_dequantBlock->_elementFlags & (1<<0)) result[0] = LinearInterpolate(_dequantBlock->_mins[0], _dequantBlock->_maxs[0], float(*v++)/float(0xffff));
