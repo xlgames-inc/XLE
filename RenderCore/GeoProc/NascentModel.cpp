@@ -156,19 +156,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		{
 			Serialization::NascentBlockSerializer tempBlock;
 			for (auto i = objs._rawGeos.begin(); i!=objs._rawGeos.end(); ++i) {
-				i->second.Serialize(tempBlock, *result);
+				i->second.SerializeWithResourceBlock(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
-			::Serialize(serializer, objs._rawGeos.size());
+			Serialize(serializer, objs._rawGeos.size());
 		}
 
 		{
 			Serialization::NascentBlockSerializer tempBlock;
 			for (auto i = objs._skinnedGeos.begin(); i!=objs._skinnedGeos.end(); ++i) {
-				i->second.Serialize(tempBlock, *result);
+				i->second.SerializeWithResourceBlock(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
-			::Serialize(serializer, objs._skinnedGeos.size());
+			Serialize(serializer, objs._skinnedGeos.size());
 		}
 		return result;
 	}
@@ -264,9 +264,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	{
 		Serialization::NascentBlockSerializer serializer;
 
-		::Serialize(serializer, cmdStream);
+		Serialize(serializer, cmdStream);
 		auto largeResourcesBlock = SerializeSkin(serializer, geoObjects);
-		::Serialize(serializer, skeleton);
+		Serialize(serializer, skeleton);
 
 			// Generate the default transforms and serialize them out
 			// unfortunately this requires we use the run-time types to
@@ -277,12 +277,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			auto defaultPoseData = CalculateDefaultPoseData(skeleton.GetSkeletonMachine(), skeleton.GetDefaultParameters(), cmdStream, geoObjects);
 			serializer.SerializeSubBlock(MakeIteratorRange(defaultPoseData._defaultTransforms));
 			serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
-			::Serialize(serializer, defaultPoseData._boundingBox.first);
-			::Serialize(serializer, defaultPoseData._boundingBox.second);
+			Serialize(serializer, defaultPoseData._boundingBox.first);
+			Serialize(serializer, defaultPoseData._boundingBox.second);
 		}
 
 		// Find the max LOD value, and serialize that
-		::Serialize(serializer, cmdStream.GetMaxLOD());
+		Serialize(serializer, cmdStream.GetMaxLOD());
 
 		// Serialize human-readable metrics information
 		std::stringstream metricsStream;

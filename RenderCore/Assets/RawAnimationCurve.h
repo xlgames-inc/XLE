@@ -34,7 +34,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         template<typename Serializer>
-            void        Serialize(Serializer& outputSerializer) const;
+            void        SerializeMethod(Serializer& outputSerializer) const;
 
         float       StartTime() const;
         float       EndTime() const;
@@ -60,14 +60,14 @@ namespace RenderCore { namespace Assets
     };
 
     template<typename Serializer>
-        void        RawAnimationCurve::Serialize(Serializer& outputSerializer) const
+        void        RawAnimationCurve::SerializeMethod(Serializer& outputSerializer) const
     {
-        ::Serialize(outputSerializer, _timeMarkers);
-        ::Serialize(outputSerializer, _keyData);
-        ::Serialize(outputSerializer, _keyDataDesc._flags);
-		::Serialize(outputSerializer, _keyDataDesc._elementStride);
-        ::Serialize(outputSerializer, unsigned(_keyDataDesc._elementFormat));
-		::Serialize(outputSerializer, unsigned(_interpolationType));
+        Serialize(outputSerializer, _timeMarkers);
+        Serialize(outputSerializer, _keyData);
+        Serialize(outputSerializer, _keyDataDesc._flags);
+		Serialize(outputSerializer, _keyDataDesc._elementStride);
+        Serialize(outputSerializer, unsigned(_keyDataDesc._elementFormat));
+		Serialize(outputSerializer, unsigned(_interpolationType));
     }
 
 }}

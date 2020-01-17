@@ -55,7 +55,7 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<::Assets::DependencyValidation>&	GetDependencyValidation() const { return _depVal; }
 		const ::Assets::DirectorySearchRules&					GetDirectorySearchRules() const { return _searchRules; }
 
-        void Serialize(OutputStreamFormatter& formatter) const;
+        void SerializeMethod(OutputStreamFormatter& formatter) const;
         
         RawMaterial();
         RawMaterial(

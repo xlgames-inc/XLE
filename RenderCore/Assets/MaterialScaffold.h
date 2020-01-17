@@ -157,7 +157,7 @@ namespace RenderCore { namespace Assets
 		uint64_t			_patchCollection = 0ull;
 	
 		template<typename Serializer>
-			void Serialize(Serializer& serializer) const;
+			void SerializeMethod(Serializer& serializer) const;
 	};
 
 
@@ -204,13 +204,13 @@ namespace RenderCore { namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename Serializer>
-        void MaterialScaffold::Material::Serialize(Serializer& serializer) const
+        void MaterialScaffold::Material::SerializeMethod(Serializer& serializer) const
     {
-        ::Serialize(serializer, _bindings);
-        ::Serialize(serializer, _matParams);
-        ::Serialize(serializer, _stateSet.GetHash());
-        ::Serialize(serializer, _constants);
-		::Serialize(serializer, _patchCollection);
+        Serialize(serializer, _bindings);
+        Serialize(serializer, _matParams);
+        Serialize(serializer, _stateSet.GetHash());
+        Serialize(serializer, _constants);
+		Serialize(serializer, _patchCollection);
     }
 		
     inline RenderStateSet::RenderStateSet()

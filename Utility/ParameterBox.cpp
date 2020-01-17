@@ -1387,7 +1387,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        void    ParameterBox::Serialize(OutputStreamFormatter& stream) const
+        void    ParameterBox::SerializeWithCharType(OutputStreamFormatter& stream) const
     {
         std::vector<CharType> tmpBuffer;
         std::vector<CharType> nameBuffer;
@@ -1576,9 +1576,9 @@ namespace Utility
     {
     }
 
-    template void ParameterBox::Serialize<utf8>(OutputStreamFormatter& stream) const;
-    template void ParameterBox::Serialize<ucs2>(OutputStreamFormatter& stream) const;
-    template void ParameterBox::Serialize<ucs4>(OutputStreamFormatter& stream) const;
+    template void ParameterBox::SerializeWithCharType<utf8>(OutputStreamFormatter& stream) const;
+    template void ParameterBox::SerializeWithCharType<ucs2>(OutputStreamFormatter& stream) const;
+    template void ParameterBox::SerializeWithCharType<ucs4>(OutputStreamFormatter& stream) const;
 
     template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
     template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);

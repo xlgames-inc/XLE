@@ -85,7 +85,7 @@ namespace RenderCore { namespace Assets
 		}
 	}
 
-	void ShaderPatchCollection::Serialize(OutputStreamFormatter& formatter) const
+	void ShaderPatchCollection::SerializeMethod(OutputStreamFormatter& formatter) const
 	{
 		for (const auto& p:_patches) {
 			auto pele = formatter.BeginElement(p.first);
@@ -200,7 +200,7 @@ namespace RenderCore { namespace Assets
 	{
 		for (const auto& p:patchCollections) {
 			auto ele = formatter.BeginElement("ShaderPatchCollection");
-			p.Serialize(formatter);
+			Serialize(formatter, p);
 			formatter.EndElement(ele);
 		}
 	}	

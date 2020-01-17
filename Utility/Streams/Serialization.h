@@ -374,8 +374,5 @@ namespace Utility
 	#pragma pop_macro("new")
 }
 
-template<typename Serializer, typename Object>
-    void Serialize(Serializer& serializer, const Object& obj);
-
 using namespace Utility;
 

@@ -42,7 +42,7 @@ namespace Assets
 		static Blob SerializeToBlob(const Type& obj)
 	{
 		Serialization::NascentBlockSerializer serializer;
-		::Serialize(serializer, obj);
+		Serialize(serializer, obj);
 		return AsBlob(serializer);
 	}
 

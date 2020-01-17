@@ -14,7 +14,7 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    void NascentRawGeometry::Serialize(
+    void NascentRawGeometry::SerializeWithResourceBlock(
         Serialization::NascentBlockSerializer& outputSerializer, 
         std::vector<uint8>& largeResourcesBlock) const
     {
@@ -30,17 +30,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto ibSize = _indices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
-        ::Serialize(
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawInputAssembly, unsigned(vbOffset), unsigned(vbSize) });
 
-        ::Serialize(
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::IndexData 
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
         
-        ::Serialize(outputSerializer, _mainDrawCalls);
+        Serialize(outputSerializer, _mainDrawCalls);
     }
 
     std::ostream& StreamOperator(std::ostream& stream, const NascentRawGeometry& geo)

@@ -32,7 +32,7 @@ namespace Utility
             TypeDesc(TypeCat cat = TypeCat::UInt32, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32 GetSize() const;
 
-            template<typename Stream> void Serialize(Stream& serializer) const;
+            template<typename Stream> void SerializeMethod(Stream& serializer) const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
 
@@ -213,9 +213,7 @@ namespace Utility
         ////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename CharType>
-            void    Serialize(OutputStreamFormatter& stream) const;
-
-        template<typename Stream> void Serialize(Stream& serializer) const;
+            void    SerializeWithCharType(OutputStreamFormatter& stream) const;
 
         ParameterBox();
         ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
@@ -260,6 +258,9 @@ namespace Utility
             SerializableVector<ParameterNameHash>::const_iterator paramNameHash,
             ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
             const ImpliedTyping::TypeDesc& insertType);
+
+		template<typename Stream>
+			friend void Serialize(Stream& serializer, const ParameterBox& box);
     };
 
     #pragma pack(pop)
@@ -277,9 +278,9 @@ namespace Utility
     namespace ImpliedTyping
     {
         template<typename Stream>
-            void TypeDesc::Serialize(Stream& serializer) const
+            void TypeDesc::SerializeMethod(Stream& serializer) const
         {
-            ::Serialize(serializer, *(uint32*)this);
+            Serialize(serializer, *(uint32*)this);
         }
     }
 
@@ -309,15 +310,15 @@ namespace Utility
     }
 
     template<typename Stream>
-        void ParameterBox::Serialize(Stream& serializer) const
+        void Serialize(Stream& serializer, const ParameterBox& box)
     {
-        ::Serialize(serializer, _cachedHash);
-        ::Serialize(serializer, _cachedParameterNameHash);
-        ::Serialize(serializer, _hashNames);
-        ::Serialize(serializer, _offsets);
-        ::Serialize(serializer, _names);
-        ::Serialize(serializer, _values);
-        ::Serialize(serializer, _types);
+        Serialize(serializer, box._cachedHash);
+        Serialize(serializer, box._cachedParameterNameHash);
+        Serialize(serializer, box._hashNames);
+        Serialize(serializer, box._offsets);
+        Serialize(serializer, box._names);
+        Serialize(serializer, box._values);
+        Serialize(serializer, box._types);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

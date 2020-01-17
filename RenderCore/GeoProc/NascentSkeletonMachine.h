@@ -31,7 +31,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         bool            IsEmpty                 () const        { return _commandStream.empty(); }
 
         template<typename Serializer>
-            void    Serialize(Serializer& outputSerializer) const;
+            void    SerializeMethod(Serializer& outputSerializer) const;
 
         std::unique_ptr<Float4x4[]>		GenerateOutputTransforms(const TransformationParameterSet& parameterSet) const;
 

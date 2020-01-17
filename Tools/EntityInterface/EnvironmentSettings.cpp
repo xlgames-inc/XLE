@@ -156,7 +156,7 @@ namespace EntityInterface
             const RetainedEntity& obj,
             const RetainedEntities& entities)
     {
-        obj._properties.Serialize<CharType>(formatter);
+        obj._properties.SerializeWithCharType<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
             const auto* child = entities.GetEntity(obj._doc, c->second);

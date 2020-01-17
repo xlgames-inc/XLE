@@ -204,46 +204,42 @@ namespace RenderCore { namespace Assets
 		XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
 		return *this;
 	}
+
+	inline void Serialize(
+		Serialization::NascentBlockSerializer& outputSerializer,
+		const RenderCore::Assets::GeoInputAssembly& ia)
+	{
+		outputSerializer.SerializeRaw(ia._elements);
+		Serialize(outputSerializer, ia._vertexStride);
+	}
+
+	inline void Serialize(
+		Serialization::NascentBlockSerializer& outputSerializer,
+		const RenderCore::Assets::IndexData& indexData)
+	{
+		Serialize(outputSerializer, (unsigned&)indexData._format);
+		Serialize(outputSerializer, indexData._offset);
+		Serialize(outputSerializer, indexData._size);
+	}
+
+	inline void Serialize(
+		Serialization::NascentBlockSerializer& outputSerializer,
+		const RenderCore::Assets::VertexData& vertexData)
+	{
+		Serialize(outputSerializer, vertexData._ia);
+		Serialize(outputSerializer, vertexData._offset);
+		Serialize(outputSerializer, vertexData._size);
+	}
+
+	inline void Serialize(
+		Serialization::NascentBlockSerializer& outputSerializer,
+		const RenderCore::Assets::DrawCallDesc& drawCall)
+	{
+		outputSerializer.SerializeValue(drawCall._firstIndex);
+		outputSerializer.SerializeValue(drawCall._indexCount);
+		outputSerializer.SerializeValue(drawCall._firstVertex);
+		outputSerializer.SerializeValue(drawCall._subMaterialIndex);
+		outputSerializer.SerializeValue((unsigned&)drawCall._topology);
+	}
+
 }}
-
-template<>
-inline void Serialize(
-	Serialization::NascentBlockSerializer& outputSerializer,
-	const RenderCore::Assets::GeoInputAssembly& ia)
-{
-	outputSerializer.SerializeRaw(ia._elements);
-	Serialize(outputSerializer, ia._vertexStride);
-}
-
-template<>
-inline void Serialize(
-	Serialization::NascentBlockSerializer& outputSerializer,
-	const RenderCore::Assets::IndexData& indexData)
-{
-	Serialize(outputSerializer, (unsigned&)indexData._format);
-	Serialize(outputSerializer, indexData._offset);
-	Serialize(outputSerializer, indexData._size);
-}
-
-template<>
-inline void Serialize(
-	Serialization::NascentBlockSerializer& outputSerializer,
-	const RenderCore::Assets::VertexData& vertexData)
-{
-	Serialize(outputSerializer, vertexData._ia);
-	Serialize(outputSerializer, vertexData._offset);
-	Serialize(outputSerializer, vertexData._size);
-}
-
-template<>
-inline void Serialize(
-	Serialization::NascentBlockSerializer& outputSerializer,
-	const RenderCore::Assets::DrawCallDesc& drawCall)
-{
-	outputSerializer.SerializeValue(drawCall._firstIndex);
-	outputSerializer.SerializeValue(drawCall._indexCount);
-	outputSerializer.SerializeValue(drawCall._firstVertex);
-	outputSerializer.SerializeValue(drawCall._subMaterialIndex);
-	outputSerializer.SerializeValue((unsigned&)drawCall._topology);
-}
-

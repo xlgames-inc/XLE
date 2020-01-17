@@ -206,15 +206,15 @@ namespace RenderCore { namespace Assets
     AnimationSet::AnimationSet() {}
     AnimationSet::~AnimationSet() {}
 
-	void AnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
+	void AnimationSet::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
 	{
-		::Serialize(serializer, _animationDrivers);
-		::Serialize(serializer, _constantDrivers);
-		::Serialize(serializer, _constantData);
-		::Serialize(serializer, _animations);
-		::Serialize(serializer, _outputInterface);
-		::Serialize(serializer, _stringNameBlockOffsets);
-		::Serialize(serializer, _stringNameBlock);
+		Serialize(serializer, _animationDrivers);
+		Serialize(serializer, _constantDrivers);
+		Serialize(serializer, _constantData);
+		Serialize(serializer, _animations);
+		Serialize(serializer, _outputInterface);
+		Serialize(serializer, _stringNameBlockOffsets);
+		Serialize(serializer, _stringNameBlock);
 	}
 
     AnimationImmutableData::AnimationImmutableData() {}
@@ -476,11 +476,11 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-    void    TransformationParameterSet::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
+    void    TransformationParameterSet::SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const
     {
-        ::Serialize(outputSerializer, _float4x4Parameters);
-        ::Serialize(outputSerializer, _float4Parameters);
-        ::Serialize(outputSerializer, _float3Parameters);
-        ::Serialize(outputSerializer, _float1Parameters);
+        Serialize(outputSerializer, _float4x4Parameters);
+        Serialize(outputSerializer, _float4Parameters);
+        Serialize(outputSerializer, _float3Parameters);
+        Serialize(outputSerializer, _float1Parameters);
     }
 }}

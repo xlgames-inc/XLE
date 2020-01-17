@@ -458,7 +458,7 @@ namespace ColladaConversion
                 continue;
 
             auto ele = formatter.BeginElement(m->_name.AsString());
-            i->second.Serialize(formatter);
+            Serialize(formatter, i->second);
             formatter.EndElement(ele);
         }
     }

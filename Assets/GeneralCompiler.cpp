@@ -178,13 +178,13 @@ namespace Assets
 			return nullptr;
 		}
 
-		void Serialize(OutputStreamFormatter& formatter);
+		void SerializeMethod(OutputStreamFormatter& formatter) const;
 		CompileProductsFile();
 		CompileProductsFile(InputStreamFormatter<utf8>& formatter);
 		~CompileProductsFile();
 	};
 
-	void CompileProductsFile::Serialize(OutputStreamFormatter& formatter)
+	void CompileProductsFile::SerializeMethod(OutputStreamFormatter& formatter) const
 	{
 		for (const auto&product:_compileProducts) {
 			auto ele = formatter.BeginElement(std::to_string(product._type));
@@ -370,7 +370,7 @@ namespace Assets
 				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {
 					auto stream = OpenFileOutput(std::move(file));
 					OutputStreamFormatter formatter(*stream);
-					compileProducts.Serialize(formatter);
+					Serialize(formatter, compileProducts);
 				} else {
 					Throw(::Exceptions::BasicLabel("Failed while attempting to write compile products file in compile operation for (%s)", initializer.AsString().c_str()));
 				}

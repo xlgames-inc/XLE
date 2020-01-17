@@ -29,7 +29,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t						_unifiedVertexCount;
 		std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;
 
-        void Serialize(
+        void SerializeWithResourceBlock(
             Serialization::NascentBlockSerializer& outputSerializer, 
             std::vector<uint8>& largeResourcesBlock) const;
 		

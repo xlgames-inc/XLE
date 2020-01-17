@@ -147,8 +147,8 @@ namespace RenderCore { namespace Assets
 
 				// "resolved" is now actually the data we want to write out
 			Serialization::NascentBlockSerializer blockSerializer;
-			::Serialize(blockSerializer, resolved);
-			::Serialize(blockSerializer, resolvedNames);
+			Serialize(blockSerializer, resolved);
+			Serialize(blockSerializer, resolvedNames);
 
 			MemoryOutputStream<utf8> patchCollectionStrm;
 			{

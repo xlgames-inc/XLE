@@ -635,7 +635,7 @@ namespace ToolsRig
         {
             Serialization::NascentBlockSerializer suppArray;
             for (auto m=meshes.begin(); m!=meshes.end(); ++m) {
-                ::Serialize(suppArray, m->first);
+                Serialize(suppArray, m->first);
 
                 NativeVBLayout vbLayout = BuildDefaultLayout(m->second, nativeVbSettings);
                 auto nativeVB = m->second.BuildNativeVertexBuffer(vbLayout);
@@ -646,14 +646,14 @@ namespace ToolsRig
 
                 auto inputAssembly = RenderCore::Assets::CreateGeoInputAssembly(
                     vbLayout._elements, (unsigned)vbLayout._vertexStride);
-                ::Serialize(
+                Serialize(
                     suppArray, 
                     RenderCore::Assets::VertexData { inputAssembly, unsigned(vbOffset), unsigned(vbSize) });
             }
 
             Serialization::NascentBlockSerializer supplementImmutableData;
             supplementImmutableData.SerializeSubBlock(suppArray);
-            ::Serialize(supplementImmutableData, size_t(meshes.size()));
+            Serialize(supplementImmutableData, size_t(meshes.size()));
 
             scaffoldChunk = supplementImmutableData.AsMemoryBlock();
             scaffoldChunkSize = supplementImmutableData.Size();

@@ -93,7 +93,7 @@ namespace RenderCore { namespace Assets
         TransformationParameterSet(const TransformationParameterSet& copyFrom);
         TransformationParameterSet& operator=(const TransformationParameterSet& copyFrom);
 
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
+        void    SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const;
 
     private:
         SerializableVector<Float4x4>    _float4x4Parameters;

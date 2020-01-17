@@ -24,7 +24,7 @@ namespace RenderCore { namespace Assets
 
 		void MergeInto(ShaderPatchCollection& dest) const;
 
-		void Serialize(OutputStreamFormatter& formatter) const;
+		void SerializeMethod(OutputStreamFormatter& formatter) const;
 
 		friend bool operator<(const ShaderPatchCollection& lhs, const ShaderPatchCollection& rhs);
 		friend bool operator<(const ShaderPatchCollection& lhs, uint64_t rhs);

@@ -175,7 +175,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return result;
 	}
 
-    void NascentAnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void NascentAnimationSet::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {
 		AnimationSet finalAnimationSet;
 		finalAnimationSet._animationDrivers.insert(finalAnimationSet._animationDrivers.begin(), _animationDrivers.begin(), _animationDrivers.end());
@@ -205,9 +205,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 		finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
 		
-		::Serialize(serializer, finalAnimationSet);
+		Serialize(serializer, finalAnimationSet);
 
-		::Serialize(serializer, _curves);
+		Serialize(serializer, _curves);
     }
 
 	std::ostream& StreamOperator(
@@ -244,10 +244,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
-    void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void NascentSkeleton::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {
-        ::Serialize(serializer, _skeletonMachine);
-		::Serialize(serializer, _defaultParameters);
+        Serialize(serializer, _skeletonMachine);
+		Serialize(serializer, _defaultParameters);
     }
 
 
@@ -282,25 +282,25 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _skinControllerInstances.emplace_back(std::move(skinControllerInstance));
     }
 
-    void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void NascentModelCommandStream::GeometryInstance::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {
-        ::Serialize(serializer, _id);
-        ::Serialize(serializer, _localToWorldId);
+        Serialize(serializer, _id);
+        Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(MakeIteratorRange(_materials));
-        ::Serialize(serializer, _materials.size());
-        ::Serialize(serializer, _levelOfDetail);
+        Serialize(serializer, _materials.size());
+        Serialize(serializer, _levelOfDetail);
     }
 
-    void NascentModelCommandStream::SkinControllerInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void NascentModelCommandStream::SkinControllerInstance::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {
-        ::Serialize(serializer, _id);
-        ::Serialize(serializer, _localToWorldId);
+        Serialize(serializer, _id);
+        Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(MakeIteratorRange(_materials));
-        ::Serialize(serializer, _materials.size());
-        ::Serialize(serializer, _levelOfDetail);
+        Serialize(serializer, _materials.size());
+        Serialize(serializer, _levelOfDetail);
     }
 
-    void NascentModelCommandStream::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void NascentModelCommandStream::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {
         serializer.SerializeSubBlock(MakeIteratorRange(_geometryInstances));
         serializer.SerializeValue(_geometryInstances.size());

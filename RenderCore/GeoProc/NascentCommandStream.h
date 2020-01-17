@@ -68,7 +68,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::ostream& stream, 
 			const NascentAnimationSet& transMachine);
 
-        void            Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        void            SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
     private:
         std::vector<AnimationDriver>    _animationDrivers;
         std::vector<ConstantDriver>     _constantDrivers;
@@ -93,7 +93,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		TransformationParameterSet&         GetDefaultParameters()			{ return _defaultParameters; }
 		const TransformationParameterSet&   GetDefaultParameters() const	{ return _defaultParameters; }
 
-		void	Serialize(Serialization::NascentBlockSerializer& serializer) const;
+		void	SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
 
     private:
         NascentSkeletonMachine		_skeletonMachine;
@@ -121,7 +121,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail = ~0u;
 
-            void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+            void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
         };
 
             /////   S K I N   C O N T R O L L E R   I N S T A N C E   /////
@@ -133,7 +133,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail = ~0u;
 
-            void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+            void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
         };
 
             /////   C A M E R A   I N S T A N C E   /////
@@ -148,7 +148,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         void Add(SkinControllerInstance&& geoInstance);
 
         bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
 
         unsigned RegisterInputInterfaceMarker(const std::string& skeletonName, const std::string& name);
 

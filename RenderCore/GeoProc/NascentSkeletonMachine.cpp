@@ -169,7 +169,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	#pragma pack(pop)
 
 	template <>
-		void    NascentSkeletonMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
+		void    NascentSkeletonMachine::SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const
 	{
 		//
 		//		Write the command stream

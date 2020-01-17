@@ -343,11 +343,11 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::~RawMaterial() {}
 
-    void RawMaterial::Serialize(OutputStreamFormatter& formatter) const
+    void RawMaterial::SerializeMethod(OutputStreamFormatter& formatter) const
     {
 		if (!_patchCollection.GetPatches().empty()) {
 			auto ele = formatter.BeginElement(u("Patches"));
-			_patchCollection.Serialize(formatter);
+			Serialize(formatter, _patchCollection);
 			formatter.EndElement(ele);
 		}
 
@@ -364,19 +364,19 @@ namespace RenderCore { namespace Assets
 
         if (_matParamBox.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("ShaderParams"));
-            _matParamBox.Serialize<utf8>(formatter);
+            _matParamBox.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_constants.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("Constants"));
-            _constants.Serialize<utf8>(formatter);
+            _constants.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_resourceBindings.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("ResourceBindings"));
-            _resourceBindings.Serialize<utf8>(formatter);
+            _resourceBindings.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 

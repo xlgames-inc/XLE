@@ -181,6 +181,23 @@ namespace Utility
         assert(newPtr <= _end && newPtr >= _start);
         _ptr = newPtr;
     }
+
+	namespace Internal
+    {
+        template<typename T> struct HasSerializeMethod
+        {
+            template<typename U, void (U::*)(OutputStreamFormatter&) const> struct FunctionSignature {};
+            template<typename U> static std::true_type Test1(FunctionSignature<U, &U::SerializeMethod>*);
+            template<typename U> static std::false_type Test1(...);
+            static const bool Result = decltype(Test1<T>(0))::value;
+        };
+	}
+
+	template<typename Type, typename std::enable_if<Internal::HasSerializeMethod<Type>::Result>::type* =nullptr>
+		inline void Serialize(OutputStreamFormatter& formatter, const Type& input)
+	{
+		input.SerializeMethod(formatter);
+	}
 }
 
 using namespace Utility;
