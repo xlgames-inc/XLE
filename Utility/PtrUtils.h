@@ -365,6 +365,7 @@ namespace Utility
         std::unique_ptr<Type[]> release() never_throws                  { _count = 0; return std::move(_elements); }
 
         DynamicArray(std::unique_ptr<Type[], Deletor>&& elements, size_t count) never_throws;
+		DynamicArray(const Type* copyFromBegin, const Type* copyFromEnd);
         DynamicArray() never_throws;
         
         template<typename OtherDeletor>
@@ -422,6 +423,17 @@ namespace Utility
         std::copy(copyFrom.begin(), copyFrom.end(), newElements.get());
         return DynamicArray<Type, Deletor>(std::move(newElements), copyFrom._count);
     }
+
+	template<typename Type, typename Deletor>
+		DynamicArray<Type, Deletor>::DynamicArray(const Type* copyFromBegin, const Type* copyFromEnd)
+	{
+		_count = copyFromEnd - copyFromBegin;
+		if (_count != 0) {
+			std::unique_ptr<Type[], Deletor> newElements(new Type[_count]);
+			std::copy(copyFromBegin, copyFromEnd, newElements.get());
+			_elements = std::move(newElements);
+		}
+	}
 }
 
 using namespace Utility;

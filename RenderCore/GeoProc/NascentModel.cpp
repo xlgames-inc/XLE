@@ -138,7 +138,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	{
 	public:
 		std::vector<std::pair<NascentObjectGuid, NascentRawGeometry>> _rawGeos;
-		std::vector<std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
+		std::vector<std::pair<uint64_t, NascentBoundSkinnedGeometry>> _skinnedGeos;
 	};
 
 	static std::pair<Float3, Float3> CalculateBoundingBox
@@ -244,7 +244,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         stream << " --- Skinned Geos:" << std::endl;
         c=0;
         for (const auto& g:geos._skinnedGeos)
-            stream << "[" << c++ << "] (0x" << std::hex << g.first._objectId << std::dec << ") Skinned geo --- " << std::endl << g.second << std::endl;
+            stream << "[" << c++ << "] (0x" << std::hex << g.first << std::dec << ") Skinned geo --- " << std::endl << g.second << std::endl;
         return stream;
     }
 
@@ -305,6 +305,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			};
 	}
 
+	static uint64_t HashOfGeoAndSkinControllerIds(const NascentModel::Command& cmd)
+	{
+		uint64_t result = HashCombine(cmd._geometryBlock._objectId, cmd._geometryBlock._namespaceId);
+		for (const auto&ctrl:cmd._skinControllerBlocks) {
+			result = HashCombine(ctrl._objectId, result);
+			result = HashCombine(ctrl._namespaceId, result);
+		}
+		return result;
+	}
+
 	std::vector<::Assets::ICompileOperation::OperationResult> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton, const NativeVBSettings& nativeSettings) const
 	{
 		NascentGeometryObjects geoObjects;
@@ -325,8 +335,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					materialGuid.push_back(Hash64(mat));
 			}
 
-			auto* skinController = FindSkinControllerBlock(cmd.second._skinControllerBlock);
-			if (!skinController) {
+			if (cmd.second._skinControllerBlocks.empty()) {
 				auto i = std::find_if(geoObjects._rawGeos.begin(), geoObjects._rawGeos.end(),
 					[&cmd](const std::pair<NascentObjectGuid, NascentRawGeometry>& p) { return p.first == cmd.second._geometryBlock; });
 				if (i == geoObjects._rawGeos.end()) {
@@ -344,25 +353,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 						cmd.second._levelOfDetail
 					});
 			} else {
+				auto hashedId = HashOfGeoAndSkinControllerIds(cmd.second);
 				auto i = std::find_if(geoObjects._skinnedGeos.begin(), geoObjects._skinnedGeos.end(),
-					[&cmd](const std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>& p) { return p.first == cmd.second._skinControllerBlock; });
+					[hashedId](const std::pair<uint64_t, NascentBoundSkinnedGeometry>& p) { return p.first == hashedId; });
 				if (i == geoObjects._skinnedGeos.end()) {
 					auto rawGeo = CompleteInstantiation(*geoBlock, nativeSettings);
-					DynamicArray<uint16> jointMatrices(
-						std::make_unique<uint16[]>(skinController->_controller->_jointNames.size()),
-						skinController->_controller->_jointNames.size());
-					for (unsigned c=0; c<skinController->_controller->_jointNames.size(); ++c) {
-						jointMatrices[c] = (uint16)cmdStream.RegisterInputInterfaceMarker(
-							skinController->_skeleton,
-							skinController->_controller->_jointNames[c]);
+
+					std::vector<UnboundSkinControllerAndJointMatrices> controllers;
+					controllers.reserve(cmd.second._skinControllerBlocks.size());
+					for (auto ctrllerId:cmd.second._skinControllerBlocks) {
+						const auto* controllerBlock = FindSkinControllerBlock(ctrllerId);
+						assert(controllerBlock);
+						const auto& controller = *controllerBlock->_controller;
+
+						std::vector<uint16_t> jointMatrices(controller._jointNames.size());
+						for (unsigned c=0; c<controller._jointNames.size(); ++c)
+							jointMatrices[c] = (uint16_t)cmdStream.RegisterInputInterfaceMarker(controllerBlock->_skeleton, controller._jointNames[c]);
+
+						controllers.emplace_back(UnboundSkinControllerAndJointMatrices { &controller, std::move(jointMatrices) });
 					}
-					auto boundController = BindController(
-						rawGeo,
-						*skinController->_controller,
-						std::move(jointMatrices),
-						"");
-					geoObjects._skinnedGeos.emplace_back(
-						std::make_pair(cmd.second._skinControllerBlock, std::move(boundController)));
+
+					auto boundController = BindController(rawGeo, MakeIteratorRange(controllers), "");
+					geoObjects._skinnedGeos.emplace_back(std::make_pair(hashedId, std::move(boundController)));
 					i = geoObjects._skinnedGeos.end()-1;
 				}
 
@@ -504,7 +516,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					atLeastOneAttached = true;
 
 					// if we've got a skin controller attached, we can't do any merging
-					skinAttached |= cmd.second._skinControllerBlock != NascentObjectGuid{};
+					skinAttached |= !cmd.second._skinControllerBlocks.empty();
 
 					// find all of the meshes attached, and check if any are attached in
 					// multiple places

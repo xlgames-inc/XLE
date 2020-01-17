@@ -12,13 +12,15 @@
 
 namespace RenderCore { namespace Techniques
 {
-	void SkinDeformer::WriteJointTransforms(	IteratorRange<Float3x4*>		destination,
-												IteratorRange<const Float4x4*>	skeletonMachineResult) const
+	void SkinDeformer::WriteJointTransforms(
+		const Section& section,
+		IteratorRange<Float3x4*>		destination,
+		IteratorRange<const Float4x4*>	skeletonMachineResult) const
     {
-        for (unsigned c=0; c<std::min(_jointMatrices.size(), destination.size()); ++c) {
-            auto transMachineOutput = _skeletonBinding.ModelJointToMachineOutput(_jointMatrices[c]);
+        for (unsigned c=0; c<std::min(section._jointMatrices.size(), destination.size()); ++c) {
+            auto transMachineOutput = _skeletonBinding.ModelJointToMachineOutput(section._jointMatrices[c]);
             if (transMachineOutput != ~unsigned(0x0)) {
-                Float4x4 finalMatrix = Combine(_bindShapeByInverseBindMatrices[c], skeletonMachineResult[transMachineOutput]);
+                Float4x4 finalMatrix = Combine(section._bindShapeByInverseBindMatrices[c], skeletonMachineResult[transMachineOutput]);
                 destination[c] = Truncate(finalMatrix);
             } else {
                 destination[c] = Identity<Float3x4>();
@@ -30,6 +32,7 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<const Float4x4*> skeletonMachineOutput,
 		const RenderCore::Assets::SkeletonMachine::OutputInterface& skeletonMachineOutputInterface)
 	{
+		_skeletonMachineOutput.clear();
 		_skeletonMachineOutput.insert(_skeletonMachineOutput.end(), skeletonMachineOutput.begin(), skeletonMachineOutput.end());
 		_skeletonBinding = RenderCore::Assets::SkeletonBinding{skeletonMachineOutputInterface, _jointInputInterface};
 	}
@@ -42,38 +45,41 @@ namespace RenderCore { namespace Techniques
 		assert(posElement.begin().Format() == Format::R32G32B32_FLOAT);
 		assert(posElement.size() <= _basePositions.size());
 
-		std::vector<Float3x4> jointTransform(_jointMatrices.size());
-		WriteJointTransforms(
-			MakeIteratorRange(jointTransform),
-			MakeIteratorRange(_skeletonMachineOutput));
+		for (const auto&section:_sections) {
+			std::vector<Float3x4> jointTransform(section._jointMatrices.size());
+			WriteJointTransforms(
+				section,
+				MakeIteratorRange(jointTransform),
+				MakeIteratorRange(_skeletonMachineOutput));
 
-		for (const auto&drawCall:_preskinningDrawCalls) {
-			assert((drawCall._firstVertex + drawCall._indexCount) <= posElement.size());
+			for (const auto&drawCall:section._preskinningDrawCalls) {
+				assert((drawCall._firstVertex + drawCall._indexCount) <= posElement.size());
 
-			auto srcPosition = _basePositions.begin() + drawCall._firstVertex;
+				auto srcPosition = _basePositions.begin() + drawCall._firstVertex;
 
-			// drawCall._subMaterialIndex is 0, 1, 2 or 4 depending on the number of weights we have to proces
-			if (drawCall._subMaterialIndex == 0) {
-				// in this case, we just copy
-				for (auto p=posElement.begin() + drawCall._firstVertex; p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition) 
-					*p = *srcPosition;
-				continue;
-			}
-
-			auto srcJointWeight = _jointWeights.begin() + drawCall._firstVertex;
-			auto srcJointIndex = _jointIndices.begin() + drawCall._firstVertex;
-
-			for (auto p=posElement.begin() + drawCall._firstVertex; 
-				p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); 
-				++p, ++srcPosition, ++srcJointWeight, ++srcJointIndex) {
-				
-				Float3 deformedPosition { 0.f, 0.f, 0.f };
-				for (unsigned b=0; b<drawCall._subMaterialIndex; ++b) {
-					assert((*srcJointIndex)[b] < jointTransform.size());
-					deformedPosition += (*srcJointWeight)[b] * TransformPoint(jointTransform[(*srcJointIndex)[b]], *srcPosition);
+				// drawCall._subMaterialIndex is 0, 1, 2 or 4 depending on the number of weights we have to proces
+				if (drawCall._subMaterialIndex == 0) {
+					// in this case, we just copy
+					for (auto p=posElement.begin() + drawCall._firstVertex; p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition) 
+						*p = *srcPosition;
+					continue;
 				}
 
-				*p = deformedPosition;
+				auto srcJointWeight = _jointWeights.begin() + drawCall._firstVertex;
+				auto srcJointIndex = _jointIndices.begin() + drawCall._firstVertex;
+
+				for (auto p=posElement.begin() + drawCall._firstVertex; 
+					p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); 
+					++p, ++srcPosition, ++srcJointWeight, ++srcJointIndex) {
+				
+					Float3 deformedPosition { 0.f, 0.f, 0.f };
+					for (unsigned b=0; b<drawCall._subMaterialIndex; ++b) {
+						assert((*srcJointIndex)[b] < jointTransform.size());
+						deformedPosition += (*srcJointWeight)[b] * TransformPoint(jointTransform[(*srcJointIndex)[b]], *srcPosition);
+					}
+
+					*p = deformedPosition;
+				}
 			}
 		}
 	}
@@ -135,9 +141,14 @@ namespace RenderCore { namespace Techniques
 		_jointWeights = AsFloat4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *weightsElement, skelVb._ia._vertexStride));
 		_jointIndices = AsUInt4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *jointIndicesElement, skelVb._ia._vertexStride));
 
-		_preskinningDrawCalls = { skinnedController._preskinningDrawCalls, skinnedController._preskinningDrawCalls + skinnedController._preskinningDrawCallCount };
-		_bindShapeByInverseBindMatrices = { skinnedController._bindShapeByInverseBindMatrices, skinnedController._bindShapeByInverseBindMatrices + skinnedController._bindShapeByInverseBindMatrixCount };
-		_jointMatrices = { skinnedController._jointMatrices, skinnedController._jointMatrices + skinnedController._jointMatrixCount };
+		_sections.reserve(skinnedController._preskinningSections.size());
+		for (const auto&sourceSection:skinnedController._preskinningSections) {
+			Section section;
+			section._preskinningDrawCalls = MakeIteratorRange(sourceSection._preskinningDrawCalls);
+			section._bindShapeByInverseBindMatrices = MakeIteratorRange(sourceSection._bindShapeByInverseBindMatrices);
+			section._jointMatrices = { sourceSection._jointMatrices, sourceSection._jointMatrices + sourceSection._jointMatrixCount };
+			_sections.push_back(section);
+		}
 
 		_jointInputInterface = modelScaffold.CommandStream().GetInputInterface();
 	}

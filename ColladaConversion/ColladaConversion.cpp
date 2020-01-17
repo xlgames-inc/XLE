@@ -128,11 +128,15 @@ namespace ColladaConversion
 			materialBindings,
 			mati->second, resolveContext);
 
+		std::vector<NascentObjectGuid> skinControllers;
+		if (controllerId != NascentObjectGuid{})
+			skinControllers.push_back(controllerId);
+
 		model.Add(
 			{ attachedNode.GetId().GetHash() },
 			attachedNode.GetName().Cast<char>().AsString(),
 			NascentModel::Command {
-				geoId, controllerId,
+				geoId, std::move(skinControllers),
 				localToModelBinding,
 				materials, 
 				0

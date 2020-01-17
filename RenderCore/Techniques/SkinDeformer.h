@@ -38,15 +38,22 @@ namespace RenderCore { namespace Techniques
 
 		RenderCore::Assets::ModelCommandStream::InputInterface _jointInputInterface;
 
-		IteratorRange<const RenderCore::Assets::DrawCallDesc*> _preskinningDrawCalls;
-		IteratorRange<const Float4x4*> _bindShapeByInverseBindMatrices;
+		struct Section
+		{
+			IteratorRange<const RenderCore::Assets::DrawCallDesc*> _preskinningDrawCalls;
+			IteratorRange<const Float4x4*> _bindShapeByInverseBindMatrices;
+			IteratorRange<const uint16_t*> _jointMatrices;
+		};
+		std::vector<Section> _sections;
+
 		Float4x4 _bindShapeMatrix;
-		IteratorRange<const uint16_t*> _jointMatrices;
 		std::vector<Float4x4> _skeletonMachineOutput;
 		RenderCore::Assets::SkeletonBinding _skeletonBinding;
 
-		void WriteJointTransforms(	IteratorRange<Float3x4*>		destination,
-									IteratorRange<const Float4x4*>	skeletonMachineResult) const;
+		void WriteJointTransforms(
+			const Section& section,
+			IteratorRange<Float3x4*>		destination,
+			IteratorRange<const Float4x4*>	skeletonMachineResult) const;
 	};
 }}
 

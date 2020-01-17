@@ -27,12 +27,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 {
     static const bool SkinNormals = true;
 
+	static uint32_t ControllerAndBucketIndex(unsigned controllerIdx, unsigned bucketIdx)
+	{
+		assert((bucketIdx & ~0x3ffff) == 0);
+		return (controllerIdx << 18) | (bucketIdx & 0x3ffff);
+	}
+
     NascentBoundSkinnedGeometry BindController(
         const NascentRawGeometry& sourceGeo,
-        const UnboundSkinController& controller,
-        DynamicArray<uint16>&& jointMatrices,
+        IteratorRange<const UnboundSkinControllerAndJointMatrices*> controllers,
         const char nodeName[])
     {
+		assert(!controllers.empty());
+
         std::vector<std::string> elementsToBeSkinned;
         elementsToBeSkinned.push_back("POSITION");
         if (constant_expression<SkinNormals>::result()) {
@@ -71,47 +78,62 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t unifiedVertexCount = sourceGeo._unifiedVertexCount;
 		assert(sourceGeo._unifiedVertexIndexToPositionIndex.empty() || sourceGeo._unifiedVertexIndexToPositionIndex.size() >= unifiedVertexCount);
 
-        std::vector<std::pair<uint32,uint32>> unifiedVertexIndexToBucketIndex;
+        std::vector<std::pair<uint32_t,uint32_t>> unifiedVertexIndexToBucketIndex;
         unifiedVertexIndexToBucketIndex.reserve(unifiedVertexCount);
 
-        for (uint32 c=0; c<unifiedVertexCount; ++c) {
-            uint32 positionIndex = c < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[c] : c;
-            uint32 bucketIndex   = controller._positionIndexToBucketIndex[positionIndex];
-            unifiedVertexIndexToBucketIndex.push_back(std::make_pair(c, bucketIndex));
+        for (uint32_t c=0; c<unifiedVertexCount; ++c) {
+            uint32_t positionIndex = c < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[c] : c;
+			uint32_t bucketIndex = ~0u;
+			// find the controller that is associated with this vertex
+			for (unsigned controllerIdx=0; controllerIdx!=controllers.size(); ++controllerIdx) {
+				auto& controller = *controllers[controllerIdx]._controller;
+				if (positionIndex < controller._positionIndexToBucketIndex.size()
+					&& controller._positionIndexToBucketIndex[positionIndex] != ~0u) {
+					bucketIndex = ControllerAndBucketIndex(controllerIdx, controller._positionIndexToBucketIndex[positionIndex]);
+					break;
+				}
+			}
+			assert(bucketIndex != ~0u);
+			// If we did not get an assigment, our bucketIndex will still be ~0u
+			unifiedVertexIndexToBucketIndex.push_back(std::make_pair(c, bucketIndex));
         }
 
             //
             //      Resort by bucket index...
             //
 
-        std::sort(unifiedVertexIndexToBucketIndex.begin(), unifiedVertexIndexToBucketIndex.end(), CompareSecond<uint32, uint32>());
+        std::sort(unifiedVertexIndexToBucketIndex.begin(), unifiedVertexIndexToBucketIndex.end(), CompareSecond<uint32_t, uint32_t>());
 
-        std::vector<uint32> unifiedVertexReordering;       // unifiedVertexReordering[oldIndex] = newIndex;
-        std::vector<uint32> newUnifiedVertexIndexToPositionIndex;
-        unifiedVertexReordering.resize(unifiedVertexCount, (uint32)~uint32(0x0));
-        newUnifiedVertexIndexToPositionIndex.resize(unifiedVertexCount, (uint32)~uint32(0x0));
+        std::vector<uint32_t> unifiedVertexReordering;       // unifiedVertexReordering[oldIndex] = newIndex;
+        std::vector<uint32_t> newUnifiedVertexIndexToPositionIndex;
+        unifiedVertexReordering.resize(unifiedVertexCount, (uint32_t)~uint32_t(0x0));
+        newUnifiedVertexIndexToPositionIndex.resize(unifiedVertexCount, (uint32_t)~uint32_t(0x0));
 
             //
+			//		We create a new reordering for the vertices based on the bucket assigment.
+			//		This will reorganize the vertex buffer so that buckets are sequential in the VB
+			//
             //      \todo --    it would better if we tried to maintain the vertex ordering within
             //                  the bucket. That is, the relative positions of vertices within the
             //                  bucket should be the same as the relative positions of those vertices
             //                  as they were in the original
             //
 
-        uint32 indexAccumulator = 0;
-        const size_t bucketCount = dimof(((UnboundSkinController*)nullptr)->_bucket);
-        uint32 bucketStart  [bucketCount];
-        uint32 bucketEnd    [bucketCount];
-        uint32 currentBucket = 0; bucketStart[0] = 0;
+        uint32_t indexAccumulator = 0;
+        const size_t bucketCount = dimof(UnboundSkinController::_bucket) * controllers.size();
+        std::vector<uint32_t> bucketStart(bucketCount);
+        std::vector<uint32_t> bucketEnd(bucketCount);
+
+        uint32_t currentBucket = 0; bucketStart[0] = 0;
         for (auto i=unifiedVertexIndexToBucketIndex.cbegin(); i!=unifiedVertexIndexToBucketIndex.cend(); ++i) {
             if ((i->second >> 16)!=currentBucket) {
                 bucketEnd[currentBucket] = indexAccumulator;
                 bucketStart[++currentBucket] = indexAccumulator;
             }
-            uint32 newIndex = indexAccumulator++;
-            uint32 oldIndex = i->first;
+            uint32_t newIndex = indexAccumulator++;
+            uint32_t oldIndex = i->first;
             unifiedVertexReordering[oldIndex] = newIndex;
-            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32)(oldIndex < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex] : oldIndex);
+            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32_t)(oldIndex < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex] : oldIndex);
         }
         bucketEnd[currentBucket] = indexAccumulator;
         for (unsigned b=currentBucket+1; b<bucketCount; ++b) {
@@ -181,14 +203,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::unique_ptr<uint8[]> newIndexBuffer = std::make_unique<uint8[]>(sourceGeo._indices.size());
         if (sourceGeo._indexFormat == Format::R32_UINT) {
             std::transform(
-                (const uint32*)AsPointer(sourceGeo._indices.begin()), (const uint32*)AsPointer(sourceGeo._indices.end()),
-                (uint32*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint32 inputIndex) { return unifiedVertexReordering[inputIndex]; });
+                (const uint32_t*)AsPointer(sourceGeo._indices.begin()), (const uint32_t*)AsPointer(sourceGeo._indices.end()),
+                (uint32_t*)newIndexBuffer.get(),
+                [&unifiedVertexReordering](uint32_t inputIndex) { return unifiedVertexReordering[inputIndex]; });
         } else if (sourceGeo._indexFormat == Format::R16_UINT) {
             std::transform(
-                (const uint16*)AsPointer(sourceGeo._indices.begin()), (const uint16*)AsPointer(sourceGeo._indices.end()),
-                (uint16*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint16 inputIndex) -> uint16 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16)result; });
+                (const uint16_t*)AsPointer(sourceGeo._indices.begin()), (const uint16_t*)AsPointer(sourceGeo._indices.end()),
+                (uint16_t*)newIndexBuffer.get(),
+                [&unifiedVertexReordering](uint16_t inputIndex) -> uint16_t { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16_t)result; });
         } else if (sourceGeo._indexFormat == Format::R8_UINT) {
             std::transform(
                 (const uint8*)AsPointer(sourceGeo._indices.begin()), (const uint8*)AsPointer(sourceGeo._indices.end()),
@@ -197,24 +219,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         } else {
             Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
         }
-                                
-            //      We have to define the draw calls that perform the pre-skinning step
-
-        std::vector<DrawCallDesc> preskinningDrawCalls;
-        if (bucketEnd[0] > bucketStart[0]) {
-            preskinningDrawCalls.push_back(
-				DrawCallDesc{~unsigned(0x0), bucketEnd[0] - bucketStart[0], bucketStart[0], 4, Topology::PointList});
-        }
-        if (bucketEnd[1] > bucketStart[1]) {
-            preskinningDrawCalls.push_back(
-				DrawCallDesc{~unsigned(0x0), bucketEnd[1] - bucketStart[1], bucketStart[1], 2, Topology::PointList});
-        }
-        if (bucketEnd[2] > bucketStart[2]) {
-            preskinningDrawCalls.push_back(
-				DrawCallDesc{~unsigned(0x0), bucketEnd[2] - bucketStart[2], bucketStart[2], 1, Topology::PointList});
-        }
-
-        assert(bucketEnd[2] <= unifiedVertexCount);
 
             //      Build the final vertex weights buffer (our weights are currently stored
             //      per vertex-position. So we need to expand to per-unified vertex -- blaggh!)
@@ -224,16 +228,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t destinationWeightVertexStride = 0;
         const std::vector<InputElementDesc>* finalWeightBufferFormat = nullptr;
 
-        unsigned bucketVertexSizes[bucketCount];
+        std::vector<unsigned> bucketVertexSizes(bucketCount);
         for (unsigned b=0; b<bucketCount; ++b) {
-            bucketVertexSizes[b] = CalculateVertexSize(     
-                AsPointer(controller._bucket[b]._vertexInputLayout.begin()), 
-                AsPointer(controller._bucket[b]._vertexInputLayout.end()));
-
-            if (controller._bucket[b]._vertexBufferSize) {
+			auto& bucket = controllers[b>>2]._controller->_bucket[b&0x3];
+            bucketVertexSizes[b] = CalculateVertexSize(AsPointer(bucket._vertexInputLayout.begin()), AsPointer(bucket._vertexInputLayout.end()));
+            if (bucket._vertexBufferSize) {
                 if (bucketVertexSizes[b] > destinationWeightVertexStride) {
                     destinationWeightVertexStride = bucketVertexSizes[b];
-                    finalWeightBufferFormat = &controller._bucket[b]._vertexInputLayout;
+                    finalWeightBufferFormat = &bucket._vertexInputLayout;
                 }
             }
         }
@@ -255,18 +257,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 const size_t destinationVertexIndex = i2-newUnifiedVertexIndexToPositionIndex.begin();
                 unsigned sourceVertexPositionIndex = *i2;
                                 
+				bool foundTheBinding = false;
+
                     //
                     //      We actually need to find the source position vertex from one of the buckets.
                     //      We can make a guess from the ordering, but it's safest to find it again
                     //      This lookup could get quite expensive for large meshes!
                     //
                 for (unsigned b=0; b<bucketCount; ++b) {
-                    auto i = std::find( 
-                        controller._bucket[b]._vertexBindings.begin(), 
-                        controller._bucket[b]._vertexBindings.end(), 
+                    auto& bucket = controllers[b>>2]._controller->_bucket[b&0x3];
+					auto i = std::find( 
+                        bucket._vertexBindings.begin(), 
+                        bucket._vertexBindings.end(), 
                         sourceVertexPositionIndex);
 
-                    if (i!=controller._bucket[b]._vertexBindings.end()) {
+                    if (i!=bucket._vertexBindings.end()) {
 
                             //
                             //      Note that sometimes we'll be expanding the vertex format in this process
@@ -275,27 +280,32 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                             //
 
                         auto sourceVertexStride = bucketVertexSizes[b];
-                        size_t sourceVertexInThisBucket = std::distance(controller._bucket[b]._vertexBindings.begin(), i);
+                        size_t sourceVertexInThisBucket = std::distance(bucket._vertexBindings.begin(), i);
                         void* destinationVertex = PtrAdd(skeletonBindingVertices.get(), destinationVertexIndex*destinationWeightVertexStride);
-                        assert((sourceVertexInThisBucket+1)*sourceVertexStride <= controller._bucket[b]._vertexBufferSize);
-                        const void* sourceVertex = PtrAdd(controller._bucket[b]._vertexBufferData.get(), sourceVertexInThisBucket*sourceVertexStride);
+                        assert((sourceVertexInThisBucket+1)*sourceVertexStride <= bucket._vertexBufferSize);
+                        const void* sourceVertex = PtrAdd(bucket._vertexBufferData.get(), sourceVertexInThisBucket*sourceVertexStride);
 
                         if (sourceVertexStride == destinationWeightVertexStride) {
                             XlCopyMemory(destinationVertex, sourceVertex, sourceVertexStride);
                         } else {
                             const InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
-                            for (   auto srcElement=controller._bucket[b]._vertexInputLayout.cbegin(); 
-                                    srcElement!=controller._bucket[b]._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
+                            for (   auto srcElement=bucket._vertexInputLayout.cbegin(); 
+                                    srcElement!=bucket._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
                                 unsigned elementSize = std::min(BitsPerPixel(srcElement->_nativeFormat)/8, BitsPerPixel(dstElement->_nativeFormat)/8);
                                 assert(PtrAdd(destinationVertex, dstElement->_alignedByteOffset+elementSize) <= PtrAdd(skeletonBindingVertices.get(), destinationWeightVertexStride*unifiedVertexCount));
-                                assert(PtrAdd(sourceVertex, srcElement->_alignedByteOffset+elementSize) <= PtrAdd(controller._bucket[b]._vertexBufferData.get(), controller._bucket[b]._vertexBufferSize));
+                                assert(PtrAdd(sourceVertex, srcElement->_alignedByteOffset+elementSize) <= PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize));
                                 XlCopyMemory(   PtrAdd(destinationVertex, dstElement->_alignedByteOffset), 
                                                 PtrAdd(sourceVertex, srcElement->_alignedByteOffset), 
                                                 elementSize);   // (todo -- precalculate this min of element sizes)
                             }
                         }
+
+						foundTheBinding = true;
+						break;
                     }
                 }
+
+				assert(foundTheBinding);
             }
         }
 
@@ -360,13 +370,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._skeletonBindingVertexStride = (unsigned)destinationWeightVertexStride;
         result._animatedVertexBufferSize = (unsigned)(animatedVertexStride*unifiedVertexCount);
 
-		std::vector<Float4x4> bindShapeByInverseBindMatrices;
-		bindShapeByInverseBindMatrices.reserve(controller._inverseBindMatrices.size());
-		for (const auto&ibm:controller._inverseBindMatrices)
-			bindShapeByInverseBindMatrices.push_back(Combine(controller._bindShapeMatrix, ibm));
-        result._bindShapeByInverseBindMatrices = std::move(bindShapeByInverseBindMatrices);
-        result._jointMatrices = std::move(jointMatrices);
-
         result._mainDrawCalls = sourceGeo._mainDrawCalls;
         result._mainDrawUnanimatedIA._vertexStride = unanimatedVertexStride;
         result._mainDrawUnanimatedIA._elements = std::move(unanimatedVertexLayout);
@@ -375,7 +378,41 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._mainDrawAnimatedIA._vertexStride = animatedVertexStride;
         result._mainDrawAnimatedIA._elements = std::move(animatedVertexLayout);
 
-        result._preskinningDrawCalls = preskinningDrawCalls;
+		// Setup the per-section preskinning draw calls
+		std::vector<DrawCallDesc> preskinningDrawCalls;
+		for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
+			auto* bStart = &bucketStart[controllerIdx*4];
+			auto* bEnd = &bucketEnd[controllerIdx*4];
+			if (bEnd[0] > bStart[0]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), bEnd[0] - bStart[0], bStart[0], 4, Topology::PointList});
+			}
+			if (bEnd[1] > bStart[1]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), bEnd[1] - bStart[1], bStart[1], 2, Topology::PointList});
+			}
+			if (bEnd[2] > bStart[2]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), bEnd[2] - bStart[2], bStart[2], 1, Topology::PointList});
+			}
+
+			assert(bEnd[2] <= unifiedVertexCount);
+
+			NascentBoundSkinnedGeometry::Section section;
+
+			std::vector<Float4x4> bindShapeByInverseBindMatrices;
+			bindShapeByInverseBindMatrices.reserve(controllers[controllerIdx]._controller->_inverseBindMatrices.size());
+			for (const auto&ibm:controllers[controllerIdx]._controller->_inverseBindMatrices)
+				bindShapeByInverseBindMatrices.push_back(Combine(controllers[controllerIdx]._controller->_bindShapeMatrix, ibm));
+			section._bindShapeByInverseBindMatrices = std::move(bindShapeByInverseBindMatrices);
+
+			section._preskinningDrawCalls = preskinningDrawCalls;
+			section._jointMatrices = DynamicArray<uint16_t>(
+				AsPointer(controllers[controllerIdx]._jointMatrices.begin()),
+				AsPointer(controllers[controllerIdx]._jointMatrices.end()));
+
+			result._preskinningSections.emplace_back(std::move(section));
+		}
 
         if (finalWeightBufferFormat) {
             result._preskinningIA = RenderCore::Assets::CreateGeoInputAssembly(
@@ -386,11 +423,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return std::move(result);
     }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static void Serialize(Serialization::NascentBlockSerializer& outputSerializer, const NascentBoundSkinnedGeometry::Section& section)
+	{
+		Serialize(outputSerializer, section._bindShapeByInverseBindMatrices);
+		Serialize(outputSerializer, section._preskinningDrawCalls);
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(section._jointMatrices));
+        outputSerializer.SerializeValue(section._jointMatrices.size());
+	}
 
-    void NascentBoundSkinnedGeometry::Serialize( 
+    void NascentBoundSkinnedGeometry::SerializeWithResourceBlock(
         Serialization::NascentBlockSerializer& outputSerializer, 
         std::vector<uint8>& largeResourcesBlock) const
     {
@@ -412,39 +455,33 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto ibSize = _indices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
-            // first part is just like "NascentRawGeometry::Serialize"
-        ::Serialize(
+            // first part is just like "NascentRawGeometry::SerializeMethod"
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawUnanimatedIA, unsigned(vbOffset0), unsigned(vbSize0) });
 
-        ::Serialize(
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::IndexData 
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
 
-        ::Serialize(outputSerializer, _mainDrawCalls);
+        Serialize(outputSerializer, _mainDrawCalls);
 
             // append skinning related information
-        ::Serialize(
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawAnimatedIA, unsigned(vbOffset1), unsigned(vbSize1) });
-        ::Serialize(
+        Serialize(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
-
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(_bindShapeByInverseBindMatrices));
-        outputSerializer.SerializeValue(_bindShapeByInverseBindMatrices.size());
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
-        outputSerializer.SerializeValue(_jointMatrices.size());
         
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(_preskinningDrawCalls));
-        outputSerializer.SerializeValue(_preskinningDrawCalls.size());
+		Serialize(outputSerializer, _preskinningSections);
 
-        ::Serialize(outputSerializer, _localBoundingBox.first);
-        ::Serialize(outputSerializer, _localBoundingBox.second);
+        Serialize(outputSerializer, _localBoundingBox.first);
+        Serialize(outputSerializer, _localBoundingBox.second);
     }
 
 
@@ -501,7 +538,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
         std::vector<std::string>&& jointNames,
-        std::vector<uint32>&& vertexPositionToBucketIndex)
+        std::vector<uint32_t>&& vertexPositionToBucketIndex)
     :       _inverseBindMatrices(std::move(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)
     ,       _positionIndexToBucketIndex(vertexPositionToBucketIndex)
@@ -575,15 +612,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned c=0;
         for(const auto& dc:geo._mainDrawCalls)
             stream << "Draw [" << c++ << "] " << dc << std::endl;
-        c=0;
-        for(const auto& dc:geo._preskinningDrawCalls)
-            stream << "Preskinning Draw [" << c++ << "] " << dc << std::endl;
+		for(unsigned sectionIdx=0; sectionIdx<geo._preskinningSections.size(); ++sectionIdx) {
+			c=0;
+			auto& section = geo._preskinningSections[sectionIdx];
+			for(const auto& dc:section._preskinningDrawCalls)
+				stream << "Preskinning Section [" << sectionIdx << "] Draw [" << c++ << "] " << dc << std::endl;
 
-        stream << "Joint matrices: ";
-        for (size_t q=0; q<geo._jointMatrices.size(); ++q) {
-            if (q != 0) stream << ", ";
-            stream << geo._jointMatrices[q];
-        }
+			stream << "Section [" << sectionIdx << "] Joint matrices: ";
+			for (size_t q=0; q<section._jointMatrices.size(); ++q) {
+				if (q != 0) stream << ", ";
+				stream << section._jointMatrices[q];
+			}
+		}
+        
         stream << std::endl;
         return stream;
     }

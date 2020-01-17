@@ -38,15 +38,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned                    _skeletonBindingVertexStride = 0;
         unsigned                    _animatedVertexBufferSize = 0;
 
-        std::vector<Float4x4>		_bindShapeByInverseBindMatrices;
-        DynamicArray<uint16_t>		_jointMatrices;         // (uint16 or uint8 for this array)
-            
-        std::vector<DrawCallDesc>   _preskinningDrawCalls;
+		struct Section
+		{
+			std::vector<Float4x4>		_bindShapeByInverseBindMatrices;
+			std::vector<DrawCallDesc>   _preskinningDrawCalls;
+			DynamicArray<uint16_t>		_jointMatrices;
+		};
+		std::vector<Section>		_preskinningSections;
         GeoInputAssembly            _preskinningIA;
 
         std::pair<Float3, Float3>	_localBoundingBox = InvalidBoundingBox();
 
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
+        void    SerializeWithResourceBlock(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         friend std::ostream& StreamOperator(std::ostream&, const NascentBoundSkinnedGeometry&);
     };
 
@@ -57,13 +60,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     public:
         struct Bucket
         {
-            std::vector<InputElementDesc>    _vertexInputLayout;
-            unsigned                         _weightCount = 0;
+            std::vector<InputElementDesc>	_vertexInputLayout;
+            unsigned						_weightCount = 0;
 
-            std::unique_ptr<uint8[]>         _vertexBufferData;
-            size_t                           _vertexBufferSize = 0;
+            std::unique_ptr<uint8[]>		_vertexBufferData;
+            size_t							_vertexBufferSize = 0;
 
-            std::vector<uint16>              _vertexBindings;
+            std::vector<uint16_t>			_vertexBindings;
         };
 
         Float4x4					_bindShapeMatrix;
@@ -102,7 +105,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class VertexWeightAttachmentBucket
     {
     public:
-        std::vector<uint16>                                 _vertexBindings;
+        std::vector<uint16_t>								_vertexBindings;
         std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
     };
 
@@ -149,21 +152,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         ////////////////////////////////////////////////////////
 
-    class UnboundSkinControllerAndAttachedSkeleton
-    {
-    public:
-        NascentObjectGuid                  _unboundControllerId;
-        NascentObjectGuid                  _source;
-        std::vector<NascentObjectGuid>     _jointIds;
-    };
-
-
-        ////////////////////////////////////////////////////////
+	struct UnboundSkinControllerAndJointMatrices
+	{
+		const UnboundSkinController* _controller;
+		std::vector<uint16_t> _jointMatrices;
+	};
 
     NascentBoundSkinnedGeometry BindController(
         const NascentRawGeometry& sourceGeo,
-        const UnboundSkinController& controller,
-        DynamicArray<uint16>&& jointMatrices,
+        IteratorRange<const UnboundSkinControllerAndJointMatrices*> controllers,
         const char nodeName[]);
 }}}
 

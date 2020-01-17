@@ -143,13 +143,14 @@ namespace RenderCore { namespace Assets
         VertexData      _animatedVertexElements;
         VertexData      _skeletonBinding;
 
-        Float4x4*       _bindShapeByInverseBindMatrices;
-        size_t          _bindShapeByInverseBindMatrixCount;
-        uint16*         _jointMatrices;         // (uint16 or uint8 for this array)
-        size_t          _jointMatrixCount;
-
-        DrawCallDesc*   _preskinningDrawCalls;
-        size_t          _preskinningDrawCallCount;
+		struct Section
+		{
+			SerializableVector<Float4x4>		_bindShapeByInverseBindMatrices;
+			SerializableVector<DrawCallDesc>	_preskinningDrawCalls;
+			uint16_t*							_jointMatrices;
+			size_t								_jointMatrixCount;
+		};
+		SerializableVector<Section>			_preskinningSections;
 
         std::pair<Float3, Float3>   _localBoundingBox;
 

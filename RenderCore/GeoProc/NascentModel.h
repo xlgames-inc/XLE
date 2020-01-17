@@ -38,8 +38,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		struct DrawCallDesc
 		{
-			unsigned    _firstIndex, _indexCount;
-			Topology	_topology;
+			unsigned    _firstIndex = ~0u, _indexCount = ~0u;
+			Topology	_topology = Topology(0);
 		};
 		
 		class GeometryBlock
@@ -50,7 +50,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::vector<uint32_t>			_meshVertexIndexToSrcIndex;		// srcIndex = _meshVertexIndexToSrcIndex[meshDatabaseUnifiedVertexIndex]
 
 			std::vector<uint8_t>			_indices;
-			Format							_indexFormat;
+			Format							_indexFormat = Format(0);
 		};
 
 		class SkinControllerBlock
@@ -63,11 +63,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		class Command
 		{
 		public:
-			NascentObjectGuid			_geometryBlock;
-			NascentObjectGuid			_skinControllerBlock;
-			std::string					_localToModel;
-			std::vector<std::string>	_materialBindingSymbols;
-			unsigned					_levelOfDetail;
+			NascentObjectGuid				_geometryBlock;
+			std::vector<NascentObjectGuid>	_skinControllerBlocks;
+			std::string						_localToModel;
+			std::vector<std::string>		_materialBindingSymbols;
+			unsigned						_levelOfDetail = ~0u;
 		};
 
 		const GeometryBlock* FindGeometryBlock(NascentObjectGuid id) const;
