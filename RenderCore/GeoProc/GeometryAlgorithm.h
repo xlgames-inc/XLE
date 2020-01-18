@@ -9,7 +9,7 @@
 #include "../Types_Forward.h"
 #include "../Format.h"
 #include "../../Math/Matrix.h"
-#include "../../Core/Types.h"
+#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
 namespace RenderCore { namespace Assets { class VertexElement; }}
@@ -31,17 +31,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         RenderCore::Assets::GeoProc::MeshDatabase& mesh);
 
     void CopyVertexElements(
-        void* destinationBuffer,            size_t destinationVertexStride,
-        const void* sourceBuffer,           size_t sourceVertexStride,
-        const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
-        const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
-        const uint32* reorderingBegin,      const uint32* reorderingEnd );
+        IteratorRange<void*> destinationBuffer,            size_t destinationVertexStride,
+        IteratorRange<const void*> sourceBuffer,           size_t sourceVertexStride,
+        IteratorRange<const Assets::VertexElement*> destinationLayout,
+        IteratorRange<const Assets::VertexElement*> sourceLayout,
+        IteratorRange<const uint32_t*> reordering);
 
-    unsigned CalculateVertexSize(
-        const Assets::VertexElement* layoutBegin,  
-        const Assets::VertexElement* layoutEnd);
+    unsigned CalculateVertexSize(IteratorRange<const Assets::VertexElement*> layout);
+    unsigned CalculateVertexSize(IteratorRange<const InputElementDesc*> layout);
 
-    unsigned CalculateVertexSize(
-        const InputElementDesc* layoutBegin,  
-        const InputElementDesc* layoutEnd);
 }}}

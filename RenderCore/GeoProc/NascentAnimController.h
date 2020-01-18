@@ -24,8 +24,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NascentBoundSkinnedGeometry
     {
     public:
-        DynamicArray<uint8_t>		_unanimatedVertexElements;
-        DynamicArray<uint8_t>		_indices;
+        std::vector<uint8_t>		_unanimatedVertexElements;
+        std::vector<uint8_t>		_indices;
 
         Format                      _indexFormat = (Format)0;
         GeoInputAssembly            _mainDrawUnanimatedIA;
@@ -33,8 +33,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         std::vector<DrawCallDesc>	_mainDrawCalls;
 
-        DynamicArray<uint8_t>		_animatedVertexElements;
-        DynamicArray<uint8_t>		_skeletonBinding;
+        std::vector<uint8_t>		_animatedVertexElements;
+        std::vector<uint8_t>		_skeletonBinding;
         unsigned                    _skeletonBindingVertexStride = 0;
         unsigned                    _animatedVertexBufferSize = 0;
 

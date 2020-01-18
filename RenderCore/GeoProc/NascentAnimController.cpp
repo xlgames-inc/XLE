@@ -78,36 +78,45 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t unifiedVertexCount = sourceGeo._unifiedVertexCount;
 		assert(sourceGeo._unifiedVertexIndexToPositionIndex.empty() || sourceGeo._unifiedVertexIndexToPositionIndex.size() >= unifiedVertexCount);
 
-        std::vector<std::pair<uint32_t,uint32_t>> unifiedVertexIndexToBucketIndex;
-        unifiedVertexIndexToBucketIndex.reserve(unifiedVertexCount);
+		struct VertexIndices
+		{
+			uint32_t _inputUnifiedVertexIndex;
+			uint32_t _bucketIndex;
+			uint32_t _inputPositionIndex;
+		};
+        std::vector<VertexIndices> vertexMappingByFinalOrdering;
+        vertexMappingByFinalOrdering.reserve(unifiedVertexCount);
 
         for (uint32_t c=0; c<unifiedVertexCount; ++c) {
             uint32_t positionIndex = c < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[c] : c;
 			uint32_t bucketIndex = ~0u;
-			// find the controller that is associated with this vertex
-			for (unsigned controllerIdx=0; controllerIdx!=controllers.size(); ++controllerIdx) {
+
+			unsigned controllerIdx=0;
+			for (; controllerIdx!=controllers.size(); ++controllerIdx) {
 				auto& controller = *controllers[controllerIdx]._controller;
-				if (positionIndex < controller._positionIndexToBucketIndex.size()
-					&& controller._positionIndexToBucketIndex[positionIndex] != ~0u) {
+				if (positionIndex < controller._positionIndexToBucketIndex.size() && controller._positionIndexToBucketIndex[positionIndex] != ~0u) {
 					bucketIndex = ControllerAndBucketIndex(controllerIdx, controller._positionIndexToBucketIndex[positionIndex]);
 					break;
 				}
 			}
-			assert(bucketIndex != ~0u);
 			// If we did not get an assigment, our bucketIndex will still be ~0u
-			unifiedVertexIndexToBucketIndex.push_back(std::make_pair(c, bucketIndex));
+			assert(bucketIndex != ~0u);
+			// A vertex can actually get associated with multiple controllers
+			// In these cases, we always select the first controller that applies to the vertex
+			// (basically under the assumption that all controllers will generate the same final position for the vertex)
+			// In general, we don't want to split vertices for controllers -- because that could lead
+			// to situations where the animation causes the mesh manifold to separate (which doesn't
+			// seem like something that would be desireable)
+			vertexMappingByFinalOrdering.push_back(VertexIndices{c, bucketIndex, positionIndex});
         }
 
             //
             //      Resort by bucket index...
             //
 
-        std::sort(unifiedVertexIndexToBucketIndex.begin(), unifiedVertexIndexToBucketIndex.end(), CompareSecond<uint32_t, uint32_t>());
-
-        std::vector<uint32_t> unifiedVertexReordering;       // unifiedVertexReordering[oldIndex] = newIndex;
-        std::vector<uint32_t> newUnifiedVertexIndexToPositionIndex;
-        unifiedVertexReordering.resize(unifiedVertexCount, (uint32_t)~uint32_t(0x0));
-        newUnifiedVertexIndexToPositionIndex.resize(unifiedVertexCount, (uint32_t)~uint32_t(0x0));
+        std::stable_sort(
+			vertexMappingByFinalOrdering.begin(), vertexMappingByFinalOrdering.end(), 
+			[](const VertexIndices& lhs, const VertexIndices& rhs) { return lhs._bucketIndex < rhs._bucketIndex; });
 
             //
 			//		We create a new reordering for the vertices based on the bucket assigment.
@@ -119,29 +128,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //                  as they were in the original
             //
 
-        uint32_t indexAccumulator = 0;
         const size_t bucketCount = dimof(UnboundSkinController::_bucket) * controllers.size();
-        std::vector<uint32_t> bucketStart(bucketCount);
-        std::vector<uint32_t> bucketEnd(bucketCount);
+        std::vector<size_t> bucketStart(bucketCount, 0);
+        std::vector<size_t> bucketEnd(bucketCount, 0);
 
-        uint32_t currentBucket = 0; bucketStart[0] = 0;
-        for (auto i=unifiedVertexIndexToBucketIndex.cbegin(); i!=unifiedVertexIndexToBucketIndex.cend(); ++i) {
-            if ((i->second >> 16)!=currentBucket) {
-                bucketEnd[currentBucket] = indexAccumulator;
-                bucketStart[++currentBucket] = indexAccumulator;
-            }
-            uint32_t newIndex = indexAccumulator++;
-            uint32_t oldIndex = i->first;
-            unifiedVertexReordering[oldIndex] = newIndex;
-            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32_t)(oldIndex < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex] : oldIndex);
-        }
-        bucketEnd[currentBucket] = indexAccumulator;
-        for (unsigned b=currentBucket+1; b<bucketCount; ++b) {
-            bucketStart[b] = bucketEnd[b] = indexAccumulator;
-        }
-        if (indexAccumulator != unifiedVertexCount) {
-            Throw(::Exceptions::BasicLabel("Vertex count mismatch in node (%s)", nodeName));
-        }
+		{
+			uint32_t currentBucket = ~0u;
+			for (size_t i=0; i<vertexMappingByFinalOrdering.size(); ++i) {
+				auto thisBucket = (vertexMappingByFinalOrdering[i]._bucketIndex >> 16);
+				if (thisBucket!=currentBucket) {
+					if (currentBucket < bucketCount)
+						bucketEnd[currentBucket] = i;
+					assert(currentBucket == ~0u || thisBucket > currentBucket);
+					currentBucket = thisBucket;
+					bucketStart[currentBucket] = i;
+				}
+			}
+			if (currentBucket < bucketCount)
+				bucketEnd[currentBucket] = vertexMappingByFinalOrdering.size();
+			for (unsigned b=currentBucket+1; b<bucketCount; ++b) {
+				bucketStart[b] = bucketEnd[b] = vertexMappingByFinalOrdering.size();
+			}
+		}
 
             //
             //      Move vertex data for vertex elements that will be skinned into a separate vertex buffer
@@ -176,8 +184,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
         }
 
-        unsigned unanimatedVertexStride  = CalculateVertexSize(AsPointer(unanimatedVertexLayout.begin()), AsPointer(unanimatedVertexLayout.end()));
-        unsigned animatedVertexStride    = CalculateVertexSize(AsPointer(animatedVertexLayout.begin()), AsPointer(animatedVertexLayout.end()));
+        unsigned unanimatedVertexStride  = CalculateVertexSize(MakeIteratorRange(unanimatedVertexLayout));
+        unsigned animatedVertexStride    = CalculateVertexSize(MakeIteratorRange(animatedVertexLayout));
 
         if (!animatedVertexStride) {
             Throw(::Exceptions::BasicLabel("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
@@ -185,53 +193,61 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                             
             //      Copy out those parts of the vertex buffer that are unanimated and animated
             //      (we also do the vertex reordering here)
-        std::unique_ptr<uint8[]> unanimatedVertexBuffer  = std::make_unique<uint8[]>(unanimatedVertexStride*unifiedVertexCount);
-        std::unique_ptr<uint8[]> animatedVertexBuffer    = std::make_unique<uint8[]>(animatedVertexStride*unifiedVertexCount);
-        CopyVertexElements( unanimatedVertexBuffer.get(),                   unanimatedVertexStride, 
-                            sourceGeo._vertices.data(),                     sourceGeo._mainDrawInputAssembly._vertexStride,
-                            AsPointer(unanimatedVertexLayout.begin()),      AsPointer(unanimatedVertexLayout.end()),
-                            AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
-                            AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
+		std::vector<uint8_t> unanimatedVertexBuffer(unanimatedVertexStride*unifiedVertexCount);
+		std::vector<uint8_t> animatedVertexBuffer(animatedVertexStride*unifiedVertexCount);
+		std::vector<uint8_t> newIndexBuffer(sourceGeo._indices.size());
+		{
+			std::vector<uint32_t> vertexOrdering;       // unifiedVertexReordering[oldIndex] = newIndex;
+			vertexOrdering.resize(unifiedVertexCount, (uint32_t)~uint32_t(0x0));
+			for (auto i=vertexMappingByFinalOrdering.cbegin(); i!=vertexMappingByFinalOrdering.cend(); ++i)
+				vertexOrdering[i->_inputUnifiedVertexIndex] = (unsigned)std::distance(vertexMappingByFinalOrdering.cbegin(), i);
+			
+			CopyVertexElements(
+				MakeIteratorRange(unanimatedVertexBuffer),	unanimatedVertexStride, 
+				MakeIteratorRange(sourceGeo._vertices),		sourceGeo._mainDrawInputAssembly._vertexStride,
+				MakeIteratorRange(unanimatedVertexLayout),
+				MakeIteratorRange(sourceGeo._mainDrawInputAssembly._elements),
+				MakeIteratorRange(vertexOrdering));
 
-        CopyVertexElements( animatedVertexBuffer.get(),                     animatedVertexStride,
-                            sourceGeo._vertices.data(),                     sourceGeo._mainDrawInputAssembly._vertexStride,
-                            AsPointer(animatedVertexLayout.begin()),        AsPointer(animatedVertexLayout.end()),
-                            AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
-                            AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
+			CopyVertexElements(
+				MakeIteratorRange(animatedVertexBuffer),	animatedVertexStride,
+				MakeIteratorRange(sourceGeo._vertices),		sourceGeo._mainDrawInputAssembly._vertexStride,
+				MakeIteratorRange(animatedVertexLayout),
+				MakeIteratorRange(sourceGeo._mainDrawInputAssembly._elements),
+				MakeIteratorRange(vertexOrdering));
 
-            //      We have to remap the index buffer, also.
-        std::unique_ptr<uint8[]> newIndexBuffer = std::make_unique<uint8[]>(sourceGeo._indices.size());
-        if (sourceGeo._indexFormat == Format::R32_UINT) {
-            std::transform(
-                (const uint32_t*)AsPointer(sourceGeo._indices.begin()), (const uint32_t*)AsPointer(sourceGeo._indices.end()),
-                (uint32_t*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint32_t inputIndex) { return unifiedVertexReordering[inputIndex]; });
-        } else if (sourceGeo._indexFormat == Format::R16_UINT) {
-            std::transform(
-                (const uint16_t*)AsPointer(sourceGeo._indices.begin()), (const uint16_t*)AsPointer(sourceGeo._indices.end()),
-                (uint16_t*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint16_t inputIndex) -> uint16_t { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16_t)result; });
-        } else if (sourceGeo._indexFormat == Format::R8_UINT) {
-            std::transform(
-                (const uint8*)AsPointer(sourceGeo._indices.begin()), (const uint8*)AsPointer(sourceGeo._indices.end()),
-                (uint8*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint8 inputIndex) -> uint8 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
-        } else {
-            Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
-        }
+				//      We have to remap the index buffer, also.
+			if (sourceGeo._indexFormat == Format::R32_UINT) {
+				std::transform(
+					(const uint32_t*)AsPointer(sourceGeo._indices.begin()), (const uint32_t*)AsPointer(sourceGeo._indices.end()),
+					(uint32_t*)newIndexBuffer.data(),
+					[&vertexOrdering](uint32_t inputIndex) { return vertexOrdering[inputIndex]; });
+			} else if (sourceGeo._indexFormat == Format::R16_UINT) {
+				std::transform(
+					(const uint16_t*)AsPointer(sourceGeo._indices.begin()), (const uint16_t*)AsPointer(sourceGeo._indices.end()),
+					(uint16_t*)newIndexBuffer.data(),
+					[&vertexOrdering](uint16_t inputIndex) -> uint16_t { auto result = vertexOrdering[inputIndex]; assert(result <= 0xffff); return (uint16_t)result; });
+			} else if (sourceGeo._indexFormat == Format::R8_UINT) {
+				std::transform(
+					(const uint8*)AsPointer(sourceGeo._indices.begin()), (const uint8*)AsPointer(sourceGeo._indices.end()),
+					(uint8_t*)newIndexBuffer.data(),
+					[&vertexOrdering](uint8 inputIndex) -> uint8 { auto result = vertexOrdering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
+			} else {
+				Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
+			}
+		}
 
             //      Build the final vertex weights buffer (our weights are currently stored
             //      per vertex-position. So we need to expand to per-unified vertex -- blaggh!)
             //      This means the output weights vertex buffer is going to be larger than input ones combined.
 
-        assert(newUnifiedVertexIndexToPositionIndex.size()==unifiedVertexCount);
         size_t destinationWeightVertexStride = 0;
         const std::vector<InputElementDesc>* finalWeightBufferFormat = nullptr;
 
         std::vector<unsigned> bucketVertexSizes(bucketCount);
         for (unsigned b=0; b<bucketCount; ++b) {
 			auto& bucket = controllers[b>>2]._controller->_bucket[b&0x3];
-            bucketVertexSizes[b] = CalculateVertexSize(AsPointer(bucket._vertexInputLayout.begin()), AsPointer(bucket._vertexInputLayout.end()));
+            bucketVertexSizes[b] = CalculateVertexSize(MakeIteratorRange(bucket._vertexInputLayout));
             if (bucket._vertexBufferSize) {
                 if (bucketVertexSizes[b] > destinationWeightVertexStride) {
                     destinationWeightVertexStride = bucketVertexSizes[b];
@@ -248,90 +264,95 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
         }
 
-        std::unique_ptr<uint8[]> skeletonBindingVertices;
+		#if defined(_DEBUG)
+			unsigned weightsOffset = 0;
+            auto weightsFormat = Format::Unknown;
+            for (auto i=finalWeightBufferFormat->cbegin(); i!=finalWeightBufferFormat->cend(); ++i) {
+                if (!XlCompareStringI(i->_semanticName.c_str(), "WEIGHTS") && i->_semanticIndex == 0) {
+                    weightsOffset = i->_alignedByteOffset;
+                    weightsFormat = i->_nativeFormat;
+                    break;
+                }
+            }
+			unsigned indicesOffset = 0;
+            auto indicesFormat = Format::Unknown;
+            for (auto i=finalWeightBufferFormat->cbegin(); i!=finalWeightBufferFormat->cend(); ++i) {
+                if (!XlCompareStringI(i->_semanticName.c_str(), "JOINTINDICES") && i->_semanticIndex == 0) {
+                    indicesOffset = i->_alignedByteOffset;
+                    indicesFormat = i->_nativeFormat;
+                    break;
+                }
+            }
+		#endif
+
+        std::vector<uint8> skeletonBindingVertices;
         if (destinationWeightVertexStride && finalWeightBufferFormat) {
-            skeletonBindingVertices = std::make_unique<uint8[]>(destinationWeightVertexStride*unifiedVertexCount);
-            XlSetMemory(skeletonBindingVertices.get(), 0, destinationWeightVertexStride*unifiedVertexCount);
+            skeletonBindingVertices = std::vector<uint8>(destinationWeightVertexStride*unifiedVertexCount, 0);
 
-            for (auto i2=newUnifiedVertexIndexToPositionIndex.begin(); i2!=newUnifiedVertexIndexToPositionIndex.end(); ++i2) {
-                const size_t destinationVertexIndex = i2-newUnifiedVertexIndexToPositionIndex.begin();
-                unsigned sourceVertexPositionIndex = *i2;
+            for (size_t destinationVertexIndex=0; destinationVertexIndex<vertexMappingByFinalOrdering.size(); ++destinationVertexIndex) {
+                unsigned sourceBucketIndex = vertexMappingByFinalOrdering[destinationVertexIndex]._bucketIndex;
+
+				auto controllerIdx = sourceBucketIndex >> 18;
+				auto bucketIdx = (sourceBucketIndex >> 16) & 0x3;
+				auto sourceVertexInThisBucket = sourceBucketIndex & 0xffff;
+
+				assert(controllerIdx < controllers.size());
+				assert(bucketIdx < 4);
                                 
-				bool foundTheBinding = false;
+				const auto& bucket = controllers[controllerIdx]._controller->_bucket[bucketIdx];
 
                     //
-                    //      We actually need to find the source position vertex from one of the buckets.
-                    //      We can make a guess from the ordering, but it's safest to find it again
-                    //      This lookup could get quite expensive for large meshes!
+                    //      Note that sometimes we'll be expanding the vertex format in this process
+                    //      If some buckets are using R8G8, and others are R8G8B8A8 (for example)
+                    //      then they will all be expanded to the largest size
                     //
-                for (unsigned b=0; b<bucketCount; ++b) {
-                    auto& bucket = controllers[b>>2]._controller->_bucket[b&0x3];
-					auto i = std::find( 
-                        bucket._vertexBindings.begin(), 
-                        bucket._vertexBindings.end(), 
-                        sourceVertexPositionIndex);
 
-                    if (i!=bucket._vertexBindings.end()) {
+                auto sourceVertexStride = bucketVertexSizes[sourceBucketIndex>>16];
+                void* destinationVertex = PtrAdd(skeletonBindingVertices.data(), destinationVertexIndex*destinationWeightVertexStride);
+                assert((sourceVertexInThisBucket+1)*sourceVertexStride <= bucket._vertexBufferSize);
+                const void* sourceVertex = PtrAdd(bucket._vertexBufferData.get(), sourceVertexInThisBucket*sourceVertexStride);
 
-                            //
-                            //      Note that sometimes we'll be expanding the vertex format in this process
-                            //      If some buckets are using R8G8, and others are R8G8B8A8 (for example)
-                            //      then they will all be expanded to the largest size
-                            //
+                if (sourceVertexStride == destinationWeightVertexStride) {
+                    XlCopyMemory(destinationVertex, sourceVertex, sourceVertexStride);
+                } else {
+                    const InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
+                    for (   auto srcElement=bucket._vertexInputLayout.cbegin(); 
+                            srcElement!=bucket._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
 
-                        auto sourceVertexStride = bucketVertexSizes[b];
-                        size_t sourceVertexInThisBucket = std::distance(bucket._vertexBindings.begin(), i);
-                        void* destinationVertex = PtrAdd(skeletonBindingVertices.get(), destinationVertexIndex*destinationWeightVertexStride);
-                        assert((sourceVertexInThisBucket+1)*sourceVertexStride <= bucket._vertexBufferSize);
-                        const void* sourceVertex = PtrAdd(bucket._vertexBufferData.get(), sourceVertexInThisBucket*sourceVertexStride);
-
-                        if (sourceVertexStride == destinationWeightVertexStride) {
-                            XlCopyMemory(destinationVertex, sourceVertex, sourceVertexStride);
-                        } else {
-                            const InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
-                            for (   auto srcElement=bucket._vertexInputLayout.cbegin(); 
-                                    srcElement!=bucket._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
-                                unsigned elementSize = std::min(BitsPerPixel(srcElement->_nativeFormat)/8, BitsPerPixel(dstElement->_nativeFormat)/8);
-                                assert(PtrAdd(destinationVertex, dstElement->_alignedByteOffset+elementSize) <= PtrAdd(skeletonBindingVertices.get(), destinationWeightVertexStride*unifiedVertexCount));
-                                assert(PtrAdd(sourceVertex, srcElement->_alignedByteOffset+elementSize) <= PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize));
-                                XlCopyMemory(   PtrAdd(destinationVertex, dstElement->_alignedByteOffset), 
-                                                PtrAdd(sourceVertex, srcElement->_alignedByteOffset), 
-                                                elementSize);   // (todo -- precalculate this min of element sizes)
-                            }
-                        }
-
-						foundTheBinding = true;
-						break;
+                            // (todo -- precalculate this min of element sizes)
+						unsigned elementSize = std::min(BitsPerPixel(srcElement->_nativeFormat)/8, BitsPerPixel(dstElement->_nativeFormat)/8);
+                        assert(PtrAdd(destinationVertex, dstElement->_alignedByteOffset+elementSize) <= PtrAdd(skeletonBindingVertices.data(), destinationWeightVertexStride*unifiedVertexCount));
+                        assert(PtrAdd(sourceVertex, srcElement->_alignedByteOffset+elementSize) <= PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize));
+                        XlCopyMemory(   PtrAdd(destinationVertex, dstElement->_alignedByteOffset), 
+                                        PtrAdd(sourceVertex, srcElement->_alignedByteOffset), 
+                                        elementSize);
                     }
                 }
 
-				assert(foundTheBinding);
+				assert(destinationVertexIndex >= bucketStart[sourceBucketIndex>>16] && destinationVertexIndex < bucketEnd[sourceBucketIndex>>16]);
+
+				#if defined(_DEBUG)
+					for (unsigned c=0; c<GetComponentCount(GetComponents(indicesFormat)); ++c) {
+						auto index = *(unsigned char*)PtrAdd(destinationVertex, indicesOffset+c);
+						assert(index < (unsigned)controllers[controllerIdx]._jointMatrices.size());
+					}
+				#endif
             }
         }
 
+        #if defined(_DEBUG)
+
             //  Double check that weights are normalized in the binding buffer
-        #if 0 // defined(_DEBUG)
-
-            {
-                unsigned weightsOffset = 0;
-                Metal::NativeFormat::Enum weightsFormat = Metal::NativeFormat::Unknown;
-                for (auto i=finalWeightBufferFormat->cbegin(); i!=finalWeightBufferFormat->cend(); ++i) {
-                    if (!XlCompareStringI(i->_semanticName.c_str(), "WEIGHTS") && i->_semanticIndex == 0) {
-                        weightsOffset = i->_alignedByteOffset;
-                        weightsFormat = i->_nativeFormat;
-                        break;
-                    }
-                }
-
+			/*{
                 size_t stride = destinationWeightVertexStride;
-                if (weightsFormat == Metal::NativeFormat::R8G8_UNORM) {
+                if (weightsFormat == Format::R8G8_UNORM) {
                     for (unsigned c=0; c<unifiedVertexCount; ++c) {
                         const void* p = PtrAdd(skeletonBindingVertices.get(), c*stride+weightsOffset);
                         unsigned char zero   = ((unsigned char*)p)[0];
                         unsigned char one    = ((unsigned char*)p)[1];
                         assert((zero+one) >= 0xfd);
                     }
-                } else if (weightsFormat == Metal::NativeFormat::R8G8B8A8_UNORM) {
+                } else if (weightsFormat == Format::R8G8B8A8_UNORM) {
                     for (unsigned c=0; c<unifiedVertexCount; ++c) {
                         const void* p = PtrAdd(skeletonBindingVertices.get(), c*stride+weightsOffset);
                         unsigned char zero   = ((unsigned char*)p)[0];
@@ -341,31 +362,69 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                         assert((zero+one+two+three) >= 0xfd);
                     }
                 } else {
-                    assert(weightsFormat == Metal::NativeFormat::R8_UNORM);
+                    assert(weightsFormat == Format::R8_UNORM);
                 }
-            }
+            }*/
+
+			// Ensure that the joint indices are never too large
+			{
+				size_t stride = destinationWeightVertexStride;
+
+				for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
+					auto* bStart = &bucketStart[controllerIdx<<2];
+					auto* bEnd = &bucketEnd[controllerIdx<<2];
+					auto jointIndexMax = controllers[controllerIdx]._jointMatrices.size();
+					for (unsigned b=0; b<4; ++b) {
+						for (size_t v=bStart[b]; v<bEnd[b]; ++v) {
+
+							const void* p = PtrAdd(skeletonBindingVertices.data(), v*stride+indicesOffset);
+							if (indicesFormat == Format::R8G8_UINT) {
+								for (unsigned c=0; c<unifiedVertexCount; ++c) {
+									unsigned char zero   = ((unsigned char*)p)[0];
+									unsigned char one    = ((unsigned char*)p)[1];
+									assert(zero < jointIndexMax);
+									assert(one < jointIndexMax);
+								}
+							} else if (indicesFormat == Format::R8G8B8A8_UINT) {
+								for (unsigned c=0; c<unifiedVertexCount; ++c) {
+									unsigned char zero   = ((unsigned char*)p)[0];
+									unsigned char one    = ((unsigned char*)p)[1];
+									unsigned char two    = ((unsigned char*)p)[2];
+									unsigned char three  = ((unsigned char*)p)[3];
+									assert(zero < jointIndexMax);
+									assert(one < jointIndexMax);
+									assert(two < jointIndexMax);
+									assert(three < jointIndexMax);
+								}
+							} else {
+								unsigned char zero   = ((unsigned char*)p)[0];
+								assert(zero < jointIndexMax);
+							}
+
+						}
+					}
+				}
+			}
                                 
         #endif
 
             //      Calculate the local space bounding box for the input vertex buffer
             //      (assuming the position will appear in the animated vertex buffer)
         auto boundingBox = InvalidBoundingBox();
-        auto positionDesc = FindPositionElement(
-            AsPointer(animatedVertexLayout.begin()),
-            animatedVertexLayout.size());
+        auto positionDesc = FindPositionElement(AsPointer(animatedVertexLayout.begin()), animatedVertexLayout.size());
         if (positionDesc._nativeFormat != Format::Unknown) {
             AddToBoundingBox(
                 boundingBox,
-                animatedVertexBuffer.get(), animatedVertexStride, unifiedVertexCount,
+                animatedVertexBuffer.data(), animatedVertexStride, unifiedVertexCount,
                 positionDesc, Identity<Float4x4>());
         }
 
             //      Build the final "BoundSkinnedGeometry" object
         NascentBoundSkinnedGeometry result;
-		result._unanimatedVertexElements = DynamicArray<uint8>(std::move(unanimatedVertexBuffer), unanimatedVertexStride*unifiedVertexCount);
-		result._animatedVertexElements = DynamicArray<uint8>(std::move(animatedVertexBuffer), animatedVertexStride*unifiedVertexCount);
-		result._skeletonBinding = DynamicArray<uint8>(std::move(skeletonBindingVertices), destinationWeightVertexStride*unifiedVertexCount);
-		result._indices = DynamicArray<uint8>(std::move(newIndexBuffer), sourceGeo._indices.size());
+		result._unanimatedVertexElements = std::move(unanimatedVertexBuffer);
+		result._animatedVertexElements = std::move(animatedVertexBuffer);
+		result._skeletonBinding = std::move(skeletonBindingVertices);
+		result._indices = std::move(newIndexBuffer);
 
         result._skeletonBindingVertexStride = (unsigned)destinationWeightVertexStride;
         result._animatedVertexBufferSize = (unsigned)(animatedVertexStride*unifiedVertexCount);
@@ -379,21 +438,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._mainDrawAnimatedIA._elements = std::move(animatedVertexLayout);
 
 		// Setup the per-section preskinning draw calls
-		std::vector<DrawCallDesc> preskinningDrawCalls;
 		for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
-			auto* bStart = &bucketStart[controllerIdx*4];
-			auto* bEnd = &bucketEnd[controllerIdx*4];
+			std::vector<DrawCallDesc> preskinningDrawCalls;
+			auto* bStart = &bucketStart[controllerIdx<<2];
+			auto* bEnd = &bucketEnd[controllerIdx<<2];
 			if (bEnd[0] > bStart[0]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), bEnd[0] - bStart[0], bStart[0], 4, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[0] - bStart[0]), unsigned(bStart[0]), 4, Topology::PointList});
 			}
 			if (bEnd[1] > bStart[1]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), bEnd[1] - bStart[1], bStart[1], 2, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[1] - bStart[1]), unsigned(bStart[1]), 2, Topology::PointList});
 			}
 			if (bEnd[2] > bStart[2]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), bEnd[2] - bStart[2], bStart[2], 1, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[2] - bStart[2]), unsigned(bStart[2]), 1, Topology::PointList});
 			}
 
 			assert(bEnd[2] <= unifiedVertexCount);
@@ -406,7 +465,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				bindShapeByInverseBindMatrices.push_back(Combine(controllers[controllerIdx]._controller->_bindShapeMatrix, ibm));
 			section._bindShapeByInverseBindMatrices = std::move(bindShapeByInverseBindMatrices);
 
-			section._preskinningDrawCalls = preskinningDrawCalls;
+			section._preskinningDrawCalls = std::move(preskinningDrawCalls);
 			section._jointMatrices = DynamicArray<uint16_t>(
 				AsPointer(controllers[controllerIdx]._jointMatrices.begin()),
 				AsPointer(controllers[controllerIdx]._jointMatrices.end()));
@@ -623,6 +682,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				if (q != 0) stream << ", ";
 				stream << section._jointMatrices[q];
 			}
+			stream << std::endl;
 		}
         
         stream << std::endl;

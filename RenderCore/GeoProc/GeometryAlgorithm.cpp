@@ -461,24 +461,24 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void CopyVertexElements(     
-        void* destinationBuffer,            size_t destinationVertexStride,
-        const void* sourceBuffer,           size_t sourceVertexStride,
-        const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
-        const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
-        const uint32* reorderingBegin,      const uint32* reorderingEnd )
+        IteratorRange<void*> destinationBuffer,            size_t destinationVertexStride,
+        IteratorRange<const void*> sourceBuffer,           size_t sourceVertexStride,
+        IteratorRange<const Assets::VertexElement*> destinationLayout,
+        IteratorRange<const Assets::VertexElement*> sourceLayout,
+        IteratorRange<const uint32_t*> reordering)
     {
         uint32      elementReordering[32];
         signed      maxSourceLayout = -1;
-        for (auto source=sourceLayoutBegin; source!=sourceLayoutEnd; ++source) {
+        for (auto source=sourceLayout.begin(); source!=sourceLayout.end(); ++source) {
                 //      look for the same element in the destination layout (or put ~uint32(0x0) if it's not there)
-            elementReordering[source-sourceLayoutBegin] = ~uint32(0x0);
-            for (auto destination=destinationLayoutBegin; destination!=destinationLayoutEnd; ++destination) {
+            elementReordering[source-sourceLayout.begin()] = ~uint32(0x0);
+            for (auto destination=destinationLayout.begin(); destination!=destinationLayout.end(); ++destination) {
                 if (    !XlCompareString(destination->_semanticName, source->_semanticName)
                     &&  destination->_semanticIndex  == source->_semanticIndex
                     &&  destination->_nativeFormat   == source->_nativeFormat) {
 
-                    elementReordering[source-sourceLayoutBegin] = uint32(destination-destinationLayoutBegin);
-                    maxSourceLayout = std::max(maxSourceLayout, signed(source-sourceLayoutBegin));
+                    elementReordering[source-sourceLayout.begin()] = uint32(destination-destinationLayout.begin());
+                    maxSourceLayout = std::max(maxSourceLayout, signed(source-sourceLayout.begin()));
                     break;
                 }
             }
@@ -486,28 +486,30 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         if (maxSourceLayout<0) return;
 
-        size_t vertexCount = reorderingEnd - reorderingBegin; (void)vertexCount;
+        size_t vertexCount = reordering.size(); (void)vertexCount;
 
         #if defined(_DEBUG)
                     //  fill in some dummy values
-            std::fill((uint8*)destinationBuffer, (uint8*)PtrAdd(destinationBuffer, vertexCount*destinationVertexStride), (uint8)0xaf);
+            std::fill((uint8_t*)destinationBuffer.begin(), (uint8_t*)destinationBuffer.end(), (uint8_t)0xaf);
         #endif
 
             ////////////////     copy each vertex (slowly) piece by piece       ////////////////
-        for (auto reordering = reorderingBegin; reordering!=reorderingEnd; ++reordering) {
-            size_t sourceIndex               = reordering-reorderingBegin, destinationIndex = *reordering;
-            void* destinationVertexStart     = PtrAdd(destinationBuffer, destinationIndex*destinationVertexStride);
-            const void* sourceVertexStart    = PtrAdd(sourceBuffer, sourceIndex*sourceVertexStride);
+        for (auto reorderingIterator = reordering.begin(); reorderingIterator!=reordering.end(); ++reorderingIterator) {
+            size_t sourceIndex               = reorderingIterator-reordering.begin(), destinationIndex = *reorderingIterator;
+            void* destinationVertexStart     = PtrAdd(destinationBuffer.begin(), destinationIndex*destinationVertexStride);
+            const void* sourceVertexStart    = PtrAdd(sourceBuffer.begin(), sourceIndex*sourceVertexStride);
             for (unsigned c=0; c<=(unsigned)maxSourceLayout; ++c) {
                 if (elementReordering[c] != ~uint32(0x0)) {
-                    const auto& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
-                    const auto& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
+                    const auto& destinationElement = destinationLayout[elementReordering[c]]; assert(&destinationElement < destinationLayout.end());
+                    const auto& sourceElement = sourceLayout[c]; assert(&sourceElement < sourceLayout.end());
                     size_t elementSize = BitsPerPixel(destinationElement._nativeFormat)/8;
                     assert(elementSize == BitsPerPixel(sourceElement._nativeFormat)/8);
                     assert(destinationElement._alignedByteOffset + elementSize <= destinationVertexStride);
                     assert(sourceElement._alignedByteOffset + elementSize <= sourceVertexStride);
                     assert(PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset+elementSize) <= PtrAdd(destinationVertexStart, vertexCount*destinationVertexStride));
                     assert(PtrAdd(sourceVertexStart, sourceElement._alignedByteOffset+elementSize) <= PtrAdd(sourceVertexStart, vertexCount*sourceVertexStride));
+					assert(PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset+elementSize) <= destinationBuffer.end());
+                    assert(PtrAdd(sourceVertexStart, sourceElement._alignedByteOffset+elementSize) <= sourceBuffer.end());
 
                     XlCopyMemory(
                         PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset),
@@ -518,22 +520,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
     }
 
-    unsigned CalculateVertexSize(
-        const Assets::VertexElement* layoutBegin,  
-        const Assets::VertexElement* layoutEnd)
+    unsigned CalculateVertexSize(IteratorRange<const Assets::VertexElement*> layout)
     {
         unsigned result = 0;
-        for (auto l=layoutBegin; l!=layoutEnd; ++l)
+        for (auto l=layout.begin(); l!=layout.end(); ++l)
             result += BitsPerPixel(l->_nativeFormat);
         return result/8;
     }
 
-    unsigned CalculateVertexSize(
-        const InputElementDesc* layoutBegin,  
-        const InputElementDesc* layoutEnd)
+    unsigned CalculateVertexSize(IteratorRange<const InputElementDesc*> layout)
     {
         unsigned result = 0;
-        for (auto l=layoutBegin; l!=layoutEnd; ++l)
+        for (auto l=layout.begin(); l!=layout.end(); ++l)
             result += BitsPerPixel(l->_nativeFormat);
         return result/8;
     }
