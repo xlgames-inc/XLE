@@ -27,6 +27,313 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 {
     static const bool SkinNormals = true;
 
+	static const std::string DefaultSemantic_Weights         = "WEIGHTS";
+    static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";
+
+	class BuckettedSkinController
+	{
+	public:
+		struct Bucket
+        {
+            std::vector<InputElementDesc>	_vertexInputLayout;
+            unsigned						_weightCount = 0;
+
+            std::unique_ptr<uint8_t[]>		_vertexBufferData;
+            size_t							_vertexBufferSize = 0;
+        };
+
+		Bucket						_bucket[4];      // 4, 2, 1, 0
+        std::vector<uint32_t>		_positionIndexToBucketIndex;
+		std::vector<unsigned>		_jointIndexRemapping;
+
+		void RemapJoints(IteratorRange<const unsigned*> newIndices);
+
+		BuckettedSkinController(const UnboundSkinController& src);
+	};
+
+	template <int WeightCount>
+        class VertexWeightAttachment
+    {
+    public:
+        uint8_t       _weights[WeightCount];            // go straight to compressed 8 bit value
+        uint8_t       _jointIndex[WeightCount];
+    };
+
+    template <>
+        class VertexWeightAttachment<0>
+    {
+    };
+
+    template <int WeightCount>
+        class VertexWeightAttachmentBucket
+    {
+    public:
+		unsigned _vertexCount = 0;
+        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
+    };
+
+    template<unsigned WeightCount> 
+        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
+    {
+        VertexWeightAttachment<WeightCount> attachment;
+		unsigned c=0;
+		for (; c<std::min(WeightCount, jointCount); ++c) {
+			attachment._weights[c] = weights[c];
+			attachment._jointIndex[c] = (uint8_t)joints[c];
+		}
+		for (; c<WeightCount; ++c) {
+			attachment._weights[c] = 0;
+			attachment._jointIndex[c] = 0;
+		}
+        return attachment;
+    }
+
+    template<> inline VertexWeightAttachment<0> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
+    {
+        return VertexWeightAttachment<0>();
+    }
+
+	template<unsigned WeightCount>
+		void AccumulateJointUsage(
+			const VertexWeightAttachmentBucket<WeightCount>& bucket,
+			std::vector<unsigned>& accumulator);
+	template<unsigned WeightCount>
+		void RemapJointIndices(
+			VertexWeightAttachmentBucket<WeightCount>& bucket,
+			IteratorRange<const unsigned*> remapping);
+
+	BuckettedSkinController::BuckettedSkinController(const UnboundSkinController& src)
+	{
+			//
+            //      If we have a mesh where there are many vertices with only 1 or 2
+            //      weights, but others with 4, we could potentially split the
+            //      skinning operation up into multiple parts.
+            //
+            //      This could be done in 2 ways:
+            //          1. split the geometry into multiple meshes, with extra draw calls
+            //          2. do skinning in a preprocessing step before Draw
+            //                  Ie; multiple skin -> to vertex buffer steps
+            //                  then a single draw call...
+            //              That would be efficient if writing to a GPU vertex buffer was
+            //              very fast (it would also help reduce shader explosion).
+            //
+            //      If we were using type 2, it might be best to separate the animated parts
+            //      of the vertex from the main vertex buffer. So texture coordinates and vertex
+            //      colors will be static, so left in a separate buffer. But positions (and possibly
+            //      normals and tangent frames) might be animated. So they could be held separately.
+            //
+            //      It might be handy to have a vertex buffer with just the positions. This could
+            //      be used for pre-depth passes, etc.
+            //
+            //      Option 2 would be an efficient mode in multiple-pass rendering (because we
+            //      apply the skinning only once, even if the object is rendered multiple times).
+            //      But we need lots of temporary buffer space. Apparently in D3D11.1, we can 
+            //      output to a buffer as a side-effect of vertex transformations, also. So a 
+            //      first pass vertex shader could do depth-prepass and generate skinned
+            //      positions for the second pass. (but there are some complications... might be
+            //      worth experimenting with...)
+            //
+            //
+            //      Let's create a number of buckets based on the number of weights attached
+            //      to that vertex. Ideally we want a lot of vertices in the smaller buckets, 
+            //      and few in the high buckets.
+            //
+
+        VertexWeightAttachmentBucket<4> bucket4;
+        VertexWeightAttachmentBucket<2> bucket2;
+        VertexWeightAttachmentBucket<1> bucket1;
+        VertexWeightAttachmentBucket<0> bucket0;
+
+        _positionIndexToBucketIndex.reserve(src._influenceCount.size());
+
+		auto influenceI = src._influenceCount.begin();
+        for (; influenceI!=src._influenceCount.end(); ++influenceI) {
+
+            auto influenceCount = *influenceI;
+			auto vertexIndex = std::distance(src._influenceCount.begin(), influenceI);
+
+			if (influenceCount == ~0u) continue;
+
+                //
+                //      Sometimes the input data has joints attached at very low weight
+                //      values. In these cases it's better to just ignore the influence.
+                //
+                //      So we need to calculate the normalized weights for all of the
+                //      influences, first -- and then strip out the unimportant ones.
+                //
+            const unsigned AbsoluteMaxJointInfluenceCount = 256;
+			float weights[AbsoluteMaxJointInfluenceCount];
+            unsigned jointIndices[AbsoluteMaxJointInfluenceCount];
+
+			for (unsigned c=0; c<influenceCount;) {
+				auto subPartCount = std::min(4u, influenceCount-c);
+				std::copy(src._attachmentGroups[c/4]._weights.begin() + vertexIndex*4, src._attachmentGroups[c/4]._weights.begin() + vertexIndex*4 + subPartCount, &weights[c]);
+				std::copy(src._attachmentGroups[c/4]._jointIndices.begin() + vertexIndex*4, src._attachmentGroups[c/4]._jointIndices.begin() + vertexIndex*4 + subPartCount, &jointIndices[c]);
+				c += subPartCount;
+			}
+
+            const float minWeightThreshold = 8.f / 255.f;
+            float totalWeightValue = 0.f;
+            for (size_t c=0; c<influenceCount;) {
+                if (weights[c] < minWeightThreshold) {
+                    std::move(&weights[c+1],        &weights[influenceCount],       &weights[c]);
+                    std::move(&jointIndices[c+1],   &jointIndices[influenceCount],  &jointIndices[c]);
+                    --influenceCount;
+                } else {
+                    totalWeightValue += weights[c];
+                    ++c;
+                }
+            }
+
+            uint8_t normalizedWeights[AbsoluteMaxJointInfluenceCount];
+            for (size_t c=0; c<influenceCount; ++c) {
+				assert(totalWeightValue!=0.0f);
+                normalizedWeights[c] = (uint8_t)(Clamp(weights[c] / totalWeightValue, 0.f, 1.f) * 255.f + .5f);
+            }
+
+                //
+                // \todo -- should we sort influcences by the strength of the influence, or by the joint
+                //          index?
+                //
+                //          Sorting by weight could allow us to decrease the number of influences
+                //          calculated smoothly.
+                //
+                //          Sorting by joint index might mean that adjacent vertices are more frequently
+                //          calculating the same joint.
+                //
+
+            #if defined(_DEBUG)     // double check to make sure no joint is referenced twice!
+                for (size_t c=1; c<influenceCount; ++c) {
+                    assert(std::find(jointIndices, &jointIndices[c], jointIndices[c]) == &jointIndices[c]);
+                }
+            #endif
+
+			if (_positionIndexToBucketIndex.size() <= (size_t)vertexIndex)
+				_positionIndexToBucketIndex.resize(vertexIndex+1, ~0u);
+			assert(_positionIndexToBucketIndex[vertexIndex] == ~0u);
+
+            if (influenceCount >= 3) {
+                if (influenceCount > 4) {
+                    Log(Warning)
+                        << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller"
+                        << ". Only 4 joints can affect any given single vertex."
+						<< std::endl;
+
+                        // (When this happens, only use the first 4, and ignore the others)
+					Log(Warning) << "After filtering:" << std::endl;
+                    for (size_t c=0; c<influenceCount; ++c) {
+						Log(Warning) << "  [" << c << "] Weight: " << normalizedWeights[c] << " Joint: " << jointIndices[c] << std::endl;
+                    }
+                }
+
+                    // (we could do a separate bucket for 3, if it was useful)
+                _positionIndexToBucketIndex[vertexIndex] = (0<<16) | (uint32_t(bucket4._vertexCount)&0xffff);
+                ++bucket4._vertexCount;
+                bucket4._weightAttachments.push_back(BuildWeightAttachment<4>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else if (influenceCount == 2) {
+                _positionIndexToBucketIndex[vertexIndex] = (1<<16) | (uint32_t(bucket2._vertexCount)&0xffff);
+                ++bucket2._vertexCount;
+                bucket2._weightAttachments.push_back(BuildWeightAttachment<2>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else if (influenceCount == 1) {
+                _positionIndexToBucketIndex[vertexIndex] = (2<<16) | (uint32_t(bucket1._vertexCount)&0xffff);
+                ++bucket1._vertexCount;
+                bucket1._weightAttachments.push_back(BuildWeightAttachment<1>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else {
+                _positionIndexToBucketIndex[vertexIndex] = (3<<16) | (uint32_t(bucket0._vertexCount)&0xffff);
+                ++bucket0._vertexCount;
+                bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            }
+        }
+
+		// Compress the list of joints used by this controller by only
+		// including joints that are actually referenced by weights
+		const bool doJointUsageCompression = true;
+		if (doJointUsageCompression) {
+			std::vector<unsigned> jointUsage;
+			jointUsage.resize(256);
+			AccumulateJointUsage(bucket1, jointUsage);
+			AccumulateJointUsage(bucket2, jointUsage);
+			AccumulateJointUsage(bucket4, jointUsage);
+
+			unsigned finalJointIndexCount = 0;
+			for (unsigned c=0; c<jointUsage.size(); ++c) {
+				if (jointUsage[c]) {
+					if (_jointIndexRemapping.size() <= c)
+						_jointIndexRemapping.resize(c+1, ~0u);
+					_jointIndexRemapping[c] = finalJointIndexCount;
+					++finalJointIndexCount;
+				}
+			}
+			RemapJointIndices(bucket1, MakeIteratorRange(_jointIndexRemapping));
+			RemapJointIndices(bucket2, MakeIteratorRange(_jointIndexRemapping));
+			RemapJointIndices(bucket4, MakeIteratorRange(_jointIndexRemapping));
+		}
+            
+        Bucket b4;
+        b4._weightCount = 4;
+        b4._vertexBufferSize = bucket4._weightAttachments.size() * sizeof(VertexWeightAttachment<4>);
+        b4._vertexBufferData = std::make_unique<uint8_t[]>(b4._vertexBufferSize);
+        XlCopyMemory(b4._vertexBufferData.get(), AsPointer(bucket4._weightAttachments.begin()), b4._vertexBufferSize);
+        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8B8A8_UNORM, 1, 0));
+        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8B8A8_UINT, 1, 4));
+
+        Bucket b2;
+        b2._weightCount = 2;
+        b2._vertexBufferSize = bucket2._weightAttachments.size() * sizeof(VertexWeightAttachment<2>);
+        b2._vertexBufferData = std::make_unique<uint8_t[]>(b2._vertexBufferSize);
+        XlCopyMemory(b2._vertexBufferData.get(), AsPointer(bucket2._weightAttachments.begin()), b2._vertexBufferSize);
+        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8_UNORM, 1, 0));
+        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8_UINT, 1, 2));
+
+        Bucket b1;
+        b1._weightCount = 1;
+        b1._vertexBufferSize = bucket1._weightAttachments.size() * sizeof(VertexWeightAttachment<1>);
+        b1._vertexBufferData = std::make_unique<uint8_t[]>(b1._vertexBufferSize);
+        XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket1._weightAttachments.begin()), b1._vertexBufferSize);
+        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8_UNORM, 1, 0));
+        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8_UINT, 1, 1));
+
+        Bucket b0;
+        b0._weightCount = 0;
+        b0._vertexBufferSize = bucket0._weightAttachments.size() * sizeof(VertexWeightAttachment<0>);
+        if (b0._vertexBufferSize) {
+            b0._vertexBufferData = std::make_unique<uint8_t[]>(b0._vertexBufferSize);
+            XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
+        }
+
+		_bucket[0] = std::move(b4);
+		_bucket[1] = std::move(b2);
+		_bucket[2] = std::move(b1);
+		_bucket[3] = std::move(b0);
+	}
+
+	void BuckettedSkinController::RemapJoints(IteratorRange<const unsigned*> newJointIndices)
+	{
+		// Remap all of the joints through the given remapping indices
+		// Useful for removing redundant duplicates (etc)
+		for (unsigned b=0; b<4; ++b) {
+			auto& bucket = _bucket[b];
+			if (!bucket._vertexBufferSize) continue;
+			auto ele = std::find_if(
+				bucket._vertexInputLayout.begin(), bucket._vertexInputLayout.end(),
+				[](const InputElementDesc& desc) { return desc._semanticName == "JOINTINDICES"; });
+			auto range = MakeVertexIteratorRange(
+				MakeIteratorRange(
+					PtrAdd(bucket._vertexBufferData.get(), ele->_alignedByteOffset),
+					PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize)),
+				CalculateVertexStrideForSlot(MakeIteratorRange(bucket._vertexInputLayout), ele->_inputSlot),
+				ele->_nativeFormat);
+			auto componentCount = GetComponentCount(RenderCore::GetComponents(ele->_nativeFormat));
+			for (auto i=range.begin(); i<range.end(); ++i) {
+				auto data = (uint8_t*)(*i)._data.begin();
+				for (unsigned c=0; c<componentCount; ++c)
+					data[c] = (uint8_t)newJointIndices[data[c]];
+			}
+		}
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	static uint32_t ControllerAndBucketIndex(unsigned controllerIdx, unsigned bucketIdx)
 	{
 		assert((bucketIdx & ~0x3ffff) == 0);
@@ -78,6 +385,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t unifiedVertexCount = sourceGeo._unifiedVertexCount;
 		assert(sourceGeo._unifiedVertexIndexToPositionIndex.empty() || sourceGeo._unifiedVertexIndexToPositionIndex.size() >= unifiedVertexCount);
 
+		std::vector<BuckettedSkinController> buckettedControllers;
+		buckettedControllers.reserve(controllers.size());
+		for (const auto&c:controllers)
+			buckettedControllers.emplace_back(BuckettedSkinController{*c._controller});
+
 		struct VertexIndices
 		{
 			uint32_t _inputUnifiedVertexIndex;
@@ -93,9 +405,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 			unsigned controllerIdx=0;
 			for (; controllerIdx!=controllers.size(); ++controllerIdx) {
-				auto& controller = *controllers[controllerIdx]._controller;
-				if (positionIndex < controller._positionIndexToBucketIndex.size() && controller._positionIndexToBucketIndex[positionIndex] != ~0u) {
-					bucketIndex = ControllerAndBucketIndex(controllerIdx, controller._positionIndexToBucketIndex[positionIndex]);
+				auto& buckettedController = buckettedControllers[controllerIdx];
+				if (	positionIndex < buckettedController._positionIndexToBucketIndex.size()
+					&&	buckettedController._positionIndexToBucketIndex[positionIndex] != ~0u) {
+					bucketIndex = ControllerAndBucketIndex(controllerIdx, buckettedController._positionIndexToBucketIndex[positionIndex]);
 					break;
 				}
 			}
@@ -128,7 +441,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //                  as they were in the original
             //
 
-        const size_t bucketCount = dimof(UnboundSkinController::_bucket) * controllers.size();
+        const size_t bucketCount = dimof(BuckettedSkinController::_bucket) * controllers.size();
         std::vector<size_t> bucketStart(bucketCount, 0);
         std::vector<size_t> bucketEnd(bucketCount, 0);
 
@@ -229,9 +542,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					[&vertexOrdering](uint16_t inputIndex) -> uint16_t { auto result = vertexOrdering[inputIndex]; assert(result <= 0xffff); return (uint16_t)result; });
 			} else if (sourceGeo._indexFormat == Format::R8_UINT) {
 				std::transform(
-					(const uint8*)AsPointer(sourceGeo._indices.begin()), (const uint8*)AsPointer(sourceGeo._indices.end()),
+					(const uint8_t*)AsPointer(sourceGeo._indices.begin()), (const uint8_t*)AsPointer(sourceGeo._indices.end()),
 					(uint8_t*)newIndexBuffer.data(),
-					[&vertexOrdering](uint8 inputIndex) -> uint8 { auto result = vertexOrdering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
+					[&vertexOrdering](uint8_t inputIndex) -> uint8_t { auto result = vertexOrdering[inputIndex]; assert(result <= 0xff); return (uint8_t)result; });
 			} else {
 				Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
 			}
@@ -246,7 +559,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         std::vector<unsigned> bucketVertexSizes(bucketCount);
         for (unsigned b=0; b<bucketCount; ++b) {
-			auto& bucket = controllers[b>>2]._controller->_bucket[b&0x3];
+			auto& bucket = buckettedControllers[b>>2]._bucket[b&0x3];
             bucketVertexSizes[b] = CalculateVertexSize(MakeIteratorRange(bucket._vertexInputLayout));
             if (bucket._vertexBufferSize) {
                 if (bucketVertexSizes[b] > destinationWeightVertexStride) {
@@ -285,9 +598,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
 		#endif
 
-        std::vector<uint8> skeletonBindingVertices;
+        std::vector<uint8_t> skeletonBindingVertices;
         if (destinationWeightVertexStride && finalWeightBufferFormat) {
-            skeletonBindingVertices = std::vector<uint8>(destinationWeightVertexStride*unifiedVertexCount, 0);
+            skeletonBindingVertices = std::vector<uint8_t>(destinationWeightVertexStride*unifiedVertexCount, 0);
 
             for (size_t destinationVertexIndex=0; destinationVertexIndex<vertexMappingByFinalOrdering.size(); ++destinationVertexIndex) {
                 unsigned sourceBucketIndex = vertexMappingByFinalOrdering[destinationVertexIndex]._bucketIndex;
@@ -299,7 +612,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				assert(controllerIdx < controllers.size());
 				assert(bucketIdx < 4);
                                 
-				const auto& bucket = controllers[controllerIdx]._controller->_bucket[bucketIdx];
+				const auto& bucket = buckettedControllers[controllerIdx]._bucket[bucketIdx];
 
                     //
                     //      Note that sometimes we'll be expanding the vertex format in this process
@@ -459,17 +772,34 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 			NascentBoundSkinnedGeometry::Section section;
 
-			std::vector<Float4x4> bindShapeByInverseBindMatrices;
-			bindShapeByInverseBindMatrices.reserve(controllers[controllerIdx]._controller->_inverseBindMatrices.size());
-			for (const auto&ibm:controllers[controllerIdx]._controller->_inverseBindMatrices)
-				bindShapeByInverseBindMatrices.push_back(Combine(controllers[controllerIdx]._controller->_bindShapeMatrix, ibm));
-			section._bindShapeByInverseBindMatrices = std::move(bindShapeByInverseBindMatrices);
+			auto jointRemapping = MakeIteratorRange(buckettedControllers[controllerIdx]._jointIndexRemapping);
+			if (jointRemapping.empty()) {
+				section._bindShapeByInverseBindMatrices.reserve(controllers[controllerIdx]._controller->GetInverseBindMatrices().size());
+				for (const auto&ibm:controllers[controllerIdx]._controller->GetInverseBindMatrices())
+					section._bindShapeByInverseBindMatrices.push_back(Combine(controllers[controllerIdx]._controller->GetBindShapeMatrix(), ibm));
+				section._jointMatrices = std::vector<uint16_t>(
+					AsPointer(controllers[controllerIdx]._jointMatrices.begin()),
+					AsPointer(controllers[controllerIdx]._jointMatrices.end()));
+			} else {
+				section._bindShapeByInverseBindMatrices.reserve(jointRemapping.size());
+				section._jointMatrices.reserve(jointRemapping.size());
+
+				unsigned outputCount = 0;
+				for (auto i:jointRemapping) if (i!=~0u) outputCount = std::max(outputCount, i+1);
+				section._bindShapeByInverseBindMatrices.resize(outputCount);
+				section._jointMatrices.resize(outputCount);
+
+				for (size_t srcIdx=0; srcIdx<jointRemapping.size(); ++srcIdx) {
+					if (jointRemapping[srcIdx] == ~0u) continue;
+					section._bindShapeByInverseBindMatrices[jointRemapping[srcIdx]] =
+						Combine(
+							controllers[controllerIdx]._controller->GetBindShapeMatrix(), 
+							controllers[controllerIdx]._controller->GetInverseBindMatrices()[srcIdx]);
+					section._jointMatrices[jointRemapping[srcIdx]] = controllers[controllerIdx]._jointMatrices[srcIdx];
+				}
+			}
 
 			section._preskinningDrawCalls = std::move(preskinningDrawCalls);
-			section._jointMatrices = DynamicArray<uint16_t>(
-				AsPointer(controllers[controllerIdx]._jointMatrices.begin()),
-				AsPointer(controllers[controllerIdx]._jointMatrices.end()));
-
 			result._preskinningSections.emplace_back(std::move(section));
 		}
 
@@ -494,7 +824,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     void NascentBoundSkinnedGeometry::SerializeWithResourceBlock(
         Serialization::NascentBlockSerializer& outputSerializer, 
-        std::vector<uint8>& largeResourcesBlock) const
+        std::vector<uint8_t>& largeResourcesBlock) const
     {
         using namespace Serialization;
 
@@ -546,67 +876,58 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
-        
 
-
-	void UnboundSkinController::RemapJoints(IteratorRange<const unsigned*> newJointIndices)
+	void UnboundSkinController::AddInfluences(
+		unsigned targetVertex,
+		IteratorRange<const float*> weights,
+		IteratorRange<const unsigned*> jointIndices)
 	{
-		// Remap all of the joints through the given remapping indices
-		// Useful for removing redundant duplicates (etc)
-		assert(newJointIndices.size() == _jointNames.size());
-		assert(newJointIndices.size() == _inverseBindMatrices.size());
+		assert(weights.size() == jointIndices.size());
+		auto groupCount = (weights.size()+3)/4;
+		if (_attachmentGroups.size() < groupCount)
+			_attachmentGroups.resize(groupCount);
 
-		for (unsigned b=0; b<4; ++b) {
-			auto& bucket = _bucket[b];
-			if (!bucket._vertexBufferSize) continue;
-			auto ele = std::find_if(
-				bucket._vertexInputLayout.begin(), bucket._vertexInputLayout.end(),
-				[](const InputElementDesc& desc) { return desc._semanticName == "JOINTINDICES"; });
-			auto range = MakeVertexIteratorRange(
-				MakeIteratorRange(
-					PtrAdd(bucket._vertexBufferData.get(), ele->_alignedByteOffset),
-					PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize)),
-				CalculateVertexStrideForSlot(MakeIteratorRange(bucket._vertexInputLayout), ele->_inputSlot),
-				ele->_nativeFormat);
-			auto componentCount = GetComponentCount(RenderCore::GetComponents(ele->_nativeFormat));
-			for (auto i=range.begin(); i<range.end(); ++i) {
-				auto data = (uint8_t*)(*i)._data.begin();
-				for (unsigned c=0; c<componentCount; ++c)
-					data[c] = (uint8_t)newJointIndices[data[c]];
-			}
+		unsigned influenceI = 0;
+		for (unsigned g=0; g<groupCount; ++g) {
+			if (_attachmentGroups[g]._weights.size() <= targetVertex*4)
+				_attachmentGroups[g]._weights.resize((targetVertex+1)*4, 0);
+			if (_attachmentGroups[g]._jointIndices.size() <= targetVertex*4)
+				_attachmentGroups[g]._jointIndices.resize((targetVertex+1)*4, 0);
+
+			auto subPartCount = std::min(unsigned(weights.size()) - influenceI, 4u);
+			std::copy(weights.begin() + influenceI, weights.begin() + influenceI + subPartCount, _attachmentGroups[g]._weights.begin() + targetVertex*4);
+			std::copy(jointIndices.begin() + influenceI, jointIndices.begin() + influenceI + subPartCount, _attachmentGroups[g]._jointIndices.begin() + targetVertex*4);
+
+			influenceI += subPartCount;
 		}
 
-		unsigned maxOutputIndex = 0;
-		for (auto i:newJointIndices) maxOutputIndex = std::max(maxOutputIndex, i);
+		if (_influenceCount.size() <= targetVertex)
+			_influenceCount.resize(targetVertex+1, ~0u);
+		assert(_influenceCount[targetVertex] == ~0u);
+		_influenceCount[targetVertex] = (unsigned)weights.size();
+	}
 
-		std::vector<std::string> newJointNames(maxOutputIndex+1);
-		std::vector<Float4x4>  newInverseBindMatrices;
-		newInverseBindMatrices.resize(size_t(maxOutputIndex+1), Identity<Float4x4>());
+	void UnboundSkinController::ReserveInfluences(unsigned vertexCount, unsigned influencesPerVertex)
+	{
+		auto groupCount = (influencesPerVertex+3)/4;
+		if (_attachmentGroups.size() < groupCount)
+			_attachmentGroups.resize(groupCount);
 
-		for (unsigned c=0; c<_jointNames.size(); ++c) {
-			assert(newJointNames[newJointIndices[c]].empty() || newJointNames[newJointIndices[c]] == _jointNames[c]);	// ensure that we haven't already mapped to this index
-			newJointNames[newJointIndices[c]] = _jointNames[c];
-			newInverseBindMatrices[newJointIndices[c]] = _inverseBindMatrices[c];
+		for (auto&g:_attachmentGroups) {
+			g._weights.reserve(vertexCount);
+			g._jointIndices.reserve(vertexCount);
 		}
 
-		_jointNames = std::move(newJointNames);
-		_inverseBindMatrices = std::move(newInverseBindMatrices);
+		_influenceCount.reserve(vertexCount);
 	}
 
     UnboundSkinController::UnboundSkinController(   
-        Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-        std::vector<std::string>&& jointNames,
-        std::vector<uint32_t>&& vertexPositionToBucketIndex)
+        std::vector<std::string>&& jointNames)
     :       _inverseBindMatrices(std::move(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)
-    ,       _positionIndexToBucketIndex(vertexPositionToBucketIndex)
     ,       _jointNames(jointNames)
     {
-        _bucket[0] = std::forward<Bucket>(bucket4);
-        _bucket[1] = std::forward<Bucket>(bucket2);
-        _bucket[2] = std::forward<Bucket>(bucket1);
-        _bucket[3] = std::forward<Bucket>(bucket0);
     }
 
 	template<unsigned WeightCount>
@@ -630,7 +951,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		for (auto&w:bucket._weightAttachments) {
 			for (unsigned c=0; c<WeightCount; ++c) {
 				assert(w._jointIndex[c] < remapping.size());
-				w._jointIndex[c] = (uint8)remapping[w._jointIndex[c]];
+				w._jointIndex[c] = (uint8_t)remapping[w._jointIndex[c]];
 			}
 		}
 	}

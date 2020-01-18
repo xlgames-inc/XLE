@@ -30,9 +30,6 @@ namespace ColladaConversion
     using namespace RenderCore;
     using namespace RenderCore::Assets::GeoProc;
 
-    static const std::string DefaultSemantic_Weights         = "WEIGHTS";
-    static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";
-
     static const unsigned AbsoluteMaxJointInfluenceCount = 256;
 
     class VertexSourceData : public IVertexSourceData
@@ -805,10 +802,16 @@ namespace ColladaConversion
             } else
                 transform = Identity<Float4x4>();
 
-			if (c < remapping.size() && remapping[c] != ~0u) {
-				if (result.size() <= remapping[c])
-					result.resize(remapping[c]+1);
-				result[remapping[c]] = transform;
+			if (!remapping.empty()) {
+				if (c < remapping.size() && remapping[c] != ~0u) {
+					if (result.size() <= remapping[c])
+						result.resize(remapping[c]+1);
+					result[remapping[c]] = transform;
+				}
+			} else {
+				if (result.size() <= c)
+					result.resize(c+1);
+				result[c] = transform;
 			}
         }
 
@@ -857,9 +860,17 @@ namespace ColladaConversion
             auto* elementStart = i;
             while (i < arrayData._end && !IsWhitespace(*i)) ++i;
 
-			if (elementIndex < remapping.size() && remapping[elementIndex] != ~0u) {
-				if (result.size() <= remapping[elementIndex])
-					result.resize(remapping[elementIndex]+1);
+			unsigned remappedElementIndex = elementIndex;
+			if (!remapping.empty()) {
+				if (elementIndex < remapping.size()) {
+					remappedElementIndex = remapping[elementIndex];
+				} else 
+					remappedElementIndex = ~0u;
+			}
+
+			if (remappedElementIndex != ~0u) {
+				if (result.size() <= remappedElementIndex)
+					result.resize(remappedElementIndex+1);
 
 				// We must convert from the "sids" in the JOINTS array to node names
 				// This is because we use names (rather than sids) for skeleton/animation
@@ -874,11 +885,12 @@ namespace ColladaConversion
 					GuidReference(Hash64(nodeId), jointSourceRef._fileHash), resolveContext, 
 					&IDocScopeIdResolver::FindNodeBySid);
 				if (node) {
-					result[remapping[elementIndex]] = node.GetName().Cast<char>().AsString();
+					result[remappedElementIndex] = node.GetName().Cast<char>().AsString();
 				} else {
-					result[remapping[elementIndex]] = nodeId;
+					result[remappedElementIndex] = nodeId;
 				}
 			}
+
             // result.push_back(std::string((const char*)elementStart, (const char*)i));
 			++elementIndex;
             if (i == arrayData._end || elementIndex == count) break;
@@ -1085,46 +1097,6 @@ namespace ColladaConversion
         auto bindShapeMatrix = Identity<Float4x4>();
         ParseXMLList(&bindShapeMatrix(0,0), 16, controller.GetBindShapeMatrix());
 
-            //
-            //      If we have a mesh where there are many vertices with only 1 or 2
-            //      weights, but others with 4, we could potentially split the
-            //      skinning operation up into multiple parts.
-            //
-            //      This could be done in 2 ways:
-            //          1. split the geometry into multiple meshes, with extra draw calls
-            //          2. do skinning in a preprocessing step before Draw
-            //                  Ie; multiple skin -> to vertex buffer steps
-            //                  then a single draw call...
-            //              That would be efficient if writing to a GPU vertex buffer was
-            //              very fast (it would also help reduce shader explosion).
-            //
-            //      If we were using type 2, it might be best to separate the animated parts
-            //      of the vertex from the main vertex buffer. So texture coordinates and vertex
-            //      colors will be static, so left in a separate buffer. But positions (and possibly
-            //      normals and tangent frames) might be animated. So they could be held separately.
-            //
-            //      It might be handy to have a vertex buffer with just the positions. This could
-            //      be used for pre-depth passes, etc.
-            //
-            //      Option 2 would be an efficient mode in multiple-pass rendering (because we
-            //      apply the skinning only once, even if the object is rendered multiple times).
-            //      But we need lots of temporary buffer space. Apparently in D3D11.1, we can 
-            //      output to a buffer as a side-effect of vertex transformations, also. So a 
-            //      first pass vertex shader could do depth-prepass and generate skinned
-            //      positions for the second pass. (but there are some complications... might be
-            //      worth experimenting with...)
-            //
-            //
-            //      Let's create a number of buckets based on the number of weights attached
-            //      to that vertex. Ideally we want a lot of vertices in the smaller buckets, 
-            //      and few in the high buckets.
-            //
-
-        VertexWeightAttachmentBucket<4> bucket4;
-        VertexWeightAttachmentBucket<2> bucket2;
-        VertexWeightAttachmentBucket<1> bucket1;
-        VertexWeightAttachmentBucket<0> bucket0;
-
         size_t vertexCount = controller.GetVerticesWithWeightsCount();
         if (vertexCount >= std::numeric_limits<uint16>::max()) {
             Throw(FormatException(
@@ -1132,170 +1104,32 @@ namespace ColladaConversion
         }
         
         ControllerVertexIterator vIterator(controller, resolveContext);
-
-        std::vector<uint32> vertexPositionToBucketIndex;
-        vertexPositionToBucketIndex.reserve(vertexCount);
+		
+		auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext, {});
+		auto jointNames = GetJointNames(controller, resolveContext, {});
+		assert(inverseBindMatrices.size() == jointNames.size());
+        UnboundSkinController result(
+            std::move(inverseBindMatrices), bindShapeMatrix, 
+            std::move(jointNames));
+		result.ReserveInfluences((unsigned)vertexCount, 4);
 
         for (size_t vertex=0; vertex<vertexCount; ++vertex) {
-
             auto influenceCount = vIterator.GetNextInfluenceCount();
             if (influenceCount > AbsoluteMaxJointInfluenceCount)
                 Throw(FormatException(
                     "Too many influences per vertex in skinning controller", controller.GetLocation()));
 
-                //
-                //      Sometimes the input data has joints attached at very low weight
-                //      values. In these cases it's better to just ignore the influence.
-                //
-                //      So we need to calculate the normalized weights for all of the
-                //      influences, first -- and then strip out the unimportant ones.
-                //
-            float weights[AbsoluteMaxJointInfluenceCount];
+			float weights[AbsoluteMaxJointInfluenceCount];
             unsigned jointIndices[AbsoluteMaxJointInfluenceCount];
             vIterator.GetNextInfluences(influenceCount, jointIndices, weights);
 
-            const float minWeightThreshold = 8.f / 255.f;
-            float totalWeightValue = 0.f;
-            for (size_t c=0; c<influenceCount;) {
-                if (weights[c] < minWeightThreshold) {
-                    std::move(&weights[c+1],        &weights[influenceCount],       &weights[c]);
-                    std::move(&jointIndices[c+1],   &jointIndices[influenceCount],  &jointIndices[c]);
-                    --influenceCount;
-                } else {
-                    totalWeightValue += weights[c];
-                    ++c;
-                }
-            }
-
-            uint8 normalizedWeights[AbsoluteMaxJointInfluenceCount];
-            for (size_t c=0; c<influenceCount; ++c) {
-                normalizedWeights[c] = (uint8)(Clamp(weights[c] / totalWeightValue, 0.f, 1.f) * 255.f + .5f);
-            }
-
-                //
-                // \todo -- should we sort influcences by the strength of the influence, or by the joint
-                //          index?
-                //
-                //          Sorting by weight could allow us to decrease the number of influences
-                //          calculated smoothly.
-                //
-                //          Sorting by joint index might mean that adjacent vertices are more frequently
-                //          calculating the same joint.
-                //
-
-            #if defined(_DEBUG)     // double check to make sure no joint is referenced twice!
-                for (size_t c=1; c<influenceCount; ++c) {
-                    assert(std::find(jointIndices, &jointIndices[c], jointIndices[c]) == &jointIndices[c]);
-                }
-            #endif
-
-            if (influenceCount >= 3) {
-                if (influenceCount > 4) {
-                    Log(Warning)
-                        << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
-                        << controller.GetLocation() 
-                        << ". Only 4 joints can affect any given single vertex."
-						<< std::endl;
-
-                        // (When this happens, only use the first 4, and ignore the others)
-					Log(Warning) << "After filtering:" << std::endl;
-                    for (size_t c=0; c<influenceCount; ++c) {
-						Log(Warning) << "  [" << c << "] Weight: " << normalizedWeights[c] << " Joint: " << jointIndices[c] << std::endl;
-                    }
-                }
-
-                    // (we could do a separate bucket for 3, if it was useful)
-                vertexPositionToBucketIndex.push_back((0<<16) | (uint32(bucket4._vertexBindings.size())&0xffff));
-                bucket4._vertexBindings.push_back(uint16(vertex));
-                bucket4._weightAttachments.push_back(BuildWeightAttachment<4>(normalizedWeights, jointIndices, (unsigned)influenceCount));
-            } else if (influenceCount == 2) {
-                vertexPositionToBucketIndex.push_back((1<<16) | (uint32(bucket2._vertexBindings.size())&0xffff));
-                bucket2._vertexBindings.push_back(uint16(vertex));
-                bucket2._weightAttachments.push_back(BuildWeightAttachment<2>(normalizedWeights, jointIndices, (unsigned)influenceCount));
-            } else if (influenceCount == 1) {
-                vertexPositionToBucketIndex.push_back((2<<16) | (uint32(bucket1._vertexBindings.size())&0xffff));
-                bucket1._vertexBindings.push_back(uint16(vertex));
-                bucket1._weightAttachments.push_back(BuildWeightAttachment<1>(normalizedWeights, jointIndices, (unsigned)influenceCount));
-            } else {
-                vertexPositionToBucketIndex.push_back((3<<16) | (uint32(bucket0._vertexBindings.size())&0xffff));
-                bucket0._vertexBindings.push_back(uint16(vertex));
-                bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
-            }
-        }
-
-		// Compress the list of joints used by this controller by only
-		// including joints that are actually referenced by weights
-		std::vector<unsigned> jointIndexRemapping;
-		const bool doJointUsageCompression = true;
-		if (doJointUsageCompression) {
-			std::vector<unsigned> jointUsage;
-			jointUsage.resize(256);
-			AccumulateJointUsage(bucket1, jointUsage);
-			AccumulateJointUsage(bucket2, jointUsage);
-			AccumulateJointUsage(bucket4, jointUsage);
-
-			unsigned finalJointIndexCount = 0;
-			for (unsigned c=0; c<jointUsage.size(); ++c) {
-				if (jointUsage[c]) {
-					if (jointIndexRemapping.size() <= c)
-						jointIndexRemapping.resize(c+1, ~0u);
-					jointIndexRemapping[c] = finalJointIndexCount;
-					++finalJointIndexCount;
-				}
-			}
-			RemapJointIndices(bucket1, MakeIteratorRange(jointIndexRemapping));
-			RemapJointIndices(bucket2, MakeIteratorRange(jointIndexRemapping));
-			RemapJointIndices(bucket4, MakeIteratorRange(jointIndexRemapping));
-		} else {
-			for (unsigned c=0; c<256; ++c)
-				jointIndexRemapping.push_back(c);
+			result.AddInfluences(
+				(unsigned)vertex,
+				MakeIteratorRange(weights, &weights[influenceCount]),
+				MakeIteratorRange(jointIndices, &jointIndices[influenceCount]));
 		}
-            
-        UnboundSkinController::Bucket b4;
-        b4._vertexBindings = std::move(bucket4._vertexBindings);
-        b4._weightCount = 4;
-        b4._vertexBufferSize = bucket4._weightAttachments.size() * sizeof(VertexWeightAttachment<4>);
-        b4._vertexBufferData = std::make_unique<uint8[]>(b4._vertexBufferSize);
-        XlCopyMemory(b4._vertexBufferData.get(), AsPointer(bucket4._weightAttachments.begin()), b4._vertexBufferSize);
-        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8B8A8_UNORM, 1, 0));
-        b4._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8B8A8_UINT, 1, 4));
-
-        UnboundSkinController::Bucket b2;
-        b2._vertexBindings = std::move(bucket2._vertexBindings);
-        b2._weightCount = 2;
-        b2._vertexBufferSize = bucket2._weightAttachments.size() * sizeof(VertexWeightAttachment<2>);
-        b2._vertexBufferData = std::make_unique<uint8[]>(b2._vertexBufferSize);
-        XlCopyMemory(b2._vertexBufferData.get(), AsPointer(bucket2._weightAttachments.begin()), b2._vertexBufferSize);
-        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8_UNORM, 1, 0));
-        b2._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8_UINT, 1, 2));
-
-        UnboundSkinController::Bucket b1;
-        b1._vertexBindings = std::move(bucket1._vertexBindings);
-        b1._weightCount = 1;
-        b1._vertexBufferSize = bucket1._weightAttachments.size() * sizeof(VertexWeightAttachment<1>);
-        b1._vertexBufferData = std::make_unique<uint8[]>(b1._vertexBufferSize);
-        XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket1._weightAttachments.begin()), b1._vertexBufferSize);
-        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8_UNORM, 1, 0));
-        b1._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8_UINT, 1, 1));
-
-        UnboundSkinController::Bucket b0;
-        b0._vertexBindings = std::move(bucket0._vertexBindings);
-        b0._weightCount = 0;
-        b0._vertexBufferSize = bucket0._weightAttachments.size() * sizeof(VertexWeightAttachment<0>);
-        if (b0._vertexBufferSize) {
-            b0._vertexBufferData = std::make_unique<uint8[]>(b0._vertexBufferSize);
-            XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
-        }
-
-        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
-        auto jointNames = GetJointNames(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
-		assert(inverseBindMatrices.size() == jointNames.size());
-        GuidReference ref(controller.GetBaseMesh());
-        return UnboundSkinController(
-            std::move(b4), std::move(b2), std::move(b1), std::move(b0),
-            std::move(inverseBindMatrices), bindShapeMatrix, 
-            std::move(jointNames), 
-            std::move(vertexPositionToBucketIndex));
+        
+		return result;
     }
 
 }

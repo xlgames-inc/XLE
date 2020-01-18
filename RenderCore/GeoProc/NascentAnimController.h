@@ -42,7 +42,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		{
 			std::vector<Float4x4>		_bindShapeByInverseBindMatrices;
 			std::vector<DrawCallDesc>   _preskinningDrawCalls;
-			DynamicArray<uint16_t>		_jointMatrices;
+			std::vector<uint16_t>		_jointMatrices;
 		};
 		std::vector<Section>		_preskinningSections;
         GeoInputAssembly            _preskinningIA;
@@ -58,83 +58,36 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundSkinController 
     {
     public:
-        struct Bucket
-        {
-            std::vector<InputElementDesc>	_vertexInputLayout;
-            unsigned						_weightCount = 0;
+		void AddInfluences(
+			unsigned targetVertex,
+			IteratorRange<const float*> weights,
+			IteratorRange<const unsigned*> jointIndices);
+		void ReserveInfluences(unsigned vertexCount, unsigned influencesPerVertex);
 
-            std::unique_ptr<uint8[]>		_vertexBufferData;
-            size_t							_vertexBufferSize = 0;
+		IteratorRange<const std::string*>	GetJointNames() const { return MakeIteratorRange(_jointNames); }
+		IteratorRange<const Float4x4*>		GetInverseBindMatrices() const { return MakeIteratorRange(_inverseBindMatrices); }
+		const Float4x4&						GetBindShapeMatrix() const { return _bindShapeMatrix; }
 
-            std::vector<uint16_t>			_vertexBindings;
-        };
+        UnboundSkinController(
+            std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
+            std::vector<std::string>&& jointNames);
 
-        Float4x4					_bindShapeMatrix;
-
-        Bucket						_bucket[4];      // 4, 2, 1, 0
-        std::vector<uint32>			_positionIndexToBucketIndex;
+	private:
+		Float4x4					_bindShapeMatrix;
 
         std::vector<std::string>	_jointNames;
         std::vector<Float4x4>		_inverseBindMatrices;
 
-		void RemapJoints(IteratorRange<const unsigned*> newIndices);
+		struct AttachmentGroup
+		{
+			std::vector<float>			_weights;
+			std::vector<unsigned>		_jointIndices;
+		};
+		std::vector<AttachmentGroup>	_attachmentGroups;
+		std::vector<unsigned>			_influenceCount;
 
-        UnboundSkinController(
-            Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
-            std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-            std::vector<std::string>&& jointNames,
-            std::vector<uint32>&& vertexPositionToBucketIndex);
-        UnboundSkinController(UnboundSkinController&& moveFrom) = default;
-        UnboundSkinController& operator=(UnboundSkinController&& moveFrom) = default;
+		friend class BuckettedSkinController;
     };
-
-	template <int WeightCount>
-        class VertexWeightAttachment
-    {
-    public:
-        uint8       _weights[WeightCount];            // go straight to compressed 8 bit value
-        uint8       _jointIndex[WeightCount];
-    };
-
-    template <>
-        class VertexWeightAttachment<0>
-    {
-    };
-
-    template <int WeightCount>
-        class VertexWeightAttachmentBucket
-    {
-    public:
-        std::vector<uint16_t>								_vertexBindings;
-        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
-    };
-
-    template<unsigned WeightCount> 
-        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        VertexWeightAttachment<WeightCount> attachment;
-        std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
-        std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
-		for (unsigned c=0; c<std::min(WeightCount, jointCount); ++c) {
-			attachment._weights[c] = weights[c];
-			attachment._jointIndex[c] = (uint8)joints[c];
-		}
-        return attachment;
-    }
-
-    template<> inline VertexWeightAttachment<0> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        return VertexWeightAttachment<0>();
-    }
-
-	template<unsigned WeightCount>
-		void AccumulateJointUsage(
-			const VertexWeightAttachmentBucket<WeightCount>& bucket,
-			std::vector<unsigned>& accumulator);
-	template<unsigned WeightCount>
-		void RemapJointIndices(
-			VertexWeightAttachmentBucket<WeightCount>& bucket,
-			IteratorRange<const unsigned*> remapping);
 
         ////////////////////////////////////////////////////////
 

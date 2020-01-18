@@ -88,7 +88,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 
 		for (const auto&controller:_skinBlocks) {
-			for (const auto&joint:controller.second._controller->_jointNames) {
+			for (const auto&joint:controller.second._controller->GetJointNames()) {
 				auto j = std::make_pair(controller.second._skeleton, joint);
 				auto i = std::find(result.begin(), result.end(), j);
 				if (i == result.end())
@@ -366,9 +366,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 						assert(controllerBlock);
 						const auto& controller = *controllerBlock->_controller;
 
-						std::vector<uint16_t> jointMatrices(controller._jointNames.size());
-						for (unsigned c=0; c<controller._jointNames.size(); ++c)
-							jointMatrices[c] = (uint16_t)cmdStream.RegisterInputInterfaceMarker(controllerBlock->_skeleton, controller._jointNames[c]);
+						std::vector<uint16_t> jointMatrices(controller.GetJointNames().size());
+						for (unsigned c=0; c<controller.GetJointNames().size(); ++c)
+							jointMatrices[c] = (uint16_t)cmdStream.RegisterInputInterfaceMarker(controllerBlock->_skeleton, controller.GetJointNames()[c]);
 
 						controllers.emplace_back(UnboundSkinControllerAndJointMatrices { &controller, std::move(jointMatrices) });
 					}
