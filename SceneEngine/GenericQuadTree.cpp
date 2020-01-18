@@ -39,7 +39,10 @@ namespace SceneEngine
         public:
 			SerializableVector<unsigned>	_objects;
 
-			void Serialize(::Serialization::NascentBlockSerializer& serializer) const { ::Serialize(serializer, _objects); }
+			void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
+			{
+				Serialize(serializer, _objects);
+			}
         };
 
 		SerializableVector<Node>		_nodes;
@@ -107,11 +110,11 @@ namespace SceneEngine
             return (box.second[2] - box.first[2]) * (box.second[1] - box.first[1]) * (box.second[0] - box.first[0]);
         }
 
-		void Serialize(::Serialization::NascentBlockSerializer& serializer) const
+		void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
 		{
-			::Serialize(serializer, _nodes);
-			::Serialize(serializer, _payloads);
-			::Serialize(serializer, _maxCullResults);
+			Serialize(serializer, _nodes);
+			Serialize(serializer, _payloads);
+			Serialize(serializer, _maxCullResults);
 		}
     };
 #pragma pack(pop)
@@ -566,7 +569,7 @@ namespace SceneEngine
         pimpl->_maxCullResults = pimpl->CalculateMaxResults();
 
         ::Serialization::NascentBlockSerializer serializer;
-		::Serialize(serializer, *pimpl);
+		Serialize(serializer, *pimpl);
 		return DynamicArray<uint8>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());

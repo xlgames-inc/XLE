@@ -25,7 +25,11 @@ namespace SceneEngine
             BoundingBox                     _boundary;
 			SerializableVector<unsigned>	_objects;
 
-			void Serialize(::Serialization::NascentBlockSerializer& serializer) const { ::Serialize(serializer, _boundary); ::Serialize(serializer, _objects); }
+			void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const 
+			{ 
+				Serialize(serializer, _boundary);
+				Serialize(serializer, _objects);
+			}
 
             Payload() : _boundary(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX)) {}
         };
@@ -88,11 +92,11 @@ namespace SceneEngine
                 Int2(std::min(resultMax[0], _desc._maxCell[0]), std::min(resultMax[1], _desc._maxCell[1])));
         }
 
-		void Serialize(::Serialization::NascentBlockSerializer& serializer) const
+		void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
 		{
-			::Serialize(serializer, _payloads);
-            ::Serialize(serializer, _oversized);
-            ::Serialize(serializer, _desc);
+			Serialize(serializer, _payloads);
+            Serialize(serializer, _oversized);
+            Serialize(serializer, _desc);
 		}
     };
 #pragma pack(pop)
@@ -275,7 +279,7 @@ namespace SceneEngine
         pimpl->_desc._maxCullResults = pimpl->CalculateMaxResults();
 
         ::Serialization::NascentBlockSerializer serializer;
-		::Serialize(serializer, *pimpl);
+		Serialize(serializer, *pimpl);
 		return DynamicArray<uint8>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());
