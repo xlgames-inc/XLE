@@ -58,38 +58,37 @@ namespace GUILayer
 		NodeGraphFile^		_nodeGraph;
 		String^				_subGraphName;
 		UInt32				_previewNodeId; 
-		PreviewSettings^	_settings;
-		IEnumerable<KeyValuePair<String^, String^>>^ _variableRestrictions;
 	};
 
 	ref class TechniqueDelegateWrapper;
-	ref class MaterialDelegateWrapper;
+	ref class CompiledShaderPatchCollectionWrapper;
 	ref class MessageRelayWrapper;
-	ref class RawMaterial;
-
+	
 	public ref class ShaderGeneratorLayer
 	{
 	public:
-		static String^ GeneratePreviewShader(
+		/*static String^ GeneratePreviewShader(
 			NodeGraphFile^ nodeGraphFile,
 			String^ subGraphName, UInt32 previewNodeId,
-			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);*/
 
 		static void		LoadNodeGraphFile(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context);
         static void		Serialize(System::IO::Stream^ stream, String^ name, NodeGraphFile^ nodeGraphFile, NodeGraphMetaData^ context);
 
-		static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphMetaData^ doc, 
-			NodeGraphPreviewConfiguration^ nodeGraphFile);
-
-		static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphFile^ nodeGraph,
-			String^ subGraphName,
+		static TechniqueDelegateWrapper^ MakeShaderPatchAnalysisDelegate(
+			PreviewSettings^ settings,
+			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions,
 			MessageRelayWrapper^ logMessages);
 
-		static MaterialDelegateWrapper^ MakeMaterialDelegate(
+		/*static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphFile^ nodeGraph,
+			String^ subGraphName,
+			MessageRelayWrapper^ logMessages);*/
+
+		static CompiledShaderPatchCollectionWrapper^ MakeCompiledShaderPatchCollection(
+			NodeGraphMetaData^ doc, 
 			NodeGraphPreviewConfiguration^ nodeGraphFile,
-			RawMaterial^ materialOverrides);
+			MessageRelayWrapper^ logMessages);
 	};
 
 }

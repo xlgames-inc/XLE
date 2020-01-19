@@ -14,6 +14,7 @@
 
 namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; class PredefinedDescriptorSetLayout; }}
 namespace Utility { class ParameterBox; }
+namespace ShaderSourceParser { class InstantiationRequest; class GenerateFunctionOptions; class NodeGraphSignature; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -40,6 +41,7 @@ namespace RenderCore { namespace Techniques
 			{
 				uint64_t		_implementsHash;
 				std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
+				std::shared_ptr<GraphLanguage::NodeGraphSignature> _signature;
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
 			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetMaterialDescriptorSet() const { return _descriptorSet; }
@@ -65,12 +67,16 @@ namespace RenderCore { namespace Techniques
 		uint64_t GetGUID() const { return _guid; }
 
 		CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src);
+		CompiledShaderPatchCollection(const ShaderSourceParser::InstantiatedShader& instantiatedShader);
 		CompiledShaderPatchCollection();
 		~CompiledShaderPatchCollection();
 	private:
 		uint64_t _guid = 0;
 		Interface _interface;
 		RenderCore::Assets::ShaderPatchCollection _src;
+		std::string _savedInstantiation;
+
+		void BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst);
 	};
 
 

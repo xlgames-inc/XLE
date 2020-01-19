@@ -16,29 +16,41 @@ namespace RenderCore { namespace Techniques
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src)
 	: _src(src)
 	{
-		// With the given shader patch collection, build the source code and the 
-		// patching functions associated
-		
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = src.GetHash();
 
-		ShaderSourceParser::GenerateFunctionOptions generateOptions;
-
+		// With the given shader patch collection, build the source code and the 
+		// patching functions associated
+		
 		if (!src.GetPatches().empty()) {
 			std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;
 			finalInstRequests.reserve(src.GetPatches().size());
 			for (const auto&i:src.GetPatches()) finalInstRequests.push_back(i.second);
 
+			ShaderSourceParser::GenerateFunctionOptions generateOptions;
 			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
+			BuildFromInstantiatedShader(inst);
+		}
+	}
 
+	CompiledShaderPatchCollection::CompiledShaderPatchCollection(
+		const ShaderSourceParser::InstantiatedShader& inst)
+	{
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		_guid = 0;
+		BuildFromInstantiatedShader(inst);
+	}
+
+	void CompiledShaderPatchCollection::BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst)
+	{
 			// Note -- we can build the patches interface here, because we assume that this will not
 			//		even change with selectors
 
-			_interface._patches.reserve(inst._entryPoints.size());
-			for (const auto&patch:inst._entryPoints) {
-				if (patch._implementsName.empty()) continue;
+		_interface._patches.reserve(inst._entryPoints.size());
+		for (const auto&patch:inst._entryPoints) {
 
-				Interface::Patch p;
+			Interface::Patch p;
+			if (!patch._implementsName.empty()) {
 				p._implementsHash = Hash64(patch._implementsName);
 
 				if (patch._implementsName != patch._name) {
@@ -47,23 +59,32 @@ namespace RenderCore { namespace Techniques
 						patch._implementsName, patch._name, 
 						ShaderSourceParser::ScaffoldFunctionFlags::ScaffoldeeUsesReturnSlot);
 				}
-
-				_interface._patches.emplace_back(std::move(p));
 			}
 
-			_interface._descriptorSet = inst._descriptorSet;
+			p._signature = std::make_shared<GraphLanguage::NodeGraphSignature>(patch._signature);
 
-			for (const auto&d:inst._depVals)
-				if (d)
-					::Assets::RegisterAssetDependency(_depVal, d);
-
-			_interface._selectorRelevance = inst._selectorRelevance;
-			if (!inst._rawShaderFileIncludes.empty()) {
-				auto relevanceDepVal = ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(_interface._selectorRelevance, inst._rawShaderFileIncludes);
-				if (relevanceDepVal)
-					::Assets::RegisterAssetDependency(_depVal, relevanceDepVal);
-			}
+			_interface._patches.emplace_back(std::move(p));
 		}
+
+		_interface._descriptorSet = inst._descriptorSet;
+
+		for (const auto&d:inst._depVals)
+			if (d)
+				::Assets::RegisterAssetDependency(_depVal, d);
+
+		_interface._selectorRelevance = inst._selectorRelevance;
+		if (!inst._rawShaderFileIncludes.empty()) {
+			auto relevanceDepVal = ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(_interface._selectorRelevance, inst._rawShaderFileIncludes);
+			if (relevanceDepVal)
+				::Assets::RegisterAssetDependency(_depVal, relevanceDepVal);
+		}
+
+		size_t size = 0;
+		for (const auto&i:inst._sourceFragments)
+			size += i.size();
+		_savedInstantiation.reserve(size);
+		for (const auto&i:inst._sourceFragments)
+			_savedInstantiation.insert(_savedInstantiation.end(), i.begin(), i.end());
 	}
 
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection() 
@@ -85,8 +106,12 @@ namespace RenderCore { namespace Techniques
 
 	std::string CompiledShaderPatchCollection::InstantiateShader(const ParameterBox& selectors) const
 	{
-		if (_src.GetPatches().empty())
-			return {};
+		if (_src.GetPatches().empty()) {
+			// If we'ved used  the constructor that takes a ShaderSourceParser::InstantiatedShader,
+			// we can't re-instantiate here. So our only choice is to just return the saved
+			// instantiation here. However, this means the selectors won't take effect, somewhat awkwardly
+			return _savedInstantiation;
+		}
 
 		std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;
 		finalInstRequests.reserve(_src.GetPatches().size());

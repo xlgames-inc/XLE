@@ -254,21 +254,24 @@ namespace NodeEditorCore
                     {
                         _nodeGraph = editingContext.Document.NodeGraphFile,
                         _subGraphName = Node.SubGraphTag as string,
-                        _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
-                        _settings = PreviewSettings,
-                        _variableRestrictions = editingContext.Document.GraphMetaData.Variables
+                        _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id
                     };
 
-                    var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(editingContext.Document.GraphMetaData, config);
+                    var actualizationMsgs = new GUILayer.MessageRelayWrapper();
+                    var patchCollection = GUILayer.ShaderGeneratorLayer.MakeCompiledShaderPatchCollection(editingContext.Document.GraphMetaData, config, actualizationMsgs);
+                    var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeShaderPatchAnalysisDelegate(PreviewSettings, editingContext.Document.GraphMetaData.Variables, actualizationMsgs);
 
-                    GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                    // _settings = PreviewSettings,
+                       //_variableRestrictions = editingContext.Document.GraphMetaData.Variables
+
+                    /*GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
                     editingContext.Document.GraphMetaData.Material.MergeInto(rawMaterial);
 
                     GUILayer.MaterialDelegateWrapper materialDelegate = null;
                     if (rawMaterial != null)
                     {
                         materialDelegate = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
-                    }
+                    }*/
 
                     var matVisSettings = new GUILayer.MaterialVisSettings();
                     switch (Geometry)
@@ -283,7 +286,7 @@ namespace NodeEditorCore
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
                         matVisSettings, _previewMaterialContext?.ActivePreviewMaterialNames,
-                        techniqueDelegate, materialDelegate, idealSize);
+                        techniqueDelegate, patchCollection, idealSize);
                     _shaderStructureHash = currentHash;
                 }
 

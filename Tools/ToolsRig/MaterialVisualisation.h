@@ -8,11 +8,14 @@
 
 #include "../../Assets/AssetsCore.h"
 #include <memory>
+#include <vector>
+#include <string>
 
 namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class ITechniqueDelegate_Old; }}
+namespace RenderCore { namespace Techniques { class ITechniqueDelegate; class PipelineAcceleratorPool; class CompiledShaderPatchCollection; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
-namespace GraphLanguage { class INodeGraphProvider; }
+namespace GraphLanguage { class INodeGraphProvider; class NodeGraph; class NodeGraphSignature; }
+namespace ShaderSourceParser { class PreviewOptions; }
 namespace Utility { class OnChangeCallback; }
 
 namespace ToolsRig
@@ -25,7 +28,9 @@ namespace ToolsRig
     };
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject, 
+		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
 
 	class MessageRelay
@@ -45,8 +50,21 @@ namespace ToolsRig
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
-	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> MakeNodeGraphPreviewDelegate(
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegateDefaultLink(
+		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection);
+
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
+		const ShaderSourceParser::PreviewOptions& previewOptions);
+
+	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
-		const std::string& psMainName,
+		const std::shared_ptr<MessageRelay>& logMessages);
+
+	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
+		const GraphLanguage::NodeGraph& nodeGraph,
+		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
+		const std::string& subGraphName,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider,
 		const std::shared_ptr<MessageRelay>& logMessages);
 }

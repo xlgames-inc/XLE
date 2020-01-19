@@ -16,7 +16,6 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
-	class ITechniqueDelegate_Old;
 	class SequencerContext;
 }}
 

@@ -40,6 +40,7 @@ namespace GUILayer
 		std::shared_ptr<ToolsRig::VisMouseOver> _mouseOver;
 		std::shared_ptr<ToolsRig::VisAnimationState> _animState;
 
+		std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> _patchCollection;
 		::Assets::FuturePtr<SceneEngine::IScene> _scene;
 
 		ToolsRig::ModelVisSettings _modelSettings;
@@ -101,8 +102,9 @@ namespace GUILayer
 
 	void VisLayerController::SetMaterialVisSettings(MaterialVisSettings^ settings)
 	{
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 		_pimpl->_materialVisSettings = *settings->ConvertToNative();
-		_pimpl->_scene = ToolsRig::MakeScene(_pimpl->_materialVisSettings);
+		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection);
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
@@ -128,15 +130,15 @@ namespace GUILayer
 
 	void VisLayerController::RebuildMaterialOverrides()
 	{
-		::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
+		/*::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
 		auto nativeMaterial = ResolveNativeMaterial(_boundRawMaterials, searchRules);
-		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeMaterialOverrideDelegate(nativeMaterial));
+		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeMaterialOverrideDelegate(nativeMaterial));*/
 	}
 
 	void VisLayerController::SetMaterialOverrides(
 		System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides)
 	{
-		auto listChangeHandler = gcnew ListChangedEventHandler(this, &VisLayerController::ListChangeHandler);
+		/*auto listChangeHandler = gcnew ListChangedEventHandler(this, &VisLayerController::ListChangeHandler);
 		auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &VisLayerController::PropChangeHandler);
 
 		if (_boundRawMaterials != nullptr) {
@@ -162,19 +164,10 @@ namespace GUILayer
 			RebuildMaterialOverrides();
 		} else {
 			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
-		}
+		}*/
 	}
 
-	void VisLayerController::SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate)
-	{
-		if (techniqueDelegate) {
-			_pimpl->_modelLayer->SetOverrides(techniqueDelegate->_techniqueDelegate.GetNativePtr());
-		} else {
-			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>{});
-		}
-	}
-
-	void VisLayerController::SetMaterialDelegate(MaterialDelegateWrapper^ materialDelegate)
+	/*void VisLayerController::SetMaterialDelegate(MaterialDelegateWrapper^ materialDelegate)
 	{
 		SetMaterialOverrides(nullptr);
 		if (materialDelegate) {
@@ -182,6 +175,31 @@ namespace GUILayer
 		}
 		else {
 			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
+		}
+	}*/
+
+	void VisLayerController::SetPatchCollectionOverrides(CompiledShaderPatchCollectionWrapper^ patchCollection)
+	{
+		if (patchCollection) {
+			_pimpl->_patchCollection = patchCollection->_patchCollection.GetNativePtr();
+		} else {
+			_pimpl->_patchCollection = nullptr;
+		}
+
+		// rebuild and reset the material vis scene ...
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection);
+		_pimpl->_modelLayer->Set(_pimpl->_scene);
+		_pimpl->_visOverlay->Set(_pimpl->_scene);
+		_pimpl->_trackingLayer->Set(_pimpl->_scene);
+	}
+
+	void VisLayerController::SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate)
+	{
+		if (techniqueDelegate) {
+			_pimpl->_modelLayer->SetOverrides(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+		} else {
+			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>{});
 		}
 	}
 

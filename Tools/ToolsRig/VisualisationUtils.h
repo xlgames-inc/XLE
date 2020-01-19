@@ -15,7 +15,7 @@
 
 namespace RenderCore { namespace Techniques { 
 	class CameraDesc; class TechniqueContext; class Technique; 
-	class IMaterialDelegate; class ITechniqueDelegate_Old; class IRenderStateDelegate;
+	class ITechniqueDelegate;
 	class PipelineAcceleratorPool;
 }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
@@ -23,7 +23,7 @@ namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
 namespace RenderOverlays { class IOverlayContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { struct Rect; }}
 namespace Utility { class OnChangeCallback; }
-namespace SceneEngine { class IScene; }
+namespace SceneEngine { class IScene; class IRenderStep; }
 
 namespace ToolsRig
 {
@@ -143,9 +143,7 @@ namespace ToolsRig
         void Set(const VisEnvSettings& envSettings);
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 
-		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>&);
-		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>&);
-		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>&);
+		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>&);
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
@@ -236,7 +234,8 @@ namespace ToolsRig
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
-		SceneEngine::IScene& scene);
+		SceneEngine::IScene& scene,
+		const std::shared_ptr<SceneEngine::IRenderStep>& renderStep);
 
 	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future);

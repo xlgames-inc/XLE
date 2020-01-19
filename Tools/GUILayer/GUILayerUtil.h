@@ -9,7 +9,7 @@
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate_Old; class IMaterialDelegate; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; class CompiledShaderPatchCollection; } }
 namespace SceneEngine 
 {
     class IntersectionTestScene; 
@@ -52,21 +52,21 @@ namespace GUILayer
 	public ref class TechniqueDelegateWrapper
 	{
 	public:
-		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> _techniqueDelegate;
+		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 
-        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& techniqueDelegate);
-		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate_Old* techniqueDelegate);
+        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
+		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
         ~TechniqueDelegateWrapper();
 	};
 
-	public ref class MaterialDelegateWrapper
+	public ref class CompiledShaderPatchCollectionWrapper
 	{
 	public:
-		clix::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
+		clix::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> _patchCollection;
 
-		MaterialDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& materialDelegate);
-		MaterialDelegateWrapper(RenderCore::Techniques::IMaterialDelegate* materialDelegate);
-		~MaterialDelegateWrapper();
+        CompiledShaderPatchCollectionWrapper(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection);
+		CompiledShaderPatchCollectionWrapper(RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection);
+        ~CompiledShaderPatchCollectionWrapper();
 	};
 
 	public ref class MessageRelayWrapper

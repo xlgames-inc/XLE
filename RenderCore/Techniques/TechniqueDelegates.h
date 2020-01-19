@@ -7,6 +7,7 @@
 #include "DrawableDelegates.h"
 #include "ShaderVariationSet.h"
 #include "RenderStateResolver.h"		// (for RSDepthBias)
+#include "../Assets/LocalCompiledShaderSource.h"		// (for ISourceCodePreprocessor)
 
 namespace RenderCore { class StreamOutputInitializers; }
 
@@ -55,6 +56,14 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::DepthStencilDesc& depthStencil);
 
 	RasterizationDesc BuildDefaultRastizerDesc(const Assets::RenderStateSet& states);
+
+	enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
+	IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection);
+
+	auto AssembleShader(
+		const CompiledShaderPatchCollection& patchCollection,
+		IteratorRange<const uint64_t*> redirectedPatchFunctions,
+		StringSection<> definesTable) -> RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping;
 
 }}
 

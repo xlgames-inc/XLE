@@ -267,16 +267,18 @@ namespace GUILayer
 				lightingPlugins.push_back(vegetationPlugin);
 			lightingPlugins.push_back(_scene->_volumeFogManager->GetParserPlugin());
 
-			auto sceneTechniqueDesc = SceneEngine::SceneTechniqueDesc{
+			auto renderSteps = CreateStandardRenderSteps(
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
-					? SceneTechniqueDesc::LightingModel::Deferred 
-					: SceneTechniqueDesc::LightingModel::Forward,
+					? LightingModel::Deferred 
+					: LightingModel::Forward);
+
+			auto sceneTechniqueDesc = SceneEngine::SceneTechniqueDesc{
+				MakeIteratorRange(renderSteps),
 				MakeIteratorRange(lightingPlugins)};
 
 			auto compiledSceneTechnique = CreateCompiledSceneTechnique(
 				sceneTechniqueDesc, _pipelineAcceleratorPool.GetNativePtr(),
-				RenderCore::AsAttachmentDesc(renderTarget._renderTarget->GetDesc()),
-				RenderCore::FrameBufferProperties{});
+				RenderCore::AsAttachmentDesc(renderTarget._renderTarget->GetDesc()));
 
 			auto camera = ToolsRig::AsCameraDesc(*_camera.get());
 
@@ -285,7 +287,7 @@ namespace GUILayer
                 PlatformRig::TiledScreenshot(
                     threadContext, parserContext,
                     sceneParser, camera,
-                    sceneTechniqueDesc, UInt2(screenshot, screenshot));
+                    *compiledSceneTechnique, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
 

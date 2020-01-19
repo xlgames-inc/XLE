@@ -18,6 +18,10 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/ShaderVariationSet.h"
+#include "../../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/DescriptorSetAccelerator.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -26,6 +30,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/PredefinedDescriptorSetLayout.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../RenderCore/UniformsStream.h"
@@ -38,6 +43,11 @@
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/Mutex.h"
+
+namespace RenderCore { namespace Techniques
+{
+	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout();
+}}
 
 namespace ToolsRig
 {
@@ -71,7 +81,6 @@ namespace ToolsRig
 	class MaterialSceneParserDrawable : public Techniques::Drawable
 	{
 	public:
-		Topology	_topology;
 		unsigned	_vertexCount;
 
 		static void DrawFn(
@@ -89,11 +98,10 @@ namespace ToolsRig
 
 				// disable blending to avoid problem when rendering single component stuff 
                 //  (ie, nodes that output "float", not "float4")
-			assert(!drawFnContext._pipeline);	// note -- won't work with pipelines
-            drawFnContext._metalContext->Bind(Techniques::CommonResources()._blendOpaque);
+			// assert(!drawFnContext._pipeline);	// note -- won't work with pipelines
+            // drawFnContext._metalContext->Bind(Techniques::CommonResources()._blendOpaque);
 
 			assert(!drawable._geo->_ib);
-			// drawFnCon.Bind(drawable._topology);
 			drawFnContext.Draw(drawable._vertexCount);
 		}
 	};
@@ -116,17 +124,19 @@ namespace ToolsRig
                     { Float3(-1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
                     { Float3( 1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
                     { Float3(-1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
+					{ Float3(-1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
+					{ Float3( 1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				// drawable._material = RenderCore::Techniques::MakeDrawableMaterial(*_material, {});
+				drawable._descriptorSet = _descriptorSet;
+				drawable._pipeline = _pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
 				drawable._geo->_vertexStreamCount = 1;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
-				drawable._topology = Topology::TriangleStrip;
 				drawable._vertexCount = (unsigned)dimof(vertices);
 				drawable._uniformsInterface = usi;
 
@@ -144,13 +154,13 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
-				// drawable._material = Techniques::MakeDrawableMaterial(*_material.get(), {});
+				drawable._descriptorSet = _descriptorSet;
+				drawable._pipeline = _pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
 				drawable._geo->_vertexStreamCount = 1;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
-				drawable._topology = Topology::TriangleList;
 				drawable._vertexCount = count;
 				drawable._uniformsInterface = usi;
 
@@ -189,14 +199,41 @@ namespace ToolsRig
 
 		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
+			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
         : _settings(settings), _material(material)
 		{
 			_depVal = std::make_shared<::Assets::DependencyValidation>();
-			if (!_material) {
+			if (!_material)
 				_material = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
-				// XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+
+			auto matSelectors = _material->_matParams;
+
+			if (patchCollectionOverride) {
+				const auto* descriptorSetLayout = patchCollectionOverride->GetInterface().GetMaterialDescriptorSet().get();
+				if (!descriptorSetLayout) {
+					descriptorSetLayout = &RenderCore::Techniques::GetFallbackMaterialDescriptorSetLayout();
+				}
+				auto descriptorSetFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+					_material->_constants, _material->_bindings,
+					*descriptorSetLayout,
+					"MaterialVisualizationScene");
+				_descriptorSet = descriptorSetFuture->Actualize();
+			
+				// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
+				for (const auto&r:descriptorSetLayout->_resources)
+					if (_material->_bindings.HasParameter(MakeStringSection(r._name)))
+						matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r._name).Cast<utf8>(), 1);
 			}
+
+			_pipelineAccelerator =
+				pipelineAcceleratorPool->CreatePipelineAccelerator(
+					patchCollectionOverride,
+					matSelectors,
+					Vertex3D_InputLayout,
+					Topology::TriangleList,
+					_material->_stateSet);
 		}
 
 		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
@@ -205,22 +242,118 @@ namespace ToolsRig
         MaterialVisSettings  _settings;
 		std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
 		::Assets::DepValPtr _depVal;
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
+		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSet;
     };
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject,
+		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
 	{
 		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
-		::Assets::AutoConstructToFuture(*result, visObject, material);
+		::Assets::AutoConstructToFuture(*result, visObject, pipelineAcceleratorPool, patchCollectionOverride, material);
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate_Old
+	static const auto s_perPixel = Hash64("PerPixel");
+	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
+	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
+	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
+	static uint64_t s_patchExp_earlyRejection[] = { s_earlyRejectionTest };
+
+	static void TryRegisterDependency(
+		::Assets::DepValPtr& dst,
+		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+	{
+		auto futureDepVal = future->GetDependencyValidation();
+		if (futureDepVal)
+			::Assets::RegisterAssetDependency(dst, futureDepVal);
+	}
+
+	class ShaderVariationFactory : public RenderCore::Techniques::IShaderVariationFactory
 	{
 	public:
+		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
+			ShaderStage stage, StringSection<> patchCollectionCode, StringSection<> techniqueCode, StringSection<> entryPoint, StringSection<> definesTable)
+		{
+			char profileStr[] = "?s_*";
+			switch (stage) {
+			case ShaderStage::Vertex: profileStr[0] = 'v'; break;
+			case ShaderStage::Geometry: profileStr[0] = 'g'; break;
+			case ShaderStage::Pixel: profileStr[0] = 'p'; break;
+			case ShaderStage::Domain: profileStr[0] = 'd'; break;
+			case ShaderStage::Hull: profileStr[0] = 'h'; break;
+			case ShaderStage::Compute: profileStr[0] = 'c'; break;
+			}
+
+			std::stringstream str;
+			str << patchCollectionCode << std::endl << techniqueCode << std::endl;
+
+			auto artifactFuture = _shaderSource->CompileFromMemory(
+				str.str(), entryPoint,
+				profileStr, definesTable);
+
+			auto result = std::make_shared<::Assets::AssetFuture<CompiledShaderByteCode>>("");
+			::Assets::AutoConstructToFuture(*result, artifactFuture);
+			return result;
+		}
+
+		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines) override
+		{
+			using namespace RenderCore::Techniques;
+			auto patchCollection = RenderCore::Techniques::AssembleShader(
+				*_patchCollection, _patchExpansions, 
+				defines);
+
+			auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, patchCollection._processedSource, _vsTechniqueCode, "vs_main", defines);
+			auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, patchCollection._processedSource, _psTechniqueCode, "ps_main", defines);
+
+			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPatchFactory");
+			future->SetPollingFunction(
+				[vsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
+
+					auto vsActual = vsCode->TryActualize();
+					auto psActual = psCode->TryActualize();
+
+					if (!vsActual || !psActual) {
+						auto vsState = vsCode->GetAssetState();
+						auto psState = psCode->GetAssetState();
+						if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+							auto depVal = std::make_shared<::Assets::DependencyValidation>();
+							TryRegisterDependency(depVal, vsCode);
+							TryRegisterDependency(depVal, psCode);
+							std::stringstream log;
+							if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
+							if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
+							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
+							return false;
+						}
+						return true;
+					}
+
+					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
+						RenderCore::Metal::GetObjectFactory(), *vsActual, *psActual);
+					thatFuture.SetAsset(std::move(newShaderProgram), {});
+					return false;
+				});
+			return future;
+		}
+
+		const RenderCore::Techniques::CompiledShaderPatchCollection* _patchCollection;
+		IteratorRange<const uint64_t*> _patchExpansions;
+		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		std::string _vsTechniqueCode;
+		std::string _psTechniqueCode;
+	};
+
+	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	{
+	public:
+#if 0
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			RenderCore::Techniques::ParsingContext& context,
 			StringSection<::Assets::ResChar> techniqueCfgFile,
@@ -356,94 +489,219 @@ namespace ToolsRig
 			return future;
 		}
 
-		static void TryRegisterDependency(
-			::Assets::DepValPtr& dst,
-			const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+#endif
+
+		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> ResolveVariation(
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Techniques::TechniqueEntry& techEntry,
+			IteratorRange<const uint64_t*> patchExpansions)
 		{
-			auto futureDepVal = future->GetDependencyValidation();
-			if (futureDepVal)
-				::Assets::RegisterAssetDependency(dst, futureDepVal);
+			using namespace RenderCore::Techniques;
+
+			auto filteredDefines = MakeFilteredDefinesTable(selectors, techEntry._selectorFiltering, _customPatchCollection->GetInterface().GetSelectorRelevance());
+			
+			ShaderVariationFactory factory;
+			factory._patchCollection = _customPatchCollection.get();
+			factory._patchExpansions = patchExpansions;
+			factory._vsTechniqueCode = std::string{"#include \""} + techEntry._vertexShaderName + "\"";
+			factory._psTechniqueCode = std::string{"#include \""} + techEntry._pixelShaderName + "\"";
+			factory._shaderSource = _shaderSource;
+			return factory.MakeShaderVariation(filteredDefines);
+		}
+
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>&,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			using namespace RenderCore::Techniques;
+			IteratorRange<const uint64_t*> patchExpansions = {};
+			const TechniqueEntry* techEntry = &_noPatches;
+			switch (CalculateIllumType(*_customPatchCollection)) {
+			case IllumType::PerPixel:
+				techEntry = &_perPixel;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+				break;
+			case IllumType::PerPixelAndEarlyRejection:
+				techEntry = &_perPixelAndEarlyRejection;
+				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+				break;
+			default:
+				break;
+			}
+
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(selectors, *techEntry, patchExpansions);
+			result._rasterization = BuildDefaultRastizerDesc(stateSet);
+
+			if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend) {
+                result._blend = AttachmentBlendDesc {
+					stateSet._forwardBlendOp != BlendOp::NoBlending,
+					stateSet._forwardBlendSrc, stateSet._forwardBlendDst, stateSet._forwardBlendOp };
+            } else {
+                result._blend = Techniques::CommonResources()._abOpaque;
+            }
+			return result;
 		}
 
 		GraphPreviewTechniqueDelegate(
-			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
-			const std::string& psMainName,
-			const std::shared_ptr<MessageRelay>& logMessages)
+			const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
 		{
-			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
-			auto state = future->StallWhilePending();
-			if (state == ::Assets::AssetState::Ready) {
-				_technique = future->Actualize();
-			} else {
-				std::stringstream str;
-				str << "Failed loading technique file (" << s_techFile << ") with message (" << ::Assets::AsString(future->GetActualizationLog()) << ")";
-				logMessages->AddMessage(str.str());
+			// const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
+			_techniqueSet = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+			const auto noPatchesHash = Hash64("Deferred_NoPatches");
+			const auto perPixelHash = Hash64("Deferred_PerPixel");
+			const auto perPixelAndEarlyRejectionHash = Hash64("Deferred_PerPixelAndEarlyRejection");
+			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+			auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
+			auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
+			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
 			}
 
-			auto shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+			_noPatches = *noPatchesSrc;
+			_perPixel = *perPixelSrc;
+			_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+
+			_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
 				RenderCore::Metal::CreateLowLevelShaderCompiler(RenderCore::Assets::Services::GetDevice()),
 				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
 
-			assert(0);
-			/*_resolvedShaders._creationFn = 
-				[provider, psMainName, logMessages, shaderSource](
-					StringSection<> vsName,
-					StringSection<> gsName,
-					StringSection<> psName,
-					StringSection<> defines)
-				{
-					auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vsName, defines);
-					assert(gsName.IsEmpty());
-					
-					::Assets::FuturePtr<CompiledShaderByteCode> psCode;
-					if (XlEqString(MakeFileNameSplitter(psName).Extension(), "graph")) {
-						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName, logMessages, *shaderSource);
-					} else {
-						psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(psName, defines);
-					}
-
-					auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("GraphPreviewTechniqueDelegate");
-					future->SetPollingFunction(
-						[vsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
-
-						auto vsActual = vsCode->TryActualize();
-						auto psActual = psCode->TryActualize();
-
-						if (!vsActual || !psActual) {
-							auto vsState = vsCode->GetAssetState();
-							auto psState = psCode->GetAssetState();
-							if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-								auto depVal = std::make_shared<::Assets::DependencyValidation>();
-								TryRegisterDependency(depVal, vsCode);
-								TryRegisterDependency(depVal, psCode);
-								thatFuture.SetInvalidAsset(depVal, nullptr);
-								return false;
-							}
-							return true;
-						}
-
-						auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
-						thatFuture.SetAsset(std::move(newShaderProgram), {});
-						return false;
-					});
-
-					return future;
-				};*/
+			_customPatchCollection = patchCollection;
 		}
 	private:
-		std::shared_ptr<RenderCore::Techniques::Technique> _technique;
-		Techniques::UniqueShaderVariationSet _resolvedShaders;
-		static const char s_techFile[];
+		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _sharedResources;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSet;
+
+		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+
+		RenderCore::Techniques::TechniqueEntry _noPatches;
+		RenderCore::Techniques::TechniqueEntry _perPixel;
+		RenderCore::Techniques::TechniqueEntry _perPixelAndEarlyRejection;
+
+		std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> _customPatchCollection;
 	};
 
-	const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegateDefaultLink(
+		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
+	{
+		return std::make_unique<GraphPreviewTechniqueDelegate>(patchCollection);
+	}
 
-	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> MakeNodeGraphPreviewDelegate(
+	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
-		const std::string& psMainName,
 		const std::shared_ptr<MessageRelay>& logMessages)
 	{
-		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName, logMessages);
+		ShaderSourceParser::InstantiationRequest instRequest;
+		instRequest._customProvider = provider;
+		ShaderSourceParser::GenerateFunctionOptions generateOptions;
+		return std::make_unique<RenderCore::Techniques::CompiledShaderPatchCollection>(
+			ShaderSourceParser::InstantiateShader(
+				MakeIteratorRange(&instRequest, &instRequest+1),
+				generateOptions,
+				RenderCore::Techniques::GetDefaultShaderLanguage()));
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static std::string InstantiatePreviewStructure(
+		const RenderCore::Techniques::CompiledShaderPatchCollection& mainInstantiation,
+		const ShaderSourceParser::PreviewOptions& previewOptions)
+	{
+		assert(mainInstantiation.GetInterface().GetPatches().size() == 1);	// only tested with a single entry point
+		auto structureForPreview = GenerateStructureForPreview(
+			"preview_graph", *mainInstantiation.GetInterface().GetPatches()[0]._signature, previewOptions);
+		return "#include \"xleres/System/Prefix.h\"\n" + structureForPreview;
+	}
+
+	class ShaderPatchAnalysisDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	{
+	public:
+		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> ResolveVariation(
+			const RenderCore::Techniques::CompiledShaderPatchCollection& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors)
+		{
+			using namespace RenderCore::Techniques;
+
+			ShaderSelectorFiltering previewStructureFiltering;
+			previewStructureFiltering._relevanceMap["GEO_PRETRANSFORMED"] = "1";
+			auto filteredDefines = MakeFilteredDefinesTable(selectors, previewStructureFiltering, shaderPatches.GetInterface().GetSelectorRelevance());
+
+			auto structureForPreview = InstantiatePreviewStructure(shaderPatches, _previewOptions);
+			
+			ShaderVariationFactory factory;
+			factory._patchCollection = &shaderPatches;
+			// factory._patchExpansions = patchExpansions;
+			factory._vsTechniqueCode = structureForPreview;
+			factory._psTechniqueCode = structureForPreview;
+			factory._shaderSource = _shaderSource;
+			auto shader = factory.MakeShaderVariation(filteredDefines);
+			shader->StallWhilePending();	// hack -- we have to stall here, or every shader we generate will be permanently pending
+			return shader;
+		}
+
+		ResolvedTechnique Resolve(
+			const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& shaderPatches,
+			IteratorRange<const ParameterBox**> selectors,
+			const RenderCore::Assets::RenderStateSet& stateSet) override
+		{
+			using namespace RenderCore::Techniques;
+
+			ResolvedTechnique result;
+			result._shaderProgram = ResolveVariation(*shaderPatches, selectors);
+			result._rasterization = BuildDefaultRastizerDesc(stateSet);
+
+			if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend) {
+                result._blend = AttachmentBlendDesc {
+					stateSet._forwardBlendOp != BlendOp::NoBlending,
+					stateSet._forwardBlendSrc, stateSet._forwardBlendDst, stateSet._forwardBlendOp };
+            } else {
+                result._blend = Techniques::CommonResources()._abOpaque;
+            }
+			return result;
+		}
+
+		ShaderPatchAnalysisDelegate(const ShaderSourceParser::PreviewOptions& previewOptions)
+		: _previewOptions(previewOptions)
+		{
+			_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+				RenderCore::Metal::CreateLowLevelShaderCompiler(RenderCore::Assets::Services::GetDevice()),
+				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
+		}
+	private:
+		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		ShaderSourceParser::PreviewOptions _previewOptions;
+	};
+
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
+		const ShaderSourceParser::PreviewOptions& previewOptions)
+	{
+		return std::make_unique<ShaderPatchAnalysisDelegate>(previewOptions);
+	}
+
+	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
+		const GraphLanguage::NodeGraph& nodeGraph,
+		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
+		const std::string& subGraphName,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider,
+		const std::shared_ptr<MessageRelay>& logMessages)
+	{
+		ShaderSourceParser::InstantiationRequest instantiationReq {};
+		ShaderSourceParser::GenerateFunctionOptions generateOptions;
+		if (previewNodeId != ~0u)
+			generateOptions._generateDanglingOutputs = previewNodeId;
+		generateOptions._generateDanglingInputs = true;
+
+		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
+			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nodeGraph, nodeGraphSignature, subProvider },
+			false,
+			instantiationReq,
+			generateOptions,
+			RenderCore::Techniques::GetDefaultShaderLanguage());
+
+		return std::make_unique<RenderCore::Techniques::CompiledShaderPatchCollection>(mainInstantiation);
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

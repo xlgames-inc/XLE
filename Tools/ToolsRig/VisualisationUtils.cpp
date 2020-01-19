@@ -111,9 +111,7 @@ namespace ToolsRig
 
 		std::shared_ptr<VisCameraSettings> _camera;
 
-		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old> _techniqueDelegate;
-		std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _renderStateDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 
 		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
     };
@@ -171,15 +169,15 @@ namespace ToolsRig
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
-			auto techniqueDesc = SceneEngine::SceneTechniqueDesc{
-				SceneEngine::SceneTechniqueDesc::LightingModel::Deferred,
-				MakeIteratorRange(lightingPlugins)};
+			auto steps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
 
 			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
-				techniqueDesc,
+				{
+					MakeIteratorRange(steps),
+					MakeIteratorRange(lightingPlugins)
+				},
 				_pimpl->_pipelineAccelerators,
-				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
-				parserContext.GetNamedResources().GetFrameBufferProperties());
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
 			LightingParserContext lightingParserContext;
 			{
@@ -188,7 +186,7 @@ namespace ToolsRig
 					PlatformRig::TiledScreenshot(
 						threadContext, parserContext,
 						*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
-						techniqueDesc, UInt2(screenshot, screenshot));
+						*compiledTechnique, UInt2(screenshot, screenshot));
 					screenshot = 0;
 				}
 
@@ -225,19 +223,9 @@ namespace ToolsRig
 		_pimpl->_sceneFuture = scene;
 	}
 
-	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& delegate)
-	{
-		_pimpl->_materialDelegate = delegate;
-	}
-
-	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& delegate)
+	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& delegate)
 	{
 		_pimpl->_techniqueDelegate = delegate;
-	}
-
-	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>& delegate)
-	{
-		_pimpl->_renderStateDelegate = delegate;
 	}
 
 	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()
@@ -265,16 +253,16 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static SceneEngine::SceneTechniqueDesc::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
+	static SceneEngine::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
 	{
 		switch (lightingType) {
 		case VisEnvSettings::LightingType::Deferred:
-			return SceneEngine::SceneTechniqueDesc::LightingModel::Deferred;
+			return SceneEngine::LightingModel::Deferred;
 		case VisEnvSettings::LightingType::Forward:
-			return SceneEngine::SceneTechniqueDesc::LightingModel::Forward;
+			return SceneEngine::LightingModel::Forward;
 		default:
 		case VisEnvSettings::LightingType::Direct:
-			return SceneEngine::SceneTechniqueDesc::LightingModel::Direct;
+			return SceneEngine::LightingModel::Direct;
 		}
 	}
 
@@ -285,26 +273,35 @@ namespace ToolsRig
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
-		SceneEngine::IScene& scene)
+		SceneEngine::IScene& scene,
+		const std::shared_ptr<SceneEngine::IRenderStep>& renderStep)
     {
-        try
+		try
         {
 			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
 			future->StallWhilePending();
 			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
 
+			auto renderSteps = SceneEngine::CreateStandardRenderSteps(AsLightingModel(envSettings._lightingType));
+			if (renderStep) {		// if we've got a custom render step, override the default
+				if (renderSteps.size() > 0) {
+					renderSteps[0] = renderStep;
+				} else {
+					renderSteps.push_back(renderStep);
+				}
+			}
+
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 			};
 			SceneEngine::SceneTechniqueDesc techniqueDesc{
-				AsLightingModel(envSettings._lightingType),
+				MakeIteratorRange(renderSteps),
 				MakeIteratorRange(lightingPlugins)};
 
 			auto compiledTechnique = CreateCompiledSceneTechnique(
 				techniqueDesc,
 				pipelineAccelerators,
-				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
-				parserContext.GetNamedResources().GetFrameBufferProperties());
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
 			SceneEngine::LightingParser_ExecuteScene(
 				context, renderTarget, parserContext,
@@ -449,8 +446,7 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawWireframe) {
 				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
-						visWireframeDelegate, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
@@ -462,8 +458,7 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawNormals) {
 				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
-						visNormals, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
@@ -491,8 +486,7 @@ namespace ToolsRig
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				CATCH_ASSETS_BEGIN
 					// Prime the stencil buffer with draw call indices
-					auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
-						primeStencilBuffer, ParameterBox{}, parserContext.GetNamedResources().GetFrameBufferProperties(), fbDesc);
+					auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerCfg.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 

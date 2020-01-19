@@ -14,10 +14,12 @@
 #include "../ToolsRig/VisualisationUtils.h"
 
 #include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/RenderStep.h"
 
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/MinimalShaderSource.h"
@@ -57,7 +59,7 @@ namespace GUILayer
             GUILayer::MaterialVisSettings^ visSettings,
 			String^ materialNames,
 			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
-			GUILayer::MaterialDelegateWrapper^ materialDelegate,
+			GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
 			System::Drawing::Size^ size);
 
         PreviewBuilder();
@@ -107,7 +109,7 @@ namespace GUILayer
 		GUILayer::MaterialVisSettings^ visSettings,
 		String^ materialNames,
 		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
-		GUILayer::MaterialDelegateWrapper^ materialDelegate,
+		GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
 		System::Drawing::Size^ size)
     {
         using namespace RenderCore;
@@ -133,7 +135,9 @@ namespace GUILayer
 		RenderCore::Techniques::FrameBufferPool frameBufferPool;
 		attachmentPool.Bind(FrameBufferProperties{(unsigned)width, (unsigned)height, TextureSamples::Create()});
 
-		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+			// We use a short-lived pipeline accelerator pool here, because
+			// everything we put into it is temporary
+		auto pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
 
             ////////////
 
@@ -173,7 +177,7 @@ namespace GUILayer
 			if (pretransformed)
 				material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
 
-			sceneFuture = ToolsRig::MakeScene(nativeVisSettings, material);
+			sceneFuture = ToolsRig::MakeScene(pipelineAcceleratorPool, nativeVisSettings, patchCollection->_patchCollection.GetNativePtr(), material);
 		} else {
 			ToolsRig::ModelVisSettings modelSettings;
 			// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
@@ -206,17 +210,18 @@ namespace GUILayer
 
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
 
-		/*if (techniqueDelegate)
-			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
-		if (materialDelegate)
-			parserContext.SetMaterialDelegate(materialDelegate->_materialDelegate.GetNativePtr());*/
+		std::shared_ptr<SceneEngine::IRenderStep> customRenderStep;
+		auto customTechniqueDelegate = techniqueDelegate->_techniqueDelegate.GetNativePtr();
+		if (customTechniqueDelegate) {
+			customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);
+		}
 
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.
         auto result = DrawPreview(
 			context, target, parserContext, pipelineAcceleratorPool,
 			camSettings, envSettings,
-			*actualScene);
+			*actualScene, customRenderStep);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {

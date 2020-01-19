@@ -18,6 +18,7 @@
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/MinimalShaderSource.h"
@@ -63,6 +64,7 @@ namespace GUILayer
 		return PreviewGeometry::Plane2D;
 	}
 
+#if 0
 	static ShaderSourceParser::InstantiatedShader
 		GeneratePreviewShader(
 			NodeGraph^ graph,
@@ -139,6 +141,7 @@ namespace GUILayer
 
 		return clix::marshalString<clix::E_UTF8>(str.str());
 	}
+#endif
 
 	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
 		RenderCore::ShaderService::IShaderSource& shaderSource,
@@ -182,7 +185,7 @@ namespace GUILayer
 
 			{
 				std::vector<std::pair<const utf8*, std::string>> defines;
-				for (unsigned c=0; c<RenderCore::Techniques::ShaderSelectors::Source::Max; ++c)
+				for (unsigned c=0; c<RenderCore::Techniques::ShaderSelectorFiltering::Source::Max; ++c)
 					BuildStringTable(defines, *shaderSelectors[c]);
 				std::stringstream str;
 				for (auto&d:defines) {
@@ -231,39 +234,98 @@ namespace GUILayer
 		bool _pretransformedFlag;
 	};
 
-	GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
+	CompiledShaderPatchCollectionWrapper^ ShaderGeneratorLayer::MakeCompiledShaderPatchCollection(
 		NodeGraphMetaData^ doc, 
-		NodeGraphPreviewConfiguration^ nodeGraphFile)
+		NodeGraphPreviewConfiguration^ previewConfiguration,
+		MessageRelayWrapper^ logMessages)
 	{
+		NodeGraphFile::SubGraph^ subGraph = nullptr;
+		if (!previewConfiguration->_nodeGraph->SubGraphs->TryGetValue(previewConfiguration->_subGraphName, subGraph))
+			return nullptr;
+
+		GUILayer::ConversionContext context;
+		auto nativeGraph = subGraph->Graph->ConvertToNative(context);
+		if (previewConfiguration->_previewNodeId != ~0u) {
+			nativeGraph.Trim(previewConfiguration->_previewNodeId);
+		}
+
+		auto natureSignature = subGraph->Signature->ConvertToNative(context);
+		auto nativeProvider = previewConfiguration->_nodeGraph->MakeNodeGraphProvider();
+
 		try {
+			auto patchCollection = ToolsRig::MakeCompiledShaderPatchCollection(
+				nativeGraph,
+				natureSignature,
+				clix::marshalString<clix::E_UTF8>(previewConfiguration->_subGraphName),
+				previewConfiguration->_previewNodeId,
+				nativeProvider,
+				logMessages->_native.GetNativePtr());
+			return gcnew CompiledShaderPatchCollectionWrapper(patchCollection.release());
+		} catch (const std::exception& e) {
+			std::stringstream str;
+			str << "Got exception while building compiled shader patch collection for preview. Exception message follows: " << e.what() << std::endl;
+			logMessages->_native->AddMessage(str.str());
+			return nullptr;
+		}
+	}
+
+	GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeShaderPatchAnalysisDelegate(
+		PreviewSettings^ settings,
+		IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions,
+		MessageRelayWrapper^ logMessages)
+	{
+		/*try {
 			auto previewShader = GUILayer::GeneratePreviewShader(
-				nodeGraphFile->_nodeGraph,
-				nodeGraphFile->_subGraphName,
-				nodeGraphFile->_previewNodeId,
-				nodeGraphFile->_settings,
-				nodeGraphFile->_variableRestrictions);
+				previewConfiguration->_nodeGraph,
+				previewConfiguration->_subGraphName,
+				previewConfiguration->_previewNodeId,
+				previewConfiguration->_settings,
+				previewConfiguration->_variableRestrictions);
 
 			bool pretransformed = false;
 			return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(std::move(previewShader), pretransformed));
 		} catch (const std::exception& e) {
 			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
 			return nullptr;
+		}*/
+
+		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
+		if (settings) {
+			options._type = (settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object;
+			options._outputToVisualize = String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : clix::marshalString<clix::E_UTF8>(settings->OutputToVisualize);
+		}
+
+		if (variableRestrictions)
+			for each(auto v in variableRestrictions)
+				options._variableRestrictions.push_back(
+					std::make_pair(
+						clix::marshalString<clix::E_UTF8>(v.Key),
+						clix::marshalString<clix::E_UTF8>(v.Value)));
+
+		try {
+			auto techniqueDelegate = ToolsRig::MakeShaderPatchAnalysisDelegate(options);
+			return gcnew TechniqueDelegateWrapper(techniqueDelegate.release());
+		} catch (const std::exception& e) {
+			std::stringstream str;
+			str << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
+			logMessages->_native->AddMessage(str.str());
+			return nullptr;
 		}
 	}
 
-	GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
+	/*GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
 		NodeGraphFile^ nodeGraph,
 		String^ subGraphName,
 		MessageRelayWrapper^ logMessages)
 	{
 		try {
-			auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
-			return gcnew TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
+			auto techniqueDelegate = ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), logMessages->_native.GetNativePtr());
+			return gcnew TechniqueDelegateWrapper(techniqueDelegate.release());
 		} catch (const std::exception& e) {
 			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
 			return nullptr;
 		}
-	}
+	}*/
 
 	static std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterialFromRestriction(
 		IEnumerable<KeyValuePair<String^, String^>>^ restrictions)
@@ -288,36 +350,6 @@ namespace GUILayer
 		}
 
 		return previewMat;
-	}
-
-	MaterialDelegateWrapper^ ShaderGeneratorLayer::MakeMaterialDelegate(
-		NodeGraphPreviewConfiguration^ nodeGraphFile,
-		RawMaterial^ materialOverrides)
-	{
-		try {
-			auto previewShader = GUILayer::GeneratePreviewShader(
-				nodeGraphFile->_nodeGraph,
-				nodeGraphFile->_subGraphName,
-				nodeGraphFile->_previewNodeId,
-				nodeGraphFile->_settings,
-				nodeGraphFile->_variableRestrictions);
-
-			if (previewShader._descriptorSet)
-				for (const auto&cb : previewShader._descriptorSet->_constantBuffers) {
-					if (XlEqString(cb._name, "BasicMaterialConstants")) {
-						auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
-						materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
-
-						auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
-						return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
-					}
-				}
-
-			return nullptr;
-		} catch (const std::exception& e) {
-			Log(Warning) << "Got exception while building material delegate for preview. Exception message follows: " << e.what() << std::endl;
-			return nullptr;
-		}
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

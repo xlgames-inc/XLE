@@ -27,88 +27,80 @@ namespace RenderCore { namespace Techniques
 {
 	static const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 
+	auto AssembleShader(
+		const CompiledShaderPatchCollection& patchCollection,
+		IteratorRange<const uint64_t*> redirectedPatchFunctions,
+		StringSection<> definesTable) -> RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping
+	{
+		// We can assemble the final shader in 3 fragments:
+		//  1) the source code in CompiledShaderPatchCollection
+		//  2) redirection functions (which redirect from the template function names to the concrete instantiations we want to tie in)
+		//  3) include the entry point function itself
+
+		std::stringstream output;
+
+		// Extremely awkwardly; we must go from the "definesTable" format back into a ParameterBox
+		// The defines table itself was probably built from a ParameterBox. But we can't pass complex
+		// types through the asset compiler interface, so we always end up having to pass them in some
+		// kind of string form
+		ParameterBox paramBoxSelectors;
+		auto p = definesTable.begin();
+        while (p != definesTable.end()) {
+            while (p != definesTable.end() && std::isspace(*p)) ++p;
+
+            auto definition = std::find(p, definesTable.end(), '=');
+            auto defineEnd = std::find(p, definesTable.end(), ';');
+
+            auto endOfName = std::min(defineEnd, definition);
+            while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+
+            if (definition < defineEnd) {
+                auto e = definition+1;
+                while (e < defineEnd && std::isspace(*e)) ++e;
+				paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), MakeStringSection(e, defineEnd));
+            } else {
+				paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), {}, ImpliedTyping::TypeCat::Void);
+            }
+
+            p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
+        }
+		output << patchCollection.InstantiateShader(paramBoxSelectors);
+
+		for (auto fn:redirectedPatchFunctions) {
+			auto i = std::find_if(
+				patchCollection.GetInterface().GetPatches().begin(), patchCollection.GetInterface().GetPatches().end(),
+				[fn](const CompiledShaderPatchCollection::Interface::Patch& p) { return p._implementsHash == fn; });
+			assert(i!=patchCollection.GetInterface().GetPatches().end());
+			if (i == patchCollection.GetInterface().GetPatches().end()) {
+				Log(Warning) << "Could not find matching patch function for hash (" << fn << ")" << std::endl;
+				continue;
+			}
+
+			// GenerateScaffoldFunction just creates a function with the name of the template
+			// that calls the specific implementation requested.
+			// This is important, because the entry point shader code will call the function
+			// using that template function name. The raw input source code won't have any implementation
+			// for that -- just the function signature.
+			// So we provide the implementation here, in the form of a scaffold function
+			if (!i->_scaffoldInFunction.empty())
+				output << i->_scaffoldInFunction;
+		}
+
+		RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		result._processedSource = output.str();
+		/*result._dependencies.insert(
+			result._dependencies.end(),
+			patchCollection._dependencies.begin(), patchCollection._dependencies.end());*/
+
+		// We could fill in the _lineMarkers member with some line marker information
+		// from the original shader graph compile; but that might be overkill
+
+		return result;
+	}
+
 	class InstantiateShaderGraphPreprocessor : public RenderCore::Assets::ISourceCodePreprocessor
 	{
 	public:
-		static SourceCodeWithRemapping AssembleShader(
-			const CompiledShaderPatchCollection& patchCollection,
-			IteratorRange<const uint64_t*> redirectedPatchFunctions,
-			StringSection<> entryPointFileName,
-			StringSection<> definesTable)
-		{
-			// We can assemble the final shader in 3 fragments:
-			//  1) the source code in CompiledShaderPatchCollection
-			//  2) redirection functions (which redirect from the template function names to the concrete instantiations we want to tie in)
-			//  3) include the entry point function itself
-
-			std::stringstream output;
-
-			// Extremely awkwardly; we must go from the "definesTable" format back into a ParameterBox
-			// The defines table itself was probably built from a ParameterBox. But we can't pass complex
-			// types through the asset compiler interface, so we always end up having to pass them in some
-			// kind of string form
-			ParameterBox paramBoxSelectors;
-			auto p = definesTable.begin();
-            while (p != definesTable.end()) {
-                while (p != definesTable.end() && std::isspace(*p)) ++p;
-
-                auto definition = std::find(p, definesTable.end(), '=');
-                auto defineEnd = std::find(p, definesTable.end(), ';');
-
-                auto endOfName = std::min(defineEnd, definition);
-                while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
-
-                if (definition < defineEnd) {
-                    auto e = definition+1;
-                    while (e < defineEnd && std::isspace(*e)) ++e;
-					paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), MakeStringSection(e, defineEnd));
-                } else {
-					paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), {}, ImpliedTyping::TypeCat::Void);
-                }
-
-                p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
-            }
-			output << patchCollection.InstantiateShader(paramBoxSelectors);
-
-			for (auto fn:redirectedPatchFunctions) {
-				auto i = std::find_if(
-					patchCollection.GetInterface().GetPatches().begin(), patchCollection.GetInterface().GetPatches().end(),
-					[fn](const CompiledShaderPatchCollection::Interface::Patch& p) { return p._implementsHash == fn; });
-				assert(i!=patchCollection.GetInterface().GetPatches().end());
-				if (i == patchCollection.GetInterface().GetPatches().end()) {
-					Log(Warning) << "Could not find matching patch function for hash (" << fn << ")" << std::endl;
-					continue;
-				}
-
-				// GenerateScaffoldFunction just creates a function with the name of the template
-				// that calls the specific implementation requested.
-				// This is important, because the entry point shader code will call the function
-				// using that template function name. The raw input source code won't have any implementation
-				// for that -- just the function signature.
-				// So we provide the implementation here, in the form of a scaffold function
-				if (!i->_scaffoldInFunction.empty())
-					output << i->_scaffoldInFunction;
-			}
-
-			// For simplicity, we'll just append the entry point file using an #include directive
-			// This will ensure we go through the normal mechanisms to find and load this file.
-			// Note that this relies on the underlying shader compiler supporting #includes, however
-			//   -- in cases  (like GLSL) that don't have #include support, we would need another
-			//	changed preprocessor to handle the include expansions.
-			output << "#include \"" << entryPointFileName << "\"" << std::endl;
-
-			SourceCodeWithRemapping result;
-			result._processedSource = output.str();
-			/*result._dependencies.insert(
-				result._dependencies.end(),
-				patchCollection._dependencies.begin(), patchCollection._dependencies.end());*/
-
-			// We could fill in the _lineMarkers member with some line marker information
-			// from the original shader graph compile; but that might be overkill
-
-			return result;
-		}
-
 		SourceCodeWithRemapping AssembleDirectFromFile(StringSection<> filename)
 		{
 			// Fall back to loading the file directly (without any real preprocessing)
@@ -146,7 +138,20 @@ namespace RenderCore { namespace Techniques
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
 				redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
 
-			return AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), MakeStringSection(matches[1].first, matches[1].second), definesTable);
+			auto result = AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), definesTable);
+
+			// For simplicity, we'll just append the entry point file using an #include directive
+			// This will ensure we go through the normal mechanisms to find and load this file.
+			// Note that this relies on the underlying shader compiler supporting #includes, however
+			//   -- in cases  (like GLSL) that don't have #include support, we would need another
+			//	changed preprocessor to handle the include expansions.
+			{
+				std::stringstream str;
+				str << "#include \"" << MakeStringSection(matches[1].first, matches[1].second) << "\"" << std::endl;
+				result._processedSource += str.str();
+			}
+
+			return result;
 		}
 
 		InstantiateShaderGraphPreprocessor() {}
@@ -503,8 +508,7 @@ namespace RenderCore { namespace Techniques
 	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
 	static uint64_t s_patchExp_earlyRejection[] = { s_earlyRejectionTest };
 
-	enum class IllumType { NoPerPixel, PerPixel, PerPixelAndEarlyRejection };
-	static IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection)
+	IllumType CalculateIllumType(const CompiledShaderPatchCollection& patchCollection)
 	{
 		if (patchCollection.GetInterface().HasPatchType(s_perPixel)) {
 			if (patchCollection.GetInterface().HasPatchType(s_earlyRejectionTest)) {

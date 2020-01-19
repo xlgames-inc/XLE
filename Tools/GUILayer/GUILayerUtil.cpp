@@ -11,6 +11,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
+#include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -113,11 +114,11 @@ namespace GUILayer
         _techniqueContext.reset();
     }
 
-	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate_Old>& techniqueDelegate)
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate)
 	: _techniqueDelegate(techniqueDelegate)
 	{}
 
-	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate_Old* techniqueDelegate)
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate)
 	: _techniqueDelegate(techniqueDelegate)
 	{
 	}
@@ -127,18 +128,18 @@ namespace GUILayer
 		_techniqueDelegate.reset();
 	}
 
-	MaterialDelegateWrapper::MaterialDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& materialDelegate)
-		: _materialDelegate(materialDelegate)
+	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
+	: _patchCollection(patchCollection)
 	{}
 
-	MaterialDelegateWrapper::MaterialDelegateWrapper(RenderCore::Techniques::IMaterialDelegate* materialDelegate)
-	: _materialDelegate(materialDelegate)
+	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection)
+	: _patchCollection(patchCollection)
 	{
 	}
 
-	MaterialDelegateWrapper::~MaterialDelegateWrapper()
+    CompiledShaderPatchCollectionWrapper::~CompiledShaderPatchCollectionWrapper()
 	{
-		_materialDelegate.reset();
+		_patchCollection.reset();
 	}
 
 	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene)

@@ -24,7 +24,7 @@ namespace ShaderSourceParser
 		const RenderCore::Assets::PredefinedDescriptorSetLayout& descriptorSet, 
 		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures);
 
-    struct PreviewOptions
+    class PreviewOptions
     {
     public:
         enum class Type { Object, Chart };
