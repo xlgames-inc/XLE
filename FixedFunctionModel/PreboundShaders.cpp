@@ -122,7 +122,7 @@ namespace FixedFunctionModel
 	auto BoundShaderVariationSet::Entry::MakeBoundShader(	
 		const std::shared_ptr<Metal::ShaderProgram>& shader, 
 		const RenderCore::Techniques::TechniqueEntry& techEntry,
-		const ParameterBox* globalState[RenderCore::Techniques::ShaderSelectors::Source::Max],
+		const ParameterBox* globalState[RenderCore::Techniques::ShaderSelectorFiltering::Source::Max],
 		const TechniquePrebindingInterface& techniqueInterface) -> BoundShader
     {
 		BoundShader result;
@@ -150,7 +150,7 @@ namespace FixedFunctionModel
 
 	auto BoundShaderVariationSet::FindVariation(  
 		int techniqueIndex, 
-        const ParameterBox* shaderSelectors[RenderCore::Techniques::ShaderSelectors::Source::Max],
+        const ParameterBox* shaderSelectors[RenderCore::Techniques::ShaderSelectorFiltering::Source::Max],
         const TechniquePrebindingInterface& techniqueInterface) const -> ResolvedShader
     {
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);

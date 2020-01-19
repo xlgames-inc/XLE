@@ -12,7 +12,7 @@
 namespace RenderCore { namespace Techniques 
 {
 	class ParsingContext;
-	class ShaderSelectors;
+	class ShaderSelectorFiltering;
 	class Technique;
 	class TechniqueEntry;
 
@@ -31,7 +31,7 @@ namespace RenderCore { namespace Techniques
 
 	std::string MakeFilteredDefinesTable(
 		IteratorRange<const ParameterBox**> selectors,
-		const ShaderSelectors& techniqueFiltering,
+		const ShaderSelectorFiltering& techniqueFiltering,
 		const SelectorRelevanceMap& relevance);
 
 	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
@@ -51,13 +51,13 @@ namespace RenderCore { namespace Techniques
 			ShaderFuture	_shaderFuture;
 		};
 		DEPRECATED_ATTRIBUTE const Variation& FindVariation(
-			const ShaderSelectors& baseSelectors,
-			const ParameterBox* globalState[ShaderSelectors::Source::Max],
+			const ShaderSelectorFiltering& baseSelectors,
+			const ParameterBox* globalState[ShaderSelectorFiltering::Source::Max],
 			IShaderVariationFactory& factory) const;
 
 		const Variation& FindVariation(
 			IteratorRange<const ParameterBox**> selectors,
-			const ShaderSelectors& techniqueFiltering,
+			const ShaderSelectorFiltering& techniqueFiltering,
 			const SelectorRelevanceMap& relevance,
 			IShaderVariationFactory& factory) const;
 
@@ -74,7 +74,7 @@ namespace RenderCore { namespace Techniques
     public:
 		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
 			int techniqueIndex,
-			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
+			const ParameterBox* shaderSelectors[ShaderSelectorFiltering::Source::Max]) const;
 
 		const Technique& GetTechnique() const { return *_technique; }
 

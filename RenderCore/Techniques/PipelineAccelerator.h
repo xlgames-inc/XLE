@@ -23,7 +23,6 @@ namespace RenderCore { namespace Assets { class RenderStateSet; } }
 
 namespace RenderCore { namespace Techniques
 {
-	class ShaderSelectors;
 	class CompiledShaderPatchCollection;
 	class PipelineAccelerator;
 	class ITechniqueDelegate;

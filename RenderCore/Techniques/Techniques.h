@@ -20,7 +20,7 @@ namespace RenderCore { namespace Techniques
 {
     class IRenderStateDelegate;
 
-    class ShaderSelectors
+    class ShaderSelectorFiltering
     {
     public:
         struct Source { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
@@ -49,7 +49,7 @@ namespace RenderCore { namespace Techniques
         bool IsValid() const { return !_vertexShaderName.empty(); }
         void MergeIn(const TechniqueEntry& source);
 
-        ShaderSelectors		_selectorFiltering;
+        ShaderSelectorFiltering		_selectorFiltering;
         ::Assets::rstring   _vertexShaderName;
         ::Assets::rstring   _pixelShaderName;
         ::Assets::rstring   _geometryShaderName;

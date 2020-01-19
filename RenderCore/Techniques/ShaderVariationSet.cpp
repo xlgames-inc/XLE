@@ -39,7 +39,7 @@ namespace RenderCore { namespace Techniques
 
 	std::string MakeFilteredDefinesTable(
 		IteratorRange<const ParameterBox**> selectors,
-		const ShaderSelectors& techniqueFiltering,
+		const ShaderSelectorFiltering& techniqueFiltering,
 		const SelectorRelevanceMap& relevance)
 	{
 		// Selectors are considered relevant only if they appear in the 
@@ -102,7 +102,7 @@ namespace RenderCore { namespace Techniques
 
 	auto UniqueShaderVariationSet::FindVariation(
 		IteratorRange<const ParameterBox**> selectors,
-		const ShaderSelectors& techniqueFiltering,
+		const ShaderSelectorFiltering& techniqueFiltering,
 		const SelectorRelevanceMap& relevance,
 		IShaderVariationFactory& factory) const -> const Variation&
 	{
@@ -139,12 +139,12 @@ namespace RenderCore { namespace Techniques
 	}
 
 	auto UniqueShaderVariationSet::FindVariation(
-		const ShaderSelectors& techniqueFiltering,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
+		const ShaderSelectorFiltering& techniqueFiltering,
+		const ParameterBox* shaderSelectors[ShaderSelectorFiltering::Source::Max],
 		IShaderVariationFactory& factory) const -> const Variation&
 	{
 		return FindVariation(
-			MakeIteratorRange(shaderSelectors, shaderSelectors + ShaderSelectors::Source::Max),
+			MakeIteratorRange(shaderSelectors, shaderSelectors + ShaderSelectorFiltering::Source::Max),
 			techniqueFiltering, 
 			{},
 			factory);
@@ -157,7 +157,7 @@ namespace RenderCore { namespace Techniques
 
 	::Assets::FuturePtr<Metal::ShaderProgram> TechniqueShaderVariationSet::FindVariation(
 		int techniqueIndex,
-		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
+		const ParameterBox* shaderSelectors[ShaderSelectorFiltering::Source::Max]) const
 	{
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
 		ShaderVariationFactory_Basic factory(techEntry);

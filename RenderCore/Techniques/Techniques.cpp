@@ -86,7 +86,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    static void LoadSelectorFiltering(Formatter& source, ShaderSelectors& dst)
+    static void LoadSelectorFiltering(Formatter& source, ShaderSelectorFiltering& dst)
     {
         for (;;) {
             auto next = source.PeekNext();
@@ -296,7 +296,7 @@ namespace RenderCore { namespace Techniques
 		entry.GenerateHash();
 	}
 
-	void ShaderSelectors::GenerateHash()
+	void ShaderSelectorFiltering::GenerateHash()
 	{
 		_hash = HashCombine(_setValues.GetHash(), _setValues.GetParameterNamesHash());
 		for (const auto&r:_relevanceMap)
