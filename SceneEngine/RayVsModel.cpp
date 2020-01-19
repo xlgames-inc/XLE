@@ -343,7 +343,7 @@ namespace SceneEngine
 		FrameBufferDesc fbDesc { {}, std::move(subpasses) };
 		_pimpl->_sequencerConfig = parsingContext._pipelineAcceleratorPool->CreateSequencerConfig(
 			techDelegate,
-			{}, {}, fbDesc);
+			{}, fbDesc);
 
 		// metalContext.Bind(_pimpl->_res->_dds);
 		// metalContext.Bind(_pimpl->_res->_rs);

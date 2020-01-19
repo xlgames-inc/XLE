@@ -30,7 +30,7 @@ namespace SceneEngine
 		Techniques::DrawablesPacket _preDepth;
 		Techniques::DrawablesPacket _general;
 
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch)
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch) override
 		{
 			switch (batch) {
 			case Techniques::BatchFilter::General:
@@ -40,6 +40,12 @@ namespace SceneEngine
 			default:
 				return nullptr;
 			}
+		}
+
+		void Reset() override
+		{
+			_preDepth.Reset();
+			_general.Reset();
 		}
 	};
 
@@ -140,6 +146,27 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class ViewDelegate_Direct : public IViewDelegate
+	{
+	public:
+		Techniques::DrawablesPacket _general;
+
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch) override
+		{
+			switch (batch) {
+			case Techniques::BatchFilter::General:
+				return &_general;
+			default:
+				return nullptr;
+			}
+		}
+
+		void Reset() override
+		{
+			_general.Reset();
+		}
+	};
+
 	class RenderStep_Direct : public IRenderStep
 	{
 	public:
@@ -152,10 +179,11 @@ namespace SceneEngine
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) override;
 
-		RenderStep_Direct();
+		RenderStep_Direct(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customDelegate);
 		~RenderStep_Direct();
 	private:
 		RenderStepFragmentInterface _direct;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 	};
 
 	const RenderStepFragmentInterface& RenderStep_Direct::GetInterface() const
@@ -165,7 +193,7 @@ namespace SceneEngine
 
 	std::shared_ptr<IViewDelegate> RenderStep_Direct::CreateViewDelegate()
 	{
-		return std::make_shared<ViewDelegate_Forward>();
+		return std::make_shared<ViewDelegate_Direct>();
 	}
 
 	void RenderStep_Direct::Execute(
@@ -176,15 +204,37 @@ namespace SceneEngine
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
-		ForwardLightingModel_Render(
-			threadContext, parsingContext, lightingParserContext, 
-			rpi,
-			*checked_cast<ViewDelegate_Forward*>(viewDelegate));
+		auto& executedScene = *checked_cast<ViewDelegate_Direct*>(viewDelegate);
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+
+		////////////
+		if (!lightingParserContext._preparedDMShadows.empty())
+            BindShadowsForForwardResolve(metalContext, parsingContext, lightingParserContext._preparedDMShadows[0].second);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parsingContext, *lightingParserContext._delegate);
+		if (lightBindRes._skyTextureProjection != ~0u) {
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
+		}
+		////////////
+
+		ReturnToSteadyState(metalContext);
+		ExecuteDrawables(
+            threadContext, parsingContext, MakeSequencerContext(parsingContext, *rpi.GetSequencerConfig(), TechniqueIndex_General),
+			executedScene._general,
+			"MainScene-Direct");
 	}
 
-	RenderStep_Direct::RenderStep_Direct()
+	RenderStep_Direct::RenderStep_Direct(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customDelegate)
 	: _direct(RenderCore::PipelineType::Graphics)
 	{
+		_techniqueDelegate = customDelegate;
+		if (!_techniqueDelegate) {
+			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+			auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+			_techniqueDelegate = RenderCore::Techniques::CreateTechniqueDelegate_DepthOnly(techniqueSetFile, sharedResources);
+		}
+
 		AttachmentDesc msDepthDesc =
             {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
@@ -193,20 +243,19 @@ namespace SceneEngine
         auto output = _direct.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 		auto depth = _direct.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
 
-		SubpassDesc depthOnlySubpass;
-		depthOnlySubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
-
 		SubpassDesc mainSubpass;
 		mainSubpass.AppendOutput(output, LoadStore::Clear);
-		mainSubpass.SetDepthStencil(depth);
+		mainSubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
 
-		_direct.AddSubpass(depthOnlySubpass.SetName("DepthOnly"));
-		_direct.AddSubpass(mainSubpass.SetName("MainForward"));
+		_direct.AddSubpass(mainSubpass.SetName("MainForward"), _techniqueDelegate);
 	}
 
 	RenderStep_Direct::~RenderStep_Direct() {}
 
-	std::shared_ptr<IRenderStep> CreateRenderStep_Direct() { return std::make_shared<RenderStep_Direct>(); }
+	std::shared_ptr<IRenderStep> CreateRenderStep_Direct(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customDelegate)
+	{ 
+		return std::make_shared<RenderStep_Direct>(customDelegate); 
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -150,7 +150,7 @@ namespace SceneEngine
 
 		Techniques::DrawablesPacket _gbufferOpaque;				// BatchFilter::General
 
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch) 
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch) override
 		{
 			switch (batch) {
 			case Techniques::BatchFilter::General:
@@ -169,6 +169,14 @@ namespace SceneEngine
 			default:
 				return nullptr;
 			}
+		}
+
+		void Reset() override
+		{
+			_transparentPreDepth.Reset();
+			_transparent.Reset();
+			_oiTransparent.Reset();
+			_gbufferOpaque.Reset();
 		}
 	};
 

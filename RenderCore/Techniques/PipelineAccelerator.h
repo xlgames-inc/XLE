@@ -6,7 +6,7 @@
 
 #include "../Metal/Forward.h"		// (for Metal::GraphicsPipeline)
 #include "../Types.h"
-#include "../../Assets/AssetFuture.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -41,7 +41,6 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
-			const FrameBufferProperties& fbProps,
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex = 0);
 
@@ -51,6 +50,8 @@ namespace RenderCore { namespace Techniques
 		void			SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type);
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
 		void			RemoveGlobalSelector(StringSection<> name);
+
+		void			SetFrameBufferProperties(const FrameBufferProperties& fbProps);
 
 		unsigned		GetGUID() const { return _guid; }
 

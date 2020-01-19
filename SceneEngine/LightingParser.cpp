@@ -39,14 +39,42 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+	std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
+	{
+		std::vector<std::shared_ptr<IRenderStep>> result;
+
+		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
+		const bool precisionTargets = Tweakable("PrecisionTargets", false);
+		unsigned gbufferType = enableParametersBuffer?1:2;
+
+		std::shared_ptr<IRenderStep> mainSceneRenderStep;
+		if (lightingModel == LightingModel::Deferred) {
+			mainSceneRenderStep = CreateRenderStep_GBuffer(gbufferType, precisionTargets);
+		} else if (lightingModel == LightingModel::Forward) {
+			mainSceneRenderStep = CreateRenderStep_Forward(precisionTargets);
+		} else {
+			mainSceneRenderStep = CreateRenderStep_Direct();
+		}
+
+		result.push_back(mainSceneRenderStep);
+
+		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
+		if (lightingModel != LightingModel::Direct) {
+			if (lightingModel == LightingModel::Deferred)
+				result.push_back(CreateRenderStep_LightingResolve(gbufferType, precisionTargets));
+			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
+			result.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
+			result.push_back(resolveHDR);
+		}
+
+		return result;
+	}
+
 	class CompiledSceneTechnique
 	{
 	public:
-
 		std::vector<std::shared_ptr<IViewDelegate>> _viewDelegates;
 		std::vector<std::shared_ptr<ILightingParserPlugin>> _lightingPlugins;
-
-		std::shared_ptr<IRenderStep> _mainSceneRenderStep;
 		std::vector<std::shared_ptr<IRenderStep>> _renderSteps;
 
 		class RenderPass
@@ -63,51 +91,25 @@ namespace SceneEngine
 		};
 		std::vector<RenderPass> _renderPasses;
 
-		unsigned _gbufferType;
-		bool _precisionTargets;
 		RenderCore::TextureSamples _sampling;
 		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
 
 		CompiledSceneTechnique(
 			const SceneTechniqueDesc& techniqueDesc,
 			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
-			const RenderCore::AttachmentDesc& targetAttachmentDesc,
-			const RenderCore::FrameBufferProperties& fbProps);
+			const RenderCore::AttachmentDesc& targetAttachmentDesc);
 		~CompiledSceneTechnique();
 	};
 
 	CompiledSceneTechnique::CompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
-		const RenderCore::AttachmentDesc& targetAttachmentDesc,
-		const RenderCore::FrameBufferProperties& fbProps)
+		const RenderCore::AttachmentDesc& targetAttachmentDesc)
 	: _pipelineAccelerators(pipelineAccelerators)
 	{
-		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-		const bool precisionTargets = Tweakable("PrecisionTargets", false);
-
-		// 
-		//		Setup render steps
-		//
-		if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred) {
-			_mainSceneRenderStep = CreateRenderStep_GBuffer(enableParametersBuffer?1:2, precisionTargets);
-		} else if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Forward) {
-			_mainSceneRenderStep = CreateRenderStep_Forward(precisionTargets);
-		} else {
-			_mainSceneRenderStep = CreateRenderStep_Direct();
-		}
-
-		_renderSteps.push_back(_mainSceneRenderStep);
-
-		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
-		if (techniqueDesc._lightingModel != SceneTechniqueDesc::LightingModel::Direct) {
-			if (techniqueDesc._lightingModel == SceneTechniqueDesc::LightingModel::Deferred)
-				_renderSteps.push_back(CreateRenderStep_LightingResolve(precisionTargets));
-			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
-			_renderSteps.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
-			_renderSteps.push_back(resolveHDR);
-		}
-
+		_renderSteps.insert(_renderSteps.end(), techniqueDesc._renderSteps.begin(), techniqueDesc._renderSteps.end());
+		_lightingPlugins.insert(_lightingPlugins.begin(), techniqueDesc._lightingPlugins.begin(), techniqueDesc._lightingPlugins.end());
+		
 		//
 		//		Figure out the frame buffers and render passes required
 		//		Iterate through each render step and check it's input/output interface
@@ -146,8 +148,7 @@ namespace SceneEngine
 		
 			auto merged = Techniques::MergeFragments(
 				MakeIteratorRange(workingAttachments),
-				MakeIteratorRange(fragments),
-				UInt2{fbProps._outputWidth, fbProps._outputHeight});
+				MakeIteratorRange(fragments));
 			auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 
 			workingAttachments.reserve(merged._outputAttachments.size());
@@ -187,7 +188,6 @@ namespace SceneEngine
 						auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
 							subpassIterator->_techniqueDelegate,
 							subpassIterator->_sequencerSelectors,
-							fbProps,
 							newRenderPass._fbDesc,
 							(unsigned)(subpassIterator - subpassExtensions.begin()));
 						newRenderPass._perSubpassSequencerConfigs.push_back(sequencerConfig);
@@ -204,12 +204,15 @@ namespace SceneEngine
 		// 
 		//		Other configuration & state
 		//
-		_lightingPlugins.insert(
-			_lightingPlugins.begin(),
-			techniqueDesc._lightingPlugins.begin(), techniqueDesc._lightingPlugins.end());
 
-		_gbufferType = enableParametersBuffer?1:2;
-		_precisionTargets = precisionTargets;
+		for (const auto&step:_renderSteps) {
+			auto viewDelegate = step->CreateViewDelegate();
+			if (viewDelegate)
+				_viewDelegates.push_back(viewDelegate);
+		}
+
+		// _gbufferType = enableParametersBuffer?1:2;
+		// _precisionTargets = precisionTargets;
 		_sampling = techniqueDesc._sampling;
 	}
 
@@ -220,10 +223,9 @@ namespace SceneEngine
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
-		const RenderCore::AttachmentDesc& targetAttachmentDesc,
-		const RenderCore::FrameBufferProperties& fbProps)
+		const RenderCore::AttachmentDesc& targetAttachmentDesc)
 	{
-		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators, targetAttachmentDesc, fbProps);
+		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators, targetAttachmentDesc);
 	}
 
 	RenderCore::AttachmentName RenderStepFragmentInterface::DefineAttachment(uint64_t semantic, const RenderCore::AttachmentDesc& request)
@@ -303,9 +305,10 @@ namespace SceneEngine
 		auto mainSceneProjection = RenderCore::Techniques::BuildProjectionDesc(camera, UInt2{targetTextureDesc._width, targetTextureDesc._height});
 
 		SceneExecuteContext executeContext;
-		executeContext.AddView(
-			SceneView{mainSceneProjection},
-			technique._mainSceneRenderStep->CreateViewDelegate());
+		for (auto&step:technique._viewDelegates) {
+			step->Reset();
+			executeContext.AddView(SceneView{mainSceneProjection}, step);
+		}
 
 		for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
 			auto proj = lightingDelegate.GetShadowProjectionDesc(s, mainSceneProjection);
@@ -457,6 +460,8 @@ namespace SceneEngine
 
 	LightingParserContext::LightingParserContext() {}
 	LightingParserContext::~LightingParserContext() {}
+
+	// note -- explicitly implemented because of use of PreparedDMShadowFrustum, PreparedRTShadowFrustum in a vector
 	LightingParserContext::LightingParserContext(LightingParserContext&& moveFrom)
 	: _preparedDMShadows(std::move(moveFrom._preparedDMShadows))
 	, _preparedRTShadows(std::move(moveFrom._preparedRTShadows))
@@ -465,12 +470,10 @@ namespace SceneEngine
 	, _mainTargets(std::move(moveFrom._mainTargets))
 	, _preparedScene(moveFrom._preparedScene)
 	, _sampleCount(moveFrom._sampleCount)
-	, _gbufferType(moveFrom._gbufferType)
 	, _delegate(moveFrom._delegate)
 	{
 		moveFrom._preparedScene = nullptr;
 		moveFrom._sampleCount = 0;
-		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
 		moveFrom._delegate = nullptr;
 	}
@@ -483,12 +486,10 @@ namespace SceneEngine
 		_mainTargets = std::move(moveFrom._mainTargets);
 		_preparedScene = moveFrom._preparedScene;
 		_sampleCount = moveFrom._sampleCount;
-		_gbufferType = moveFrom._gbufferType;
 		_metricsBox = moveFrom._metricsBox;
 		_delegate = moveFrom._delegate;
 		moveFrom._preparedScene = nullptr;
 		moveFrom._sampleCount = 0;
-		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
 		moveFrom._delegate = nullptr;
 		return *this;
@@ -524,7 +525,7 @@ namespace SceneEngine
         metalContext.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
         lightingParserContext.SetMetricsBox(&metricsBox);
 
-		lightingParserContext._gbufferType = technique._gbufferType;
+		// lightingParserContext._gbufferType = technique._gbufferType;
 
         return lightingParserContext;
     }
@@ -662,9 +663,14 @@ namespace SceneEngine
 	class BasicViewDelegate : public SceneEngine::IViewDelegate
 	{
 	public:
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch)
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) override
 		{
 			return (batch == RenderCore::Techniques::BatchFilter::General) ? &_pkt : nullptr;
+		}
+
+		void Reset() override
+		{
+			_pkt.Reset();
 		}
 
 		RenderCore::Techniques::DrawablesPacket _pkt;

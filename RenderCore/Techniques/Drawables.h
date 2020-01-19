@@ -99,6 +99,8 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		VariantArray _drawables;
+
+		void Reset() { _drawables.clear(); }
 	};
 
 	void Draw(

@@ -50,7 +50,8 @@ namespace SceneEngine
 		RenderCore::Techniques::DrawablesPacket _general;
 		ShadowProjectionDesc _shadowProj;
 
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch);
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) override;
+		void Reset() override;
 		ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection);
 		~ViewDelegate_Shadow();
 	};

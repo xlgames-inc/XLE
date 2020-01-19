@@ -137,6 +137,7 @@ namespace SceneEngine
 								Techniques::ParsingContext& parsingContext,
                                 LightingParserContext& lightingParserContext,
                                 const LightingResolveContext& resolveContext,
+								unsigned gbufferType,
                                 bool debugging = false);
 
     static void SetupStateForDeferredLightingResolve(   
@@ -285,7 +286,8 @@ namespace SceneEngine
 
     void LightingParser_ResolveGBuffer(
         IThreadContext& threadContext, Techniques::ParsingContext& parsingContext, LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi)
+		RenderCore::Techniques::RenderPassFragment& rpi,
+		unsigned gbufferType)
     {
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
         Metal::GPUAnnotation anno2(metalContext, "ResolveGBuffer");
@@ -418,7 +420,7 @@ namespace SceneEngine
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
 						ConsoleRig::FindCachedBoxDep2<AmbientResolveShaders>(
-                            lightingParserContext._gbufferType,
+                            gbufferType,
                             (c==0)?samplingCount:1, useMsaaSamplers, c==1,
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
                             lightingResolveContext._tiledLightingResult.IsGood(),
@@ -469,7 +471,7 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
             for (unsigned c=0; c<passCount; ++c) {
                 lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
-                ResolveLights(metalContext, parsingContext, lightingParserContext, lightingResolveContext, lightResolveDebugging);
+                ResolveLights(metalContext, parsingContext, lightingParserContext, lightingResolveContext, gbufferType, lightResolveDebugging);
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
@@ -546,6 +548,7 @@ namespace SceneEngine
 								Techniques::ParsingContext& parsingContext,
                                 LightingParserContext& lightingParserContext,
                                 const LightingResolveContext& resolveContext,
+								unsigned gbufferType,
                                 bool debugging)
     {
         const unsigned samplingCount = resolveContext.GetSamplingCount();
@@ -582,7 +585,7 @@ namespace SceneEngine
 
         auto& lightingResolveShaders = 
 			ConsoleRig::FindCachedBoxDep2<LightingResolveShaders>(
-                lightingParserContext._gbufferType,
+                gbufferType,
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                 resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,
                 Tweakable("LightResolveDynamic", 0), debugging);
@@ -690,9 +693,10 @@ namespace SceneEngine
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) override;
 
-		RenderStep_LightingResolve(bool precisionTargets);
+		RenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets);
 	private:
 		RenderStepFragmentInterface _fragment;
+		unsigned _gbufferType;
 	};
 
 	void RenderStep_LightingResolve::Execute(
@@ -702,11 +706,12 @@ namespace SceneEngine
 		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
-		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi);
+		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi, _gbufferType);
 	}
 
-	RenderStep_LightingResolve::RenderStep_LightingResolve(bool precisionTargets)
+	RenderStep_LightingResolve::RenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets)
 	: _fragment(RenderCore::PipelineType::Graphics)
+	, _gbufferType(gbufferType)
 	{
 		// Now, this is awkward because we want to first write to the stencil buffer using the depth information,
         // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
@@ -768,9 +773,9 @@ namespace SceneEngine
 		_fragment.AddSubpass(std::move(secondSubpass));
 	}
 
-	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(bool precisionTargets)
+	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets)
 	{
-		return std::make_shared<RenderStep_LightingResolve>(precisionTargets);
+		return std::make_shared<RenderStep_LightingResolve>(gbufferType, precisionTargets);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

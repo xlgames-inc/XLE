@@ -57,16 +57,16 @@ namespace Sample
 		if (_scene) {
 			auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
 			
+			auto renderSteps = SceneEngine::CreateStandardRenderSteps((Tweakable("LightingModel", 0) == 0) ? SceneEngine::LightingModel::Deferred : SceneEngine::LightingModel::Forward);
 			auto techniqueDesc = SceneEngine::SceneTechniqueDesc{
-				(Tweakable("LightingModel", 0) == 0) ? SceneEngine::SceneTechniqueDesc::LightingModel::Deferred : SceneEngine::SceneTechniqueDesc::LightingModel::Forward,
+				MakeIteratorRange(renderSteps),
 				{},
 				samples};
 
 			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
 				techniqueDesc,
 				_pipelineAcceleratorPool,
-				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()),
-				parsingContext.GetNamedResources().GetFrameBufferProperties());
+				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
 			auto camera = CalculateCameraDesc(_inputListener->_rotations, _inputListener->_zoomFactor, _lightingDelegate->GetTimeValue());
 

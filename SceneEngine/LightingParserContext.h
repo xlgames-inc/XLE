@@ -46,7 +46,6 @@ namespace SceneEngine
 		const ILightingParserDelegate*	_delegate = nullptr;
 		PreparedScene*				_preparedScene = nullptr;
 		unsigned					_sampleCount = 0;
-		unsigned					_gbufferType = 0;
 
 		const MainTargets&	GetMainTargets() const { return _mainTargets; }
 		MainTargets			_mainTargets;

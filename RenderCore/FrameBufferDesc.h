@@ -168,8 +168,8 @@ namespace RenderCore
     class FrameBufferProperties
     {
     public:
-        unsigned _outputWidth, _outputHeight;
-        TextureSamples _samples;
+        unsigned _outputWidth = 0, _outputHeight = 0;
+        TextureSamples _samples = TextureSamples::Create();
     };
 
     union ClearValue
@@ -352,5 +352,16 @@ namespace RenderCore
     {
         _depthStencil = view;
     }
+
+	inline bool operator==(const FrameBufferProperties& lhs, const FrameBufferProperties& rhs)
+	{
+		return lhs._outputWidth == rhs._outputHeight
+			&& lhs._outputHeight == rhs._outputHeight
+			&& lhs._samples._sampleCount == rhs._samples._sampleCount
+			&& lhs._samples._samplingQuality == rhs._samples._samplingQuality
+			;
+	}
+
+	inline bool operator!=(const FrameBufferProperties& lhs, const FrameBufferProperties& rhs) { return !(lhs == rhs); }
 
 }

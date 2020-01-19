@@ -31,25 +31,20 @@ namespace SceneEngine
 {
 	class LightingParserContext;
     class IScene;
-    class PreparedScene;
 	class ILightingParserDelegate;
 	class ILightingParserPlugin;
+	class IRenderStep;
 
     namespace ShaderLightDesc { class BasicEnvironment; }
+
+	enum class LightingModel { Forward, Deferred, Direct };
+	std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel);
 
     class SceneTechniqueDesc
     {
     public:
-        enum class LightingModel
-        {
-            Forward,
-            Deferred,
-			Direct
-        };
-
-        LightingModel _lightingModel = LightingModel::Deferred;
+		IteratorRange<const std::shared_ptr<IRenderStep>*> _renderSteps = {};
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
-
 		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create();
     };
 
@@ -57,8 +52,7 @@ namespace SceneEngine
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
-		const RenderCore::AttachmentDesc& targetAttachmentDesc,
-		const RenderCore::FrameBufferProperties& fbProps);
+		const RenderCore::AttachmentDesc& targetAttachmentDesc);
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.

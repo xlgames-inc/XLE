@@ -25,6 +25,7 @@ namespace SceneEngine
 	{
 	public:
 		virtual RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) = 0;
+		virtual void Reset() = 0;
 		virtual ~IViewDelegate();
 	};
 
@@ -89,8 +90,8 @@ namespace SceneEngine
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	std::shared_ptr<IRenderStep> CreateRenderStep_Forward(bool precisionTargets);
-	std::shared_ptr<IRenderStep> CreateRenderStep_Direct();
+	std::shared_ptr<IRenderStep> CreateRenderStep_Direct(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customDelegate = nullptr);
 	std::shared_ptr<IRenderStep> CreateRenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
-	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(bool precisionTargets);
+	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets);
 	
 }

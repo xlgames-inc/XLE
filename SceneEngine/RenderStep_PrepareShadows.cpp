@@ -186,6 +186,11 @@ namespace SceneEngine
 		return nullptr;
 	}
 
+	void ViewDelegate_Shadow::Reset()
+	{
+		_general.Reset();
+	}
+
 	ViewDelegate_Shadow::ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection)
 	: _shadowProj(shadowProjection)
 	{
