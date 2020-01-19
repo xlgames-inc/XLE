@@ -67,6 +67,9 @@
     <ClInclude Include="..\Techniques\RenderStateResolver.h">
       <Filter>Drawables</Filter>
     </ClInclude>
+    <ClInclude Include="..\Techniques\CommonUtils.h">
+      <Filter>Resources &amp; states</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
@@ -125,6 +128,9 @@
     </ClCompile>
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp">
       <Filter>Drawables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques\CommonUtils.cpp">
+      <Filter>Resources &amp; states</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

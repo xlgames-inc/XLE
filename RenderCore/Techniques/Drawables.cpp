@@ -12,8 +12,10 @@
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
 #include "BasicDelegates.h"
+#include "CommonUtils.h"
 #include "../UniformsStream.h"
 #include "../BufferView.h"
+#include "../IThreadContext.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/State.h"
@@ -37,7 +39,7 @@ namespace RenderCore { namespace Techniques
 		IThreadContext& context,
         Techniques::ParsingContext& parserContext,
 		const SequencerContext& sequencerTechnique,
-		const Drawable& drawable)
+		const DrawablesPacket& drawablePkt)
 	{
 		assert(sequencerTechnique._sequencerConfig);
 
@@ -72,8 +74,16 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		// this part would normally be a loop -- 
-		{
+		IResourcePtr temporaryVB, temporaryIB;
+		if (!drawablePkt.GetStorage(DrawablesPacket::Storage::VB).empty()) {
+			temporaryVB = CreateStaticVertexBuffer(*context.GetDevice(), drawablePkt.GetStorage(DrawablesPacket::Storage::VB));
+		}
+		if (!drawablePkt.GetStorage(DrawablesPacket::Storage::IB).empty()) {
+			temporaryIB = CreateStaticIndexBuffer(*context.GetDevice(), drawablePkt.GetStorage(DrawablesPacket::Storage::IB));
+		}
+
+		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
+			const auto& drawable = *(Drawable*)d.get();
 			auto* pipeline = parserContext._pipelineAcceleratorPool->TryGetPipeline(
 				*drawable._pipeline,
 				*sequencerTechnique._sequencerConfig);
@@ -89,7 +99,7 @@ namespace RenderCore { namespace Techniques
 			VertexBufferView vbv[4];
 			for (unsigned c=0; c<drawable._geo->_vertexStreamCount; ++c) {
 				auto& stream = drawable._geo->_vertexStreams[c];
-				vbv[c]._resource = stream._resource.get();
+				vbv[c]._resource = stream._resource ? stream._resource.get() : temporaryVB.get();
 				vbv[c]._offset = stream._vbOffset;
 				slotBinding[c]._elements = MakeIteratorRange(stream._vertexElements);
 				slotBinding[c]._instanceStepDataRate = stream._instanceStepDataRate;
@@ -98,10 +108,10 @@ namespace RenderCore { namespace Techniques
 			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), pipeline->GetShaderProgram() };
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbv));
 
-			if (drawable._geo->_ib)
-				metalContext.Bind(
-					Metal::AsResource(*drawable._geo->_ib.get()),
-					drawable._geo->_ibFormat);
+			if (drawable._geo->_ibFormat != Format(0)) {
+				auto* ib = drawable._geo->_ib ? drawable._geo->_ib.get() : temporaryIB.get();
+				metalContext.Bind(Metal::AsResource(*ib), drawable._geo->_ibFormat);
+			}
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -157,6 +167,11 @@ namespace RenderCore { namespace Techniques
 		_boundUniforms->Apply(*_metalContext, 3, stream);
 	}
 
+	uint64_t Drawable::DrawFunctionContext::UniformBindingBitField() const
+	{
+		return _boundUniforms->_boundUniformBufferSlots[3];
+	}
+
 	void Drawable::DrawFunctionContext::Draw(unsigned vertexCount, unsigned startVertexLocation) const
 	{
 		_metalContext->Draw(*_pipeline, vertexCount, startVertexLocation);
@@ -180,6 +195,42 @@ namespace RenderCore { namespace Techniques
 	void Drawable::DrawFunctionContext::DrawAuto() const
 	{
 		_metalContext->DrawAuto(*_pipeline);
+	}
+
+	static DrawablesPacket::AllocateStorageResult AllocateFrom(std::vector<uint8_t>& vector, size_t size, unsigned alignment)
+	{
+		unsigned preAlignmentBuffer = 0;
+		if (alignment != 0) {
+			preAlignmentBuffer = alignment - (vector.size() % alignment);
+			if (preAlignmentBuffer == alignment) preAlignmentBuffer = 0;
+		}
+
+		size_t startOffset = vector.size() + preAlignmentBuffer;
+		vector.resize(vector.size() + preAlignmentBuffer + size);
+		return {
+			MakeIteratorRange(AsPointer(vector.begin() + startOffset), AsPointer(vector.begin() + startOffset + size)),
+			(unsigned)startOffset
+		};
+	}
+
+	auto DrawablesPacket::AllocateStorage(Storage storageType, size_t size) -> AllocateStorageResult
+	{
+		if (storageType == Storage::IB) {
+			return AllocateFrom(_ibStorage, size, _storageAlignment);
+		} else {
+			assert(storageType == Storage::VB);
+			return AllocateFrom(_vbStorage, size, _storageAlignment);
+		}
+	}
+
+	IteratorRange<const void*> DrawablesPacket::GetStorage(Storage storageType) const
+	{
+		if (storageType == Storage::IB) {
+			return MakeIteratorRange(_ibStorage);
+		} else {
+			assert(storageType == Storage::VB);
+			return MakeIteratorRange(_vbStorage);
+		}
 	}
 
 }}

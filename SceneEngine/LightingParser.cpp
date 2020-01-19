@@ -689,14 +689,10 @@ namespace SceneEngine
 		sceneExeContext.AddView(view, viewDelegate);
 		scene.ExecuteScene(threadContext, sceneExeContext);
 
-		auto begin = viewDelegate->_pkt._drawables.begin();
-		auto end = viewDelegate->_pkt._drawables.end();
-
-		for (auto d=begin; d!=end; ++d)
-			Techniques::Draw(
-				threadContext, parserContext, 
-				sequencerTechnique, 
-				*(Techniques::Drawable*)d.get());
+		Techniques::Draw(
+			threadContext, parserContext, 
+			sequencerTechnique, 
+			viewDelegate->_pkt);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

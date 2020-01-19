@@ -14,7 +14,6 @@
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
-#include "../ToolsRig/MaterialOverridesDelegate.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"

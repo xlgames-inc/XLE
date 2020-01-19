@@ -6,23 +6,14 @@
 
 #pragma once
 
-#include "../IDevice_Forward.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
-#include "../../Utility/IteratorUtils.h"
 #include <vector>
+#include <iosfwd>
 
-namespace Utility { class ParameterBox; }
-namespace Assets { class DirectorySearchRules; }
 namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Assets
 {
-	IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data);
-	IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data);
-
-	IResourcePtr CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data);
-	IResourcePtr CreateStaticIndexBuffer(IDevice& device, IteratorRange<const void*> data);
-
     static const uint64 ChunkType_ModelScaffold = ConstHash64<'Mode', 'lSca', 'fold'>::Value;
     static const uint64 ChunkType_ModelScaffoldLargeBlocks = ConstHash64<'Mode', 'lSca', 'fold', 'Larg'>::Value;
     static const uint64 ChunkType_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;

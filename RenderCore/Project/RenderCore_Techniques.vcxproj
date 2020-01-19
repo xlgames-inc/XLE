@@ -70,6 +70,7 @@
     <ClInclude Include="..\Techniques\BasicDelegates.h" />
     <ClInclude Include="..\Techniques\CommonBindings.h" />
     <ClInclude Include="..\Techniques\CommonResources.h" />
+    <ClInclude Include="..\Techniques\CommonUtils.h" />
     <ClInclude Include="..\Techniques\DescriptorSetAccelerator.h" />
     <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
     <ClInclude Include="..\Techniques\CompiledShaderPatchCollection.h" />
@@ -93,6 +94,7 @@
   <ItemGroup>
     <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
     <ClCompile Include="..\Techniques\CommonResources.cpp" />
+    <ClCompile Include="..\Techniques\CommonUtils.cpp" />
     <ClCompile Include="..\Techniques\DescriptorSetAccelerator.cpp" />
     <ClCompile Include="..\Techniques\CompiledShaderPatchCollection.cpp" />
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />

@@ -12,12 +12,12 @@
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
-#include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
-#include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/CommonUtils.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
@@ -143,8 +143,8 @@ namespace ToolsRig
 		auto largeBlocksOffset = largeBlocksFile.TellP();
 		auto vbData = ReadFromFile(largeBlocksFile, geo._vb._size, geo._vb._offset + largeBlocksOffset);
 		auto ibData = ReadFromFile(largeBlocksFile, geo._ib._size, geo._ib._offset + largeBlocksOffset);
-		_vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vbData));
-		_ib = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(vbData));
+		_vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vbData));
+		_ib = RenderCore::Techniques::CreateStaticIndexBuffer(MakeIteratorRange(vbData));
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
 		_vbStride = geo._vb._ia._vertexStride;
 		_ibFormat = geo._ib._format;
@@ -211,7 +211,7 @@ namespace ToolsRig
         auto cubeVertices = ToolsRig::BuildCube();
         _cubeVBCount = (unsigned)cubeVertices.size();
         _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
-        _cubeVB = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
+        _cubeVB = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
         _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 

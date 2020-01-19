@@ -8,6 +8,7 @@
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
 #include "CommonBindings.h"
+#include "CommonUtils.h"
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
 #include "CompiledShaderPatchCollection.h"
@@ -15,7 +16,6 @@
 #include "../Assets/ModelScaffoldInternal.h"
 #include "../Assets/ModelImmutableData.h"
 #include "../Assets/MaterialScaffold.h"
-#include "../Assets/AssetUtils.h"
 #include "../Assets/Services.h"
 #include "../Assets/ShaderPatchCollection.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
@@ -446,11 +446,6 @@ namespace RenderCore { namespace Techniques
 		}
 	}
 
-	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
-	{
-		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
-	}
-
 	class SimpleModelRenderer::GeoCallBuilder
 	{
 	public:
@@ -752,7 +747,7 @@ namespace RenderCore { namespace Techniques
             inputFile->Seek(vb._offset, Utility::FileSeekAnchor::Current);
             inputFile->Read(buffer.get(), vb._size, 1);
         }
-		return RenderCore::Assets::CreateStaticVertexBuffer(
+		return CreateStaticVertexBuffer(
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), vb._size)));
     }
 
@@ -766,7 +761,7 @@ namespace RenderCore { namespace Techniques
             inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
             inputFile->Read(buffer.get(), ib._size, 1);
         }
-		return RenderCore::Assets::CreateStaticIndexBuffer(
+		return CreateStaticIndexBuffer(
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
     }
 

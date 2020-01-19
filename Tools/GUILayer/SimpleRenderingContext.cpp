@@ -21,6 +21,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/CommonUtils.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
@@ -210,37 +211,9 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static RenderCore::IResourcePtr CreateStaticVertexBuffer(RenderCore::IDevice& device, IteratorRange<const void*> data)
-	{
-		using namespace RenderCore;
-		return device.CreateResource(
-			CreateDesc(
-				BindFlag::VertexBuffer, 0, GPUAccess::Read,
-				LinearBufferDesc::Create(unsigned(data.size())),
-				"simplecontext_vb"),
-			[data](SubResourceId subres) {
-				assert(subres._arrayLayer == 0 && subres._mip == 0);
-				return SubResourceInitData{ data };
-			});
-	}
-
-	static RenderCore::IResourcePtr CreateStaticIndexBuffer(RenderCore::IDevice& device, IteratorRange<const void*> data)
-	{
-		using namespace RenderCore;
-		return device.CreateResource(
-			CreateDesc(
-				BindFlag::IndexBuffer, 0, GPUAccess::Read,
-				LinearBufferDesc::Create(unsigned(data.size())),
-				"simplecontext_ib"),
-			[data](SubResourceId subres) {
-				assert(subres._arrayLayer == 0 && subres._mip == 0);
-				return SubResourceInitData{ data };
-			});
-	}
-
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
-		auto newBuffer = CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
+		auto newBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         _pimpl->_vbFormat.push_back(std::make_pair(_pimpl->_nextBufferID, format));
         return _pimpl->_nextBufferID++;
@@ -248,7 +221,7 @@ namespace GUILayer
 
     uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
-		auto newBuffer = CreateStaticIndexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
+		auto newBuffer = RenderCore::Techniques::CreateStaticIndexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }

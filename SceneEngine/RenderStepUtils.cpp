@@ -27,12 +27,11 @@ namespace SceneEngine
 		using namespace RenderCore;
         CATCH_ASSETS_BEGIN
             GPUAnnotation anno(threadContext, name);
-			for (auto d=drawables._drawables.begin(); d!=drawables._drawables.end(); ++d)
-				RenderCore::Techniques::Draw(
-					threadContext, 
-					parserContext,
-					sequencerContext,
-					*(Techniques::Drawable*)d.get());
+			RenderCore::Techniques::Draw(
+				threadContext, 
+				parserContext,
+				sequencerContext,
+				drawables);
         CATCH_ASSETS_END(parserContext)
     }
 

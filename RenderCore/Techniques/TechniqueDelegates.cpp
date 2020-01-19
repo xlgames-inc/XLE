@@ -5,6 +5,7 @@
 #include "TechniqueDelegates.h"
 #include "CompiledShaderPatchCollection.h"
 #include "CommonResources.h"
+#include "CommonUtils.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
 #include "../Assets/Services.h"
@@ -195,19 +196,10 @@ namespace RenderCore { namespace Techniques
 		using CompiledShaderByteCode::CompiledShaderByteCode;
 	};
 
-	static void TryRegisterDependency(
-		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode_InstantiateShaderGraph>>& future)
-	{
-		auto futureDepVal = future->GetDependencyValidation();
-		if (futureDepVal)
-			::Assets::RegisterAssetDependency(dst, futureDepVal);
-	}
-
 	class ShaderPatchFactory : public IShaderVariationFactory
 	{
 	public:
-		::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> MakeByteCodeFuture(
+		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
 			ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
 		{
 			char temp[MaxPath];
@@ -239,89 +231,29 @@ namespace RenderCore { namespace Techniques
 				}
 			}
 
-			return ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable);
+			auto ret = ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable);
+			return std::reinterpret_pointer_cast<::Assets::AssetFuture<CompiledShaderByteCode>>(ret);
 		}
 
 		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines)
 		{
-			::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> vsCode, psCode, gsCode;
+			::Assets::FuturePtr<CompiledShaderByteCode> vsCode, psCode, gsCode;
 			vsCode = MakeByteCodeFuture(ShaderStage::Vertex, _entry->_vertexShaderName, defines);
 			psCode = MakeByteCodeFuture(ShaderStage::Pixel, _entry->_pixelShaderName, defines);
+
 			if (!_entry->_geometryShaderName.empty()) {
 				auto finalDefines = defines.AsString() + _soExtraDefines;
 				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, finalDefines);
-			}
 
-			auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPatchFactory");
-			if (gsCode) {
-				std::vector<RenderCore::InputElementDesc> soElements = _soElements;
-				std::vector<unsigned> soStrides = _soStrides;
-				future->SetPollingFunction(
-					[vsCode, gsCode, psCode, soElements, soStrides](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
-
-					auto vsActual = vsCode->TryActualize();
-					auto gsActual = gsCode->TryActualize();
-					auto psActual = psCode->TryActualize();
-
-					if (!vsActual || !gsActual || !psActual) {
-						auto vsState = vsCode->GetAssetState();
-						auto gsState = gsCode->GetAssetState();
-						auto psState = psCode->GetAssetState();
-						if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-							auto depVal = std::make_shared<::Assets::DependencyValidation>();
-							TryRegisterDependency(depVal, vsCode);
-							TryRegisterDependency(depVal, gsCode);
-							TryRegisterDependency(depVal, psCode);
-							std::stringstream log;
-							if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
-							if (gsState == ::Assets::AssetState::Invalid) log << "Geometry shader is invalid with message: " << std::endl << ::Assets::AsString(gsCode->GetActualizationLog()) << std::endl;
-							if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
-							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
-							return false;
-						}
-						return true;
-					}
-
-					StreamOutputInitializers soInit;
-					soInit._outputElements = MakeIteratorRange(soElements);
-					soInit._outputBufferStrides = MakeIteratorRange(soStrides);
-
-					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
-						RenderCore::Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, soInit);
-					thatFuture.SetAsset(std::move(newShaderProgram), {});
-					return false;
-				});
+				return RenderCore::Techniques::CreateShaderProgramFromByteCode(
+					vsCode, gsCode, psCode,
+					StreamOutputInitializers {
+						MakeIteratorRange(_soElements), MakeIteratorRange(_soStrides)
+					},
+					"ShaderPatchFactory");
 			} else {
-				future->SetPollingFunction(
-					[vsCode, gsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
-
-					auto vsActual = vsCode->TryActualize();
-					auto psActual = psCode->TryActualize();
-
-					if (!vsActual || !psActual) {
-						auto vsState = vsCode->GetAssetState();
-						auto psState = psCode->GetAssetState();
-						if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-							auto depVal = std::make_shared<::Assets::DependencyValidation>();
-							TryRegisterDependency(depVal, vsCode);
-							TryRegisterDependency(depVal, psCode);
-							std::stringstream log;
-							if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
-							if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
-							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
-							return false;
-						}
-						return true;
-					}
-
-					auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
-						RenderCore::Metal::GetObjectFactory(), *vsActual, *psActual);
-					thatFuture.SetAsset(std::move(newShaderProgram), {});
-					return false;
-				});
+				return RenderCore::Techniques::CreateShaderProgramFromByteCode(vsCode, psCode, "ShaderPatchFactory");
 			}
-
-			return future;
 		}
 
 		ShaderPatchFactory(

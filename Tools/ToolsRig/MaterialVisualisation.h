@@ -50,9 +50,6 @@ namespace ToolsRig
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
-	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegateDefaultLink(
-		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection);
-
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
 		const ShaderSourceParser::PreviewOptions& previewOptions);
 

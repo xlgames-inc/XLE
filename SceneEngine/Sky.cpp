@@ -12,7 +12,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
-#include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Techniques/CommonUtils.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -91,7 +91,7 @@ namespace SceneEngine
         };
 
         Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
-        auto temporaryVB = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+        auto temporaryVB = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
 		VertexBufferView vbvs[] = {VertexBufferView{temporaryVB}};
 		inputLayout.Apply(context, MakeIteratorRange(vbvs));
 

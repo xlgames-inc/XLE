@@ -8,7 +8,7 @@
 
 #include "FluidHelper.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Techniques/CommonUtils.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 
@@ -401,7 +401,7 @@ namespace SceneEngine
             uniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
             metalContext.Bind(shader);
 
-			auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+			auto vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
 			VertexBufferView vbvs[] = {vb};
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
@@ -473,7 +473,7 @@ namespace SceneEngine
             uniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
             metalContext.Bind(shader);
 
-            auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+            auto vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
 			VertexBufferView vbvs[] = {vb};
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
             metalContext.Bind(Techniques::CommonResources()._cullDisable);

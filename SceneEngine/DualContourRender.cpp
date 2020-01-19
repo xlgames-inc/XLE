@@ -17,9 +17,9 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
-#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Techniques/CommonUtils.h"
+#include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -290,8 +290,8 @@ namespace SceneEngine
         WriteIndexData(ibData.get(), indexSize, mesh);
 
         auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_indexBuffer = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(ibData.get(), PtrAdd(ibData.get(), ibDataCount*indexSize)));
-        pimpl->_vertexBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
+        pimpl->_indexBuffer = RenderCore::Techniques::CreateStaticIndexBuffer(MakeIteratorRange(ibData.get(), PtrAdd(ibData.get(), ibDataCount*indexSize)));
+        pimpl->_vertexBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
         pimpl->_indexFormat = (indexSize==4)?Format::R32_UINT:Format::R16_UINT;
         pimpl->_indexCount = (unsigned)ibDataCount;
 
@@ -347,14 +347,14 @@ namespace SceneEngine
                 };
 				shader._shader.ApplyUniforms(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
-                auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
+                auto vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
 
                 unsigned indexSize = (mesh._vertices.size() <= 0xffff) ? 2 : 4;
                 auto ibDataCount = mesh._quads.size() * 6;
                 auto ibData = std::vector<unsigned char>(ibDataCount*indexSize);
                 WriteIndexData(ibData.data(), indexSize, mesh);
 
-                auto ib = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(ibData));
+                auto ib = RenderCore::Techniques::CreateStaticIndexBuffer(MakeIteratorRange(ibData));
 				
 				shader._shader.Apply(
                     metalContext, parserContext, 

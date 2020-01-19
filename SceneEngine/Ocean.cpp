@@ -23,7 +23,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
-#include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Techniques/CommonUtils.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -160,7 +160,7 @@ namespace SceneEngine
         }
 
         auto simplePatchSize = indicesPerMiniGrid*miniGridsX*miniGridsY*sizeof(uint32);
-        _simplePatchIndexBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(indexBufferData.get(), PtrAdd(indexBufferData.get(), simplePatchSize)));
+        _simplePatchIndexBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(indexBufferData.get(), PtrAdd(indexBufferData.get(), simplePatchSize)));
         _simplePatchIndexCount = indicesPerMiniGrid*miniGridsX*miniGridsY;
     }
 
@@ -496,7 +496,7 @@ namespace SceneEngine
                 { cameraAbsFrustumCorners[3], 0xff00ff00 }, { cameraAbsFrustumCorners[2], 0xff00ff00 },
                 { cameraAbsFrustumCorners[2], 0xff00ff00 }, { cameraAbsFrustumCorners[0], 0xff00ff00 }
             };
-            auto temporaryBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(lines));
+            auto temporaryBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(lines));
 
             auto& shader = ::Assets::GetAsset<ShaderProgram>(
                 "xleres/forward/illum.vsh:main:vs_*", 

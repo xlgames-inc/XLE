@@ -78,6 +78,7 @@ namespace RenderCore { namespace Techniques
 			const Metal::BoundUniforms*		_boundUniforms;
 
 			void		ApplyUniforms(const UniformsStream&) const;
+			uint64_t	UniformBindingBitField() const;
 
 			void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
 			void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
@@ -100,14 +101,24 @@ namespace RenderCore { namespace Techniques
 	public:
 		VariantArray _drawables;
 
-		void Reset() { _drawables.clear(); }
+		enum class Storage { VB, IB };
+		struct AllocateStorageResult { IteratorRange<void*> _data; unsigned _startOffset; };
+		AllocateStorageResult AllocateStorage(Storage storageType, size_t size);
+
+		void Reset() { _drawables.clear(); _vbStorage.clear(); _ibStorage.clear(); }
+
+		IteratorRange<const void*> GetStorage(Storage storageType) const;
+	private:
+		std::vector<uint8_t>	_vbStorage;
+		std::vector<uint8_t>	_ibStorage;
+		unsigned				_storageAlignment = 0u;
 	};
 
 	void Draw(
 		IThreadContext& context,
         Techniques::ParsingContext& parserContext,
 		const SequencerContext& sequencerTechnique,
-		const Drawable& drawable);
+		const DrawablesPacket& drawablePkt);
 
 	enum class BatchFilter
     {

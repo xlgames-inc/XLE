@@ -8,7 +8,6 @@
 #include "UITypesBinding.h"
 #include "MarshalString.h"
 #include "../ToolsRig/MaterialVisualisation.h"
-#include "../ToolsRig/MaterialOverridesDelegate.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
@@ -64,85 +63,6 @@ namespace GUILayer
 		return PreviewGeometry::Plane2D;
 	}
 
-#if 0
-	static ShaderSourceParser::InstantiatedShader
-		GeneratePreviewShader(
-			NodeGraph^ graph,
-			UInt32 previewNodeId, 
-			NodeGraphSignature^ signature,
-			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& graphProvider,
-			PreviewSettings^ settings,
-			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
-	{
-		ConversionContext context;
-        auto nativeGraph = graph->ConvertToNative(context);
-		if (previewNodeId != ~0u) {
-			nativeGraph.Trim(previewNodeId);
-		}
-
-		ShaderSourceParser::InstantiationRequest instantiationReq {};
-		ShaderSourceParser::GenerateFunctionOptions generateOptions;
-		if (previewNodeId != ~0u)
-			generateOptions._generateDanglingOutputs = previewNodeId;
-		generateOptions._generateDanglingInputs = true;
-
-		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
-			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
-			false,
-			instantiationReq,
-			generateOptions,
-			RenderCore::Techniques::GetDefaultShaderLanguage());
-
-		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
-		if (settings) {
-			options._type = (settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object;
-			options._outputToVisualize = String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : clix::marshalString<clix::E_UTF8>(settings->OutputToVisualize);
-		}
-
-		if (variableRestrictions)
-			for each(auto v in variableRestrictions)
-				options._variableRestrictions.push_back(
-					std::make_pair(
-						clix::marshalString<clix::E_UTF8>(v.Key),
-						clix::marshalString<clix::E_UTF8>(v.Value)));
-
-		assert(mainInstantiation._entryPoints.size() == 1);	// only tested with a single entry point
-		auto structureForPreview = GenerateStructureForPreview(
-			"preview_graph", mainInstantiation._entryPoints[0]._signature, options);
-		mainInstantiation._sourceFragments.insert(mainInstantiation._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
-		mainInstantiation._sourceFragments.push_back(structureForPreview);
-		return mainInstantiation;
-	}
-
-	static ShaderSourceParser::InstantiatedShader
-		GeneratePreviewShader(
-			NodeGraphFile^ nodeGraphFile,
-			String^ subGraphName,
-			UInt32 previewNodeId, 
-			PreviewSettings^ settings,
-			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
-	{
-		NodeGraphFile::SubGraph^ subGraph = nullptr;
-		if (nodeGraphFile->SubGraphs->TryGetValue(subGraphName, subGraph))
-			return GUILayer::GeneratePreviewShader(subGraph->Graph, previewNodeId, subGraph->Signature, nodeGraphFile->MakeNodeGraphProvider(), settings, variableRestrictions);
-		return {};
-	}
-
-	String^ ShaderGeneratorLayer::GeneratePreviewShader(
-		NodeGraphFile^ nodeGraphFile,
-		String^ subGraphName, UInt32 previewNodeId,
-		PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
-	{
-		auto inst = GUILayer::GeneratePreviewShader(nodeGraphFile, subGraphName, previewNodeId, settings, variableRestrictions);
-
-		std::stringstream str;
-		for (const auto&s : inst._sourceFragments)
-			str << s;
-
-		return clix::marshalString<clix::E_UTF8>(str.str());
-	}
-#endif
-
 	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
 		RenderCore::ShaderService::IShaderSource& shaderSource,
 		StringSection<> sourceCode, StringSection<> definesTable,
@@ -172,6 +92,7 @@ namespace GUILayer
 			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};
 	}
 
+#if 0
 	class TechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate_Old
 	{
 	public:
@@ -233,6 +154,7 @@ namespace GUILayer
 		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
 		bool _pretransformedFlag;
 	};
+#endif
 
 	CompiledShaderPatchCollectionWrapper^ ShaderGeneratorLayer::MakeCompiledShaderPatchCollection(
 		NodeGraphMetaData^ doc, 
@@ -274,21 +196,6 @@ namespace GUILayer
 		IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions,
 		MessageRelayWrapper^ logMessages)
 	{
-		/*try {
-			auto previewShader = GUILayer::GeneratePreviewShader(
-				previewConfiguration->_nodeGraph,
-				previewConfiguration->_subGraphName,
-				previewConfiguration->_previewNodeId,
-				previewConfiguration->_settings,
-				previewConfiguration->_variableRestrictions);
-
-			bool pretransformed = false;
-			return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(std::move(previewShader), pretransformed));
-		} catch (const std::exception& e) {
-			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
-			return nullptr;
-		}*/
-
 		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
 		if (settings) {
 			options._type = (settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object;
@@ -312,20 +219,6 @@ namespace GUILayer
 			return nullptr;
 		}
 	}
-
-	/*GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
-		NodeGraphFile^ nodeGraph,
-		String^ subGraphName,
-		MessageRelayWrapper^ logMessages)
-	{
-		try {
-			auto techniqueDelegate = ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), logMessages->_native.GetNativePtr());
-			return gcnew TechniqueDelegateWrapper(techniqueDelegate.release());
-		} catch (const std::exception& e) {
-			Log(Warning) << "Got exception while building technique delegate for preview. Exception message follows: " << e.what() << std::endl;
-			return nullptr;
-		}
-	}*/
 
 	static std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterialFromRestriction(
 		IEnumerable<KeyValuePair<String^, String^>>^ restrictions)
