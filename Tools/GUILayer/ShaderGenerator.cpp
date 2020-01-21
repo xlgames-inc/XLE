@@ -161,27 +161,25 @@ namespace GUILayer
 		NodeGraphPreviewConfiguration^ previewConfiguration,
 		MessageRelayWrapper^ logMessages)
 	{
-		NodeGraphFile::SubGraph^ subGraph = nullptr;
-		if (!previewConfiguration->_nodeGraph->SubGraphs->TryGetValue(previewConfiguration->_subGraphName, subGraph))
+		auto nativeGraphFile = std::make_shared<GraphLanguage::GraphSyntaxFile>(previewConfiguration->_nodeGraph->ConvertToNative());
+		auto subGraph = nativeGraphFile->_subGraphs.find(clix::marshalString<clix::E_UTF8>(previewConfiguration->_subGraphName));
+		if (subGraph == nativeGraphFile->_subGraphs.end())
 			return nullptr;
 
-		GUILayer::ConversionContext context;
-		auto nativeGraph = subGraph->Graph->ConvertToNative(context);
+		auto trimmedNativeGraph = subGraph->second._graph;
 		if (previewConfiguration->_previewNodeId != ~0u) {
-			nativeGraph.Trim(previewConfiguration->_previewNodeId);
+			trimmedNativeGraph.Trim(previewConfiguration->_previewNodeId);
 		}
 
-		auto natureSignature = subGraph->Signature->ConvertToNative(context);
 		auto nativeProvider = previewConfiguration->_nodeGraph->MakeNodeGraphProvider();
 
 		try {
-			auto patchCollection = ToolsRig::MakeCompiledShaderPatchCollection(
-				nativeGraph,
-				natureSignature,
-				clix::marshalString<clix::E_UTF8>(previewConfiguration->_subGraphName),
-				previewConfiguration->_previewNodeId,
-				nativeProvider,
-				logMessages->_native.GetNativePtr());
+			unsigned nodeId = previewConfiguration->_previewNodeId;
+			auto patchCollection = std::make_unique<ToolsRig::DeferredCompiledShaderPatchCollection>(
+				std::move(trimmedNativeGraph),
+				std::move(subGraph->second._signature),
+				nodeId,
+				nativeProvider);
 			return gcnew CompiledShaderPatchCollectionWrapper(patchCollection.release());
 		} catch (const std::exception& e) {
 			std::stringstream str;

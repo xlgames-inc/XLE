@@ -37,6 +37,8 @@
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/Mutex.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
+#include "../../Utility/Threading/CompletionThreadPool.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -95,7 +97,7 @@ namespace ToolsRig
 		}
 	};
 
-    class MaterialVisualizationScene : public SceneEngine::IScene, public IVisContent
+    class MaterialVisualizationScene : public SceneEngine::IScene, public IVisContent, public ::Assets::IAsyncMarker
     {
     public:
         void Draw(  IThreadContext& threadContext, 
@@ -124,8 +126,8 @@ namespace ToolsRig
 				std::memcpy(space._data.begin(), vertices, sizeof(vertices));
 
 				auto& drawable = *pkt._drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._descriptorSet = _descriptorSet;
-				drawable._pipeline = _pipelineAccelerator;
+				drawable._descriptorSet = _pipeline->_descriptorSet ? _pipeline->_descriptorSet->TryActualize() : nullptr;
+				drawable._pipeline = _pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
 				drawable._geo->_vertexStreams[0]._vbOffset = space._startOffset;
@@ -148,8 +150,8 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *pkt._drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._descriptorSet = _descriptorSet;
-				drawable._pipeline = _pipelineAccelerator;
+				drawable._descriptorSet = _pipeline->_descriptorSet ? _pipeline->_descriptorSet->TryActualize() : nullptr;
+				drawable._pipeline = _pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -194,43 +196,129 @@ namespace ToolsRig
 		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
 			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
-			const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
+			PatchCollectionFuture&& patchCollectionFuture,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
-        : _settings(settings), _material(material)
+        : _settings(settings)
 		{
 			_depVal = std::make_shared<::Assets::DependencyValidation>();
-			if (!_material)
-				_material = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
-			
-			std::tie(_pipelineAccelerator, _descriptorSet) = RenderCore::Techniques::CreatePipelineAccelerator(
-				*pipelineAcceleratorPool,
-				patchCollectionOverride,
-				*_material,
-				Vertex3D_InputLayout,
-				Topology::TriangleList);
 
-			if (_descriptorSet)
-				::Assets::RegisterAssetDependency(_depVal, _descriptorSet->GetDependencyValidation());
+			auto mat = material;
+			if (!mat)
+				mat = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
+
+			std::weak_ptr<RenderCore::Techniques::PipelineAcceleratorPool> weakPipelineAcceleratorPool = pipelineAcceleratorPool;
+
+			_pipelineFuture = patchCollectionFuture.then(
+				[weakPipelineAcceleratorPool, mat](const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection) {
+
+					auto strongPipelineAcceleratorPool = weakPipelineAcceleratorPool.lock();
+					if (!strongPipelineAcceleratorPool)
+						throw std::runtime_error("Aborting because pipeline accelerator pool has been destroyed");
+
+					auto pendingPipeline = std::make_shared<PendingPipeline>();
+					pendingPipeline->_depVal = std::make_shared<::Assets::DependencyValidation>();
+
+					std::tie(pendingPipeline->_pipelineAccelerator, pendingPipeline->_descriptorSet) = RenderCore::Techniques::CreatePipelineAccelerator(
+						*strongPipelineAcceleratorPool,
+						patchCollection,
+						*mat,
+						Vertex3D_InputLayout,
+						Topology::TriangleList);
+
+					if (pendingPipeline->_descriptorSet)
+						::Assets::RegisterAssetDependency(pendingPipeline->_depVal, pendingPipeline->_descriptorSet->GetDependencyValidation());
+
+					return pendingPipeline;
+				});
 		}
 
-		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+		::Assets::AssetState GetAssetState() const
+		{
+			if (_pipeline)
+				return ::Assets::AssetState::Ready;
+
+			if (_pipelineFuture.is_ready()) {
+				return StallWhilePending(std::chrono::milliseconds{0}).value();
+			}
+
+			if (_pipelineFuture.valid())
+				return ::Assets::AssetState::Pending;
+
+			return ::Assets::AssetState::Invalid;
+		}
+
+		std::optional<::Assets::AssetState>   StallWhilePending(std::chrono::milliseconds timeout) const
+		{
+			if (!_pipeline) {
+				try {
+					_pipeline = _pipelineFuture.get();
+				} catch (const std::exception& e) {
+					_actualizationLog = e.what();
+				}
+			}
+			
+			if (_pipelineFuture.valid())
+				return ::Assets::AssetState::Pending;
+
+			return ::Assets::AssetState::Invalid;
+		}
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const 
+		{
+			if (_pipeline)
+				_pipeline->_depVal;
+			return _depVal; 
+		}
 
     protected:
-        MaterialVisSettings  _settings;
-		std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
-		::Assets::DepValPtr _depVal;
-		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
-		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSet;
+        MaterialVisSettings		_settings;
+
+		struct PendingPipeline
+		{
+			::Assets::DepValPtr		_depVal;
+			std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
+			std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
+			::Assets::FuturePtr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSet;
+		};
+		mutable Threading::ContinuationFuture<std::shared_ptr<PendingPipeline>> _pipelineFuture;
+		mutable std::shared_ptr<PendingPipeline> _pipeline;
+
+		::Assets::DepValPtr		_depVal;
+		mutable std::string				_actualizationLog;
     };
 
-	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+	std::shared_ptr<SceneEngine::IScene> MakeScene(
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject,
-		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
+		const PatchCollectionFuture& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
 	{
-		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
-		::Assets::AutoConstructToFuture(*result, visObject, pipelineAcceleratorPool, patchCollectionOverride, material);
+		return std::make_shared<MaterialVisualizationScene>(visObject, pipelineAcceleratorPool, PatchCollectionFuture{patchCollectionOverride}, material);
+	}
+
+	::Assets::FuturePtr<SceneEngine::IScene> ConvertToFuture(const std::shared_ptr<SceneEngine::IScene>& scene)
+	{
+		// HACK -- we have to use MaterialVisualizationScene as in intermediate type, 
+		// because AssetFuture requires GetDependencyValidation()
+		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("SceneFuture");
+		if (dynamic_cast<::Assets::IAsyncMarker*>(scene.get())) {
+			result->SetPollingFunction(
+				[scene](::Assets::AssetFuture<MaterialVisualizationScene>& thatFuture) {
+					auto marker = std::dynamic_pointer_cast<MaterialVisualizationScene>(scene);
+					auto state = marker->GetAssetState();
+					if (state == ::Assets::AssetState::Pending)
+						return true;
+
+					if (state == ::Assets::AssetState::Ready) {
+						thatFuture.SetAsset(std::shared_ptr<MaterialVisualizationScene>{marker}, nullptr);
+					} else {
+						thatFuture.SetInvalidAsset(nullptr, nullptr);
+					}
+					return false;
+				});
+		} else {
+			result->SetAsset(std::dynamic_pointer_cast<MaterialVisualizationScene>(scene), nullptr);
+		}
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
 	}
 
@@ -249,8 +337,6 @@ namespace ToolsRig
 				generateOptions,
 				RenderCore::Techniques::GetDefaultShaderLanguage()));
 	}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class PatchAnalysisHelper
 	{
@@ -380,10 +466,8 @@ namespace ToolsRig
 	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const GraphLanguage::NodeGraph& nodeGraph,
 		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
-		const std::string& subGraphName,
 		uint32_t previewNodeId,
-		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider,
-		const std::shared_ptr<MessageRelay>& logMessages)
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider)
 	{
 		ShaderSourceParser::InstantiationRequest instantiationReq {};
 		ShaderSourceParser::GenerateFunctionOptions generateOptions;
@@ -400,6 +484,69 @@ namespace ToolsRig
 
 		return std::make_unique<RenderCore::Techniques::CompiledShaderPatchCollection>(mainInstantiation);
 	}
+
+	template<typename Function, typename... Args>
+		Utility::Threading::ContinuationFuture<std::invoke_result_t<std::decay_t<Function>, std::decay_t<Args>...>>
+			ContinuationAsync(Function&& function, Args&&... args)
+	{
+		using PromiseResult = std::invoke_result_t<std::decay_t<Function>, std::decay_t<Args>...>;
+		
+		// We have to wrap up the uncopyable objects in a packet, because
+		// there's a forced copy of the functor when we convert to a std::function<void>()
+		struct Packet
+		{
+			Function _function;
+			Utility::Threading::ContinuationPromise<PromiseResult> _promise;
+		};
+		auto pkt = std::make_shared<Packet>(Packet{std::move(function)});
+		auto result = pkt->_promise.get_future();
+		ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().Enqueue(
+			[pkt](Args&&... args) mutable -> void {
+				try {
+					pkt->_promise.set_value(pkt->_function(std::forward<Args>(args)...));
+				} catch (...) {
+					try {
+						pkt->_promise.set_exception(std::current_exception());
+					} catch(...) {}
+				}
+			},
+			std::forward<Args>(args)...);
+
+		return result;
+	}
+
+	PatchCollectionFuture MakeCompiledShaderPatchCollectionAsync(
+		GraphLanguage::NodeGraph&& nodeGraph,
+		GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider)
+	{
+		return ContinuationAsync(
+			[nodeGraph{std::move(nodeGraph)}, nodeGraphSignature{std::move(nodeGraphSignature)}, previewNodeId, subProvider]() {
+				std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> shdrPtr = MakeCompiledShaderPatchCollection(nodeGraph, nodeGraphSignature, previewNodeId, subProvider);
+				return shdrPtr;
+			}).share();
+	}
+
+	const PatchCollectionFuture& DeferredCompiledShaderPatchCollection::GetFuture()
+	{
+		return *_future;
+	}
+
+	DeferredCompiledShaderPatchCollection::DeferredCompiledShaderPatchCollection(
+		GraphLanguage::NodeGraph&& nodeGraph,
+		GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider)
+	{
+		_future = std::make_unique<PatchCollectionFuture>(
+			MakeCompiledShaderPatchCollectionAsync(
+				std::move(nodeGraph),
+				std::move(nodeGraphSignature),
+				previewNodeId,
+				subProvider));
+	}
+	DeferredCompiledShaderPatchCollection::~DeferredCompiledShaderPatchCollection() {}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

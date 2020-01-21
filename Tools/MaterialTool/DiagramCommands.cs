@@ -76,13 +76,13 @@ namespace MaterialTool
                                 if (previewerContext != null)
                                 {
                                     var actualizationMsgs = new GUILayer.MessageRelayWrapper();
-                                    previewerContext.TechniqueOverrides =
+                                    /*previewerContext.TechniqueOverrides =
                                         GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(
                                             context.Document.NodeGraphFile,
                                             context.Document.NodeGraphFile.SubGraphs.First().Key,
-                                            actualizationMsgs);
+                                            actualizationMsgs);*/
 
-                                    {
+                                    /*{
                                         var config = new GUILayer.NodeGraphPreviewConfiguration
                                         {
                                             _nodeGraph = context.Document.NodeGraphFile,
@@ -102,7 +102,7 @@ namespace MaterialTool
                                         {
                                             previewerContext.MaterialOverrides = null;
                                         }
-                                    }
+                                    }*/
 
                                     if (msgsWindow!=null)
                                         msgsWindow.SetContext(actualizationMsgs);

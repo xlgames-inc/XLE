@@ -128,11 +128,11 @@ namespace GUILayer
 		_techniqueDelegate.reset();
 	}
 
-	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection)
-	: _patchCollection(patchCollection)
+	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(std::unique_ptr<ToolsRig::DeferredCompiledShaderPatchCollection>&& patchCollection)
+	: _patchCollection(std::move(patchCollection))
 	{}
 
-	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection)
+	CompiledShaderPatchCollectionWrapper::CompiledShaderPatchCollectionWrapper(ToolsRig::DeferredCompiledShaderPatchCollection* patchCollection)
 	: _patchCollection(patchCollection)
 	{
 	}

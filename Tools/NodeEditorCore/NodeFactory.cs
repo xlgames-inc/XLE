@@ -210,11 +210,14 @@ namespace NodeEditorCore
     {
         public ShaderFragmentPreviewItem()
         {
-            _cachedBitmap = null;
+            _previewImage = null;
+            _compiledPatchCollection = null;
             Geometry = GUILayer.PreviewGeometry.Plane2D;
             OutputToVisualize = "";
             _shaderStructureHash = 0;
         }
+
+        private int pendingCounter = 0;
 
         public override void Render(Graphics graphics, RectangleF boundary, object context)
         {
@@ -235,20 +238,12 @@ namespace NodeEditorCore
 
                 uint currentHash = editingContext.Document.GlobalRevisionIndex;
                 if (currentHash != _shaderStructureHash)
-                    _cachedBitmap = null;
-
-                // (assuming no rotation on this transformation -- scale is easy to find)
-                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * boundary.Size.Width), (int)(graphics.Transform.Elements[3] * boundary.Size.Height));
-                if (_cachedBitmap != null)
                 {
-                    // compare the current bitmap size to the size we'd like
-                    Size bitmapSize = _cachedBitmap.Size;
-                    float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));
-                    if (difference > 0.1f)
-                        _cachedBitmap = null;
+                    _previewImage = null;
+                    _compiledPatchCollection = null;
                 }
 
-                if (_cachedBitmap == null)
+                if (_compiledPatchCollection == null)
                 {
                     var config = new GUILayer.NodeGraphPreviewConfiguration
                     {
@@ -256,22 +251,25 @@ namespace NodeEditorCore
                         _subGraphName = Node.SubGraphTag as string,
                         _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id
                     };
-
                     var actualizationMsgs = new GUILayer.MessageRelayWrapper();
-                    var patchCollection = GUILayer.ShaderGeneratorLayer.MakeCompiledShaderPatchCollection(editingContext.Document.GraphMetaData, config, actualizationMsgs);
+                    _compiledPatchCollection = GUILayer.ShaderGeneratorLayer.MakeCompiledShaderPatchCollection(editingContext.Document.GraphMetaData, config, actualizationMsgs);
+                }
+
+                // (assuming no rotation on this transformation -- scale is easy to find)
+                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * boundary.Size.Width), (int)(graphics.Transform.Elements[3] * boundary.Size.Height));
+                if (_previewImage != null)
+                {
+                    // compare the current bitmap size to the size we'd like
+                    Size bitmapSize = _previewImage.Size;
+                    float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));
+                    if (difference > 0.1f)
+                        _previewImage = null;
+                }
+
+                if (_previewImage == null)
+                {
+                    var actualizationMsgs = new GUILayer.MessageRelayWrapper();
                     var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeShaderPatchAnalysisDelegate(PreviewSettings, editingContext.Document.GraphMetaData.Variables, actualizationMsgs);
-
-                    // _settings = PreviewSettings,
-                       //_variableRestrictions = editingContext.Document.GraphMetaData.Variables
-
-                    /*GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
-                    editingContext.Document.GraphMetaData.Material.MergeInto(rawMaterial);
-
-                    GUILayer.MaterialDelegateWrapper materialDelegate = null;
-                    if (rawMaterial != null)
-                    {
-                        materialDelegate = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
-                    }*/
 
                     var matVisSettings = new GUILayer.MaterialVisSettings();
                     switch (Geometry)
@@ -284,34 +282,83 @@ namespace NodeEditorCore
                     case GUILayer.PreviewGeometry.Sphere: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Sphere; break;
                     }
 
-                    _cachedBitmap = _previewManager.BuildPreviewImage(
+                    _previewImage = _previewManager.BuildPreviewImage(
                         matVisSettings, _previewMaterialContext?.ActivePreviewMaterialNames,
-                        techniqueDelegate, patchCollection, idealSize);
+                        techniqueDelegate, _compiledPatchCollection, idealSize);
                     _shaderStructureHash = currentHash;
                 }
 
-                if (_cachedBitmap != null)
+                if (_previewImage != null)
                 {
-                    if (Geometry == GUILayer.PreviewGeometry.Sphere)
+                    if (_previewImage.IsPending)
                     {
-                        var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
-                        clipPath.AddEllipse(boundary);
-                        graphics.SetClip(clipPath);
-                        graphics.DrawImage(_cachedBitmap, boundary);
-                        graphics.ResetClip();
+                        DrawPendingImage(graphics, boundary, pendingCounter);
+                        ++pendingCounter;
                     }
                     else
                     {
-                        graphics.DrawImage(_cachedBitmap, boundary);
+                        pendingCounter = 0;
+                        var finalImage = _previewImage.Bitmap;
+                        if (finalImage != null)
+                        {
+                            if (Geometry == GUILayer.PreviewGeometry.Sphere)
+                            {
+                                var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
+                                clipPath.AddEllipse(boundary);
+                                graphics.SetClip(clipPath);
+                                graphics.DrawImage(finalImage, boundary);
+                                graphics.ResetClip();
+                            }
+                            else
+                            {
+                                graphics.DrawImage(finalImage, boundary);
+                            }
+                        }
+                        else
+                        {
+                            graphics.DrawString(
+                                string.IsNullOrEmpty(_previewImage.StatusMessage) ? "No message" : _previewImage.StatusMessage,
+                                new Font("Arial", 9),
+                                new SolidBrush(Color.White),
+                                boundary);
+                        }
                     }
                 }
             }
         }
 
+        private void DrawPendingImage(Graphics graphics, RectangleF boundary, int pendingCounter)
+        {
+            const int circleCount = 21;
+            const float circleRadius = 10.0f;
+
+            PointF center = new PointF(
+                (boundary.Left + boundary.Right) / 2.0f,
+                (boundary.Top + boundary.Bottom) / 2.0f);
+            float bigRadius = Math.Min(boundary.Width, boundary.Height) / 2.0f - circleRadius;
+
+            float phase = (float)(pendingCounter / 100.0 * 2.0f * Math.PI);
+            for (int c=0; c<circleCount; ++c)
+            {
+                float x = (float)Math.Cos(c / (double)circleCount * 2.0 * Math.PI + phase) * bigRadius;
+                float y = (float)Math.Sin(c / (double)circleCount * 2.0 * Math.PI + phase) * bigRadius;
+                float flux = (float)Math.Cos((c / 7.0 + pendingCounter / 20.0) * 2.0 * Math.PI);
+                float brightness = flux * 0.25f + 0.5f;
+                float radiusFlux = flux * 0.15f + 0.85f;
+
+                RectangleF circleRect = new RectangleF(
+                    center.X + x - radiusFlux * circleRadius, center.Y + y - radiusFlux * circleRadius,
+                    2.0f * radiusFlux * circleRadius, 2.0f * radiusFlux * circleRadius);
+                
+                Brush b = new SolidBrush(Color.FromArgb(0xff, (int)(brightness * 255.0f), (int)(brightness * 255.0f), (int)(brightness * 255.0f)));
+                graphics.FillEllipse(b, circleRect);
+            }
+        }
+
         public override SizeF   Measure(Graphics graphics, object context) { return new SizeF(196, 196); }
 
-        public void InvalidateShaderStructure() { _cachedBitmap = null; _shaderStructureHash = 0;  }
-        public void InvalidateParameters() { _cachedBitmap = null; }
+        public void InvalidateShaderStructure() { _previewImage = null; _shaderStructureHash = 0;  }
+        public void InvalidateParameters() { _previewImage = null; }
 
         public override bool OnStartDrag(PointF location, out PointF original_location)
         {
@@ -363,7 +410,8 @@ namespace NodeEditorCore
 
         // bitmap cache --
         private uint _shaderStructureHash;
-        private System.Drawing.Bitmap _cachedBitmap;
+        private GUILayer.PreviewBuilder.PreviewImage _previewImage;
+        private GUILayer.CompiledShaderPatchCollectionWrapper _compiledPatchCollection;
     }
 
     [Export(typeof(INodeAmender))]

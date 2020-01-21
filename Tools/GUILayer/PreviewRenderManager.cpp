@@ -24,6 +24,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/IThreadContext.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
@@ -32,6 +33,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetSetManager.h"
+#include "../../Assets/GenericFuture.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/PtrUtils.h"
 
@@ -45,52 +47,27 @@ namespace GUILayer
 {
 	using System::Drawing::Size;
 
-	class ManagerPimpl
-    {
-    public:
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-        std::shared_ptr<RenderCore::IDevice> _device;
-    };
-
-    public ref class PreviewBuilder
-    {
-    public:
-		virtual System::Drawing::Bitmap^ BuildPreviewImage(
-            GUILayer::MaterialVisSettings^ visSettings,
-			String^ materialNames,
-			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
-			GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
-			System::Drawing::Size^ size);
-
-        PreviewBuilder();
-		~PreviewBuilder();
-    private:
-        clix::auto_ptr<ManagerPimpl> _pimpl;
-		System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	static std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
+	static std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> CreatePreviewMaterial(const std::string& materialNames, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		auto result = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
 		RenderCore::Assets::ShaderPatchCollection patchCollectionResult;
 
         // Our default material settings come from the "Document" object. This
         // give us our starting material and shader properties.
-        if (!String::IsNullOrEmpty(materialNames)) {
-            auto split = materialNames->Split(';');
-			std::vector<::Assets::DependentFileState> finalMatDeps;
-            for each(auto s in split) {
-                auto nativeName = clix::marshalString<clix::E_UTF8>(s);
-				RenderCore::Assets::MergeIn_Stall(
-					*result,
-					patchCollectionResult,
-					MakeStringSection(nativeName),
-					searchRules,
-					finalMatDeps);
-            }
+		auto start = materialNames.begin();
+		std::vector<::Assets::DependentFileState> finalMatDeps;
+		while (start != materialNames.end()) {
+			auto end = std::find(start, materialNames.end(), ';');
+			RenderCore::Assets::MergeIn_Stall(
+				*result,
+				patchCollectionResult,
+				MakeStringSection(start, end),
+				searchRules,
+				finalMatDeps);
+			if (end == materialNames.end()) break;
+			start = end+1;
         }
+
         result->_matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
 
         /*
@@ -103,149 +80,181 @@ namespace GUILayer
 		return result;
 	}
 
+	class PreviewImagePreparer
+	{
+	public:
+		std::shared_ptr<SceneEngine::IScene> _scene;
+		std::shared_ptr<RenderCore::IResource> _resource;
+		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+		std::shared_ptr<SceneEngine::IRenderStep> _customRenderStep;
+		ToolsRig::VisCameraSettings _camSettings;
+
+		::Assets::AssetState GetAssetState()
+		{
+			if (_resource)
+				return ::Assets::AssetState::Ready;
+
+			auto* asyncScene = dynamic_cast<::Assets::IAsyncMarker*>(_scene.get());
+			if (asyncScene) {
+				return asyncScene->GetAssetState();
+			}
+			return ::Assets::AssetState::Ready;
+		}
+
+		std::string _statusMessage;
+		MaterialVisSettings::GeometryType _geometry;
+		unsigned _width, _height;
+
+		std::pair<ToolsRig::DrawPreviewResult, std::shared_ptr<RenderCore::IResource>> GetResource(RenderCore::IThreadContext& threadContext)
+		{
+			if (!_scene)
+				return std::make_pair(ToolsRig::DrawPreviewResult::Error, std::shared_ptr<RenderCore::IResource>{});
+
+			using namespace RenderCore;
+			if (!_resource) {
+				if (_geometry == MaterialVisSettings::GeometryType::Model) {
+					auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
+					if (visContent) {
+						_camSettings = 
+							ToolsRig::AlignCameraToBoundingBox(
+								_camSettings._verticalFieldOfView,
+								visContent->GetBoundingBox());
+					}
+				}
+
+				_resource = threadContext.GetDevice()->CreateResource(
+					CreateDesc(
+						BindFlag::RenderTarget,
+						0, GPUAccess::Write,
+						TextureDesc::Plain2D(_width, _height, Format::R8G8B8A8_UNORM_SRGB),
+						"PreviewBuilderTarget"));
+
+				RenderCore::Techniques::AttachmentPool attachmentPool;
+				RenderCore::Techniques::FrameBufferPool frameBufferPool;
+				attachmentPool.Bind(FrameBufferProperties{(unsigned)_width, (unsigned)_height, TextureSamples::Create()});
+
+				ToolsRig::VisEnvSettings envSettings;
+				envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
+
+				Techniques::ParsingContext parserContext { *_globalTechniqueContext, &attachmentPool, &frameBufferPool };
+
+				// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
+				// to the lighting parser.
+				auto result = DrawPreview(
+					threadContext, _resource, parserContext, _pipelineAcceleratorPool,
+					_camSettings, envSettings,
+					*_scene, _customRenderStep);
+				if (result.first == ToolsRig::DrawPreviewResult::Error) {
+					_statusMessage = result.second;
+					// return GenerateErrorBitmap(result.second.c_str(), size);
+					return std::make_pair(ToolsRig::DrawPreviewResult::Error, std::shared_ptr<RenderCore::IResource>{});
+				} else if (result.first == ToolsRig::DrawPreviewResult::Pending) {
+					return std::make_pair(ToolsRig::DrawPreviewResult::Pending, std::shared_ptr<RenderCore::IResource>{});
+				}
+			}
+
+			return std::make_pair(ToolsRig::DrawPreviewResult::Success, _resource);
+		}
+
+		PreviewImagePreparer(
+			GUILayer::MaterialVisSettings^ visSettings,
+			const std::shared_ptr<ToolsRig::DeferredCompiledShaderPatchCollection>& patchCollection,
+			const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customTechniqueDelegate,
+			const std::string& materialNames,
+			unsigned width, unsigned height)
+		{
+			using namespace RenderCore;
+
+				// We use a short-lived pipeline accelerator pool here, because
+				// everything we put into it is temporary
+			_pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
+			_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+
+				////////////
+
+			_camSettings._position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+			_camSettings._verticalFieldOfView = 90.f;
+
+				// Select the geometry type to use.
+				// In the "chart" mode, we are just going to run a pixel shader for every
+				// output pixel, so we want to use a pretransformed quad covering the viewport
+			_geometry = visSettings->Geometry;
+			if (_geometry != MaterialVisSettings::GeometryType::Model) {
+				bool pretransformed = false;
+				ToolsRig::MaterialVisSettings nativeVisSettings;
+				switch (_geometry) {
+				case MaterialVisSettings::GeometryType::Plane2D:
+				case MaterialVisSettings::GeometryType::Chart:
+					nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
+					pretransformed = true;
+					break;
+
+				case MaterialVisSettings::GeometryType::Cube:
+					nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
+					_camSettings._position = Float3(-2.1f, 0, 0);
+					break;
+
+				default:
+				case MaterialVisSettings::GeometryType::Sphere:
+					nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
+					break;
+				}
+
+				auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
+
+				if (pretransformed)
+					material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
+
+				_scene = ToolsRig::MakeScene(_pipelineAcceleratorPool, nativeVisSettings, patchCollection->GetFuture(), material);
+			} else {
+				ToolsRig::ModelVisSettings modelSettings;
+				// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+				// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+				auto sceneFuture = ToolsRig::MakeScene(_pipelineAcceleratorPool, modelSettings);
+				ToolsRig::StallWhilePending(*sceneFuture);
+				_scene = ToolsRig::TryActualize(*sceneFuture);
+				if (!_scene) {
+					auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);
+					if (errorLog) {
+						_statusMessage = errorLog.value().c_str();
+						// return GenerateErrorBitmap(errorLog.value().c_str(), size);
+					} else {
+						// return nullptr;		// pending
+					}
+				}
+			}
+
+			if (customTechniqueDelegate)
+				_customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);
+
+			_width = width;
+			_height = height;
+		}
+	};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	System::Drawing::Bitmap^ PreviewBuilder::BuildPreviewImage(
-		GUILayer::MaterialVisSettings^ visSettings,
-		String^ materialNames,
-		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
-		GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
-		System::Drawing::Size^ size)
-    {
-        using namespace RenderCore;
-
-        const int width = std::max(0, int(size->Width));
-        const int height = std::max(0, int(size->Height));
-		auto& context = *_pimpl->_device->GetImmediateContext();
+	static System::Drawing::Bitmap^ GenerateWindowsBitmap(RenderCore::IThreadContext& threadContext, const std::shared_ptr<RenderCore::IResource>& res)
+	{
 		auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
-
-		// We have to pump some services, or assets will never complete loading/compiling
-		::Assets::Services::GetAsyncMan().Update();
-		::Assets::GetAssetSetManager().OnFrameBarrier();
-		uploads.Update(context, false);
-
-		auto target = _pimpl->_device->CreateResource(
-			CreateDesc(
-                BindFlag::RenderTarget,
-                0, GPUAccess::Write,
-                TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM_SRGB),
-                "PreviewBuilderTarget"));
-
-		RenderCore::Techniques::AttachmentPool attachmentPool;
-		RenderCore::Techniques::FrameBufferPool frameBufferPool;
-		attachmentPool.Bind(FrameBufferProperties{(unsigned)width, (unsigned)height, TextureSamples::Create()});
-
-			// We use a short-lived pipeline accelerator pool here, because
-			// everything we put into it is temporary
-		auto pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
-
-            ////////////
-
-        ToolsRig::VisCameraSettings camSettings;
-        camSettings._position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
-		camSettings._verticalFieldOfView = 90.f;
-
-        // Select the geometry type to use.
-        // In the "chart" mode, we are just going to run a pixel shader for every
-        // output pixel, so we want to use a pretransformed quad covering the viewport
-		::Assets::FuturePtr<SceneEngine::IScene> sceneFuture;
-
-		auto geometry = visSettings->Geometry;
-		if (geometry != MaterialVisSettings::GeometryType::Model) {
-			bool pretransformed = false;
-			ToolsRig::MaterialVisSettings nativeVisSettings;
-			switch (geometry) {
-			case MaterialVisSettings::GeometryType::Plane2D:
-			case MaterialVisSettings::GeometryType::Chart:
-				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
-				pretransformed = true;
-				break;
-
-			case MaterialVisSettings::GeometryType::Cube:
-				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
-				camSettings._position = Float3(-2.1f, 0, 0);
-				break;
-
-			default:
-			case MaterialVisSettings::GeometryType::Sphere:
-				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
-				break;
-			}
-
-			auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
-
-			if (pretransformed)
-				material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
-
-			sceneFuture = ToolsRig::MakeScene(pipelineAcceleratorPool, nativeVisSettings, patchCollection->_patchCollection.GetNativePtr(), material);
-		} else {
-			ToolsRig::ModelVisSettings modelSettings;
-			// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			sceneFuture = ToolsRig::MakeScene(pipelineAcceleratorPool, modelSettings);
-		}
-
-		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
-		if (!actualScene) {
-			auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);
-			if (errorLog) {
-				return GenerateErrorBitmap(errorLog.value().c_str(), size);
-			} else {
-				return nullptr;		// pending
-			}
-		}
-
-		if (geometry == MaterialVisSettings::GeometryType::Model) {
-			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(actualScene.get());
-			if (visContent) {
-				camSettings = 
-					ToolsRig::AlignCameraToBoundingBox(
-						camSettings._verticalFieldOfView,
-						visContent->GetBoundingBox());
-			}
-		}
-
-		ToolsRig::VisEnvSettings envSettings;
-		envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
-
-		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
-
-		std::shared_ptr<SceneEngine::IRenderStep> customRenderStep;
-		auto customTechniqueDelegate = techniqueDelegate->_techniqueDelegate.GetNativePtr();
-		if (customTechniqueDelegate) {
-			customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);
-		}
-
-		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
-		// to the lighting parser.
-        auto result = DrawPreview(
-			context, target, parserContext, pipelineAcceleratorPool,
-			camSettings, envSettings,
-			*actualScene, customRenderStep);
-        if (result.first == ToolsRig::DrawPreviewResult::Error) {
-            return GenerateErrorBitmap(result.second.c_str(), size);
-        } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {
-            return nullptr;
-        }
-
-            ////////////
-
-		auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator{std::move(target)});
-        if (readback && readback->GetDataSize()) {
+		auto readback = uploads.Resource_ReadBack(BufferUploads::UnderlyingResourcePtr{res});
+		if (readback && readback->GetDataSize()) {
+			auto desc = res->GetDesc();
             using System::Drawing::Bitmap;
             using namespace System::Drawing;
-            Bitmap^ newBitmap = gcnew Bitmap(width, height, Imaging::PixelFormat::Format32bppArgb);
+            Bitmap^ newBitmap = gcnew Bitmap(desc._textureDesc._width, desc._textureDesc._height, Imaging::PixelFormat::Format32bppArgb);
             auto data = newBitmap->LockBits(
-                System::Drawing::Rectangle(0, 0, width, height), 
+                System::Drawing::Rectangle(0, 0, desc._textureDesc._width, desc._textureDesc._height), 
                 Imaging::ImageLockMode::WriteOnly, 
                 Imaging::PixelFormat::Format32bppArgb);
             try
             {
                     // we have to flip ABGR -> ARGB!
-                for (int y=0; y<height; ++y) {
+                for (unsigned y=0; y<desc._textureDesc._height; ++y) {
                     void* sourcePtr = PtrAdd(readback->GetData(), y * readback->GetPitches()._rowPitch);
-                    System::IntPtr destinationPtr = data->Scan0 + y * width * sizeof(unsigned);
-                    for (int x=0; x<width; ++x) {
+                    System::IntPtr destinationPtr = data->Scan0 + y * desc._textureDesc._width * sizeof(unsigned);
+                    for (unsigned x=0; x<desc._textureDesc._width; ++x) {
                         ((unsigned*)(void*)destinationPtr)[x] = 
                             (RenderCore::ARGBtoABGR(((unsigned*)sourcePtr)[x]) & 0x00ffffff) | 0xff000000;
                     }
@@ -257,11 +266,10 @@ namespace GUILayer
             }
             return newBitmap;
         }
+		return nullptr;
+	}
 
-        return nullptr;
-    }
-
-	System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
+	static System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size)
     {
             //      Previously, we got an error while rendering this item.
             //      Render some text to the bitmap with an error string. Just
@@ -279,19 +287,120 @@ namespace GUILayer
         return newBitmap;
     }
 
+    public ref class PreviewBuilder
+    {
+    public:
+		ref class PreviewImage
+		{
+		public:
+			property System::Drawing::Bitmap^ Bitmap
+			{
+				System::Drawing::Bitmap^ get()
+				{
+					if (_bitmap)
+						return _bitmap;
+
+					auto state = _preparer->GetAssetState();
+					if (state != ::Assets::AssetState::Ready)
+						return nullptr;
+
+					auto engineDevice = EngineDevice::GetInstance();
+					auto device = engineDevice->GetNative().GetRenderDevice();
+					auto& context = *device->GetImmediateContext();
+					auto res = _preparer->GetResource(context);
+
+					if (res.second) {
+						_bitmap = GenerateWindowsBitmap(context, res.second);
+					} else {
+						_bitmap = GenerateErrorBitmap(_preparer->_statusMessage.c_str(), this->Size);
+					}
+
+					return _bitmap;
+				}
+			}
+			property System::String^ StatusMessage
+			{ 
+				System::String^ get()
+				{
+					return clix::marshalString<clix::E_UTF8>(_preparer->_statusMessage);
+				}
+			}
+			property bool IsPending
+			{ 
+				bool get()
+				{
+					return _preparer->GetAssetState() == ::Assets::AssetState::Pending;
+				}
+			}
+			property bool HasError
+			{ 
+				bool get()
+				{
+					return !_preparer->_statusMessage.empty() || (_preparer->GetAssetState() == ::Assets::AssetState::Invalid);
+				}
+			}
+
+			property System::Drawing::Size Size
+			{
+				System::Drawing::Size get()
+				{
+					return System::Drawing::Size((int)_preparer->_width, (int)_preparer->_height);
+				}
+			}
+
+			PreviewImage(const std::shared_ptr<PreviewImagePreparer>& preparer)
+			{
+				_bitmap = nullptr;
+				_preparer = preparer;
+			}
+
+		private:
+			System::Drawing::Bitmap^ _bitmap;
+			clix::shared_ptr<PreviewImagePreparer> _preparer;
+		};
+
+		virtual PreviewImage^ BuildPreviewImage(
+            GUILayer::MaterialVisSettings^ visSettings,
+			String^ materialNames,
+			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+			GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
+			System::Drawing::Size^ size);
+
+        PreviewBuilder();
+		~PreviewBuilder();
+    };
+
+	PreviewBuilder::PreviewImage^ PreviewBuilder::BuildPreviewImage(
+		GUILayer::MaterialVisSettings^ visSettings,
+		String^ materialNames,
+		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+		GUILayer::CompiledShaderPatchCollectionWrapper^ patchCollection,
+		System::Drawing::Size^ size)
+    {
+		// We have to pump some services, or assets will never complete loading/compiling
+		::Assets::Services::GetAsyncMan().Update();
+		::Assets::GetAssetSetManager().OnFrameBarrier();
+		auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(), false);
+
+            ////////////
+
+		auto preparer = std::make_shared<PreviewImagePreparer>(
+			visSettings,
+			patchCollection->_patchCollection.GetNativePtr(),
+			techniqueDelegate->_techniqueDelegate.GetNativePtr(),
+			clix::marshalString<clix::E_UTF8>(materialNames),
+			size->Width, size->Height);
+
+		return gcnew PreviewImage(preparer);
+    }
+
     PreviewBuilder::PreviewBuilder()
     {
-        _pimpl.reset(new ManagerPimpl());
-
-		auto engineDevice = EngineDevice::GetInstance();
-        _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
-        
-        _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
     PreviewBuilder::~PreviewBuilder()
     {
-		_pimpl.reset();
     }
 
 }

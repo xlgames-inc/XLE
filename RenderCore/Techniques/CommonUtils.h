@@ -37,7 +37,7 @@ namespace RenderCore { namespace Techniques {
 	class DescriptorSetAccelerator;
 	class PipelineAcceleratorPool;
 	class CompiledShaderPatchCollection;
-	std::pair<std::shared_ptr<PipelineAccelerator>, std::shared_ptr<DescriptorSetAccelerator>> 
+	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>> 
 		CreatePipelineAccelerator(
 			PipelineAcceleratorPool& pool,
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,

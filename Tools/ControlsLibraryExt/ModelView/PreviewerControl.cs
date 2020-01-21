@@ -65,14 +65,14 @@ namespace ControlsLibraryExt.ModelView
             }
         }
 
-        public GUILayer.MaterialDelegateWrapper MaterialOverrides
+        /*public GUILayer.MaterialDelegateWrapper MaterialOverrides
         {
             set
             {
                 LayerController.SetMaterialDelegate(value);
                 OnMiscChange?.Invoke(this, null);
             }
-        }
+        }*/
 
         public event EventHandler OnModelSettingsChange;
         public event EventHandler OnOverlaySettingsChange;

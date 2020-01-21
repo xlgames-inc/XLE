@@ -39,7 +39,7 @@ namespace GUILayer
 		std::shared_ptr<ToolsRig::VisMouseOver> _mouseOver;
 		std::shared_ptr<ToolsRig::VisAnimationState> _animState;
 
-		std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> _patchCollection;
+		std::shared_ptr<ToolsRig::DeferredCompiledShaderPatchCollection> _patchCollection;
 		::Assets::FuturePtr<SceneEngine::IScene> _scene;
 
 		ToolsRig::ModelVisSettings _modelSettings;
@@ -103,7 +103,8 @@ namespace GUILayer
 	{
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 		_pimpl->_materialVisSettings = *settings->ConvertToNative();
-		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection);
+		// note -- adopt future is wrong here, because it means we have to reset _pimpl->_patchCollection
+		_pimpl->_scene = ToolsRig::ConvertToFuture(ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection->GetFuture()));
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
@@ -187,7 +188,8 @@ namespace GUILayer
 
 		// rebuild and reset the material vis scene ...
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection);
+		// note -- adopt future is wrong here, because it means we have to reset _pimpl->_patchCollection
+		_pimpl->_scene = ToolsRig::ConvertToFuture(ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection->GetFuture()));
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);

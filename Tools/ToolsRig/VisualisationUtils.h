@@ -237,6 +237,7 @@ namespace ToolsRig
 		SceneEngine::IScene& scene,
 		const std::shared_ptr<SceneEngine::IRenderStep>& renderStep);
 
+	void StallWhilePending(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 

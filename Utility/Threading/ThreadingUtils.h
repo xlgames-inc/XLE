@@ -321,5 +321,23 @@ using namespace Utility;
 
 #endif
 
+#pragma warning(push)
+#pragma warning(disable:4834)
+#pragma warning(disable:4127)		// conditional expression is constant
+#pragma push_macro("new")
+#undef new
+#include <future.h>		// (note -- unfortunately this library puts it's implementation in the root namespace)
+#pragma pop_macro("new")
+#pragma warning(pop)
+
+namespace Utility { namespace Threading {
+	template <class T>
+		using ContinuationFuture = ::future<T>;
+	template <class T>
+		using ContinuationSharedFuture = ::shared_future<T>;
+	template <class T>
+		using ContinuationPromise = ::promise<T>;
+}}
+
 #endif
 

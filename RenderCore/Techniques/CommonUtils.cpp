@@ -157,7 +157,7 @@ namespace RenderCore { namespace Techniques
 		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
 	}
 
-	std::pair<std::shared_ptr<PipelineAccelerator>, std::shared_ptr<DescriptorSetAccelerator>>
+	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>>
 		CreatePipelineAccelerator(
 			PipelineAcceleratorPool& pool,
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
@@ -165,7 +165,7 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const RenderCore::InputElementDesc*> inputLayout,
 			Topology topology)
 	{
-		std::shared_ptr<DescriptorSetAccelerator> descriptorSetAccelerator;
+		::Assets::FuturePtr<DescriptorSetAccelerator> descriptorSetAccelerator;
 
 		auto matSelectors = material._matParams;
 
@@ -174,12 +174,10 @@ namespace RenderCore { namespace Techniques
 			if (!descriptorSetLayout) {
 				descriptorSetLayout = &RenderCore::Techniques::GetFallbackMaterialDescriptorSetLayout();
 			}
-			auto descriptorSetFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+			descriptorSetAccelerator = RenderCore::Techniques::MakeDescriptorSetAccelerator(
 				material._constants, material._bindings,
 				*descriptorSetLayout,
 				"MaterialVisualizationScene");
-			descriptorSetFuture->StallWhilePending();		// note the stall here to wait for resources
-			descriptorSetAccelerator = descriptorSetFuture->Actualize();
 			
 			// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
 			for (const auto&r:descriptorSetLayout->_resources)

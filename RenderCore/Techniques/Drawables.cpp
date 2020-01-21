@@ -87,11 +87,9 @@ namespace RenderCore { namespace Techniques
 			auto* pipeline = parserContext._pipelineAcceleratorPool->TryGetPipeline(
 				*drawable._pipeline,
 				*sequencerTechnique._sequencerConfig);
-			if (!pipeline)
-				return;
 
-			if (!drawable._descriptorSet)
-				return;
+			if (!pipeline || !drawable._descriptorSet)
+				continue;
 
 			//////////////////////////////////////////////////////////////////////////////
 

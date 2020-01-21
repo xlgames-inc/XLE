@@ -9,7 +9,7 @@
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; class CompiledShaderPatchCollection; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; } }
 namespace SceneEngine 
 {
     class IntersectionTestScene; 
@@ -21,7 +21,9 @@ namespace SceneEngine
 }
 
 namespace ConsoleRig { class IProgress; }
-namespace ToolsRig { class MessageRelay; }
+namespace ToolsRig { class MessageRelay; class DeferredCompiledShaderPatchCollection; }
+
+namespace std { template <typename R> class future; }
 
 namespace GUILayer
 {
@@ -62,10 +64,10 @@ namespace GUILayer
 	public ref class CompiledShaderPatchCollectionWrapper
 	{
 	public:
-		clix::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> _patchCollection;
+		clix::shared_ptr<ToolsRig::DeferredCompiledShaderPatchCollection> _patchCollection;
 
-        CompiledShaderPatchCollectionWrapper(const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection);
-		CompiledShaderPatchCollectionWrapper(RenderCore::Techniques::CompiledShaderPatchCollection* patchCollection);
+        CompiledShaderPatchCollectionWrapper(std::unique_ptr<ToolsRig::DeferredCompiledShaderPatchCollection>&& patchCollection);
+		CompiledShaderPatchCollectionWrapper(ToolsRig::DeferredCompiledShaderPatchCollection* patchCollection);
         ~CompiledShaderPatchCollectionWrapper();
 	};
 

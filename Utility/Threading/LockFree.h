@@ -257,7 +257,7 @@ namespace LockFree
                 ScopedLock(_overflowQueue_Lock);
                 _overflowQueue_isEmpty = false;
                 _overflowQueue_needsCompression = true;
-                _overflowQueue.push(std::forward<Type>(newItem));
+                _overflowQueue.emplace(std::forward<Type>(newItem));
             }
         }
 

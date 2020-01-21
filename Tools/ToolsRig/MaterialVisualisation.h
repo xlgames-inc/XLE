@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 
+namespace std { template<typename R> class future; }
+
 namespace SceneEngine { class IScene; }
 namespace RenderCore { namespace Techniques { class ITechniqueDelegate; class PipelineAcceleratorPool; class CompiledShaderPatchCollection; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
@@ -18,8 +20,13 @@ namespace GraphLanguage { class INodeGraphProvider; class NodeGraph; class NodeG
 namespace ShaderSourceParser { class PreviewOptions; }
 namespace Utility { class OnChangeCallback; }
 
+template<typename T> class shared_future;
+namespace Utility { namespace Threading { template <class T> using ContinuationSharedFuture = ::shared_future<T>; } }
+
 namespace ToolsRig
 {
+	using PatchCollectionFuture = ::Utility::Threading::ContinuationSharedFuture<std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>>;
+
     class MaterialVisSettings
     {
     public:
@@ -27,11 +34,13 @@ namespace ToolsRig
         GeometryType _geometryType = GeometryType::Sphere;
     };
 
-	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+	std::shared_ptr<SceneEngine::IScene> MakeScene(
 		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject, 
-		const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollectionOverride,
+		const PatchCollectionFuture& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
+
+	::Assets::FuturePtr<SceneEngine::IScene> ConvertToFuture(const std::shared_ptr<SceneEngine::IScene>& scene);
 
 	class MessageRelay
 	{
@@ -60,8 +69,27 @@ namespace ToolsRig
 	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const GraphLanguage::NodeGraph& nodeGraph,
 		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
-		const std::string& subGraphName,
 		uint32_t previewNodeId,
-		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider,
-		const std::shared_ptr<MessageRelay>& logMessages);
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider);
+
+	PatchCollectionFuture MakeCompiledShaderPatchCollectionAsync(
+		GraphLanguage::NodeGraph&& nodeGraph,
+		GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider);
+
+	class DeferredCompiledShaderPatchCollection
+	{
+	public:
+		const PatchCollectionFuture& GetFuture();
+
+		DeferredCompiledShaderPatchCollection(
+			GraphLanguage::NodeGraph&& nodeGraph,
+			GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
+			uint32_t previewNodeId,
+			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider);
+		~DeferredCompiledShaderPatchCollection();
+	private:
+		std::unique_ptr<PatchCollectionFuture> _future;
+	};
 }

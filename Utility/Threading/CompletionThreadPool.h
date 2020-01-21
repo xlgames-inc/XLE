@@ -66,7 +66,12 @@ namespace Utility
     template<class Fn, class... Args>
         void CompletionThreadPool::Enqueue(Fn&& fn, Args&&... args)
         {
-			EnqueueBasic(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+			// note -- we seem to get a forced invocation of the copy constructor
+			// for std::function<void> here, for an input lambda (even if that lamdba
+			// takes no parameters and returns void). It seems like there is no way to
+			// move from a lamdba of any kind into a std::function<void()> (presumably
+			// because of the fake/unnamed type given with lamdbas by the compile)
+			EnqueueBasic(std::bind(std::move(fn), std::forward<Args>(args)...));
         }
 
     class ThreadPool

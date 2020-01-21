@@ -863,6 +863,11 @@ namespace ToolsRig
 		return future.TryActualize();
 	}
 
+	void StallWhilePending(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
+	{
+		future.StallWhilePending();
+	}
+
 	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
 	{
 		auto state = future.GetAssetState();

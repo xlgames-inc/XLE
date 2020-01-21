@@ -67,11 +67,6 @@ namespace GUILayer
 	public ref class ShaderGeneratorLayer
 	{
 	public:
-		/*static String^ GeneratePreviewShader(
-			NodeGraphFile^ nodeGraphFile,
-			String^ subGraphName, UInt32 previewNodeId,
-			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);*/
-
 		static void		LoadNodeGraphFile(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context);
         static void		Serialize(System::IO::Stream^ stream, String^ name, NodeGraphFile^ nodeGraphFile, NodeGraphMetaData^ context);
 
@@ -79,11 +74,6 @@ namespace GUILayer
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions,
 			MessageRelayWrapper^ logMessages);
-
-		/*static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphFile^ nodeGraph,
-			String^ subGraphName,
-			MessageRelayWrapper^ logMessages);*/
 
 		static CompiledShaderPatchCollectionWrapper^ MakeCompiledShaderPatchCollection(
 			NodeGraphMetaData^ doc, 
