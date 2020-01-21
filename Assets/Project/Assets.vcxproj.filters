@@ -19,9 +19,6 @@
     <ClInclude Include="..\AssetsCore.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
-    <ClInclude Include="..\AssetSetInternal.h">
-      <Filter>AssetHeaps</Filter>
-    </ClInclude>
     <ClInclude Include="..\AssetSetManager.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
