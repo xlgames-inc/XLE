@@ -355,6 +355,8 @@ namespace NodeEditorCore
             }
         }
 
+        public override bool HasActiveAnimation { get { return (Node.Tag is ShaderFragmentNodeTag) && ((_previewImage == null) || _previewImage.IsPending); } }
+
         public override SizeF   Measure(Graphics graphics, object context) { return new SizeF(196, 196); }
 
         public void InvalidateShaderStructure() { _previewImage = null; _shaderStructureHash = 0;  }

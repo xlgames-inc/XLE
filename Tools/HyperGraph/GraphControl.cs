@@ -620,11 +620,26 @@ namespace HyperGraph
 			var width = Math.Max(x1, x2) - x;
 			var height = Math.Max(y1, y2) - y;
 			return new RectangleF(x,y,width,height);
-		}				
-		#endregion
+		}
+        #endregion
 
-		#region OnPaint
-		private void OnPaint(object sender, PaintEventArgs e)
+        private System.Windows.Forms.Timer _activeAnimationTimer = null;
+        private List<Rectangle> _pendingActiveAnimationRects = new List<Rectangle>();
+
+        private void OnTimer(object sender, EventArgs args)
+        {
+            var t = _invalidationChain.Target as Control;
+            if (t != null)
+            {
+                foreach (var r in _pendingActiveAnimationRects)
+                {
+                    t.Invalidate(r);
+                }
+            }
+        }
+
+        #region OnPaint
+        private void OnPaint(object sender, PaintEventArgs e)
 		{
 			if (e.Graphics == null)
 				return;
@@ -653,7 +668,7 @@ namespace HyperGraph
             if (_model == null || (!_model.Nodes.Any() && !_model.SubGraphs.Any()))
                 return;
 
-            GraphRenderer.PerformLayout(e.Graphics, _model, Context);
+            var layoutContext = GraphRenderer.PerformLayout(e.Graphics, _model, Context);
             GraphRenderer.Render(e.Graphics, _model, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
@@ -674,7 +689,44 @@ namespace HyperGraph
 					}
 				}
 			}
-		}
+
+            _pendingActiveAnimationRects.Clear();
+            foreach (var activeAnimationRect in layoutContext.ActiveAnimationAreas)
+            {
+                if (e.Graphics.IsVisible(activeAnimationRect))
+                {
+                    var points = new PointF[]{
+                        new PointF(activeAnimationRect.Left, activeAnimationRect.Top),
+                        new PointF(activeAnimationRect.Right, activeAnimationRect.Bottom)
+                    };
+                    transformation.TransformPoints(points);
+
+                    // Use a Windows.Forms.Timer to get a callback in the UI thread, which will use
+                    // to invalidate and requeue render of the active animation elements
+                    // We have to add a delay like this in there; otherwise we can just end up
+                    // chewing all of the processor timer
+                    if (_activeAnimationTimer == null)
+                    {
+                        _activeAnimationTimer = new System.Windows.Forms.Timer()
+                        {
+                            Interval = 100
+                        };
+                        _activeAnimationTimer.Tick += OnTimer;
+                        _activeAnimationTimer.Start();
+                    }
+
+                    _pendingActiveAnimationRects.Add(
+                        new Rectangle((int)points[0].X, (int)points[0].Y, (int)(points[1].X - points[0].X), (int)(points[1].Y - points[0].Y)));
+                }
+            }
+
+            if (_pendingActiveAnimationRects.Count == 0 && _activeAnimationTimer != null)
+            {
+                _activeAnimationTimer.Stop();
+                _activeAnimationTimer.Dispose();
+                _activeAnimationTimer = null;
+            }
+        }
 		#endregion
 
 		#region OnDrawBackground

@@ -77,7 +77,7 @@ namespace HyperGraph
             return (NodeColumns)Enum.GetValues(typeof(NodeColumns)).GetValue(index);
         }
 
-        private static NodeSize MeasureRectangular(Graphics graphics, Node node, object context)
+        private static NodeSize MeasureRectangular(Graphics graphics, Node node, object graphContext)
         {
             if (node == null)
                 return new NodeSize { BaseSize = SizeF.Empty, InputPartWidth = 0, OutputPartWidth = 0 };
@@ -91,7 +91,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                 {
-                    var itemSize = item.Measure(graphics, context);
+                    var itemSize = item.Measure(graphics, graphContext);
 
                     if (side != 1)
                         itemSize = AdjustConnectorSize(itemSize);
@@ -123,7 +123,7 @@ namespace HyperGraph
             return new NodeSize { BaseSize = new SizeF ( 192, 192), InputPartWidth = 0, OutputPartWidth = 0 };
         }
 
-        static void RenderItem(Graphics graphics, NodeItem item, object context)
+        static void RenderItem(Graphics graphics, NodeItem item, object graphContext)
 		{
             if (item.bounds != RectangleF.Empty)
             {
@@ -134,7 +134,7 @@ namespace HyperGraph
                 }
                 else
                 {
-                    item.Render(graphics, item.bounds, context);
+                    item.Render(graphics, item.bounds, graphContext);
                 }
             }
 		}
@@ -242,20 +242,39 @@ namespace HyperGraph
 			}
 		}
 
-		public static void PerformLayout(Graphics graphics, IGraphModel model, object context)
+        public class LayoutContext
+        {
+            public List<RectangleF> ActiveAnimationAreas = new List<RectangleF>();
+        }
+
+		public static LayoutContext PerformLayout(Graphics graphics, IGraphModel model, object graphContext)
 		{
+            LayoutContext layoutContext = new LayoutContext();
+
             foreach (var node in model.Nodes.Reverse<Node>())
 			{
-				GraphRenderer.PerformLayout(graphics, node, context);
-			}
+				GraphRenderer.PerformLayout(graphics, node, graphContext);
+
+                foreach (var i in node.TopItems)
+                    if (!i.bounds.IsEmpty && i.HasActiveAnimation)
+                        layoutContext.ActiveAnimationAreas.Add(i.bounds);
+                foreach (var i in node.BottomItems)
+                    if (!i.bounds.IsEmpty && i.HasActiveAnimation)
+                        layoutContext.ActiveAnimationAreas.Add(i.bounds);
+                foreach (var i in node.CenterItems)
+                    if (!i.bounds.IsEmpty && i.HasActiveAnimation)
+                        layoutContext.ActiveAnimationAreas.Add(i.bounds);
+            }
 
             foreach (var subGraph in model.SubGraphs.Reverse<Node>())
             {
-                GraphRenderer.PerformSubGraphLayout(graphics, subGraph, model, context);
+                GraphRenderer.PerformSubGraphLayout(graphics, subGraph, model, graphContext);
             }
+
+            return layoutContext;
         }
 
-		public static void Render(Graphics graphics, IGraphModel model, bool showLabels, object context)
+		public static void Render(Graphics graphics, IGraphModel model, bool showLabels, object graphContext)
 		{
 			var skipConnections = new HashSet<NodeConnection>();
 
@@ -287,7 +306,7 @@ namespace HyperGraph
 
             foreach (var node in model.SubGraphs.Reverse<Node>())
             {
-                GraphRenderer.RenderSubGraph(graphics, node, context);
+                GraphRenderer.RenderSubGraph(graphics, node, graphContext);
             }
             foreach (var node in model.SubGraphs.Reverse<Node>())
             {
@@ -300,7 +319,7 @@ namespace HyperGraph
 			}
 			foreach (var node in model.Nodes.Reverse<Node>())
 			{
-				GraphRenderer.Render(graphics, node, context);
+				GraphRenderer.Render(graphics, node, graphContext);
 			}
 		}
 
@@ -326,11 +345,11 @@ namespace HyperGraph
             return new RectangleF(center.X - radius, center.Y - radius, 2.0f * radius, 2.0f * radius);
         }
 
-        public static void PerformLayout(Graphics graphics, Node node, object context)
+        public static void PerformLayout(Graphics graphics, Node node, object graphContext)
         {
             if (node.Layout == Node.LayoutType.Rectangular || node.Collapsed)
             {
-                var size = MeasureRectangular(graphics, node, context);
+                var size = MeasureRectangular(graphics, node, graphContext);
                 var position = node.Location;
                 node.bounds = new RectangleF(position, size.BaseSize);
                 position.Y += node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
@@ -354,7 +373,7 @@ namespace HyperGraph
 
                     if (node.TitleItem != null)
                     {
-                        node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics, context));
+                        node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics, graphContext));
                         node.TitleItem.bounds.Width = System.Math.Max(node.TitleItem.bounds.Width, node.bounds.Width);
                     }
                 }
@@ -373,7 +392,7 @@ namespace HyperGraph
                         {
                             if (!first) positions[side].Y += GraphConstants.ItemSpacing;
                             first = false;
-                            var itemSize = item.Measure(graphics, context);
+                            var itemSize = item.Measure(graphics, graphContext);
                             itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
                             item.bounds = new RectangleF(positions[side], itemSize);
                             positions[side].Y += itemSize.Height;
@@ -383,14 +402,14 @@ namespace HyperGraph
             }
             else
             {
-                PerformCircularLayout(graphics, node, context);
+                PerformCircularLayout(graphics, node, graphContext);
             }
         }
 
         private enum VerticalItemLayoutSide { LeftOfAnchor, RightOfAnchor };
-        private static float LayoutItemsVertically(Graphics graphics, IEnumerable<NodeItem> items, PointF anchor, bool centerAroundAnchor, VerticalItemLayoutSide layoutType, object context)
+        private static float LayoutItemsVertically(Graphics graphics, IEnumerable<NodeItem> items, PointF anchor, bool centerAroundAnchor, VerticalItemLayoutSide layoutType, object graphContext)
         {
-            var inputRects = items.Select(x => AdjustConnectorSize(x.Measure(graphics, context)));
+            var inputRects = items.Select(x => AdjustConnectorSize(x.Measure(graphics, graphContext)));
 
             float groupHeight = 0.0f, groupWidth = 0.0f;
             bool firstItem = true;
@@ -421,9 +440,9 @@ namespace HyperGraph
         }
 
         private enum HorizontalItemLayoutSide { AboveAnchor, BelowAnchor };
-        private static float LayoutItemsHorizontally(Graphics graphics, IEnumerable<NodeItem> items, float left, float right, float verticalAnchor, HorizontalItemLayoutSide layoutSide, object context)
+        private static float LayoutItemsHorizontally(Graphics graphics, IEnumerable<NodeItem> items, float left, float right, float verticalAnchor, HorizontalItemLayoutSide layoutSide, object graphContext)
         {
-            var inputRects = items.Select(x => x.Measure(graphics, context));
+            var inputRects = items.Select(x => x.Measure(graphics, graphContext));
 
             float groupHeight = 0.0f, groupWidth = 0.0f;
             bool firstItem = true;
@@ -451,7 +470,7 @@ namespace HyperGraph
             return groupHeight;
         }
 
-        private static void PerformCircularLayout(Graphics graphics, Node node, object context)
+        private static void PerformCircularLayout(Graphics graphics, Node node, object graphContext)
         {
             node.bounds = new RectangleF(node.Location, MeasureCircular(graphics, node).BaseSize);
 
@@ -459,13 +478,13 @@ namespace HyperGraph
                 graphics, node.InputItems,
                 new PointF(node.bounds.Left, node.bounds.Top + node.bounds.Height / 2.0f),
                 true, VerticalItemLayoutSide.LeftOfAnchor,
-                context);
+                graphContext);
 
             LayoutItemsVertically(
                 graphics, node.OutputItems,
                 new PointF(node.bounds.Right, node.bounds.Top + node.bounds.Height / 2.0f),
                 true, VerticalItemLayoutSide.RightOfAnchor,
-                context);
+                graphContext);
 
             double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(node.bounds.Size.Width, node.bounds.Size.Height);
             var centerItemBoundary = node.bounds;
@@ -477,16 +496,16 @@ namespace HyperGraph
                 graphics, node.TopItems,
                 node.bounds.Left, node.bounds.Right, node.bounds.Top,
                 HorizontalItemLayoutSide.BelowAnchor,
-                context);
+                graphContext);
 
             LayoutItemsHorizontally(
                 graphics, node.BottomItems,
                 node.bounds.Left, node.bounds.Right, node.bounds.Bottom,
                 HorizontalItemLayoutSide.AboveAnchor,
-                context);
+                graphContext);
         }
 
-        static void RenderOutline(Graphics graphics, Node node, object context)
+        static void RenderOutline(Graphics graphics, Node node, object graphContext)
         {
             using (var path = new GraphicsPath(FillMode.Winding))
             {
@@ -513,7 +532,7 @@ namespace HyperGraph
         }
 
 
-        static void Render(Graphics graphics, Node node, object context)
+        static void Render(Graphics graphics, Node node, object graphContext)
 		{
             Brush brush;
             if ((node.state & RenderState.Dragging) != 0)       { brush = GraphConstants.DraggingBrush; }
@@ -522,9 +541,9 @@ namespace HyperGraph
 
             if (node.SubGraphTag == null)
             {
-                RenderOutline(graphics, node, context);
+                RenderOutline(graphics, node, graphContext);
                 if (node.TitleItem != null)
-                    RenderItem(graphics, node.TitleItem, context);
+                    RenderItem(graphics, node.TitleItem, graphContext);
                 return;
             }
 
@@ -581,7 +600,7 @@ namespace HyperGraph
             if (node.Collapsed)
             {
                 if (node.TitleItem != null)
-                    RenderItem(graphics, node.TitleItem, context);
+                    RenderItem(graphics, node.TitleItem, graphContext);
 
                 foreach (var item in node.InputItems)
                 {
@@ -600,17 +619,17 @@ namespace HyperGraph
             else
             {
                 foreach (var item in node.CenterItems.Concat(node.TopItems).Concat(node.BottomItems))
-                    RenderItem(graphics, item, context);
+                    RenderItem(graphics, item, graphContext);
 
                 foreach (var item in node.InputItems)    // (don't use EnumerateItems because we want to show collapsed nodes)
-                    RenderItem(graphics, item, context);
+                    RenderItem(graphics, item, graphContext);
 
                 foreach (var item in node.OutputItems)
-                    RenderItem(graphics, item, context);
+                    RenderItem(graphics, item, graphContext);
             }
 		}
 
-        static void RenderSubGraph(Graphics graphics, Node node, object context)
+        static void RenderSubGraph(Graphics graphics, Node node, object graphContext)
         {
             var size = node.bounds.Size;
             var position = node.bounds.Location;
@@ -634,16 +653,16 @@ namespace HyperGraph
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))
-                RenderItem(graphics, item, context);
+                RenderItem(graphics, item, graphContext);
 
             foreach (var item in node.ItemsForDock(Node.Dock.Output))
-                RenderItem(graphics, item, context);
+                RenderItem(graphics, item, graphContext);
 
             foreach (var item in node.ItemsForDock(Node.Dock.Top).Concat(node.ItemsForDock(Node.Dock.Bottom)))
-                RenderItem(graphics, item, context);
+                RenderItem(graphics, item, graphContext);
         }
 
-        public static void PerformSubGraphLayout(Graphics graphics, Node node, IGraphModel model, object context)
+        public static void PerformSubGraphLayout(Graphics graphics, Node node, IGraphModel model, object graphContext)
         {
             if (node == null)
                 return;
@@ -668,7 +687,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, nodeColumns[side]))
                 {
-                    var itemSize = AdjustConnectorSize(item.Measure(graphics, context));
+                    var itemSize = AdjustConnectorSize(item.Measure(graphics, graphContext));
                     widths[side] = Math.Max(widths[side], itemSize.Width);
                 }
             }
@@ -686,7 +705,7 @@ namespace HyperGraph
                     graphics, node.TopItems,
                     minX, maxX, minY,
                     HorizontalItemLayoutSide.AboveAnchor,
-                    context);
+                    graphContext);
             }
             else
             {
@@ -702,7 +721,7 @@ namespace HyperGraph
                     graphics, node.TopItems,
                     minX, maxX, minY + 8,
                     HorizontalItemLayoutSide.BelowAnchor,
-                    context);
+                    graphContext);
             }
 
             node.Location = new PointF(minX - leftBorder, minY);
@@ -718,7 +737,7 @@ namespace HyperGraph
             {
                 foreach (var item in EnumerateNodeItems(node, nodeColumns[side]))
                 {
-                    var itemSize = item.Measure(graphics, context);
+                    var itemSize = item.Measure(graphics, graphContext);
                     item.bounds = new RectangleF(positions[side], itemSize);
                     item.bounds.Width = System.Math.Max(item.bounds.Width, widths[side]);
                     positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;

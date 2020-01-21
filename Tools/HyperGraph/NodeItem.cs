@@ -56,9 +56,10 @@ namespace HyperGraph
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
 		public abstract SizeF		Measure(Graphics graphics, object context);
-		public abstract void		Render(Graphics graphics, RectangleF rectangle, object context);
+		public abstract void		Render(Graphics graphics, RectangleF rectangle, object graphContext);
 
 		public virtual ElementType ElementType { get { return ElementType.NodeItem; } }
+        public virtual bool HasActiveAnimation { get { return false; } }
 
         protected RectangleF GetBounds() { return bounds; }
         protected RenderState GetState() { return state; }
