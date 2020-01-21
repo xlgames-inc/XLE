@@ -16,3 +16,6 @@
 [submodule "Foreign/json"]
 	path = Foreign/json
 	url = https://github.com/nlohmann/json.git
+[submodule "Foreign/future"]
+	path = Foreign/future
+	url = git@github.com:jbelloncastro/future.git
