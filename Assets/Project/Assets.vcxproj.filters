@@ -68,6 +68,9 @@
     </ClInclude>
     <ClInclude Include="..\AsyncMarkerGroup.cpp" />
     <ClInclude Include="..\RawFileAsset.h" />
+    <ClInclude Include="..\AssetFutureContinuation.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />
