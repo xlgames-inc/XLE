@@ -37,6 +37,7 @@
     </ClCompile>
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\DivergentAsset.cpp" />
+    <ClCompile Include="..\PreviewSceneRegistry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ModelVisualisation.h" />
@@ -81,6 +82,7 @@
     </ClInclude>
     <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\DivergentAsset.h" />
+    <ClInclude Include="..\PreviewSceneRegistry.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Terrain">

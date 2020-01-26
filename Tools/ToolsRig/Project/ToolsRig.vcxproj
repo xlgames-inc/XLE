@@ -91,6 +91,7 @@
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\PlacementsManipulators.cpp" />
+    <ClCompile Include="..\PreviewSceneRegistry.cpp" />
     <ClCompile Include="..\TerrainConversion.cpp" />
     <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
@@ -111,6 +112,7 @@
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
+    <ClInclude Include="..\PreviewSceneRegistry.h" />
     <ClInclude Include="..\TerrainConversion.h" />
     <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\TerrainManipulatorsInterface.h" />
