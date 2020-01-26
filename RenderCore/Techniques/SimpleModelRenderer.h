@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "DrawableDelegates.h"					// for IUniformBufferDelegate
 #include "../Assets/ModelImmutableData.h"		// for SkeletonBinding
 #include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
@@ -16,6 +17,7 @@ namespace RenderCore { namespace Assets
 { 
 	class ModelScaffold;
 	class MaterialScaffold;
+	class SkeletonScaffold;
 }}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
@@ -30,6 +32,7 @@ namespace RenderCore { namespace Techniques
 	class DescriptorSetAccelerator;
 	class DeformOperationInstantiation;
 	class IDeformOperation;
+	class IUniformBufferDelegate;
 
 	class SimpleModelRenderer
 	{
@@ -56,18 +59,21 @@ namespace RenderCore { namespace Techniques
 		void GenerateDeformBuffer(IThreadContext& context);
 		unsigned DeformOperationCount() const;
 		IDeformOperation& DeformOperation(unsigned idx);
-		const ::Assets::DepValPtr& GetDependencyValidation();
+		const ::Assets::DepValPtr& GetDependencyValidation() const;
 
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
 		const std::string& GetModelScaffoldName() const { return _modelScaffoldName; }
 		const std::string& GetMaterialScaffoldName() const { return _materialScaffoldName; }
 
+		using UniformBufferBinding = std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>;
+
 		SimpleModelRenderer(
 			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
 			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {},
+			IteratorRange<const UniformBufferBinding*> uniformBufferDelegates = {},
 			const std::string& modelScaffoldName = {},
 			const std::string& materialScaffoldName = {});
 		~SimpleModelRenderer();
@@ -78,9 +84,20 @@ namespace RenderCore { namespace Techniques
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
 			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold>& modelScaffoldFuture,
+			const ::Assets::FuturePtr<RenderCore::Assets::MaterialScaffold>& materialScaffoldFuture,
+			StringSection<> deformOperations = {},
+			IteratorRange<const UniformBufferBinding*> uniformBufferDelegates = {},
+			const std::string& modelScaffoldNameString = {},
+			const std::string& materialScaffoldNameString = {});
+		
+		static void ConstructToFuture(
+			::Assets::AssetFuture<SimpleModelRenderer>& future,
+			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName,
 			StringSection<> materialScaffoldName,
-			StringSection<> deformOperations = {});
+			StringSection<> deformOperations = {},
+			IteratorRange<const UniformBufferBinding*> uniformBufferDelegates = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
@@ -112,12 +129,50 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<UniformsStreamInterface> _usi;
 
 		std::vector<DeformOp> _deformOps;
+		std::vector<uint8_t> _deformStaticDataInput;
+		std::vector<uint8_t> _deformTemporaryBuffer;
 
 		std::shared_ptr<IResource> _dynVB;
+
+		std::vector<std::shared_ptr<IUniformBufferDelegate>> _extraUniformBufferDelegates;
 
 		std::string _modelScaffoldName;
 		std::string _materialScaffoldName;
 
 		class GeoCallBuilder;
+	};
+
+	class RendererSkeletonInterface : public IUniformBufferDelegate
+	{
+	public:
+		void FeedInSkeletonMachineResults(
+			RenderCore::IThreadContext& threadContext,
+			IteratorRange<const Float4x4*> skeletonMachineOutput);
+
+		ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext) override;
+        IteratorRange<const ConstantBufferElementDesc*> GetLayout() const override;
+
+		RendererSkeletonInterface(
+			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& scaffoldActual, 
+			const std::shared_ptr<RenderCore::Assets::SkeletonScaffold>& skeletonActual);
+		~RendererSkeletonInterface();
+
+		static void ConstructToFuture(
+			::Assets::FuturePtr<RendererSkeletonInterface>& skeletonInterfaceFuture,
+			::Assets::FuturePtr<SimpleModelRenderer>& rendererFuture,
+			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold>& modelScaffoldFuture,
+			const ::Assets::FuturePtr<RenderCore::Assets::MaterialScaffold>& materialScaffoldFuture,
+			const ::Assets::FuturePtr<RenderCore::Assets::SkeletonScaffold>& skeletonScaffoldFuture,
+			StringSection<> deformOperations = {},
+			IteratorRange<const SimpleModelRenderer::UniformBufferBinding*> uniformBufferDelegates = {});
+	private:
+		struct Section
+		{
+			std::vector<unsigned> _sectionMatrixToMachineOutput;
+			std::vector<Float4x4> _bindShapeByInverseBind;
+			std::shared_ptr<IResource> _cb;
+		};
+		std::vector<Section> _sections;
 	};
 }}

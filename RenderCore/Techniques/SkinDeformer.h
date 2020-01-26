@@ -19,7 +19,9 @@ namespace RenderCore { namespace Techniques
 	class SkinDeformer : public IDeformOperation
 	{
 	public:
-		virtual void Execute(IteratorRange<const VertexElementRange*> destinationElements) const;
+		virtual void Execute(
+			IteratorRange<const VertexElementRange*> sourceElements,
+			IteratorRange<const VertexElementRange*> destinationElements) const;
 
 		void FeedInSkeletonMachineResults(
 			IteratorRange<const Float4x4*> skeletonMachineOutput,
@@ -30,9 +32,10 @@ namespace RenderCore { namespace Techniques
 			unsigned geoId);
 		~SkinDeformer();
 
-		static void Register();
+		static std::vector<RenderCore::Techniques::DeformOperationInstantiation> InstantiationFunction(
+			StringSection<> initializer,
+			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold);
 	private:
-		std::vector<Float3> _basePositions;
 		std::vector<Float4> _jointWeights;
 		std::vector<UInt4>	_jointIndices;
 

@@ -37,13 +37,17 @@ namespace RenderCore { namespace Techniques
 		_skeletonBinding = RenderCore::Assets::SkeletonBinding{skeletonMachineOutputInterface, _jointInputInterface};
 	}
 
-	void SkinDeformer::Execute(IteratorRange<const VertexElementRange*> destinationElements) const
+	void SkinDeformer::Execute(
+		IteratorRange<const VertexElementRange*> sourceElements,
+		IteratorRange<const VertexElementRange*> destinationElements) const
 	{
 		assert(destinationElements.size() == 1);
 
-		auto& posElement = destinationElements[0];
-		assert(posElement.begin().Format() == Format::R32G32B32_FLOAT);
-		assert(posElement.size() <= _basePositions.size());
+		auto& inputPosElement = sourceElements[0];
+		auto& outputPosElement = destinationElements[0];
+		assert(inputPosElement.begin().Format() == Format::R32G32B32_FLOAT);
+		assert(outputPosElement.begin().Format() == Format::R32G32B32_FLOAT);
+		assert(outputPosElement.size() <= inputPosElement.size());
 
 		for (const auto&section:_sections) {
 			std::vector<Float3x4> jointTransform(section._jointMatrices.size());
@@ -53,14 +57,14 @@ namespace RenderCore { namespace Techniques
 				MakeIteratorRange(_skeletonMachineOutput));
 
 			for (const auto&drawCall:section._preskinningDrawCalls) {
-				assert((drawCall._firstVertex + drawCall._indexCount) <= posElement.size());
+				assert((drawCall._firstVertex + drawCall._indexCount) <= outputPosElement.size());
 
-				auto srcPosition = _basePositions.begin() + drawCall._firstVertex;
+				auto srcPosition = inputPosElement.begin() + drawCall._firstVertex;
 
 				// drawCall._subMaterialIndex is 0, 1, 2 or 4 depending on the number of weights we have to proces
 				if (drawCall._subMaterialIndex == 0) {
 					// in this case, we just copy
-					for (auto p=posElement.begin() + drawCall._firstVertex; p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition) 
+					for (auto p=outputPosElement.begin() + drawCall._firstVertex; p < (outputPosElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition) 
 						*p = *srcPosition;
 					continue;
 				}
@@ -68,14 +72,14 @@ namespace RenderCore { namespace Techniques
 				auto srcJointWeight = _jointWeights.begin() + drawCall._firstVertex;
 				auto srcJointIndex = _jointIndices.begin() + drawCall._firstVertex;
 
-				for (auto p=posElement.begin() + drawCall._firstVertex; 
-					p < (posElement.begin() + drawCall._firstVertex + drawCall._indexCount); 
+				for (auto p=outputPosElement.begin() + drawCall._firstVertex; 
+					p < (outputPosElement.begin() + drawCall._firstVertex + drawCall._indexCount); 
 					++p, ++srcPosition, ++srcJointWeight, ++srcJointIndex) {
 				
 					Float3 deformedPosition { 0.f, 0.f, 0.f };
 					for (unsigned b=0; b<drawCall._subMaterialIndex; ++b) {
 						assert((*srcJointIndex)[b] < jointTransform.size());
-						deformedPosition += (*srcJointWeight)[b] * TransformPoint(jointTransform[(*srcJointIndex)[b]], *srcPosition);
+						deformedPosition += (*srcJointWeight)[b] * TransformPoint(jointTransform[(*srcJointIndex)[b]], (*srcPosition).As<Float3>());
 					}
 
 					*p = deformedPosition;
@@ -125,19 +129,15 @@ namespace RenderCore { namespace Techniques
 		if (positionElement == animVb._ia._elements.end() || weightsElement == skelVb._ia._elements.end() || jointIndicesElement == skelVb._ia._elements.end())
 			Throw(std::runtime_error("Could not create SkinDeformer because there is no position, weights and/or joint indices element in input geometry"));
 
-		auto animVbData = std::make_unique<uint8_t[]>(animVb._size);
 		auto skelVbData = std::make_unique<uint8_t[]>(skelVb._size);
 		{
 			auto largeBlocks = modelScaffold.OpenLargeBlocks();
 			auto base = largeBlocks->TellP();
-			largeBlocks->Seek(base + animVb._offset);
-			largeBlocks->Read(animVbData.get(), animVb._size);
 
 			largeBlocks->Seek(base + skelVb._offset);
 			largeBlocks->Read(skelVbData.get(), skelVb._size);
 		}
 
-		_basePositions = AsFloat3s(AsVertexElementIteratorRange(MakeIteratorRange(animVbData.get(), PtrAdd(animVbData.get(), animVb._size)), *positionElement, animVb._ia._vertexStride));
 		_jointWeights = AsFloat4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *weightsElement, skelVb._ia._vertexStride));
 		_jointIndices = AsUInt4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *jointIndicesElement, skelVb._ia._vertexStride));
 
@@ -157,17 +157,17 @@ namespace RenderCore { namespace Techniques
 	{
 	}
 
-	std::vector<RenderCore::Techniques::DeformOperationInstantiation> CreateSkinDeformAttachments(
+	std::vector<RenderCore::Techniques::DeformOperationInstantiation> SkinDeformer::InstantiationFunction(
 		StringSection<> initializer,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold)
 	{
 		// auto sep = std::find(initializer.begin(), initializer.end(), ',');
 		// assert(sep != initializer.end());
 
-		auto positionEle = Hash64("POSITION");
+		const std::string positionEleName = "POSITION";
 		auto weightsEle = Hash64("WEIGHTS");
 		auto jointIndicesEle = Hash64("JOINTINDICES");
-		std::vector<RenderCore::Techniques::DeformOperationInstantiation> result;
+		std::vector<DeformOperationInstantiation> result;
 		auto& immData = modelScaffold->ImmutableData();
 		for (unsigned c=0; c<immData._boundSkinnedControllerCount; ++c) {
 
@@ -175,22 +175,17 @@ namespace RenderCore { namespace Techniques
 			//			StringSection<>(initializer.begin(), sep),
 			//			StringSection<>(sep+1, initializer.end()
 
-			result.push_back(
-				RenderCore::Techniques::DeformOperationInstantiation {
+			result.emplace_back(
+				DeformOperationInstantiation {
 					std::make_shared<SkinDeformer>(*modelScaffold, c),
 					unsigned(immData._geoCount) + c,
-					{MiniInputElementDesc{positionEle, Format::R32G32B32_FLOAT}},
-					{positionEle, weightsEle, jointIndicesEle}
+					{DeformOperationInstantiation::NameAndFormat{positionEleName, 0, Format::R32G32B32_FLOAT}},
+					{DeformOperationInstantiation::NameAndFormat{positionEleName, 0, Format::R32G32B32_FLOAT}},
+					{weightsEle, jointIndicesEle}
 				});
 		}
 
 		return result;
-	}
-
-	void SkinDeformer::Register()
-	{
-		auto& factory = RenderCore::Techniques::DeformOperationFactory::GetInstance();
-		factory.RegisterDeformOperation("skin", CreateSkinDeformAttachments);
 	}
 
 }}

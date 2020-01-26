@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SimpleModelDeform.h"
+#include "Services.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -24,33 +25,39 @@ namespace RenderCore { namespace Techniques
 		if (i==_instantiationFunctions.end() || i->first != hash)
 			return {};
 
-		return (i->second)(MakeStringSection(afterColon, initializer.end()), modelScaffold);
+		return (i->second._instFunction)(MakeStringSection(afterColon, initializer.end()), modelScaffold);
 	}
 
-	void DeformOperationFactory::RegisterDeformOperation(StringSection<> name, InitiationFunction&& fn)
+	auto DeformOperationFactory::RegisterDeformOperation(StringSection<> name, InitiationFunction&& fn) -> RegisteredDeformId
 	{
+		RegisteredDeformId result = _nextDeformId++;
 		auto hash = Hash64(name.begin(), name.end());
 		auto i = LowerBound(_instantiationFunctions, hash);
 		if (i!=_instantiationFunctions.end() && i->first == hash) {
-			i->second = std::move(fn);
+			i->second = {std::move(fn), result};
 		} else {
-			_instantiationFunctions.insert(i, std::make_pair(hash, std::move(fn)));
+			_instantiationFunctions.insert(i, std::make_pair(hash, RegisteredDeformOp{std::move(fn), result}));
 		}
+		return result;
+	}
+
+	void DeformOperationFactory::DeregisterDeformOperation(RegisteredDeformId deformId)
+	{
+	
 	}
 
 	DeformOperationFactory::DeformOperationFactory()
 	{
+		_nextDeformId = 1;
 	}
 
 	DeformOperationFactory::~DeformOperationFactory()
 	{
 	}
 
-	bool DeformOperationFactory::HasInstance() { return true; }
 	DeformOperationFactory& DeformOperationFactory::GetInstance()
 	{
-		static DeformOperationFactory instance;
-		return instance;
+		return Services::GetDeformOperationFactory();
 	}
 
 	IDeformOperation::~IDeformOperation() {}

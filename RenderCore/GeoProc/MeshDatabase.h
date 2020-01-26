@@ -206,5 +206,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<unsigned> mapping = std::vector<unsigned>(),
         ProcessingFlags::BitField processingFlags = 0);
 
+	void Copy(IteratorRange<VertexElementIterator> destination, IteratorRange<VertexElementIterator> source, unsigned vertexCount);
+
 }}}
 

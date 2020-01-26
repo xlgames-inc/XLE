@@ -245,6 +245,61 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             } else {
                 Throw(std::runtime_error("Error while copying vertex data. Unexpected format for destination parameter."));
             }
+
+		} else if (srcFormat.first == VertexUtilComponentType::Float16) {
+
+			if (dstFormat.first == VertexUtilComponentType::Float32) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((float*)dst)[c] = input[c];
+                    }
+                }
+
+            } else if (dstFormat.first == VertexUtilComponentType::Float16) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned short*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
+                    }
+                }
+
+            } else if (dstFormat.first == VertexUtilComponentType::UNorm8) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned char*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
+                    }
+                }
+
+            } else {
+                Throw(std::runtime_error("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+
         } else if (srcFormat.first == dstFormat.first &&  srcFormat.second == dstFormat.second) {
 
                 // simple copy of uint8 data
@@ -263,6 +318,22 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             Throw(std::runtime_error("Error while copying vertex data. Format not supported."));
         }
     }
+
+	void Copy(IteratorRange<VertexElementIterator> destination, IteratorRange<VertexElementIterator> source, unsigned vertexCount)
+	{
+		assert(destination.size() >= vertexCount);
+		assert(source.size() >= vertexCount);
+		CopyVertexData(
+			destination.begin()._data.begin(),
+			destination.begin()._format,
+			destination.begin()._stride,
+			destination.begin()._data.size(),
+			source.begin()._data.begin(),
+			source.begin()._format,
+			source.begin()._stride,
+			source.begin()._data.size(),
+			vertexCount);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
