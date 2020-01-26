@@ -7,7 +7,7 @@
 #include "FT_FontTexture.h"
 #include "FontRectanglePacking.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
@@ -56,7 +56,7 @@ namespace RenderOverlays
 
 	static BufferUploads::IManager& GetBufferUploads()
 	{
-		return RenderCore::Assets::Services::GetBufferUploads();
+		return RenderCore::Techniques::Services::GetBufferUploads();
 	}
 
 	FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat)

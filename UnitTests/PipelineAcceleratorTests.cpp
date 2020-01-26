@@ -10,6 +10,7 @@
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../RenderCore/Techniques/DescriptorSetAccelerator.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -421,7 +422,7 @@ namespace UnitTests
 						if (state.has_value() && state.value() != ::Assets::AssetState::Pending) break;
 
 						// we have to cycle these if anything is actually going to complete --
-						_renderCoreAssetServices->GetBufferUploads().Update(*threadContext, false);
+						_techniquesServices->GetBufferUploads().Update(*threadContext, false);
 						::Assets::Services::GetAssetSets().OnFrameBarrier();
 					}
 					Assert::IsTrue(descriptorSetAcceleratorFuture->GetAssetState() == ::Assets::AssetState::Ready);
@@ -452,6 +453,7 @@ namespace UnitTests
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderCoreAssetServices;
+		ConsoleRig::AttachablePtr<RenderCore::Techniques::Services> _techniquesServices;
 
 		PipelineAcceleratorTests()
 		{
@@ -472,10 +474,12 @@ namespace UnitTests
 			_device = RenderCore::CreateDevice(api);
 
 			_renderCoreAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_device);
+			_techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(_device);
 		}
 
 		~PipelineAcceleratorTests()
 		{
+			_techniquesServices.reset();
 			_renderCoreAssetServices.reset();
 			_device.reset();
 			_assetServices.reset();

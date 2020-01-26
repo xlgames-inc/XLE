@@ -9,6 +9,7 @@
 #include "../RenderCore/Techniques/DrawableDelegates.h"
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/LightingParser.h"
@@ -258,6 +259,7 @@ namespace UnitTests
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderCoreAssetServices;
+		ConsoleRig::AttachablePtr<RenderCore::Techniques::Services> _techniquesServices;
 
 		LightingParserExecuteTests()
 		{
@@ -278,10 +280,12 @@ namespace UnitTests
 			_device = RenderCore::CreateDevice(api);
 
 			_renderCoreAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_device);
+			_techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(_device);
 		}
 
 		~LightingParserExecuteTests()
 		{
+			_techniquesServices.reset();
 			_renderCoreAssetServices.reset();
 			_device.reset();
 			_assetServices.reset();

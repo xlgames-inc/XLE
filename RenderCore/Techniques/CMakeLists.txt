@@ -17,11 +17,13 @@ set(Src
     SkinDeformer.cpp
     TechniqueDelegates.cpp
     Techniques.cpp
-    TechniqueUtils.cpp)
+    TechniqueUtils.cpp
+	Services.cpp)
 set(Headers
     BasicDelegates.h
     CommonBindings.h
     CommonResources.h
+    CommonUtils.h
     CompiledRenderStateSet.h
     CompiledShaderPatchCollection.h
     DeferredShaderResource.h
@@ -40,7 +42,8 @@ set(Headers
     TechniqueDelegates.h
     TechniqueMaterial.h
     Techniques.h
-    TechniqueUtils.h)
+    TechniqueUtils.h
+	Services.h)
 
 BasicLibrary(RenderCoreTechniques "${Src};${Headers}")
 target_link_libraries(RenderCoreTechniques ForeignMisc)  # required to pull in interface include directories (etc)

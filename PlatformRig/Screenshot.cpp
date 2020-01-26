@@ -202,7 +202,7 @@ namespace PlatformRig
 
         doToneMap = oldDoToneMap;
 
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 
             // Now pull the data over to the CPU, and stitch together
             // We will write out the raw data in some simple format
@@ -356,7 +356,7 @@ namespace PlatformRig
         }
 #endif
 
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
         return uploads.Resource_ReadBack(postToneMap.Locator());
     }
 

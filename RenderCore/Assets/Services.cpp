@@ -8,14 +8,11 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "../IDevice.h"
-#include "../Init.h"
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/GeneralCompiler.h"
-#include "../../ConsoleRig/AttachablePtr.h"
-#include "../../BufferUploads/IBufferUploads.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -35,11 +32,6 @@ namespace RenderCore { namespace Assets
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().AddCompiler(shaderSource);
 
-        if (device) {
-            BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
-            _bufferUploads = BufferUploads::CreateManager(*device);
-        }
-
         // The technique config search directories are used to search for
         // technique configuration files. These are the files that point to
         // shaders used by rendering models. Each material can reference one
@@ -50,9 +42,6 @@ namespace RenderCore { namespace Assets
             // Setup required compilers.
             //  * material scaffold compiler
         asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<MaterialScaffoldCompiler>());
-
-		// _deformOpsFactory = std::make_unique<RenderCore::Assets::DeformOperationFactory>();
-		// RenderCore::Assets::SkinDeformer::Register();
     }
 
     Services::~Services()
@@ -61,11 +50,6 @@ namespace RenderCore { namespace Assets
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().StallOnPendingOperations(true);
 		ShutdownModelCompilers();
-
-        if (_bufferUploads) {
-            _bufferUploads.reset();
-            BufferUploads::DetachLibrary();
-        }
     }
 
     void Services::InitModelCompilers()

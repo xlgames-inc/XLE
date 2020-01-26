@@ -6,7 +6,7 @@
 #include "PipelineAccelerator.h"
 #include "CompiledShaderPatchCollection.h"
 #include "DescriptorSetAccelerator.h"
-#include "../Assets/Services.h"
+#include "Services.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../IDevice.h"
@@ -16,6 +16,7 @@
 #include "../Metal/Shader.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include <sstream>
 
 namespace RenderCore { namespace Techniques
@@ -23,12 +24,12 @@ namespace RenderCore { namespace Techniques
 
 	RenderCore::IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data)
 	{
-		return CreateStaticVertexBuffer(RenderCore::Assets::Services::GetDevice(), data);
+		return CreateStaticVertexBuffer(Services::GetDevice(), data);
 	}
 
 	RenderCore::IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data)
 	{
-		return CreateStaticIndexBuffer(RenderCore::Assets::Services::GetDevice(), data);
+		return CreateStaticIndexBuffer(Services::GetDevice(), data);
 	}
 
 	RenderCore::IResourcePtr CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data)

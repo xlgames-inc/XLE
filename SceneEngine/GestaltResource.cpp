@@ -7,7 +7,7 @@
 #include "GestaltResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Utility/ParameterPackUtils.h"
@@ -90,7 +90,7 @@ namespace SceneEngine
             const char name[],
             BufferUploads::DataPacket* initialData)
     {
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 
         auto tdescCopy = tdesc;
 
@@ -117,7 +117,7 @@ namespace SceneEngine
             const char name[], BufferUploads::DataPacket* initialData,
             BufferUploads::BindFlag::BitField extraBindFlags)
     {
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 
         auto desc = CreateDesc(
             Internal::MakeBindFlags<Views...>() | extraBindFlags,

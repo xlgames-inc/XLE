@@ -283,7 +283,7 @@ namespace GUILayer
     {
         auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
 
-        BufferUploads::IManager* bufferUploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploads();
+        BufferUploads::IManager* bufferUploads = engineDevice->GetNative().GetBufferUploads();
         result->GetFrameRig().AddPostPresentCallback(
             [bufferUploads](RenderCore::IThreadContext& threadContext)
             { bufferUploads->Update(threadContext, false); });

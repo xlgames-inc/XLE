@@ -20,8 +20,8 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
-#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
@@ -237,7 +237,7 @@ namespace GUILayer
 
 	static System::Drawing::Bitmap^ GenerateWindowsBitmap(RenderCore::IThreadContext& threadContext, const std::shared_ptr<RenderCore::IResource>& res)
 	{
-		auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 		auto readback = uploads.Resource_ReadBack(BufferUploads::UnderlyingResourcePtr{res});
 		if (readback && readback->GetDataSize()) {
 			auto desc = res->GetDesc();
@@ -380,7 +380,7 @@ namespace GUILayer
 		// We have to pump some services, or assets will never complete loading/compiling
 		::Assets::Services::GetAsyncMan().Update();
 		::Assets::GetAssetSetManager().OnFrameBarrier();
-		auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(), false);
 
             ////////////

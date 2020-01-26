@@ -13,12 +13,12 @@
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
-#include "../RenderCore/Assets/Services.h"
 #include "../FixedFunctionModel/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
 #include "../Assets/Assets.h"
@@ -92,7 +92,7 @@ namespace SceneEngine
 
     BufferUploads::IManager& GetBufferUploads()
     {
-        return RenderCore::Assets::Services::GetBufferUploads();
+        return RenderCore::Techniques::Services::GetBufferUploads();
     }
 
     SavedTargets::SavedTargets(Metal::DeviceContext& context)
@@ -220,7 +220,7 @@ namespace SceneEngine
 
     IResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
-        return RenderCore::Assets::Services::GetDevice().CreateResource(desc);
+        return RenderCore::Techniques::Services::GetDevice().CreateResource(desc);
     }
 
 

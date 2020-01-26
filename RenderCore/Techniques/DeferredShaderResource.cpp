@@ -7,7 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "DeferredShaderResource.h"
-#include "../Assets/Services.h"
+#include "Services.h"
 #include "../Metal/TextureView.h"
 #include "../Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -15,10 +15,10 @@
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
-#include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"	// (for MakeIntermediateName)
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/AssetServices.h"
 
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -114,8 +114,10 @@ namespace RenderCore { namespace Techniques
 		TransactionMonitor(BufferUploads::TransactionID id = ~BufferUploads::TransactionID(0)) : _id(id) {}
 		~TransactionMonitor()
 		{
-			if (_id != ~BufferUploads::TransactionID(0))
-				RenderCore::Assets::Services::GetBufferUploads().Transaction_End(_id);
+			if (_id != ~BufferUploads::TransactionID(0)) {
+				assert(Services::HasInstance());
+				Services::GetBufferUploads().Transaction_End(_id);
+			}
 		}
 		TransactionMonitor(TransactionMonitor&& moveFrom)
 		: _id(moveFrom._id)
@@ -125,7 +127,7 @@ namespace RenderCore { namespace Techniques
 		TransactionMonitor& operator=(TransactionMonitor&& moveFrom)
 		{
 			if (_id != ~BufferUploads::TransactionID(0)) {
-				RenderCore::Assets::Services::GetBufferUploads().Transaction_End(_id);
+				Services::GetBufferUploads().Transaction_End(_id);
 				_id = ~BufferUploads::TransactionID(0);
 			}
 			std::swap(_id, moveFrom._id);
@@ -185,7 +187,7 @@ namespace RenderCore { namespace Techniques
 			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 		}
 
-        auto transactionId = RenderCore::Assets::Services::GetBufferUploads().Transaction_Begin(
+        auto transactionId = RenderCore::Techniques::Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,
@@ -206,7 +208,7 @@ namespace RenderCore { namespace Techniques
 
         future.SetPollingFunction(
 			[mon, metaDataFuture, depVal, init, intializerStr](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
-				auto& bu = RenderCore::Assets::Services::GetBufferUploads();
+				auto& bu = RenderCore::Techniques::Services::GetBufferUploads();
 				if (!bu.IsCompleted(mon->GetId())
 					|| (metaDataFuture && metaDataFuture->GetAssetState() == ::Assets::AssetState::Pending))
 					return true;
@@ -321,7 +323,7 @@ namespace RenderCore { namespace Techniques
 		} else
 			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 
-        auto result = RenderCore::Assets::Services::GetBufferUploads().Transaction_Immediate(
+        auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,

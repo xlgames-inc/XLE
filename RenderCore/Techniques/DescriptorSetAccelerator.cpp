@@ -5,9 +5,9 @@
 #include "DescriptorSetAccelerator.h"
 #include "DeferredShaderResource.h"
 #include "TechniqueUtils.h"
+#include "Services.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../Assets/PredefinedCBLayout.h"
-#include "../Assets/Services.h"
 #include "../Metal/State.h"
 #include "../Metal/InputLayout.h"
 #include "../IDevice.h"
@@ -63,7 +63,7 @@ namespace RenderCore { namespace Techniques
 			usi.BindShaderResource(c, Hash64(layout._resources[c]._name));
 		}
 
-		auto& device = RenderCore::Assets::Services::GetDevice();
+		auto& device = Services::GetDevice();
 		auto shrLanguage = GetDefaultShaderLanguage();
 
 		// Build constant buffers

@@ -8,6 +8,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
 #include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
@@ -46,6 +47,7 @@ namespace UnitTests
 					auto renderDevice = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
                     auto asyncMan = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
                     auto renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(renderDevice);
+					auto techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(renderDevice);
 
 					auto renderVersion = renderDevice->GetDesc()._buildVersion;
 					auto renderDate = renderDevice->GetDesc()._buildDate;

@@ -8,7 +8,7 @@
 #include "DebuggingDisplays/ConsoleDisplay.h"
 #include "DebuggingDisplays/TestDisplays.h"
 
-#include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Techniques/Services.h"
 
 #include "../RenderOverlays/Overlays/Browser.h"
 #include "../RenderOverlays/Overlays/OceanSettings.h"
@@ -73,8 +73,8 @@ namespace PlatformRig
         // debugSystem.Register(constRasterTest, "[Test] Conservative Raster");
         debugSystem.Register(rectPackingTest, "[Test] Rectangle Packing");
 
-        if (RenderCore::Assets::Services::HasInstance()) {
-            auto bufferUploadDisplay = std::make_shared<PlatformRig::Overlays::BufferUploadDisplay>(&RenderCore::Assets::Services::GetBufferUploads());
+        if (RenderCore::Techniques::Services::HasInstance()) {
+            auto bufferUploadDisplay = std::make_shared<PlatformRig::Overlays::BufferUploadDisplay>(&RenderCore::Techniques::Services::GetBufferUploads());
             debugSystem.Register(bufferUploadDisplay, "[Profiler] Buffer Uploads Display");
         }
     }

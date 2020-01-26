@@ -22,6 +22,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/Services.h"
 
 #include "../../RenderOverlays/Font.h"
 #include "../../PlatformRig/DebugHotKeys.h"
@@ -75,6 +76,7 @@ namespace Sample
 
         auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
         auto renderAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(sampleGlobals._renderDevice);
+		auto techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(sampleGlobals._renderDevice);
 
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
 
@@ -162,6 +164,7 @@ namespace Sample
         assetServices->GetAssetSets().Clear();
 		ConsoleRig::ResourceBoxes_Shutdown();
 
+		techniquesServices.reset();
 		renderAssetServices.reset();
         assetServices.reset();
 

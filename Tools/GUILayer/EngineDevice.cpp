@@ -20,6 +20,7 @@
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
@@ -81,7 +82,7 @@ namespace GUILayer
         asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext));
     }
 
-    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return &_renderAssetsServices->GetBufferUploads(); }
+    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return &_techniquesServices->GetBufferUploads(); }
     RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
 
     NativeEngineDevice::NativeEngineDevice()
@@ -99,6 +100,7 @@ namespace GUILayer
 
         _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
+		_techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
 		_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();

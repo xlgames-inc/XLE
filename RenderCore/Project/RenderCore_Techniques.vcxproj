@@ -89,6 +89,7 @@
     <ClInclude Include="..\Techniques\SkinDeformer.h" />
     <ClInclude Include="..\Techniques\TechniqueDelegates.h" />
     <ClInclude Include="..\Techniques\Techniques.h" />
+    <ClInclude Include="..\Techniques\Services.h" />
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +112,7 @@
     <ClCompile Include="..\Techniques\SkinDeformer.cpp" />
     <ClCompile Include="..\Techniques\TechniqueDelegates.cpp" />
     <ClCompile Include="..\Techniques\Techniques.cpp" />
+    <ClCompile Include="..\Techniques\Services.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

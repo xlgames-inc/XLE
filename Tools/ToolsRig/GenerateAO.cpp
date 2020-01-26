@@ -15,9 +15,9 @@
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../RenderCore/GeoProc/MeshDatabase.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
-#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -26,6 +26,7 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderCore/Format.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -228,7 +229,7 @@ namespace ToolsRig
         // metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
         // metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& bufferUploads = RenderCore::Techniques::Services::GetBufferUploads();
         auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
 
         #if defined(GEN_AO_DEBUG)
@@ -288,7 +289,7 @@ namespace ToolsRig
 
         const unsigned cubeFaces = 5;
 
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& bufferUploads = RenderCore::Techniques::Services::GetBufferUploads();
 
         #if defined(GEN_AO_DEBUG)
             auto typelessFormat = Format::R32_TYPELESS;
@@ -427,7 +428,7 @@ namespace ToolsRig
 
             // we need to stall while pending...
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& bufferUploads = RenderCore::Techniques::Services::GetBufferUploads();
         for (;;) {
             if (!renderer)
                 renderer = std::make_unique<ModelRenderer>(

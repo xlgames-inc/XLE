@@ -70,6 +70,7 @@
     <ClInclude Include="..\Techniques\CommonUtils.h">
       <Filter>Resources &amp; states</Filter>
     </ClInclude>
+    <ClInclude Include="..\Techniques\Services.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
@@ -132,6 +133,7 @@
     <ClCompile Include="..\Techniques\CommonUtils.cpp">
       <Filter>Resources &amp; states</Filter>
     </ClCompile>
+    <ClCompile Include="..\Techniques\Services.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Drawables">
