@@ -220,15 +220,14 @@ namespace ToolsRig
 				[rendererFuture, animationSetFuture, skeletonFuture, materialBindingFilter](::Assets::AssetFuture<ModelScene>& thatFuture) -> bool {
 
 					bool stillPending = false;
-					auto rendererActual = rendererFuture->TryActualize();
-					if (!rendererActual) {
-						auto state = rendererFuture->GetAssetState();
-						if (state == ::Assets::AssetState::Invalid) {
+					std::shared_ptr<SimpleModelRenderer> rendererActual; ::Assets::DepValPtr rendererDepVal; ::Assets::Blob rendererLog;
+					auto rendererState = rendererFuture->CheckStatusBkgrnd(rendererActual, rendererDepVal, rendererLog);
+					if (rendererState != ::Assets::AssetState::Ready) {
+						if (rendererState == ::Assets::AssetState::Invalid) {
 							std::stringstream str;
 							str << "SimpleModelRenderer failed to actualize: ";
-							const auto& actLog = rendererFuture->GetActualizationLog();
-							str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
-							thatFuture.SetInvalidAsset(rendererFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+							str << (rendererLog ? ::Assets::AsString(rendererLog) : std::string("<<no log>>"));
+							thatFuture.SetInvalidAsset(rendererDepVal, ::Assets::AsBlob(str.str()));
 							return false;
 						}
 						stillPending = true;
@@ -238,15 +237,14 @@ namespace ToolsRig
 					std::shared_ptr<SkeletonScaffold> skeletonActual;
 
 					if (animationSetFuture) {
-						animationSetActual = animationSetFuture->TryActualize();
-						if (!animationSetActual) {
-							auto state = animationSetFuture->GetAssetState();
-							if (state == ::Assets::AssetState::Invalid) {
+						::Assets::DepValPtr animSetDepVal; ::Assets::Blob animSetLog;
+						auto animSetState = animationSetFuture->CheckStatusBkgrnd(animationSetActual, animSetDepVal, animSetLog);
+						if (animSetState != ::Assets::AssetState::Ready) {
+							if (animSetState == ::Assets::AssetState::Invalid) {
 								std::stringstream str;
 								str << "AnimationSet failed to actualize: ";
-								const auto& actLog = animationSetFuture->GetActualizationLog();
-								str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
-								thatFuture.SetInvalidAsset(animationSetFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+								str << (animSetLog ? ::Assets::AsString(animSetLog) : std::string("<<no log>>"));
+								thatFuture.SetInvalidAsset(animSetDepVal, ::Assets::AsBlob(str.str()));
 								return false;
 							}
 							stillPending = true;
@@ -254,15 +252,14 @@ namespace ToolsRig
 					}
 
 					if (skeletonFuture) {
-						skeletonActual = skeletonFuture->TryActualize();
-						if (!skeletonFuture) {
-							auto state = skeletonFuture->GetAssetState();
-							if (state == ::Assets::AssetState::Invalid) {
+						::Assets::DepValPtr skeletonDepVal; ::Assets::Blob skeletonLog;
+						auto skeletonState = skeletonFuture->CheckStatusBkgrnd(skeletonActual, skeletonDepVal, skeletonLog);
+						if (skeletonState != ::Assets::AssetState::Ready) {
+							if (skeletonState == ::Assets::AssetState::Invalid) {
 								std::stringstream str;
 								str << "Skeleton failed to actualize: ";
-								const auto& actLog = skeletonFuture->GetActualizationLog();
-								str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
-								thatFuture.SetInvalidAsset(skeletonFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+								str << (skeletonLog ? ::Assets::AsString(skeletonLog) : std::string("<<no log>>"));
+								thatFuture.SetInvalidAsset(skeletonDepVal, ::Assets::AsBlob(str.str()));
 								return false;
 							}
 							stillPending = true;
@@ -308,7 +305,7 @@ namespace ToolsRig
 
         ~ModelScene() {}
 
-		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
     protected:
 		std::shared_ptr<SimpleModelRenderer>		_renderer;

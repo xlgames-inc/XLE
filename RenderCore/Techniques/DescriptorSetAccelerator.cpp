@@ -99,15 +99,23 @@ namespace RenderCore { namespace Techniques
 				// Construct the final descriptor set; even if we got some (or all) invalid assets
 				finalDescriptorSet->_shaderResources.reserve(pendingSRVs.size());
 				for (const auto&d:pendingSRVs) {
-					if (d && d->GetAssetState() == ::Assets::AssetState::Ready) {
-						finalDescriptorSet->_shaderResources.push_back(d->Actualize());
+					if (!d) {
+						finalDescriptorSet->_shaderResources.push_back(nullptr);
+						continue;
+					}
+
+					::Assets::AssetPtr<DeferredShaderResource> actualized;
+					::Assets::DepValPtr depVal;
+					::Assets::Blob actualizationLog;
+					if (d->CheckStatusBkgrnd(actualized, depVal, actualizationLog) == ::Assets::AssetState::Ready) {
+						finalDescriptorSet->_shaderResources.push_back(actualized);
 					} else {
 						// todo -- use some kind of "invalid marker" for this resource
 						finalDescriptorSet->_shaderResources.push_back(nullptr);
 					}
 
-					if (d && d->GetDependencyValidation())
-						::Assets::RegisterAssetDependency(finalDescriptorSet->_depVal, d->GetDependencyValidation());
+					if (depVal)
+						::Assets::RegisterAssetDependency(finalDescriptorSet->_depVal, depVal);
 				}
 
 				finalDescriptorSet->_constantBuffers = std::move(constantBuffers);

@@ -203,12 +203,12 @@ namespace FixedFunctionModel
 		future.SetPollingFunction(
 			[scaffoldFuture](::Assets::AssetFuture<BoundShaderVariationSet>& thatFuture) -> bool {
 
-			auto scaffoldActual = scaffoldFuture->TryActualize();
+			std::shared_ptr<RenderCore::Techniques::Technique> scaffoldActual; ::Assets::DepValPtr scaffoldDepVal; ::Assets::Blob scaffoldLog;
+			auto scaffoldState = scaffoldFuture->CheckStatusBkgrnd(scaffoldActual, scaffoldDepVal, scaffoldLog);
 
 			if (!scaffoldActual) {
-				auto state = scaffoldFuture->GetAssetState();
-				if (state == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(scaffoldFuture->GetDependencyValidation(), nullptr);
+				if (scaffoldState == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(scaffoldDepVal, scaffoldLog);
 					return false;
 				}
 				return true;

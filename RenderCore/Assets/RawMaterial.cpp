@@ -482,9 +482,9 @@ namespace RenderCore { namespace Assets
 		future.SetPollingFunction(
 			[containerFuture, section, containerInitializerString](::Assets::AssetFuture<RawMaterial>& thatFuture) -> bool {
 
-			auto containerActual = containerFuture->TryActualize();
+			std::shared_ptr<::Assets::ConfigFileContainer<>> containerActual; ::Assets::DepValPtr containerDepVal; ::Assets::Blob containerLog;
+			auto containerState = containerFuture->CheckStatusBkgrnd(containerActual, containerDepVal, containerLog);
 			if (!containerActual) {
-				auto containerState = containerFuture->GetAssetState();
 				if (containerState == ::Assets::AssetState::Invalid) {
 					thatFuture.SetInvalidAsset(containerFuture->GetDependencyValidation(), nullptr);
 					return false;

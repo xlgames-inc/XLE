@@ -164,11 +164,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	static void TryRegisterDependency(
 		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+		const ::Assets::DepValPtr& dependency)
 	{
-		auto futureDepVal = future->GetDependencyValidation();
-		if (futureDepVal)
-			::Assets::RegisterAssetDependency(dst, futureDepVal);
+		if (dependency)
+			::Assets::RegisterAssetDependency(dst, dependency);
 	}
 
 	void ShaderProgram::ConstructToFuture(
@@ -183,16 +182,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		future.SetPollingFunction(
 			[vsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
 
-			auto vsActual = vsCode->TryActualize();
-			auto psActual = psCode->TryActualize();
+			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
+			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
+
+			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
+			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
 
 			if (!vsActual || !psActual) {
-				auto vsState = vsCode->GetAssetState();
-				auto psState = psCode->GetAssetState();
 				if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
 					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsCode);
-					TryRegisterDependency(depVal, psCode);
+					TryRegisterDependency(depVal, vsDepVal);
+					TryRegisterDependency(depVal, psDepVal);
 					thatFuture.SetInvalidAsset(depVal, nullptr);
 					return false;
 				}
@@ -219,19 +219,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		future.SetPollingFunction(
 			[vsCode, gsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
 
-			auto vsActual = vsCode->TryActualize();
-			auto gsActual = gsCode->TryActualize();
-			auto psActual = psCode->TryActualize();
+			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
+			std::shared_ptr<CompiledShaderByteCode> gsActual; ::Assets::DepValPtr gsDepVal; ::Assets::Blob gsLog;
+			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
+
+			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
+			auto gsState = gsCode->CheckStatusBkgrnd(gsActual, gsDepVal, gsLog);
+			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
 
 			if (!vsActual || !gsActual || !psActual) {
-				auto vsState = vsCode->GetAssetState();
-				auto gsState = gsCode->GetAssetState();
-				auto psState = psCode->GetAssetState();
 				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
 					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsCode);
-					TryRegisterDependency(depVal, gsCode);
-					TryRegisterDependency(depVal, psCode);
+					TryRegisterDependency(depVal, vsDepVal);
+					TryRegisterDependency(depVal, gsDepVal);
+					TryRegisterDependency(depVal, psDepVal);
 					thatFuture.SetInvalidAsset(depVal, nullptr);
 					return false;
 				}
@@ -262,25 +263,26 @@ namespace RenderCore { namespace Metal_Vulkan
 		future.SetPollingFunction(
 			[vsCode, gsCode, psCode, hsCode, dsCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
 
-			auto vsActual = vsCode->TryActualize();
-			auto gsActual = gsCode->TryActualize();
-			auto psActual = psCode->TryActualize();
-			auto hsActual = hsCode->TryActualize();
-			auto dsActual = dsCode->TryActualize();
+			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
+			std::shared_ptr<CompiledShaderByteCode> gsActual; ::Assets::DepValPtr gsDepVal; ::Assets::Blob gsLog;
+			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
+			std::shared_ptr<CompiledShaderByteCode> hsActual; ::Assets::DepValPtr hsDepVal; ::Assets::Blob hsLog;
+			std::shared_ptr<CompiledShaderByteCode> dsActual; ::Assets::DepValPtr dsDepVal; ::Assets::Blob dsLog;
+
+			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
+			auto gsState = gsCode->CheckStatusBkgrnd(gsActual, gsDepVal, gsLog);
+			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
+			auto hsState = hsCode->CheckStatusBkgrnd(hsActual, hsDepVal, hsLog);
+			auto dsState = dsCode->CheckStatusBkgrnd(dsActual, dsDepVal, dsLog);
 
 			if (!vsActual || !gsActual || !psActual || !hsActual || !dsActual) {
-				auto vsState = vsCode->GetAssetState();
-				auto gsState = gsCode->GetAssetState();
-				auto psState = psCode->GetAssetState();
-				auto hsState = hsCode->GetAssetState();
-				auto dsState = dsCode->GetAssetState();
 				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid || hsState == ::Assets::AssetState::Invalid || dsState == ::Assets::AssetState::Invalid) {
 					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsCode);
-					TryRegisterDependency(depVal, gsCode);
-					TryRegisterDependency(depVal, psCode);
-					TryRegisterDependency(depVal, hsCode);
-					TryRegisterDependency(depVal, dsCode);
+					TryRegisterDependency(depVal, vsDepVal);
+					TryRegisterDependency(depVal, gsDepVal);
+					TryRegisterDependency(depVal, psDepVal);
+					TryRegisterDependency(depVal, hsDepVal);
+					TryRegisterDependency(depVal, dsDepVal);
 					thatFuture.SetInvalidAsset(depVal, nullptr);
 					return false;
 				}
@@ -303,14 +305,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		future.SetPollingFunction(
 			[code](::Assets::AssetFuture<ComputeShader>& thatFuture) -> bool {
 
-			auto codeActual = code->TryActualize();
+			std::shared_ptr<CompiledShaderByteCode> codeActual; ::Assets::DepValPtr codeDepVal; ::Assets::Blob codeLog;
+			auto codeState = code->CheckStatusBkgrnd(codeActual, codeDepVal, codeLog);
 
 			if (!codeActual) {
-				auto codeState = code->GetAssetState();
 				if (codeState == ::Assets::AssetState::Invalid) {
-					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, code);
-					thatFuture.SetInvalidAsset(depVal, nullptr);
+					thatFuture.SetInvalidAsset(codeDepVal, nullptr);
 					return false;
 				}
 				return true;

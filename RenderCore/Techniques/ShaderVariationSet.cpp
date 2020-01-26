@@ -14,6 +14,7 @@
 #include "../Metal/PipelineLayout.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Streams/PreprocessorInterpreter.h"
 
 namespace RenderCore { namespace Techniques
@@ -170,7 +171,7 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueShaderVariationSet::~TechniqueShaderVariationSet(){}
 
-	const ::Assets::DepValPtr& TechniqueShaderVariationSet::GetDependencyValidation()
+	const ::Assets::DepValPtr& TechniqueShaderVariationSet::GetDependencyValidation() const
 	{
 		return _technique->GetDependencyValidation();
 	}
@@ -180,25 +181,7 @@ namespace RenderCore { namespace Techniques
 		StringSection<::Assets::ResChar> modelScaffoldName)
 	{
 		auto scaffoldFuture = ::Assets::MakeAsset<Technique>(modelScaffoldName);
-
-		future.SetPollingFunction(
-			[scaffoldFuture](::Assets::AssetFuture<TechniqueShaderVariationSet>& thatFuture) -> bool {
-
-			auto scaffoldActual = scaffoldFuture->TryActualize();
-
-			if (!scaffoldActual) {
-				auto state = scaffoldFuture->GetAssetState();
-				if (state == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(scaffoldFuture->GetDependencyValidation(), nullptr);
-					return false;
-				}
-				return true;
-			}
-
-			auto newModel = std::make_shared<TechniqueShaderVariationSet>(scaffoldActual);
-			thatFuture.SetAsset(std::move(newModel), {});
-			return false;
-		});
+		::Assets::WhenAll(scaffoldFuture).ThenConstructToFuture<TechniqueShaderVariationSet>(future);
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -57,15 +57,6 @@ namespace RenderCore { namespace Techniques
 			});
 	}
 
-	static void TryRegisterDependency(
-		::Assets::DepValPtr& dst,
-		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
-	{
-		auto futureDepVal = future->GetDependencyValidation();
-		if (futureDepVal)
-			::Assets::RegisterAssetDependency(dst, futureDepVal);
-	}
-
 	::Assets::FuturePtr<Metal::ShaderProgram> CreateShaderProgramFromByteCode(
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& vsCode,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& psCode,
@@ -73,32 +64,11 @@ namespace RenderCore { namespace Techniques
 	{
 		assert(vsCode && psCode);
 		auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>(programName);
-		future->SetPollingFunction(
-			[vsCode, psCode](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
-
-				auto vsActual = vsCode->TryActualize();
-				auto psActual = psCode->TryActualize();
-
-				if (!vsActual || !psActual) {
-					auto vsState = vsCode->GetAssetState();
-					auto psState = psCode->GetAssetState();
-					if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-						auto depVal = std::make_shared<::Assets::DependencyValidation>();
-						TryRegisterDependency(depVal, vsCode);
-						TryRegisterDependency(depVal, psCode);
-						std::stringstream log;
-						if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
-						if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
-						thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
-						return false;
-					}
-					return true;
-				}
-
-				auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
+		::Assets::WhenAll(vsCode, psCode).ThenConstructToFuture<Metal::ShaderProgram>(
+			*future,
+			[](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+				return std::make_shared<Metal::ShaderProgram>(
 					RenderCore::Metal::GetObjectFactory(), *vsActual, *psActual);
-				thatFuture.SetAsset(std::move(newShaderProgram), {});
-				return false;
 			});
 		return future;
 	}
@@ -114,40 +84,19 @@ namespace RenderCore { namespace Techniques
 		std::vector<RenderCore::InputElementDesc> soElements { soInit._outputElements.begin(), soInit._outputElements.end() };
 		std::vector<unsigned> soStrides { soInit._outputBufferStrides.begin(), soInit._outputBufferStrides.end() };
 		auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>(programName);
-		future->SetPollingFunction(
-			[vsCode, gsCode, psCode, soElements, soStrides](::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>& thatFuture) -> bool {
-
-				auto vsActual = vsCode->TryActualize();
-				auto gsActual = gsCode->TryActualize();
-				auto psActual = psCode->TryActualize();
-
-				if (!vsActual || !gsActual || !psActual) {
-					auto vsState = vsCode->GetAssetState();
-					auto gsState = gsCode->GetAssetState();
-					auto psState = psCode->GetAssetState();
-					if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-						auto depVal = std::make_shared<::Assets::DependencyValidation>();
-						TryRegisterDependency(depVal, vsCode);
-						TryRegisterDependency(depVal, gsCode);
-						TryRegisterDependency(depVal, psCode);
-						std::stringstream log;
-						if (vsState == ::Assets::AssetState::Invalid) log << "Vertex shader is invalid with message: " << std::endl << ::Assets::AsString(vsCode->GetActualizationLog()) << std::endl;
-						if (gsState == ::Assets::AssetState::Invalid) log << "Geometry shader is invalid with message: " << std::endl << ::Assets::AsString(gsCode->GetActualizationLog()) << std::endl;
-						if (psState == ::Assets::AssetState::Invalid) log << "Pixel shader is invalid with message: " << std::endl << ::Assets::AsString(psCode->GetActualizationLog()) << std::endl;
-						thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(log.str()));
-						return false;
-					}
-					return true;
-				}
+		::Assets::WhenAll(vsCode, gsCode, psCode).ThenConstructToFuture<Metal::ShaderProgram>(
+			*future,
+			[soElements, soStrides](
+				const std::shared_ptr<CompiledShaderByteCode>& vsActual, 
+				const std::shared_ptr<CompiledShaderByteCode>& gsActual, 
+				const std::shared_ptr<CompiledShaderByteCode>& psActual) {
 
 				StreamOutputInitializers soInit;
 				soInit._outputElements = MakeIteratorRange(soElements);
 				soInit._outputBufferStrides = MakeIteratorRange(soStrides);
 
-				auto newShaderProgram = std::make_shared<RenderCore::Metal::ShaderProgram>(
+				return std::make_shared<RenderCore::Metal::ShaderProgram>(
 					RenderCore::Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, soInit);
-				thatFuture.SetAsset(std::move(newShaderProgram), {});
-				return false;
 			});
 		return future;
 	}

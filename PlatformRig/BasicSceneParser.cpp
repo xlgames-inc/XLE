@@ -6,6 +6,7 @@
 
 #include "BasicSceneParser.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
@@ -67,24 +68,7 @@ namespace PlatformRig
 		StringSection<::Assets::ResChar> envSettingFileName)
 	{
 		auto envSettingsFuture = ::Assets::MakeAsset<EnvironmentSettings>(envSettingFileName);
-
-		future.SetPollingFunction(
-			[envSettingsFuture](::Assets::AssetFuture<BasicLightingParserDelegate>& thatFuture) -> bool {
-
-			auto scaffoldActual = envSettingsFuture->TryActualize();
-			if (!scaffoldActual) {
-				auto state = envSettingsFuture->GetAssetState();
-				if (state == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(envSettingsFuture->GetDependencyValidation(), envSettingsFuture->GetActualizationLog());
-					return false;
-				}
-				return true;
-			}
-
-			auto newDelegate = std::make_shared<BasicLightingParserDelegate>(scaffoldActual);
-			thatFuture.SetAsset(std::move(newDelegate), {});
-			return false;
-		});
+		::Assets::WhenAll(envSettingsFuture).ThenConstructToFuture(future);
 	}
 
 	BasicLightingParserDelegate::BasicLightingParserDelegate(
