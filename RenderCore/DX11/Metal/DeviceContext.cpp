@@ -418,6 +418,8 @@ namespace RenderCore { namespace Metal_DX11
 
 		ShaderProgram _program;
 		BoundClassInterfaces _boundClassInterfaces;
+		intrusive_ptr<ID3D::InputLayout> _inputLayout;
+		std::vector<unsigned> _vertexStrides;
 
 		RealGraphicsPipeline(
 			const DepthStencilState& depthStencil,
@@ -425,13 +427,17 @@ namespace RenderCore { namespace Metal_DX11
 			const BlendState& blend,
 			Topology topology,
 			const ShaderProgram& program,
-			const BoundClassInterfaces& boundClassInterfaces)
+			const BoundClassInterfaces& boundClassInterfaces,
+			const intrusive_ptr<ID3D::InputLayout>& inputLayout,
+			IteratorRange<const unsigned*> vertexStrides)
 		: _depthStencil(depthStencil)
 		, _rasterizer(rasterizer)
 		, _blend(blend)
 		, _topology(topology)
 		, _program(program)
 		, _boundClassInterfaces(boundClassInterfaces)
+		, _inputLayout(inputLayout)
+		, _vertexStrides(vertexStrides.begin(), vertexStrides.end())
 		{}
 	};
 
@@ -442,6 +448,28 @@ namespace RenderCore { namespace Metal_DX11
 		// All GraphicsPipeline objects on D3D are actually "RealGraphicsPipeline", so we can do this trick -- 
 		// It just helps keep the internal objects of the class completely isolated
 		return ((const RealGraphicsPipeline*)this)->_program;
+	}
+
+	void GraphicsPipeline::ApplyVertexBuffers(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+	{
+		auto& rgp = *((const RealGraphicsPipeline*)this);
+
+		ID3D::Buffer* buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT offsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		auto vbCount = std::min(vertexBuffers.size(), rgp._vertexStrides.size());
+		assert(vbCount < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
+		for (unsigned c = 0; c < vbCount; ++c) {
+			assert(vertexBuffers[c]._resource);
+			auto* res = AsID3DResource(*const_cast<IResource*>(vertexBuffers[c]._resource));
+			assert(QueryInterfaceCast<ID3D::Buffer>(res));
+			buffers[c] = (ID3D::Buffer*)res;
+			offsets[c] = vertexBuffers[c]._offset;
+			strides[c] = rgp._vertexStrides[c];
+		}
+		const unsigned startSlot = 0;
+		context.GetUnderlying()->IASetVertexBuffers(startSlot, (UINT)vbCount, buffers, strides, offsets);
+		context.GetUnderlying()->IASetInputLayout(rgp._inputLayout.get());
 	}
 
 	const std::shared_ptr<::Assets::DependencyValidation>& GraphicsPipeline::GetDependencyValidation() const 
@@ -463,6 +491,8 @@ namespace RenderCore { namespace Metal_DX11
 	public:
 		ShaderProgram _program;
 		BoundClassInterfaces _boundClassInterfaces;
+		intrusive_ptr<ID3D::InputLayout> _inputLayout;
+		std::vector<unsigned> _vertexStrides;
 
 		DepthStencilDesc _depthStencil;
 		RasterizationDesc _rasterization;
@@ -522,6 +552,9 @@ namespace RenderCore { namespace Metal_DX11
 	void GraphicsPipelineBuilder::SetInputLayout(const BoundInputLayout& inputLayout)
 	{
 		// not critical on DX11; since we still call BoundInputLayout::Apply() to set VBs and IA state
+		_pimpl->_inputLayout = inputLayout.GetUnderlying();
+		_pimpl->_vertexStrides.clear();
+		_pimpl->_vertexStrides.insert(_pimpl->_vertexStrides.end(), inputLayout.GetVertexStrides().begin(), inputLayout.GetVertexStrides().end());
 	}
 
     void GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
@@ -553,7 +586,9 @@ namespace RenderCore { namespace Metal_DX11
 				_pimpl->_blend,
 				_pimpl->_topology,
 				_pimpl->_program,
-				_pimpl->_boundClassInterfaces);
+				_pimpl->_boundClassInterfaces,
+				_pimpl->_inputLayout,
+				MakeIteratorRange(_pimpl->_vertexStrides));
 			i = _pimpl->_pipelineCache.insert(std::make_pair(finalHash, newPipeline)).first;
 		}
 
@@ -585,6 +620,7 @@ namespace RenderCore { namespace Metal_DX11
 		const FLOAT blendFactors[] = {1.f, 1.f, 1.f, 1.f};
         _underlying->OMSetBlendState(realPipeline._blend.GetUnderlying(), blendFactors, 0xffffffff);
         _underlying->OMSetDepthStencilState(realPipeline._depthStencil.GetUnderlying(), _boundStencilRefValue);		// (reuse the stencil ref that was last passed to the DSS Bind() function)
+		_underlying->IASetInputLayout(realPipeline._inputLayout.get());
 	}
 
 }}

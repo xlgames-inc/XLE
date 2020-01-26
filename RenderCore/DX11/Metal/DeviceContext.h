@@ -15,9 +15,10 @@
 #include "../../Types_Forward.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Prefix.h"
 
-namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; }
+namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; class VertexBufferView; }
 namespace Assets { class DependencyValidation; }
 
 namespace RenderCore { namespace Metal_DX11
@@ -60,6 +61,8 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         uint64_t GetGUID() const { return _guid; }
+
+		void ApplyVertexBuffers(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
 
 		GraphicsPipeline();
 		~GraphicsPipeline();

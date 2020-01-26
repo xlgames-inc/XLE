@@ -68,6 +68,7 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef ID3D::InputLayout*  UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+		IteratorRange<const unsigned*> GetVertexStrides() const { return MakeIteratorRange(_vertexStrides); }
 
     private:
         intrusive_ptr<ID3D::InputLayout>	_underlying;
