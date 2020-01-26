@@ -194,7 +194,7 @@ namespace UnitTests
 			// Write out the patch collection again
 			MemoryOutputStream<uint8> strm;
 			OutputStreamFormatter outFmttr(strm);
-			patchCollection.Serialize(outFmttr);
+			Serialize(outFmttr, patchCollection);
 
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();
@@ -232,7 +232,6 @@ namespace UnitTests
 
 			// Check for some of the expected interface elements
 			Assert::IsTrue(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
-			Assert::AreEqual((unsigned)compiledCollection._illumDelegate._type, (unsigned)CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType::NoPerPixel);
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers.size(), (size_t)2);
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[0]._name, std::string{"MaterialUniforms"});
 			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[0]._layout->_elements.size(), (size_t)2);
@@ -251,7 +250,6 @@ namespace UnitTests
 
 			// Check for some of the recognized properties, in particular look for shader selectors
 			// We're expecting the selectors "RES_HAS_Texture0" and "RES_HAS_Texture1"
-			Assert::AreEqual((unsigned)compiledCollection._illumDelegate._type, (unsigned)CompiledShaderPatchCollection::IllumDelegateAttachment::IllumType::PerPixel);
 			Assert::IsTrue(
 				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture0")
 				!=compiledCollection.GetInterface().GetSelectorRelevance().end());

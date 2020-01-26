@@ -235,8 +235,6 @@ namespace Assets
 
 					auto product = SerializeProduct(formatter);
 					product._type = Conversion::Convert<uint64_t>(eleName.Cast<char>());
-					if (FindProduct(product._type))
-						Throw(Utility::FormatException("Duplicate product entry in CompileProductsFile", formatter.GetLocation()));
 					_compileProducts.push_back(product);
 
 					if (!formatter.TryEndElement())
@@ -347,7 +345,7 @@ namespace Assets
 						compileMarker.AddArtifact(target._name, artifact);
 						foundTarget = true;
 					}
-				} else if (target._type == typeCode) {
+				} else if (!foundTarget) {
 					auto artifactDepVal = std::make_shared<DependencyValidation>();
 					RegisterFileDependency(artifactDepVal, initializer);
 

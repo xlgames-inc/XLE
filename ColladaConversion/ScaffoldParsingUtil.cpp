@@ -219,7 +219,7 @@ namespace ColladaConversion
             float compare = strtof((const char*)start, nullptr);
             auto t0 = *(uint32*)&compare;
             auto t1 = *(uint32*)&dst;
-            const uint32 expectedAccuracy = explicitExponent ? 2 : 1;
+            const uint32 expectedAccuracy = explicitExponent ? 4 : 1;
             assert((t0-t1) <= expectedAccuracy || (t1-t0) <= expectedAccuracy);
         #endif
 

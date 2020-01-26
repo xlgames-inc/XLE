@@ -137,7 +137,8 @@ namespace RenderCore { namespace Techniques
 			std::vector<uint64_t> redirectedPatchFunctions;
 			redirectedPatchFunctions.reserve(matches.size() - 3);
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
-				redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
+				if (m->matched)
+					redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
 
 			auto result = AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), definesTable);
 

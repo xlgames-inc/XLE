@@ -1,6 +1,7 @@
 set(Src
     BasicDelegates.cpp
     CommonResources.cpp
+    CommonUtils.cpp
     CompiledShaderPatchCollection.cpp
     DeferredShaderResource.cpp
     DescriptorSetAccelerator.cpp

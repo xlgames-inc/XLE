@@ -72,6 +72,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
     };
 
+#pragma warning(push)
+#pragma warning(disable:4701)		// MSVC incorrectly things that "attachment" is not fully initialized
+
     template<unsigned WeightCount> 
         VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
     {
@@ -87,6 +90,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
         return attachment;
     }
+
+#pragma warning(pop)
 
     template<> inline VertexWeightAttachment<0> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
     {
