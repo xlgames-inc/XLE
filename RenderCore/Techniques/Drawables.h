@@ -37,15 +37,10 @@ namespace RenderCore { namespace Techniques
 	class DrawableGeo
     {
     public:
-        class VertexStream
+        struct VertexStream
         {
-        public:
             IResourcePtr	_resource;
-            std::vector<MiniInputElementDesc> _vertexElements;
-            unsigned		_vertexStride = 0u;
-            uint64_t		_vertexElementsHash = 0ull;
             unsigned		_vbOffset = 0u;
-            unsigned		_instanceStepDataRate = 0u;
         };
         VertexStream        _vertexStreams[4];
         unsigned            _vertexStreamCount = 0;

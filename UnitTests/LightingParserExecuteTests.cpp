@@ -152,7 +152,6 @@ namespace UnitTests
 			// drawable._material = Techniques::MakeDrawableMaterial(mat, {});
 			drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 			drawable._geo->_vertexStreams[0]._resource = _vertexBuffer;
-			drawable._geo->_vertexStreams[0]._vertexElements = ToolsRig::Vertex3D_MiniInputLayout;
 			drawable._geo->_vertexStreamCount = 1;
 			drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&Drawable::DrawFn;
 			drawable._topology = Topology::TriangleList;

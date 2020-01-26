@@ -129,7 +129,6 @@ namespace ToolsRig
 				drawable._descriptorSet = _pipeline->_descriptorSet ? _pipeline->_descriptorSet->TryActualize() : nullptr;
 				drawable._pipeline = _pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
-				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
 				drawable._geo->_vertexStreams[0]._vbOffset = space._startOffset;
 				drawable._geo->_vertexStreamCount = 1;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
@@ -154,7 +153,6 @@ namespace ToolsRig
 				drawable._pipeline = _pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
-				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
 				drawable._geo->_vertexStreamCount = 1;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
 				drawable._vertexCount = count;

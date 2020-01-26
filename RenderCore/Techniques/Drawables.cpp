@@ -35,6 +35,31 @@ namespace RenderCore { namespace Techniques
 		std::vector<ConstantBufferView>& sequencerCbvs,
 		unsigned& cbSlot);
 
+	static Metal::BoundUniforms* GetBoundUniforms(
+		const Metal::GraphicsPipeline& pipeline,
+        const Metal::PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0 = {},
+        const UniformsStreamInterface& interface1 = {},
+        const UniformsStreamInterface& interface2 = {},
+		const UniformsStreamInterface& interface3 = {})
+	{
+		uint64_t hash = pipeline.GetGUID();
+		hash = HashCombine(interface0.GetHash(), hash);
+		hash = HashCombine(interface1.GetHash(), hash);
+		hash = HashCombine(interface2.GetHash(), hash);
+		hash = HashCombine(interface3.GetHash(), hash);
+
+		static std::unordered_map<uint64_t, std::unique_ptr<Metal::BoundUniforms>> pipelines;
+		auto i = pipelines.find(hash);
+		if (i == pipelines.end())
+			i = pipelines.insert(
+				std::make_pair(
+					hash, 
+					std::make_unique<Metal::BoundUniforms>(pipeline, pipelineLayout, interface0, interface1, interface2, interface3))).first;
+			
+		return i->second.get();
+	}
+
 	void Draw(
 		IThreadContext& context,
         Techniques::ParsingContext& parserContext,
@@ -93,18 +118,14 @@ namespace RenderCore { namespace Techniques
 
 			//////////////////////////////////////////////////////////////////////////////
 
-			Metal::BoundInputLayout::SlotBinding slotBinding[4];
 			VertexBufferView vbv[4];
 			for (unsigned c=0; c<drawable._geo->_vertexStreamCount; ++c) {
 				auto& stream = drawable._geo->_vertexStreams[c];
 				vbv[c]._resource = stream._resource ? stream._resource.get() : temporaryVB.get();
 				vbv[c]._offset = stream._vbOffset;
-				slotBinding[c]._elements = MakeIteratorRange(stream._vertexElements);
-				slotBinding[c]._instanceStepDataRate = stream._instanceStepDataRate;
 			}
 
-			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), pipeline->GetShaderProgram() };
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbv));
+			pipeline->ApplyVertexBuffers(metalContext, MakeIteratorRange(vbv));
 
 			if (drawable._geo->_ibFormat != Format(0)) {
 				auto* ib = drawable._geo->_ib ? drawable._geo->_ib.get() : temporaryIB.get();
@@ -113,27 +134,27 @@ namespace RenderCore { namespace Techniques
 
 			//////////////////////////////////////////////////////////////////////////////
 
-			Metal::BoundUniforms boundUniforms{
+			auto* boundUniforms = GetBoundUniforms(
 				*pipeline,
 				Metal::PipelineLayoutConfig{},
 				sequencerInterface,
 				drawable._descriptorSet->_usi,	// mat stream
 				UniformsStreamInterface{},		// geo stream
-				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{}};
+				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{});
 
-			boundUniforms.Apply(
+			boundUniforms->Apply(
 				metalContext, 0, 
 				UniformsStream {
 					MakeIteratorRange(sequencerCbvs),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSrvs)),
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSamplerStates))});
-			drawable._descriptorSet->Apply(metalContext, boundUniforms, 1);
+			drawable._descriptorSet->Apply(metalContext, *boundUniforms, 1);
 
 			//////////////////////////////////////////////////////////////////////////////
 
 			drawable._drawFn(
 				parserContext, 
-				Drawable::DrawFunctionContext { &metalContext, pipeline, &boundUniforms },
+				Drawable::DrawFunctionContext { &metalContext, pipeline, boundUniforms },
 				drawable);
 		}
 	}
