@@ -159,7 +159,7 @@ namespace UnitTests
 			drawable._vertexCount = _vertexCount;
 		}
 
-		BasicScene(RenderCore::IDevice& device, RenderCore::Techniques::PipelineAcceleratorPool& pipelineAccelerators)
+		BasicScene(RenderCore::IDevice& device, RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
 		{
 			using namespace RenderCore;
 			auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueForColorFromSelector);
@@ -199,7 +199,7 @@ namespace UnitTests
 			auto techniqueSharedResources = std::make_shared<Techniques::TechniqueSharedResources>();
 			auto techniqueDelegate = Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, techniqueSharedResources);
 
-			auto mainPool = std::make_shared<Techniques::PipelineAcceleratorPool>();
+			auto mainPool = Techniques::CreatePipelineAcceleratorPool();
 			auto scene = std::make_shared<BasicScene>(*_device, *mainPool);
 
 			auto targetDesc = CreateDesc(
@@ -210,8 +210,7 @@ namespace UnitTests
 			SceneEngine::SceneTechniqueDesc sceneTechniqueDesc;
 			auto compiledSceneTechnique = SceneEngine::CreateCompiledSceneTechnique(
 				sceneTechniqueDesc, mainPool,
-				AsAttachmentDesc(targetDesc),
-				FrameBufferProperties{});
+				AsAttachmentDesc(targetDesc));
 
 			Techniques::CameraDesc camera;
 			camera._cameraToWorld = MakeCameraToWorld(

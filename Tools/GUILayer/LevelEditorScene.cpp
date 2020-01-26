@@ -556,7 +556,7 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             const std::shared_ptr<EditorScene>& scene, 
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
             const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings);
     }

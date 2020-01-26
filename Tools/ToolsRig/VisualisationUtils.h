@@ -16,7 +16,7 @@
 namespace RenderCore { namespace Techniques { 
 	class CameraDesc; class TechniqueContext; class Technique; 
 	class ITechniqueDelegate;
-	class PipelineAcceleratorPool;
+	class IPipelineAcceleratorPool;
 }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
@@ -148,7 +148,7 @@ namespace ToolsRig
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
 
-        ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators);
+        ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
         ~ModelVisLayer();
     protected:
         class Pimpl;
@@ -204,7 +204,7 @@ namespace ToolsRig
         MouseOverTrackingOverlay(
             const std::shared_ptr<VisMouseOver>& mouseOver,
             const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
             const std::shared_ptr<VisCameraSettings>& camera,
             OverlayFn&& overlayFn);
         ~MouseOverTrackingOverlay();
@@ -231,7 +231,7 @@ namespace ToolsRig
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
 		SceneEngine::IScene& scene,

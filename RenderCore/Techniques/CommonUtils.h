@@ -35,11 +35,11 @@ namespace RenderCore { namespace Techniques {
 
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
-	class PipelineAcceleratorPool;
+	class IPipelineAcceleratorPool;
 	class CompiledShaderPatchCollection;
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>> 
 		CreatePipelineAccelerator(
-			PipelineAcceleratorPool& pool,
+			IPipelineAcceleratorPool& pool,
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
 			const RenderCore::Assets::MaterialScaffoldMaterial& material,
 			IteratorRange<const RenderCore::InputElementDesc*> inputLayout,

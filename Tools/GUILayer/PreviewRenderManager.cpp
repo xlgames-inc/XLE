@@ -85,7 +85,7 @@ namespace GUILayer
 	public:
 		std::shared_ptr<SceneEngine::IScene> _scene;
 		std::shared_ptr<RenderCore::IResource> _resource;
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
 		std::shared_ptr<SceneEngine::IRenderStep> _customRenderStep;
 		ToolsRig::VisCameraSettings _camSettings;
@@ -168,7 +168,7 @@ namespace GUILayer
 
 				// We use a short-lived pipeline accelerator pool here, because
 				// everything we put into it is temporary
-			_pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
+			_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 			_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 
 				////////////

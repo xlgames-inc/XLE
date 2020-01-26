@@ -92,18 +92,18 @@ namespace SceneEngine
 		std::vector<RenderPass> _renderPasses;
 
 		RenderCore::TextureSamples _sampling;
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		CompiledSceneTechnique(
 			const SceneTechniqueDesc& techniqueDesc,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 			const RenderCore::AttachmentDesc& targetAttachmentDesc);
 		~CompiledSceneTechnique();
 	};
 
 	CompiledSceneTechnique::CompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const RenderCore::AttachmentDesc& targetAttachmentDesc)
 	: _pipelineAccelerators(pipelineAccelerators)
 	{
@@ -222,7 +222,7 @@ namespace SceneEngine
 
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const RenderCore::AttachmentDesc& targetAttachmentDesc)
 	{
 		return std::make_shared<CompiledSceneTechnique>(techniqueDesc, pipelineAccelerators, targetAttachmentDesc);

@@ -25,7 +25,7 @@ namespace RenderCore { namespace Techniques
 	class Drawable; class DrawableGeo;
 	class DrawablesPacket; 
 	class ParsingContext; 
-	class PipelineAcceleratorPool; 
+	class IPipelineAcceleratorPool; 
 	class PipelineAccelerator; 
 	class DescriptorSetAccelerator;
 	class DeformOperationInstantiation;
@@ -64,7 +64,7 @@ namespace RenderCore { namespace Techniques
 		const std::string& GetMaterialScaffoldName() const { return _materialScaffoldName; }
 
 		SimpleModelRenderer(
-			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
 			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {},
@@ -77,14 +77,14 @@ namespace RenderCore { namespace Techniques
 		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName,
 			StringSection<> materialScaffoldName,
 			StringSection<> deformOperations = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			const std::shared_ptr<PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			StringSection<> modelScaffoldName);
 
 		struct DeformOp;

@@ -230,7 +230,7 @@ namespace GUILayer
 
         EditorSceneOverlay(
             const std::shared_ptr<EditorScene>& sceneParser,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings,
             const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
@@ -239,7 +239,7 @@ namespace GUILayer
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<EditorScene> _scene;
-		clix::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		clix::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		clix::shared_ptr<ToolsRig::VisCameraSettings> _camera;
         EditorSceneRenderSettings^ _renderSettings;
         clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCells;
@@ -318,7 +318,7 @@ namespace GUILayer
 
     EditorSceneOverlay::EditorSceneOverlay(
         const std::shared_ptr<EditorScene>& sceneParser,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
         EditorSceneRenderSettings^ renderSettings,
         const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
@@ -341,7 +341,7 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             const std::shared_ptr<EditorScene>& scene, 
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
             const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings)
         {

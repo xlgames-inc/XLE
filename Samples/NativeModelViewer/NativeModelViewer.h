@@ -7,7 +7,7 @@
 #include "../Shared/SampleRig.h"
 
 namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class PipelineAcceleratorPool; } }
+namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; } }
 
 namespace Sample
 {
@@ -29,6 +29,6 @@ namespace Sample
 		NativeModelViewerOverlay();
 		~NativeModelViewerOverlay();
 	private:
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 	};
 }

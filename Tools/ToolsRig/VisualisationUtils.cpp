@@ -113,7 +113,7 @@ namespace ToolsRig
 
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
     };
 
     void ModelVisLayer::Render(
@@ -242,7 +242,7 @@ namespace ToolsRig
 		}
 	}
 	
-    ModelVisLayer::ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators)
+    ModelVisLayer::ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
@@ -270,7 +270,7 @@ namespace ToolsRig
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		VisCameraSettings& cameraSettings,
 		VisEnvSettings& envSettings,
 		SceneEngine::IScene& scene,
@@ -587,7 +587,7 @@ namespace ToolsRig
 	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
 		const RenderCore::Techniques::TechniqueContext& techniqueContext,
-		RenderCore::Techniques::PipelineAcceleratorPool& pipelineAccelerators,
+		RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         std::pair<Float3, Float3> worldSpaceRay,
 		SceneEngine::IScene& scene)
 	{
@@ -746,7 +746,7 @@ namespace ToolsRig
         MouseOverTrackingListener(
             const std::shared_ptr<VisMouseOver>& mouseOver,
             const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
             const std::shared_ptr<VisCameraSettings>& camera)
         : _mouseOver(mouseOver)
         , _techniqueContext(techniqueContext)
@@ -758,7 +758,7 @@ namespace ToolsRig
     protected:
         std::shared_ptr<VisMouseOver> _mouseOver;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
         std::shared_ptr<VisCameraSettings> _camera;
         
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
@@ -803,7 +803,7 @@ namespace ToolsRig
     MouseOverTrackingOverlay::MouseOverTrackingOverlay(
         const std::shared_ptr<VisMouseOver>& mouseOver,
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
         const std::shared_ptr<VisCameraSettings>& camera,
         OverlayFn&& overlayFn)
     : _overlayFn(std::move(overlayFn))

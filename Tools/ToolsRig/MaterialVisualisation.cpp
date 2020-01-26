@@ -195,7 +195,7 @@ namespace ToolsRig
 
 		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			PatchCollectionFuture&& patchCollectionFuture,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
         : _settings(settings)
@@ -206,7 +206,7 @@ namespace ToolsRig
 			if (!mat)
 				mat = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
 
-			std::weak_ptr<RenderCore::Techniques::PipelineAcceleratorPool> weakPipelineAcceleratorPool = pipelineAcceleratorPool;
+			std::weak_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> weakPipelineAcceleratorPool = pipelineAcceleratorPool;
 
 			_pipelineFuture = patchCollectionFuture.then(
 				[weakPipelineAcceleratorPool, mat](const std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>& patchCollection) {
@@ -288,7 +288,7 @@ namespace ToolsRig
     };
 
 	std::shared_ptr<SceneEngine::IScene> MakeScene(
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject,
 		const PatchCollectionFuture& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)

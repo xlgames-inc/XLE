@@ -200,7 +200,7 @@ namespace ToolsRig
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<ModelScene>& future,
-			const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const ModelVisSettings& settings)
 		{
 			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(pipelineAcceleratorPool, settings._modelName, settings._materialName, "skin");
@@ -334,7 +334,7 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const ModelVisSettings& settings)
 	{
 		auto modelScene = std::make_shared<::Assets::AssetFuture<ModelScene>>("ModelVisualization");

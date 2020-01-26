@@ -26,7 +26,7 @@ namespace RenderCore { namespace Techniques
 	class IUniformBufferDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
-	class PipelineAcceleratorPool;
+	class IPipelineAcceleratorPool;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		UniformsStream			GetGlobalUniformsStream() const;
         
-		RenderCore::Techniques::PipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
+		RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
 
 		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
 		void RemoveUniformDelegate(uint64_t binding);

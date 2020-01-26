@@ -49,7 +49,7 @@ namespace Sample
 			RenderCore::IThreadContext& context, 
             SceneEngine::SceneExecuteContext& executeContext);
 
-        Model(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool);
+        Model(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool);
         ~Model();
     protected:
         std::unique_ptr<FixedFunctionModel::SharedStateSet> _sharedStateSet;
@@ -67,7 +67,7 @@ namespace Sample
         _model->RenderOpaque_SimpleModelRenderer(context, executeContext);
     }
 
-	BasicSceneParser::BasicSceneParser(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool)
+	BasicSceneParser::BasicSceneParser(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool)
 	{
 		_model = std::make_unique<Model>(pipelineAcceleratorPool);
 	}
@@ -77,7 +77,7 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BasicSceneParser::Model::Model(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool)
+    BasicSceneParser::Model::Model(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool)
     {
         _sharedStateSet = std::make_unique<FixedFunctionModel::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());

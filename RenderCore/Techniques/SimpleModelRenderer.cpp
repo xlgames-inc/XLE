@@ -449,7 +449,7 @@ namespace RenderCore { namespace Techniques
 	class SimpleModelRenderer::GeoCallBuilder
 	{
 	public:
-		std::shared_ptr<Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		const RenderCore::Assets::MaterialScaffold* _materialScaffold;
 		std::string _materialScaffoldName;
 
@@ -532,7 +532,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	SimpleModelRenderer::SimpleModelRenderer(
-		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
 		IteratorRange<const DeformOperationInstantiation*> deformAttachments,
@@ -669,7 +669,7 @@ namespace RenderCore { namespace Techniques
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
-		const std::shared_ptr<Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		StringSection<> modelScaffoldName,
 		StringSection<> materialScaffoldName,
 		StringSection<> deformOperations)

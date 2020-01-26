@@ -42,7 +42,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-	std::shared_ptr<PipelineAcceleratorPool> CreatePipelineAcceleratorPool();
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool();
 }}
 
 namespace GUILayer

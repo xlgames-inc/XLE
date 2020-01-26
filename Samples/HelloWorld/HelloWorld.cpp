@@ -95,7 +95,7 @@ namespace Sample
 
 	void HelloWorldOverlay::OnStartup(const SampleGlobals& globals)
 	{
-		_pipelineAcceleratorPool = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
+		_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 		_scene = std::make_shared<BasicSceneParser>(_pipelineAcceleratorPool);
 		_lightingDelegate = std::make_shared<SampleLightingDelegate>();
 		_inputListener = std::make_shared<InputListener>();

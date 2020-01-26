@@ -166,12 +166,11 @@ namespace UnitTests
 			auto techniqueSharedResources = std::make_shared<Techniques::TechniqueSharedResources>();
 			auto techniqueDelegate = Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, techniqueSharedResources);
 
-			Techniques::PipelineAcceleratorPool mainPool;
-			mainPool.SetGlobalSelector("GLOBAL_SEL", 55);
-			auto cfgId = mainPool.CreateSequencerConfig(
+			auto mainPool = Techniques::CreatePipelineAcceleratorPool();
+			mainPool->SetGlobalSelector("GLOBAL_SEL", 55);
+			auto cfgId = mainPool->CreateSequencerConfig(
 				techniqueDelegate,
 				ParameterBox { std::make_pair(u("SEQUENCER_SEL"), "37") },
-				FrameBufferProperties { 1024, 1024, TextureSamples::Create() },
 				MakeSimpleFrameBufferDesc());
 
 			RenderCore::Assets::RenderStateSet doubledSidedStateSet;
@@ -182,14 +181,14 @@ namespace UnitTests
 				//
 			{
 				auto compiledPatches = GetCompiledPatchCollectionFromText(s_exampleTechniqueFragments);
-				auto pipelineAccelerator = mainPool.CreatePipelineAccelerator(
+				auto pipelineAccelerator = mainPool->CreatePipelineAccelerator(
 					compiledPatches,
 					ParameterBox { std::make_pair(u("SIMPLE_BIND"), "1") },
 					GlobalInputLayouts::PNT,
 					Topology::TriangleList,
 					doubledSidedStateSet);
 
-				auto finalPipeline = mainPool.GetPipeline(*pipelineAccelerator, *cfgId);
+				auto finalPipeline = mainPool->GetPipeline(*pipelineAccelerator, *cfgId);
 				finalPipeline->StallWhilePending();
 				::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 				auto pipelineActual = finalPipeline->Actualize();
@@ -202,7 +201,7 @@ namespace UnitTests
 				//
 			{
 				auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueForColorFromSelector);
-				auto pipelineNoTexCoord = mainPool.CreatePipelineAccelerator(
+				auto pipelineNoTexCoord = mainPool->CreatePipelineAccelerator(
 					compiledPatches,
 					ParameterBox {},
 					GlobalInputLayouts::P,
@@ -214,12 +213,12 @@ namespace UnitTests
 						//	We should get a valid pipeline in this case; since there are no texture coordinates
 						//	on the geometry, this disables the code that triggers a compiler warning
 						//
-					auto finalPipeline = mainPool.GetPipeline(*pipelineNoTexCoord, *cfgId);
+					auto finalPipeline = mainPool->GetPipeline(*pipelineNoTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 				}
 
-				auto pipelineWithTexCoord = mainPool.CreatePipelineAccelerator(
+				auto pipelineWithTexCoord = mainPool->CreatePipelineAccelerator(
 					compiledPatches,
 					ParameterBox {},
 					GlobalInputLayouts::PCT,
@@ -232,7 +231,7 @@ namespace UnitTests
 						//	error message -- that is the shader compile error should propagate through
 						//	to the pipeline error log
 						//
-					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgId);
+					auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Invalid);
 					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
@@ -248,14 +247,13 @@ namespace UnitTests
 					TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 					"temporary-out");
 				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
-				auto cfgIdWithColor = mainPool.CreateSequencerConfig(
+				auto cfgIdWithColor = mainPool->CreateSequencerConfig(
 					techniqueDelegate,
 					ParameterBox { std::make_pair(u("COLOR_RED"), "1") },
-					FrameBufferProperties { 64, 64, TextureSamples::Create() },
 					MakeSimpleFrameBufferDesc());
 
 				{
-					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
+					auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 
@@ -270,14 +268,13 @@ namespace UnitTests
 				Assert::IsTrue(breakdown0.begin()->first == 0xff0000ff);
 
 				// Change the sequencer config to now set the COLOR_GREEN selector
-				cfgIdWithColor = mainPool.CreateSequencerConfig(
+				cfgIdWithColor = mainPool->CreateSequencerConfig(
 					techniqueDelegate,
 					ParameterBox { std::make_pair(u("COLOR_GREEN"), "1") },
-					FrameBufferProperties { 64, 64, TextureSamples::Create() },
 					MakeSimpleFrameBufferDesc());
 
 				{
-					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
+					auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 					finalPipeline->StallWhilePending();
 					::Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
 
@@ -387,17 +384,16 @@ namespace UnitTests
 				using namespace RenderCore;
 				std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 
-				Techniques::PipelineAcceleratorPool mainPool;
-				auto cfgId = mainPool.CreateSequencerConfig(
+				auto mainPool = Techniques::CreatePipelineAcceleratorPool();
+				auto cfgId = mainPool->CreateSequencerConfig(
 					Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, std::make_shared<Techniques::TechniqueSharedResources>()),
 					ParameterBox {},
-					FrameBufferProperties { 64, 64, TextureSamples::Create() },
 					MakeSimpleFrameBufferDesc());
 
 				RenderCore::Assets::RenderStateSet doubledSidedStateSet;
 				doubledSidedStateSet._doubleSided = true;
 
-				auto pipelineWithTexCoord = mainPool.CreatePipelineAccelerator(
+				auto pipelineWithTexCoord = mainPool->CreatePipelineAccelerator(
 					compiledPatches,
 					ParameterBox {},
 					GlobalInputLayouts::PCT,
@@ -412,7 +408,7 @@ namespace UnitTests
 				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
 				
 				{
-					auto finalPipeline = mainPool.GetPipeline(*pipelineWithTexCoord, *cfgId);
+					auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgId);
 					finalPipeline->StallWhilePending();
 					auto log = ::Assets::AsString(finalPipeline->GetActualizationLog());
 					Assert::IsTrue(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);

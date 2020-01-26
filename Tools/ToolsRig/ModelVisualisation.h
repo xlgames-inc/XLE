@@ -10,7 +10,7 @@
 #include <string>
 
 namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class PipelineAcceleratorPool; } }
+namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; } }
 
 namespace ToolsRig
 {
@@ -41,7 +41,7 @@ namespace ToolsRig
 	};
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const ModelVisSettings& settings);
 }
 

@@ -31,7 +31,7 @@ namespace GUILayer
         int                         GetCreationThreadId() { return _creationThreadId; }
         RenderCore::Assets::Services* GetRenderAssetServices() { return _renderAssetsServices.get(); }
 
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& GetMainPipelineAcceleratorPool() { return _pipelineAcceleratorPool; }
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool() { return _pipelineAcceleratorPool; }
 
         NativeEngineDevice();
         ~NativeEngineDevice();
@@ -42,12 +42,13 @@ namespace GUILayer
         ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::Console> _console;
         ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderAssetsServices;
+		ConsoleRig::AttachablePtr<RenderCore::Techniques::Services> _techniquesServices;
         ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _services;
 		std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
 		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
 		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
     };
 
 	class RenderTargetWrapper

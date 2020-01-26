@@ -7,7 +7,7 @@
 #include "../Shared/SampleRig.h"
 
 namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class PipelineAcceleratorPool; } }
+namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; } }
 
 namespace Sample
 {
@@ -28,7 +28,7 @@ namespace Sample
 	private:
 		std::shared_ptr<SceneEngine::IScene> _scene;
 		std::shared_ptr<SampleLightingDelegate> _lightingDelegate;
-		std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool> _pipelineAcceleratorPool;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 
 		class InputListener;
 		std::shared_ptr<InputListener> _inputListener;

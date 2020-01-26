@@ -22,7 +22,7 @@ namespace RenderCore { namespace Techniques {
 	class CameraDesc; class ProjectionDesc; 
 	class ParsingContext; 
 	enum class BatchFilter; 
-	class PipelineAcceleratorPool; 
+	class IPipelineAcceleratorPool; 
 }}
 
 namespace RenderCore { class AttachmentDesc; class FrameBufferProperties; }
@@ -51,7 +51,7 @@ namespace SceneEngine
 	class CompiledSceneTechnique;
 	std::shared_ptr<CompiledSceneTechnique> CreateCompiledSceneTechnique(
 		const SceneTechniqueDesc& techniqueDesc,
-		const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const RenderCore::AttachmentDesc& targetAttachmentDesc);
 
     /// <summary>Execute rendering</summary>

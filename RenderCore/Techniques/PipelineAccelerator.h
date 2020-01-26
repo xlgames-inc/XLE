@@ -28,48 +28,46 @@ namespace RenderCore { namespace Techniques
 	class ITechniqueDelegate;
 	class SequencerConfig;
 
-	class PipelineAcceleratorPool
+	// Switching this to a virtual interface style class in order to better support multiple DLLs/modules
+	// For many objects like the SimpleModelRenderer, the pipeline accelerator pools is one of the main
+	// interfaces for interacting with render states and shaders. By making this an interface class, it
+	// allows us to keep the implementation for the pool in the main host module, even if DLLs have their
+	// own SimpleModelRenderer, etc
+	class IPipelineAcceleratorPool
 	{
 	public:
-		std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
+		virtual std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
-			const RenderCore::Assets::RenderStateSet& stateSet);
+			const RenderCore::Assets::RenderStateSet& stateSet) = 0;
 
-		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
+		virtual std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex = 0);
+			unsigned subpassIndex = 0) = 0;
 
-		const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const;
-		const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const;
+		virtual const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
+		virtual const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
 
-		void			SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type);
+		virtual void	SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type) = 0;
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
-		void			RemoveGlobalSelector(StringSection<> name);
+		virtual void	RemoveGlobalSelector(StringSection<> name) = 0;
 
-		void			SetFrameBufferProperties(const FrameBufferProperties& fbProps);
+		virtual void	SetFrameBufferProperties(const FrameBufferProperties& fbProps) = 0;
+		virtual void	RebuildAllOutOfDatePipelines() = 0;
 
-		unsigned		GetGUID() const { return _guid; }
+		virtual ~IPipelineAcceleratorPool();
 
-		void			RebuildAllOutOfDatePipelines();
-
-		PipelineAcceleratorPool();
-		~PipelineAcceleratorPool();
-		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
-		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
-
+		unsigned GetGUID() const { return _guid; }
 		uint64_t GetHash() const { return _guid; }	// GetHash() function for Assets::Internal::HashParam expansion
-	private:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
+	protected:
 		unsigned _guid;
 	};
 
-	T1(Type) inline void   PipelineAcceleratorPool::SetGlobalSelector(StringSection<> name, Type value)
+	T1(Type) inline void   IPipelineAcceleratorPool::SetGlobalSelector(StringSection<> name, Type value)
 	{
 		const auto insertType = ImpliedTyping::TypeOf<Type>();
         auto size = insertType.GetSize();
@@ -77,6 +75,6 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, AsOpaqueIteratorRange(value), insertType);
 	}
 
-	std::shared_ptr<PipelineAcceleratorPool> CreatePipelineAcceleratorPool();
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool();
 }}
 

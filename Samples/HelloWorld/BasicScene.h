@@ -11,7 +11,7 @@
 #include <memory>
 
 namespace SceneEngine { class ILightingParserDelegate; }
-namespace RenderCore { namespace Techniques { class PipelineAcceleratorPool; }}
+namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; }}
 
 namespace Sample
 {
@@ -22,7 +22,7 @@ namespace Sample
             RenderCore::IThreadContext& context, 
             SceneEngine::SceneExecuteContext& executeContext) const;
 
-		BasicSceneParser(const std::shared_ptr<RenderCore::Techniques::PipelineAcceleratorPool>&);
+		BasicSceneParser(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>&);
 		~BasicSceneParser();
 	protected:
 		class Model;
