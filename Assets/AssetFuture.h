@@ -9,6 +9,7 @@
 #include <string>
 #include <functional>
 #include <assert.h>
+#include <utility>
 
 namespace Assets
 {
@@ -25,12 +26,16 @@ namespace Assets
 		const AssetPtr<AssetType>& Actualize() const;
 		const AssetPtr<AssetType>& TryActualize() const;
 
-		void			OnFrameBarrier();
 		bool			IsOutOfDate() const;
 		void			SimulateChange();
 		
 		AssetState		            GetAssetState() const;
         std::optional<AssetState>   StallWhilePending(std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
+
+		AssetState		CheckStatusBkgrnd(
+			AssetPtr<AssetType>& actualized,
+			DepValPtr& depVal,
+			Blob& actualizationLog) const;
 
 		const std::string&		    Initializer() const { return _initializer; }
 		const DepValPtr&		    GetDependencyValidation() const { return _actualizedDepVal; }
@@ -39,8 +44,8 @@ namespace Assets
 		explicit AssetFuture(const std::string& initializer);
 		~AssetFuture();
 
-		AssetFuture(AssetFuture&&) = default;
-		AssetFuture& operator=(AssetFuture&&) = default;
+		AssetFuture(AssetFuture&&);
+		AssetFuture& operator=(AssetFuture&&);
 
 		void SetAsset(AssetPtr<AssetType>&&, const Blob& log);
 		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);
@@ -64,10 +69,38 @@ namespace Assets
 		std::function<bool(AssetFuture<AssetType>&)> _pollingFunction;
 
 		std::string			_initializer;	// stored for debugging purposes
+		
+		void				OnFrameBarrier();
+
+		struct CallbackMarker { unsigned _markerId; AssetFuture<AssetType>* _parent; };
+		mutable std::shared_ptr<CallbackMarker> _frameBarrierCallbackMarker;
+
+		void RegisterFrameBarrierCallbackAlreadyLocked();
+		void ClearFrameBarrierCallbackAlreadyLocked() const;
 	};
 
 	template<typename AssetType>
 		using FuturePtr = std::shared_ptr<AssetFuture<AssetType>>;
+
+	namespace Internal
+	{
+		template<typename AssetType>
+			static auto HasGetDependencyValidation_Helper(int) -> decltype(std::declval<AssetType>().GetDependencyValidation(), std::true_type{});
+
+		template<typename...>
+			static auto HasGetDependencyValidation_Helper(...) -> std::false_type;
+
+		template<typename AssetType>
+			struct HasGetDependencyValidation : decltype(HasGetDependencyValidation_Helper<AssetType>(0)) {};
+
+		template<typename AssetType, typename std::enable_if<HasGetDependencyValidation<AssetType>::value>::type* =nullptr>
+			decltype(std::declval<AssetType>().GetDependencyValidation()) GetDependencyValidation(const AssetType& asset) { return asset.GetDependencyValidation(); }
+		template<typename AssetType, typename std::enable_if<!HasGetDependencyValidation<AssetType>::value>::type* =nullptr>
+			inline DepValPtr GetDependencyValidation(const AssetType&) { return nullptr; }
+
+		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn);
+		void DeregisterFrameBarrierCallback(unsigned);
+	}
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,16 +127,37 @@ namespace Assets
 		if (_state == AssetState::Ready)
 			return _actualized;
 
-		// If our current state is pending, we must try the polling function at least once (otherwise 
-		// when TryActualize is called in a loop, there's no guarantee that the polling function will
-		// ever be called)
-		const_cast<AssetFuture<AssetType>*>(this)->OnFrameBarrier();
-
-		if (_state == AssetState::Ready)
-			return _actualized;
-
 		static AssetPtr<AssetType> dummy;
 		return dummy;
+	}
+
+	template<typename AssetType>
+		AssetState		AssetFuture<AssetType>::CheckStatusBkgrnd(AssetPtr<AssetType>& actualized, DepValPtr& depVal, Blob& actualizationLog) const
+	{
+		if (_state == AssetState::Ready) {
+			actualized = _actualized;
+			depVal = _actualizedDepVal;
+			actualizationLog = _actualizationLog;
+			return AssetState::Ready;
+		}
+
+		{
+			ScopedLock(_lock);
+			if (_state != AssetState::Pending) {
+				actualized = _actualized;
+				depVal = _actualizedDepVal;
+				actualizationLog = _actualizationLog;
+				return _state;
+			}
+			if (_pendingState != AssetState::Pending) {
+				actualized = _pending;
+				depVal = _pendingDepVal;
+				actualizationLog = _pendingActualizationLog;
+				return _pendingState;
+			}
+		}
+
+		return AssetState::Pending;
 	}
 
 	template<typename AssetType>
@@ -125,6 +179,7 @@ namespace Assets
 			if (pollingResult) std::swap(pollingFunction, _pollingFunction);
 		}
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
+			ClearFrameBarrierCallbackAlreadyLocked();
 			_actualized = std::move(_pending);
 			_actualizationLog = std::move(_pendingActualizationLog);
 			_actualizedDepVal = std::move(_pendingDepVal);
@@ -215,6 +270,7 @@ namespace Assets
 				// There is a problem if the caller is using bothActualize() and StallWhilePending() on the
 				// same asset in the same frame -- in this case, the order can have side effects.
 				assert(that->_state == AssetState::Pending);
+				ClearFrameBarrierCallbackAlreadyLocked();
 				that->_actualized = std::move(that->_pending);
 				that->_actualizationLog = std::move(that->_pendingActualizationLog);
 				that->_actualizedDepVal = std::move(that->_pendingDepVal);
@@ -239,7 +295,8 @@ namespace Assets
 			_pending = std::move(newAsset);
 			_pendingState = AssetState::Ready;
 			_pendingActualizationLog = log;
-			_pendingDepVal = _pending ? _pending->GetDependencyValidation() : nullptr;
+			_pendingDepVal = _pending ? Internal::GetDependencyValidation(*_pending) : nullptr;
+			RegisterFrameBarrierCallbackAlreadyLocked();
 
 			// If we are already in invalid / ready state, we will never move the pending
 			// asset into the foreground. We also cannot change from those states to pending, 
@@ -256,9 +313,10 @@ namespace Assets
 		// asset and goes immediately into ready state
 		{
 			ScopedLock(_lock);
+			ClearFrameBarrierCallbackAlreadyLocked();
 			_actualized = std::move(newAsset);
 			_actualizationLog = log;
-			_actualizedDepVal = _actualized ? _actualized->GetDependencyValidation() : nullptr;
+			_actualizedDepVal = _actualized ? Internal::GetDependencyValidation(*_actualized) : nullptr;
 			_state = _actualized ? AssetState::Ready : AssetState::Invalid;
 		}
 		_conditional.notify_all();
@@ -274,6 +332,7 @@ namespace Assets
 			_pendingState = AssetState::Invalid;
 			_pendingActualizationLog = log;
 			_pendingDepVal = depVal;
+			RegisterFrameBarrierCallbackAlreadyLocked();
 		}
 		_conditional.notify_all();
 	}
@@ -287,6 +346,7 @@ namespace Assets
 			ScopedLock(_lock);
 			assert(_state == AssetState::Pending);
 			if (_pendingState != AssetState::Pending) {
+				ClearFrameBarrierCallbackAlreadyLocked();
 				_actualized = std::move(_pending);
 				_actualizationLog = std::move(_pendingActualizationLog);
 				_actualizedDepVal = std::move(_pendingDepVal);
@@ -303,6 +363,90 @@ namespace Assets
 		assert(_state == AssetState::Pending);
 		assert(_pendingState == AssetState::Pending && !_pending);
 		_pollingFunction = std::move(newFunction);
+		RegisterFrameBarrierCallbackAlreadyLocked();
+	}
+
+	template<typename AssetType>
+		void AssetFuture<AssetType>::RegisterFrameBarrierCallbackAlreadyLocked()
+	{
+		if (_frameBarrierCallbackMarker)
+			return;
+
+		_frameBarrierCallbackMarker = std::make_shared<CallbackMarker>();
+		_frameBarrierCallbackMarker->_parent = this;
+		std::weak_ptr<CallbackMarker> weakMarker = _frameBarrierCallbackMarker;
+		_frameBarrierCallbackMarker->_markerId = Internal::RegisterFrameBarrierCallback(
+			[weakMarker]() {
+				auto l = weakMarker.lock();
+				if (!l) return;
+				l->_parent->OnFrameBarrier();
+			});
+	}
+
+	template<typename AssetType>
+		void AssetFuture<AssetType>::ClearFrameBarrierCallbackAlreadyLocked() const
+	{
+		if (!_frameBarrierCallbackMarker)
+			return;
+
+		Internal::DeregisterFrameBarrierCallback(_frameBarrierCallbackMarker->_markerId);
+		_frameBarrierCallbackMarker.reset();
+	}
+
+	template<typename AssetType>
+		AssetFuture<AssetType>::AssetFuture(AssetFuture&& moveFrom)
+	{
+		ScopedLock(moveFrom._lock);
+
+		bool needsFrameBufferCallback = moveFrom._frameBarrierCallbackMarker != nullptr;
+		moveFrom.ClearFrameBarrierCallbackAlreadyLocked();
+		_state = moveFrom.state;
+		moveFrom.state = AssetState::Pending;
+		_actualized = std::move(moveFrom._actualized);
+		_actualizationLog = std::move(moveFrom._actualizationLog);
+		_actualizedDepVal = std::move(moveFrom._actualizedDepVal);
+
+		_pendingState = moveFrom._pendingState;
+		moveFrom._pendingState = AssetState::Pending;
+		_pending = std::move(moveFrom._pending);
+		_pendingActualizationLog = std::move(moveFrom._pendingActualizationLog);
+		_pendingDepVal = std::move(moveFrom._pendingDepVal);
+
+		_pollingFunction = std::move(moveFrom._pollingFunction);
+		_initializer = std::move(moveFrom._initializer);
+		if (needsFrameBufferCallback)
+			RegisterFrameBarrierCallbackAlreadyLocked();
+	}
+
+	template<typename AssetType>
+		AssetFuture<AssetType>& AssetFuture<AssetType>::operator=(AssetFuture&& moveFrom)
+	{
+		std::lock(_lock, moveFrom._lock);
+        std::lock_guard<Threading::Mutex> lk1(_lock, std::adopt_lock);
+        std::lock_guard<Threading::Mutex> lk2(moveFrom._lock, std::adopt_lock);
+
+		ClearFrameBarrierCallbackAlreadyLocked();
+
+		bool needsFrameBufferCallback = moveFrom._frameBarrierCallbackMarker != nullptr;
+		moveFrom.ClearFrameBarrierCallbackAlreadyLocked();
+		_state = moveFrom.state;
+		moveFrom.state = AssetState::Pending;
+		_actualized = std::move(moveFrom._actualized);
+		_actualizationLog = std::move(moveFrom._actualizationLog);
+		_actualizedDepVal = std::move(moveFrom._actualizedDepVal);
+
+		_pendingState = moveFrom._pendingState;
+		moveFrom._pendingState = AssetState::Pending;
+		_pending = std::move(moveFrom._pending);
+		_pendingActualizationLog = std::move(moveFrom._pendingActualizationLog);
+		_pendingDepVal = std::move(moveFrom._pendingDepVal);
+
+		_pollingFunction = std::move(moveFrom._pollingFunction);
+		_initializer = std::move(moveFrom._initializer);
+		if (needsFrameBufferCallback)
+			RegisterFrameBarrierCallbackAlreadyLocked();
+
+		return *this;
 	}
 
 	template<typename AssetType>
@@ -317,6 +461,10 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		AssetFuture<AssetType>::~AssetFuture() {}
+		AssetFuture<AssetType>::~AssetFuture() 
+	{
+		if (_frameBarrierCallbackMarker)
+			Internal::DeregisterFrameBarrierCallback(_frameBarrierCallbackMarker->_markerId);
+	}
 
 }

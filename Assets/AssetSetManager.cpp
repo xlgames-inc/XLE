@@ -20,6 +20,10 @@ namespace Assets
 	public:
 		std::vector<std::pair<size_t, std::unique_ptr<IDefaultAssetHeap>>> _sets;
 		std::vector<std::pair<size_t, std::unique_ptr<IDefaultAssetHeap>>> _setsPendingIteration;
+		std::vector<std::pair<unsigned, std::function<void()>>> _frameBarrierFunctions;
+		std::vector<std::pair<unsigned, std::function<void()>>> _pendingFrameBarrierFunctions;
+		std::vector<unsigned> _pendingRemoveFrameBarrierFunctions;
+		unsigned _nextFrameBufferMarkerId = 1;
 		Threading::RecursiveMutex _lock;
 
 		bool _inIterationOperation = false;
@@ -93,14 +97,49 @@ namespace Assets
 	{
 		ScopedLock(_pimpl->_lock);
 		_pimpl->_inIterationOperation = true;
-		for (auto&set:_pimpl->_sets)
-			set.second->OnFrameBarrier();
+		for (auto&fn:_pimpl->_frameBarrierFunctions)
+			fn.second();
 
 		// If we queued up any new sets to add to the main list, handle them now
 		for (auto&set:_pimpl->_setsPendingIteration)
 			_pimpl->_sets.insert(LowerBound(_pimpl->_sets, set.first), std::move(set));
 		_pimpl->_setsPendingIteration.clear();
+
+		_pimpl->_frameBarrierFunctions.insert(_pimpl->_frameBarrierFunctions.end(), _pimpl->_pendingFrameBarrierFunctions.begin(), _pimpl->_pendingFrameBarrierFunctions.end());
+		_pimpl->_pendingFrameBarrierFunctions.clear();
+
+		for (auto r:_pimpl->_pendingRemoveFrameBarrierFunctions) {
+			auto i = LowerBound(_pimpl->_frameBarrierFunctions, r);
+			if (i!=_pimpl->_frameBarrierFunctions.end() && i->first == r)
+				_pimpl->_frameBarrierFunctions.erase(i);
+		}
+		_pimpl->_pendingRemoveFrameBarrierFunctions.clear();
+
 		_pimpl->_inIterationOperation = false;
+	}
+
+	unsigned AssetSetManager::RegisterFrameBarrierCallback(std::function<void()>&& fn)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto result = _pimpl->_nextFrameBufferMarkerId++;
+		if (!_pimpl->_inIterationOperation) {
+			_pimpl->_frameBarrierFunctions.emplace_back(std::make_pair(result, std::move(fn)));
+		} else {
+			_pimpl->_pendingFrameBarrierFunctions.emplace_back(std::make_pair(result, std::move(fn)));
+		}
+		return result;
+	}
+
+	void AssetSetManager::DeregisterFrameBarrierCallback(unsigned markerId)
+	{
+		ScopedLock(_pimpl->_lock);
+		if (!_pimpl->_inIterationOperation) {
+			auto i = LowerBound(_pimpl->_frameBarrierFunctions, markerId);
+			if (i!=_pimpl->_frameBarrierFunctions.end() && i->first == markerId)
+				_pimpl->_frameBarrierFunctions.erase(i);
+		} else {
+			_pimpl->_pendingRemoveFrameBarrierFunctions.push_back(markerId);
+		}
 	}
 
     AssetSetManager::AssetSetManager()
@@ -112,6 +151,18 @@ namespace Assets
     {}
 
 
+	namespace Internal
+	{
+		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn)
+		{
+			return GetAssetSetManager().RegisterFrameBarrierCallback(std::move(fn));
+		}
+
+		void DeregisterFrameBarrierCallback(unsigned markerId)
+		{
+			GetAssetSetManager().DeregisterFrameBarrierCallback(markerId);
+		}
+	}
 
 	IDefaultAssetHeap::~IDefaultAssetHeap() {}
 

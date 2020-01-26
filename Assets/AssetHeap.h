@@ -27,7 +27,6 @@ namespace Assets
 	class IDefaultAssetHeap
 	{
 	public:
-		virtual void			OnFrameBarrier() = 0; 
 		virtual uint64_t		GetTypeCode() const = 0;
 		virtual std::string		GetTypeName() const = 0;
 		virtual void            Clear() = 0;
@@ -53,7 +52,6 @@ namespace Assets
 		void            Clear();
 		uint64_t		GetTypeCode() const;
 		std::string		GetTypeName() const;
-		void			OnFrameBarrier();
 
 		std::vector<AssetHeapRecord>		LogRecords() const;
 
@@ -139,16 +137,6 @@ namespace Assets
 			i->second->SimulateChange();
 
 		return hash;
-	}
-
-	template<typename AssetType>
-		void DefaultAssetHeap<AssetType>::OnFrameBarrier()
-	{
-		ScopedLock(_lock);
-		for (const auto&a:_assets)
-			a.second->OnFrameBarrier();
-		for (const auto&a: _shadowingAssets)
-			a.second->OnFrameBarrier();
 	}
 
 	template<typename AssetType>

@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <functional>
 
 namespace Assets
 {
@@ -33,6 +34,9 @@ namespace Assets
 
         void Lock();
         void Unlock();
+
+		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn);
+		void DeregisterFrameBarrierCallback(unsigned);
 
         AssetSetManager();
         ~AssetSetManager();
