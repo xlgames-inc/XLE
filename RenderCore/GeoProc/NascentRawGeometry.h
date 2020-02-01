@@ -25,9 +25,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Format                      _indexFormat = Format(0);
         std::vector<DrawCallDesc>   _mainDrawCalls;
 
+		Float4x4 _geoSpaceToNodeSpace = Identity<Float4x4>();
+
             //  Only required during processing
-        size_t						_unifiedVertexCount;
-		std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;
+        size_t						_finalVertexCount;
+		std::vector<uint32_t>		_finalVertexIndexToOriginalIndex;
 
         void SerializeWithResourceBlock(
             Serialization::NascentBlockSerializer& outputSerializer, 

@@ -48,6 +48,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::shared_ptr<MeshDatabase>	_mesh;
 			std::vector<DrawCallDesc>		_drawCalls;
 			std::vector<uint32_t>			_meshVertexIndexToSrcIndex;		// srcIndex = _meshVertexIndexToSrcIndex[meshDatabaseUnifiedVertexIndex]
+			Float4x4						_geoSpaceToNodeSpace;
 
 			std::vector<uint8_t>			_indices;
 			Format							_indexFormat = Format(0);

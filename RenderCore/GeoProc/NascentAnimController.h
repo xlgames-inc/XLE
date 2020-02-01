@@ -32,6 +32,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         GeoInputAssembly            _mainDrawAnimatedIA;
 
         std::vector<DrawCallDesc>	_mainDrawCalls;
+		Float4x4					_geoSpaceToNodeSpace = Identity<Float4x4>();
 
         std::vector<uint8_t>		_animatedVertexElements;
         std::vector<uint8_t>		_skeletonBinding;
@@ -43,11 +44,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::vector<Float4x4>		_bindShapeByInverseBindMatrices;
 			std::vector<DrawCallDesc>   _preskinningDrawCalls;
 			std::vector<uint16_t>		_jointMatrices;
+			Float4x4					_bindShapeMatrix;
 		};
 		std::vector<Section>		_preskinningSections;
         GeoInputAssembly            _preskinningIA;
 
         std::pair<Float3, Float3>	_localBoundingBox = InvalidBoundingBox();
+		std::vector<uint32_t>		_finalVertexIndexToOriginalIndex;
 
         void    SerializeWithResourceBlock(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         friend std::ostream& StreamOperator(std::ostream&, const NascentBoundSkinnedGeometry&);

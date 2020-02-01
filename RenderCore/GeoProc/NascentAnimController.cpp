@@ -43,7 +43,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         };
 
 		Bucket						_bucket[4];      // 4, 2, 1, 0
-        std::vector<uint32_t>		_positionIndexToBucketIndex;
+        std::vector<uint32_t>		_originalIndexToBucketIndex;
 		std::vector<unsigned>		_jointIndexRemapping;
 
 		void RemapJoints(IteratorRange<const unsigned*> newIndices);
@@ -149,7 +149,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         VertexWeightAttachmentBucket<1> bucket1;
         VertexWeightAttachmentBucket<0> bucket0;
 
-        _positionIndexToBucketIndex.reserve(src._influenceCount.size());
+        _originalIndexToBucketIndex.reserve(src._influenceCount.size());
 
 		auto influenceI = src._influenceCount.begin();
         for (; influenceI!=src._influenceCount.end(); ++influenceI) {
@@ -213,9 +213,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 }
             #endif
 
-			if (_positionIndexToBucketIndex.size() <= (size_t)vertexIndex)
-				_positionIndexToBucketIndex.resize(vertexIndex+1, ~0u);
-			assert(_positionIndexToBucketIndex[vertexIndex] == ~0u);
+			if (_originalIndexToBucketIndex.size() <= (size_t)vertexIndex)
+				_originalIndexToBucketIndex.resize(vertexIndex+1, ~0u);
+			assert(_originalIndexToBucketIndex[vertexIndex] == ~0u);
 
             if (influenceCount >= 3) {
                 if (influenceCount > 4) {
@@ -232,19 +232,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 }
 
                     // (we could do a separate bucket for 3, if it was useful)
-                _positionIndexToBucketIndex[vertexIndex] = (0<<16) | (uint32_t(bucket4._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (0<<16) | (uint32_t(bucket4._vertexCount)&0xffff);
                 ++bucket4._vertexCount;
                 bucket4._weightAttachments.push_back(BuildWeightAttachment<4>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else if (influenceCount == 2) {
-                _positionIndexToBucketIndex[vertexIndex] = (1<<16) | (uint32_t(bucket2._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (1<<16) | (uint32_t(bucket2._vertexCount)&0xffff);
                 ++bucket2._vertexCount;
                 bucket2._weightAttachments.push_back(BuildWeightAttachment<2>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else if (influenceCount == 1) {
-                _positionIndexToBucketIndex[vertexIndex] = (2<<16) | (uint32_t(bucket1._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (2<<16) | (uint32_t(bucket1._vertexCount)&0xffff);
                 ++bucket1._vertexCount;
                 bucket1._weightAttachments.push_back(BuildWeightAttachment<1>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else {
-                _positionIndexToBucketIndex[vertexIndex] = (3<<16) | (uint32_t(bucket0._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (3<<16) | (uint32_t(bucket0._vertexCount)&0xffff);
                 ++bucket0._vertexCount;
                 bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             }
@@ -387,8 +387,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      the vertex and index buffers.
             //
                             
-        size_t unifiedVertexCount = sourceGeo._unifiedVertexCount;
-		assert(sourceGeo._unifiedVertexIndexToPositionIndex.empty() || sourceGeo._unifiedVertexIndexToPositionIndex.size() >= unifiedVertexCount);
+        size_t unifiedVertexCount = sourceGeo._finalVertexCount;
+		assert(sourceGeo._finalVertexIndexToOriginalIndex.empty() || sourceGeo._finalVertexIndexToOriginalIndex.size() >= unifiedVertexCount);
 
 		std::vector<BuckettedSkinController> buckettedControllers;
 		buckettedControllers.reserve(controllers.size());
@@ -399,21 +399,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		{
 			uint32_t _inputUnifiedVertexIndex;
 			uint32_t _bucketIndex;
-			uint32_t _inputPositionIndex;
+			uint32_t _originalIndex;
 		};
         std::vector<VertexIndices> vertexMappingByFinalOrdering;
         vertexMappingByFinalOrdering.reserve(unifiedVertexCount);
 
         for (uint32_t c=0; c<unifiedVertexCount; ++c) {
-            uint32_t positionIndex = c < sourceGeo._unifiedVertexIndexToPositionIndex.size() ? sourceGeo._unifiedVertexIndexToPositionIndex[c] : c;
+            uint32_t originalIndex = c < sourceGeo._finalVertexIndexToOriginalIndex.size() ? sourceGeo._finalVertexIndexToOriginalIndex[c] : c;
 			uint32_t bucketIndex = ~0u;
 
 			unsigned controllerIdx=0;
 			for (; controllerIdx!=controllers.size(); ++controllerIdx) {
 				auto& buckettedController = buckettedControllers[controllerIdx];
-				if (	positionIndex < buckettedController._positionIndexToBucketIndex.size()
-					&&	buckettedController._positionIndexToBucketIndex[positionIndex] != ~0u) {
-					bucketIndex = ControllerAndBucketIndex(controllerIdx, buckettedController._positionIndexToBucketIndex[positionIndex]);
+				if (	originalIndex < buckettedController._originalIndexToBucketIndex.size()
+					&&	buckettedController._originalIndexToBucketIndex[originalIndex] != ~0u) {
+					bucketIndex = ControllerAndBucketIndex(controllerIdx, buckettedController._originalIndexToBucketIndex[originalIndex]);
 					break;
 				}
 			}
@@ -425,7 +425,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			// In general, we don't want to split vertices for controllers -- because that could lead
 			// to situations where the animation causes the mesh manifold to separate (which doesn't
 			// seem like something that would be desireable)
-			vertexMappingByFinalOrdering.push_back(VertexIndices{c, bucketIndex, positionIndex});
+			vertexMappingByFinalOrdering.push_back(VertexIndices{c, bucketIndex, originalIndex});
         }
 
             //
@@ -755,6 +755,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._mainDrawAnimatedIA._vertexStride = animatedVertexStride;
         result._mainDrawAnimatedIA._elements = std::move(animatedVertexLayout);
 
+		result._geoSpaceToNodeSpace = sourceGeo._geoSpaceToNodeSpace;
+
 		// Setup the per-section preskinning draw calls
 		for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
 			std::vector<DrawCallDesc> preskinningDrawCalls;
@@ -798,13 +800,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					if (jointRemapping[srcIdx] == ~0u) continue;
 					section._bindShapeByInverseBindMatrices[jointRemapping[srcIdx]] =
 						Combine(
-							controllers[controllerIdx]._controller->GetBindShapeMatrix(), 
+							controllers[controllerIdx]._controller->GetBindShapeMatrix(),
 							controllers[controllerIdx]._controller->GetInverseBindMatrices()[srcIdx]);
 					section._jointMatrices[jointRemapping[srcIdx]] = controllers[controllerIdx]._jointMatrices[srcIdx];
 				}
 			}
 
 			section._preskinningDrawCalls = std::move(preskinningDrawCalls);
+			section._bindShapeMatrix = controllers[controllerIdx]._controller->GetBindShapeMatrix();
 			result._preskinningSections.emplace_back(std::move(section));
 		}
 
@@ -814,6 +817,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
 
         result._localBoundingBox = boundingBox;
+
+		result._finalVertexIndexToOriginalIndex.reserve(vertexMappingByFinalOrdering.size());
+		for (const auto&r:vertexMappingByFinalOrdering)
+			result._finalVertexIndexToOriginalIndex.push_back(r._originalIndex);
+
         return std::move(result);
     }
 
@@ -825,6 +833,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		Serialize(outputSerializer, section._preskinningDrawCalls);
 		outputSerializer.SerializeSubBlock(MakeIteratorRange(section._jointMatrices));
         outputSerializer.SerializeValue(section._jointMatrices.size());
+		Serialize(outputSerializer, section._bindShapeMatrix);
 	}
 
     void NascentBoundSkinnedGeometry::SerializeWithResourceBlock(
@@ -861,6 +870,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
 
         Serialize(outputSerializer, _mainDrawCalls);
+		Serialize(outputSerializer, _geoSpaceToNodeSpace);
+
+		Serialize(outputSerializer, _finalVertexIndexToOriginalIndex);
 
             // append skinning related information
         Serialize(
@@ -1010,6 +1022,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			}
 			stream << std::endl;
 		}
+		stream << "Geo Space To Node Space: " << geo._geoSpaceToNodeSpace << std::endl;
         
         stream << std::endl;
         return stream;

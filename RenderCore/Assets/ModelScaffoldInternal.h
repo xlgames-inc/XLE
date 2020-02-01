@@ -130,7 +130,9 @@ namespace RenderCore { namespace Assets
     public:
         VertexData  _vb;
         IndexData   _ib;
-        SerializableVector<DrawCallDesc>   _drawCalls;
+        SerializableVector<DrawCallDesc>	_drawCalls;
+		Float4x4							_geoSpaceToNodeSpace;					// transformation from the coordinate space of the geometry itself to whatever node it's attached to. Useful for some deformation operations, where a post-performance transform is required
+		SerializableVector<unsigned>		_finalVertexIndexToOriginalIndex;		// originalIndex = _finalVertexIndexToOriginalIndex[finalIndex]
     };
 
     class BoundSkinnedGeometry : public RawGeometry
@@ -149,10 +151,11 @@ namespace RenderCore { namespace Assets
 			SerializableVector<DrawCallDesc>	_preskinningDrawCalls;
 			uint16_t*							_jointMatrices;
 			size_t								_jointMatrixCount;
+			Float4x4							_bindShapeMatrix;			// (the bind shape matrix is already combined into the _bindShapeByInverseBindMatrices fields. This is included mostly just for debugging)
 		};
 		SerializableVector<Section>			_preskinningSections;
 
-        std::pair<Float3, Float3>   _localBoundingBox;
+        std::pair<Float3, Float3>			_localBoundingBox;
 
         ~BoundSkinnedGeometry();
     private:

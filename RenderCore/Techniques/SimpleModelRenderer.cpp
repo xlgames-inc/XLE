@@ -120,7 +120,7 @@ namespace RenderCore { namespace Techniques
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 assert(machineOutput < _baseTransformCount);
-                drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
 				++geoCallIterator;
@@ -154,7 +154,7 @@ namespace RenderCore { namespace Techniques
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 assert(machineOutput < _baseTransformCount);
-                drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
 				++geoCallIterator;
@@ -217,11 +217,8 @@ namespace RenderCore { namespace Techniques
 				drawable._delegate = delegate;
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                if (machineOutput < _baseTransformCount) {
-                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
-                } else {
-                    drawable._objectToWorld = localToWorld;
-                }
+				assert(machineOutput < _baseTransformCount);
+                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++geoCallIterator;
 				++drawCallCounter;
@@ -253,9 +250,9 @@ namespace RenderCore { namespace Techniques
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
 
-                drawable._objectToWorld = Combine(
-					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
-					localToWorld);
+                auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+                assert(machineOutput < _baseTransformCount);
+				drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
 				++geoCallIterator;
@@ -290,17 +287,24 @@ namespace RenderCore { namespace Techniques
 		Metal::ResourceMap map(metalContext, *res, Metal::ResourceMap::Mode::WriteDiscardPrevious);
 		auto dst = map.GetData();
 
-		for (const auto&d:_deformOps) {
+		auto staticDataPartRange = MakeIteratorRange(_deformStaticDataInput);
+		auto temporaryDeformRange = MakeIteratorRange(_deformTemporaryBuffer);
 
-			auto staticDataPartRange = MakeIteratorRange(_deformStaticDataInput);
+		for (const auto&d:_deformOps) {
 
 			IDeformOperation::VertexElementRange inputElementRanges[16];
 			assert(d._inputElements.size() <= dimof(inputElementRanges));
 			for (unsigned c=0; c<d._inputElements.size(); ++c) {
-				assert(d._inputElements[c]._vbIdx == VB_StaticData);
-				inputElementRanges[c] = MakeVertexIteratorRangeConst(
-					MakeIteratorRange(PtrAdd(staticDataPartRange.begin(), d._inputElements[c]._offset), staticDataPartRange.end()),
-					d._inputElements[c]._stride, d._inputElements[c]._format);
+				if (d._inputElements[c]._vbIdx == VB_StaticData) {
+					inputElementRanges[c] = MakeVertexIteratorRangeConst(
+						MakeIteratorRange(PtrAdd(staticDataPartRange.begin(), d._inputElements[c]._offset), staticDataPartRange.end()),
+						d._inputElements[c]._stride, d._inputElements[c]._format);
+				} else {
+					assert(d._inputElements[c]._vbIdx == VB_TemporaryDeform);
+					inputElementRanges[c] = MakeVertexIteratorRangeConst(
+						MakeIteratorRange(PtrAdd(temporaryDeformRange.begin(), d._inputElements[c]._offset), temporaryDeformRange.end()),
+						d._inputElements[c]._stride, d._inputElements[c]._format);
+				}
 			}
 
 			auto outputPartRange = dst; // MakeIteratorRange(PtrAdd(dst.begin(), d._dynVBBegin), PtrAdd(dst.begin(), d._dynVBEnd));
@@ -309,9 +313,16 @@ namespace RenderCore { namespace Techniques
 			IDeformOperation::VertexElementRange outputElementRanges[16];
 			assert(d._outputElements.size() <= dimof(outputElementRanges));
 			for (unsigned c=0; c<d._outputElements.size(); ++c) {
-				outputElementRanges[c] = MakeVertexIteratorRangeConst(
-					MakeIteratorRange(PtrAdd(outputPartRange.begin(), d._outputElements[c]._offset), outputPartRange.end()),
-					d._outputElements[c]._stride, d._outputElements[c]._format);
+				if (d._outputElements[c]._vbIdx == VB_PostDeform) {
+					outputElementRanges[c] = MakeVertexIteratorRangeConst(
+						MakeIteratorRange(PtrAdd(outputPartRange.begin(), d._outputElements[c]._offset), outputPartRange.end()),
+						d._outputElements[c]._stride, d._outputElements[c]._format);
+				} else {
+					assert(d._outputElements[c]._vbIdx == VB_TemporaryDeform);
+					outputElementRanges[c] = MakeVertexIteratorRangeConst(
+						MakeIteratorRange(PtrAdd(temporaryDeformRange.begin(), d._outputElements[c]._offset), temporaryDeformRange.end()),
+						d._outputElements[c]._stride, d._outputElements[c]._format);
+				}
 			}
 
 			// Execute the actual deform op
@@ -587,7 +598,8 @@ namespace RenderCore { namespace Techniques
 			const RenderCore::Assets::VertexElement& srcElement,
 			unsigned srcStride)
 		{
-			assert(destinationVB.size() >= srcStride * transform._vertexCount);
+			assert(destinationVB.size() >= transform._targetStride * transform._vertexCount);
+			assert(sourceVB.size() >= srcStride * transform._vertexCount);
 			auto dstRange = AsVertexElementIteratorRange(destinationVB, transform._targetFormat, transform._targetOffset, transform._targetStride);
 			auto srcRange = AsVertexElementIteratorRange(sourceVB, srcElement._nativeFormat, srcElement._alignedByteOffset, srcStride);
 			auto dstCount = dstRange.size();

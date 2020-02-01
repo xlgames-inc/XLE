@@ -130,6 +130,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             geoBlock._indexFormat,
 			drawCalls,
+			geoBlock._geoSpaceToNodeSpace,
 			geoBlock._mesh->GetUnifiedVertexCount(),
 			geoBlock._meshVertexIndexToSrcIndex };
 	}

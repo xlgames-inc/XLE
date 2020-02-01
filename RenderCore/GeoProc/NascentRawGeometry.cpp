@@ -41,6 +41,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
         
         Serialize(outputSerializer, _mainDrawCalls);
+		Serialize(outputSerializer, _geoSpaceToNodeSpace);
+
+		Serialize(outputSerializer, _finalVertexIndexToOriginalIndex);
     }
 
     std::ostream& StreamOperator(std::ostream& stream, const NascentRawGeometry& geo)
@@ -55,6 +58,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             stream << "Draw [" << c++ << "] " << dc << std::endl;
         }
         stream << std::endl;
+		stream << "Geo Space To Node Space: " << geo._geoSpaceToNodeSpace << std::endl;
 
         return stream;
     }

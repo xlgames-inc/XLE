@@ -201,7 +201,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {
@@ -233,7 +233,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {
@@ -255,7 +255,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {
@@ -271,7 +271,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {
@@ -287,7 +287,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
-                    float input[4];
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
                     GetVertDataF16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
 
                     for (unsigned c=0; c<dstFormat.second; ++c) {

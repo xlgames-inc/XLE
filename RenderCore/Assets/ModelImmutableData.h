@@ -30,7 +30,7 @@ namespace RenderCore { namespace Assets
         BoundSkinnedGeometry*       _boundSkinnedControllers;
         size_t                      _boundSkinnedControllerCount;
 
-        SkeletonMachine       _embeddedSkeleton;
+        SkeletonMachine				_embeddedSkeleton;
         Float4x4*                   _defaultTransforms;
         size_t                      _defaultTransformCount;        
 
