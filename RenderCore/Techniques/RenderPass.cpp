@@ -314,6 +314,7 @@ namespace RenderCore { namespace Techniques
 		if (_attachedContext) {
 			Metal::EndSubpass(*_attachedContext, *_frameBuffer);
 			Metal::EndRenderPass(*_attachedContext);
+			_attachedContext = nullptr;
 		}
     }
     

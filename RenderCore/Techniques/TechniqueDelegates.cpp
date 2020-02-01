@@ -365,6 +365,7 @@ namespace RenderCore { namespace Techniques
 				_variationSet.reset();
 				return ::Assets::AssetState::Invalid;
 			}
+			return ::Assets::AssetState::Pending;
 		}
 
 		_cfgFileDepVal = actual->GetDependencyValidation();

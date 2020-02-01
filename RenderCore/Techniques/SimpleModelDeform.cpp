@@ -43,7 +43,13 @@ namespace RenderCore { namespace Techniques
 
 	void DeformOperationFactory::DeregisterDeformOperation(RegisteredDeformId deformId)
 	{
-	
+		auto i = std::remove_if(
+			_instantiationFunctions.begin(),
+			_instantiationFunctions.end(),
+			[deformId](const std::pair<uint64_t, RegisteredDeformOp>& i) {
+				return i.second._deformId == deformId;
+			});
+		_instantiationFunctions.erase(i, _instantiationFunctions.end());
 	}
 
 	DeformOperationFactory::DeformOperationFactory()

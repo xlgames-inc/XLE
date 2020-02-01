@@ -17,15 +17,23 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<Float3x4*>		destination,
 		IteratorRange<const Float4x4*>	skeletonMachineResult) const
     {
-        for (unsigned c=0; c<std::min(section._jointMatrices.size(), destination.size()); ++c) {
-            auto transMachineOutput = _skeletonBinding.ModelJointToMachineOutput(section._jointMatrices[c]);
-            if (transMachineOutput != ~unsigned(0x0)) {
-                Float4x4 finalMatrix = Combine(section._bindShapeByInverseBindMatrices[c], skeletonMachineResult[transMachineOutput]);
-                destination[c] = Truncate(finalMatrix);
-            } else {
-                destination[c] = Identity<Float3x4>();
-            }
-        }
+		unsigned c=0;
+		if (_skeletonBinding.GetModelJointCount()) {
+			for (; c<std::min(section._jointMatrices.size(), destination.size()); ++c) {
+				auto transMachineOutput = _skeletonBinding.ModelJointToMachineOutput(section._jointMatrices[c]);
+				if (transMachineOutput != ~unsigned(0x0)) {
+					destination[c] = Truncate(skeletonMachineResult[transMachineOutput] * section._bindShapeByInverseBindMatrices[c]);
+				} else {
+					destination[c] = Truncate(section._bindShapeByInverseBindMatrices[c]);
+				}
+			}
+		} else {
+			for (; c<std::min(section._jointMatrices.size(), destination.size()); ++c)
+				destination[c] = Truncate(section._bindShapeByInverseBindMatrices[c]);
+		}
+
+		for (; c<destination.size(); ++c)
+			destination[c] = Identity<Float3x4>();
     }
 
 	void SkinDeformer::FeedInSkeletonMachineResults(
@@ -64,8 +72,8 @@ namespace RenderCore { namespace Techniques
 				// drawCall._subMaterialIndex is 0, 1, 2 or 4 depending on the number of weights we have to proces
 				if (drawCall._subMaterialIndex == 0) {
 					// in this case, we just copy
-					for (auto p=outputPosElement.begin() + drawCall._firstVertex; p < (outputPosElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition) 
-						*p = *srcPosition;
+					for (auto p=outputPosElement.begin() + drawCall._firstVertex; p < (outputPosElement.begin() + drawCall._firstVertex + drawCall._indexCount); ++p, ++srcPosition)
+						*p = (*srcPosition).As<Float3>();
 					continue;
 				}
 
