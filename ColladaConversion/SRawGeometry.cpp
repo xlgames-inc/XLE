@@ -744,6 +744,7 @@ namespace ColladaConversion
 				database,
 				std::move(finalDrawOperations),
 				std::vector<unsigned>{vertexMapping.get(), &vertexMapping[database->GetUnifiedVertexCount()]},
+				Identity<Float4x4>(),
 				std::move(finalIndexBuffer),
 				indexFormat
 			},
