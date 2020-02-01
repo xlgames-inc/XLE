@@ -95,10 +95,13 @@ namespace Assets
 
 	void AssetSetManager::OnFrameBarrier()
 	{
-		ScopedLock(_pimpl->_lock);
+		std::unique_lock<decltype(_pimpl->_lock)> lock(_pimpl->_lock);
 		_pimpl->_inIterationOperation = true;
+		
+		lock = {};
 		for (auto&fn:_pimpl->_frameBarrierFunctions)
 			fn.second();
+		lock = std::unique_lock<decltype(_pimpl->_lock)>(_pimpl->_lock);
 
 		// If we queued up any new sets to add to the main list, handle them now
 		for (auto&set:_pimpl->_setsPendingIteration)

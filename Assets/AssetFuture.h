@@ -35,7 +35,7 @@ namespace Assets
 		AssetState		CheckStatusBkgrnd(
 			AssetPtr<AssetType>& actualized,
 			DepValPtr& depVal,
-			Blob& actualizationLog) const;
+			Blob& actualizationLog);
 
 		const std::string&		    Initializer() const { return _initializer; }
 		const DepValPtr&		    GetDependencyValidation() const { return _actualizedDepVal; }
@@ -132,7 +132,7 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		AssetState		AssetFuture<AssetType>::CheckStatusBkgrnd(AssetPtr<AssetType>& actualized, DepValPtr& depVal, Blob& actualizationLog) const
+		AssetState		AssetFuture<AssetType>::CheckStatusBkgrnd(AssetPtr<AssetType>& actualized, DepValPtr& depVal, Blob& actualizationLog)
 	{
 		if (_state == AssetState::Ready) {
 			actualized = _actualized;
@@ -142,7 +142,7 @@ namespace Assets
 		}
 
 		{
-			ScopedLock(_lock);
+			std::unique_lock<decltype(_lock)> lock(_lock);
 			if (_state != AssetState::Pending) {
 				actualized = _actualized;
 				depVal = _actualizedDepVal;
@@ -154,6 +154,22 @@ namespace Assets
 				depVal = _pendingDepVal;
 				actualizationLog = _pendingActualizationLog;
 				return _pendingState;
+			}
+			if (_pollingFunction) {
+				std::function<bool(AssetFuture<AssetType>&)> pollingFunction;
+				std::swap(pollingFunction, _pollingFunction);
+				lock = {};
+				bool pollingResult = pollingFunction(*this);
+				lock = std::unique_lock<decltype(_lock)>(_lock);
+				assert(!_pollingFunction);
+				if (pollingResult) std::swap(pollingFunction, _pollingFunction);
+
+				if (_pendingState != AssetState::Pending) {
+					actualized = _pending;
+					depVal = _pendingDepVal;
+					actualizationLog = _pendingActualizationLog;
+					return _pendingState;
+				}
 			}
 		}
 
