@@ -115,7 +115,6 @@ namespace GUILayer
 				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-				auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget, parserContext);
 				_managedOverlay->Render(threadContext, RenderTargetWrapper{renderTarget}, parserContext);
             }
 

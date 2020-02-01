@@ -13,6 +13,7 @@
 #include "TerrainLayer.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "Exceptions.h"
+#include "EngineDevice.h"
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/PlacementEntities.h"
 #include "../EntityInterface/TerrainEntities.h"
@@ -563,10 +564,10 @@ namespace GUILayer
 
     IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings)
     {
-		assert(0);		// we have to get the PipelineAcceleratorPool from somewhere
+		// we have to get the PipelineAcceleratorPool from somewhere
         return Internal::CreateOverlaySystem(
             _scene.GetNativePtr(), 
-			nullptr,
+			EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool(),
 			camera->GetUnderlying(), renderSettings);
     }
 }
