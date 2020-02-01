@@ -101,7 +101,7 @@ namespace ControlsLibrary.MaterialEditor
         {
             if (visSettings.Geometry != GUILayer.MaterialVisSettings.GeometryType.Model)
             {
-                layerController.SetMaterialVisSettings(visSettings);
+                layerController.SetScene(visSettings);
             }
             else if (previewModel != null && previewModel.Item1 != null)
             {
@@ -110,11 +110,11 @@ namespace ControlsLibrary.MaterialEditor
                     ModelName = previewModel.Item1,
                     MaterialBindingFilter = previewModel.Item2
                 };
-                layerController.SetModelSettings(modelSettings);
+                layerController.SetScene(modelSettings);
             }
             else 
             {
-                layerController.SetMaterialVisSettings(new GUILayer.MaterialVisSettings());
+                layerController.SetScene(new GUILayer.MaterialVisSettings());
             }
         }
 
@@ -126,13 +126,13 @@ namespace ControlsLibrary.MaterialEditor
 
         public void InvalidatePreview() { _preview.Invalidate(); }
 
-        public IEnumerable<GUILayer.RawMaterial> RawMaterialList
+        /*public IEnumerable<GUILayer.RawMaterial> RawMaterialList
         {
             set
             {
                 layerController.SetMaterialOverrides(value);
             }
-        }
+        }*/
 
         protected GUILayer.VisLayerController layerController;
         protected GUILayer.MaterialVisSettings visSettings;

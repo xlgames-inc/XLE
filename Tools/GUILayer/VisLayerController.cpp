@@ -14,6 +14,7 @@
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
+#include "../ToolsRig/PreviewSceneRegistry.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -33,17 +34,21 @@ namespace GUILayer
     {
     public:
         std::shared_ptr<ToolsRig::VisualisationOverlay> _visOverlay;
-		std::shared_ptr<ToolsRig::ModelVisLayer> _modelLayer;
+		std::shared_ptr<ToolsRig::SimpleSceneLayer> _modelLayer;
 		std::shared_ptr<PlatformRig::IOverlaySystem> _manipulatorLayer;
 		std::shared_ptr<ToolsRig::MouseOverTrackingOverlay> _trackingLayer;
 		std::shared_ptr<ToolsRig::VisMouseOver> _mouseOver;
 		std::shared_ptr<ToolsRig::VisAnimationState> _animState;
 
 		std::shared_ptr<ToolsRig::DeferredCompiledShaderPatchCollection> _patchCollection;
-		::Assets::FuturePtr<SceneEngine::IScene> _scene;
+		std::shared_ptr<SceneEngine::IScene> _scene;
 
-		ToolsRig::ModelVisSettings _modelSettings;
-		ToolsRig::MaterialVisSettings _materialVisSettings;
+		void ApplyPatchCollection()
+		{
+			auto* patchCollectionScene = dynamic_cast<ToolsRig::IPatchCollectionVisualizationScene*>(_scene.get());
+			if (patchCollectionScene)
+				patchCollectionScene->SetPatchCollection(_patchCollection->GetFuture());
+		}
     };
 
 	static void RenderTrackingOverlay(
@@ -75,7 +80,7 @@ namespace GUILayer
 
 	VisMouseOver^ VisLayerController::MouseOver::get()
 	{
-		return gcnew VisMouseOver(_pimpl->_mouseOver, _pimpl->_scene ? ToolsRig::TryActualize(*_pimpl->_scene) : nullptr);
+		return gcnew VisMouseOver(_pimpl->_mouseOver, _pimpl->_scene);
 	}
 
 	VisAnimationState^ VisLayerController::AnimationState::get()
@@ -83,36 +88,37 @@ namespace GUILayer
 		return gcnew VisAnimationState(_pimpl->_animState);
 	}
 
-	void VisLayerController::SetModelSettings(ModelVisSettings^ settings)
+	void VisLayerController::SetScene(ModelVisSettings^ settings)
 	{
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-		_pimpl->_modelSettings = *settings->GetUnderlying();
-		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_modelSettings);
+		auto nativeSettings = settings->ConvertToNative();
+		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, *nativeSettings);
+		_pimpl->ApplyPatchCollection();
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
 	}
 
-	ModelVisSettings^ VisLayerController::GetModelSettings()
-	{
-		return gcnew ModelVisSettings(
-			std::make_shared<ToolsRig::ModelVisSettings>(_pimpl->_modelSettings));
-	}
-
-	void VisLayerController::SetMaterialVisSettings(MaterialVisSettings^ settings)
+	void VisLayerController::SetScene(MaterialVisSettings^ settings)
 	{
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-		_pimpl->_materialVisSettings = *settings->ConvertToNative();
-		// note -- adopt future is wrong here, because it means we have to reset _pimpl->_patchCollection
-		_pimpl->_scene = ToolsRig::ConvertToFuture(ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection->GetFuture()));
+		auto nativeSettings = settings->ConvertToNative();
+		_pimpl->_scene = ToolsRig::MakeScene(pipelineAcceleratorPool, *nativeSettings);
+		_pimpl->ApplyPatchCollection();
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
 	}
 
-	MaterialVisSettings^ VisLayerController::GetMaterialVisSettings()
+	void VisLayerController::SetPreviewRegistryScene(System::String^ name)
 	{
-		return MaterialVisSettings::ConvertFromNative(_pimpl->_materialVisSettings);
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+		_pimpl->_scene = ToolsRig::GetPreviewSceneRegistry()->CreateScene(MakeStringSection(nativeName), pipelineAcceleratorPool);
+		_pimpl->ApplyPatchCollection();
+		_pimpl->_modelLayer->Set(_pimpl->_scene);
+		_pimpl->_visOverlay->Set(_pimpl->_scene);
+		_pimpl->_trackingLayer->Set(_pimpl->_scene);
 	}
 
 	void VisLayerController::SetOverlaySettings(VisOverlaySettings^ settings)
@@ -125,59 +131,6 @@ namespace GUILayer
 		return VisOverlaySettings::ConvertFromNative(_pimpl->_visOverlay->GetOverlaySettings());
 	}
 
-	void VisLayerController::ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args) { RebuildMaterialOverrides(); }
-    void VisLayerController::PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args) { RebuildMaterialOverrides(); }
-
-	void VisLayerController::RebuildMaterialOverrides()
-	{
-		/*::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
-		auto nativeMaterial = ResolveNativeMaterial(_boundRawMaterials, searchRules);
-		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeMaterialOverrideDelegate(nativeMaterial));*/
-	}
-
-	void VisLayerController::SetMaterialOverrides(
-		System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides)
-	{
-		/*auto listChangeHandler = gcnew ListChangedEventHandler(this, &VisLayerController::ListChangeHandler);
-		auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &VisLayerController::PropChangeHandler);
-
-		if (_boundRawMaterials != nullptr) {
-			for each(auto mat in _boundRawMaterials) {
-				mat->MaterialParameterBox->ListChanged -= listChangeHandler;
-				mat->ShaderConstants->ListChanged -= listChangeHandler;
-				mat->ResourceBindings->ListChanged -= listChangeHandler;
-				mat->StateSet->PropertyChanged -= propChangeHandler;
-			}
-			delete _boundRawMaterials;
-			_boundRawMaterials = nullptr;
-		}
-
-		if (materialOverrides) {
-			_boundRawMaterials = gcnew System::Collections::Generic::List<RawMaterial^>();
-			for each(auto mat in materialOverrides) {
-				_boundRawMaterials->Add(mat);
-				mat->MaterialParameterBox->ListChanged += listChangeHandler;
-				mat->ShaderConstants->ListChanged += listChangeHandler;
-				mat->ResourceBindings->ListChanged += listChangeHandler;
-				mat->StateSet->PropertyChanged += propChangeHandler;
-			}
-			RebuildMaterialOverrides();
-		} else {
-			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
-		}*/
-	}
-
-	/*void VisLayerController::SetMaterialDelegate(MaterialDelegateWrapper^ materialDelegate)
-	{
-		SetMaterialOverrides(nullptr);
-		if (materialDelegate) {
-			_pimpl->_modelLayer->SetOverrides(materialDelegate->_materialDelegate.GetNativePtr());
-		}
-		else {
-			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
-		}
-	}*/
-
 	void VisLayerController::SetPatchCollectionOverrides(CompiledShaderPatchCollectionWrapper^ patchCollection)
 	{
 		if (patchCollection) {
@@ -186,22 +139,7 @@ namespace GUILayer
 			_pimpl->_patchCollection = nullptr;
 		}
 
-		// rebuild and reset the material vis scene ...
-		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-		// note -- adopt future is wrong here, because it means we have to reset _pimpl->_patchCollection
-		_pimpl->_scene = ToolsRig::ConvertToFuture(ToolsRig::MakeScene(pipelineAcceleratorPool, _pimpl->_materialVisSettings, _pimpl->_patchCollection->GetFuture()));
-		_pimpl->_modelLayer->Set(_pimpl->_scene);
-		_pimpl->_visOverlay->Set(_pimpl->_scene);
-		_pimpl->_trackingLayer->Set(_pimpl->_scene);
-	}
-
-	void VisLayerController::SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate)
-	{
-		if (techniqueDelegate) {
-			_pimpl->_modelLayer->SetOverrides(techniqueDelegate->_techniqueDelegate.GetNativePtr());
-		} else {
-			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>{});
-		}
+		_pimpl->ApplyPatchCollection();
 	}
 
 	void VisLayerController::ResetCamera()
@@ -240,7 +178,7 @@ namespace GUILayer
 		_pimpl->_mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		_pimpl->_animState = std::make_shared<ToolsRig::VisAnimationState>();
 
-		_pimpl->_modelLayer = std::make_shared<ToolsRig::ModelVisLayer>(pipelineAcceleratorPool);
+		_pimpl->_modelLayer = std::make_shared<ToolsRig::SimpleSceneLayer>(pipelineAcceleratorPool);
 		_pimpl->_modelLayer->Set(ToolsRig::VisEnvSettings{});
 
 		_pimpl->_visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(
@@ -249,8 +187,6 @@ namespace GUILayer
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());
 		_pimpl->_visOverlay->Set(_pimpl->_animState);
 
-		_boundRawMaterials = nullptr;
-        
 		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
 			/*
@@ -288,8 +224,7 @@ namespace GUILayer
 
 	VisLayerController::~VisLayerController()
 	{
-		SetMaterialOverrides(nullptr);		// unbind bound materials
-		_pimpl.reset();		
+		_pimpl.reset();
 	}
 
 	VisLayerController::!VisLayerController()

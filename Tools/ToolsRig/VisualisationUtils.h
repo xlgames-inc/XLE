@@ -132,7 +132,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class ModelVisLayer : public PlatformRig::IOverlaySystem
+	class SimpleSceneLayer : public PlatformRig::IOverlaySystem
     {
     public:
         virtual void Render(
@@ -141,15 +141,13 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         void Set(const VisEnvSettings& envSettings);
-		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
-
-		void SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>&);
+		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
 
-        ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
-        ~ModelVisLayer();
+        SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
+        ~SimpleSceneLayer();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
@@ -164,7 +162,7 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& parserContext);
 		virtual OverlayState GetOverlayState() const;
 
-		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 		void Set(const std::shared_ptr<VisCameraSettings>&);
 		void Set(const VisOverlaySettings& overlaySettings);
 		void Set(const std::shared_ptr<VisAnimationState>&);
@@ -192,7 +190,7 @@ namespace ToolsRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
 
-		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 
         using OverlayFn = std::function<
 			void(
@@ -237,9 +235,7 @@ namespace ToolsRig
 		SceneEngine::IScene& scene,
 		const std::shared_ptr<SceneEngine::IRenderStep>& renderStep);
 
-	void StallWhilePending(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
-	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
-	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
+	void StallWhilePending(SceneEngine::IScene& future);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

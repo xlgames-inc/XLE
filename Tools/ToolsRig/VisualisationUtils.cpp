@@ -97,11 +97,10 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ModelVisLayer::Pimpl
+    class SimpleSceneLayer::Pimpl
     {
     public:
 		std::shared_ptr<SceneEngine::IScene> _scene;
-        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
 
 		std::shared_ptr<PlatformRig::EnvironmentSettings> _envSettings;
 		::Assets::FuturePtr<PlatformRig::EnvironmentSettings> _envSettingsFuture;
@@ -111,40 +110,26 @@ namespace ToolsRig
 
 		std::shared_ptr<VisCameraSettings> _camera;
 
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
-
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+
+		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
+		std::vector<std::shared_ptr<SceneEngine::IRenderStep>> _renderSteps;
     };
 
-    void ModelVisLayer::Render(
+	static ::Assets::AssetState GetAsyncSceneState(SceneEngine::IScene& scene)
+	{
+		auto* asyncScene = dynamic_cast<::Assets::IAsyncMarker*>(&scene);
+		if (asyncScene)
+			return asyncScene->GetAssetState();
+		return ::Assets::AssetState::Ready;
+	}
+
+    void SimpleSceneLayer::Render(
         RenderCore::IThreadContext& threadContext,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace SceneEngine;
-
-		if (_pimpl->_sceneFuture) {
-			auto newActualized = _pimpl->_sceneFuture->TryActualize();
-			if (newActualized) {
-				// After the model is loaded, if we have a pending camera align,
-                // we should reset the camera to the match the model.
-                // We also need to trigger the change event after we make a change...
-				auto* visContent = dynamic_cast<IVisContent*>(newActualized.get());
-				if (visContent) {
-					*_pimpl->_camera = AlignCameraToBoundingBox(
-						_pimpl->_camera->_verticalFieldOfView,
-						visContent->GetBoundingBox());
-				}
-
-				_pimpl->_scene = newActualized;
-				_pimpl->_sceneFuture = nullptr;
-				_pimpl->_sceneErrorMessage = {};
-			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
-				_pimpl->_sceneErrorMessage = ::Assets::AsString(_pimpl->_sceneFuture->GetActualizationLog());
-				_pimpl->_scene = nullptr;
-				_pimpl->_sceneFuture = nullptr;
-			}
-		}
 
 		if (_pimpl->_envSettingsFuture) {
 			auto newActualized = _pimpl->_envSettingsFuture->TryActualize();
@@ -159,42 +144,34 @@ namespace ToolsRig
 			}
 		}
 
-		if (_pimpl->_envSettings && _pimpl->_scene) {
+		if (_pimpl->_envSettings && _pimpl->_scene && GetAsyncSceneState(*_pimpl->_scene) != ::Assets::AssetState::Pending) {
 			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
 
 			static float time = 0.f;
 			time += 1.0f / 60.f;
 			lightingParserDelegate.SetTimeValue(time);
 
-			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
-				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
-			};
-			auto steps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
-
 			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
 				{
-					MakeIteratorRange(steps),
-					MakeIteratorRange(lightingPlugins)
+					MakeIteratorRange(_pimpl->_renderSteps),
+					MakeIteratorRange(_pimpl->_lightingPlugins)
 				},
 				_pimpl->_pipelineAccelerators,
 				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
-			LightingParserContext lightingParserContext;
-			{
-				auto& screenshot = Tweakable("Screenshot", 0);
-				if (screenshot) {
-					PlatformRig::TiledScreenshot(
-						threadContext, parserContext,
-						*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
-						*compiledTechnique, UInt2(screenshot, screenshot));
-					screenshot = 0;
-				}
-
-				lightingParserContext = LightingParser_ExecuteScene(
-					threadContext, renderTarget, parserContext, 
-					*compiledTechnique, lightingParserDelegate,
-					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera));
+			auto& screenshot = Tweakable("Screenshot", 0);
+			if (screenshot) {
+				PlatformRig::TiledScreenshot(
+					threadContext, parserContext,
+					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
+					*compiledTechnique, UInt2(screenshot, screenshot));
+				screenshot = 0;
 			}
+
+			auto lightingParserContext = LightingParser_ExecuteScene(
+				threadContext, renderTarget, parserContext, 
+				*compiledTechnique, lightingParserDelegate,
+				*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera));
 
 			// Draw debugging overlays -- 
 			{
@@ -212,28 +189,23 @@ namespace ToolsRig
 		}
     }
 
-    void ModelVisLayer::Set(const VisEnvSettings& envSettings)
+    void SimpleSceneLayer::Set(const VisEnvSettings& envSettings)
     {
 		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<PlatformRig::EnvironmentSettings>>("VisualizationEnvironment");
 		::Assets::AutoConstructToFuture(*_pimpl->_envSettingsFuture, envSettings._envConfigFile);
     }
 
-	void ModelVisLayer::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	void SimpleSceneLayer::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
 	{
-		_pimpl->_sceneFuture = scene;
+		_pimpl->_scene = scene;
 	}
 
-	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& delegate)
-	{
-		_pimpl->_techniqueDelegate = delegate;
-	}
-
-	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()
+	const std::shared_ptr<VisCameraSettings>& SimpleSceneLayer::GetCamera()
 	{
 		return _pimpl->_camera;
 	}
 
-	void ModelVisLayer::ResetCamera()
+	void SimpleSceneLayer::ResetCamera()
 	{
 		auto* scene = dynamic_cast<ToolsRig::IVisContent*>(_pimpl->_scene.get());
 		if (scene) {
@@ -242,14 +214,17 @@ namespace ToolsRig
 		}
 	}
 	
-    ModelVisLayer::ModelVisLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
+    SimpleSceneLayer::SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
+
+		_pimpl->_lightingPlugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
+		_pimpl->_renderSteps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
     }
 
-    ModelVisLayer::~ModelVisLayer() {}
+    SimpleSceneLayer::~SimpleSceneLayer() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -359,7 +334,6 @@ namespace ToolsRig
 		std::shared_ptr<VisAnimationState> _animState;
 
 		std::shared_ptr<SceneEngine::IScene> _scene;
-        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
 
 		std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> _stencilPrimeDelegate;
 
@@ -380,22 +354,7 @@ namespace ToolsRig
 		if (!parserContext.GetNamedResources().GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
 			return;
 
-		if (_pimpl->_sceneFuture) {
-			auto newActualized = _pimpl->_sceneFuture->TryActualize();
-			if (newActualized) {
-				_pimpl->_scene = newActualized;
-				_pimpl->_sceneFuture = nullptr;
-
-				auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
-				if (visContext)
-					visContext->BindAnimationState(_pimpl->_animState);
-			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
-				_pimpl->_scene = nullptr;
-				_pimpl->_sceneFuture = nullptr;
-			}
-		}
-
-		if (!_pimpl->_scene || !_pimpl->_cameraSettings) return;
+		if (!_pimpl->_scene || !_pimpl->_cameraSettings || GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) return;
 
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
 
@@ -524,9 +483,15 @@ namespace ToolsRig
         }
     }
 
-	void VisualisationOverlay::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	void VisualisationOverlay::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
 	{
-		_pimpl->_sceneFuture = scene;
+		_pimpl->_scene = scene;
+
+		if (_pimpl->_animState) {
+			auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+			if (visContext)
+				visContext->BindAnimationState(_pimpl->_animState);
+		}
 	}
 
 	void VisualisationOverlay::Set(const std::shared_ptr<VisCameraSettings>& camera)
@@ -560,12 +525,14 @@ namespace ToolsRig
 
 		// Need regular updates if the scene future hasn't been fully loaded yet
 		// Or if there's active animation playing in the scene
-		if (_pimpl->_sceneFuture) { 	
-			refreshMode = RefreshMode::RegularAnimation;
-		} else {
-			auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
-			if (visContext && visContext->HasActiveAnimation())
+		if (_pimpl->_scene) {
+			if (GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) { 	
 				refreshMode = RefreshMode::RegularAnimation;
+			} else {
+				auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+				if (visContext && visContext->HasActiveAnimation())
+					refreshMode = RefreshMode::RegularAnimation;
+			}
 		}
 		
 		return { refreshMode };
@@ -708,12 +675,8 @@ namespace ToolsRig
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
 				AsCameraDesc(*_camera), mousePosition, context._viewMins, context._viewMaxs);
 
-			SceneEngine::IScene* scene = nullptr;
-			if (_sceneFuture)
-				scene = _sceneFuture->TryActualize().get();
-			    
-            if (scene) {
-				auto intr = FirstRayIntersection(*RenderCore::Techniques::GetThreadContext(), *_techniqueContext, *_pipelineAccelerators, worldSpaceRay, *scene);
+            if (_scene) {
+				auto intr = FirstRayIntersection(*RenderCore::Techniques::GetThreadContext(), *_techniqueContext, *_pipelineAccelerators, worldSpaceRay, *_scene);
 				if (intr._type != 0) {
 					if (        intr._drawCallIndex != _mouseOver->_drawCallIndex
 							||  intr._materialGuid != _mouseOver->_materialGuid
@@ -733,15 +696,8 @@ namespace ToolsRig
 			}
         }
 
-		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
-		{
-			_sceneFuture = scene;
-		}
-
-		const std::shared_ptr<SceneEngine::IScene>& GetScene()
-		{
-			return _sceneFuture->Actualize();
-		}
+		void Set(const std::shared_ptr<SceneEngine::IScene>& scene) { _scene = scene; }
+		const std::shared_ptr<SceneEngine::IScene>& GetScene() { return _scene; }
 
         MouseOverTrackingListener(
             const std::shared_ptr<VisMouseOver>& mouseOver,
@@ -761,7 +717,7 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
         std::shared_ptr<VisCameraSettings> _camera;
         
-        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
+        std::shared_ptr<SceneEngine::IScene> _scene;
 		unsigned _timeOfLastCalculate = 0;
 
 		PlatformRig::InputContext _timeoutContext;
@@ -795,7 +751,7 @@ namespace ToolsRig
 		overlays.ReleaseState();
     }
 
-	void MouseOverTrackingOverlay::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	void MouseOverTrackingOverlay::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
 	{
 		_inputListener->Set(scene);
 	}
@@ -856,16 +812,18 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
+	void StallWhilePending(SceneEngine::IScene& scene)
+	{
+		auto* marker = dynamic_cast<::Assets::IAsyncMarker*>(&scene);
+		if (marker)
+			marker->StallWhilePending();
+	}
+	
+	/*const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
 	{
 		// This function exists because we can't call TryActualize() from a C++/CLR source file because
 		// of the problem related to including <mutex>
 		return future.TryActualize();
-	}
-
-	void StallWhilePending(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
-	{
-		future.StallWhilePending();
 	}
 
 	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
@@ -874,7 +832,7 @@ namespace ToolsRig
 		if (state != ::Assets::AssetState::Invalid)
 			return {};
 		return ::Assets::AsString(future.GetActualizationLog());
-	}
+	}*/
 
     void ChangeEvent::Invoke() 
     {

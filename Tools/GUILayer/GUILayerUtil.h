@@ -40,6 +40,8 @@ namespace GUILayer
 		};
 		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetModelExtensions();
 		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetAnimationSetExtensions();
+
+		static System::Collections::Generic::IEnumerable<System::String^>^ EnumeratePreviewScenes();
 	};
 
     public ref class TechniqueContextWrapper

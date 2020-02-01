@@ -24,11 +24,16 @@ namespace ControlsLibraryExt.ModelView
         {
             set
             {
-                LayerController.SetModelSettings(value);
+                _modelSettings = value;
+                LayerController.SetScene(value);
                 OnModelSettingsChange?.Invoke(this, null);
             }
-            get { return LayerController.GetModelSettings(); }
+            get
+            {
+                return _modelSettings;
+            }
         }
+        private GUILayer.ModelVisSettings _modelSettings = GUILayer.ModelVisSettings.CreateDefault();
 
         public GUILayer.VisOverlaySettings OverlaySettings
         {
@@ -50,13 +55,14 @@ namespace ControlsLibraryExt.ModelView
                 {
                     // (Create on demand because MEF tends to create and destroy dummy versions of this object during initialization)
                     _layerController = new GUILayer.VisLayerController();
+                    _layerController.SetScene(this.ModelSettings);
                 }
                 return _layerController;
             }
         }
         private GUILayer.VisLayerController _layerController = null;
 
-        public GUILayer.TechniqueDelegateWrapper TechniqueOverrides
+        /*public GUILayer.TechniqueDelegateWrapper TechniqueOverrides
         {
             set
             {
@@ -65,7 +71,7 @@ namespace ControlsLibraryExt.ModelView
             }
         }
 
-        /*public GUILayer.MaterialDelegateWrapper MaterialOverrides
+        public GUILayer.MaterialDelegateWrapper MaterialOverrides
         {
             set
             {

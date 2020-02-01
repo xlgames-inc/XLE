@@ -168,7 +168,7 @@
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
-    <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\VisSettingsLayer.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\NodeGraph.cpp" />
     <ClCompile Include="..\PreviewRenderManager.cpp" />

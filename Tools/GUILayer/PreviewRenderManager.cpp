@@ -206,24 +206,17 @@ namespace GUILayer
 				if (pretransformed)
 					material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
 
-				_scene = ToolsRig::MakeScene(_pipelineAcceleratorPool, nativeVisSettings, patchCollection->GetFuture(), material);
+				_scene = ToolsRig::MakeScene(_pipelineAcceleratorPool, nativeVisSettings, material);
 			} else {
 				ToolsRig::ModelVisSettings modelSettings;
 				// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 				// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-				auto sceneFuture = ToolsRig::MakeScene(_pipelineAcceleratorPool, modelSettings);
-				ToolsRig::StallWhilePending(*sceneFuture);
-				_scene = ToolsRig::TryActualize(*sceneFuture);
-				if (!_scene) {
-					auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);
-					if (errorLog) {
-						_statusMessage = errorLog.value().c_str();
-						// return GenerateErrorBitmap(errorLog.value().c_str(), size);
-					} else {
-						// return nullptr;		// pending
-					}
-				}
+				_scene = ToolsRig::MakeScene(_pipelineAcceleratorPool, modelSettings);
 			}
+
+			auto* patchScene = dynamic_cast<ToolsRig::IPatchCollectionVisualizationScene*>(_scene.get());
+			if (patchScene)
+				patchScene->SetPatchCollection(patchCollection->GetFuture());
 
 			if (customTechniqueDelegate)
 				_customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);

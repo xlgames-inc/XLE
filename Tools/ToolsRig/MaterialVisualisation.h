@@ -20,13 +20,8 @@ namespace GraphLanguage { class INodeGraphProvider; class NodeGraph; class NodeG
 namespace ShaderSourceParser { class PreviewOptions; }
 namespace Utility { class OnChangeCallback; }
 
-template<typename T> class shared_future;
-namespace Utility { namespace Threading { template <class T> using ContinuationSharedFuture = ::shared_future<T>; } }
-
 namespace ToolsRig
 {
-	using PatchCollectionFuture = ::Utility::Threading::ContinuationSharedFuture<std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection>>;
-
     class MaterialVisSettings
     {
     public:
@@ -37,10 +32,7 @@ namespace ToolsRig
 	std::shared_ptr<SceneEngine::IScene> MakeScene(
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 		const MaterialVisSettings& visObject, 
-		const PatchCollectionFuture& patchCollectionOverride,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
-
-	::Assets::FuturePtr<SceneEngine::IScene> ConvertToFuture(const std::shared_ptr<SceneEngine::IScene>& scene);
 
 	class MessageRelay
 	{
@@ -72,6 +64,8 @@ namespace ToolsRig
 		uint32_t previewNodeId,
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider);
 
+	using PatchCollectionFuture = ::Assets::FuturePtr<RenderCore::Techniques::CompiledShaderPatchCollection>;
+
 	PatchCollectionFuture MakeCompiledShaderPatchCollectionAsync(
 		GraphLanguage::NodeGraph&& nodeGraph,
 		GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
@@ -91,5 +85,11 @@ namespace ToolsRig
 		~DeferredCompiledShaderPatchCollection();
 	private:
 		std::unique_ptr<PatchCollectionFuture> _future;
+	};
+
+	class IPatchCollectionVisualizationScene
+	{
+	public:
+		virtual void SetPatchCollection(const PatchCollectionFuture& patchCollection) = 0;
 	};
 }

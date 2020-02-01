@@ -29,9 +29,6 @@
     <ClCompile Include="..\WindowRig.cpp">
       <Filter>BasicControls</Filter>
     </ClCompile>
-    <ClCompile Include="..\MaterialVisualisation.cpp">
-      <Filter>Vis</Filter>
-    </ClCompile>
     <ClCompile Include="..\UITypesBinding.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
@@ -73,6 +70,9 @@
       <Filter>GraphLanguage</Filter>
     </ClCompile>
     <ClCompile Include="..\AssetsLayer.cpp" />
+    <ClCompile Include="..\VisSettingsLayer.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />

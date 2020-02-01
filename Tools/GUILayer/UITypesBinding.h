@@ -82,11 +82,7 @@ namespace GUILayer
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
         property System::String^ ModelName
         {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_modelName);
-            }
-
+            System::String^ get() { return _modelName; }
             void set(System::String^ value);
         }
 
@@ -95,32 +91,8 @@ namespace GUILayer
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
         property System::String^ MaterialName
         {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_materialName);
-            }
-
+            System::String^ get() { return _materialName; }
             void set(System::String^ value);
-        }
-
-        [Category("Model")]
-        [Description("Supplements")]
-        property System::String^ Supplements
-        {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_supplements);
-            }
-
-            void set(System::String^ value);
-        }
-
-        [Category("Model")]
-        [Description("Level Of Detail")]
-        property unsigned LevelOfDetail
-        {
-            unsigned get() { return _object->_levelOfDetail; }
-            void set(unsigned value);
         }
 
 		[Category("Animation")]
@@ -128,11 +100,7 @@ namespace GUILayer
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
         property System::String^ AnimationFileName
         {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_animationFileName);
-            }
-
+			System::String^ get() { return _animationFileName; }
             void set(System::String^ value);
         }
 
@@ -141,45 +109,37 @@ namespace GUILayer
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
         property System::String^ SkeletonFileName
         {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_skeletonFileName);
-            }
-
+            System::String^ get() { return _skeletonFileName; }
             void set(System::String^ value);
         }
 
 		[Category("Model")]
+        [Description("Supplements")]
+        property System::String^ Supplements;
+
+        [Category("Model")]
+        [Description("Level Of Detail")]
+        property unsigned LevelOfDetail;
+
+		[Category("Model")]
         [Description("Material Binding Filter")]
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
-		property System::UInt64 MaterialBindingFilter
-		{
-			System::UInt64 get() { return _object->_materialBindingFilter; }
-            void set(System::UInt64 value);
-		}
+		property System::UInt64 MaterialBindingFilter;
 
-		ModelVisSettings(const std::shared_ptr<ToolsRig::ModelVisSettings>& attached)
-        {
-            _object = attached;
-        }
+		std::shared_ptr<ToolsRig::ModelVisSettings> ConvertToNative();
+		static ModelVisSettings^ ConvertFromNative(const ToolsRig::ModelVisSettings& input);
 
-        ModelVisSettings() 
-        {
-            _object = std::make_shared<ToolsRig::ModelVisSettings>();
-        }
-
-        ~ModelVisSettings() { _object.reset(); }
+		ModelVisSettings();
+		ModelVisSettings^ ShallowCopy();
 
 		static ModelVisSettings^ CreateDefault();
 		static ModelVisSettings^ FromCommandLine(array<System::String^>^ args);
 
-		// virtual event PropertyChangedEventHandler^ PropertyChanged;
-		const std::shared_ptr<ToolsRig::ModelVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
-
 	protected:
-		clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
-
-		void NotifyPropertyChanged(System::String^ propertyName);
+		System::String^ _modelName;
+		System::String^ _materialName;
+		System::String^ _animationFileName;
+		System::String^ _skeletonFileName;
 	};
 
 	public ref class MaterialVisSettings
@@ -194,6 +154,8 @@ namespace GUILayer
 		std::shared_ptr<ToolsRig::MaterialVisSettings> ConvertToNative();
 		static MaterialVisSettings^ ConvertFromNative(const ToolsRig::MaterialVisSettings& input);
 		MaterialVisSettings();
+
+		MaterialVisSettings^ ShallowCopy();
     };
 
 	public ref class VisOverlaySettings

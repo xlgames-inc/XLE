@@ -8,6 +8,7 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/PreviewSceneRegistry.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
@@ -60,6 +61,15 @@ namespace GUILayer
 		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
 			RenderCore::Assets::AnimationSetScaffold::CompileProcessType);
 		return ToManaged(MakeIteratorRange(exts));
+	}
+
+	System::Collections::Generic::IEnumerable<System::String^>^ Utils::EnumeratePreviewScenes()
+	{
+		auto& previewSceneRegistry = *ToolsRig::GetPreviewSceneRegistry();
+		auto result = gcnew System::Collections::Generic::List<System::String^>();
+		for (const auto&s:previewSceneRegistry.EnumerateScenes())
+			result->Add(clix::marshalString<clix::E_UTF8>(s));
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

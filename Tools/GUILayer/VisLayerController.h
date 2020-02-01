@@ -26,17 +26,13 @@ namespace GUILayer
 		property VisMouseOver^ MouseOver { VisMouseOver^ get(); }
 		property VisAnimationState^ AnimationState { VisAnimationState^ get(); }
 
-		void SetModelSettings(ModelVisSettings^ settings);
-		ModelVisSettings^ GetModelSettings();
-
-		void SetMaterialVisSettings(MaterialVisSettings^ settings);
-		MaterialVisSettings^ GetMaterialVisSettings();
+		void SetScene(ModelVisSettings^ settings);
+		void SetScene(MaterialVisSettings^ settings);
+		void SetPreviewRegistryScene(System::String^ name);
 
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
 
-		void SetMaterialOverrides(System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides);
-		void SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate);
 		void SetPatchCollectionOverrides(CompiledShaderPatchCollectionWrapper^ patchCollection);
 
 		void ResetCamera();
@@ -51,11 +47,6 @@ namespace GUILayer
 
 	private:
 		clix::auto_ptr<VisLayerControllerPimpl> _pimpl;
-
-		void ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args);
-		void PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args);
-		void RebuildMaterialOverrides();
-		System::Collections::Generic::List<RawMaterial^>^ _boundRawMaterials;
 	};
 
 }
