@@ -93,6 +93,45 @@ namespace Assets
 		}
 
 		template<typename FinalAssetType>
+			void ThenConstructToFuture(
+				AssetFuture<FinalAssetType>& future,
+				std::function<void(AssetFuture<FinalAssetType>&, const std::shared_ptr<AssetTypes>&...)>&& continuationFunction)
+		{
+			future.SetPollingFunction(
+				[subFutures{std::move(_subFutures)}, continuationFunction{std::move(continuationFunction)}](AssetFuture<FinalAssetType>& thatFuture) {
+
+					AssetState currentState = AssetState::Ready;
+					Blob actualizationBlob;
+					std::shared_ptr<DependencyValidation> exceptionDepVal;
+					std::tuple<std::shared_ptr<AssetTypes>...> actualized;
+					Internal::CheckAssetState(currentState, actualizationBlob, exceptionDepVal, actualized, subFutures);
+						
+					if (currentState == AssetState::Invalid) {
+						// Note that if one of the assets in invalid, we only consider the depVal for that specific asset
+						thatFuture.SetInvalidAsset(exceptionDepVal, actualizationBlob);
+						return false;
+					} else if (currentState == AssetState::Ready) {
+						TRY
+						{
+							// Note -- watch for a subtle edge condition here. Since we're passing the future to the callback function here,
+							// it's quite possible that may set some other polling function on the same future. AssetFuture supports that,
+							// but only because we already return false from this function.
+							std::apply(continuationFunction, std::tuple_cat(std::make_tuple(std::ref(thatFuture)), actualized));
+						} CATCH (const Exceptions::ConstructionError& e) {
+							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());	
+						} CATCH (const Exceptions::InvalidAsset& e) {
+							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+						} CATCH (const std::exception& e) {
+							thatFuture.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+						} CATCH_END
+						return false;
+					}
+					return true;
+						
+				});
+		}
+
+		template<typename FinalAssetType>
 			void ThenConstructToFuture(AssetFuture<FinalAssetType>& future)
 		{
 			future.SetPollingFunction(

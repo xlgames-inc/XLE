@@ -161,8 +161,10 @@ namespace Assets
 				lock = {};
 				bool pollingResult = pollingFunction(*this);
 				lock = std::unique_lock<decltype(_lock)>(_lock);
-				assert(!_pollingFunction);
-				if (pollingResult) std::swap(pollingFunction, _pollingFunction);
+				if (pollingResult) {
+					assert(!_pollingFunction);
+					std::swap(pollingFunction, _pollingFunction);
+				}
 
 				if (_pendingState != AssetState::Pending) {
 					actualized = _pending;
@@ -191,11 +193,14 @@ namespace Assets
 			lock = {};
 			bool pollingResult = pollingFunction(*this);
 			lock = std::unique_lock<decltype(_lock)>(_lock);
-			assert(!_pollingFunction);
-			if (pollingResult) std::swap(pollingFunction, _pollingFunction);
+			if (pollingResult) {
+				assert(!_pollingFunction);
+				std::swap(pollingFunction, _pollingFunction);
+			}
 		}
-		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
+		if (!_pollingFunction)
 			ClearFrameBarrierCallbackAlreadyLocked();
+		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 			_actualized = std::move(_pending);
 			_actualizationLog = std::move(_pendingActualizationLog);
 			_actualizedDepVal = std::move(_pendingDepVal);
@@ -360,9 +365,15 @@ namespace Assets
 		// execute it now to see if we can resolve the polling operation straight out of the block
 		if (!newFunction(*this)) {
 			ScopedLock(_lock);
-			assert(_state == AssetState::Pending);
-			if (_pendingState != AssetState::Pending) {
+			// Note -- in one edge condition, _state can be something other than Pending here. A polling function
+			// function can set another polling function on the future while it's processing -- so long as the
+			// original polling function returns false. However, in this case, the original polling function may
+			// have completely immediately as well, and actually hit this same codeblock and moved the asset into 
+			// ready/invalid state already.
+			// assert(_state == AssetState::Pending);
+			if (!_pollingFunction)
 				ClearFrameBarrierCallbackAlreadyLocked();
+			if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 				_actualized = std::move(_pending);
 				_actualizationLog = std::move(_pendingActualizationLog);
 				_actualizedDepVal = std::move(_pendingDepVal);
