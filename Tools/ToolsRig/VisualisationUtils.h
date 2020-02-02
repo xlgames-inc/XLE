@@ -145,6 +145,7 @@ namespace ToolsRig
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
+		virtual OverlayState GetOverlayState() const;
 
         SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
         ~SimpleSceneLayer();
@@ -192,25 +193,16 @@ namespace ToolsRig
 
 		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 
-        using OverlayFn = std::function<
-			void(
-				RenderOverlays::IOverlayContext&,
-				const RenderOverlays::DebuggingDisplay::Rect&,
-				const ToolsRig::VisMouseOver&, 
-				const SceneEngine::IScene& scene)>;
-
-        MouseOverTrackingOverlay(
+		MouseOverTrackingOverlay(
             const std::shared_ptr<VisMouseOver>& mouseOver,
             const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-            const std::shared_ptr<VisCameraSettings>& camera,
-            OverlayFn&& overlayFn);
+            const std::shared_ptr<VisCameraSettings>& camera);
         ~MouseOverTrackingOverlay();
     protected:
         std::shared_ptr<MouseOverTrackingListener> _inputListener;
         std::shared_ptr<VisCameraSettings> _camera;
         std::shared_ptr<VisMouseOver> _mouseOver;
-        OverlayFn _overlayFn;
     };
 
 	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(

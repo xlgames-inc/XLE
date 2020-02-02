@@ -105,12 +105,17 @@ namespace ToolsRig
 		std::shared_ptr<PlatformRig::EnvironmentSettings> _envSettings;
 		::Assets::FuturePtr<PlatformRig::EnvironmentSettings> _envSettingsFuture;
 		
-		std::string _sceneErrorMessage;
 		std::string _envSettingsErrorMessage;
+		unsigned _loadingIndicatorCounter = 0;
+
+		bool _preparingScene = false;
+		bool _preparingEnvSettings = false;
+		bool _preparingPipelineAccelerators = false;
 
 		std::shared_ptr<VisCameraSettings> _camera;
 
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<::Assets::IAsyncMarker> _pendingPipelines;
 
 		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
 		std::vector<std::shared_ptr<SceneEngine::IRenderStep>> _renderSteps;
@@ -124,6 +129,70 @@ namespace ToolsRig
 		return ::Assets::AssetState::Ready;
 	}
 
+	static void DrawDiamond(RenderOverlays::IOverlayContext* context, const RenderOverlays::DebuggingDisplay::Rect& rect, RenderOverlays::ColorB colour)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+		using namespace RenderOverlays;
+		using namespace RenderOverlays::DebuggingDisplay;
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._bottomRight[0],								0.5f * (rect._topLeft[1] + rect._bottomRight[1]))), colour,
+            AsPixelCoords(Coord2(0.5f * (rect._topLeft[0] + rect._bottomRight[0]),	rect._topLeft[1])), colour,
+            AsPixelCoords(Coord2(rect._topLeft[0],									0.5f * (rect._topLeft[1] + rect._bottomRight[1]))), colour);
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],									0.5f * (rect._topLeft[1] + rect._bottomRight[1]))), colour,
+            AsPixelCoords(Coord2(0.5f * (rect._topLeft[0] + rect._bottomRight[0]),	rect._bottomRight[1])), colour,
+            AsPixelCoords(Coord2(rect._bottomRight[0],								0.5f * (rect._topLeft[1] + rect._bottomRight[1]))), colour);
+    }
+
+	static void RenderLoadingIndicator(
+		RenderOverlays::IOverlayContext& context,
+		const RenderOverlays::DebuggingDisplay::Rect& viewport,
+		unsigned animationCounter)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+
+		const unsigned indicatorWidth = 80;
+		const unsigned indicatorHeight = 120;
+		RenderOverlays::DebuggingDisplay::Rect outerRect;
+		outerRect._topLeft[0] = std::max(viewport._topLeft[0]+12u, viewport._bottomRight[0]-indicatorWidth-12u);
+		outerRect._topLeft[1] = std::max(viewport._topLeft[1]+12u, viewport._bottomRight[1]-indicatorHeight-12u);
+		outerRect._bottomRight[0] = viewport._bottomRight[0]-12u;
+		outerRect._bottomRight[1] = viewport._bottomRight[1]-12u;
+
+		Float2 center {
+			(outerRect._bottomRight[0] + outerRect._topLeft[0]) / 2.0f,
+			(outerRect._bottomRight[1] + outerRect._topLeft[1]) / 2.0f };
+
+		const unsigned cycleCount = 1080;
+		// there are always 3 diamonds, distributed evenly throughout the animation....
+		unsigned oldestIdx = (unsigned)std::ceil(animationCounter / float(cycleCount/3));
+		int oldestStartPoint = -int(animationCounter % (cycleCount/3));
+		float phase = -oldestStartPoint / float(cycleCount/3);
+		for (unsigned c=0; c<3; ++c) {
+			unsigned idx = oldestIdx+c;
+
+			float a = (phase + (2-c)) / 3.0f;
+			float a2 = std::fmodf(idx / 10.f, 1.0f);
+			a2 = 0.5f + 0.5f * a2;
+
+			Rect r;
+			r._topLeft[0] = unsigned(center[0] - a * 0.5f * (outerRect._bottomRight[0] - outerRect._topLeft[0]));
+			r._topLeft[1] = unsigned(center[1] - a * 0.5f * (outerRect._bottomRight[1] - outerRect._topLeft[1]));
+			r._bottomRight[0] = unsigned(center[0] + a * 0.5f * (outerRect._bottomRight[0] - outerRect._topLeft[0]));
+			r._bottomRight[1] = unsigned(center[1] + a * 0.5f * (outerRect._bottomRight[1] - outerRect._topLeft[1]));
+
+			using namespace RenderOverlays::DebuggingDisplay;
+			float fadeOff = std::min((1.0f - a) * 10.f, 1.0f);
+			DrawDiamond(&context, r, RenderOverlays::ColorB { uint8_t(0xff * fadeOff * a2), uint8_t(0xff * fadeOff * a2), uint8_t(0xff * fadeOff * a2), 0xff });
+		}
+	}
+
     void SimpleSceneLayer::Render(
         RenderCore::IThreadContext& threadContext,
 		const RenderCore::IResourcePtr& renderTarget,
@@ -131,34 +200,55 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-		if (_pimpl->_envSettingsFuture) {
+		if (_pimpl->_preparingEnvSettings) {
 			auto newActualized = _pimpl->_envSettingsFuture->TryActualize();
 			if (newActualized) {
 				_pimpl->_envSettings = newActualized;
 				_pimpl->_envSettingsFuture = nullptr;
 				_pimpl->_envSettingsErrorMessage = {};
+				_pimpl->_preparingEnvSettings = false;
 			} else if (_pimpl->_envSettingsFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
 				_pimpl->_envSettingsErrorMessage = ::Assets::AsString(_pimpl->_envSettingsFuture->GetActualizationLog());
 				_pimpl->_envSettings = nullptr;
 				_pimpl->_envSettingsFuture = nullptr;
+				_pimpl->_preparingEnvSettings = false;
 			}
 		}
 
-		if (_pimpl->_envSettings && _pimpl->_scene && GetAsyncSceneState(*_pimpl->_scene) != ::Assets::AssetState::Pending) {
-			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
+		auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
+			{
+				MakeIteratorRange(_pimpl->_renderSteps),
+				MakeIteratorRange(_pimpl->_lightingPlugins)
+			},
+			_pimpl->_pipelineAccelerators,
+			RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
-			static float time = 0.f;
-			time += 1.0f / 60.f;
-			lightingParserDelegate.SetTimeValue(time);
+		PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
 
-			auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
-				{
-					MakeIteratorRange(_pimpl->_renderSteps),
-					MakeIteratorRange(_pimpl->_lightingPlugins)
-				},
-				_pimpl->_pipelineAccelerators,
-				RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
+		static float time = 0.f;
+		time += 1.0f / 60.f;
+		lightingParserDelegate.SetTimeValue(time);
 
+		if (_pimpl->_preparingScene && !_pimpl->_preparingEnvSettings) {
+			auto stillPending = GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending;
+			if (!stillPending) {
+				_pimpl->_preparingScene = false;
+				ResetCamera();
+
+				_pimpl->_preparingPipelineAccelerators = true;
+				_pimpl->_pendingPipelines = SceneEngine::PreparePipelines(
+					threadContext, *compiledTechnique, lightingParserDelegate, *_pimpl->_scene);
+			}
+		}
+
+		if (_pimpl->_preparingPipelineAccelerators) {
+			if (!_pimpl->_pendingPipelines || _pimpl->_pendingPipelines->GetAssetState() != ::Assets::AssetState::Pending) {
+				_pimpl->_preparingPipelineAccelerators = false;
+				_pimpl->_pendingPipelines.reset();
+			}
+		}
+
+		if (!_pimpl->_preparingEnvSettings && !_pimpl->_preparingScene && !_pimpl->_preparingPipelineAccelerators) {
 			auto& screenshot = Tweakable("Screenshot", 0);
 			if (screenshot) {
 				PlatformRig::TiledScreenshot(
@@ -178,12 +268,22 @@ namespace ToolsRig
 				auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 				SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
 			}
+		} else {
+			// Draw a loading indicator, 
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext, RenderCore::LoadStore::Clear);
+			using namespace RenderOverlays::DebuggingDisplay;
+			RenderOverlays::ImmediateOverlayContext overlays(
+				threadContext, &parserContext.GetNamedResources(),
+				parserContext.GetProjectionDesc());
+			overlays.CaptureState();
+			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+			Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
+			RenderLoadingIndicator(overlays, rect, _pimpl->_loadingIndicatorCounter++);
+			overlays.ReleaseState();
 		}
 
-		if (!_pimpl->_sceneErrorMessage.empty() || !_pimpl->_envSettingsErrorMessage.empty()) {
+		if (!_pimpl->_envSettingsErrorMessage.empty()) {
 			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-			if (!_pimpl->_sceneErrorMessage.empty())
-				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_sceneErrorMessage);
 			if (!_pimpl->_envSettingsErrorMessage.empty())
 				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
 		}
@@ -193,11 +293,13 @@ namespace ToolsRig
     {
 		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<PlatformRig::EnvironmentSettings>>("VisualizationEnvironment");
 		::Assets::AutoConstructToFuture(*_pimpl->_envSettingsFuture, envSettings._envConfigFile);
+		_pimpl->_preparingEnvSettings = true;
     }
 
 	void SimpleSceneLayer::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
 	{
 		_pimpl->_scene = scene;
+		_pimpl->_preparingScene = true;
 	}
 
 	const std::shared_ptr<VisCameraSettings>& SimpleSceneLayer::GetCamera()
@@ -212,6 +314,31 @@ namespace ToolsRig
 			auto boundingBox = scene->GetBoundingBox();
 			*_pimpl->_camera = ToolsRig::AlignCameraToBoundingBox(_pimpl->_camera->_verticalFieldOfView, boundingBox);
 		}
+	}
+
+	auto SimpleSceneLayer::GetOverlayState() const -> OverlayState
+	{
+		RefreshMode refreshMode = RefreshMode::EventBased;
+
+		if (!_pimpl->_envSettings && _pimpl->_envSettingsFuture->GetAssetState() == ::Assets::AssetState::Pending)
+			return { RefreshMode::RegularAnimation };
+
+		if (_pimpl->_preparingEnvSettings || _pimpl->_preparingScene || _pimpl->_preparingPipelineAccelerators)
+			return { RefreshMode::RegularAnimation };
+
+		// Need regular updates if the scene future hasn't been fully loaded yet
+		// Or if there's active animation playing in the scene
+		if (_pimpl->_scene) {
+			if (GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) { 	
+				refreshMode = RefreshMode::RegularAnimation;
+			} else {
+				auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+				if (visContext && visContext->HasActiveAnimation())
+					refreshMode = RefreshMode::RegularAnimation;
+			}
+		}
+		
+		return { refreshMode };
 	}
 	
     SimpleSceneLayer::SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
