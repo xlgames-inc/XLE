@@ -83,7 +83,7 @@
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
     <ClCompile Include="..\RawFileAsset.cpp" />
-    <ClInclude Include="..\AsyncMarkerGroup.cpp" />
+    <ClCompile Include="..\AsyncMarkerGroup.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
