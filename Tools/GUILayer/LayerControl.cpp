@@ -68,6 +68,7 @@ namespace GUILayer
         {
             auto& frameRig = windowRig.GetFrameRig();
 			RenderCore::Techniques::ParsingContext parserContext(*_pimpl->_globalTechniqueContext, _pimpl->_namedResources.get(), _pimpl->_frameBufferPool.get());
+			parserContext._pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool().get();
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
                 parserContext, nullptr);

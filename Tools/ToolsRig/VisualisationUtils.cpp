@@ -519,8 +519,8 @@ namespace ToolsRig
 
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
 		SceneEngine::SceneView sceneView {
+			SceneEngine::SceneView::Type::Normal,
 			Techniques::BuildProjectionDesc(cam, UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1])),
-			SceneEngine::SceneView::Type::Normal
 		};
 
 		bool doColorByMaterial = 
@@ -752,7 +752,7 @@ namespace ToolsRig
 			SceneEngine::ExecuteSceneRaw(
 				threadContext, parserContext, 
 				sequencerTechnique,
-				{RenderCore::Techniques::ProjectionDesc{}, SceneEngine::SceneView::Type::Other},
+				{SceneEngine::SceneView::Type::Other},
 				scene);
 
 		CATCH_ASSETS_END(parserContext)	// we can get pending/invalid assets here, which we can suppress
