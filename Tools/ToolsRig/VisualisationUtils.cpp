@@ -36,6 +36,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/FunctionUtils.h"
+#include <iomanip>
 
 #pragma warning(disable:4505) // unreferenced local function has been removed
 
@@ -470,6 +471,33 @@ namespace ToolsRig
 		}
     };
 
+	static void RenderTrackingOverlay(
+        RenderOverlays::IOverlayContext& context,
+		const RenderOverlays::DebuggingDisplay::Rect& viewport,
+		const ToolsRig::VisMouseOver& mouseOver, 
+		const SceneEngine::IScene& scene)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+
+        auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
+        std::string matName;
+		auto* visContent = dynamic_cast<const ToolsRig::IVisContent*>(&scene);
+		if (visContent)
+			matName = visContent->GetDrawCallDetails(mouseOver._drawCallIndex, mouseOver._materialGuid)._materialName;
+        DrawText(
+            &context,
+            Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-8), Coord2(viewport._bottomRight[0]-6, viewport._bottomRight[1]-8)),
+            nullptr, RenderOverlays::ColorB(0xffafafaf),
+            StringMeld<512>() 
+                << "Material: {Color:7f3faf}" << matName
+                << "{Color:afafaf}, Draw call: " << mouseOver._drawCallIndex
+                << std::setprecision(4)
+                << ", (" << mouseOver._intersectionPt[0]
+                << ", "  << mouseOver._intersectionPt[1]
+                << ", "  << mouseOver._intersectionPt[2]
+                << ")");
+    }
+
     void VisualisationOverlay::Render(
         RenderCore::IThreadContext& threadContext, 
 		const RenderCore::IResourcePtr& renderTarget,
@@ -608,6 +636,29 @@ namespace ToolsRig
                     settings, _pimpl->_settings._colourByMaterial==2);
             CATCH_ASSETS_END(parserContext)
         }
+
+		bool writeMaterialName = 
+			(_pimpl->_settings._colourByMaterial == 2 && _pimpl->_mouseOver->_hasMouseOver);
+
+		if (writeMaterialName) {
+
+			CATCH_ASSETS_BEGIN
+
+				{
+					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+					using namespace RenderOverlays::DebuggingDisplay;
+					RenderOverlays::ImmediateOverlayContext overlays(
+						threadContext, &parserContext.GetNamedResources(),
+						parserContext.GetProjectionDesc());
+					overlays.CaptureState();
+					auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+					Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
+					RenderTrackingOverlay(overlays, rect, *_pimpl->_mouseOver, *_pimpl->_scene);
+					overlays.ReleaseState();
+				}
+
+			CATCH_ASSETS_END(parserContext)
+		}
     }
 
 	void VisualisationOverlay::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
@@ -862,20 +913,6 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
-        if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
-		auto scene = _inputListener->GetScene();
-		if (!scene) return;
-
-		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parsingContext);
-        using namespace RenderOverlays::DebuggingDisplay;
-        RenderOverlays::ImmediateOverlayContext overlays(
-            threadContext, &parsingContext.GetNamedResources(),
-            parsingContext.GetProjectionDesc());
-		overlays.CaptureState();
-		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
-		Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
-        _overlayFn(overlays, rect, *_mouseOver, *scene);
-		overlays.ReleaseState();
     }
 
 	void MouseOverTrackingOverlay::Set(const std::shared_ptr<SceneEngine::IScene>& scene)
@@ -887,9 +924,7 @@ namespace ToolsRig
         const std::shared_ptr<VisMouseOver>& mouseOver,
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-        const std::shared_ptr<VisCameraSettings>& camera,
-        OverlayFn&& overlayFn)
-    : _overlayFn(std::move(overlayFn))
+        const std::shared_ptr<VisCameraSettings>& camera)
     {
         _mouseOver = mouseOver;
         _inputListener = std::make_shared<MouseOverTrackingListener>(

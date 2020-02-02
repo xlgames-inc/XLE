@@ -51,33 +51,6 @@ namespace GUILayer
 		}
     };
 
-	static void RenderTrackingOverlay(
-        RenderOverlays::IOverlayContext& context,
-		const RenderOverlays::DebuggingDisplay::Rect& viewport,
-		const ToolsRig::VisMouseOver& mouseOver, 
-		const SceneEngine::IScene& scene)
-    {
-        using namespace RenderOverlays::DebuggingDisplay;
-
-        auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
-        String^ matName = "matName";
-		auto* visContent = dynamic_cast<const ToolsRig::IVisContent*>(&scene);
-		if (visContent)
-			matName = clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(mouseOver._drawCallIndex, mouseOver._materialGuid)._materialName);
-        DrawText(
-            &context,
-            Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-3), Coord2(viewport._bottomRight[0]-3, viewport._bottomRight[1]-3)),
-            nullptr, RenderOverlays::ColorB(0xffafafaf),
-            StringMeld<512>() 
-                << "Material: {Color:7f3faf}" << clix::marshalString<clix::E_UTF8>(matName)
-                << "{Color:afafaf}, Draw call: " << mouseOver._drawCallIndex
-                << std::setprecision(4)
-                << ", (" << mouseOver._intersectionPt[0]
-                << ", "  << mouseOver._intersectionPt[1]
-                << ", "  << mouseOver._intersectionPt[2]
-                << ")");
-    }
-
 	VisMouseOver^ VisLayerController::MouseOver::get()
 	{
 		return gcnew VisMouseOver(_pimpl->_mouseOver, _pimpl->_scene);
@@ -189,19 +162,6 @@ namespace GUILayer
 
 		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
-			/*
-			auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
-
-			auto intersectionScene = ToolsRig::CreateModelIntersectionScene(
-				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->ModelName)),
-				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->MaterialName)));
-			auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-				immContext,
-				RenderCore::Techniques::CameraDesc(), 
-				GetWindowRig().GetPresentationChain()->GetDesc(),
-				_pimpl->_globalTechniqueContext);
-				*/
-
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
@@ -211,12 +171,10 @@ namespace GUILayer
 			_pimpl->_manipulatorLayer = ToolsRig::MakeLayerForInput(manipulators);
 		}
 
-		{
-			_pimpl->_trackingLayer = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-				_pimpl->_mouseOver,
-				techContext, pipelineAcceleratorPool,
-				_pimpl->_modelLayer->GetCamera(), &RenderTrackingOverlay);
-		}
+		_pimpl->_trackingLayer = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
+			_pimpl->_mouseOver,
+			techContext, pipelineAcceleratorPool,
+			_pimpl->_modelLayer->GetCamera());
 
 		auto engineDevice = EngineDevice::GetInstance();
 		engineDevice->AddOnShutdown(this);
