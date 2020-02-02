@@ -59,7 +59,7 @@ namespace ToolsRig
 		uint64_t _activeMaterial;
 	};
 
-	class ModelScene : public SceneEngine::IScene, public IVisContent
+	class ModelScene : public SceneEngine::IScene, public IVisContent, public ::Assets::IAsyncMarker
     {
     public:
 		virtual void ExecuteScene(
@@ -199,6 +199,16 @@ namespace ToolsRig
 			auto* r = TryActualize();
 			if (!r) return false;
 			return r->_animationScaffold && _animationState && _animationState->_state == VisAnimationState::State::Playing;
+		}
+
+		::Assets::AssetState GetAssetState() const
+		{
+			return _rendererStateFuture->GetAssetState();
+		}
+
+		std::optional<::Assets::AssetState> StallWhilePending(std::chrono::milliseconds timeout) const
+		{
+			return _rendererStateFuture->StallWhilePending(timeout);
 		}
 
 		ModelScene(
