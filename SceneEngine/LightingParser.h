@@ -27,6 +27,8 @@ namespace RenderCore { namespace Techniques {
 
 namespace RenderCore { class AttachmentDesc; class FrameBufferProperties; }
 
+namespace Assets { class IAsyncMarker; }
+
 namespace SceneEngine
 {
 	class LightingParserContext;
@@ -97,6 +99,12 @@ namespace SceneEngine
         RenderCore::IThreadContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext);
+
+	std::shared_ptr<::Assets::IAsyncMarker> PreparePipelines(
+		RenderCore::IThreadContext& threadContext,
+		const CompiledSceneTechnique& technique,
+		const ILightingParserDelegate& lightingDelegate,
+		IScene& scene);
 
         ///////////////////////////////////////////////////////////////////////////
 

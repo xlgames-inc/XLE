@@ -21,14 +21,16 @@ namespace SceneEngine
     class ToneMapSettings;
     class PreparedScene;
 
+#pragma warning(push)
+#pragma warning(disable:4324) //  'SceneEngine::SceneView': structure was padded due to alignment specifier
 	class SceneView
 	{
 	public:
 		enum class Type { Normal, Shadow, Other };
-
-		RenderCore::Techniques::ProjectionDesc _projection;
 		Type _type = SceneView::Type::Normal;
+		RenderCore::Techniques::ProjectionDesc _projection;
 	};
+#pragma warning(pop)
 
 	class IViewDelegate;
 

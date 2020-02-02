@@ -32,8 +32,11 @@
 #include "../RenderCore/IDevice.h"
 #include "../RenderOverlays/Font.h"
 #include "../Assets/Assets.h"
+#include "../Assets/AsyncMarkerGroup.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
+
+#include <set>
 
 namespace SceneEngine
 {
@@ -307,14 +310,14 @@ namespace SceneEngine
 		SceneExecuteContext executeContext;
 		for (auto&step:technique._viewDelegates) {
 			step->Reset();
-			executeContext.AddView(SceneView{mainSceneProjection}, step);
+			executeContext.AddView(SceneView{SceneView::Type::Normal, mainSceneProjection}, step);
 		}
 
 		for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
 			auto proj = lightingDelegate.GetShadowProjectionDesc(s, mainSceneProjection);
 			// todo -- what's the correct projection to give to this view?
 			executeContext.AddView(
-				SceneView{/*proj*/mainSceneProjection, SceneView::Type::Shadow},
+				SceneView{SceneView::Type::Shadow, /*proj*/mainSceneProjection},
 				std::make_shared<ViewDelegate_Shadow>(proj));
 		}
 
@@ -446,6 +449,68 @@ namespace SceneEngine
 
 		return lightingParserContext;
     }
+
+	std::shared_ptr<::Assets::IAsyncMarker> PreparePipelines(
+		RenderCore::IThreadContext& threadContext,
+		const CompiledSceneTechnique& technique,
+		const ILightingParserDelegate& lightingDelegate,
+		IScene& scene)
+	{
+		SceneExecuteContext executeContext;
+		for (auto&step:technique._viewDelegates) {
+			step->Reset();
+			executeContext.AddView(SceneView{SceneView::Type::Other}, step);
+		}
+
+		for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
+			executeContext.AddView(
+				SceneView{SceneView::Type::Other},
+				std::make_shared<ViewDelegate_Shadow>(ShadowProjectionDesc{}));
+		}
+
+		scene.ExecuteScene(threadContext, executeContext);
+
+		auto pipelineAcceleratorPool = technique._pipelineAccelerators.get();
+		pipelineAcceleratorPool->RebuildAllOutOfDatePipelines();
+
+		std::set<::Assets::FuturePtr<Metal::GraphicsPipeline>> pendingPipelines;
+
+		for (const auto&rp:technique._renderPasses) {
+			unsigned subpassCounter = 0;
+			auto stepRemappingIterator = rp._perStepRemappings.begin();
+			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
+				IViewDelegate* viewDelegate = nullptr;
+				if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
+
+				for (unsigned b=0; b<(unsigned)RenderCore::Techniques::BatchFilter::Max; ++b) {
+					auto *drawablesPacket = viewDelegate ? viewDelegate->GetDrawablesPacket(RenderCore::Techniques::BatchFilter(b)) : nullptr;
+					if (!drawablesPacket) continue;
+
+					for (auto d=drawablesPacket->_drawables.begin(); d!=drawablesPacket->_drawables.end(); ++d) {
+						const auto& drawable = *(RenderCore::Techniques::Drawable*)d.get();
+						auto range = MakeIteratorRange(
+							AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter), 
+							AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
+						for (auto r:range) {
+							auto pipelineAccelerator = pipelineAcceleratorPool->GetPipeline(*drawable._pipeline, *r);
+							if (pipelineAccelerator->GetAssetState() == ::Assets::AssetState::Pending)
+								pendingPipelines.insert(pipelineAccelerator);
+						}
+					}
+				}
+			}
+		}
+
+		if (pendingPipelines.empty())
+			return nullptr;
+
+		std::string markerName{"SceneEngine PreparePipelines"};
+		auto result = std::make_shared<::Assets::AsyncMarkerGroup>();
+		for (const auto&pp:pendingPipelines)
+			result->Add(pp, markerName);
+		
+		return result;
+	}
 
     void LightingParserContext::SetMetricsBox(MetricsBox* box)
     {
