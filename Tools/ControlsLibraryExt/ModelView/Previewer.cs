@@ -266,9 +266,8 @@ namespace ControlsLibraryExt.ModelView
 
             switch ((Command)commandTag)
             {
-                case Command.SelectModel:
+                case Command.SelectScene:
                 case Command.SelectAnimationSet:
-                case Command.SelectSkeleton:
                     return _contextRegistry.GetActiveContext<PreviewerContext>() != null;
             }
 
@@ -284,21 +283,10 @@ namespace ControlsLibraryExt.ModelView
                 {
                     switch ((Command)commandTag)
                     {
-                        case Command.SelectModel:
-                            if (OpenFilesWithFilters(_ofd_Skin, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
+                        case Command.SelectScene:
                             {
-                                var settings = context.ModelSettings;
-                                settings.ModelName = _ofd_Skin.FileName;
-                                context.ModelSettings = settings;
-                            }
-                            break;
-
-                        case Command.SelectSkeleton:
-                            if (OpenFilesWithFilters(_ofd_Skeleton, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
-                            {
-                                var settings = context.ModelSettings;
-                                settings.SkeletonFileName = _ofd_Skeleton.FileName;
-                                context.ModelSettings = settings;
+                                var controls = new ControlsLibraryExt.SceneSelector.SelectPreviewSceneModal(context);
+                                controls.ShowDialog();
                             }
                             break;
 
@@ -354,11 +342,11 @@ namespace ControlsLibraryExt.ModelView
 
             _commandService.RegisterCommand(
                 new CommandInfo(
-                    Command.SelectModel,
+                    Command.SelectScene,
                     Command.PreviewerConfigMenu,
                     null,
-                    "Select Model".Localize(),
-                    "Select model file to display in previewer".Localize(),
+                    "Select Scene".Localize(),
+                    "Select scene to display in previewer".Localize(),
                     Sce.Atf.Input.Keys.None,
                     null,
                     CommandVisibility.Menu),
@@ -375,26 +363,13 @@ namespace ControlsLibraryExt.ModelView
                     null,
                     CommandVisibility.Menu),
                 this);
-
-            _commandService.RegisterCommand(
-                new CommandInfo(
-                    Command.SelectSkeleton,
-                    Command.PreviewerConfigMenu,
-                    null,
-                    "Select Skeleton".Localize(),
-                    "Select skeleton to use in previewer".Localize(),
-                    Sce.Atf.Input.Keys.None,
-                    null,
-                    CommandVisibility.Menu),
-                this);
         }
 
         private enum Command
         {
             PreviewerConfigMenu,
-            SelectModel,
-            SelectAnimationSet,
-            SelectSkeleton
+            SelectScene,
+            SelectAnimationSet
         }
 
         [Import(AllowDefault = false)]

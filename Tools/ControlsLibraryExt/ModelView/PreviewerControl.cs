@@ -25,6 +25,7 @@ namespace ControlsLibraryExt.ModelView
             set
             {
                 _modelSettings = value;
+                _previewRegistryScene = null;
                 LayerController.SetScene(value);
                 OnModelSettingsChange?.Invoke(this, null);
             }
@@ -34,6 +35,22 @@ namespace ControlsLibraryExt.ModelView
             }
         }
         private GUILayer.ModelVisSettings _modelSettings = GUILayer.ModelVisSettings.CreateDefault();
+
+        public string PreviewRegistryScene
+        {
+            set
+            {
+                _modelSettings = null;
+                _previewRegistryScene = value;
+                LayerController.SetPreviewRegistryScene(value);
+                OnModelSettingsChange?.Invoke(this, null);
+            }
+            get
+            {
+                return _previewRegistryScene;
+            }
+        }
+        private string _previewRegistryScene;
 
         public GUILayer.VisOverlaySettings OverlaySettings
         {
@@ -55,7 +72,14 @@ namespace ControlsLibraryExt.ModelView
                 {
                     // (Create on demand because MEF tends to create and destroy dummy versions of this object during initialization)
                     _layerController = new GUILayer.VisLayerController();
-                    _layerController.SetScene(this.ModelSettings);
+                    if (this.ModelSettings != null)
+                    {
+                        _layerController.SetScene(this.ModelSettings);
+                    }
+                    else
+                    {
+                        _layerController.SetPreviewRegistryScene(this.PreviewRegistryScene);
+                    }
                 }
                 return _layerController;
             }
