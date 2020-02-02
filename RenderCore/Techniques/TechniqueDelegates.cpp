@@ -18,6 +18,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
 #include <sstream>
@@ -325,13 +326,13 @@ namespace RenderCore { namespace Techniques
 		RenderCore::RasterizationDesc _rasterization;
 		RenderCore::DepthStencilDesc _depthStencil;
 
-		::Assets::FuturePtr<Technique> _techniqueSetFuture;
-		::Assets::DepValPtr _cfgFileDepVal;
-		::Assets::AssetState _cfgFileState;
-
-		std::shared_ptr<TechniqueShaderVariationSet> _variationSet;
-
-		::Assets::AssetState PrimeTechniqueCfg();
+		struct VariationSet
+		{
+			std::shared_ptr<Technique> _techniqueSetFuture;
+			std::shared_ptr<TechniqueShaderVariationSet> _variationSet;
+			const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSetFuture->GetDependencyValidation(); }
+		};
+		::Assets::FuturePtr<VariationSet> _variationSetFuture;
 	};
 
 	auto TechniqueDelegate_Legacy::Resolve(
@@ -339,41 +340,31 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<const ParameterBox**> selectors,
 		const RenderCore::Assets::RenderStateSet& input) -> ResolvedTechnique
 	{
-		if (PrimeTechniqueCfg() != ::Assets::AssetState::Ready)
-			return {};
-
-		assert(_variationSet);
 		ResolvedTechnique result;
-		result._shaderProgram = _variationSet->FindVariation(_techniqueIndex, selectors.begin());
 		result._blend = _blend;
 		result._rasterization = _rasterization;
 		result._depthStencil = _depthStencil;
-		return result;
-	}
 
-	::Assets::AssetState TechniqueDelegate_Legacy::PrimeTechniqueCfg()
-	{
-		if (!_techniqueSetFuture) return _cfgFileState;
-
-		auto actual = _techniqueSetFuture->TryActualize();
-		if (!actual) {
-			auto state = _techniqueSetFuture->GetAssetState();
-			if (state == ::Assets::AssetState::Invalid) {
-				_cfgFileDepVal = _techniqueSetFuture->GetDependencyValidation();
-				_cfgFileState = ::Assets::AssetState::Invalid;
-				_techniqueSetFuture.reset();
-				_variationSet.reset();
-				return ::Assets::AssetState::Invalid;
-			}
-			return ::Assets::AssetState::Pending;
+		auto variationSet = _variationSetFuture->TryActualize();
+		if (variationSet) {
+			result._shaderProgram = variationSet->_variationSet->FindVariation(_techniqueIndex, selectors.begin());
+		} else {
+			std::vector<ParameterBox> selectorsCopy;
+			for (const auto&sel:selectors) selectorsCopy.push_back(*sel);
+			result._shaderProgram = std::make_shared<::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>>("ShaderPendingVariationSet");
+			::Assets::WhenAll(_variationSetFuture).ThenConstructToFuture<RenderCore::Metal::ShaderProgram>(
+				*result._shaderProgram,
+				[techniqueIndex{_techniqueIndex}, selectorsCopy](const std::shared_ptr<VariationSet>& variationSet) {
+					const ParameterBox* selectorPtrs[ShaderSelectorFiltering::Source::Max] = {};
+					for (size_t c=0; c<std::min(selectorsCopy.size(), dimof(selectorPtrs)); ++c)
+						selectorPtrs[c] = &selectorsCopy[c];
+					auto shader = variationSet->_variationSet->FindVariation(techniqueIndex, selectorPtrs);
+					shader->StallWhilePending();
+					return shader->Actualize();
+				});
 		}
 
-		_cfgFileDepVal = actual->GetDependencyValidation();
-		_cfgFileState = ::Assets::AssetState::Ready;
-		_techniqueSetFuture.reset();
-
-		_variationSet = std::make_shared<TechniqueShaderVariationSet>(actual);
-		return ::Assets::AssetState::Ready;
+		return result;
 	}
 
 	TechniqueDelegate_Legacy::TechniqueDelegate_Legacy(
@@ -386,8 +377,18 @@ namespace RenderCore { namespace Techniques
 	, _rasterization(rasterization)
 	, _depthStencil(depthStencil)
 	{
-		_techniqueSetFuture = ::Assets::MakeAsset<Technique>("xleres/Techniques/Illum.tech");
-		_cfgFileState = ::Assets::AssetState::Pending;
+		const char* techFile = "xleres/Techniques/Illum.tech";
+		auto techniqueSetFuture = ::Assets::MakeAsset<Technique>(techFile);
+		_variationSetFuture = std::make_shared<::Assets::AssetFuture<VariationSet>>(techFile);
+		::Assets::WhenAll(techniqueSetFuture).ThenConstructToFuture<VariationSet>(
+			*_variationSetFuture,
+			[](const std::shared_ptr<Technique>& technique) {
+				auto variationSet = std::make_shared<TechniqueShaderVariationSet>(technique);
+				return std::make_shared<VariationSet>(VariationSet{
+					technique,
+					variationSet
+					});
+			});
 	}
 
 	TechniqueDelegate_Legacy::~TechniqueDelegate_Legacy()
