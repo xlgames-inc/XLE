@@ -314,6 +314,50 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 }
             }
 
+		} else if (srcFormat.first == VertexUtilComponentType::UNorm16) {
+
+			if (dstFormat.first == VertexUtilComponentType::Float32) {  ////////////////////////////////////////////////
+
+				for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
+                    GetVertDataUNorm16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((float*)dst)[c] = input[c];
+                    }
+                }
+
+			} else {
+                Throw(std::runtime_error("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+
+		} else if (srcFormat.first == VertexUtilComponentType::SNorm16) {
+
+			if (dstFormat.first == VertexUtilComponentType::Float32) {  ////////////////////////////////////////////////
+
+				for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(uint16_t) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4] = {0.f, 0.f, 0.f, 1.0f};
+                    GetVertDataUNorm16(input, (const uint16_t*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
+                        ((float*)dst)[c] = input[c];
+                    }
+                }
+
+			} else {
+                Throw(std::runtime_error("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+
         } else {
             Throw(std::runtime_error("Error while copying vertex data. Format not supported."));
         }

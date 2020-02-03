@@ -8,7 +8,9 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/OutputStream.h"
+#include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StreamUtils.h"
 #include "../../Utility/Streams/Serialization.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
@@ -306,6 +308,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				if (parameterIndex < names.size()) return names[parameterIndex];
 				else return std::string();
 			});
+
+		{
+			auto defaultOutputTransforms = transMachine.GenerateOutputTransforms(defaultParameters);
+			stream << " --- Output transforms with default parameters:" << std::endl;
+			for (unsigned c=0; c<transMachine.GetOutputMatrixCount(); ++c) {
+				stream << "[" << c << "] Local-To-World (" << transMachine._jointTags[c].first << ":" << transMachine._jointTags[c].second << "):" << std::endl;
+				bool goodDecomposition = false;
+				ScaleRotationTranslationQ srt {defaultOutputTransforms[c], goodDecomposition};
+				const auto& t = defaultOutputTransforms[c];
+				if (goodDecomposition) {
+					stream << StreamIndent{4} << Float4{t(0,0), t(0,1), t(0,2), t(0,3)} << ", Scale: " << srt._scale << std::endl;
+					stream << StreamIndent{4} << Float4{t(1,0), t(1,1), t(1,2), t(1,3)} << ", Rotation Quaternion: " << srt._rotation << std::endl;
+					stream << StreamIndent{4} << Float4{t(2,0), t(2,1), t(2,2), t(2,3)} << ", Translation: " << srt._translation << std::endl;
+					stream << StreamIndent{4} << Float4{t(3,0), t(3,1), t(3,2), t(3,3)} << std::endl;
+				} else {
+					stream << StreamIndent{4} << Float4{t(0,0), t(0,1), t(0,2), t(0,3)} << ", No decomposition" << std::endl;
+					stream << StreamIndent{4} << Float4{t(1,0), t(1,1), t(1,2), t(1,3)} << std::endl;
+					stream << StreamIndent{4} << Float4{t(2,0), t(2,1), t(2,2), t(2,3)} << std::endl;
+					stream << StreamIndent{4} << Float4{t(3,0), t(3,1), t(3,2), t(3,3)} << std::endl;
+				}
+			}
+		}
 
 		return stream;
 	}
