@@ -426,6 +426,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			if (inst._localToWorldId < transforms.size())
 				localToWorld = transforms[inst._localToWorldId];
 
+			localToWorld = Combine(geo->_geoSpaceToNodeSpace, localToWorld);
+
 			const void*         vertexBuffer = geo->_vertices.data();
 			const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
 
@@ -456,6 +458,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			Float4x4 localToWorld = Identity<Float4x4>();
 			if (inst._localToWorldId < transforms.size())
 				localToWorld = transforms[inst._localToWorldId];
+
+			localToWorld = Combine(controller->_geoSpaceToNodeSpace, localToWorld);
 
 			//  We can't get the vertex position data directly from the vertex buffer, because
 			//  the "bound" object is already using an opaque hardware object. However, we can
