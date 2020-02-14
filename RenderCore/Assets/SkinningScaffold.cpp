@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
         AnimationState animState = animState__;
 
         size_t driverStart = 0, driverEnd = 0;
-        size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDrivers.size();
+        size_t constantDriverStartIndex = 0, constantDriverEndIndex = 0;
         if (animState._animation!=0x0) {
             auto end = _animations.end();
             auto i = std::lower_bound(_animations.begin(), end, animState._animation, CompareFirst<uint64_t, Animation>());
@@ -176,6 +176,7 @@ namespace RenderCore { namespace Assets
         Animation result;
         result._beginDriver = result._endDriver = 0;
         result._beginTime = result._endTime = 0.f;
+		result._beginConstantDriver = result._endConstantDriver = 0;
         return result;
     }
 
