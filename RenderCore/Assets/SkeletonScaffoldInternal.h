@@ -11,6 +11,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Core/Types.h"
 
 namespace RenderCore { namespace Assets 
@@ -42,7 +43,7 @@ namespace RenderCore { namespace Assets
             struct Parameter
             {
                 uint64  _name = ~0ull;
-                uint32  _index = 0u;
+                uint32_t  _index = 0u;
                 AnimSamplerType  _type = (AnimSamplerType)0;
             };
 
@@ -53,26 +54,30 @@ namespace RenderCore { namespace Assets
         class OutputInterface
         {
         public:
-            uint64*     _outputMatrixNames = nullptr;
+            uint64_t*     _outputMatrixNames = nullptr;
             size_t      _outputMatrixNameCount = 0;
         };
 
         const InputInterface&   GetInputInterface() const   { return _inputInterface; }
         const OutputInterface&  GetOutputInterface() const  { return _outputInterface; }
 
+		std::vector<StringSection<>> GetOutputMatrixNames() const;
+
         SkeletonMachine();
         ~SkeletonMachine();
     protected:
-        uint32*             _commandStream;
+        uint32_t*			_commandStream;
         size_t              _commandStreamSize;
         unsigned            _outputMatrixCount;
 
         InputInterface      _inputInterface;
         OutputInterface     _outputInterface;
 
+		SerializableVector<char>		_outputMatrixNames;
+
 		TransformationParameterSet      _defaultParameters;
 
-        const uint32*   GetCommandStream()      { return _commandStream; }
+        const uint32_t*   GetCommandStream()      { return _commandStream; }
         const size_t    GetCommandStreamSize()  { return _commandStreamSize; }
     };
 

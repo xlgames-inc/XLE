@@ -165,7 +165,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    AnimationSet::Animation AnimationSet::FindAnimation(uint64 animation) const
+    AnimationSet::Animation AnimationSet::FindAnimation(uint64_t animation) const
     {
 		auto i = std::lower_bound(
 			_animations.begin(), _animations.end(),
@@ -180,7 +180,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    unsigned                AnimationSet::FindParameter(uint64 parameterName) const
+    unsigned                AnimationSet::FindParameter(uint64_t parameterName) const
     {
         for (size_t c=0; c<_outputInterface.size(); ++c) {
             if (_outputInterface[c] == parameterName) {
@@ -237,7 +237,7 @@ namespace RenderCore { namespace Assets
         std::vector<unsigned> result;
         result.resize(output.size());
         for (size_t c=0; c<output.size(); ++c) {
-            uint64 parameterName = output[c];
+            uint64_t parameterName = output[c];
             result[c] = ~unsigned(0x0);
 
             for (size_t c2=0; c2<input._parameterCount; ++c2) {
@@ -274,7 +274,7 @@ namespace RenderCore { namespace Assets
         std::vector<unsigned> result(input._jointCount, ~0u);
 
         for (size_t c=0; c<input._jointCount; ++c) {
-            uint64 name = input._jointNames[c];
+            uint64_t name = input._jointNames[c];
             for (size_t c2=0; c2<output._outputMatrixNameCount; ++c2) {
                 if (output._outputMatrixNames[c2] == name) {
                     result[c] = unsigned(c2);
@@ -319,6 +319,23 @@ namespace RenderCore { namespace Assets
 	void SkeletonMachine::CalculateParentPointers(IteratorRange<unsigned*> output) const
 	{
 		RenderCore::Assets::CalculateParentPointers(output, MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
+	}
+
+	std::vector<StringSection<>> SkeletonMachine::GetOutputMatrixNames() const
+	{
+		std::vector<StringSection<>> result;
+		result.reserve(_outputInterface._outputMatrixNameCount);
+		auto nameStart = _outputMatrixNames.begin();
+		for (auto i=_outputMatrixNames.begin(); i!=_outputMatrixNames.end();) {
+			if (*i == 0) {
+				result.push_back(MakeStringSection(nameStart, i));
+				++i;
+				nameStart = i;
+			} else {
+				++i;
+			}
+		}
+		return result;
 	}
 
     SkeletonMachine::SkeletonMachine()

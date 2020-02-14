@@ -211,6 +211,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto jointHashNames = BuildHashedOutputInterface();
 		outputSerializer.SerializeSubBlock(MakeIteratorRange(jointHashNames));
 		outputSerializer.SerializeValue(jointHashNames.size());
+
+		std::vector<char> boneNames;
+		for (const auto&j:_jointTags) {
+			boneNames.insert(boneNames.end(), j.second.begin(), j.second.end());
+			boneNames.push_back(0);
+		}
+		Serialize(outputSerializer, boneNames);
 	}
 
 	void NascentSkeletonMachine::SetOutputInterface(IteratorRange<const JointTag*> jointNames)

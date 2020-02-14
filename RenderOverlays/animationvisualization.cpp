@@ -166,6 +166,7 @@ namespace RenderOverlays
             overlayContext.CaptureState();
 
 			auto contextStateDesc = context.GetStateDesc();
+			auto outputMatrixNames = skeleton.GetOutputMatrixNames();
 
 			for (unsigned idx=0; idx<outputMatrices.size(); ++idx) {
 				auto o = outputMatrices[idx];
@@ -180,7 +181,12 @@ namespace RenderOverlays
 					(viewportSpace[0] * 0.5f + 0.5f) * contextStateDesc._viewportDimensions[0],
 					(viewportSpace[1] * -0.5f + 0.5f) * contextStateDesc._viewportDimensions[1] };
 
-				auto name = std::to_string(idx);
+				std::string name;
+				if (idx < outputMatrixNames.size()) {
+					name = outputMatrixNames[idx].AsString();
+				} else {
+					name = "Unnamed: " + std::to_string(idx);
+				}
 				overlayContext.DrawText(
 					std::make_tuple(
 						Float3(screenSpace[0] - 100.f, screenSpace[1] - 20.f, 0.f), 
