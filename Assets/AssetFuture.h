@@ -159,7 +159,19 @@ namespace Assets
 				std::function<bool(AssetFuture<AssetType>&)> pollingFunction;
 				std::swap(pollingFunction, _pollingFunction);
 				lock = {};
-				bool pollingResult = pollingFunction(*this);
+				bool pollingResult = false;
+				TRY {
+					pollingResult = pollingFunction(*this);
+				} CATCH (const std::exception& e) {
+					lock = std::unique_lock<decltype(_lock)>(_lock);
+					_pendingState = AssetState::Invalid;
+					_pendingActualizationLog = AsBlob(e);
+					actualized = _pending;
+					depVal = _pendingDepVal;
+					actualizationLog = _pendingActualizationLog;
+					return _pendingState;
+				} CATCH_END
+
 				lock = std::unique_lock<decltype(_lock)>(_lock);
 				if (pollingResult) {
 					assert(!_pollingFunction);
@@ -191,13 +203,21 @@ namespace Assets
 			std::function<bool(AssetFuture<AssetType>&)> pollingFunction;
             std::swap(pollingFunction, _pollingFunction);
 			lock = {};
-			bool pollingResult = pollingFunction(*this);
-			lock = std::unique_lock<decltype(_lock)>(_lock);
-			if (pollingResult) {
-				assert(!_pollingFunction);
-				std::swap(pollingFunction, _pollingFunction);
-			}
+			TRY {
+				bool pollingResult = pollingFunction(*this);
+				lock = std::unique_lock<decltype(_lock)>(_lock);
+				if (pollingResult) {
+					assert(!_pollingFunction);
+					std::swap(pollingFunction, _pollingFunction);
+				}
+			} CATCH (const std::exception& e) {
+				lock = std::unique_lock<decltype(_lock)>(_lock);
+				_pendingState = AssetState::Invalid;
+				_pendingActualizationLog = AsBlob(e);
+				_pendingDepVal = std::make_shared<DependencyValidation>();
+			} CATCH_END
 		}
+
 		if (!_pollingFunction)
 			ClearFrameBarrierCallbackAlreadyLocked();
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
@@ -258,9 +278,22 @@ namespace Assets
 		if (that->_pollingFunction) {
 			auto pollingFunction = std::move(that->_pollingFunction);
 			lock = {};
+			bool isInLock = false;
 
 			for (;;) {
-				bool pollingResult = pollingFunction(*that);
+				bool pollingResult = false;
+
+				TRY {
+					pollingResult = pollingFunction(*that);
+				} CATCH (const std::exception& e) {
+					lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
+					that->_pendingState = AssetState::Invalid;
+					that->_pendingActualizationLog = AsBlob(e);
+					that->_pendingDepVal = std::make_shared<DependencyValidation>();
+					isInLock = true;		// already locked "that->_lock"
+					break;
+				} CATCH_END
+
 				if (!pollingResult) break;
                 if (timeout.count() != 0 && std::chrono::steady_clock::now() >= timeToCancel) {
                     // return the polling function to the future
@@ -278,7 +311,8 @@ namespace Assets
 				YieldToPool();
 			}
 			
-			lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
+			if (!isInLock)
+				lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
 		}
 
 		for (;;) {
