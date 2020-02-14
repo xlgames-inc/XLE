@@ -24,11 +24,12 @@ namespace Assets
 			std::shared_ptr<IFileSystem> _fileSystem;
 			MountID		_id;
 			SplitPath<utf8>	_mountPoint;
+			std::basic_string<utf8> _mountPointBuffer;
 		};
 
 		std::vector<Mount>	_mounts;	// ordered from highest to lowest priority
 		uint32				_changeId = 0;
-		Threading::Mutex	_mountsLock;
+		Threading::RecursiveMutex	_mountsLock;
 		bool				_hasAtLeastOneMount;
 		AbsolutePathMode    _absolutePathMode;
 
@@ -251,11 +252,12 @@ namespace Assets
 			};
 	}
 
-	auto MountingTree::Mount(StringSection<utf8> mountPoint, std::shared_ptr<IFileSystem> system) -> MountID
+	auto MountingTree::Mount(StringSection<utf8> mountPointInput, std::shared_ptr<IFileSystem> system) -> MountID
 	{
 			// note that we're going to be ignoring slashs at the beginning or end. These have no effect 
 			// on how we interpret the mount point.
 			// Also, we assume that mount point should already be simplified (ie, no '.' or '..' parts)
+		auto mountPoint = mountPointInput.AsString();
 		auto split = MakeSplitPath(mountPoint);
 		#if defined(_DEBUG)
 			for (auto i:split.GetSections()) 
@@ -269,7 +271,7 @@ namespace Assets
 		ScopedLock(_pimpl->_mountsLock);
 		MountID id = _pimpl->_changeId++;
 		auto sectionCount = split.GetSectionCount();
-		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, sectionCount, std::move(system), id, std::move(split)});
+		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, sectionCount, std::move(system), id, std::move(split), mountPoint});
 		_pimpl->_hasAtLeastOneMount = true;
 		return id;
 	}

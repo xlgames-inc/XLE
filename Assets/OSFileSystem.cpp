@@ -25,13 +25,14 @@ namespace Assets
 	class File_OS : public IFileInterface
 	{
 	public:
-		size_t      Read(void *buffer, size_t size, size_t count) const never_throws;
-		size_t      Write(const void *buffer, size_t size, size_t count) never_throws;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws;
-		size_t      TellP() const never_throws;
+		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
+		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		size_t      TellP() const never_throws override;
 		void        Flush() const never_throws;
 
-		FileDesc	GetDesc() const never_throws;
+		size_t		GetSize() const never_throws override;
+		FileDesc	GetDesc() const never_throws override;
 
 		IOReason TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
 		IOReason TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
@@ -53,6 +54,15 @@ namespace Assets
 	ptrdiff_t	File_OS::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws { return _file.Seek(seekOffset, anchor); }
 	size_t      File_OS::TellP() const never_throws { return _file.TellP(); }
 	void        File_OS::Flush() const never_throws { _file.Flush(); }
+
+	size_t		File_OS::GetSize() const never_throws 
+	{
+		auto originalPos = _file.TellP();
+		const_cast<RawFS::BasicFile&>(_file).Seek(0, FileSeekAnchor::End);
+		auto result = _file.TellP();
+		const_cast<RawFS::BasicFile&>(_file).Seek(originalPos);
+		return result;
+	}
 
 	FileDesc File_OS::GetDesc() const never_throws
 	{
@@ -342,7 +352,9 @@ namespace Assets
         auto rootSplit = MakeSplitPath(_rootUTF8);
         for (const auto&t:temp) {
             auto asUTF8 = Conversion::Convert<std::basic_string<utf8>>(t);
-            res.push_back(MakeFileNameSplitter(asUTF8).FileAndExtension().AsString());
+			auto fn = MakeFileNameSplitter(asUTF8).FileAndExtension();
+			if (!XlEqString(fn, u(".")) && !XlEqString(fn, u("..")))
+				res.push_back(fn.AsString());
         }
         return res;
     }

@@ -14,12 +14,13 @@ namespace Assets
 	class MemoryFile : public IFileInterface
 	{
 	public:
-		size_t			Write(const void * source, size_t size, size_t count) never_throws;
-		size_t			Read(void * destination, size_t size, size_t count) const never_throws;
-		ptrdiff_t		Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws;
-		size_t			TellP() const never_throws;
+		size_t			Write(const void * source, size_t size, size_t count) never_throws override;
+		size_t			Read(void * destination, size_t size, size_t count) const never_throws override;
+		ptrdiff_t		Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		size_t			TellP() const never_throws override;
 
-		FileDesc		GetDesc() const never_throws;
+		size_t			GetSize() const never_throws override;
+		FileDesc		GetDesc() const never_throws override;
 
 		MemoryFile(const Blob& blob);
 		~MemoryFile();
@@ -75,6 +76,11 @@ namespace Assets
 		return _ptr;
 	}
 
+	size_t			MemoryFile::GetSize() const never_throws
+	{
+		return _blob->size();
+	}
+
 	FileDesc		MemoryFile::GetDesc() const never_throws
 	{
 		return FileDesc
@@ -104,12 +110,13 @@ namespace Assets
 	class ArchiveSubFile : public ::Assets::IFileInterface
 	{
 	public:
-		size_t      Read(void *buffer, size_t size, size_t count) const never_throws;
-		size_t      Write(const void *buffer, size_t size, size_t count) never_throws;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws;
-		size_t      TellP() const never_throws;
+		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
+		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		size_t      TellP() const never_throws override;
 
-		::Assets::FileDesc	GetDesc() const never_throws;
+		size_t				GetSize() const never_throws override;
+		::Assets::FileDesc	GetDesc() const never_throws override;
 
 		ArchiveSubFile(
 			const std::shared_ptr<MemoryMappedFile>& archiveFile,
@@ -154,6 +161,11 @@ namespace Assets
 		return ptrdiff_t(_tellp) - ptrdiff_t(_dataStart);
 	}
 
+	size_t		ArchiveSubFile::GetSize() const never_throws
+	{
+		return PtrDiff(_dataEnd, _dataStart);
+	}
+
 	::Assets::FileDesc ArchiveSubFile::GetDesc() const never_throws
 	{
 		Throw(::Exceptions::BasicLabel("BSAFile::GetDesc() unimplemented"));
@@ -181,12 +193,13 @@ namespace Assets
 	class FileDecompressOnRead : public ::Assets::IFileInterface
 	{
 	public:
-		size_t      Read(void *buffer, size_t size, size_t count) const never_throws;
-		size_t      Write(const void *buffer, size_t size, size_t count) never_throws;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws;
-		size_t      TellP() const never_throws;
+		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
+		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		size_t      TellP() const never_throws override;
 
-		::Assets::FileDesc	GetDesc() const never_throws;
+		size_t				GetSize() const never_throws override;
+		::Assets::FileDesc	GetDesc() const never_throws override;
 
 		FileDecompressOnRead(
 			const std::shared_ptr<MemoryMappedFile>& archiveFile,
@@ -199,6 +212,7 @@ namespace Assets
             mutable z_stream	_stream;
         #endif
 		size_t				_decompressedSize;
+		mutable size_t		_tellp = 0;
 	};
 
 	size_t      FileDecompressOnRead::Write(const void *buffer, size_t size, size_t count) never_throws
@@ -206,16 +220,38 @@ namespace Assets
 		Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::Seek() unimplemented"));
 	}
 
-	ptrdiff_t	FileDecompressOnRead::Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws
+	ptrdiff_t	FileDecompressOnRead::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws
 	{
 		// We can't easily seek, because the underlying stream is compressed. Seeking would require
 		// decompressing the buffer as we go along.
-		Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::Seek() unimplemented"));
+		auto offset = seekOffset;
+		if (anchor == FileSeekAnchor::Current) {
+			offset += _tellp;
+		} else if (anchor == FileSeekAnchor::End) {
+			offset = _decompressedSize - seekOffset;
+		} else {
+			assert(anchor == FileSeekAnchor::Start);
+		}
+		if (offset == (ptrdiff_t)_tellp)
+			return _tellp;
+
+		if (size_t(offset) < _tellp)	//(we could reset and restart from the top here, but that would be inefficient)
+			Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::Seek() unimplemented"));
+
+		// Move the pointer forward by just reading in dummy bytes
+		auto dummyBuffer = std::make_unique<uint8_t[]>(offset-_tellp);
+		Read(dummyBuffer.get(), 1, offset-_tellp);
+		return _tellp;
 	}
 
 	size_t      FileDecompressOnRead::TellP() const never_throws
 	{
-		Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::TellP() unimplemented"));
+		return _tellp;
+	}
+
+	size_t		FileDecompressOnRead::GetSize() const never_throws 
+	{
+		return _decompressedSize;
 	}
 
 	::Assets::FileDesc	FileDecompressOnRead::GetDesc() const never_throws
@@ -234,7 +270,9 @@ namespace Assets
             _stream.avail_out = (uInt)(size*count);
             auto err = inflate(&_stream, Z_SYNC_FLUSH);
             assert(err >= 0); (void) err;
-            return _stream.total_out / size;
+			auto readSize = _stream.total_out - _tellp;
+			_tellp = _stream.total_out;
+            return readSize / size;
         #else
             return 0;
         #endif
@@ -259,6 +297,8 @@ namespace Assets
 
             auto err = inflateInit(&_stream);
             assert(err == Z_OK); (void) err;
+
+			_tellp = 0;
         #else
             assert(0);
         #endif

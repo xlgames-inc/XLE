@@ -323,9 +323,7 @@ namespace Assets
 	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read) == IFileSystem::IOReason::Success) {
-			file->Seek(0, FileSeekAnchor::End);
-			size_t size = file->TellP();
-			file->Seek(0);
+			size_t size = file->GetSize();
 			if (size) {
 				auto result = std::make_unique<uint8[]>(size);
 				file->Read(result.get(), 1, size);
@@ -345,9 +343,7 @@ namespace Assets
 	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read) == IFileSystem::IOReason::Success) {
-			file->Seek(0, FileSeekAnchor::End);
-			size_t size = file->TellP();
-			file->Seek(0);
+			size_t size = file->GetSize();
 			if (size) {
 				auto result = std::make_shared<std::vector<uint8_t>>(size);
 				file->Read(result->data(), 1, size);
@@ -604,9 +600,7 @@ namespace Assets
         for (;;) {
             auto openResult = ::Assets::MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
             if (openResult == ::Assets::IFileSystem::IOReason::Success) {
-                file->Seek(0, FileSeekAnchor::End);
-                size_t size = file->TellP();
-                file->Seek(0);
+                size_t size = file->GetSize();
                 if (sizeResult) {
                     *sizeResult = size;
                 }
@@ -642,9 +636,7 @@ namespace Assets
         for (;;) {
 			auto openResult = MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
 			if (openResult == IFileSystem::IOReason::Success) {
-				file->Seek(0, FileSeekAnchor::End);
-				size_t size = file->TellP();
-				file->Seek(0);
+				size_t size = file->GetSize();
 				if (size) {
 					auto result = std::make_shared<std::vector<uint8_t>>(size);
 					file->Read(result->data(), 1, size);

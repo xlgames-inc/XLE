@@ -41,6 +41,7 @@ namespace Assets
 		virtual ptrdiff_t		Seek(ptrdiff_t seekOffset, FileSeekAnchor = FileSeekAnchor::Start) never_throws = 0;
 		virtual size_t			TellP() const never_throws = 0;
 
+		virtual size_t			GetSize() const never_throws = 0;
 		virtual FileDesc		GetDesc() const never_throws = 0;
 
 		virtual 			   ~IFileInterface();
