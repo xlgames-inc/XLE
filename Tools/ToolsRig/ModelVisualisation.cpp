@@ -32,15 +32,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	uint64_t GetAnimationHash(StringSection<> name)
-	{
-		const char* parseEnd = nullptr;
-		auto parsedValue = XlAtoUI64(name.begin(), &parseEnd, 16);
-		if (parseEnd == name.end())
-			return parsedValue;
-		return Hash64(name);
-	}
-
 	class MaterialFilterDelegate : public RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate
 	{
 	public:
@@ -77,7 +68,7 @@ namespace ToolsRig
 			if (r->_animationScaffold && _animationState && _animationState->_state != VisAnimationState::State::BindPose) {
 				auto& animData = r->_animationScaffold->ImmutableData();
 
-				auto animHash = GetAnimationHash(_animationState->_activeAnimation);
+				auto animHash = Hash64(_animationState->_activeAnimation);
 				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing)
@@ -156,7 +147,7 @@ namespace ToolsRig
 			if (r->_animationScaffold && _animationState && _animationState->_state != VisAnimationState::State::BindPose) {
 				auto& animData = r->_animationScaffold->ImmutableData();
 
-				auto animHash = GetAnimationHash(_animationState->_activeAnimation);
+				auto animHash = Hash64(_animationState->_activeAnimation);
 				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing) {
