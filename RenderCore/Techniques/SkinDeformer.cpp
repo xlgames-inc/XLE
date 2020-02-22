@@ -77,17 +77,17 @@ namespace RenderCore { namespace Techniques
 					continue;
 				}
 
-				auto srcJointWeight = _jointWeights.begin() + drawCall._firstVertex;
-				auto srcJointIndex = _jointIndices.begin() + drawCall._firstVertex;
+				auto srcJointWeight = _jointWeights.begin() + drawCall._firstVertex * _influencesPerVertex;
+				auto srcJointIndex = _jointIndices.begin() + drawCall._firstVertex * _influencesPerVertex;
 
 				for (auto p=outputPosElement.begin() + drawCall._firstVertex; 
 					p < (outputPosElement.begin() + drawCall._firstVertex + drawCall._indexCount); 
-					++p, ++srcPosition, ++srcJointWeight, ++srcJointIndex) {
+					++p, ++srcPosition, srcJointWeight+=_influencesPerVertex, srcJointIndex+=_influencesPerVertex) {
 				
 					Float3 deformedPosition { 0.f, 0.f, 0.f };
 					for (unsigned b=0; b<drawCall._subMaterialIndex; ++b) {
-						assert((*srcJointIndex)[b] < jointTransform.size());
-						deformedPosition += (*srcJointWeight)[b] * TransformPoint(jointTransform[(*srcJointIndex)[b]], (*srcPosition).As<Float3>());
+						assert(srcJointIndex[b] < jointTransform.size());
+						deformedPosition += srcJointWeight[b] * TransformPoint(jointTransform[srcJointIndex[b]], (*srcPosition).As<Float3>());
 					}
 
 					*p = deformedPosition;
@@ -114,11 +114,14 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<const RenderCore::Assets::VertexElement*> ele,
 		StringSection<> semantic, unsigned semanticIndex = 0)
 	{
-		return std::find_if(
+		auto i = std::find_if(
 			ele.begin(), ele.end(),
 			[semantic, semanticIndex](const RenderCore::Assets::VertexElement& ele) {
 				return XlEqString(semantic, ele._semanticName) && ele._semanticIndex == semanticIndex;
 			});
+		if (i==ele.end())
+			return nullptr;
+		return i;
 	}
 
 	SkinDeformer::SkinDeformer(
@@ -131,12 +134,6 @@ namespace RenderCore { namespace Techniques
 		auto& animVb = skinnedController._animatedVertexElements;
 		auto& skelVb = skinnedController._skeletonBinding;
 
-		auto positionElement = FindElement(MakeIteratorRange(animVb._ia._elements), "POSITION");
-		auto weightsElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "WEIGHTS");
-		auto jointIndicesElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "JOINTINDICES");
-		if (positionElement == animVb._ia._elements.end() || weightsElement == skelVb._ia._elements.end() || jointIndicesElement == skelVb._ia._elements.end())
-			Throw(std::runtime_error("Could not create SkinDeformer because there is no position, weights and/or joint indices element in input geometry"));
-
 		auto skelVbData = std::make_unique<uint8_t[]>(skelVb._size);
 		{
 			auto largeBlocks = modelScaffold.OpenLargeBlocks();
@@ -146,8 +143,43 @@ namespace RenderCore { namespace Techniques
 			largeBlocks->Read(skelVbData.get(), skelVb._size);
 		}
 
-		_jointWeights = AsFloat4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *weightsElement, skelVb._ia._vertexStride));
-		_jointIndices = AsUInt4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *jointIndicesElement, skelVb._ia._vertexStride));
+		_influencesPerVertex = 0;
+		unsigned elements = 0;
+		for (unsigned c=0; ; ++c) {
+			auto weightsElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "WEIGHTS", c);
+			auto jointIndicesElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "JOINTINDICES", c);
+			if (!weightsElement || !jointIndicesElement)
+				break;
+			assert(GetComponentCount(GetComponents(weightsElement->_nativeFormat)) == GetComponentCount(GetComponents(jointIndicesElement->_nativeFormat)));
+			_influencesPerVertex += GetComponentCount(GetComponents(weightsElement->_nativeFormat));
+			++elements;
+		}
+
+		if (!elements)
+			Throw(std::runtime_error("Could not create SkinDeformer because there is no position, weights and/or joint indices element in input geometry"));
+
+		{
+			auto vertexCount = skelVb._size / skelVb._ia._vertexStride;
+			_jointWeights.resize(vertexCount * _influencesPerVertex);
+			_jointIndices.resize(vertexCount * _influencesPerVertex);
+
+			unsigned componentIterator=0;
+			for (unsigned c=0; c<elements; ++c) {
+				auto weightsElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "WEIGHTS", c);
+				auto jointIndicesElement = FindElement(MakeIteratorRange(skelVb._ia._elements), "JOINTINDICES", c);
+				assert(weightsElement && jointIndicesElement);
+
+				auto subWeights = AsFloat4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *weightsElement, skelVb._ia._vertexStride));
+				auto subJoints = AsUInt4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *jointIndicesElement, skelVb._ia._vertexStride));
+				auto subComponentCount = GetComponentCount(GetComponents(weightsElement->_nativeFormat));
+
+				for (unsigned q=0; q<vertexCount; ++q) {
+					std::memcpy(&_jointWeights[q*_influencesPerVertex+componentIterator], &subWeights[q][0], subComponentCount * sizeof(float));
+					std::memcpy(&_jointIndices[q*_influencesPerVertex+componentIterator], &subJoints[q][0], subComponentCount * sizeof(float));
+				}
+				componentIterator += subComponentCount;
+			}
+		}
 
 		_sections.reserve(skinnedController._preskinningSections.size());
 		for (const auto&sourceSection:skinnedController._preskinningSections) {

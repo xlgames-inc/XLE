@@ -42,7 +42,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             size_t							_vertexBufferSize = 0;
         };
 
-		Bucket						_bucket[4];      // 4, 2, 1, 0
+		Bucket						_bucket[6];      // 0, 1, 2, 4, 8, 16
         std::vector<uint32_t>		_originalIndexToBucketIndex;
 		std::vector<unsigned>		_jointIndexRemapping;
 
@@ -144,7 +144,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      and few in the high buckets.
             //
 
-        VertexWeightAttachmentBucket<4> bucket4;
+        VertexWeightAttachmentBucket<16> bucket16;
+		VertexWeightAttachmentBucket<8> bucket8;
+		VertexWeightAttachmentBucket<4> bucket4;
         VertexWeightAttachmentBucket<2> bucket2;
         VertexWeightAttachmentBucket<1> bucket1;
         VertexWeightAttachmentBucket<0> bucket0;
@@ -177,7 +179,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				c += subPartCount;
 			}
 
-            const float minWeightThreshold = 8.f / 255.f;
+            const float minWeightThreshold = 1.f / 255.f;
             float totalWeightValue = 0.f;
             for (size_t c=0; c<influenceCount;) {
                 if (weights[c] < minWeightThreshold) {
@@ -217,34 +219,41 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				_originalIndexToBucketIndex.resize(vertexIndex+1, ~0u);
 			assert(_originalIndexToBucketIndex[vertexIndex] == ~0u);
 
-            if (influenceCount >= 3) {
-                if (influenceCount > 4) {
-                    Log(Warning)
-                        << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller"
-                        << ". Only 4 joints can affect any given single vertex."
+			
+			if (influenceCount > 8) {
+				if (influenceCount > 16) {
+					Log(Warning)
+						<< "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller"
+						<< ". Only 4 joints can affect any given single vertex."
 						<< std::endl;
 
-                        // (When this happens, only use the first 4, and ignore the others)
+						// (When this happens, only use the first 4, and ignore the others)
 					Log(Warning) << "After filtering:" << std::endl;
-                    for (size_t c=0; c<influenceCount; ++c) {
-						Log(Warning) << "  [" << c << "] Weight: " << normalizedWeights[c] << " Joint: " << jointIndices[c] << std::endl;
-                    }
-                }
-
-                    // (we could do a separate bucket for 3, if it was useful)
-                _originalIndexToBucketIndex[vertexIndex] = (0<<16) | (uint32_t(bucket4._vertexCount)&0xffff);
+					for (size_t c=0; c<influenceCount; ++c) {
+						Log(Warning) << "  [" << c << "] Weight: " << (unsigned)normalizedWeights[c] << " Joint: " << jointIndices[c] << std::endl;
+					}
+				}
+				_originalIndexToBucketIndex[vertexIndex] = (5<<16) | (uint32_t(bucket16._vertexCount)&0xffff);
+                ++bucket16._vertexCount;
+                bucket16._weightAttachments.push_back(BuildWeightAttachment<16>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+			} else if (influenceCount > 4) {
+				_originalIndexToBucketIndex[vertexIndex] = (4<<16) | (uint32_t(bucket8._vertexCount)&0xffff);
+                ++bucket8._vertexCount;
+                bucket8._weightAttachments.push_back(BuildWeightAttachment<8>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+			} else if (influenceCount > 2) {
+                _originalIndexToBucketIndex[vertexIndex] = (3<<16) | (uint32_t(bucket4._vertexCount)&0xffff);
                 ++bucket4._vertexCount;
                 bucket4._weightAttachments.push_back(BuildWeightAttachment<4>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else if (influenceCount == 2) {
-                _originalIndexToBucketIndex[vertexIndex] = (1<<16) | (uint32_t(bucket2._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (2<<16) | (uint32_t(bucket2._vertexCount)&0xffff);
                 ++bucket2._vertexCount;
                 bucket2._weightAttachments.push_back(BuildWeightAttachment<2>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else if (influenceCount == 1) {
-                _originalIndexToBucketIndex[vertexIndex] = (2<<16) | (uint32_t(bucket1._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (1<<16) | (uint32_t(bucket1._vertexCount)&0xffff);
                 ++bucket1._vertexCount;
                 bucket1._weightAttachments.push_back(BuildWeightAttachment<1>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             } else {
-                _originalIndexToBucketIndex[vertexIndex] = (3<<16) | (uint32_t(bucket0._vertexCount)&0xffff);
+                _originalIndexToBucketIndex[vertexIndex] = (0<<16) | (uint32_t(bucket0._vertexCount)&0xffff);
                 ++bucket0._vertexCount;
                 bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             }
@@ -259,6 +268,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			AccumulateJointUsage(bucket1, jointUsage);
 			AccumulateJointUsage(bucket2, jointUsage);
 			AccumulateJointUsage(bucket4, jointUsage);
+			AccumulateJointUsage(bucket8, jointUsage);
+			AccumulateJointUsage(bucket16, jointUsage);
 
 			unsigned finalJointIndexCount = 0;
 			for (unsigned c=0; c<jointUsage.size(); ++c) {
@@ -272,9 +283,35 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			RemapJointIndices(bucket1, MakeIteratorRange(_jointIndexRemapping));
 			RemapJointIndices(bucket2, MakeIteratorRange(_jointIndexRemapping));
 			RemapJointIndices(bucket4, MakeIteratorRange(_jointIndexRemapping));
+			RemapJointIndices(bucket8, MakeIteratorRange(_jointIndexRemapping));
+			RemapJointIndices(bucket16, MakeIteratorRange(_jointIndexRemapping));
 		}
             
-        Bucket b4;
+        Bucket b16;
+        b16._weightCount = 16;
+        b16._vertexBufferSize = bucket16._weightAttachments.size() * sizeof(VertexWeightAttachment<16>);
+        b16._vertexBufferData = std::make_unique<uint8_t[]>(b16._vertexBufferSize);
+        XlCopyMemory(b16._vertexBufferData.get(), AsPointer(bucket16._weightAttachments.begin()), b16._vertexBufferSize);
+        b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8B8A8_UNORM, 1, 0));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 1, Format::R8G8B8A8_UNORM, 1, 4));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 2, Format::R8G8B8A8_UNORM, 1, 8));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 3, Format::R8G8B8A8_UNORM, 1, 12));
+        b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8B8A8_UINT, 1, 16));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 1, Format::R8G8B8A8_UINT, 1, 20));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 2, Format::R8G8B8A8_UINT, 1, 24));
+		b16._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 3, Format::R8G8B8A8_UINT, 1, 28));
+		
+		Bucket b8;
+        b8._weightCount = 8;
+        b8._vertexBufferSize = bucket8._weightAttachments.size() * sizeof(VertexWeightAttachment<8>);
+        b8._vertexBufferData = std::make_unique<uint8_t[]>(b8._vertexBufferSize);
+        XlCopyMemory(b8._vertexBufferData.get(), AsPointer(bucket8._weightAttachments.begin()), b8._vertexBufferSize);
+        b8._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 0, Format::R8G8B8A8_UNORM, 1, 0));
+		b8._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_Weights, 1, Format::R8G8B8A8_UNORM, 1, 4));
+        b8._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 0, Format::R8G8B8A8_UINT, 1, 8));
+		b8._vertexInputLayout.push_back(InputElementDesc(DefaultSemantic_JointIndices, 1, Format::R8G8B8A8_UINT, 1, 12));
+		
+		Bucket b4;
         b4._weightCount = 4;
         b4._vertexBufferSize = bucket4._weightAttachments.size() * sizeof(VertexWeightAttachment<4>);
         b4._vertexBufferData = std::make_unique<uint8_t[]>(b4._vertexBufferSize);
@@ -306,17 +343,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
         }
 
-		_bucket[0] = std::move(b4);
-		_bucket[1] = std::move(b2);
-		_bucket[2] = std::move(b1);
-		_bucket[3] = std::move(b0);
+		_bucket[0] = std::move(b0);
+		_bucket[1] = std::move(b1);
+		_bucket[2] = std::move(b2);
+		_bucket[3] = std::move(b4);
+		_bucket[4] = std::move(b8);
+		_bucket[5] = std::move(b16);
 	}
 
 	void BuckettedSkinController::RemapJoints(IteratorRange<const unsigned*> newJointIndices)
 	{
 		// Remap all of the joints through the given remapping indices
 		// Useful for removing redundant duplicates (etc)
-		for (unsigned b=0; b<4; ++b) {
+		for (unsigned b=0; b<dimof(_bucket); ++b) {
 			auto& bucket = _bucket[b];
 			if (!bucket._vertexBufferSize) continue;
 			auto ele = std::find_if(
@@ -341,8 +380,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	static uint32_t ControllerAndBucketIndex(unsigned controllerIdx, unsigned bucketIdx)
 	{
-		assert((bucketIdx & ~0x3ffff) == 0);
-		return (controllerIdx << 18) | (bucketIdx & 0x3ffff);
+		assert((bucketIdx & ~0xfffff) == 0);
+		return (controllerIdx << 20) | (bucketIdx & 0xfffff);
 	}
 
     NascentBoundSkinnedGeometry BindController(
@@ -446,7 +485,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //                  as they were in the original
             //
 
-        const size_t bucketCount = dimof(BuckettedSkinController::_bucket) * controllers.size();
+		const size_t bucketsPerController = dimof(BuckettedSkinController::_bucket);
+        const size_t bucketCount = bucketsPerController * controllers.size();
         std::vector<size_t> bucketStart(bucketCount, 0);
         std::vector<size_t> bucketEnd(bucketCount, 0);
 
@@ -454,6 +494,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			uint32_t currentBucket = ~0u;
 			for (size_t i=0; i<vertexMappingByFinalOrdering.size(); ++i) {
 				auto thisBucket = (vertexMappingByFinalOrdering[i]._bucketIndex >> 16);
+				assert(thisBucket < bucketsPerController);
 				if (thisBucket!=currentBucket) {
 					if (currentBucket < bucketCount)
 						bucketEnd[currentBucket] = i;
@@ -564,7 +605,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         std::vector<unsigned> bucketVertexSizes(bucketCount);
         for (unsigned b=0; b<bucketCount; ++b) {
-			auto& bucket = buckettedControllers[b>>2]._bucket[b&0x3];
+			auto& bucket = buckettedControllers[b/bucketsPerController]._bucket[b%bucketsPerController];
             bucketVertexSizes[b] = CalculateVertexSize(MakeIteratorRange(bucket._vertexInputLayout));
             if (bucket._vertexBufferSize) {
                 if (bucketVertexSizes[b] > destinationWeightVertexStride) {
@@ -610,12 +651,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             for (size_t destinationVertexIndex=0; destinationVertexIndex<vertexMappingByFinalOrdering.size(); ++destinationVertexIndex) {
                 unsigned sourceBucketIndex = vertexMappingByFinalOrdering[destinationVertexIndex]._bucketIndex;
 
-				auto controllerIdx = sourceBucketIndex >> 18;
-				auto bucketIdx = (sourceBucketIndex >> 16) & 0x3;
+				auto controllerIdx = sourceBucketIndex >> 20;
+				auto bucketIdx = (sourceBucketIndex >> 16) % bucketsPerController;
 				auto sourceVertexInThisBucket = sourceBucketIndex & 0xffff;
 
 				assert(controllerIdx < controllers.size());
-				assert(bucketIdx < 4);
+				assert(bucketIdx < bucketsPerController);
                                 
 				const auto& bucket = buckettedControllers[controllerIdx]._bucket[bucketIdx];
 
@@ -634,8 +675,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     XlCopyMemory(destinationVertex, sourceVertex, sourceVertexStride);
                 } else {
                     const InputElementDesc* dstElement = AsPointer(finalWeightBufferFormat->cbegin());
-                    for (   auto srcElement=bucket._vertexInputLayout.cbegin(); 
-                            srcElement!=bucket._vertexInputLayout.cend(); ++srcElement, ++dstElement) {
+                    for (; dstElement!=AsPointer(finalWeightBufferFormat->cend()); ++dstElement) {
+
+						// Find a src element that maps onto the given destination element
+						// todo -- prebuild this mapping, otherwise we're doing it every single vertex
+						auto srcElement = std::find_if(
+							bucket._vertexInputLayout.cbegin(), bucket._vertexInputLayout.cend(),
+							[dstElement](const InputElementDesc& e) {
+								return e._semanticName == dstElement->_semanticName && e._semanticIndex == dstElement->_semanticIndex;
+							});
+						if (srcElement == bucket._vertexInputLayout.cend())
+							continue;
 
                             // (todo -- precalculate this min of element sizes)
 						unsigned elementSize = std::min(BitsPerPixel(srcElement->_nativeFormat)/8, BitsPerPixel(dstElement->_nativeFormat)/8);
@@ -689,10 +739,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				size_t stride = destinationWeightVertexStride;
 
 				for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
-					auto* bStart = &bucketStart[controllerIdx<<2];
-					auto* bEnd = &bucketEnd[controllerIdx<<2];
+					auto* bStart = &bucketStart[controllerIdx*bucketsPerController];
+					auto* bEnd = &bucketEnd[controllerIdx*bucketsPerController];
 					auto jointIndexMax = controllers[controllerIdx]._jointMatrices.size();
-					for (unsigned b=0; b<4; ++b) {
+					for (unsigned b=0; b<bucketsPerController; ++b) {
 						for (size_t v=bStart[b]; v<bEnd[b]; ++v) {
 
 							const void* p = PtrAdd(skeletonBindingVertices.data(), v*stride+indicesOffset);
@@ -760,22 +810,35 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		// Setup the per-section preskinning draw calls
 		for (unsigned controllerIdx=0; controllerIdx<controllers.size(); ++controllerIdx) {
 			std::vector<DrawCallDesc> preskinningDrawCalls;
-			auto* bStart = &bucketStart[controllerIdx<<2];
-			auto* bEnd = &bucketEnd[controllerIdx<<2];
+			auto* bStart = &bucketStart[controllerIdx*bucketsPerController];
+			auto* bEnd = &bucketEnd[controllerIdx*bucketsPerController];
+			static_assert(bucketsPerController==6, "The following code is specialized for the bucketsPerController==6 case");
 			if (bEnd[0] > bStart[0]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[0] - bStart[0]), unsigned(bStart[0]), 4, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[0] - bStart[0]), unsigned(bStart[0]), 0, Topology::PointList});
 			}
 			if (bEnd[1] > bStart[1]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[1] - bStart[1]), unsigned(bStart[1]), 2, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[1] - bStart[1]), unsigned(bStart[1]), 1, Topology::PointList});
 			}
 			if (bEnd[2] > bStart[2]) {
 				preskinningDrawCalls.push_back(
-					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[2] - bStart[2]), unsigned(bStart[2]), 1, Topology::PointList});
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[2] - bStart[2]), unsigned(bStart[2]), 2, Topology::PointList});
+			}
+			if (bEnd[3] > bStart[3]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[3] - bStart[3]), unsigned(bStart[3]), 4, Topology::PointList});
+			}
+			if (bEnd[4] > bStart[4]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[4] - bStart[4]), unsigned(bStart[4]), 8, Topology::PointList});
+			}
+			if (bEnd[5] > bStart[5]) {
+				preskinningDrawCalls.push_back(
+					DrawCallDesc{~unsigned(0x0), unsigned(bEnd[5] - bStart[5]), unsigned(bStart[5]), 16, Topology::PointList});
 			}
 
-			assert(bEnd[2] <= unifiedVertexCount);
+			assert(bEnd[bucketsPerController-1] <= unifiedVertexCount);
 
 			NascentBoundSkinnedGeometry::Section section;
 

@@ -36,8 +36,9 @@ namespace RenderCore { namespace Techniques
 			StringSection<> initializer,
 			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold);
 	private:
-		std::vector<Float4> _jointWeights;
-		std::vector<UInt4>	_jointIndices;
+		std::vector<float>		_jointWeights;
+		std::vector<unsigned>	_jointIndices;
+		size_t					_influencesPerVertex;
 
 		RenderCore::Assets::ModelCommandStream::InputInterface _jointInputInterface;
 
