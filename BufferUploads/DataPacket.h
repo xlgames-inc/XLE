@@ -12,6 +12,8 @@
 #include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"                 // for StringSection
+#include <functional>
+#include <regex>
 
 namespace BufferUploads
 {
@@ -37,11 +39,8 @@ namespace BufferUploads
         virtual size_t          GetDataSize     (SubResourceId subRes = {}) const = 0;
         virtual TexturePitches  GetPitches      (SubResourceId subRes = {}) const = 0;
 
-		class Marker : public ::Assets::GenericFuture
-        {
-        public:
-            BufferDesc  _desc;
-        };
+		virtual BufferDesc		GetDesc			() const { return {}; }
+		using Marker = ::Assets::GenericFuture;
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad() = 0;
     };
@@ -82,7 +81,15 @@ namespace BufferUploads
         enum Enum { GenerateMipmaps = 1<<0 };
         typedef unsigned BitField;
     }
+
+	struct TexturePlugin
+	{
+		std::regex _filenameMatcher;
+		std::function<intrusive_ptr<DataPacket>(StringSection<::Assets::ResChar>, TextureLoadFlags::BitField flags)> _loader;
+	};
+
     buffer_upload_dll_export intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+		IteratorRange<const TexturePlugin*> plugins,
         StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags = 0);
 
     buffer_upload_dll_export TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename);

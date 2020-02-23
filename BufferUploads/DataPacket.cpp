@@ -231,68 +231,69 @@ namespace BufferUploads
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class StreamingTexture : public DataPacket
+    class DirectXTextureLibraryDataPacket : public DataPacket
     {
     public:
-        virtual void*           GetData         (SubResourceId subRes);
-        virtual size_t          GetDataSize     (SubResourceId subRes) const;
-        virtual TexturePitches  GetPitches      (SubResourceId subRes) const;
+        void*           GetData         (SubResourceId subRes) override;
+        size_t          GetDataSize     (SubResourceId subRes) const override;
+        TexturePitches  GetPitches      (SubResourceId subRes) const override;
+		virtual BufferDesc		GetDesc			() const override;
 
-        virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
+        std::shared_ptr<Marker>     BeginBackgroundLoad() override;
 
-        StreamingTexture(
+        DirectXTextureLibraryDataPacket(
             StringSection<::Assets::ResChar> filename,
             TextureLoadFlags::BitField flags);
-        virtual ~StreamingTexture();
-
-    protected:
-        wchar_t _filename[MaxPath];
-        
+        ~DirectXTextureLibraryDataPacket();
+    private:
         DirectX::ScratchImage _image;
         DirectX::TexMetadata _texMetadata;
-
-        intrusive_ptr<StreamingTexture> _returnPointer;
-        std::shared_ptr<Marker> _marker;
-
-        TextureLoadFlags::BitField _flags;
+		BufferDesc _desc;
     };
 
-    void* StreamingTexture::GetData(SubResourceId subRes)
+    void* DirectXTextureLibraryDataPacket::GetData(SubResourceId subRes)
     {
         auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return image->pixels;
         return nullptr;
     }
 
-    size_t StreamingTexture::GetDataSize(SubResourceId subRes) const
+    size_t DirectXTextureLibraryDataPacket::GetDataSize(SubResourceId subRes) const
     {
         auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return image->slicePitch;
         return 0;
     }
 
-    TexturePitches StreamingTexture::GetPitches(SubResourceId subRes) const
+    TexturePitches DirectXTextureLibraryDataPacket::GetPitches(SubResourceId subRes) const
     {
         auto* image = _image.GetImage(subRes._mip, subRes._arrayLayer, 0);
         if (image) return TexturePitches{unsigned(image->rowPitch), unsigned(image->slicePitch)};
         return TexturePitches{};
     }
 
+	BufferDesc		DirectXTextureLibraryDataPacket::GetDesc			() const
+	{
+		return _desc;
+	}
+
+	auto DirectXTextureLibraryDataPacket::BeginBackgroundLoad() -> std::shared_ptr<Marker> { return nullptr; }
+
     enum class TexFmt
     {
         DDS, TGA, WIC, Unknown
     };
 
-    static TexFmt GetTexFmt(const ucs2 filename[])
+    static TexFmt GetTexFmt(StringSection<> filename)
     {
-        auto* ext = XlExtension(filename);
-        if (!ext) return TexFmt::Unknown;
+        auto ext = MakeFileNameSplitter(filename).Extension();
+        if (ext.IsEmpty()) return TexFmt::Unknown;
 
-        if (!XlCompareStringI(ext, (const ucs2*)L"dds")) {
+        if (XlEqStringI(ext, "dds")) {
             return TexFmt::DDS;
-        } else if (ext && !XlCompareStringI(ext, (const ucs2*)L"tga")) {
+        } else if (XlEqStringI(ext, "tga")) {
             return TexFmt::TGA;
-        } else {
+		} else {
             return TexFmt::WIC;     // try "WIC" for anything else
         }
     }
@@ -339,145 +340,224 @@ namespace BufferUploads
         return desc;
     }
 
+    DirectXTextureLibraryDataPacket::DirectXTextureLibraryDataPacket(
+        StringSection<::Assets::ResChar> inputFilename,
+        TextureLoadFlags::BitField flags)
+    {
+        using namespace DirectX;
+
+            // the DirectXTex library is expecting us to call CoInitializeEx.
+            // We need to call this in every thread that uses the DirectXTex library.
+            //  ... it should be ok to call it multiple times in the same thread, so
+            //      let's just call it every time.
+        CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+        HRESULT hresult = -1;
+
+        XlZeroMemory(_texMetadata);
+		auto fmt = GetTexFmt(inputFilename);
+
+        // If we want to support loading textures from within archives, we need to use the 
+        // file functions in ::Assets::MainFileSystem. We want to avoid doing too many copies
+        // during the texture initialization process, so we'll use the MemoryMappedFile interface.
+        const bool loadViaMainFileSystem = true;
+        if (loadViaMainFileSystem) {
+            if (fmt == TexFmt::DDS || fmt == TexFmt::TGA || fmt == TexFmt::WIC) {
+                MemoryMappedFile srcFile;
+                auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, inputFilename, 0ull, "r");
+                if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
+                    if (fmt == TexFmt::DDS) {
+                        hresult = LoadFromDDSMemory(srcFile.GetData().begin(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
+                    } else if (fmt == TexFmt::TGA) {
+                        hresult = LoadFromTGAMemory(srcFile.GetData().begin(), srcFile.GetSize(), &_texMetadata, _image);
+                    } else if (fmt == TexFmt::WIC) {
+                        hresult = LoadFromWICMemory(srcFile.GetData().begin(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
+                    } else {
+                        Log(Warning) << "Texture format not apparent from filename (" << inputFilename.AsString() << ")" << std::endl;
+                    }
+                }
+            } 
+        } else {
+			auto ucs2Filename = Conversion::Convert<std::basic_string<ucs2>>(inputFilename.Cast<utf8>());
+            if (fmt == TexFmt::DDS) {
+                hresult = LoadFromDDSFile((const wchar_t*)ucs2Filename.c_str(), DDS_FLAGS_NONE, &_texMetadata, _image);
+            } else if (fmt == TexFmt::TGA) {
+                hresult = LoadFromTGAFile((const wchar_t*)ucs2Filename.c_str(), &_texMetadata, _image);
+            } else if (fmt == TexFmt::WIC) {
+                hresult = LoadFromWICFile((const wchar_t*)ucs2Filename.c_str(), WIC_FLAGS_NONE, &_texMetadata, _image);
+            } else {
+                Log(Warning) << "Texture format not apparent from filename (" << inputFilename.AsString() << ")" << std::endl;
+            }
+        }
+
+        if (SUCCEEDED(hresult)) {
+			auto loadedDDSFormat = fmt == TexFmt::DDS; 
+
+            _desc._type = BufferDesc::Type::Texture;
+            _desc._textureDesc = BuildTextureDesc(_texMetadata);
+
+            // note --	When loading from a .dds file, never generate the mipmaps. Typically we want mipmaps to be
+            //			pre-generated and stored on disk. If we come across a dds file without mipmaps, we'll assume
+            //			that it was intended to be that way.
+            if (   (_texMetadata.mipLevels <= 1) && (_texMetadata.arraySize <= 1) 
+                && (flags & TextureLoadFlags::GenerateMipmaps) && !loadedDDSFormat) {
+
+                Log(Verbose) << "Building mipmaps for texture: " << inputFilename.AsString();
+                DirectX::ScratchImage newImage;
+                auto mipmapHresult = GenerateMipMaps(*_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
+                if (SUCCEEDED(mipmapHresult)) {
+                    _image = std::move(newImage);
+                    _desc._textureDesc._mipCount = uint8(_image.GetMetadata().mipLevels);
+                } else {
+                    Log(Warning) << "Failed while building mip-maps for texture: " << inputFilename.AsString() << std::endl;
+                }
+            }
+        } else {
+			_desc._type = BufferDesc::Type::Unknown;
+		}
+    }
+
+    DirectXTextureLibraryDataPacket::~DirectXTextureLibraryDataPacket() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class StreamingTexture : public DataPacket
+    {
+    public:
+        virtual void*           GetData         (SubResourceId subRes) override;
+        virtual size_t          GetDataSize     (SubResourceId subRes) const override;
+        virtual TexturePitches  GetPitches      (SubResourceId subRes) const override;
+		virtual BufferDesc		GetDesc			() const override;
+
+        virtual std::shared_ptr<Marker>     BeginBackgroundLoad() override;
+
+        StreamingTexture(
+			IteratorRange<const TexturePlugin*> plugins,
+            StringSection<::Assets::ResChar> filename,
+            TextureLoadFlags::BitField flags);
+        virtual ~StreamingTexture();
+
+    protected:
+        intrusive_ptr<DataPacket> _realPacket;
+        std::shared_ptr<Marker> _marker;
+
+        std::basic_string<::Assets::ResChar> _filename;
+        TextureLoadFlags::BitField _flags;
+		std::vector<TexturePlugin> _plugins;
+    };
+
+    void*           StreamingTexture::GetData         (SubResourceId subRes)
+    {
+        if (_realPacket)
+            return _realPacket->GetData(subRes);
+        return nullptr;
+    }
+
+    size_t          StreamingTexture::GetDataSize     (SubResourceId subRes) const
+    {
+        if (_realPacket)
+            return _realPacket->GetDataSize(subRes);
+        return 0;
+    }
+
+    TexturePitches  StreamingTexture::GetPitches      (SubResourceId subRes) const
+    {
+        if (_realPacket)
+            return _realPacket->GetPitches(subRes);
+        return {};
+    }
+
+	BufferDesc		StreamingTexture::GetDesc		() const
+	{
+		if (_realPacket)
+            return _realPacket->GetDesc();
+        return {};
+	}
+
     auto StreamingTexture::BeginBackgroundLoad() -> std::shared_ptr < Marker >
     {
-        assert(!_marker && !_returnPointer);
+        assert(!_marker);
 
         _marker = std::make_shared<Marker>();
-        _returnPointer = this;      // hold a reference while the background operation is occurring
+        intrusive_ptr<StreamingTexture> strongThis = this;      // hold a reference while the background operation is occurring
 
+		// Managing the async operations here is a little bit awkward; but it works...
         ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().Enqueue(
-            [this]()
+            [strongThis]()
             {
-                using namespace DirectX;
+				std::basic_string<::Assets::ResChar> filename = strongThis->_filename;
 
-                    // the DirectXTex library is expecting us to call CoInitializeEx.
-                    // We need to call this in every thread that uses the DirectXTex library.
-                    //  ... it should be ok to call it multiple times in the same thread, so
-                    //      let's just call it every time.
-                CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+				// replace semicolon dividers with null chars
+				for (auto i=filename.begin(); i!=filename.end(); ++i)
+					if (*i == L';') *i = L'\0';
+        
+				// The filename can actually contain multiple alternatives. We're going
+				// to test each one until we find one that works. Scan forward until we
+				// find 2 null characters in a row, or the end of the array
+				auto fIterator = filename.begin();
+				auto iend = filename.end();
+				while (fIterator < iend) {
 
-                    // We want to release the reference in this->_returnPointer at the
-                    // end of this function, no matter what happens (successful return,
-                    // failure return, or exception). Let's move the reference into a 
-                    // local variable to ensure that happens.
-                decltype(this->_returnPointer) releaseReference = std::move(this->_returnPointer);
+					auto partEnd = fIterator;
+					while (partEnd < iend && *partEnd != L'\0') ++partEnd;
 
-                HRESULT hresult = -1;
-				bool loadedDDSFormat = false;
-				
-					// The filename can actually contain multiple alternatives. We're going
-					// to test each one until we find one that works. Scan forward until we
-					// find 2 null characters in a row, or the end of the array
-				const auto* filename = this->_filename;
-				const auto *iend = &this->_filename[dimof(this->_filename)];
-				while (*filename && filename < iend) {
-					auto fmt = GetTexFmt((const ucs2*)filename);
-
-					// If we want to support loading textures from within archives, we need to use the 
-					// file functions in ::Assets::MainFileSystem. We want to avoid doing too many copies
-					// during the texture initialization process, so we'll use the MemoryMappedFile interface.
-					const bool loadViaMainFileSystem = true;
-					if (loadViaMainFileSystem) {
-						MemoryMappedFile srcFile;
-						auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, (const utf16*)filename, 0ull, "r");
-						if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
-							if (fmt == TexFmt::DDS) {
-								hresult = LoadFromDDSMemory(srcFile.GetData().begin(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
-							} else if (fmt == TexFmt::TGA) {
-								hresult = LoadFromTGAMemory(srcFile.GetData().begin(), srcFile.GetSize(), &_texMetadata, _image);
-							} else if (fmt == TexFmt::WIC) {
-								hresult = LoadFromWICMemory(srcFile.GetData().begin(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
-							} else {
-								Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
-							}
-						}
-					} else {
-						if (fmt == TexFmt::DDS) {
-							hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
-						} else if (fmt == TexFmt::TGA) {
-							hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
-						} else if (fmt == TexFmt::WIC) {
-							hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
-						} else {
-							Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
+					TexturePlugin* plugin = nullptr;
+					for (auto& p:strongThis->_plugins) {
+						if (std::regex_match(fIterator, partEnd, p._filenameMatcher)) {
+							plugin = &p;
 						}
 					}
 
-					if (SUCCEEDED(hresult)) { loadedDDSFormat = fmt == TexFmt::DDS; break; }
+					if (plugin) {
+						strongThis->_realPacket = plugin->_loader(MakeStringSection(fIterator, partEnd), strongThis->_flags);
+					} else {
+						// drop back to default loading method
+						strongThis->_realPacket = make_intrusive<DirectXTextureLibraryDataPacket>(MakeStringSection(fIterator, partEnd), strongThis->_flags);
+					}
 
-					while (filename < iend && *filename != L'\0') ++filename;
-					if (filename < iend) ++filename;	// skip over this null, and there might be another filename
+					if (strongThis->_realPacket->GetDataSize() != 0) {
+						strongThis->_marker->SetState(Assets::AssetState::Ready);
+					} else {
+						strongThis->_marker->SetState(Assets::AssetState::Invalid);
+					}
+
+					fIterator = partEnd;
+					if (fIterator < iend) ++fIterator;	// skip over this null, and there might be another filename
 				}
-
-                if (SUCCEEDED(hresult)) {
-                    auto& desc = this->_marker->_desc;
-                    desc._type = BufferDesc::Type::Texture;
-                    desc._textureDesc = BuildTextureDesc(_texMetadata);
-
-					// note --	When loading from a .dds file, never generate the mipmaps. Typically we want mipmaps to be
-					//			pre-generated and stored on disk. If we come across a dds file without mipmaps, we'll assume
-					//			that it was intended to be that way.
-                    if (   (this->_texMetadata.mipLevels <= 1) && (this->_texMetadata.arraySize <= 1) 
-                        && (this->_flags & TextureLoadFlags::GenerateMipmaps) && !loadedDDSFormat) {
-
-						Log(Verbose) << "Building mipmaps for texture: " << filename;
-                        DirectX::ScratchImage newImage;
-                        auto mipmapHresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
-                        if (SUCCEEDED(mipmapHresult)) {
-                            this->_image = std::move(newImage);
-                            desc._textureDesc._mipCount = uint8(this->_image.GetMetadata().mipLevels);
-                        } else {
-                            Log(Warning) << "Failed while building mip-maps for texture: " << filename << std::endl;
-                        }
-                    }
-
-                    if (SUCCEEDED(hresult)) {
-                        this->_marker->SetState(Assets::AssetState::Ready);
-                        return;
-                    }
-                }
-
-                this->_marker->SetState(Assets::AssetState::Invalid);
             });
         
         return _marker;
     }
 
     StreamingTexture::StreamingTexture(
+		IteratorRange<const TexturePlugin*> plugins,
         StringSection<::Assets::ResChar> filename,
         TextureLoadFlags::BitField flags)
-    : _flags(flags)
-    {
-        XlZeroMemory(_texMetadata);
-		XlZeroMemory(_filename);
-        Conversion::Convert(_filename, dimof(_filename), filename.begin(), filename.end());
-
-		// replace semicolon dividers with null chars
-		for (auto* i=_filename; *i; ++i)
-			if (*i == L';') *i = L'\0';
-    }
+    : _flags(flags), _filename(filename.begin(), filename.end())
+	, _plugins(plugins.begin(), plugins.end())
+    {}
 
     StreamingTexture::~StreamingTexture()
     {}
 
     intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+		IteratorRange<const TexturePlugin*> plugins,
         StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags)
     {
-        return make_intrusive<StreamingTexture>(filename, flags);
+        return make_intrusive<StreamingTexture>(plugins, filename, flags);
     }
 
     TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)
     {
-        ucs2 wfilename[MaxPath];
-        Conversion::Convert(wfilename, dimof(wfilename), filename.begin(), filename.end());
-
-        auto fmt = GetTexFmt(wfilename);
+        auto fmt = GetTexFmt(filename);
                 
         using namespace DirectX;
         TexMetadata metadata;
 
         HRESULT hresult = -1;
+		ucs2 wfilename[MaxPath];
+        Conversion::Convert(wfilename, dimof(wfilename), filename.begin(), filename.end());
+
         if (fmt == TexFmt::DDS) {
             hresult = GetMetadataFromDDSFile((const wchar_t*)wfilename, DDS_FLAGS_NONE, metadata);
         } else if (fmt == TexFmt::TGA) {

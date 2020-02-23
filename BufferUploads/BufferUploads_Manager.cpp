@@ -696,14 +696,15 @@ namespace BufferUploads
                     return nullptr;
 
                     // update the PartialResource and BufferDesc based on the data we've just loaded
-                if (prepareStep->_desc._type == BufferDesc::Type::Texture) {
-                    desc._type = prepareStep->_desc._type;
-                    desc._textureDesc = prepareStep->_desc._textureDesc;
+				auto desc = initialisationData->GetDesc();
+                if (desc._type == BufferDesc::Type::Texture) {
+                    desc._type = desc._type;
+                    desc._textureDesc = desc._textureDesc;
 
                     part = DefaultPartialResource(desc, *initialisationData);
-                } else if (prepareStep->_desc._type == BufferDesc::Type::LinearBuffer) {
-                    desc._type = prepareStep->_desc._type;
-                    desc._linearBufferDesc = prepareStep->_desc._linearBufferDesc;
+                } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+                    desc._type = desc._type;
+                    desc._linearBufferDesc = desc._linearBufferDesc;
                 } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
             }
 
@@ -1811,14 +1812,15 @@ namespace BufferUploads
                 // upload operations.
 
                 auto part = step._part;
-                if (step._marker->_desc._type == BufferDesc::Type::Texture) {
-                    transaction->_desc._type = step._marker->_desc._type;
-                    transaction->_desc._textureDesc = step._marker->_desc._textureDesc;
+				auto desc = step._packet->GetDesc();
+                if (desc._type == BufferDesc::Type::Texture) {
+                    transaction->_desc._type = desc._type;
+                    transaction->_desc._textureDesc = desc._textureDesc;
 
                     part = DefaultPartialResource(transaction->_desc, *step._packet);
-                } else if (step._marker->_desc._type == BufferDesc::Type::LinearBuffer) {
-                    transaction->_desc._type = step._marker->_desc._type;
-                    transaction->_desc._linearBufferDesc = step._marker->_desc._linearBufferDesc;
+                } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+                    transaction->_desc._type = desc._type;
+                    transaction->_desc._linearBufferDesc = desc._linearBufferDesc;
                 } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
                 UpdateData_PostBackground(queueSet, *transaction, step._id, step._packet.get(), part);
             } else {

@@ -88,7 +88,7 @@ namespace TextureTransform
         
         using namespace RenderCore;
         auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
-        auto inputPacket = BufferUploads::CreateStreamingTextureSource(splitter.AllExceptParameters());
+        auto inputPacket = BufferUploads::CreateStreamingTextureSource({}, splitter.AllExceptParameters());
         _resLocator = uploads.Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,

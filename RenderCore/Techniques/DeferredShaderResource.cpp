@@ -85,7 +85,7 @@ namespace RenderCore { namespace Techniques
             if (XlFindStringI(initializer.File(), "_ddn")) {
                 _colSpaceDefault = SourceColorSpace::Linear;
             } else {
-                _colSpaceDefault = SourceColorSpace::SRGB;
+                _colSpaceDefault = SourceColorSpace::Unspecified;
             }
         }
     }
@@ -182,9 +182,9 @@ namespace RenderCore { namespace Techniques
 		const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			BuildRequestString(filename, splitter);
-			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
+			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), MakeStringSection(filename), flags);
 		} else {
-			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
+			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
 		}
 
         auto transactionId = RenderCore::Techniques::Services::GetBufferUploads().Transaction_Begin(
@@ -228,21 +228,21 @@ namespace RenderCore { namespace Techniques
 				}
 
 					// calculate the color space to use (resolving the defaults, request string and metadata)
-				auto colSpace = SourceColorSpace::SRGB;
+				auto colSpace = (GetComponentType(desc._textureDesc._format) == FormatComponentType::UNorm_SRGB) ? SourceColorSpace::SRGB : SourceColorSpace::Linear;
 				if (init._colSpaceRequestString != SourceColorSpace::Unspecified) {
 					colSpace = init._colSpaceRequestString;
 				} else {
-					if (init._colSpaceDefault != SourceColorSpace::Unspecified) colSpace = init._colSpaceDefault;
+					if (init._colSpaceDefault != SourceColorSpace::Unspecified) {
+						colSpace = init._colSpaceDefault;
+					}
 
-					std::shared_ptr<TextureMetaData> metaData;
-					if (metaDataFuture)
-						metaData = metaDataFuture->TryActualize();
-
-					if (metaData) {
-						if (metaData->_colorSpace != SourceColorSpace::Unspecified) {
-							colSpace = metaData->_colorSpace;
+					if (metaDataFuture) {
+						auto metaData = metaDataFuture->TryActualize();
+						if (metaData) {
+							if (metaData->_colorSpace != SourceColorSpace::Unspecified)
+								colSpace = metaData->_colorSpace;
+							::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
 						}
-						::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
 					}
 				}
 
@@ -319,9 +319,9 @@ namespace RenderCore { namespace Techniques
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
 			BuildRequestString(filename, splitter);
-			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
+			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), MakeStringSection(filename), flags);
 		} else
-			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
+			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
 
         auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(

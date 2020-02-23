@@ -274,7 +274,7 @@ namespace TextureTransform
         if (srcDesc._width == 0)
             Throw(::Exceptions::BasicLabel("Failure while loading input texture"));
             
-        auto pkt = BufferUploads::CreateStreamingTextureSource(MakeStringSection(inputAssetName), 0);
+        auto pkt = BufferUploads::CreateStreamingTextureSource({}, MakeStringSection(inputAssetName), 0);
         auto load = pkt->BeginBackgroundLoad();
         auto state = load->StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
