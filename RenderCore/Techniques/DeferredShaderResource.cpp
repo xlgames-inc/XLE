@@ -92,7 +92,8 @@ namespace RenderCore { namespace Techniques
 
 	static bool CheckShadowingFile(const FileNameSplitter<::Assets::ResChar>& splitter)
 	{
-		return !XlEqStringI(splitter.Extension(), "dds");
+		return !XlEqStringI(splitter.Extension(), "dds")
+			&& !std::find(splitter.FullFilename().begin(), splitter.FullFilename().end(), ';');
 	}
 
 	template<int Count>
