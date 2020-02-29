@@ -20,7 +20,8 @@ set(Src
     ../GeoProc/NascentModel.cpp
     ../GeoProc/NascentObjectsSerialize.cpp
     ../GeoProc/NascentRawGeometry.cpp
-    ../GeoProc/NascentSkeletonMachine.cpp)
+    ../GeoProc/NascentSkeletonMachine.cpp
+	../GeoProc/DequantAnalysisTools.cpp)
 set(Headers
     AssetUtils.h
     LocalCompiledShaderSource.h

@@ -74,6 +74,9 @@
       <Filter>Assets\Material</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\PredefinedDescriptorSetLayout.cpp" />
+    <ClCompile Include="..\GeoProc\DequantAnalysisTools.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -144,5 +147,8 @@
       <Filter>Assets\Material</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\PredefinedDescriptorSetLayout.h" />
+    <ClInclude Include="..\GeoProc\DequantAnalysisTools.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

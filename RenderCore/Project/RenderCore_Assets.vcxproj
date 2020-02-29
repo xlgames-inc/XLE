@@ -56,6 +56,7 @@
     <ClCompile Include="..\Assets\ShaderPatchCollection.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
+    <ClCompile Include="..\GeoProc\DequantAnalysisTools.cpp" />
     <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp" />
     <ClCompile Include="..\GeoProc\GeoProcUtil.cpp" />
     <ClCompile Include="..\GeoProc\MeshDatabase.cpp" />
@@ -83,6 +84,7 @@
     <ClInclude Include="..\Assets\ShaderPatchCollection.h" />
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
+    <ClInclude Include="..\GeoProc\DequantAnalysisTools.h" />
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h" />
     <ClInclude Include="..\GeoProc\GeoProcUtil.h" />
     <ClInclude Include="..\GeoProc\MeshDatabase.h" />
