@@ -11,6 +11,7 @@
 #include "../Types.h"
 #include "../../Math/Geometry.h"
 #include "../../Math/Transformations.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
@@ -102,86 +103,90 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				v0 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
 				v1 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
 				v2 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
-				assert(v0 != v1 && v1 != v2 && v0 != v2);
 			} else {
 				v0 = unsigned(c*3+0);
 				v1 = unsigned(c*3+1);
 				v2 = unsigned(c*3+2);
 			}
 
-			auto p0 = mesh.GetUnifiedElement<Float3>(v0, posElement);
-			auto p1 = mesh.GetUnifiedElement<Float3>(v1, posElement);
-			auto p2 = mesh.GetUnifiedElement<Float3>(v2, posElement);
+			if (expect_evaluation(v0 != v1 && v1 != v2 && v0 != v2, true)) {
+				auto p0 = mesh.GetUnifiedElement<Float3>(v0, posElement);
+				auto p1 = mesh.GetUnifiedElement<Float3>(v1, posElement);
+				auto p2 = mesh.GetUnifiedElement<Float3>(v2, posElement);
 
-            Float4 plane;
-            if (PlaneFit_Checked(&plane, p0, p1, p2)) {
-				Triangle tri;
-                tri.normal = -Truncate(plane);
+				Float4 plane;
+				if (expect_evaluation(PlaneFit_Checked(&plane, p0, p1, p2), true)) {
+					Triangle tri;
+					tri.normal = -Truncate(plane);
 
-				if (tcElement != ~0u) {
-						/*	There is one natural tangent and one natural bitangent for each triangle, on the v=0 and u=0 axes 
-							in 3 space. We'll calculate them for this triangle here and then use a composite of triangle tangents
-							for the vertex tangents below.
+					if (tcElement != ~0u) {
+							/*	There is one natural tangent and one natural bitangent for each triangle, on the v=0 and u=0 axes 
+								in 3 space. We'll calculate them for this triangle here and then use a composite of triangle tangents
+								for the vertex tangents below.
 
-							Here's a good reference:
-							http://www.terathon.com/code/tangent.html
-							from "Mathematics for 3D Game Programming and Computer Graphics, 2nd ed."
+								Here's a good reference:
+								http://www.terathon.com/code/tangent.html
+								from "Mathematics for 3D Game Programming and Computer Graphics, 2nd ed."
 
-							These equations just solve for v=0 and u=0 on the triangle surface.
-						*/
-					const auto UV0 = mesh.GetUnifiedElement<Float2>(v0, tcElement);
-					const auto UV1 = mesh.GetUnifiedElement<Float2>(v1, tcElement);
-					const auto UV2 = mesh.GetUnifiedElement<Float2>(v2, tcElement);
-					auto Q1 = p1 - p0;
-					auto Q2 = p2 - p0;
-					auto st1 = UV1 - UV0;
-					auto st2 = UV2 - UV0;
-					float rr = (st1[0] * st2[1] + st2[0] * st1[1]);
-					if (Equivalent(rr, 0.f, 1e-10f)) { tri.tangent = tri.bitangent = Zero<Float3>(); }
-					else
-					{
-						float r = 1.f / rr;
-						Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
-						Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
+								These equations just solve for v=0 and u=0 on the triangle surface.
+							*/
+						const auto UV0 = mesh.GetUnifiedElement<Float2>(v0, tcElement);
+						const auto UV1 = mesh.GetUnifiedElement<Float2>(v1, tcElement);
+						const auto UV2 = mesh.GetUnifiedElement<Float2>(v2, tcElement);
+						auto Q1 = p1 - p0;
+						auto Q2 = p2 - p0;
+						auto st1 = UV1 - UV0;
+						auto st2 = UV2 - UV0;
+						float rr = (st1[0] * st2[1] + st2[0] * st1[1]);
+						if (Equivalent(rr, 0.f, 1e-10f)) { tri.tangent = tri.bitangent = Zero<Float3>(); }
+						else
+						{
+							float r = 1.f / rr;
+							Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
+							Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
 
-							// We may need to flip the direction of the s or t axis
-							// check the texture coordinates to find the correct direction
-							// for these axes...
-						sAxis = CorrectAxisDirection(sAxis, p0, p1, p2, UV0[0], UV1[0], UV2[0]);
-						tAxis = CorrectAxisDirection(tAxis, p0, p1, p2, UV0[1], UV1[1], UV2[1]);
+								// We may need to flip the direction of the s or t axis
+								// check the texture coordinates to find the correct direction
+								// for these axes...
+							sAxis = CorrectAxisDirection(sAxis, p0, p1, p2, UV0[0], UV1[0], UV2[0]);
+							tAxis = CorrectAxisDirection(tAxis, p0, p1, p2, UV0[1], UV1[1], UV2[1]);
 
-						auto sMagSq = MagnitudeSquared(sAxis);
-						auto tMagSq = MagnitudeSquared(tAxis);
-                    
-						float recipSMag, recipTMag;
-						if (XlRSqrt_Checked(&recipSMag, sMagSq) && XlRSqrt_Checked(&recipTMag, tMagSq)) {
-							tri.tangent = sAxis * recipSMag;
-							tri.bitangent = tAxis * recipTMag;
-						} else {
-							tri.tangent = tri.bitangent = Zero<Float3>();
+							auto sMagSq = MagnitudeSquared(sAxis);
+							auto tMagSq = MagnitudeSquared(tAxis);
+						
+							float recipSMag, recipTMag;
+							if (XlRSqrt_Checked(&recipSMag, sMagSq) && XlRSqrt_Checked(&recipTMag, tMagSq)) {
+								tri.tangent = sAxis * recipSMag;
+								tri.bitangent = tAxis * recipTMag;
+							} else {
+								tri.tangent = tri.bitangent = Zero<Float3>();
+							}
+
+							tri.tangent = sAxis;
+							tri.bitangent = tAxis;
 						}
 
-						tri.tangent = sAxis;
-						tri.bitangent = tAxis;
+						assert( tri.tangent[0] == tri.tangent[0] );
+					} else {
+						tri.tangent = Zero<Float3>();
+						tri.bitangent = Zero<Float3>();
 					}
 
-					assert( tri.tangent[0] == tri.tangent[0] );
+						// We add the influence of this triangle to all vertices
+						// each vertex should get an even balance of influences from
+						// all triangles it is part of.
+					assert(std::isfinite(tri.normal[0]) && !std::isnan(tri.normal[0]) && tri.normal[0] == tri.normal[0]);
+					assert(std::isfinite(tri.normal[1]) && !std::isnan(tri.normal[1]) && tri.normal[1] == tri.normal[1]);
+					assert(std::isfinite(tri.normal[2]) && !std::isnan(tri.normal[2]) && tri.normal[2] == tri.normal[2]);
+					normals[v0] += tri.normal; normals[v1] += tri.normal; normals[v2] += tri.normal;
+					tangents[v0] += Expand(tri.tangent, 0.f); tangents[v1] += Expand(tri.tangent, 0.f); tangents[v2] += Expand(tri.tangent, 0.f);
+					bitangents[v0] += tri.bitangent; bitangents[v1] += tri.bitangent; bitangents[v2] += tri.bitangent;
 				} else {
-					tri.tangent = Zero<Float3>();
-					tri.bitangent = Zero<Float3>();
+						/* this triangle is so small we can't derive any useful information from it */
+					Log(Warning) << "GenerateNormalsAndTangents: Near-degenerate triangle found on vertices (" << v0 << ", " << v1 << ", " << v2 << ")" << std::endl;
 				}
-
-                    // We add the influence of this triangle to all vertices
-                    // each vertex should get an even balance of influences from
-                    // all triangles it is part of.
-				assert(std::isfinite(tri.normal[0]) && !std::isnan(tri.normal[0]) && tri.normal[0] == tri.normal[0]);
-				assert(std::isfinite(tri.normal[1]) && !std::isnan(tri.normal[1]) && tri.normal[1] == tri.normal[1]);
-				assert(std::isfinite(tri.normal[2]) && !std::isnan(tri.normal[2]) && tri.normal[2] == tri.normal[2]);
-                normals[v0] += tri.normal; normals[v1] += tri.normal; normals[v2] += tri.normal;
-                tangents[v0] += Expand(tri.tangent, 0.f); tangents[v1] += Expand(tri.tangent, 0.f); tangents[v2] += Expand(tri.tangent, 0.f);
-                bitangents[v0] += tri.bitangent; bitangents[v1] += tri.bitangent; bitangents[v2] += tri.bitangent;
 			} else {
-				    /* this triangle is so small we can't derive any useful information from it */
+				Log(Warning) << "GenerateNormalsAndTangents: Degenerate triangle found on vertices (" << v0 << ", " << v1 << ", " << v2 << ")" << std::endl;
 			}
 		}
 
