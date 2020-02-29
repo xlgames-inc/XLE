@@ -212,10 +212,12 @@ namespace RenderCore
         FormatPrefix::Enum prefix = GetPrefix(format);
         using namespace FormatPrefix;
         switch (prefix) {
-        case BC1:   return CompressionParameters { 4, 4, 8, 8 };
+        case BC1:
+		case BC4:
+			return CompressionParameters { 4, 4, 8, 8 };
+
         case BC2:
         case BC3:
-        case BC4:
         case BC5:
         case BC7:   // (can be used for higher precision data)
             return CompressionParameters { 4, 4, 16, 8 };

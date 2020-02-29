@@ -117,9 +117,9 @@ _EXP( BC3,            TYPELESS,   BlockCompression,   8 )
 _EXP( BC3,            UNORM,      BlockCompression,   8 )
 _EXP( BC3,            UNORM_SRGB, BlockCompression,   8 )
 
-_EXP( BC4,            TYPELESS,   BlockCompression,   8 )
-_EXP( BC4,            UNORM,      BlockCompression,   8 )
-_EXP( BC4,            SNORM,      BlockCompression,   8 )
+_EXP( BC4,            TYPELESS,   BlockCompression,   4 )
+_EXP( BC4,            UNORM,      BlockCompression,   4 )
+_EXP( BC4,            SNORM,      BlockCompression,   4 )
 
 _EXP( BC5,            TYPELESS,   BlockCompression,   8 )
 _EXP( BC5,            UNORM,      BlockCompression,   8 )
