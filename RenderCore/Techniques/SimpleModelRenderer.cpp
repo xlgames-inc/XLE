@@ -103,6 +103,10 @@ namespace RenderCore { namespace Techniques
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
 
+			auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+            assert(machineOutput < _baseTransformCount);
+			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
@@ -118,10 +122,7 @@ namespace RenderCore { namespace Techniques
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._extraUniformBufferDelegates = _extraUniformBufferDelegates;
-
-				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                assert(machineOutput < _baseTransformCount);
-                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
+                drawable._objectToWorld = Combine(rawGeo._geoSpaceToNodeSpace, geoCallToWorld);
 
 				++drawCallCounter;
             }
@@ -133,6 +134,10 @@ namespace RenderCore { namespace Techniques
         for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
+
+			auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+            assert(machineOutput < _baseTransformCount);
+			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
@@ -154,10 +159,7 @@ namespace RenderCore { namespace Techniques
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._extraUniformBufferDelegates = _extraUniformBufferDelegates;
-
-				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                assert(machineOutput < _baseTransformCount);
-                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
+				drawable._objectToWorld = Combine(rawGeo._geoSpaceToNodeSpace, geoCallToWorld);
 
 				++drawCallCounter;
             }
@@ -205,6 +207,10 @@ namespace RenderCore { namespace Techniques
             const auto& geoCall = cmdStream.GetGeoCall(c);
             auto& rawGeo = immData._geos[geoCall._geoId];
 
+			auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+            assert(machineOutput < _baseTransformCount);
+			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
@@ -220,10 +226,7 @@ namespace RenderCore { namespace Techniques
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
-
-				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-				assert(machineOutput < _baseTransformCount);
-                drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
+                drawable._objectToWorld = Combine(rawGeo._geoSpaceToNodeSpace, geoCallToWorld);
 
 				++drawCallCounter;
             }
@@ -235,6 +238,10 @@ namespace RenderCore { namespace Techniques
 		for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
             const auto& geoCall = cmdStream.GetSkinCall(c);
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
+
+			auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+            assert(machineOutput < _baseTransformCount);
+			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
@@ -256,10 +263,7 @@ namespace RenderCore { namespace Techniques
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
-
-                auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                assert(machineOutput < _baseTransformCount);
-				drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
+				drawable._objectToWorld = Combine(rawGeo._geoSpaceToNodeSpace, geoCallToWorld);
 
 				++drawCallCounter;
             }
@@ -997,6 +1001,23 @@ namespace RenderCore { namespace Techniques
 		unsigned c=2;
 		for (const auto&u:uniformBufferDelegates) {
 			_usi->BindConstantBuffer(c++, {u.first, u.second->GetLayout()});
+		}
+
+		// Check to make sure we've got a skeleton binding for each referenced geo call to world referenced
+		for (unsigned g=0; g<cmdStream.GetGeoCallCount(); g++) {
+			unsigned machineOutput = ~0u;
+			if (cmdStream.GetGeoCall(c)._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetGeoCall(c)._transformMarker);
+			if (machineOutput >= _baseTransformCount)
+				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
+		}
+
+		for (unsigned g=0; g<cmdStream.GetSkinCallCount(); g++) {
+			unsigned machineOutput = ~0u;
+			if (cmdStream.GetSkinCall(c)._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetSkinCall(c)._transformMarker);
+			if (machineOutput >= _baseTransformCount)
+				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
 		}
 	}
 
