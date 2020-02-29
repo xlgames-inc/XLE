@@ -63,6 +63,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _animationDrivers.push_back({curveId, (unsigned)parameterIndex, samplerType, samplerOffset});
     }
 
+	unsigned NascentAnimationSet::GetParameterIndex(const std::string& parameterName) const
+	{
+		auto i2 = std::find(_parameterInterfaceDefinition.cbegin(), 
+                            _parameterInterfaceDefinition.cend(), parameterName);
+        if (i2==_parameterInterfaceDefinition.end()) 
+            return ~0u;
+		return (unsigned)std::distance(_parameterInterfaceDefinition.cbegin(), i2);
+	}
+
     bool    NascentAnimationSet::HasAnimationDriver(const std::string&  parameterName) const
     {
         auto i2 = std::find(_parameterInterfaceDefinition.cbegin(), 
@@ -84,8 +93,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return false;
     }
 
-    void    NascentAnimationSet::MergeAnimation(
-        const NascentAnimationSet& animation, const std::string& name)
+    void    NascentAnimationSet::MergeInAsAnIndividualAnimation(
+        const NascentAnimationSet& copyFrom, const std::string& name)
     {
             //
             //      Merge the animation drivers in the given input animation, and give 
@@ -94,16 +103,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         float minTime = FLT_MAX, maxTime = -FLT_MAX;
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
-        for (auto i=animation._animationDrivers.cbegin(); i!=animation._animationDrivers.end(); ++i) {
-            if (i->_curveIndex >= animation._curves.size()) continue;
-            const auto* animCurve = &animation._curves[i->_curveIndex];
+        for (auto i=copyFrom._animationDrivers.cbegin(); i!=copyFrom._animationDrivers.end(); ++i) {
+            if (i->_curveIndex >= copyFrom._curves.size()) continue;
+            const auto* animCurve = &copyFrom._curves[i->_curveIndex];
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
                 minTime = std::min(minTime, curveStart);
                 maxTime = std::max(maxTime, curveEnd);
 
-                const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
+                const std::string& pname = copyFrom._parameterInterfaceDefinition[i->_parameterIndex];
                 _curves.emplace_back(Assets::RawAnimationCurve(*animCurve));
                 AddAnimationDriver(
                     pname, unsigned(_curves.size()-1), 
@@ -111,11 +120,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
         }
 
-        for (auto i=animation._constantDrivers.cbegin(); i!=animation._constantDrivers.end(); ++i) {
-            const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
+        for (auto i=copyFrom._constantDrivers.cbegin(); i!=copyFrom._constantDrivers.end(); ++i) {
+            const std::string& pname = copyFrom._parameterInterfaceDefinition[i->_parameterIndex];
             AddConstantDriver(
-				pname, PtrAdd(AsPointer(animation._constantData.begin()), i->_dataOffset), 
-				BitsPerPixel(i->_format), i->_format,
+				pname, PtrAdd(AsPointer(copyFrom._constantData.begin()), i->_dataOffset), 
+				BitsPerPixel(i->_format)/8, i->_format,
 				i->_samplerType, i->_samplerOffset);
         }
 
@@ -127,6 +136,65 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					(unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
 					minTime, maxTime}));
     }
+
+	void    NascentAnimationSet::MergeInAsManyAnimations(const NascentAnimationSet& copyFrom, const std::string& namePrefix)
+	{
+		std::vector<unsigned> parameterRemapping;
+		parameterRemapping.reserve(copyFrom._parameterInterfaceDefinition.size());
+		for (const auto&p:copyFrom._parameterInterfaceDefinition) {
+			auto i2 = std::find(_parameterInterfaceDefinition.cbegin(), _parameterInterfaceDefinition.cend(), p);
+			if (i2 != _parameterInterfaceDefinition.cend()) {
+				parameterRemapping.push_back(unsigned(i2-_parameterInterfaceDefinition.cbegin()));
+			} else {
+				parameterRemapping.push_back(unsigned(_parameterInterfaceDefinition.size()));
+				_parameterInterfaceDefinition.push_back(p);
+			}
+		}
+
+		size_t curveOffset = _curves.size();
+		_curves.insert(_curves.end(), copyFrom._curves.begin(), copyFrom._curves.end());
+		size_t dataOffset = _constantData.size();
+		_constantData.insert(_constantData.end(), copyFrom._constantData.begin(), copyFrom._constantData.end());
+
+		size_t constantDriverOffset = _constantDrivers.size();
+		_constantDrivers.reserve(_constantDrivers.size()+copyFrom._constantDrivers.size());
+		for (const auto&d:copyFrom._constantDrivers) {
+			_constantDrivers.push_back(
+				ConstantDriver {
+					unsigned(dataOffset + d._dataOffset),
+					parameterRemapping[d._parameterIndex],
+					d._format,
+					d._samplerType,
+					d._samplerOffset
+				});
+		}
+
+		size_t animationDriverOffset = _animationDrivers.size();
+		_animationDrivers.reserve(_animationDrivers.size()+copyFrom._animationDrivers.size());
+		for (const auto&d:copyFrom._animationDrivers) {
+			_animationDrivers.push_back(
+				AnimationDriver {
+					unsigned(curveOffset + d._curveIndex),
+					parameterRemapping[d._parameterIndex],
+					d._samplerType,
+					d._samplerOffset
+				});
+		}
+
+		_animations.reserve(_animations.size()+copyFrom._animations.size());
+		for (const auto&a:copyFrom._animations) {
+			auto newAnim = a.second;
+			if (newAnim._beginDriver != newAnim._endDriver) {
+				newAnim._beginDriver += (unsigned)animationDriverOffset;
+				newAnim._endDriver += (unsigned)animationDriverOffset;
+			}
+			if (newAnim._beginConstantDriver != newAnim._endConstantDriver) {
+				newAnim._beginConstantDriver += (unsigned)constantDriverOffset;
+				newAnim._endConstantDriver += (unsigned)constantDriverOffset;
+			}
+			_animations.push_back(std::make_pair(a.first, newAnim));
+		}
+	}
 
 	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name)
 	{

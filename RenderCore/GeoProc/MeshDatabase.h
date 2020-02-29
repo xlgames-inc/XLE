@@ -208,5 +208,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	void Copy(IteratorRange<VertexElementIterator> destination, IteratorRange<VertexElementIterator> source, unsigned vertexCount);
 
+	/// <summary>Compress a sparse index buffer to a contiguous list of indices and return a remapping</summary>
+	/// The returned remapping is of the format remapping[oldIndex]=newIndex
+	std::vector<unsigned> CompressIndexBuffer(IteratorRange<unsigned*> indexBufferInAndOut);
+
 }}}
 

@@ -50,7 +50,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             unsigned            samplerOffset);
 
         bool    HasAnimationDriver(const std::string&  parameterName) const;
-        void    MergeAnimation(const NascentAnimationSet& animation, const std::string& name);
+        void    MergeInAsAnIndividualAnimation(const NascentAnimationSet& copyFrom, const std::string& name);
+		void    MergeInAsManyAnimations(const NascentAnimationSet& copyFrom, const std::string& namePrefix = {});
 		void	MakeIndividualAnimation(const std::string& name);
 
 		void	AddAnimation(
@@ -63,6 +64,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		IteratorRange<const AnimationDriver*> GetAnimationDrivers() const { return MakeIteratorRange(_animationDrivers); }
 		IteratorRange<const ConstantDriver*> GetConstantDrivers() const { return MakeIteratorRange(_constantDrivers); }
+		unsigned GetParameterIndex(const std::string& parameterName) const;
 
 		friend std::ostream& StreamOperator(
 			std::ostream& stream, 

@@ -1091,5 +1091,26 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             srcData.GetData(), srcData.GetStride(), srcData.GetFormat());
     }
 
+	std::vector<unsigned> CompressIndexBuffer(IteratorRange<unsigned*> indexBufferInAndOut)
+	{
+		std::vector<unsigned> mapping { indexBufferInAndOut.begin(), indexBufferInAndOut.end() };
+		std::sort(mapping.begin(), mapping.end());
+		auto i = std::unique(mapping.begin(), mapping.end());
+		mapping.erase(i, mapping.end());
+		if (mapping.empty())
+			return {};
+
+		std::vector<unsigned> reverseMapping(*(mapping.end()-1)+1, ~0u);
+		for (unsigned c=0; c<mapping.size(); ++c)
+			reverseMapping[mapping[c]] = c;
+
+		for (auto& idx:indexBufferInAndOut) {
+			assert(reverseMapping[idx] != ~0u);
+			idx = reverseMapping[idx];
+		}
+
+		return mapping;
+	}
+
 }}}
 
