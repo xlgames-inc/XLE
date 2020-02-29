@@ -106,11 +106,12 @@ namespace RenderCore { namespace Techniques
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
-				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
+				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
+				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -123,8 +124,9 @@ namespace RenderCore { namespace Techniques
                 drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
-				++geoCallIterator;
             }
+
+			geoCallIterator += geoCall._materialCount;
         }
 
 		geoCallIterator = _boundSkinnedControllerGeoCalls.begin();
@@ -135,6 +137,7 @@ namespace RenderCore { namespace Techniques
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
                     // now we have at least once piece of geometry
                     // that we want to render... We need to bind the material,
@@ -143,8 +146,8 @@ namespace RenderCore { namespace Techniques
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
-				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
+				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
+				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -157,8 +160,9 @@ namespace RenderCore { namespace Techniques
                 drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
-				++geoCallIterator;
             }
+
+			geoCallIterator += geoCall._materialCount;
         }
 	}
 
@@ -204,11 +208,12 @@ namespace RenderCore { namespace Techniques
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
-				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
-				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
+				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
+				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -220,9 +225,10 @@ namespace RenderCore { namespace Techniques
 				assert(machineOutput < _baseTransformCount);
                 drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
-				++geoCallIterator;
 				++drawCallCounter;
             }
+
+			geoCallIterator += geoCall._materialCount;
         }
 
 		geoCallIterator = _boundSkinnedControllerGeoCalls.begin();
@@ -233,6 +239,7 @@ namespace RenderCore { namespace Techniques
 			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
                     // now we have at least once piece of geometry
                     // that we want to render... We need to bind the material,
@@ -241,8 +248,8 @@ namespace RenderCore { namespace Techniques
 
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._pipeline = geoCallIterator->_pipelineAccelerator;
-				drawable._descriptorSet = geoCallIterator->_compiledDescriptorSet->TryActualize();
+				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
+				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -255,8 +262,9 @@ namespace RenderCore { namespace Techniques
 				drawable._objectToWorld = Combine(Combine(rawGeo._geoSpaceToNodeSpace, _baseTransforms[machineOutput]), localToWorld);
 
 				++drawCallCounter;
-				++geoCallIterator;
             }
+
+			geoCallIterator += geoCall._materialCount;
         }
 	}
 
