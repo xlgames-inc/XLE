@@ -378,10 +378,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static uint32_t ControllerAndBucketIndex(unsigned controllerIdx, unsigned bucketIdx)
+	static uint32_t ControllerAndBucketIndex(unsigned controllerIdx, unsigned bucketIdx, unsigned bucketsPerController)
 	{
 		assert((bucketIdx & ~0xfffff) == 0);
-		return (controllerIdx << 20) | (bucketIdx & 0xfffff);
+		return (((bucketIdx >> 16) + controllerIdx*bucketsPerController)<<16) | (bucketIdx & 0xffff);
 	}
 
     NascentBoundSkinnedGeometry BindController(
@@ -428,6 +428,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                             
         size_t unifiedVertexCount = sourceGeo._finalVertexCount;
 		assert(sourceGeo._finalVertexIndexToOriginalIndex.empty() || sourceGeo._finalVertexIndexToOriginalIndex.size() >= unifiedVertexCount);
+		const size_t bucketsPerController = dimof(BuckettedSkinController::_bucket);
 
 		std::vector<BuckettedSkinController> buckettedControllers;
 		buckettedControllers.reserve(controllers.size());
@@ -452,7 +453,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				auto& buckettedController = buckettedControllers[controllerIdx];
 				if (	originalIndex < buckettedController._originalIndexToBucketIndex.size()
 					&&	buckettedController._originalIndexToBucketIndex[originalIndex] != ~0u) {
-					bucketIndex = ControllerAndBucketIndex(controllerIdx, buckettedController._originalIndexToBucketIndex[originalIndex]);
+					bucketIndex = ControllerAndBucketIndex(controllerIdx, buckettedController._originalIndexToBucketIndex[originalIndex], bucketsPerController);
 					break;
 				}
 			}
@@ -485,7 +486,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //                  as they were in the original
             //
 
-		const size_t bucketsPerController = dimof(BuckettedSkinController::_bucket);
         const size_t bucketCount = bucketsPerController * controllers.size();
         std::vector<size_t> bucketStart(bucketCount, 0);
         std::vector<size_t> bucketEnd(bucketCount, 0);
@@ -494,7 +494,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			uint32_t currentBucket = ~0u;
 			for (size_t i=0; i<vertexMappingByFinalOrdering.size(); ++i) {
 				auto thisBucket = (vertexMappingByFinalOrdering[i]._bucketIndex >> 16);
-				assert(thisBucket < bucketsPerController);
+				assert(thisBucket < bucketCount);
 				if (thisBucket!=currentBucket) {
 					if (currentBucket < bucketCount)
 						bucketEnd[currentBucket] = i;
@@ -651,7 +651,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             for (size_t destinationVertexIndex=0; destinationVertexIndex<vertexMappingByFinalOrdering.size(); ++destinationVertexIndex) {
                 unsigned sourceBucketIndex = vertexMappingByFinalOrdering[destinationVertexIndex]._bucketIndex;
 
-				auto controllerIdx = sourceBucketIndex >> 20;
+				auto controllerIdx = (sourceBucketIndex >> 16) / bucketsPerController;;
 				auto bucketIdx = (sourceBucketIndex >> 16) % bucketsPerController;
 				auto sourceVertexInThisBucket = sourceBucketIndex & 0xffff;
 
@@ -697,6 +697,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     }
                 }
 
+				assert((sourceBucketIndex>>16) < bucketCount);
 				assert(destinationVertexIndex >= bucketStart[sourceBucketIndex>>16] && destinationVertexIndex < bucketEnd[sourceBucketIndex>>16]);
 
 				#if defined(_DEBUG)
