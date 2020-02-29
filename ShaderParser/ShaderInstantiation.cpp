@@ -232,7 +232,7 @@ namespace ShaderSourceParser
         }
 
 		// Write the merged captures as a cbuffers in the material descriptor set
-		{
+		if (!mergedCaptures.empty()) {
 			std::stringstream warningMessages;
 			result._descriptorSet = MakeMaterialDescriptorSet(
 				MakeIteratorRange(mergedCaptures),
