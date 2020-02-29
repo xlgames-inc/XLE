@@ -85,7 +85,7 @@ namespace RenderCore { namespace Techniques
             if (XlFindStringI(initializer.File(), "_ddn")) {
                 _colSpaceDefault = SourceColorSpace::Linear;
             } else {
-                _colSpaceDefault = SourceColorSpace::Unspecified;
+                _colSpaceDefault = SourceColorSpace::SRGB;
             }
         }
     }
@@ -229,23 +229,25 @@ namespace RenderCore { namespace Techniques
 				}
 
 					// calculate the color space to use (resolving the defaults, request string and metadata)
-				auto colSpace = (GetComponentType(desc._textureDesc._format) == FormatComponentType::UNorm_SRGB) ? SourceColorSpace::SRGB : SourceColorSpace::Linear;
-				if (init._colSpaceRequestString != SourceColorSpace::Unspecified) {
+				auto colSpace = SourceColorSpace::Unspecified;
+				auto fmtComponentType = GetComponentType(desc._textureDesc._format);
+				if (fmtComponentType == FormatComponentType::UNorm_SRGB) {
+					colSpace = SourceColorSpace::SRGB;
+				} else if (fmtComponentType != FormatComponentType::Typeless) {
+					colSpace = SourceColorSpace::Linear;
+				} else if (init._colSpaceRequestString != SourceColorSpace::Unspecified) {
 					colSpace = init._colSpaceRequestString;
-				} else {
-					if (init._colSpaceDefault != SourceColorSpace::Unspecified) {
-						colSpace = init._colSpaceDefault;
-					}
-
-					if (metaDataFuture) {
-						auto metaData = metaDataFuture->TryActualize();
-						if (metaData) {
-							if (metaData->_colorSpace != SourceColorSpace::Unspecified)
-								colSpace = metaData->_colorSpace;
-							::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
-						}
+				} else if (metaDataFuture) {
+					auto metaData = metaDataFuture->TryActualize();
+					if (metaData) {
+						if (metaData->_colorSpace != SourceColorSpace::Unspecified)
+							colSpace = metaData->_colorSpace;
+						::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
 					}
 				}
+
+				if (colSpace == SourceColorSpace::Unspecified && init._colSpaceDefault != SourceColorSpace::Unspecified)
+					colSpace = init._colSpaceDefault;
 
 				auto format = desc._textureDesc._format;
 				if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
