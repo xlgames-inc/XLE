@@ -70,9 +70,22 @@ tokens
 
 @members
 {
+	#include "../../Core/Prefix.h"
+
 	typedef void ExceptionHandler(void*, const ANTLR3_EXCEPTION*, const ANTLR3_UINT8**);
-	ExceptionHandler* g_ShaderParserExceptionHandler = NULL;
-	void* g_ShaderParserExceptionHandlerUserData = NULL;
+	typedef struct { ExceptionHandler* _callback; void* _userData; } ExceptionHandlerAndUserData;
+	thread_local ExceptionHandler* g_ShaderParserExceptionHandler = NULL;
+	thread_local void* g_ShaderParserExceptionHandlerUserData = NULL;
+
+	ExceptionHandlerAndUserData SetShaderParserExceptionHandler(ExceptionHandlerAndUserData handler)
+	{
+		ExceptionHandlerAndUserData prev;
+		prev._callback = g_ShaderParserExceptionHandler;
+		prev._userData = g_ShaderParserExceptionHandlerUserData;
+		g_ShaderParserExceptionHandler = handler._callback;
+		g_ShaderParserExceptionHandlerUserData = handler._userData;
+		return prev;
+	}
 
 	void CustomDisplayRecognitionError(void * recognizer, void * tokenNames)
 	{

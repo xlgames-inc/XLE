@@ -16,8 +16,8 @@
 #include <string>
 
 typedef void ExceptionHandler(const ANTLR3_EXCEPTION* exception, const ANTLR3_UINT8**);
-extern "C" ExceptionHandler* g_ShaderParserExceptionHandler;
-extern "C" void* g_ShaderParserExceptionHandlerUserData;
+typedef struct { ExceptionHandler* _callback; void* _userData; } ExceptionHandlerAndUserData;
+extern "C" ExceptionHandlerAndUserData SetShaderParserExceptionHandler(ExceptionHandlerAndUserData handler);
 
 namespace ShaderSourceParser { namespace AntlrHelper
 {
@@ -102,7 +102,6 @@ namespace ShaderSourceParser { namespace AntlrHelper
 		ExceptionContext();
 		~ExceptionContext();
 	private:
-		ExceptionHandler* _previousExceptionHandler;
-		void* _previousExceptionHandlerUserData;
+		ExceptionHandlerAndUserData _previousExceptionHandler;
 	};
 }}

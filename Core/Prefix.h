@@ -17,7 +17,7 @@
 	#define attribute_packed
 	#define expect_evaluation(X, Y)	X
 
-	#if _MSC_VER <= 1600
+	#if _MSC_VER <= 1600 || !defined(__cplusplus)
 		#define thread_local    __declspec(thread)
 	#endif
 
@@ -112,6 +112,8 @@ typedef void* XlHandle;
     #define DEBUG_ONLY(x)       
 #endif
 
+#if defined(__cplusplus)
+
 template<typename Type>
     inline void DeleteAndClear(Type*& ptr)
     {
@@ -173,4 +175,6 @@ template<> struct constant_expression<false>   { static bool result() { return f
 	#define DEPRECATED_ATTRIBUTE		[[deprecated]]
 #else
 	#define DEPRECATED_ATTRIBUTE
+#endif
+
 #endif

@@ -154,17 +154,16 @@ namespace ShaderSourceParser { namespace AntlrHelper
 	{
 		// Antlr stuff is in 'C' -- so we have to drop back to a C way of doing things
         // these globals means we can only do a single parse at a time.
-		_previousExceptionHandler = g_ShaderParserExceptionHandler;
-        _previousExceptionHandlerUserData = g_ShaderParserExceptionHandlerUserData;
-
-		g_ShaderParserExceptionHandlerUserData = &_exceptions;
-        g_ShaderParserExceptionHandler = (ExceptionHandler*)&ExceptionSet::HandleException;
+		_previousExceptionHandler = SetShaderParserExceptionHandler(
+			ExceptionHandlerAndUserData {
+				(ExceptionHandler*)&ExceptionSet::HandleException,
+				&_exceptions
+			});
 	}
 
 	ExceptionContext::~ExceptionContext()
 	{
-		g_ShaderParserExceptionHandler = _previousExceptionHandler;
-        g_ShaderParserExceptionHandlerUserData = _previousExceptionHandlerUserData;
+		SetShaderParserExceptionHandler(_previousExceptionHandler);
 	}
 
 }}
