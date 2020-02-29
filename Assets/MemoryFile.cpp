@@ -204,7 +204,8 @@ namespace Assets
 		FileDecompressOnRead(
 			const std::shared_ptr<MemoryMappedFile>& archiveFile,
 			const IteratorRange<const void*> memoryRange,
-			size_t decompressedSize);
+			size_t decompressedSize,
+			unsigned fixedWindowSize);
 		~FileDecompressOnRead();
 	protected:
 		std::shared_ptr<MemoryMappedFile> _archiveFile;
@@ -281,7 +282,8 @@ namespace Assets
 	FileDecompressOnRead::FileDecompressOnRead(
 		const std::shared_ptr<MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
-		size_t decompressedSize)
+		size_t decompressedSize,
+		unsigned fixedWindowSize)
 	: _archiveFile(archiveFile)
 	, _decompressedSize(decompressedSize)
 	{
@@ -295,7 +297,12 @@ namespace Assets
             _stream.zalloc = (alloc_func)0;
             _stream.zfree = (free_func)0;
 
-            auto err = inflateInit(&_stream);
+			int err;
+			if (fixedWindowSize) {
+				err = inflateInit2(&_stream, -(signed)fixedWindowSize);
+			} else {
+				err = inflateInit(&_stream);
+			}
             assert(err == Z_OK); (void) err;
 
 			_tellp = 0;
@@ -315,9 +322,10 @@ namespace Assets
 	std::unique_ptr<IFileInterface> CreateDecompressOnReadFile(
 		const std::shared_ptr<MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
-		size_t decompressedSize)
+		size_t decompressedSize,
+		unsigned fixedWindowSize)
 	{
-		return std::make_unique<FileDecompressOnRead>(archiveFile, memoryRange, decompressedSize);
+		return std::make_unique<FileDecompressOnRead>(archiveFile, memoryRange, decompressedSize, fixedWindowSize);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

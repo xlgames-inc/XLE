@@ -16,10 +16,14 @@ namespace Assets
 		const std::shared_ptr<MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange);
 
+	/// Pass 0 to fixedWindowSize for a non-fixed-window-size compressed block
+	/// (in other words, there's expected to be a header that contains the window size)
+	/// "15" seems to be a common default for the fixedWindowSize
 	std::unique_ptr<IFileInterface> CreateDecompressOnReadFile(
 		const std::shared_ptr<MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
-		size_t decompressedSize);
+		size_t decompressedSize,
+		unsigned fixedWindowSize = 0);
 
 	// Creates a static case sensitive filesystem containing the given of files (in a single directory)
 	// with the given contents
