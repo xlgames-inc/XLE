@@ -20,6 +20,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"

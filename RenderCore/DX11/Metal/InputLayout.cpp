@@ -432,6 +432,7 @@ namespace RenderCore { namespace Metal_DX11
 			D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
 			assert(SUCCEEDED(hresult));
+			(void)hresult;
 
 			ID3D::ShaderReflectionConstantBuffer* cbReflection = reflection->GetConstantBufferByName(bindingDesc.Name);
 			if (!cbReflection) 
@@ -501,6 +502,7 @@ namespace RenderCore { namespace Metal_DX11
 			D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
 			assert(SUCCEEDED(hresult));
+			(void)hresult;
 
 			StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
 			_stageBindings[i->second._stage]._shaderResourceBindings.push_back(newBinding);
@@ -526,6 +528,7 @@ namespace RenderCore { namespace Metal_DX11
 			auto hresult = reflection->GetResourceBindingDesc(i->second._resourceIdex, &bindingDesc);
 			assert(SUCCEEDED(hresult));
 			assert(bindingDesc.Type == D3D_SIT_SAMPLER);
+			(void)hresult;
 
 			StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
 			_stageBindings[i->second._stage]._shaderSamplerBindings.push_back(newBinding);

@@ -168,6 +168,8 @@ namespace RenderOverlays
 			auto contextStateDesc = context.GetStateDesc();
 			auto outputMatrixNames = skeleton.GetOutputMatrixNames();
 
+			std::vector<Float2> screenspacePositions;
+
 			for (unsigned idx=0; idx<outputMatrices.size(); ++idx) {
 				auto o = outputMatrices[idx];
 				auto hposition = worldToProjection * Expand(TransformPoint(localToWorld, ExtractTranslation(o)), 1.0f);
@@ -178,8 +180,17 @@ namespace RenderOverlays
 
 				Float2 viewportSpace { hposition[0] / hposition[3], hposition[1] / hposition[3] };
 				Float2 screenSpace {
-					(viewportSpace[0] * 0.5f + 0.5f) * contextStateDesc._viewportDimensions[0],
+					(viewportSpace[0] *  0.5f + 0.5f) * contextStateDesc._viewportDimensions[0],
 					(viewportSpace[1] * -0.5f + 0.5f) * contextStateDesc._viewportDimensions[1] };
+
+				for (;;) {
+					bool foundOverlap = false;
+					for (auto f:screenspacePositions)
+						foundOverlap |= MagnitudeSquared(f - screenSpace) < 8.f * 8.f;
+					if (!foundOverlap) break;
+					screenSpace[1] += 10.0f;
+				}
+				screenspacePositions.push_back(screenSpace);
 
 				std::string name;
 				if (idx < outputMatrixNames.size()) {

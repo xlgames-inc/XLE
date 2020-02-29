@@ -663,7 +663,7 @@ namespace Utility
         }
 
     template<typename T>
-        bool XlEndssWithI(const StringSection<T>& a, const StringSection<T>& b)
+        bool XlEndsWithI(const StringSection<T>& a, const StringSection<T>& b)
         {
             return 
                 a.Length() >= b.Length()

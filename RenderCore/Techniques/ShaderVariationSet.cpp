@@ -116,11 +116,12 @@ namespace RenderCore { namespace Techniques
 
         auto i = LowerBound(_globalToFiltered, inputHash);
         if (i!=_globalToFiltered.cend() && i->first == inputHash) {
-            filteredHashValue = i->second;
+            filteredHashValue = i->second._filteredHashValue;
+			filteredDefinesTable = i->second._filteredSelectors;
         } else {
 			filteredDefinesTable = MakeFilteredDefinesTable(selectors, techniqueFiltering, relevance);
 			filteredHashValue = Hash64(filteredDefinesTable);
-			_globalToFiltered.insert(i, {inputHash, filteredHashValue});
+			_globalToFiltered.insert(i, {inputHash, FilteredDefines{filteredHashValue, filteredDefinesTable}});
 		}
 
 		filteredHashValue = HashCombine(filteredHashValue, factory._factoryGuid);

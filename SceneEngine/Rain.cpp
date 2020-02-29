@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"

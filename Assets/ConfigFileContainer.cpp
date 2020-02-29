@@ -88,7 +88,7 @@ namespace Assets
 		_validationCallback = std::make_shared<DependencyValidation>();
 		RegisterFileDependency(_validationCallback, initializer);
 
-		_fileData = ::Assets::TryLoadFileAsBlob(initializer);
+		_fileData = ::Assets::TryLoadFileAsBlob_TolerateSharingErrors(initializer);
 		if (!_fileData)
 			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::MissingFile, _validationCallback, "Error loading config file container for %s", initializer.AsString().c_str()));
 	}

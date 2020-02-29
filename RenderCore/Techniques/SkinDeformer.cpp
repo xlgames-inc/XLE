@@ -131,7 +131,6 @@ namespace RenderCore { namespace Techniques
 		auto& immData = modelScaffold.ImmutableData();
 		assert(geoId < immData._boundSkinnedControllerCount);
 		auto& skinnedController = immData._boundSkinnedControllers[geoId];
-		auto& animVb = skinnedController._animatedVertexElements;
 		auto& skelVb = skinnedController._skeletonBinding;
 
 		auto skelVbData = std::make_unique<uint8_t[]>(skelVb._size);

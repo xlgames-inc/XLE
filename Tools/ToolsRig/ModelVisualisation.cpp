@@ -58,7 +58,10 @@ namespace ToolsRig
 			SceneEngine::SceneExecuteContext& executeContext) const override
 		{
 			auto* r = TryActualize();
-			if (!r) return;
+			if (!r) {
+				Log(Warning) << "Trying to render invalid/pending scene: " << ::Assets::AsString(_rendererStateFuture->GetActualizationLog()) << std::endl;
+				return;
+			}
 
 			auto skeletonMachine = r->GetSkeletonMachine();
 			assert(skeletonMachine);

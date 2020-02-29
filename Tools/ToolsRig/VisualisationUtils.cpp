@@ -88,7 +88,7 @@ namespace ToolsRig
         result._position = position;
         result._focus = .5f * (box.first + box.second);
         result._verticalFieldOfView = verticalFieldOfView;
-        result._farClip = 1.25f * (box.second[0] - position[0]);
+        result._farClip = 5.25f * Magnitude(result._focus - result._position);
         result._nearClip = result._farClip / 10000.f;
         return result;
     }

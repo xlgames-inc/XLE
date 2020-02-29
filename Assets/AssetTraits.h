@@ -232,7 +232,7 @@ namespace Assets
 			auto block = std::make_unique<char[]>(size);
 			file->Seek(0);
 			auto readCount = file->Read(block.get(), size);
-			assert(readCount == 1);
+			assert(readCount == 1); (void)readCount;
 			return std::make_unique<AssetType>(
 				MakeStringSection(block.get(), PtrAdd(block.get(), size)),
 				DefaultDirectorySearchRules(initializer),

@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"

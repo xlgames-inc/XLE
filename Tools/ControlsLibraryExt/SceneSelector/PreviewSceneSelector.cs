@@ -22,10 +22,13 @@ namespace ControlsLibraryExt.SceneSelector
 
         private void TreeView1_SelectionChanged(object sender, EventArgs e)
         {
-            var item = this.treeView1.SelectedNode.Tag as TreeModel.Item;
-            if (item != null)
+            if (this.treeView1.SelectedNode != null)
             {
-                OnSelectionChanged?.Invoke(this, new PreviewSceneSelectionChanged { PreviewScene = item.FullPath });
+                var item = this.treeView1.SelectedNode.Tag as TreeModel.Item;
+                if (item != null)
+                {
+                    OnSelectionChanged?.Invoke(this, new PreviewSceneSelectionChanged { PreviewScene = item.FullPath });
+                }
             }
         }
 

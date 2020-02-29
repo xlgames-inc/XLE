@@ -31,7 +31,7 @@ namespace Assets
 			} else {
 				std::stringstream str;
 				str << "Failed to actualize subasset number (" << I << "): ";
-				str << (queriedLog ? AsString(queriedLog) : std::string("<<no log>>"));
+				if (queriedLog) { str << ::Assets::AsString(queriedLog); } else { str << std::string("<<no log>>"); }
 				actualizationBlob = AsBlob(str.str());
 				exceptionDepVal = queriedDepVal;
 			}

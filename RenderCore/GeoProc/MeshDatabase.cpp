@@ -182,7 +182,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         const void* dst, Format dstFmt, size_t dstStride, size_t dstDataSize,
         const void* src, Format srcFmt, size_t srcStride, size_t srcDataSize,
         unsigned count, 
-        std::vector<unsigned> mapping,
+        IteratorRange<const unsigned*> mapping,
         ProcessingFlags::BitField processingFlags)
     {
         auto dstFormat = BreakdownFormat(dstFmt);
@@ -454,7 +454,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             dst, dstFormat, dstStride, dstSize,
             sourceData.GetData().begin(), sourceData.GetFormat(), stride, sourceData.GetData().size(),
             (unsigned)_unifiedVertexCount, 
-            stream.GetVertexMap(), sourceData.GetProcessingFlags());
+            MakeIteratorRange(stream.GetVertexMap()), sourceData.GetProcessingFlags());
     }
 
     std::vector<uint8_t>  MeshDatabase::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const

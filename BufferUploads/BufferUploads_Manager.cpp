@@ -555,7 +555,7 @@ namespace BufferUploads
             //
         #if 0 && defined(XL_DEBUG)      // DavidJ -- need to have multiple transactions for a single resource for terrain texture set!
             {
-                const bool mightBeBatched = !!(desc._bindFlags & BindFlag::IndexBuffer);
+                const bool mightBeBatched = !!(initDataDesc._bindFlags & BindFlag::IndexBuffer);
                 if (!mightBeBatched) {
                     std::deque<Transaction>::iterator endi=_transactions.end();
                     for (std::deque<Transaction>::iterator i=_transactions.begin(); i!=endi; ++i) {
@@ -696,15 +696,15 @@ namespace BufferUploads
                     return nullptr;
 
                     // update the PartialResource and BufferDesc based on the data we've just loaded
-				auto desc = initialisationData->GetDesc();
-                if (desc._type == BufferDesc::Type::Texture) {
-                    desc._type = desc._type;
-                    desc._textureDesc = desc._textureDesc;
+				auto initDataDesc = initialisationData->GetDesc();
+                if (initDataDesc._type == BufferDesc::Type::Texture) {
+                    initDataDesc._type = initDataDesc._type;
+                    initDataDesc._textureDesc = initDataDesc._textureDesc;
 
-                    part = DefaultPartialResource(desc, *initialisationData);
-                } else if (desc._type == BufferDesc::Type::LinearBuffer) {
-                    desc._type = desc._type;
-                    desc._linearBufferDesc = desc._linearBufferDesc;
+                    part = DefaultPartialResource(initDataDesc, *initialisationData);
+                } else if (initDataDesc._type == BufferDesc::Type::LinearBuffer) {
+                    initDataDesc._type = initDataDesc._type;
+                    initDataDesc._linearBufferDesc = initDataDesc._linearBufferDesc;
                 } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
             }
 

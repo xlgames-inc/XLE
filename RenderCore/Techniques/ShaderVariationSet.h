@@ -65,7 +65,13 @@ namespace RenderCore { namespace Techniques
 		~UniqueShaderVariationSet();
 	protected:
 		mutable std::vector<Variation>							_filteredToResolved;
-		mutable std::vector<std::pair<uint64_t, uint64_t>>		_globalToFiltered;
+
+		struct FilteredDefines
+		{
+			uint64_t _filteredHashValue;
+			std::string _filteredSelectors;
+		};
+		mutable std::vector<std::pair<uint64_t, FilteredDefines>>		_globalToFiltered;
 	};
 
 	/// <summary>Provides convenient management of shader variations generated from a technique file</summary>

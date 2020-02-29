@@ -15,6 +15,7 @@
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
