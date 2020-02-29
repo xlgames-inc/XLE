@@ -315,7 +315,7 @@ namespace RenderCore { namespace Techniques
 				}
 			}
 
-			auto outputPartRange = dst; // MakeIteratorRange(PtrAdd(dst.begin(), d._dynVBBegin), PtrAdd(dst.begin(), d._dynVBEnd));
+			auto outputPartRange = dst;
 			assert(outputPartRange.begin() < outputPartRange.end() && PtrDiff(outputPartRange.end(), dst.begin()) <= ptrdiff_t(dst.size()));
 
 			IDeformOperation::VertexElementRange outputElementRanges[16];
@@ -770,13 +770,17 @@ namespace RenderCore { namespace Techniques
 				const Internal::NascentDeformStream& deformStream)
 		{
 			GeoCall resultGeoCall;
-			auto& mat = *_materialScaffold->GetMaterial(materialGuid);
+			const auto* mat = _materialScaffold->GetMaterial(materialGuid);
+			if (!mat) {
+				static RenderCore::Assets::MaterialScaffoldMaterial defaultMaterial;
+				mat = &defaultMaterial;
+			}
 
 			auto i = LowerBound(drawableMaterials, materialGuid);
 			if (i != drawableMaterials.end() && i->first == materialGuid) {
 				resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
 			} else {
-				auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat._patchCollection);
+				auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat->_patchCollection);
 				assert(patchCollection);
 				auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
 
@@ -788,7 +792,7 @@ namespace RenderCore { namespace Techniques
 				}
 
 				resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
-					mat._constants, mat._bindings,
+					mat->_constants, mat->_bindings,
 					*matDescriptorSet,
 					_materialScaffoldName);
 
@@ -811,10 +815,10 @@ namespace RenderCore { namespace Techniques
 
 			auto inputElements = Internal::BuildFinalIA(rawGeo, deformStream);
 
-			auto matSelectors = mat._matParams;
+			auto matSelectors = mat->_matParams;
 			// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
 			for (const auto&r:i->second._descriptorSetResources)
-				if (mat._bindings.HasParameter(MakeStringSection(r)))
+				if (mat->_bindings.HasParameter(MakeStringSection(r)))
 					matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r).Cast<utf8>(), 1);
 
 			resultGeoCall._pipelineAccelerator =
@@ -823,7 +827,7 @@ namespace RenderCore { namespace Techniques
 					matSelectors,
 					MakeIteratorRange(inputElements),
 					topology,
-					mat._stateSet);
+					mat->_stateSet);
 			return resultGeoCall;
 		}
 	};
@@ -867,7 +871,9 @@ namespace RenderCore { namespace Techniques
 			const auto& rg = modelScaffold->ImmutableData()._geos[geo];
 
 			unsigned vertexCount = rg._vb._size / rg._vb._ia._vertexStride;
-			auto deform = Internal::BuildNascentDeformStream(deformAttachments, geo, vertexCount, preDeformStaticDataVBIterator, deformTemporaryVBIterator, postDeformVBIterator);
+			auto deform = Internal::BuildNascentDeformStream(
+				deformAttachments, geo, vertexCount, 
+				preDeformStaticDataVBIterator, deformTemporaryVBIterator, postDeformVBIterator);
 
 			// Build the main non-deformed vertex stream
 			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
@@ -898,7 +904,9 @@ namespace RenderCore { namespace Techniques
 			const auto& rg = modelScaffold->ImmutableData()._boundSkinnedControllers[geo];
 
 			unsigned vertexCount = rg._vb._size / rg._vb._ia._vertexStride;
-			auto deform = Internal::BuildNascentDeformStream(deformAttachments, geo + (unsigned)modelScaffold->ImmutableData()._geoCount, vertexCount, preDeformStaticDataVBIterator, deformTemporaryVBIterator, postDeformVBIterator);
+			auto deform = Internal::BuildNascentDeformStream(
+				deformAttachments, geo + (unsigned)modelScaffold->ImmutableData()._geoCount, vertexCount,
+				preDeformStaticDataVBIterator, deformTemporaryVBIterator, postDeformVBIterator);
 
 			// Build the main non-deformed vertex stream
 			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
@@ -931,6 +939,9 @@ namespace RenderCore { namespace Techniques
             const auto& geoCall = cmdStream.GetGeoCall(c);
 			auto& rawGeo = modelScaffold->ImmutableData()._geos[geoCall._geoId];
 			auto& deform = geoDeformStreams[geoCall._geoId];
+			// todo -- we should often get duplicate pipeline accelerators & descriptor set accelerators 
+			// here (since many draw calls will share the same materials, etc). We should avoid unnecessary
+			// duplication of objects and construction work
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				_geoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, deform));
 			}
@@ -940,7 +951,10 @@ namespace RenderCore { namespace Techniques
             const auto& geoCall = cmdStream.GetSkinCall(c);
 			auto& rawGeo = modelScaffold->ImmutableData()._boundSkinnedControllers[geoCall._geoId];
 			auto& deform = skinControllerDeformStreams[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
+            // todo -- we should often get duplicate pipeline accelerators & descriptor set accelerators 
+			// here (since many draw calls will share the same materials, etc). We should avoid unnecessary
+			// duplication of objects and construction work
+			for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
 				_boundSkinnedControllerGeoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, deform));
 			}
 		}
