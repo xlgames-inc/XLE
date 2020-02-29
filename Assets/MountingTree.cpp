@@ -25,6 +25,13 @@ namespace Assets
 			MountID		_id;
 			SplitPath<utf8>	_mountPoint;
 			std::basic_string<utf8> _mountPointBuffer;
+
+			Mount& operator=(const Mount&) = delete;
+			Mount(const Mount&) = delete;
+			Mount& operator=(Mount&&);
+			Mount(Mount&&);
+			Mount();
+			Mount(HashValue hash, unsigned depth, const std::shared_ptr<IFileSystem>& fileSystem, MountID id, SplitPath<utf8>&&	mountPoint, std::basic_string<utf8>&& mountPointBuffer);
 		};
 
 		std::vector<Mount>	_mounts;	// ordered from highest to lowest priority
@@ -271,7 +278,7 @@ namespace Assets
 		ScopedLock(_pimpl->_mountsLock);
 		MountID id = _pimpl->_changeId++;
 		auto sectionCount = split.GetSectionCount();
-		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, sectionCount, std::move(system), id, std::move(split), mountPoint});
+		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, sectionCount, std::move(system), id, std::move(split), std::move(mountPoint)});
 		_pimpl->_hasAtLeastOneMount = true;
 		return id;
 	}
@@ -353,5 +360,65 @@ namespace Assets
 
 	MountingTree::MountingTree(const MountingTree& cloneFrom) { assert(0);  }
 	MountingTree& MountingTree::operator=(const MountingTree& cloneFrom) { assert(0); return *this; }
+
+
+	MountingTree::Pimpl::Mount::Mount() 
+	{
+		_hash = 0;
+		_depth = 0;
+		_id = ~0u;
+	}
+
+	auto MountingTree::Pimpl::Mount::operator=(Mount&& moveFrom) -> Mount&
+	{
+		_hash = moveFrom._hash;
+		_depth = moveFrom._depth;
+		_fileSystem = std::move(moveFrom._fileSystem);
+		_id = moveFrom._id;
+		void* originalBaseAddress = moveFrom._mountPointBuffer.data();
+		_mountPointBuffer = std::move(moveFrom._mountPointBuffer);
+		if (_mountPointBuffer.data() != originalBaseAddress) {
+			_mountPoint = MakeSplitPath(_mountPointBuffer);
+		} else {
+			_mountPoint = std::move(moveFrom._mountPoint);
+		}
+
+		moveFrom._hash = 0;
+		moveFrom._depth = 0;
+		moveFrom._id = ~0u;
+
+		return *this;
+	}
+
+	MountingTree::Pimpl::Mount::Mount(Mount&& moveFrom)
+	{
+		_hash = moveFrom._hash;
+		_depth = moveFrom._depth;
+		_fileSystem = std::move(moveFrom._fileSystem);
+		_id = moveFrom._id;
+		void* originalBaseAddress = moveFrom._mountPointBuffer.data();
+		_mountPointBuffer = std::move(moveFrom._mountPointBuffer);
+		if (_mountPointBuffer.data() != originalBaseAddress) {
+			_mountPoint = MakeSplitPath(_mountPointBuffer);
+		} else {
+			_mountPoint = std::move(moveFrom._mountPoint);
+		}
+
+		moveFrom._hash = 0;
+		moveFrom._depth = 0;
+		moveFrom._id = ~0u;
+	}
+
+	MountingTree::Pimpl::Mount::Mount(HashValue hash, unsigned depth, const std::shared_ptr<IFileSystem>& fileSystem, MountID id, SplitPath<utf8>&&	mountPoint, std::basic_string<utf8>&& mountPointBuffer)
+	{
+		_hash = hash;
+		_depth = depth;
+		_fileSystem = fileSystem;
+		_id = id;
+		_mountPoint = std::move(mountPoint);
+		_mountPointBuffer = std::move(mountPointBuffer);
+	}
+
+
 }
 
