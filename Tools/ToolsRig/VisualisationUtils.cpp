@@ -90,6 +90,11 @@ namespace ToolsRig
         result._verticalFieldOfView = verticalFieldOfView;
         result._farClip = 5.25f * Magnitude(result._focus - result._position);
         result._nearClip = result._farClip / 10000.f;
+
+		assert(std::isfinite(result._position[0]) && !std::isnan(result._position[0]));
+		assert(std::isfinite(result._position[1]) && !std::isnan(result._position[1]));
+		assert(std::isfinite(result._position[2]) && !std::isnan(result._position[2]));
+
         return result;
     }
 

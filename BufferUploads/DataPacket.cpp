@@ -515,14 +515,17 @@ namespace BufferUploads
 						strongThis->_realPacket = make_intrusive<DirectXTextureLibraryDataPacket>(MakeStringSection(fIterator, partEnd), strongThis->_flags);
 					}
 
-					if (strongThis->_realPacket->GetDataSize() != 0) {
-						strongThis->_marker->SetState(Assets::AssetState::Ready);
-					} else {
-						strongThis->_marker->SetState(Assets::AssetState::Invalid);
-					}
+					if (strongThis->_realPacket->GetDataSize() != 0)
+						break;
 
 					fIterator = partEnd;
 					if (fIterator < iend) ++fIterator;	// skip over this null, and there might be another filename
+				}
+
+				if (strongThis->_realPacket->GetDataSize() != 0) {
+					strongThis->_marker->SetState(Assets::AssetState::Ready);
+				} else {
+					strongThis->_marker->SetState(Assets::AssetState::Invalid);
 				}
             });
         

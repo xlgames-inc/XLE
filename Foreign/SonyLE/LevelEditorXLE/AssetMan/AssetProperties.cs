@@ -101,7 +101,7 @@ namespace LevelEditorXLE
 
         public virtual string AsAssetName(LevelEditorCore.ResourceDesc desc)
         {
-            return "data/" + desc.NaturalName;
+            return desc.NaturalName;
         }
 
         public virtual string GetBaseTextureName(string input)

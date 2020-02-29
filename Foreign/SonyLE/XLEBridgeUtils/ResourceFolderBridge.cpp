@@ -61,7 +61,7 @@ namespace XLEBridgeUtils
 
 	static String^ Marshal(StringSection<utf8> str)
 	{
-		return clix::detail::StringMarshaler<clix::detail::NetFromCxx>::marshalCxxString<clix::E_UTF8>(AsPointer(str.begin()), AsPointer(str.end()));
+		return clix::detail::StringMarshaler<clix::detail::NetFromCxx>::marshalCxxString<clix::E_UTF8>(str.begin(), str.end());
 	}
 
 	/*ref class FolderEnumerable : IEnumerable<LevelEditorCore::IOpaqueResourceFolder^> 

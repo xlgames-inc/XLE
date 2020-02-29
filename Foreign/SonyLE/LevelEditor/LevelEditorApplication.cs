@@ -195,6 +195,15 @@ namespace LevelEditor
             mainForm.Text = "LevelEditor".Localize("the name of this application, on the title bar");
              
             CompositionContainer container = new CompositionContainer(catalog);
+
+            // This is bit wierd, but we're going to add the container to itself.
+            // This will create a tight circular dependency, of course
+            // It's also not ideal by the core DI pattern. 
+            // But it's useful for us, because we want to use the same container to construct
+            // objects (and also to retrieve global instances).
+            container.ComposeExportedValue<ExportProvider>(container);
+            container.ComposeExportedValue<CompositionContainer>(container);
+
             CompositionBatch batch = new CompositionBatch();
             AttributedModelServices.AddPart(batch, mainForm);
             container.Compose(batch);
