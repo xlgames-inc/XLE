@@ -42,57 +42,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		_pendingPops += popCount;
 	}
 
-	static unsigned int FloatBits(float input)
-	{
-		// (or just use a reinterpret cast)
-		union Converter { float f; unsigned int i; };
-		Converter c; c.f = input; 
-		return c.i;
-	}
-
-	unsigned    NascentSkeletonMachine::PushTransformation(const Float4x4& localToParent)
-	{
-		ResolvePendingPops();
-
-		// push a basic, unanimatable transform
-		//  see also NascentTransformationMachine_Collada::PushTransformations for a complex
-		//  version of this
-		_commandStream.push_back((uint32)Assets::TransformStackCommand::PushLocalToWorld);
-		_commandStream.push_back((uint32)Assets::TransformStackCommand::TransformFloat4x4_Static);
-		_commandStream.push_back(FloatBits(localToParent(0, 0)));
-		_commandStream.push_back(FloatBits(localToParent(0, 1)));
-		_commandStream.push_back(FloatBits(localToParent(0, 2)));
-		_commandStream.push_back(FloatBits(localToParent(0, 3)));
-
-		_commandStream.push_back(FloatBits(localToParent(1, 0)));
-		_commandStream.push_back(FloatBits(localToParent(1, 1)));
-		_commandStream.push_back(FloatBits(localToParent(1, 2)));
-		_commandStream.push_back(FloatBits(localToParent(1, 3)));
-
-		_commandStream.push_back(FloatBits(localToParent(2, 0)));
-		_commandStream.push_back(FloatBits(localToParent(2, 1)));
-		_commandStream.push_back(FloatBits(localToParent(2, 2)));
-		_commandStream.push_back(FloatBits(localToParent(2, 3)));
-
-		_commandStream.push_back(FloatBits(localToParent(3, 0)));
-		_commandStream.push_back(FloatBits(localToParent(3, 1)));
-		_commandStream.push_back(FloatBits(localToParent(3, 2)));
-		_commandStream.push_back(FloatBits(localToParent(3, 3)));
-		return 1;
-	}
-
 	void NascentSkeletonMachine::PushCommand(uint32 cmd)
 	{
+		ResolvePendingPops();
 		_commandStream.push_back(cmd);
 	}
 
 	void NascentSkeletonMachine::PushCommand(TransformStackCommand cmd)
 	{
+		ResolvePendingPops();
 		_commandStream.push_back((uint32)cmd);
 	}
 
 	void NascentSkeletonMachine::PushCommand(const void* ptr, size_t size)
 	{
+		ResolvePendingPops();
 		assert((size % sizeof(uint32)) == 0);
 		_commandStream.insert(_commandStream.end(), (const uint32*)ptr, (const uint32*)PtrAdd(ptr, size));
 	}
@@ -154,10 +118,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<> auto NascentSkeletonMachine::GetParameterTables<float>()    -> std::vector<ParameterTag>& { return _float1ParameterNames; }
-    template<> auto NascentSkeletonMachine::GetParameterTables<Float3>()   -> std::vector<ParameterTag>& { return _float3ParameterNames; }
-    template<> auto NascentSkeletonMachine::GetParameterTables<Float4>()   -> std::vector<ParameterTag>& { return _float4ParameterNames; }
-    template<> auto NascentSkeletonMachine::GetParameterTables<Float4x4>() -> std::vector<ParameterTag>& { return _float4x4ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<float>()			-> std::vector<ParameterTag>& { return _float1ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float3>()		-> std::vector<ParameterTag>& { return _float3ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float4>()		-> std::vector<ParameterTag>& { return _float4ParameterNames; }
+	template<> auto NascentSkeletonMachine::GetParameterTables<Quaternion>()	-> std::vector<ParameterTag>& { return _float4ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float4x4>()		-> std::vector<ParameterTag>& { return _float4x4ParameterNames; }
 
 	#pragma pack(push)
 	#pragma pack(1)

@@ -243,6 +243,74 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
+	void	NascentSkeleton::WriteStaticTransform(const Float4x4& transform)
+	{
+		_skeletonMachine.PushCommand(TransformStackCommand::TransformFloat4x4_Static);
+		_skeletonMachine.PushCommand(&transform, sizeof(transform));
+	}
+
+	void	NascentSkeleton::WriteTranslationParameter(StringSection<> parameterName, const Float3& defaultValue)
+	{
+		uint32_t paramName = ~0u;
+		if (_skeletonMachine.TryAddParameter<Float3>(paramName, parameterName)) {
+			_defaultParameters.Set(paramName, defaultValue);
+			_skeletonMachine.PushCommand(TransformStackCommand::Translate_Parameter);
+			_skeletonMachine.PushCommand(paramName);
+		} else {
+			Log(Warning) << "Parameter with name (" << parameterName.AsString() << ") could not be created. Skipping." << std::endl;
+		}
+	}
+
+	void	NascentSkeleton::WriteRotationParameter(StringSection<> parameterName, const Quaternion& defaultValue)
+	{
+		uint32_t paramName = ~0u;
+		if (_skeletonMachine.TryAddParameter<Float4>(paramName, parameterName)) {
+			_defaultParameters.Set(paramName, defaultValue);
+			_skeletonMachine.PushCommand(TransformStackCommand::RotateQuaternion_Parameter);
+			_skeletonMachine.PushCommand(paramName);
+		} else {
+			Log(Warning) << "Parameter with name (" << parameterName.AsString() << ") could not be created. Skipping." << std::endl;
+		}
+	}
+
+	void	NascentSkeleton::WriteScaleParameter(StringSection<> parameterName, const Float3& defaultValue)
+	{
+		uint32_t paramName = ~0u;
+		if (_skeletonMachine.TryAddParameter<Float3>(paramName, parameterName)) {
+			_defaultParameters.Set(paramName, defaultValue);
+			_skeletonMachine.PushCommand(TransformStackCommand::ArbitraryScale_Parameter);
+			_skeletonMachine.PushCommand(paramName);
+		} else {
+			Log(Warning) << "Parameter with name (" << parameterName.AsString() << ") could not be created. Skipping." << std::endl;
+		}
+	}
+
+	void	NascentSkeleton::WriteScaleParameter(StringSection<> parameterName, float defaultValue)
+	{
+		uint32_t paramName = ~0u;
+		if (_skeletonMachine.TryAddParameter<float>(paramName, parameterName)) {
+			_defaultParameters.Set(paramName, defaultValue);
+			_skeletonMachine.PushCommand(TransformStackCommand::UniformScale_Parameter);
+			_skeletonMachine.PushCommand(paramName);
+		} else {
+			Log(Warning) << "Parameter with name (" << parameterName.AsString() << ") could not be created. Skipping." << std::endl;
+		}
+	}
+
+	void	NascentSkeleton::WriteOutputMarker(StringSection<> skeletonName, StringSection<> jointName)
+	{
+		_skeletonMachine.WriteOutputMarker(skeletonName, jointName);
+	}
+
+	void	NascentSkeleton::WritePushLocalToWorld()
+	{
+		_skeletonMachine.PushCommand(TransformStackCommand::PushLocalToWorld);
+	}
+
+	void	NascentSkeleton::WritePopLocalToWorld(unsigned popCount)
+	{
+		_skeletonMachine.Pop(popCount);
+	}
 
     void NascentSkeleton::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
     {

@@ -77,8 +77,6 @@ namespace ColladaConversion
     {
 		using RenderCore::Assets::TransformStackCommand;
 
-        dst.ResolvePendingPops();
-
         if (!transformations)
             return 0;
 
@@ -284,7 +282,7 @@ namespace ColladaConversion
 			node.GetFirstTransform(), bindingName.c_str(),
 			[](StringSection<>) { return true; });
 
-		skeleton.GetSkeletonMachine().WriteOutputMarker(skeletonName, bindingName);
+		skeleton.WriteOutputMarker(skeletonName, bindingName);
 
             // note -- also consider instance_nodes?
 

@@ -367,7 +367,7 @@ namespace ColladaConversion
 		const ColladaCompileOp& input, const VisualScene& scene, const std::set<std::string>& skinningSkeletons, IteratorRange<const Node*> roots)
 	{
 		NascentSkeleton result;
-		result.GetSkeletonMachine().WriteOutputMarker("", "identity");
+		result.WriteOutputMarker("", "identity");
 
 		for (const auto&skeletonName:skinningSkeletons) {
 			if (skeletonName.empty()) {
@@ -377,13 +377,14 @@ namespace ColladaConversion
 						// Push on the coordinate transform (if there is one)
 						// This should be optimised into other matrices (or even into
 						// the geometry) when we perform the skeleton optimisation steps.
-					topLevelPops = result.GetSkeletonMachine().PushTransformation(
-						coordinateTransform);
+					result.WritePushLocalToWorld();
+					++topLevelPops;
+					result.WriteStaticTransform(coordinateTransform);
 				}
 
 				for (const auto&root:roots)
 					BuildSkeleton(result, root);
-				result.GetSkeletonMachine().Pop(topLevelPops);
+				result.WritePopLocalToWorld(topLevelPops);
 			} else {
 				auto node = scene.GetRootNode().FindBreadthFirst(
 					[skeletonName](const Node& node) {
@@ -650,7 +651,7 @@ namespace ColladaConversion
 
 			subResult._resolveContext = ::ColladaConversion::URIResolveContext(subResult._doc);
 
-			result->_animationSet.MergeAnimation(
+			result->_animationSet.MergeInAsAnIndividualAnimation(
 				ConvertAnimationSet(subResult), 
 				filePath.second);
 		}

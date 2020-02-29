@@ -93,6 +93,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		TransformationParameterSet&         GetDefaultParameters()			{ return _defaultParameters; }
 		const TransformationParameterSet&   GetDefaultParameters() const	{ return _defaultParameters; }
 
+		void	WriteStaticTransform(const Float4x4& transform);
+		void	WriteTranslationParameter(StringSection<> parameterName, const Float3& defaultValue);
+		void	WriteRotationParameter(StringSection<> parameterName, const Quaternion& defaultValue);
+		void	WriteScaleParameter(StringSection<> parameterName, const Float3& defaultValue);
+		void	WriteScaleParameter(StringSection<> parameterName, float defaultValue);
+		void	WriteOutputMarker(StringSection<> skeletonName, StringSection<> jointName);
+
+		void	WritePushLocalToWorld();
+		void	WritePopLocalToWorld(unsigned popCount=1);
+
 		void	SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
 
     private:

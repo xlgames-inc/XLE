@@ -25,8 +25,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NascentSkeletonMachine
     {
     public:
-        unsigned        PushTransformation(const Float4x4& localToParent);
-        void            Pop                     (   unsigned popCount);
         unsigned        GetOutputMatrixCount    () const        { return _outputMatrixCount; }
         bool            IsEmpty                 () const        { return _commandStream.empty(); }
 
@@ -57,7 +55,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         void    PushCommand(TransformStackCommand cmd);
         void    PushCommand(const void* ptr, size_t size);
 		void	WriteOutputMarker(StringSection<> skeletonName, StringSection<> jointName);
-        void    ResolvePendingPops();
+		void	Pop(unsigned popCount);
 
         void    Optimize(ITransformationMachineOptimizer& optimizer);
 		void	RemapOutputMatrices(IteratorRange<const unsigned*> outputMatrixMapping);
@@ -83,6 +81,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::vector<ParameterTag>& GetParameterTables();
 
         bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
+
+		void			ResolvePendingPops();
     };
 
         ////////////////// template implementation //////////////////
