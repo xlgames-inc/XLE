@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 #if GEO_HAS_INSTANCE_ID==1
@@ -28,7 +28,7 @@
             // Ideally the object we're instantiating should have an
             // identity local-to-world. But if it doesn't we need to transform
             // the position here.
-        localPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
+        localPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 
         objectCentreWorld = InstanceOffsets[input.instanceId].posAndShadowing.xyz;
         float3 localNormal = VSIn_GetLocalNormal(input);

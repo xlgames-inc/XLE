@@ -106,9 +106,9 @@ float4 main(
     screenDest.pixelCoords = pixelCoords;
     screenDest.sampleIndex = GetSampleIndex(sys);
 
-    // Note -- we could pre-multiply (miniProj.W/FarClip) into the view frustum vector to optimise this slightly...?
+    // Note -- we could pre-multiply (miniProj.W/SysUniform_GetFarClip()) into the view frustum vector to optimise this slightly...?
     float worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys));
-    float3 worldPosition = WorldSpaceView + (worldSpaceDepth / FarClip) * viewFrustumVector;
+    float3 worldPosition = SysUniform_GetWorldSpaceView() + (worldSpaceDepth / SysUniform_GetFarClip()) * viewFrustumVector;
 
     float3 result = GetLightResolver().Resolve(
         sample, sampleExtra, Light, worldPosition,

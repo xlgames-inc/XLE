@@ -6,7 +6,7 @@
 
 #include "Ocean.hlsl"
 #include "../../Math/MathConstants.hlsl"
-#include "../../Framework/Transform.hlsl"	// for GlobalState cbuffer
+#include "../../Framework/SystemUniforms.hlsl"	// for GlobalState cbuffer
 
 #define Real	float
 #define Complex float2
@@ -414,8 +414,8 @@ Complex LoadH0(uint2 kCoords)
 		//	Note that half of the grid should end up being the conjugate of the other half
 		//		.. so we can actually write the results into 2 grid places here
 	Complex result0
-		= ComplexMultiply(h0k,						ComplexExponential( w*Time))
-		+ ComplexMultiply(ComplexConjugate(h0Negk), ComplexExponential(-w*Time))
+		= ComplexMultiply(h0k,						ComplexExponential( w*SysUniform_GetGlobalTime()))
+		+ ComplexMultiply(ComplexConjugate(h0Negk), ComplexExponential(-w*SysUniform_GetGlobalTime()))
 		;
 	WriteSetupResult(result0, kCoords, k, magK);
 

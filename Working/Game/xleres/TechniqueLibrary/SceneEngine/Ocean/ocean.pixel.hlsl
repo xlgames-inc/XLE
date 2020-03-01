@@ -206,7 +206,7 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 	#endif
 
 		// build a random quantity of foam to cover the surface.
-	float randomFoam = SurfaceSpecularity.Sample(DefaultSampler, float2(0.005f*Time, 0.f) + 0.1f * specularityTC);
+	float randomFoam = SurfaceSpecularity.Sample(DefaultSampler, float2(0.005f*SysUniform_GetGlobalTime(), 0.f) + 0.1f * specularityTC);
 	randomFoam = randomFoam * randomFoam * randomFoam;
 	randomFoam *= 0.5f;
 	foamQuantity += randomFoam * saturate(20000.f / distanceToViewerSq);
@@ -226,17 +226,17 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 				// 3 taps of the foam texture gives a detailed and interesting result
 				//		todo -- foam should fade off with distance, because the tiling becomes too obvious
 			float texAmount;
-			float4 foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 23.72f*texCoord + Time * float2(0.01f, 0.005f));
+			float4 foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 23.72f*texCoord + SysUniform_GetGlobalTime() * float2(0.01f, 0.005f));
 			if (foamQuantity > .666f)		{ texAmount = lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
 			else if (foamQuantity > .333f)	{ texAmount = lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount = foamDiffuse.b * foamQuantity/.333f; }
 
-			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 6.72f*-texCoord + Time * float2(0.023f, -0.015f));
+			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 6.72f*-texCoord + SysUniform_GetGlobalTime() * float2(0.023f, -0.015f));
 			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
 			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount += foamDiffuse.b * foamQuantity/.333f; }
 
-			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 19.12f*-texCoord + Time * float2(-0.0132f, 0.0094f));
+			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 19.12f*-texCoord + SysUniform_GetGlobalTime() * float2(-0.0132f, 0.0094f));
 			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
 			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount += foamDiffuse.b * foamQuantity/.333f; }
@@ -249,11 +249,11 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 				//	first tap is used as texture coordinate offset for
 				//	second tap
 
-			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + Time * float2(0.0078f, 0.0046f));
+			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + SysUniform_GetGlobalTime() * float2(0.0078f, 0.0046f));
 			float foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
 				23.7f*-texCoord
 				+ 0.027f * (-1.0.xx + 2.f * foamFirstTap.xy)
-				+ Time * float2(0.023f, -0.015f));
+				+ SysUniform_GetGlobalTime() * float2(0.023f, -0.015f));
 
 			return smoothstep(0.f, foamSecondTap, foamQuantity);
 

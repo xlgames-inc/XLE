@@ -7,7 +7,7 @@
 #if !defined(SURFACE_ALGORITHM_H)
 #define SURFACE_ALGORITHM_H
 
-#include "../Framework/Transform.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 
 struct TangentFrameStruct
 {
@@ -92,7 +92,7 @@ float3x3 GetLocalToWorldUniformScale()
 {
         // note -- here, we assume that local-to-world doesn't have a nonuniform
         // scale.
-	return (float3x3)LocalToWorld;
+	return (float3x3)SysUniform_GetLocalToWorld();
 }
 
 float3 LocalToWorldUnitVector(float3 localSpaceVector)

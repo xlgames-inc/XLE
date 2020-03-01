@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../TechniqueLibrary/Utility/Colour.hlsl"
-#include "../../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../../TechniqueLibrary/Math/TransformAlgorithm.hlsl"
 
 Texture2DMS<float>  DepthsTexture;

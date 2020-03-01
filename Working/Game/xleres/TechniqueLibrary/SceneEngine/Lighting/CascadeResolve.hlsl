@@ -9,7 +9,7 @@
 
 #include "LightDesc.hlsl"      // CascadeAddress
 #include "ShadowProjection.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ CascadeAddress ResolveCascade_FromWorldPosition(float3 worldPosition, uint casca
 
 float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, float4x4 camToShadow, uint cascadeMode)
 {
-    const float cameraCoordinateScale = worldSpaceDepth; // (linear0To1Depth * FarClip);
+    const float cameraCoordinateScale = worldSpaceDepth; // (linear0To1Depth * SysUniform_GetFarClip());
 
         //
         //	Accuracy of this transformation is critical...

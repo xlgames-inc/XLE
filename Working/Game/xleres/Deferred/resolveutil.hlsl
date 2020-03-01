@@ -29,7 +29,7 @@ float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFru
 {
 	float depth = GetLinear0To1Depth(pixelCoords, sampleIndex);
 	// if (depth >= 1.f) clip(-1); // maybe would be ideal to discard these pixels with stencil buffer
-	return CalculateWorldPosition(viewFrustumVector, depth, WorldSpaceView);
+	return CalculateWorldPosition(viewFrustumVector, depth, SysUniform_GetWorldSpaceView());
 }
 
 #endif

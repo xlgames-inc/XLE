@@ -6,7 +6,7 @@
 
 #include "GeometryConfiguration.hlsl"
 #include "../Lighting/ShadowProjection.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 

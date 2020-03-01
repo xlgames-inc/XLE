@@ -22,7 +22,7 @@
 #include "OceanRenderingConstants.hlsl"
 
 #include "../../Framework/MainGeometry.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "xlres/Forward/resolvefog.hlsl"
@@ -200,8 +200,8 @@ VSOutput main(uint vertexId : SV_VertexId)
 	#endif
 
 	float2 worldSpaceTC = output.texCoord + GridTexCoordOriginIntPart;
-	float specularityOffsetX = PerlinNoise3D(float3(15.f * worldSpaceTC,			0.47f * Time));
-	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - worldSpaceTC),	0.53f * Time));
+	float specularityOffsetX = PerlinNoise3D(float3(15.f * worldSpaceTC,			0.47f * SysUniform_GetGlobalTime()));
+	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - worldSpaceTC),	0.53f * SysUniform_GetGlobalTime()));
 	output.specularityTC	 =	worldSpaceTC * SpecularityFrequency
 								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
 
@@ -224,6 +224,6 @@ VSOutput ShallowWater(uint vertexId : SV_VertexId)
 		WorldSpaceOffset.y + (SimulatingIndex.y + gridCoords.y / float(TileDimension)) * ShallowGridPhysicalDimension,
 		waterHeight);
 	VSOutput output;
-	output.position = mul(WorldToClip, float4(worldPosition,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	return output;
 }

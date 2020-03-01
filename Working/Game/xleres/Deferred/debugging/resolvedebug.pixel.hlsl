@@ -56,8 +56,8 @@ float4 main(
     float2 tc = MousePosition.xy / float2(ViewportDimensions);
     float3 viewFrustumVector =
         lerp(
-            lerp(FrustumCorners[0].xyz, FrustumCorners[1].xyz, tc.y),
-            lerp(FrustumCorners[2].xyz, FrustumCorners[3].xyz, tc.y),
+            lerp(SysUniform_GetFrustumCorners(0].xyz, FrustumCorners[1).xyz, tc.y),
+            lerp(SysUniform_GetFrustumCorners(2].xyz, FrustumCorners[3).xyz, tc.y),
             tc.x);
     float3 worldPosition = CalculateWorldPosition(MousePosition, 0, viewFrustumVector);
 
@@ -83,8 +83,8 @@ float4 main(
     float3 diffPtWorld = mul(transpose(worldToLight), float3(diffRepPt, 0)) + lightCenter;
     float3 specPtWorld = mul(transpose(worldToLight), float3(specRepPt, 0)) + lightCenter;
 
-    float4 diffClip = mul(WorldToClip, float4(diffPtWorld,1));
-    float4 specClip = mul(WorldToClip, float4(specPtWorld,1));
+    float4 diffClip = mul(SysUniform_GetWorldToClip(), float4(diffPtWorld,1));
+    float4 specClip = mul(SysUniform_GetWorldToClip(), float4(specPtWorld,1));
 
     // draw a dot at the specular and diffuse representative points
     if (diffClip.z > -diffClip.w && diffClip.z < diffClip.w) {
@@ -101,7 +101,7 @@ float4 main(
             return float4(0,1,0,.5);
     }
 
-    float4 testClip = mul(WorldToClip, float4(worldPosition,1));
+    float4 testClip = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
     if (testClip.z > -testClip.w && testClip.z < testClip.w) {
         float2 pt = testClip.xy / testClip.w;
         pt = float2(ViewportDimensions.x * (0.5f + 0.5f * pt.x), ViewportDimensions.y * (0.5f - 0.5f * pt.y));
@@ -174,12 +174,12 @@ float4 main(
     float3 L0Closest, L1Closest;
     LineLineIntersection(
         L0Closest, L1Closest,
-        WorldSpaceView, WorldSpaceView + drawingPointViewFrustumVector,
+        SysUniform_GetWorldSpaceView(), SysUniform_GetWorldSpaceView() + drawingPointViewFrustumVector,
         worldPosition, worldPosition + reflectedDir);
 
     float u = dot(L1Closest - worldPosition, reflectedDir);
     if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
-         result += float4(.03,.03,.03 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
+         result += float4(.03,.03,.03 /* * exp(-0.01f * dot(L0Closest-SysUniform_GetWorldSpaceView(), drawingPointViewFrustumVector))*/,.5f);
 
     return result;
 }

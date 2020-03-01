@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 ByteAddressBuffer	InstancePositions;
 ByteAddressBuffer	InstanceTypes;
@@ -34,7 +34,7 @@ cbuffer SpawnParams : register(b1)
 bool CheckAppend(uint index, uint mappedIndex, uint typeValue, InstanceDef def)
 {
 	[branch] if (typeValue <= BinThresholds[index]) {
-		float3 viewOffset = def.posAndShadowing.xyz - WorldSpaceView;
+		float3 viewOffset = def.posAndShadowing.xyz - SysUniform_GetWorldSpaceView();
 		if (dot(viewOffset, viewOffset) < DrawDistanceSq[index])
 			OutputBuffer[mappedIndex].Append(def);
 		return true;

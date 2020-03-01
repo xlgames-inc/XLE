@@ -7,7 +7,7 @@
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/CommonResources.hlsl"
 #include "../BasicMaterial.hlsl"
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 struct GSOutput
 {

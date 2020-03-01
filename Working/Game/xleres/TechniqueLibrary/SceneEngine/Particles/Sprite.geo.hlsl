@@ -14,8 +14,8 @@
 		//			(though it could do local-world transform)
 		//		So, we can easily build the coordinates here...
 
-	float3 cameraRight	= float3(CameraBasis[0].x, CameraBasis[1].x, CameraBasis[2].x);
-	float3 cameraUp		= float3(CameraBasis[0].y, CameraBasis[1].y, CameraBasis[2].y);
+	float3 cameraRight	= float3(SysUniform_GetCameraBasis()[0].x, SysUniform_GetCameraBasis()[1].x, SysUniform_GetCameraBasis()[2].x);
+	float3 cameraUp		= float3(SysUniform_GetCameraBasis()[0].y, SysUniform_GetCameraBasis()[1].y, SysUniform_GetCameraBasis()[2].y);
 	float3 rotatedRight = cameraRight * input[0].screenRot.x + cameraUp * input[0].screenRot.y;
 	float3 rotatedUp	= cameraRight * input[0].screenRot.z + cameraUp * input[0].screenRot.w;
 
@@ -41,7 +41,7 @@
 			+ rotatedRight * axes[c].x
 			+ rotatedUp * axes[c].y
 			;
-		output.position = mul(WorldToClip, float4(worldPosition,1));
+		output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
 		#if OUTPUT_COLOUR==1
 			output.colour 		= input[0].colour;
@@ -56,7 +56,7 @@
 			// todo -- can also output tangent space (if we need it)
 
 		#if OUTPUT_WORLD_VIEW_VECTOR==1
-			output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+			output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 		#endif
 
 		#if OUTPUT_FOG_COLOR==1

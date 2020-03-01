@@ -210,7 +210,7 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 		//   0: new code
 		//   1: reference high resolution iteration
 	const uint stepMethod = 0;
-	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, FarClip);
+	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, SysUniform_GetFarClip());
 	if (stepMethod == 0) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, dispatchThreadId.xy, outputDimensions, msaaSampleIndex);
 		if (ray.valid) {

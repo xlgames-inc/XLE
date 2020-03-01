@@ -7,7 +7,7 @@
 #if !defined(TRANSFORM_ALGORITHM_H)
 #define TRANSFORM_ALGORITHM_H
 
-#include "../Framework/Transform.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 
 //
 //        Depth transformations
@@ -140,7 +140,7 @@ MiniProjZW AsMiniProjZW(float2 minimalProjectionZW)
 
 MiniProjZW GlobalMiniProjZW()
 {
-    return AsMiniProjZW(MinimalProjection);
+    return AsMiniProjZW(SysUniform_GetMinimalProjection());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -213,12 +213,12 @@ MiniProjZW GlobalMiniProjZW()
 
     float NDCDepthToLinear0To1(float NDCz)
     {
-        return NDCDepthToLinear0To1_Perspective(NDCz, GlobalMiniProjZW(), FarClip);
+        return NDCDepthToLinear0To1_Perspective(NDCz, GlobalMiniProjZW(), SysUniform_GetFarClip());
     }
 
     float Linear0To1DepthToNDC(float worldSpaceDepth)
     {
-        return Linear0To1DepthToNDC_Perspective(worldSpaceDepth, GlobalMiniProjZW(), FarClip);
+        return Linear0To1DepthToNDC_Perspective(worldSpaceDepth, GlobalMiniProjZW(), SysUniform_GetFarClip());
     }
 
 ///////////////////////////////////////////////////////////////////////////////

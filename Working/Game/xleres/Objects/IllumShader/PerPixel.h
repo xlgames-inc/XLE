@@ -98,7 +98,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
 
             // use perlin noise to generate a random gloss pattern (for debugging)
             // (add #include "../Utility/Equations.h")
-        // float3 worldPosition = WorldSpaceView - geo.worldViewVector;
+        // float3 worldPosition = SysUniform_GetWorldSpaceView() - geo.worldViewVector;
         // float gloss = fbmNoise3D(worldPosition, 1.f/9.23f, .5f, 2.1042, 3);
         // const int method = 0;
         // if (method == 0) {
@@ -134,7 +134,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         // const bool scratchMapTest = false;
         // if (scratchMapTest) {
         //
-        //     float3 worldPosition = WorldSpaceView - geo.worldViewVector;
+        //     float3 worldPosition = SysUniform_GetWorldSpaceView() - geo.worldViewVector;
         //     float noiseSample = fbmNoise3D(worldPosition, 1.f/11.63f, .5f, 2.1042, 1);
         //     float scratchiness = saturate(noiseSample + .25f); // saturate(lerp(0.0f, 1.f, noiseSample));
         //

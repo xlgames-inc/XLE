@@ -7,7 +7,7 @@
 #if OUTPUT_FOG_COLOR == 1
 
     #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-    #include "../TechniqueLibrary/Framework/Transform.hlsl"
+    #include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
     #include "../TechniqueLibrary/SceneEngine/Lighting/RangeFogResolve.hlsl"
     #include "../TechniqueLibrary/SceneEngine/Lighting/BasicLightingEnvironment.hlsl"
     #include "../TechniqueLibrary/SceneEngine/VolumetricEffect/resolvefog.hlsl"
@@ -23,7 +23,7 @@
         //
         // Note that for order independent transparency objects, we may get a better result by doing
         // this only once per pixel, after an approximate depth has been calculated.
-        float3 negCameraForward = float3(CameraBasis[0].z, CameraBasis[1].z, CameraBasis[2].z);
+        float3 negCameraForward = float3(SysUniform_GetCameraBasis()[0].z, SysUniform_GetCameraBasis()[1].z, SysUniform_GetCameraBasis()[2].z);
         float3 localViewVector = localSpaceView - localPosition;
         float distanceToView = dot(localViewVector, negCameraForward);
         float4 fogColor = float4(0.0.xxx, 1.0f);

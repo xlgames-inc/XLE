@@ -29,7 +29,7 @@ float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFru
 {
 	float linear0To1Depth = GetLinear0To1Depth(pixelCoords, sampleIndex);
 	return CalculateWorldPosition(
-		viewFrustumVector, linear0To1Depth, WorldSpaceView);
+		viewFrustumVector, linear0To1Depth, SysUniform_GetWorldSpaceView());
 }
 
 
@@ -123,7 +123,7 @@ float4 ps_lockedareahighlight(	float4 position : SV_Position,
 	float linear0To1Depth = GetLinear0To1Depth(pixelCoords, GetSampleIndex(sys));
 	if (linear0To1Depth >= 0.99999f) discard;
 	float3 worldPosition = CalculateWorldPosition(
-		viewFrustumVector, linear0To1Depth, WorldSpaceView);
+		viewFrustumVector, linear0To1Depth, SysUniform_GetWorldSpaceView());
 
 	float distances[4] =
 		{ 	worldPosition.x - Mins.x, worldPosition.y - Mins.y,

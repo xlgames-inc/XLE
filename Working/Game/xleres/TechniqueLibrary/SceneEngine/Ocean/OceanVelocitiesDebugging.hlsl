@@ -7,7 +7,7 @@
 #include "Ocean.hlsl"
 #include "OceanShallow.hlsl"
 #include "ShallowFlux.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/MathConstants.hlsl"
 
 Texture2DArray<float>	ShallowWaterHeights	: register(t1);
@@ -33,7 +33,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
 	worldPosition.z += 2.f;
 
 	VSOutput output;
-	output.position = mul(WorldToClip, float4(worldPosition,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	output.gridCoords = SimulatingIndex * TileDimension + gridCoords;
 	return output;
 }

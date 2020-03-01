@@ -7,7 +7,7 @@
 #if !defined(BUILD_INTERPOLATORS)
 #define BUILD_INTERPOLATORS
 
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
 #include "../../Math/TextureAlgorithm.hlsl"		// for SystemInputs
@@ -22,7 +22,7 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 		return VSIn_GetLocalPosition(input).xyz;
 	#else
 		float3 localPosition = VSIn_GetLocalPosition(input);
-		return mul(LocalToWorld, float4(localPosition,1)).xyz;
+		return mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 	#endif
 }
 
@@ -42,7 +42,7 @@ float2 BuildInterpolator_TEXCOORD0(VSInput input) { return BuildInterpolator_TEX
 
 float3 BuildInterpolator_WORLDVIEWVECTOR(VSInput input)
 {
-	return WorldSpaceView.xyz - BuildInterpolator_WORLDPOSITION(input);
+	return SysUniform_GetWorldSpaceView().xyz - BuildInterpolator_WORLDPOSITION(input);
 }
 
 float4 BuildInterpolator_LOCALTANGENT(VSInput input)
@@ -100,7 +100,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#if defined(GEO_PRETRANSFORMED)
 		output.position = float4(VSIn_GetLocalPosition(input).xyz, 1);
 	#else
-		output.position = mul(WorldToClip, float4(worldPosition,1));
+		output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	#endif
 
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
@@ -113,7 +113,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1
-		output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
+		output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
 	#endif
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
@@ -125,7 +125,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	#if OUTPUT_FOG_COLOR == 1
-		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, WorldSpaceView.xyz);
+		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, SysUniform_GetWorldSpaceView().xyz);
 	#endif
 
 	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
@@ -193,7 +193,7 @@ float3 BuildRefractionIncident(VSOutput geo, SystemInputs sys) { return normaliz
 float3 BuildRefractionOutgoing(VSOutput geo, SystemInputs sys)
 {
 	float3 worldSpacePosition = GetNormal(geo);
-	return normalize(WorldSpaceView.xyz - worldSpacePosition);
+	return normalize(SysUniform_GetWorldSpaceView().xyz - worldSpacePosition);
 }
 
 #endif

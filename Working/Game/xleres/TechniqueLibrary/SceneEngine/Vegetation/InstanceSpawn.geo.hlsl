@@ -6,7 +6,7 @@
 
 #define GEO_HAS_TEXCOORD 1
 
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "../../Math/MathConstants.hlsl"
@@ -55,7 +55,7 @@ void WriteInstance(
 	if (outputVertices>=MaxOutputVertices)
 		return;
 
-	float3 camOffset = instancePosition - WorldSpaceView;
+	float3 camOffset = instancePosition - SysUniform_GetWorldSpaceView();
 	float distSq = dot(camOffset, camOffset);
 	if (distSq > BaseDrawDistanceSq)
 		return;
@@ -214,9 +214,9 @@ float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
 
 float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
 {
-	float3 e0 = pt0 - WorldSpaceView;
-	float3 e1 = pt1 - WorldSpaceView;
-	float3 e2 = pt2 - WorldSpaceView;
+	float3 e0 = pt0 - SysUniform_GetWorldSpaceView();
+	float3 e1 = pt1 - SysUniform_GetWorldSpaceView();
+	float3 e2 = pt2 - SysUniform_GetWorldSpaceView();
 	return min(min(dot(e0, e0), dot(e1, e1)), dot(e2, e2));
 }
 
@@ -332,10 +332,10 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 			float3 start	= float3(spanx0, y, spanz0);
 			float3 end		= float3(spanx1, y, spanz1);
 
-			output.position = mul(WorldToClip, float4(start,1));
+			output.position = mul(SysUniform_GetWorldToClip(), float4(start,1));
 			outputStream.Append(output);
 
-			output.position = mul(WorldToClip, float4(end,1));
+			output.position = mul(SysUniform_GetWorldToClip(), float4(end,1));
 			outputStream.Append(output);
 			outputStream.RestartStrip();
 			outputVertices += 2;
@@ -350,13 +350,13 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	output.color = 1.0.xxx;
 	output.texCoord = 0.0.xx;
 
-	output.position = mul(WorldToClip, float4(input[0].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[0].position.xyz,1));
 	outputStream.Append(output);
 
-	output.position = mul(WorldToClip, float4(input[1].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[1].position.xyz,1));
 	outputStream.Append(output);
 
-	output.position = mul(WorldToClip, float4(input[2].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[2].position.xyz,1));
 	outputStream.Append(output);
 	outputStream.RestartStrip();
 

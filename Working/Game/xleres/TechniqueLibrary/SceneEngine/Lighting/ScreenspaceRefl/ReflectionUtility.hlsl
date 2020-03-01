@@ -36,12 +36,12 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
  	float weight3 = tc.x * tc.y;
 
  	float3 viewFrustumVector =
- 			weight0 * FrustumCorners[0].xyz + weight1 * FrustumCorners[1].xyz
- 		+   weight2 * FrustumCorners[2].xyz + weight3 * FrustumCorners[3].xyz
+ 			weight0 * SysUniform_GetFrustumCorners(0].xyz + weight1 * FrustumCorners[1).xyz
+ 		+   weight2 * SysUniform_GetFrustumCorners(2].xyz + weight3 * FrustumCorners[3).xyz
  		;
 
     outputLinearDepth = linear0To1Depth;
-	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
+	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, SysUniform_GetWorldSpaceView());
 }
 
 float3 NDCToViewSpace(float3 ndc)
@@ -53,16 +53,16 @@ float3 NDCToViewSpace(float3 ndc)
 		// can fit into our "minimal projection" representation. If
 		// there is an offset to XY part of the projection matrix, we
 		// will need to apply that also...
-	float2 projAdj = (ndc.xy * -Vz) / MinimalProjection.xy;
+	float2 projAdj = (ndc.xy * -Vz) / SysUniform_GetMinimalProjection().xy;
 	return float3(projAdj, Vz);
 }
 
 float4 ViewToClipSpace(float3 viewSpace)
 {
 	return float4(
-		MinimalProjection.x * viewSpace.x,
-		MinimalProjection.y * viewSpace.y,
-		MinimalProjection.z * viewSpace.z + MinimalProjection.w,
+		SysUniform_GetMinimalProjection().x * viewSpace.x,
+		SysUniform_GetMinimalProjection().y * viewSpace.y,
+		SysUniform_GetMinimalProjection().z * viewSpace.z + SysUniform_GetMinimalProjection().w,
 		-viewSpace.z);
 }
 
@@ -75,9 +75,9 @@ float3 ViewToNDCSpace(float3 viewSpace)
 float3 ClipToViewSpace(float4 clipSpace)
 {
 	return float3(
-		clipSpace.x / MinimalProjection.x,
-		clipSpace.y / MinimalProjection.y,
-		(clipSpace.z - MinimalProjection.w) / MinimalProjection.z);
+		clipSpace.x / SysUniform_GetMinimalProjection().x,
+		clipSpace.y / SysUniform_GetMinimalProjection().y,
+		(clipSpace.z - SysUniform_GetMinimalProjection().w) / SysUniform_GetMinimalProjection().z);
 }
 
 float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, uint msaaSampleIndex)
@@ -253,8 +253,8 @@ float GetRandomizerValue(uint2 dispatchThreadId)
 	uint2 t = dispatchThreadId.xy & 0x3;
 	float base = float(ditherArray[t.x+t.y*4]) / 15.f;
 	return lerp(
-		GlobalSamplingPassIndex/float(GlobalSamplingPassCount),
-		(GlobalSamplingPassIndex+1)/float(GlobalSamplingPassCount),
+		SysUniform_GetGlobalSamplingPassIndex()/float(SysUniform_GetGlobalSamplingPassCount()),
+		(SysUniform_GetGlobalSamplingPassIndex()+1)/float(SysUniform_GetGlobalSamplingPassCount()),
 		base);
 }
 

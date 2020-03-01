@@ -7,7 +7,7 @@
 #include "../Lighting/ShadowProjection.hlsl"
 #include "../Vegetation/WindAnim.hlsl"
 #include "../Vegetation/InstanceVS.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
@@ -38,8 +38,8 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
         float3 worldNormal;
         float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
     #else
-        float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
-        float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
+        float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
+        float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
         float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
     #endif
 

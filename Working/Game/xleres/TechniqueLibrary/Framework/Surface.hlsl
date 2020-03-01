@@ -9,7 +9,7 @@
 
 #include "CommonResources.hlsl"
 #include "MainGeometry.hlsl"
-#include "Transform.hlsl"
+#include "SystemUniforms.hlsl"
 #include "../Math/SurfaceAlgorithm.hlsl"
 #include "../Core/Animation/SkinTransform.hlsl"
 #include "../System/Binding.hlsl"
@@ -133,7 +133,7 @@ float3 GetWorldViewVector(VSOutput geo)
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
 		return geo.worldViewVector;
 	#elif OUTPUT_WORLD_POSITION==1
-		return WorldSpaceView.xyz - geo.worldPosition;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
+		return SysUniform_GetWorldSpaceView().xyz - geo.worldPosition;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
 	#else
 		return 0.0.xxx;
 	#endif
@@ -153,7 +153,7 @@ float3 GetWorldPosition(VSOutput geo)
 	#if OUTPUT_WORLD_POSITION==1
 		return geo.worldPosition;
 	#elif OUTPUT_WORLD_VIEW_VECTOR==1
-		return WorldSpaceView.xyz - geo.worldViewVector;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
+		return SysUniform_GetWorldSpaceView().xyz - geo.worldViewVector;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
 	#else
 		return 0.0.xxx;
 	#endif
@@ -244,9 +244,9 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOutput geo)
 		float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
 		float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
 
-            // note --  Problems when there is a scale on LocalToWorld here.
+            // note --  Problems when there is a scale on SysUniform_GetLocalToWorld() here.
             //          There are many objects with uniform scale values, and they require a normalize here.
-            //          Ideally we'd have a LocalToWorld matrix with the scale removed,
+            //          Ideally we'd have a SysUniform_GetLocalToWorld() matrix with the scale removed,
             //          or at least a "uniform scale" scalar to remove the scaling
         return normalize(mul(GetLocalToWorldUniformScale(), localNormal));
 

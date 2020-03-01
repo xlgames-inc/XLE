@@ -7,7 +7,7 @@
 #if !defined(BASIC3D_VSH)
 #define BASIC3D_VSH
 
-#include "../Framework/Transform.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 
 struct PSInput_Basic
 {
@@ -23,8 +23,8 @@ cbuffer ReciprocalViewportDimensions
 
 float4 TransformPosition(float3 localPosition)
 {
-	float3 worldPosition = localPosition; // mul(LocalToWorld, float4(localPosition,1)).xyz;
-	return mul(WorldToClip, float4(worldPosition,1));
+	float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
+	return mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 }
 
 float4 PC(		float3 iPosition : POSITION0,

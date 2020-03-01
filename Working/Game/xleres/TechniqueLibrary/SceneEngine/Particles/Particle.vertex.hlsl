@@ -21,7 +21,7 @@ ParticleVStoGS main(VSInput input)
 	#endif
 
 	#if OUTPUT_FOG_COLOR == 1
-		output.fogColor = CalculateFog(input.position.z, WorldSpaceView - input.position, NegativeDominantLightDirection);
+		output.fogColor = CalculateFog(input.position.z, SysUniform_GetWorldSpaceView() - input.position, NegativeDominantLightDirection);
 	#endif
 
 	output.texCoordScale = input.texCoordScale;
@@ -33,8 +33,8 @@ VSOutput nogs(VSInput input)
 {
 	VSOutput output;
 
-	float3 cameraRight	= float3(CameraBasis[0].x, CameraBasis[1].x, CameraBasis[2].x);
-	float3 cameraUp		= float3(CameraBasis[0].y, CameraBasis[1].y, CameraBasis[2].y);
+	float3 cameraRight	= float3(SysUniform_GetCameraBasis()[0].x, SysUniform_GetCameraBasis()[1].x, SysUniform_GetCameraBasis()[2].x);
+	float3 cameraUp		= float3(SysUniform_GetCameraBasis()[0].y, SysUniform_GetCameraBasis()[1].y, SysUniform_GetCameraBasis()[2].y);
 	float3 rotatedRight = cameraRight * input.screenRot.x + cameraUp * input.screenRot.y;
 	float3 rotatedUp	= cameraRight * input.screenRot.z + cameraUp * input.screenRot.w;
 
@@ -45,7 +45,7 @@ VSOutput nogs(VSInput input)
 		+ rotatedRight * expXY.x
 		+ rotatedUp * expXY.y
 		;
-	output.position = mul(WorldToClip, float4(worldPosition,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
 	#if OUTPUT_COLOUR==1
 		output.colour 		= input.colour;
@@ -64,7 +64,7 @@ VSOutput nogs(VSInput input)
 	#endif
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 	#endif
 
 	#if (OUTPUT_BLEND_TEXCOORD==1)
@@ -72,7 +72,7 @@ VSOutput nogs(VSInput input)
 	#endif
 
     #if (OUTPUT_FOG_COLOR==1)
-        output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
+        output.fogColor = CalculateFog(worldPosition.z, SysUniform_GetWorldSpaceView() - worldPosition, NegativeDominantLightDirection);
     #endif
 
 	return output;

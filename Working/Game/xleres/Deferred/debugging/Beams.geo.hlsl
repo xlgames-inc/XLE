@@ -90,7 +90,7 @@ float4 TransformPosition(float3 position, uint projectionIndex)
 	#if SHADOWS==1
 		return ShadowProjection_GetOutput(position, projectionIndex);
 	#else
-		return mul(WorldToClip, float4(position,1));
+		return mul(SysUniform_GetWorldToClip(), float4(position,1));
 	#endif
 }
 
@@ -162,14 +162,14 @@ void WriteLine(float4 A, float4 B, uint colorIndex, inout LineStream<GSOutput> o
 	float3 C1 = ToWorldSpacePosition(float3(input[0].minCoords.x, input[0].maxCoords.y, input[0].maxCoords.z));
 	float3 D1 = ToWorldSpacePosition(float3(input[0].maxCoords.x, input[0].maxCoords.y, input[0].maxCoords.z));
 
-	float4 a0 = mul(WorldToClip, float4(A0,1));
-	float4 b0 = mul(WorldToClip, float4(B0,1));
-	float4 c0 = mul(WorldToClip, float4(C0,1));
-	float4 d0 = mul(WorldToClip, float4(D0,1));
-	float4 a1 = mul(WorldToClip, float4(A1,1));
-	float4 b1 = mul(WorldToClip, float4(B1,1));
-	float4 c1 = mul(WorldToClip, float4(C1,1));
-	float4 d1 = mul(WorldToClip, float4(D1,1));
+	float4 a0 = mul(SysUniform_GetWorldToClip(), float4(A0,1));
+	float4 b0 = mul(SysUniform_GetWorldToClip(), float4(B0,1));
+	float4 c0 = mul(SysUniform_GetWorldToClip(), float4(C0,1));
+	float4 d0 = mul(SysUniform_GetWorldToClip(), float4(D0,1));
+	float4 a1 = mul(SysUniform_GetWorldToClip(), float4(A1,1));
+	float4 b1 = mul(SysUniform_GetWorldToClip(), float4(B1,1));
+	float4 c1 = mul(SysUniform_GetWorldToClip(), float4(C1,1));
+	float4 d1 = mul(SysUniform_GetWorldToClip(), float4(D1,1));
 
 	WriteLine(a0, b0, 2, outputStream);
 	WriteLine(b0, d0, 2, outputStream);

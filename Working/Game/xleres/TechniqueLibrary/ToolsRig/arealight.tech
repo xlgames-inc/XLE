@@ -8,7 +8,7 @@
 // This is also an example of a custom built technique that inherits from, but overrides certain
 // parts of the default technique.
 
-#include "../Framework/Transform.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 #include "../Framework/MainGeometry.hlsl"
 #include "../Math/SurfaceAlgorithm.hlsl"
 #include "../Math/MathConstants.hlsl"
@@ -69,7 +69,7 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
         result.worldNormal = LocalToWorldUnitVector(normal);
         result.worldPosition = normal + s.x * u + s.y * v;
 
-        float3x4 localToWorld = LocalToWorld;
+        float3x4 localToWorld = SysUniform_GetLocalToWorld();
         float3 normAxis = float3(localToWorld[0].z, localToWorld[1].z, localToWorld[2].z);
         normAxis = 0.01f * normalize(normAxis);
         localToWorld[0].z = normAxis.x; localToWorld[1].z = normAxis.y; localToWorld[2].z = normAxis.z;
@@ -94,7 +94,7 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
         sincos(s.x, localPosition.y, localPosition.x);
 
         GeneratedVertex result;
-        result.worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
+        result.worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
         result.worldNormal = float3(localPosition.xy, 0.f);
         return result;
     } else {
@@ -121,12 +121,12 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
         float3 baseDirection = SphericalToCartesian(float3(s, 1.f));
         bool downCap = baseDirection.z < 0.f;
 
-        float3 xAxisLong = float3(LocalToWorld[0].x, LocalToWorld[1].x, LocalToWorld[2].x);
+        float3 xAxisLong = float3(SysUniform_GetLocalToWorld()[0].x, SysUniform_GetLocalToWorld()[1].x, SysUniform_GetLocalToWorld()[2].x);
         float3 xAxis = normalize(xAxisLong);
         float radius = length(xAxisLong);
-        float3 zAxisLong = float3(LocalToWorld[0].y, LocalToWorld[1].y, LocalToWorld[2].y);
+        float3 zAxisLong = float3(SysUniform_GetLocalToWorld()[0].y, SysUniform_GetLocalToWorld()[1].y, SysUniform_GetLocalToWorld()[2].y);
         float3 zAxis = normalize(zAxisLong);
-        float3 yAxisLong = float3(LocalToWorld[0].z, LocalToWorld[1].z, LocalToWorld[2].z);
+        float3 yAxisLong = float3(SysUniform_GetLocalToWorld()[0].z, SysUniform_GetLocalToWorld()[1].z, SysUniform_GetLocalToWorld()[2].z);
         float3 yAxis = normalize(yAxisLong);
 
         baseDirection =
@@ -139,7 +139,7 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
         result.worldPosition = result.worldNormal;
 
         result.worldPosition =
-            radius * result.worldPosition + float3(LocalToWorld[0].w, LocalToWorld[1].w, LocalToWorld[2].w);
+            radius * result.worldPosition + float3(SysUniform_GetLocalToWorld()[0].w, SysUniform_GetLocalToWorld()[1].w, SysUniform_GetLocalToWorld()[2].w);
 
         if (shape == 2) {
                 // We stretch out the tube here... It's not perfect. Ideally we should add
@@ -169,10 +169,10 @@ VSOutput MakeVSOutput(GeneratedVertex genVertex)
 		output.normal = genVertex.worldNormal;
 	#endif
 
-	output.position = mul(WorldToClip, float4(genVertex.worldPosition,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(genVertex.worldPosition,1));
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = WorldSpaceView.xyz - genVertex.worldPosition.xyz;
+		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - genVertex.worldPosition.xyz;
 	#endif
 
 	#if OUTPUT_WORLD_POSITION==1

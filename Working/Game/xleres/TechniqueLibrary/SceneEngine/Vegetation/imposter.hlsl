@@ -14,7 +14,7 @@
 #include "../Lighting/LightingAlgorithm.hlsl"  // for CalculateMipmapLevel
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/TransformAlgorithm.hlsl"
 #include "../../Core/gbuffer.hlsl"
 #include "../../Framework/CommonResources.hlsl"
@@ -41,7 +41,7 @@ VSSprite vs_main(VSSprite input)
 {
     VSOutput output;
     #if OUTPUT_FOG_COLOR == 1
-        output.fogColor = ResolveOutputFogColor(input[0].position.xyz, WorldSpaceView.xyz);
+        output.fogColor = ResolveOutputFogColor(input[0].position.xyz, SysUniform_GetWorldSpaceView().xyz);
     #endif
 
     output.spriteIndex = input[0].spriteIndex;
@@ -72,20 +72,20 @@ VSSprite vs_main(VSSprite input)
     for (uint c=0; c<4; ++c) {
         float2 o = texCoord[c] * 2.f - 1.0.xx;
         float3 localPosition = input[0].position + o.x * xAxis + o.y * yAxis;
-        float3 worldPosition = localPosition; // mul(LocalToWorld, float4(localPosition,1)).xyz;
+        float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 
         #if OUTPUT_TEXCOORD==1
             output.texCoord = texCoord[c];
         #endif
 
-        output.position = mul(WorldToClip, float4(worldPosition,1));
+        output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
         #if OUTPUT_LOCAL_VIEW_VECTOR==1
-            output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
+            output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
         #endif
 
         #if OUTPUT_WORLD_VIEW_VECTOR==1
-            output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+            output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
         #endif
 
         #if OUTPUT_WORLD_POSITION==1

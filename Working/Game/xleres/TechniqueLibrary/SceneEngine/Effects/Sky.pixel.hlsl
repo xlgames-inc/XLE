@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Lighting/LightingAlgorithm.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
@@ -99,13 +99,13 @@ float4 CalculateColour0(float2 texCoord, float3 viewFrustumVector, float3 worldS
 [earlydepthstencil]
 float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
 {
-	return CalculateColour0(oTexCoord, viewFrustumVector, WorldSpaceView + 10000.f * viewFrustumVector);
+	return CalculateColour0(oTexCoord, viewFrustumVector, SysUniform_GetWorldSpaceView() + 10000.f * viewFrustumVector);
 }
 
 [earlydepthstencil]
 float4 ps_HalfCube(VSOutput geo) : SV_Target0
 {
-	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
+	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - SysUniform_GetWorldSpaceView()), GetWorldPosition(geo));
 }
 
 	//////////////////////////////////
@@ -114,8 +114,8 @@ VSOutput vs_main(VSInput input)
 {
 	VSOutput output;
 	float3 localPosition = VSIn_GetLocalPosition(input);
-	float3 worldPosition = float3(50.f * localPosition.xy + WorldSpaceView.xy, 2.f * 50.f * localPosition.z);
-	output.position		 = mul(WorldToClip, float4(worldPosition,1));
+	float3 worldPosition = float3(50.f * localPosition.xy + SysUniform_GetWorldSpaceView().xy, 2.f * 50.f * localPosition.z);
+	output.position		 = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
 	output.position.z	 = 1.0f * output.position.w;		// push to infinity
 

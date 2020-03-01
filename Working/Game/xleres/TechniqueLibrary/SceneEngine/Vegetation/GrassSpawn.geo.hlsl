@@ -7,7 +7,7 @@
 #define GEO_HAS_TEXCOORD 1
 
 #include "../Terrain/Terrain.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "../../Math/MathConstants.hlsl"
@@ -36,10 +36,10 @@ static const float DefaultGridSpacing = 0.75f;
 
 float2 CalculateWind(float3 worldPosition)
 {
-	float2 timeOffset = float2(-0.132f, 0.0823f) * 5.f * Time;
+	float2 timeOffset = float2(-0.132f, 0.0823f) * 5.f * SysUniform_GetGlobalTime();
 	float noiseValue = PerlinNoise2D(0.0187f*worldPosition.xy+timeOffset);
 
-	float2 timeOffset2 = float2(1.132f, 2.0823f) * 2.f * Time;
+	float2 timeOffset2 = float2(1.132f, 2.0823f) * 2.f * SysUniform_GetGlobalTime();
 	float noiseStrength = PerlinNoise2D(0.01137f*worldPosition.xy + timeOffset);
 	noiseStrength *= noiseStrength;
 	noiseStrength = .5f + .5f*noiseStrength;
@@ -147,7 +147,7 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 
 		#if defined(TOP_DOWN_VIEW)
 			{
-				float2 timeOffset2 = float2(1.132f, 2.0823f) * 2.f * Time;
+				float2 timeOffset2 = float2(1.132f, 2.0823f) * 2.f * SysUniform_GetGlobalTime();
 				float noiseStrength = PerlinNoise2D(0.01137f*instancePosition.xy + timeOffset2);
 				noiseStrength *= noiseStrength;
 				noiseStrength = .5f + .5f*noiseStrength;
@@ -170,7 +170,7 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 			offset.xy += offsets[c].z * wind.xy;
 
 			float3 worldPosition = instancePosition + offset;
-			output.position = mul(WorldToClip, float4(worldPosition,1));
+			output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 			output.texCoord.x = lerp(minTC.x, maxTC.x, tcs[c].x);
 			output.texCoord.y = lerp(minTC.y, maxTC.y, tcs[c].y);
 			output.color = color;
@@ -335,10 +335,10 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 			float3 start	= float3(spanx0, y, spanz0);
 			float3 end		= float3(spanx1, y, spanz1);
 
-			output.position = mul(WorldToClip, float4(start,1));
+			output.position = mul(SysUniform_GetWorldToClip(), float4(start,1));
 			outputStream.Append(output);
 
-			output.position = mul(WorldToClip, float4(end,1));
+			output.position = mul(SysUniform_GetWorldToClip(), float4(end,1));
 			outputStream.Append(output);
 			outputStream.RestartStrip();
 			outputVertices+= 2;
@@ -353,13 +353,13 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	output.color = 1.0.xxx;
 	output.texCoord = 0.0.xx;
 
-	output.position = mul(WorldToClip, float4(input[0].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[0].position.xyz,1));
 	outputStream.Append(output);
 
-	output.position = mul(WorldToClip, float4(input[1].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[1].position.xyz,1));
 	outputStream.Append(output);
 
-	output.position = mul(WorldToClip, float4(input[2].position.xyz,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(input[2].position.xyz,1));
 	outputStream.Append(output);
 	outputStream.RestartStrip();
 

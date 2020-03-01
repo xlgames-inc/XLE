@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Framework/CommonResources.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/TextureAlgorithm.hlsl"
 #include "../../Math/Misc.hlsl"
 #include "../../Math/MathConstants.hlsl"

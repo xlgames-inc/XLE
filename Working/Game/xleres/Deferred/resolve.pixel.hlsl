@@ -117,9 +117,9 @@ float4 ResolveLight(	float4 position : SV_Position,
 	// {
 	// 	float worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys));
 	// 	float3 cameraCoordinate = float3(
-	// 		( 2.f * texCoord.x - 1.f) / MinimalProjection.x,
-	// 		(-2.f * texCoord.y + 1.f) / MinimalProjection.y,
-	// 		-1.f) * (worldSpaceDepth * FarClip);
+	// 		( 2.f * texCoord.x - 1.f) / SysUniform_GetMinimalProjection().x,
+	// 		(-2.f * texCoord.y + 1.f) / SysUniform_GetMinimalProjection().y,
+	// 		-1.f) * (worldSpaceDepth * SysUniform_GetFarClip());
 	// 	worldPosition = mul(CameraToWorld, float4(cameraCoordinate, 1)).xyz;
 	// 	return float4(fmod(worldPosition/10,1.0.xxx),1);
 	// }

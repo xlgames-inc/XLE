@@ -117,15 +117,15 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 	float bottomRightWeight = centralNearPlaneXYCoords.x * (1.f - centralNearPlaneXYCoords.y);
 
 	float3 viewFrustumVectorToCentre =
-		  topLeftWeight		* FrustumCorners[0].xyz
-		+ bottomLeftWeight	* FrustumCorners[1].xyz
-		+ topRightWeight	* FrustumCorners[2].xyz
-		+ bottomRightWeight * FrustumCorners[3].xyz
+		  topLeftWeight		* SysUniform_GetFrustumCorners(0).xyz
+		+ bottomLeftWeight	* SysUniform_GetFrustumCorners(1).xyz
+		+ topRightWeight	* SysUniform_GetFrustumCorners(2).xyz
+		+ bottomRightWeight * SysUniform_GetFrustumCorners(3).xyz
 		;
 
 	return CalculateWorldPosition(
-		viewFrustumVectorToCentre, gridCellCentreDepth / FarClip,
-		WorldSpaceView);
+		viewFrustumVectorToCentre, gridCellCentreDepth / SysUniform_GetFarClip(),
+		SysUniform_GetWorldSpaceView());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +145,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 
 	// #define DO_NOISE_OFFSET
 	#if DO_NOISE_OFFSET==1
-		float t = Time * .2f * NoiseSpeed;
+		float t = SysUniform_GetGlobalTime() * .2f * NoiseSpeed;
 		if (closeSample) {
 			centrePoint += 1.f * (PerlinNoise3D(centrePoint.xyz + t * 0.47f * float3(2.13f, 1.771f, 2.2422f)) - 0.5f);
 		}
@@ -215,7 +215,7 @@ CalculateInscatter_Result CalculateInscatter(int3 dispatchThreadId, float densit
 	#else
 		float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
 		float3 directionToSun = GetDirectionToSun();
-		float3 directionToSample = centrePoint - WorldSpaceView;
+		float3 directionToSample = centrePoint - SysUniform_GetWorldSpaceView();
 		float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
 		float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
 
@@ -323,7 +323,7 @@ float RadiusAttenuation(float distanceSq, float radius)
 	void InjectPointLightSources(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	float3 samplePoint = CalculateSamplePoint(dispatchThreadId);
-	float3 sampleOffset = samplePoint - WorldSpaceView;
+	float3 sampleOffset = samplePoint - SysUniform_GetWorldSpaceView();
 	float sampleDistance = length(sampleOffset);
 	float3 directionToCentrePoint = sampleOffset / sampleDistance;
 

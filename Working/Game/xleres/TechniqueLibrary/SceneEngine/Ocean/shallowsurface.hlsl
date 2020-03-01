@@ -8,7 +8,7 @@
 #include "Ocean.hlsl"
 #include "OceanShallow.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Utility/Colour.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "xleres/BasicMaterial.hlsl"
@@ -56,21 +56,21 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
         float3 worldNormal;
         float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
     #else
-        float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
+        float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
     #endif
 
-    output.position = mul(WorldToClip, float4(worldPosition,1));
+    output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
     #if (OUTPUT_TEXCOORD==1)
         output.texCoord = localPosition.xy;
     #endif
 
     #if OUTPUT_WORLD_VIEW_VECTOR==1
-        output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+        output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
     #endif
 
     #if OUTPUT_FOG_COLOR == 1
-		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, WorldSpaceView.xyz);
+		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, SysUniform_GetWorldSpaceView().xyz);
 	#endif
 
     return output;
@@ -102,11 +102,11 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
             //	first tap is used as texture coordinate offset for
             //	second tap
 
-        float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + Time * 0.001f * float2(0.0078f, 0.0046f));
+        float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + SysUniform_GetGlobalTime() * 0.001f * float2(0.0078f, 0.0046f));
         float foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
             23.7f*-texCoord
             + 0.027f * (-1.0.xx + 2.f * foamFirstTap.xy)
-            + Time * float2(0.023f, -0.015f));
+            + SysUniform_GetGlobalTime() * float2(0.023f, -0.015f));
 
         return smoothstep(0.f, foamSecondTap, foamQuantity);
     }

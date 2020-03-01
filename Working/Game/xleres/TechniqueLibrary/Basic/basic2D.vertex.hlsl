@@ -7,7 +7,7 @@
 #if !defined(BASIC2D_VSH)
 #define BASIC2D_VSH
 
-#include "../Framework/Transform.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 
 #define NDC_POSITIVE 1
 #define NDC_POSITIVE_RIGHT_HANDED 2
@@ -41,7 +41,7 @@ FullscreenCorner MakeFullscreenCorner(uint vertexId)
 	#else
 		result.position = float4(2.f * result.coord.x - 1.f, -2.f * result.coord.y + 1.f, 0.f, 1.f);
 	#endif
-	result.vfi.oViewFrustumVector = FrustumCorners[vertexId].xyz;
+	result.vfi.oViewFrustumVector = SysUniform_GetFrustumCorners(vertexId).xyz;
 	result.texCoord = result.coord;
 
 	return result;

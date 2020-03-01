@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Framework/MainGeometry.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 
 struct PCOut
 {
@@ -16,9 +16,9 @@ struct PCOut
 void WriteWire(inout LineStream<PCOut> outputStream, float3 worldStart, float3 worldEnd, float4 color)
 {
     PCOut A, B;
-    A.position = mul(WorldToClip, float4(worldStart,1));
+    A.position = mul(SysUniform_GetWorldToClip(), float4(worldStart,1));
     A.color = color;
-    B.position = mul(WorldToClip, float4(worldEnd,1));
+    B.position = mul(SysUniform_GetWorldToClip(), float4(worldEnd,1));
     B.color = color;
     outputStream.Append(A);
     outputStream.Append(B);

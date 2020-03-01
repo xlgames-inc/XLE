@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 struct ParticleVStoGS

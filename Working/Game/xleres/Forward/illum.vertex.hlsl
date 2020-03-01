@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
 #include "../TechniqueLibrary/Math/TransformAlgorithm.hlsl"
@@ -22,8 +22,8 @@ VSOutput main(VSInput input)
 		float3 worldNormal;
 		float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
 	#else
-		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
-		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
+		float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
+		float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
 		float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
 	#endif
 
@@ -48,7 +48,7 @@ VSOutput main(VSInput input)
 		#endif
 	#endif
 
-	float3 worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+	float3 worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 	float3 localNormal = VSIn_GetLocalNormal(input);
 
 	// Flip the normal here, if we have to. Note that we only flip the normal, not the
@@ -70,7 +70,7 @@ VSOutput main(VSInput input)
 
 	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input).rgb);
 
-	output.position = mul(WorldToClip, float4(worldPosition,1));
+	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
 		output.localTangent = VSIn_GetLocalTangent(input);
@@ -82,7 +82,7 @@ VSOutput main(VSInput input)
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1
-		output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
+		output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
 	#endif
 
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
@@ -94,7 +94,7 @@ VSOutput main(VSInput input)
 	#endif
 
 	#if OUTPUT_FOG_COLOR == 1
-		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, WorldSpaceView.xyz);
+		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, SysUniform_GetWorldSpaceView().xyz);
 	#endif
 
 	#if (OUTPUT_PER_VERTEX_MLO==1) && (GEO_HAS_INSTANCE_ID==1)

@@ -10,7 +10,7 @@
 #include "TerrainGenerator.h"
 #include "HeightsSample.h"
 #include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,7 +32,7 @@ PatchInputControlPoint vs_dyntess_main(uint vertexIndex : SV_VertexId)
     localPosition.z		 = float(rawHeightValue);
 
     float3 cellPosition	 = mul( LocalToCell, float4(localPosition, 1)).xyz;
-    float3 worldPosition = mul(LocalToWorld, float4( cellPosition, 1));
+    float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4( cellPosition, 1));
     worldPosition = AddNoise(worldPosition);
 
     PatchInputControlPoint output;
@@ -87,10 +87,10 @@ HS_ConstantOutput PatchConstantFunction(
     float2 screenPtsMin[4];
     float3 bias = float3(0,0,20);       // note -- this would ideally be set to some real value based on the data!
     [unroll] for (uint c2=0; c2<4; ++c2) {
-        float4 clipMax = mul(WorldToClip, float4(ip[c2].worldPosition+bias, 1));
+        float4 clipMax = mul(SysUniform_GetWorldToClip(), float4(ip[c2].worldPosition+bias, 1));
         screenPtsMax[c2] = clipMax.xy / clipMax.w * halfViewport;
 
-        float4 clipMin = mul(WorldToClip, float4(ip[c2].worldPosition-bias, 1));
+        float4 clipMin = mul(SysUniform_GetWorldToClip(), float4(ip[c2].worldPosition-bias, 1));
         screenPtsMin[c2] = clipMin.xy / clipMin.w * halfViewport;
     }
 
@@ -243,12 +243,12 @@ PatchOutputControlPoint hs_main(
 
         //	heightDX is the interpolated height change over the distance of a single height map element.
         //	We really want to convert this to world coordinates.
-        //		we can simplify this by making assumptions about LocalToCell and LocalToWorld...
+        //		we can simplify this by making assumptions about LocalToCell and SysUniform_GetLocalToWorld()...
         //		let's assume that they both contain scale and translation, but no rotation or skew
         //		This is most likely the case (also they probably contain uniform scale)
-    float conversionToWorldUnitsX = 1.0f/(TileDimensionsInVertices-HeightsOverlap) * LocalToCell[0][0] * LocalToWorld[0][0];
-    float conversionToWorldUnitsY = 1.0f/(TileDimensionsInVertices-HeightsOverlap) * LocalToCell[1][1] * LocalToWorld[1][1];
-    float conversionToWorldUnitsZ = LocalToCell[2][2] * LocalToWorld[2][2];
+    float conversionToWorldUnitsX = 1.0f/(TileDimensionsInVertices-HeightsOverlap) * LocalToCell[0][0] * SysUniform_GetLocalToWorld()[0][0];
+    float conversionToWorldUnitsY = 1.0f/(TileDimensionsInVertices-HeightsOverlap) * LocalToCell[1][1] * SysUniform_GetLocalToWorld()[1][1];
+    float conversionToWorldUnitsZ = LocalToCell[2][2] * SysUniform_GetLocalToWorld()[2][2];
     float dhdx = (heightDX - rawHeightValue) * conversionToWorldUnitsZ / conversionToWorldUnitsX;
     float dhdy = (heightDY - rawHeightValue) * conversionToWorldUnitsZ / conversionToWorldUnitsY;
 
@@ -258,7 +258,7 @@ PatchOutputControlPoint hs_main(
     localPosition.z		 = float(rawHeightValue);
 
     float3 cellPosition	 = mul( LocalToCell, float4(localPosition, 1)).xyz;
-    float3 worldPosition = mul(LocalToWorld, float4( cellPosition, 1)).xyz;
+    float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4( cellPosition, 1)).xyz;
     worldPosition = AddNoise(worldPosition);
 
     const bool showRawTessellationPatch = false;
@@ -276,7 +276,7 @@ PatchOutputControlPoint hs_main(
             ;
     }
 
-    float4 clipPosition  = mul( WorldToClip, float4(worldPosition, 1));
+    float4 clipPosition  = mul( SysUniform_GetWorldToClip(), float4(worldPosition, 1));
 
     VSOutput output;
     output.position = clipPosition;

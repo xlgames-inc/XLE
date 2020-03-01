@@ -1,10 +1,10 @@
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 float GetSceneTime()
 {
-    return Time;
+    return SysUniform_GetGlobalTime();
 }
 
 float2 GetPixelCoord();

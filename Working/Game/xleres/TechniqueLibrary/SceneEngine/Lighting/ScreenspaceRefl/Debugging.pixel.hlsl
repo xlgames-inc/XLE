@@ -27,9 +27,9 @@ float3 CalculateReflectionVector(uint2 pixelCoord, float3 viewFrustumVector, flo
 	const uint msaaSampleIndex = 0;
 	const float linear0To1Depth = NDCDepthToLinear0To1(LoadFloat1(DepthTexture, pixelCoord, msaaSampleIndex));
 	float3 worldSpacePosition =
-		CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
+		CalculateWorldPosition(viewFrustumVector, linear0To1Depth, SysUniform_GetWorldSpaceView());
 
-	float3 worldSpaceReflection = reflect(normalize(worldSpacePosition - WorldSpaceView), worldSpaceNormal);
+	float3 worldSpaceReflection = reflect(normalize(worldSpacePosition - SysUniform_GetWorldSpaceView()), worldSpaceNormal);
 	return worldSpaceReflection;
 }
 
@@ -257,7 +257,7 @@ float4 RayDebugging(	float4 position		: SV_Position,
 	position /= downSampleValue;
 	uint2 samplePt = MousePosition / downSampleValue;
 
-	const float worldSpaceMaxDist = min(5.f, FarClip);
+	const float worldSpaceMaxDist = min(5.f, SysUniform_GetFarClip());
 	ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplePt, outputDimensions, 0);
 
 	float2 ndcXY = float2(

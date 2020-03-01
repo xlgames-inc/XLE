@@ -16,7 +16,7 @@
 #include "IBL/IBLRef.hlsl"
 #include "../../../Framework/CommonResources.hlsl"
 #include "../../../Math/Misc.hlsl"        // for DitherPatternInt
-#include "../../../Framework/Transform.hlsl"           // for GlobalSamplingPassCount, GlobalSamplingPassIndex
+#include "../../../Framework/SystemUniforms.hlsl"           // for SysUniform_GetGlobalSamplingPassCount(), SysUniform_GetGlobalSamplingPassIndex()
 
 TextureCube DiffuseIBL BIND_NUMERIC_T7;
 TextureCube SpecularIBL BIND_NUMERIC_T8;
@@ -46,9 +46,9 @@ float3 SampleDiffuseIBL(float3 worldSpaceNormal, LightScreenDest lsd)
         //      Currently we'll just get lambert response...
     #if defined(REF_IBL)
         uint dither = DitherPatternInt(lsd.pixelCoords)&0xf;
-        dither = dither*GlobalSamplingPassCount+GlobalSamplingPassIndex;
+        dither = dither*SysUniform_GetGlobalSamplingPassCount()+SysUniform_GetGlobalSamplingPassIndex();
         const uint sampleCount = 64;
-        return SampleDiffuseIBL_Ref(worldSpaceNormal, SkyReflectionTexture, sampleCount, dither, 16*GlobalSamplingPassCount);
+        return SampleDiffuseIBL_Ref(worldSpaceNormal, SkyReflectionTexture, sampleCount, dither, 16*SysUniform_GetGlobalSamplingPassCount());
     #elif HAS_DIFFUSE_IBL==1
         return DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb;
     #else

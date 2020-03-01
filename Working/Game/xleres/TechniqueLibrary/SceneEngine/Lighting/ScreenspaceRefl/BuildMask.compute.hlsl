@@ -130,7 +130,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		//   0: new code
 		//   1: reference high resolution iteration
 	const uint iterationMethod = 0;
-	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, FarClip);
+	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, SysUniform_GetFarClip());
 	if (iterationMethod == 0) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplingPixel.xy, outputDimensions, msaaSampleIndex);
 		[branch] if (ray.valid)
@@ -200,7 +200,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 				// right for our microfacet reflections model.
 				// But should be ok for an estimate here.
 
-				float3 viewDirection = WorldSpaceView - worldSpacePosition;
+				float3 viewDirection = SysUniform_GetWorldSpaceView() - worldSpacePosition;
 				float NdotV = dot(viewDirection, worldSpaceNormal) * ReciprocalLength(viewDirection); // (correct so long as worldSpaceNormal is unit length)
 				float q = SchlickFresnelCore(saturate(NdotV));
 				float F = F0 + (1.f - F0) * q;

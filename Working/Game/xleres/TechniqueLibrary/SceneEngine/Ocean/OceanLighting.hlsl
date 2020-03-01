@@ -146,7 +146,7 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
     float oceanLinearDepth = NDCDepthToWorldSpace(oceanDepth);
     float linearDepthThroughWater = oceanBottomLinearDepth - oceanLinearDepth;
 
-    if (linearDepthThroughWater > (.25f * FarClip) || oceanBottomLinearDepth > (.75f * FarClip)) {
+    if (linearDepthThroughWater > (.25f * SysUniform_GetFarClip()) || oceanBottomLinearDepth > (.75f * SysUniform_GetFarClip())) {
         parts.refractionAttenuationDepth = 100000.f;
         parts.forwardDistanceThroughWater = 100000.f;
         parts.refracted = 0.0.xxx;
@@ -158,7 +158,7 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
     float3 refractedVector = refract(incidentRay, oceanSurface.worldSpaceNormal, airRefractiveIndex/refractiveIndex);
     // refractedVector = normalize(refractedVector);
 
-    float3 worldSpaceOceanSurface = WorldSpaceView - parameters.worldViewVector;
+    float3 worldSpaceOceanSurface = SysUniform_GetWorldSpaceView() - parameters.worldViewVector;
 
         //	Using equal triangles, we can find the vertical depth through the
         //	water by multiplying the depth along the worldViewDirection by
@@ -169,7 +169,7 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
     zDistanceThroughWater = min(zDistanceThroughWater, MaxDistanceToSimulate);
     float3 refractedOceanBottom = worldSpaceOceanSurface + refractedVector * (-zDistanceThroughWater/refractedVector.z);
 
-    float4 t = mul(WorldToClip, float4(refractedOceanBottom.xyz,1));
+    float4 t = mul(SysUniform_GetWorldToClip(), float4(refractedOceanBottom.xyz,1));
     float2 refractTexCoord = .5f + .5f * t.xy / t.w;
     refractTexCoord.y = 1.0f - refractTexCoord.y;
 

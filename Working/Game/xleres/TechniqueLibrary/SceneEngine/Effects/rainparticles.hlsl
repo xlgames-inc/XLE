@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
@@ -82,7 +82,7 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 	float fallingOffset				= VerticalWrap * RandomValue(startPosition / 2.3f);
 
 	float quantStartHeight			= VerticalWrap * ceil(SpawnMidPoint.z/VerticalWrap);
-	float wrappedTime				= verticalWrapTime * frac(Time / verticalWrapTime);
+	float wrappedTime				= verticalWrapTime * frac(SysUniform_GetGlobalTime() / verticalWrapTime);
 
 	float brightnessRandom			= RandomValue(startPosition / 2.487f);
 	float length					= (.7f + .6f * brightnessRandom) * 8.0f/60.f;	// streak length (in seconds)
@@ -109,8 +109,8 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 {
 		//	simple projection... Causes problems when looking straight down or
 		//	straight up.
-	float4 projected0 = mul(WorldToClip, float4(input[0].positions[0],1));
-	float4 projected1 = mul(WorldToClip, float4(input[0].positions[1],1));
+	float4 projected0 = mul(SysUniform_GetWorldToClip(), float4(input[0].positions[0],1));
+	float4 projected1 = mul(SysUniform_GetWorldToClip(), float4(input[0].positions[1],1));
 	if (InsideFrustum(projected0) || InsideFrustum(projected1)) {
 		float width = input[0].radius * projected0.w;
 

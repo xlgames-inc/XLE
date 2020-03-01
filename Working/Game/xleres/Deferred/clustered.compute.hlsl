@@ -323,8 +323,8 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	ClusterKeyToLinearDepths(
 		ClusterKeys[clusterForThisThread],
 		clusterForThisThreadMinDepth, clusterForThisThreadMaxDepth);
-	clusterForThisThreadMinDepth = FarClip * clusterForThisThreadMinDepth;
-	clusterForThisThreadMaxDepth = FarClip * clusterForThisThreadMaxDepth;
+	clusterForThisThreadMinDepth = SysUniform_GetFarClip() * clusterForThisThreadMinDepth;
+	clusterForThisThreadMaxDepth = SysUniform_GetFarClip() * clusterForThisThreadMaxDepth;
 	ActiveLightCount[clusterForThisThread] = 0;
 	float2 cA = float2(clusterForThisThreadMaxDepth*tanMinAngle.x, clusterForThisThreadMaxDepth*tanMinAngle.y);
 	float2 cB = float2(clusterForThisThreadMaxDepth*tanMaxAngle.x, clusterForThisThreadMaxDepth*tanMaxAngle.y);

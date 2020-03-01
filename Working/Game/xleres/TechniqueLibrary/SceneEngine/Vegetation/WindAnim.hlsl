@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 float4 CubicSCurve4(float4 x)        { return x * x * ( 3.0f - 2.0f * x ); }
 float4 TriangleWave4(float4 x)       { return abs( frac( x + 0.5f ) * 2.0f - 1.0f ); }
@@ -49,7 +49,7 @@ float3 PerformWindBending(
         float branchPhase = detailPhase;
 
         float speed = 0.125f;
-        float2 timeParam = Time + float2(detailPhase, branchPhase);
+        float2 timeParam = SysUniform_GetGlobalTime() + float2(detailPhase, branchPhase);
 
             // Here, .xy are the two "edge" components
             // .zw are the two "branch" components

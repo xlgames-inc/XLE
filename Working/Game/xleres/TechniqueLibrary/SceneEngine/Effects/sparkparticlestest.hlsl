@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Framework/CommonResources.hlsl"
-#include "../../Framework/Transform.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 #include "../../Math/Misc.hlsl"
@@ -49,7 +49,7 @@ float3 TransformViewToWorld(float3 viewSpacePosition)
 {
 	float3x3 worldToViewPartial =
 		float3x3( WorldToView[0].xyz, WorldToView[1].xyz, WorldToView[2].xyz);
-	return WorldSpaceView + mul(transpose(worldToViewPartial), viewSpacePosition);
+	return SysUniform_GetWorldSpaceView() + mul(transpose(worldToViewPartial), viewSpacePosition);
 }
 
 Texture2D<float>	DepthBuffer;
@@ -113,7 +113,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 		//	If this particle begins outside of the camera frustum, then cull it and
 		//	find a new starting point inside the frustum
 	float velocityMagSquared = dot(input.velocity, input.velocity);
-	float4 projectedPoint = mul(WorldToClip, float4(input.position, 1.f));
+	float4 projectedPoint = mul(SysUniform_GetWorldToClip(), float4(input.position, 1.f));
 	if (!InsideFrustum(projectedPoint) || velocityMagSquared < 0.7f) {
 		input.position = SpawnPosition;
 		input.velocity = 2.5f * SpawnVelocity;
@@ -195,8 +195,8 @@ struct GStoPS
 {
 		//	simple projection... Causes problems when looking straight down or
 		//	straight up.
-	float4 projected0 = mul(WorldToClip, float4(input[0].positions[0],1));
-	float4 projected1 = mul(WorldToClip, float4(input[0].positions[1],1));
+	float4 projected0 = mul(SysUniform_GetWorldToClip(), float4(input[0].positions[0],1));
+	float4 projected1 = mul(SysUniform_GetWorldToClip(), float4(input[0].positions[1],1));
 	if (InsideFrustum(projected0) || InsideFrustum(projected1)) {
 		float width = input[0].radius * projected0.w;
 

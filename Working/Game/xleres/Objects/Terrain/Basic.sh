@@ -8,7 +8,7 @@
 
 #include "TerrainGenerator.h"
 #include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 VSOutput vs_basic(uint vertexIndex : SV_VertexId)
 {
@@ -24,9 +24,9 @@ VSOutput vs_basic(uint vertexIndex : SV_VertexId)
     localPosition.z		 = float(rawHeightValue);
 
     float3 cellPosition	 = mul( LocalToCell, float4(localPosition, 1)).xyz;
-    float3 worldPosition = mul(LocalToWorld, float4( cellPosition,1));
+    float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4( cellPosition,1));
     worldPosition        = AddNoise(worldPosition);
-    output.position		 = mul( WorldToClip, float4(worldPosition,1));
+    output.position		 = mul( SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
     #if (OUTPUT_WORLD_POSITION==1)
         output.worldPosition = worldPosition;
