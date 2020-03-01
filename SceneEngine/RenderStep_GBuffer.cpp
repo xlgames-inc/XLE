@@ -31,6 +31,7 @@
 #include "../Assets/AssetTraits.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/FunctionUtils.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -68,7 +69,7 @@ namespace SceneEngine
 	: _gbufferType(gbufferType)
 	, _createGBuffer(RenderCore::PipelineType::Graphics)
 	{
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 
 		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Deferred(
 			techniqueSetFile,

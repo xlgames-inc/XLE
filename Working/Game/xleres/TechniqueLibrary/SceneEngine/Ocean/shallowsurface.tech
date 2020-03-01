@@ -1,0 +1,26 @@
+~Illum
+    ~Parameters
+        ~Material
+            SHALLOW_WATER_TILE_DIMENSION=128
+            MAT_DO_REFRACTION
+            SKY_PROJECTION
+            SHALLOW_WATER_IS_SIMULATED=1
+        ~Geometry
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_TEXCOORD=1
+            OUTPUT_FOG_COLOR=1
+        ~GlobalEnvironment
+    VertexShader=xleres/ocean/shallowsurface.hlsl:vs_main
+    PixelShader=xleres/ocean/shallowsurface.hlsl:ps_main
+~VisWireframe
+    ~Parameters
+        ~Material
+            SHALLOW_WATER_TILE_DIMENSION=128
+            SHALLOW_WATER_IS_SIMULATED=1
+        ~Geometry
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_TEXCOORD=1
+        ~GlobalEnvironment
+    VertexShader=xleres/ocean/shallowsurface.hlsl:vs_main
+    GeometryShader=xleres/solidwireframe.geo.hlsl:main
+    PixelShader=xleres/solidwireframe.pixel.hlsl:main

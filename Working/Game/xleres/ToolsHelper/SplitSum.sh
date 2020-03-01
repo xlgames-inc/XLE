@@ -7,8 +7,8 @@
 #define FORCE_GGX_REF
 
 #include "Cubemap.h"
-#include "../Lighting/SpecularMethods.h"
-#include "../Lighting/MaterialQuery.h"
+#include "../TechniqueLibrary/SceneEngine/Lighting/SpecularMethods.hlsl"
+#include "../TechniqueLibrary/SceneEngine/Lighting/MaterialQuery.hlsl"
 
 Texture2D Input;
 
@@ -18,7 +18,7 @@ float3 IBLPrecalc_SampleInputTexture(float3 direction)
     return Input.SampleLevel(DefaultSampler, coord, 0).rgb;
 }
 
-#include "../Lighting/IBL/IBLPrecalc.h"
+#include "../TechniqueLibrary/SceneEngine/Lighting/IBL/IBLPrecalc.hlsl"
 
 static const uint PassSampleCount = 256;
 

@@ -21,6 +21,7 @@
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/DX11/Metal/Format.h"
@@ -107,7 +108,7 @@ namespace SceneEngine
                     //	actually getting better results with point resampling.
 		            //	After the compression, the bilinear sampled texture looks quite dithered
 		            //	and ugly... it might be a consequence of compressing twice?
-                auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("xleres/basic.csh:ResamplePoint:cs_*");
+                auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>(BASIC_COMPUTE_HLSL ":ResamplePoint:cs_*");
                 context.Bind(resamplingShader);
                 context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(uav));
                 context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(inputTexture));

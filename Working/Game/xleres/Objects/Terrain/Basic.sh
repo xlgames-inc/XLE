@@ -7,8 +7,8 @@
 #define OUTPUT_TEXCOORD 1
 
 #include "TerrainGenerator.h"
-#include "../../MainGeometry.h"
-#include "../../Transform.h"
+#include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../../TechniqueLibrary/Framework/Transform.hlsl"
 
 VSOutput vs_basic(uint vertexIndex : SV_VertexId)
 {

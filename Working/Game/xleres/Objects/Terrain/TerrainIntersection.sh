@@ -6,7 +6,7 @@
 
 #define OUTPUT_TEXCOORD 1
 
-#include "../../MainGeometry.h"
+#include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 struct IntersectionResult
 {

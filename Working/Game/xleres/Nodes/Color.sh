@@ -7,7 +7,7 @@
 #if !defined(NODES_CONVERSION_H)
 #define NODES_CONVERSION_H
 
-#include "../Colour.h"
+#include "../TechniqueLibrary/Utility/Colour.hlsl"
 
 float3 ConvertSRGBToLinear(float3 srgbInput)    { return SRGBToLinear(srgbInput); }
 float3 ConvertLinearToSRGB(float3 linearInput)  { return LinearToSRGB(linearInput); }

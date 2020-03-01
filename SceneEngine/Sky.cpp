@@ -21,6 +21,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringUtils.h"
+#include "../xleres/FileList.h"
 
 #pragma warning(disable:4702)       // warning C4702: unreachable code
 
@@ -142,30 +143,30 @@ namespace SceneEngine
         if (desc._geoType == Plane) {
             _snprintf_s(definesBuffer, _TRUNCATE, "SKY_PROJECTION=%i;BLEND_FOG=%i", desc._projectionType, int(desc._blendFog));
             _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2D.vsh:fullscreen_viewfrustumvector_deep:vs_*",
-                "xleres/effects/sky.psh:main:ps_*",
+                BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector_deep:vs_*",
+                SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:main:ps_*",
                 definesBuffer);
         } else {
             assert(desc._geoType == HalfCube);
             _snprintf_s(definesBuffer, _TRUNCATE, "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;SKY_PROJECTION=2;BLEND_FOG=%i", int(desc._blendFog));
             _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/effects/sky.psh:vs_main:vs_*",
-                "xleres/effects/sky.psh:ps_HalfCube:ps_*",
+                SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:vs_main:vs_*",
+                SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:ps_HalfCube:ps_*",
                 definesBuffer);
         }
 
         if (desc._geoType == Plane) {
             // _snprintf_s(definesBuffer, _TRUNCATE, "SKY_PROJECTION=%i", desc._projectionType);
             // _postFogShader = &Assets::GetAssetDep<Metal::ShaderProgram>(
-            //     "xleres/basic2D.vsh:fullscreen_viewfrustumvector_deep:vs_*",
-            //     "game/xleres_cry/effects/skypostfog.psh:ps_HalfCube_PostFogPass:ps_*",
+            //     BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector_deep:vs_*",
+            //     "game/xleres_cry/effects/skypostfog.pixel.hlsl:ps_HalfCube_PostFogPass:ps_*",
             //     definesBuffer);
             _postFogShader = nullptr;
         } else {
             assert(desc._geoType == HalfCube);
             _postFogShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/effects/sky.psh:vs_main:vs_*",
-                "game/xleres_cry/effects/skypostfog.psh:ps_HalfCube_PostFogPass:ps_*",
+                SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:vs_main:vs_*",
+                "game/xleres_cry/effects/skypostfog.pixel.hlsl:ps_HalfCube_PostFogPass:ps_*",
                 "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;SKY_PROJECTION=2");
         }
 

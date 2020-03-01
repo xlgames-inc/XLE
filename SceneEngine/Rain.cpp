@@ -91,9 +91,9 @@ namespace SceneEngine
             auto cb0 = MakeMetalCB(nullptr, sizeof(RainSpawnConstants));
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/effects/rainparticles.sh:vs_main:vs_*", 
-                "xleres/effects/rainparticles.sh:gs_main:gs_*",
-                "xleres/effects/rainparticles.sh:ps_main:ps_*",
+                "xleres/effects/rainparticles.hlsl:vs_main:vs_*", 
+                "xleres/effects/rainparticles.hlsl:gs_main:gs_*",
+                "xleres/effects/rainparticles.hlsl:ps_main:ps_*",
                 "");
             static uint64 HashRainSpawn = Hash64("RainSpawn");
             static uint64 HashRandomValuesTexture = Hash64("RandomValuesTexture");
@@ -217,7 +217,7 @@ namespace SceneEngine
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
+                "xleres/effects/simrain.hlsl:SimulateDrops:cs_*", 
                 "");
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
             static uint64 HashRandomValuesTexture   = Hash64("RandomValuesTexture");
@@ -302,9 +302,9 @@ namespace SceneEngine
                 //  buffer shader resource;
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/effects/simrain.sh:vs_main:vs_*", 
-                "xleres/effects/rainparticles.sh:gs_main:gs_*",
-                "xleres/effects/rainparticles.sh:ps_main:ps_*",
+                "xleres/effects/simrain.hlsl:vs_main:vs_*", 
+                "xleres/effects/rainparticles.hlsl:gs_main:gs_*",
+                "xleres/effects/rainparticles.hlsl:ps_main:ps_*",
                 "");
 			UniformsStreamInterface drawUsi;
 			drawUsi.BindConstantBuffer(0, {HashSimulationParameters});
@@ -370,7 +370,7 @@ namespace SceneEngine
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
+                "xleres/effects/sparkparticlestest.hlsl:SimulateDrops:cs_*", 
                 "");
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
             static uint64 HashRandomValuesTexture   = Hash64("RandomValuesTexture");
@@ -468,9 +468,9 @@ namespace SceneEngine
                 //  buffer shader resource;
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/effects/sparkparticlestest.sh:vs_main:vs_*", 
-                "xleres/effects/sparkparticlestest.sh:gs_main:gs_*",
-                "xleres/effects/sparkparticlestest.sh:ps_main:ps_*",
+                "xleres/effects/sparkparticlestest.hlsl:vs_main:vs_*", 
+                "xleres/effects/sparkparticlestest.hlsl:gs_main:gs_*",
+                "xleres/effects/sparkparticlestest.hlsl:ps_main:ps_*",
                 "");
 			UniformsStreamInterface drawUsi;
 			drawUsi.BindConstantBuffer(0, {HashSimulationParameters});

@@ -15,7 +15,7 @@
 #include "TerrainGenerator.h"
 #include "ITerrainTexturing.h"
 
-#include "../../gbuffer.h"
+#include "../../TechniqueLibrary/Core/gbuffer.hlsl"
 #include "../../Utility/DistinctColors.h"
 
 #define DO_DEFORM_NORMAL 1

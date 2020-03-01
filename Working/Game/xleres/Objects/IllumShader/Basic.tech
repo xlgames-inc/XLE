@@ -1,12 +1,12 @@
 // CompoundDocument:1
-#include "xleres/System/Prefix.h"
+#include "TechniqueLibrary/System/Prefix.h"
 
 #include "xleres/Nodes/Output.sh"
 #include "xleres/Nodes/Basic.sh"
 #include "xleres/Nodes/Texture.sh"
 #include "xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
-#include "xleres/Surface.h"
-#include "xleres/Colour.h"
+#include "TechniqueLibrary/Framework/Surface.hlsl"
+#include "TechniqueLibrary/Utility/Colour.hlsl"
 
 
 Texture2D SpecularColorTexture;
@@ -434,13 +434,13 @@ void Basic(VSOutput geo, out GBufferValues result)
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/Surface.h:GetNormal</FragmentArchiveName>
+			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:GetNormal</FragmentArchiveName>
 			<NodeId>68</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/Surface.h:GetTexCoord</FragmentArchiveName>
+			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:GetTexCoord</FragmentArchiveName>
 			<NodeId>69</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
@@ -458,7 +458,7 @@ void Basic(VSOutput geo, out GBufferValues result)
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/Colour.h:SRGBToLinear</FragmentArchiveName>
+			<FragmentArchiveName>TechniqueLibrary/Utility/Colour.hlsl:SRGBToLinear</FragmentArchiveName>
 			<NodeId>73</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>

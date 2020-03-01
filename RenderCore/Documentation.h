@@ -106,9 +106,9 @@
         \code{.cpp}
             using namespace RenderCore;
             auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/deferred/debugging/beams.vsh:main:vs_*", 
-                "xleres/deferred/debugging/beams.gsh:main:gs_*", 
-                "xleres/deferred/debugging/beams.psh:main:ps_*",
+                "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
+                "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
+                "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",
                 shadowProjectionConstants?"SHADOWS=1":"");
 
             Metal::BoundUniforms uniforms(debuggingShader);

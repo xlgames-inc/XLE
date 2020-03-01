@@ -62,7 +62,7 @@ namespace ShaderSourceParser
 	static std::string GetPreviewTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
-        str << "xleres/System/PreviewTemplates.sh:" << templateName;
+        str << "xleres/TechniqueLibrary/ToolsRig/MaterialTool/PreviewTemplates.hlsl:" << templateName;
 		return Conversion::Convert<std::string>(::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item);
     }
 
@@ -148,7 +148,7 @@ namespace ShaderSourceParser
     ParameterMachine::ParameterMachine()
     {
 		size_t fileSize = 0;
-        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/System/BuildInterpolators.h", &fileSize);
+        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/TechniqueLibrary/ToolsRig/MaterialTool/BuildInterpolators.h", &fileSize);
         _systemHeader = ShaderSourceParser::ParseHLSL(
 			MakeStringSection(
 				(const char*)buildInterpolatorsSource.get(),
@@ -352,7 +352,7 @@ namespace ShaderSourceParser
         const bool renderAsChart = previewOptions._type == PreviewOptions::Type::Chart;
         if (renderAsChart)
             result << "#define SHADER_NODE_EDITOR_CHART 1" << std::endl;
-        result << "#include \"xleres/System/BuildInterpolators.h\"" << std::endl;
+        result << "#include \"xleres/TechniqueLibrary/ToolsRig/MaterialTool/BuildInterpolators.h\"" << std::endl;
 
             //
             //      First write the "varying" parameters
@@ -554,7 +554,7 @@ namespace ShaderSourceParser
 	static std::string GetTechniqueTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
-        str << "xleres/System/TechniqueTemplates.sh:" << templateName;
+        str << "xleres/System/TechniqueTemplates.hlsl:" << templateName;
         return Conversion::Convert<std::string>(::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item);
     }
 

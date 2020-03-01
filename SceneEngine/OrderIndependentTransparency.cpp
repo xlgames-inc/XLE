@@ -25,6 +25,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -188,8 +189,8 @@ namespace SceneEngine
             const auto checkForInfiniteLoops = transparencyTargets._desc._checkInfiniteLoops;
             if (checkForInfiniteLoops) {
                 metalContext.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "xleres/forward/transparency/resolve.psh:FindInfiniteLoops:ps_*"));
+                    BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                    "xleres/forward/transparency/resolve.pixel.hlsl:FindInfiniteLoops:ps_*"));
                 metalContext.Bind(MakeResourceList(transparencyTargets._infiniteLoopRTV), nullptr);
                 metalContext.Bind(Techniques::CommonResources()._blendOpaque);
                 metalContext.Draw(4);
@@ -203,8 +204,8 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2D.vsh:fullscreen:vs_*", 
-                "xleres/forward/transparency/resolve.psh:main:ps_*",
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                "xleres/forward/transparency/resolve.pixel.hlsl:main:ps_*",
                 checkForInfiniteLoops ? "DETECT_INFINITE_LISTS=1" : nullptr);
             metalContext.Bind(resolveShader);
 

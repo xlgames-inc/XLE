@@ -1,0 +1,719 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:P4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:P4:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:P2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:P2:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:P1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:P1:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:P0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:P0:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* geometryShaderSourceP           = "xleres/animation/skinning.geo.hlsl:P:" GS_DefShaderModel;
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:PN4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:PN4:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:PN2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:PN2:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:PN1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:PN1:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vertex.hlsl:PN0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vertex.hlsl:PN0:" VS_DefShaderModel);
+FixedFunctionModel/SkinningRunTime.cpp:        const char* geometryShaderSourcePN          = "xleres/animation/skinning.geo.hlsl:PN:" GS_DefShaderModel;
+FixedFunctionModel/SkinningRunTime.cpp:            "xleres/forward/illum.vertex.hlsl:main:" VS_DefShaderModel, 
+FixedFunctionModel/SkinningRunTime.cpp:            "xleres/forward/illum.pixel.hlsl:main", "GEO_HAS_COLOR=1");
+
+
+
+
+
+PlatformRig/BasicSceneParser.cpp:        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
+PlatformRig/BasicSceneParser.cpp:        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
+PlatformRig/BasicSceneParser.cpp:        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
+
+
+
+
+
+
+PlatformRig/DebuggingDisplays/TestDisplays.cpp:                    "xleres/basic.pixel.hlsl:P:ps_*",
+PlatformRig/DebuggingDisplays/TestDisplays.cpp:                "xleres/basic.pixel.hlsl:PCT:ps_*",
+
+
+
+
+RenderCore/DX11/Metal/Shader.h:    ///     auto& shader = Assets::GetAssetDep<ShaderProgram>("shaders/basic.vertex.hlsl:main:vs_*", "shaders/basic.pixel.hlsl:main:ps_*");
+RenderCore/DX11/Metal/Shader.h:    ///     ShaderProgram myShaderProgram("shaders/basic.vertex.hlsl:main:vs_*", "shaders/basic.pixel.hlsl:main:ps_*");
+
+
+
+RenderCore/ShaderService.h:    ///         CompiledShaderByteCode byteCode("shaders/basic.pixel.hlsl:MainFunction:ps_5_0");
+RenderCore/ShaderService.h:    ///     This will load the file <b>shaders/basic.pixel.hlsl</b>, and look for the entry point
+
+RenderCore/Techniques/CommonUtils.cpp:		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
+
+
+RenderCore/Techniques/TechniqueDelegates.cpp:		const char* techFile = "xleres/Techniques/Illum.tech";
+
+
+
+RenderCore/Vulkan/Metal/DeviceContext.cpp:        globals._graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignature.cfg");
+RenderCore/Vulkan/Metal/DeviceContext.cpp:        globals._computeRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignatureCS.cfg");
+
+
+RenderOverlays/animationvisualization.cpp:				"xleres/forward/illum.vertex.hlsl:main:" VS_DefShaderModel, 
+RenderOverlays/animationvisualization.cpp:				"xleres/forward/unlit.pixel.hlsl:main", "GEO_HAS_COLOR=1");
+
+RenderOverlays/DebuggingDisplay.cpp:            "Utility\\DebuggingShapes.pixel.hlsl:ScrollBarShader");
+RenderOverlays/DebuggingDisplay.cpp:            "Utility\\DebuggingShapes.pixel.hlsl:TagShader");
+RenderOverlays/DebuggingDisplay.cpp:            "Utility\\DebuggingShapes.pixel.hlsl:GridBackgroundShader");
+
+
+RenderOverlays/FontRendering.cpp:		const char vertexShaderSource[]   = "xleres/basic2D.vertex.hlsl:P2CT:" VS_DefShaderModel;
+RenderOverlays/FontRendering.cpp:		const char pixelShaderSource[]    = "xleres/basic.pixel.hlsl:PCT_Text:" PS_DefShaderModel;
+RenderOverlays/FT_Font.cpp:		const char* fontCfg = "xleres/DefaultResources/fonts/fonts.dat";
+
+RenderOverlays/HighlightEffects.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+RenderOverlays/HighlightEffects.cpp:                "xleres/Vis/HighlightVis.pixel.hlsl:HighlightByStencil:ps_*",
+RenderOverlays/HighlightEffects.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+RenderOverlays/HighlightEffects.cpp:                "xleres/Vis/HighlightVis.pixel.hlsl:OutlineByStencil:ps_*",
+RenderOverlays/HighlightEffects.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+RenderOverlays/HighlightEffects.cpp:            "xleres/effects/outlinehighlight.pixel.hlsl:main:ps_*");
+RenderOverlays/HighlightEffects.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+RenderOverlays/HighlightEffects.cpp:            "xleres/effects/outlinehighlight.pixel.hlsl:main_shadow:ps_*");
+
+
+RenderOverlays/OverlayContext.cpp:                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vertex.hlsl:P2CR:vs_*":"xleres/basic3D.vertex.hlsl:PCR:vs_*";
+RenderOverlays/OverlayContext.cpp:                geometryShaderSource = "xleres/basic.geo.hlsl:PCR:gs_*";
+RenderOverlays/OverlayContext.cpp:                pixelShaderDefault = "xleres/basic.pixel.hlsl:PC:ps_*";
+RenderOverlays/OverlayContext.cpp:                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vertex.hlsl:P2C:vs_*":"xleres/basic3D.vertex.hlsl:PC:vs_*";
+RenderOverlays/OverlayContext.cpp:                pixelShaderDefault = "xleres/basic.pixel.hlsl:PC:ps_*";
+RenderOverlays/OverlayContext.cpp:                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vertex.hlsl:P2CT:vs_*":"xleres/basic3D.vertex.hlsl:PCT:vs_*";
+RenderOverlays/OverlayContext.cpp:                pixelShaderDefault = "xleres/basic.pixel.hlsl:PCT:ps_*";
+RenderOverlays/OverlayContext.cpp:                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vertex.hlsl:P2CCTT:vs_*":"xleres/basic3D.vertex.hlsl:PCCTT:vs_*";
+RenderOverlays/OverlayContext.cpp:                pixelShaderDefault = "xleres/basic.pixel.hlsl:PCT:ps_*";
+
+RenderOverlays/Overlays/Browser.cpp:            "xleres/basic2D.vertex.hlsl:P2T:" VS_DefShaderModel, 
+RenderOverlays/Overlays/Browser.cpp:            "xleres/basic.pixel.hlsl:copy_point_scrolllimit:" PS_DefShaderModel);
+
+
+
+
+RenderOverlays/Overlays/ShadowFrustumDebugger.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*",
+RenderOverlays/Overlays/ShadowFrustumDebugger.cpp:            "xleres/deferred/debugging/cascadevis.pixel.hlsl:main:ps_*",
+
+Samples/Environment/EnvironmentSample.cpp:        mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
+
+
+Samples/HelloWorld/BasicScene.cpp:        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
+Samples/HelloWorld/BasicScene.cpp:        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
+Samples/HelloWorld/BasicScene.cpp:        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
+
+Samples/HelloWorld/PostSceneRender.cpp:    ///         the resource box in SceneEngine/TechniqueLibrary/Framework/CommonResources.hlsl).
+Samples/Legacy/ShaderScan/Main.cpp:			xleres/Objects/Example/ProcWood/Wood_04_G.graph::Wood_04_G
+
+
+Samples/Legacy/TestPlatform/TestPlatformSample.cpp:        mainInputHandler->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
+
+
+
+
+
+Samples/Shared/SampleRig.cpp:            sampleGlobals._mainInputHander->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
+
+
+
+
+
+Samples/TextureTransform/Transform.cpp:            auto vsByteCode = LoadShaderImmediate("xleres/basic2D.vertex.hlsl:fullscreen:" VS_DefShaderModel);
+
+
+SceneEngine/AmbientOcclusion.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/postprocess/debugging.pixel.hlsl:AODebugging:ps_*"));
+
+
+SceneEngine/DeepOceanSim.cpp:        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
+SceneEngine/DeepOceanSim.cpp:        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
+SceneEngine/DeepOceanSim.cpp:        auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:Setup:cs_*", fftDefines);
+SceneEngine/DeepOceanSim.cpp:        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*", shaderDefines.get());
+SceneEngine/DeepOceanSim.cpp:        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*", shaderDefines.get());
+SceneEngine/DeepOceanSim.cpp:        const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
+SceneEngine/DeepOceanSim.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.pixel.hlsl:main:ps_*"));
+
+
+SceneEngine/DepthWeightedTransparency.cpp:                "xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
+
+
+SceneEngine/DualContourRender.cpp:            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+SceneEngine/DualContourRender.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/DualContourRender.cpp:                "xleres/forward/transparency/cloudresolve.pixel.hlsl:main:ps_*");
+SceneEngine/DualContourRender.cpp:            context->Bind(resolveShader);
+
+
+
+
+
+SceneEngine/Erosion.cpp:        auto& updateShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:UpdateSediment:cs_*", defines);
+SceneEngine/Erosion.cpp:        auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
+SceneEngine/Erosion.cpp:        auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
+SceneEngine/Erosion.cpp:                    pixelShader = "xleres/ocean/erosiondebug.sh:ps_hardMaterials:ps_*";
+SceneEngine/Erosion.cpp:                    pixelShader = "xleres/ocean/erosiondebug.sh:ps_softMaterials:ps_*";
+SceneEngine/Erosion.cpp:                    "xleres/basic3D.vertex.hlsl:PT:vs_*", pixelShader);
+
+
+SceneEngine/FluidHelper.cpp:                pixelShader = "xleres/cfd/debug.sh:ps_scalarfield:ps_*";
+SceneEngine/FluidHelper.cpp:                pixelShader = "xleres/cfd/debug.sh:ps_vectorfield:ps_*";
+SceneEngine/FluidHelper.cpp:                "xleres/basic3D.vertex.hlsl:PT:vs_*", pixelShader);
+SceneEngine/FluidHelper.cpp:            if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";
+SceneEngine/FluidHelper.cpp:            else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "xleres/cfd/debug3d.sh:ps_vectorfield:ps_*";
+SceneEngine/FluidHelper.cpp:            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>("xleres/basic3D.vertex.hlsl:PT:vs_*", pixelShader);
+
+
+
+
+
+
+
+
+
+SceneEngine/LightingParser.cpp:                        "xleres/utility/metricsrender.vertex.hlsl:main:vs_*", 
+SceneEngine/LightingParser.cpp:                        "xleres/utility/metricsrender.geo.hlsl:main:gs_*",
+SceneEngine/LightingParser.cpp:                        "xleres/utility/metricsrender.pixel.hlsl:main:ps_*",
+SceneEngine/LightingParser.cpp:                    3, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T")->Actualize()->GetShaderResource()));
+
+
+
+
+SceneEngine/LightingParserResolve.cpp:            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(10, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
+SceneEngine/LightingParserResolve.cpp:            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(16, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT")->Actualize()->GetShaderResource()));
+SceneEngine/LightingParserResolve.cpp:				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosslut.dds:LT")->Actualize()->GetShaderResource(),
+SceneEngine/LightingParserResolve.cpp:				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT")->Actualize()->GetShaderResource()));
+SceneEngine/LightingParserResolve.cpp:						ConsoleRig::FindCachedBoxDep2<AmbientResolveShaders>(
+SceneEngine/LightingParserResolve.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/LightingParserResolve.cpp:            "xleres/deferred/persamplemask.pixel.hlsl:main:ps_*", definesTable);
+
+
+SceneEngine/LightingTargets.cpp:                ? "xleres/basic2D.vertex.hlsl:fullscreen_flip_viewfrustumvector:vs_*"
+SceneEngine/LightingTargets.cpp:                : "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*"
+SceneEngine/LightingTargets.cpp:                "xleres/deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
+SceneEngine/LightingTargets.cpp:                "xleres/deferred/resolvelightgraph.pixel.hlsl:main:ps_*",
+SceneEngine/LightingTargets.cpp:                "xleres/deferred/resolvelight.pixel.hlsl:main:!ps_*",
+SceneEngine/LightingTargets.cpp:                    ? "xleres/deferred/resolvelight.pixel.hlsl:main:ps_*"
+SceneEngine/LightingTargets.cpp:                    : "xleres/deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
+SceneEngine/LightingTargets.cpp:                ? "xleres/basic2D.vertex.hlsl:fullscreen_flip_viewfrustumvector:vs_*"
+SceneEngine/LightingTargets.cpp:                : "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*"
+SceneEngine/LightingTargets.cpp:            "xleres/deferred/resolveambient.pixel.hlsl:ResolveAmbient:ps_*",
+SceneEngine/LightingTargets.cpp:        const auto* ps = "xleres/deferred/debugging.pixel.hlsl:GBufferDebugging:ps_*";
+SceneEngine/LightingTargets.cpp:            ps = "xleres/deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
+SceneEngine/LightingTargets.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", ps, meld.get());
+
+
+
+
+SceneEngine/MetricsBox.cpp:            "xleres/utility/metricsrender.geo.hlsl:main:gs_*",
+SceneEngine/MetricsBox.cpp:            "xleres/utility/metricsrender.pixel.hlsl:main:ps_*",
+SceneEngine/MetricsBox.cpp:        const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
+
+
+
+
+SceneEngine/Ocean.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.pixel.hlsl:copy:ps_*"));
+SceneEngine/Ocean.cpp:        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
+SceneEngine/Ocean.cpp:        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
+SceneEngine/Ocean.cpp:        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:Lowpass:cs_*"));
+SceneEngine/Ocean.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.pixel.hlsl:main:ps_*"));
+SceneEngine/Ocean.cpp:                "xleres/forward/illum.vertex.hlsl:main:vs_*", 
+SceneEngine/Ocean.cpp:                "xleres/forward/illum.pixel.hlsl:main:ps_*",
+SceneEngine/Ocean.cpp:                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
+SceneEngine/Ocean.cpp:                "xleres/Ocean/OceanPatch.vertex.hlsl:main:vs_*",
+SceneEngine/Ocean.cpp:                "xleres/solidwireframe.geo.hlsl:main:gs_*",
+SceneEngine/Ocean.cpp:                "xleres/solidwireframe.pixel.hlsl:outlinepatch:ps_*",
+SceneEngine/Ocean.cpp:            // ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
+SceneEngine/Ocean.cpp:            const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
+SceneEngine/Ocean.cpp:            const unsigned shallowGridDimension = Tweakable("OceanShallowGridDimension", 128);
+SceneEngine/Ocean.cpp:            const bool usePipeModel = Tweakable("OceanShallowPipeModel", false);
+
+
+
+SceneEngine/OrderIndependentTransparency.cpp:                    "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/OrderIndependentTransparency.cpp:                    "xleres/forward/transparency/resolve.pixel.hlsl:FindInfiniteLoops:ps_*"));
+SceneEngine/OrderIndependentTransparency.cpp:            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+SceneEngine/OrderIndependentTransparency.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/OrderIndependentTransparency.cpp:                "xleres/forward/transparency/resolve.pixel.hlsl:main:ps_*",
+SceneEngine/OrderIndependentTransparency.cpp:            metalContext.Bind(resolveShader);
+
+
+
+
+
+
+
+
+SceneEngine/Rain.cpp:                "xleres/effects/rainparticles.sh:vs_main:vs_*", 
+SceneEngine/Rain.cpp:                "xleres/effects/rainparticles.sh:gs_main:gs_*",
+SceneEngine/Rain.cpp:                "xleres/effects/rainparticles.sh:ps_main:ps_*",
+SceneEngine/Rain.cpp:                = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+SceneEngine/Rain.cpp:                "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
+SceneEngine/Rain.cpp:                = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+SceneEngine/Rain.cpp:                "xleres/effects/simrain.sh:vs_main:vs_*", 
+SceneEngine/Rain.cpp:                "xleres/effects/rainparticles.sh:gs_main:gs_*",
+SceneEngine/Rain.cpp:                "xleres/effects/rainparticles.sh:ps_main:ps_*",
+SceneEngine/Rain.cpp:                "xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
+SceneEngine/Rain.cpp:                =* ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+SceneEngine/Rain.cpp:                "xleres/effects/sparkparticlestest.sh:vs_main:vs_*", 
+SceneEngine/Rain.cpp:                "xleres/effects/sparkparticlestest.sh:gs_main:gs_*",
+SceneEngine/Rain.cpp:                "xleres/effects/sparkparticlestest.sh:ps_main:ps_*",
+
+
+
+SceneEngine/RayTracedShadows.cpp:            //      1. rtwritetiles shader writes triangles out in a stream-output step
+SceneEngine/RayTracedShadows.cpp:            //      2. transform triangles first, then pass that information through the rtwritetiles shader
+SceneEngine/RayTracedShadows.cpp:                "xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
+SceneEngine/RayTracedShadows.cpp:                "xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
+SceneEngine/RayTracedShadows.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/RayTracedShadows.cpp:            "xleres/shadowgen/rtshadmetrics.sh:ps_main:ps_*",
+
+
+SceneEngine/RayVsModel.cpp:		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+SceneEngine/RefractionsBuffer.cpp:                        "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/RefractionsBuffer.cpp:                        "xleres/Effects/SeparableFilter.pixel.hlsl:SingleStepDownSample:ps_*",
+SceneEngine/RefractionsBuffer.cpp:                    "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/RefractionsBuffer.cpp:                    "xleres/Effects/SeparableFilter.pixel.hlsl:HorizontalBlur:ps_*"));
+SceneEngine/RefractionsBuffer.cpp:                    "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/RefractionsBuffer.cpp:                    "xleres/Effects/SeparableFilter.pixel.hlsl:VerticalBlur:ps_*"));
+
+SceneEngine/RenderingUtils.cpp:                "xleres/forward/illum.vertex.hlsl:main:" VS_DefShaderModel, 
+SceneEngine/RenderingUtils.cpp:                "xleres/forward/illum.pixel.hlsl:main", 
+
+
+SceneEngine/RenderStep_Forward.cpp:		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+SceneEngine/RenderStep_Forward.cpp:			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+
+SceneEngine/RenderStep_GBuffer.cpp:		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+
+
+
+SceneEngine/SceneEngineUtils.cpp:        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
+SceneEngine/SceneEngineUtils.cpp:		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
+SceneEngine/SceneEngineUtils.cpp:                "xleres/basic.pixel.hlsl:copy_depth:ps_*"));
+SceneEngine/SceneEngineUtils.cpp:                    "xleres/basic.pixel.hlsl:copy_boxfilter:ps_*");
+SceneEngine/SceneEngineUtils.cpp:                    "xleres/basic.pixel.hlsl:copy_boxfilter_alphacomplementweight:ps_*");
+SceneEngine/SceneEngineUtils.cpp:                    "xleres/basic.pixel.hlsl:copy_bilinear:ps_*");
+
+
+
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/screenspacerefl/DownsampleStep.pixel.hlsl:main:ps_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/screenspacerefl/BlurStep.pixel.hlsl:HorizontalBlur:ps_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/screenspacerefl/BlurStep.pixel.hlsl:VerticalBlur:ps_*",
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*", 
+SceneEngine/ScreenspaceReflections.cpp:            "xleres/screenspacerefl/debugging.pixel.hlsl:main:ps_*",
+SceneEngine/ScreenspaceReflections.cpp:            // todo -- we have to bind the gbuffer here!
+
+
+
+
+SceneEngine/ShallowSurface.cpp:            parserContext, techniqueIndex, "xleres/ocean/shallowsurface.tech");
+SceneEngine/ShallowSurface.cpp:            parserContext, techniqueIndex, "xleres/ocean/shallowsurface.tech");
+
+
+
+
+SceneEngine/ShallowWater.cpp:            auto& cshaderH = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:RunSimulationH:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:            auto& cshaderV = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:RunSimulationV:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:                    "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
+SceneEngine/ShallowWater.cpp:                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
+SceneEngine/ShallowWater.cpp:                "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", 
+SceneEngine/ShallowWater.cpp:                "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:            usePipeModel?"xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:                "xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:        const auto shallowWaterBorderMode = (BorderMode::Enum)Tweakable("OceanShallowBorder", 1);
+SceneEngine/ShallowWater.cpp:            metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
+SceneEngine/ShallowWater.cpp:            auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:            auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
+SceneEngine/ShallowWater.cpp:            //      "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/ShallowWater.cpp:            //      "xleres/Ocean/FFTDebugging.pixel.hlsl:ShallowWaterDebugging:ps_*"));
+SceneEngine/ShallowWater.cpp:        if (Tweakable("OceanShallowDrawWireframe", false)) {
+SceneEngine/ShallowWater.cpp:            "xleres/Ocean/OceanPatch.vertex.hlsl:ShallowWater:vs_*",
+SceneEngine/ShallowWater.cpp:            "xleres/solidwireframe.geo.hlsl:main:gs_*",
+SceneEngine/ShallowWater.cpp:            "xleres/solidwireframe.pixel.hlsl:main:ps_*",
+SceneEngine/ShallowWater.cpp:            "xleres/Ocean/OceanVelocitiesDebugging.sh:vs_main:vs_*",
+SceneEngine/ShallowWater.cpp:            "xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
+
+
+
+SceneEngine/Sky.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector_deep:vs_*",
+SceneEngine/Sky.cpp:            //     "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector_deep:vs_*",
+
+
+
+SceneEngine/StochasticTransparency.cpp:                "xleres/basic.pixel.hlsl:copy:ps_*");
+
+
+
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:ps_blur:ps_*",
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
+SceneEngine/SunFlare.cpp:            "xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
+
+
+
+
+
+
+SceneEngine/TerrainConfig.h:    /// Terrain has it own native "terrain" and "cell-based" coordinate systems. However, these
+
+
+
+SceneEngine/TerrainMaterialTextures.cpp:                auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("xleres/basic.csh:ResamplePoint:cs_*");
+
+
+
+SceneEngine/TerrainRender.cpp:            ? "xleres/objects/terrain/TerrainBasePS.sh:ps_main:!ps_*" 
+SceneEngine/TerrainRender.cpp:            : "xleres/solidwireframe.pixel.hlsl:main:ps_*";
+SceneEngine/TerrainRender.cpp:            gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
+SceneEngine/TerrainRender.cpp:            gs = "xleres/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*";
+SceneEngine/TerrainRender.cpp:            gs = "xleres/solidwireframe.geo.hlsl:main:gs_*";
+SceneEngine/TerrainRender.cpp:                "xleres/objects/terrain/GeoGenerator.sh:vs_dyntess_main:vs_*", 
+SceneEngine/TerrainRender.cpp:                "xleres/objects/terrain/GeoGenerator.sh:hs_main:hs_*",
+SceneEngine/TerrainRender.cpp:                "xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
+SceneEngine/TerrainRender.cpp:                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+SceneEngine/TerrainRender.cpp:                    "xleres/solidwireframe.geo.hlsl:main:gs_*", 
+SceneEngine/TerrainRender.cpp:                    "xleres/solidwireframe.pixel.hlsl:main:ps_*", "");
+SceneEngine/TerrainRender.cpp:                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+SceneEngine/TerrainRender.cpp:                    "xleres/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*", 
+SceneEngine/TerrainRender.cpp:                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+SceneEngine/TerrainRender.cpp:                    "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*", 
+
+
+SceneEngine/TerrainShortCircuit.cpp:        const ::Assets::ResChar firstPassShader[] = "xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
+SceneEngine/TerrainShortCircuit.cpp:        const ::Assets::ResChar secondPassShader[] = "xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
+SceneEngine/TerrainShortCircuit.cpp:        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+
+
+
+SceneEngine/TerrainUberSurface.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/TerrainUberSurface.cpp:                "xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
+SceneEngine/TerrainUberSurface.cpp:    #define baseShader "xleres/ui/terrainmodification.sh:"
+SceneEngine/TerrainUberSurface.cpp:        return ApplyTool(context, adjMins, adjMaxs, "xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
+
+
+
+
+SceneEngine/TiledLighting.cpp:        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T")->Actualize()->GetShaderResource()));
+SceneEngine/TiledLighting.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/TiledLighting.cpp:            "xleres/deferred/debugging.pixel.hlsl:DepthsDebuggingTexture:ps_*");
+SceneEngine/TiledLighting.cpp:                context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.csh:PrepareLights"));
+SceneEngine/TiledLighting.cpp:                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/clustered.csh:main", definesTable));
+SceneEngine/TiledLighting.cpp:                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.csh:main", definesTable));
+SceneEngine/TiledLighting.cpp:                        auto& fogShaders = FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(1, useMsaaSamplers, false));
+SceneEngine/TiledLighting.cpp:                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+
+
+SceneEngine/Tonemap.cpp:        _sampleInitialLuminanceByteCode    = &::Assets::GetAssetDep<CompiledShaderByteCode>("xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines.get());
+SceneEngine/Tonemap.cpp:        _luminanceStepDown          = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
+SceneEngine/Tonemap.cpp:        _updateOverallLuminance     = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
+SceneEngine/Tonemap.cpp:        _brightPassStepDown         = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
+SceneEngine/Tonemap.cpp:        _updateOverallLuminanceNoAdapt = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
+SceneEngine/Tonemap.cpp:                    "xleres/Effects/SeparableFilter.csh:HorizontalBlur11NoScale:cs_*",
+SceneEngine/Tonemap.cpp:                    "xleres/Effects/SeparableFilter.csh:VerticalBlur11NoScale:cs_*",
+SceneEngine/Tonemap.cpp:                    "xleres/basic.csh:ResampleBilinear:cs_*");
+SceneEngine/Tonemap.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*",
+SceneEngine/Tonemap.cpp:            "xleres/postprocess/tonemap.pixel.hlsl:main:ps_*", 
+SceneEngine/Tonemap.cpp:                    "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/basic.pixel.hlsl:fake_tonemap:ps_*"));
+SceneEngine/Tonemap.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", "xleres/postprocess/debugging.pixel.hlsl:HDRDebugging:ps_*"));
+SceneEngine/Tonemap.cpp:            "xleres/postprocess/debugging.pixel.hlsl:LuminanceValue:vs_*", 
+SceneEngine/Tonemap.cpp:            "xleres/utility/metricsrender.geo.hlsl:main:gs_*",
+SceneEngine/Tonemap.cpp:            "xleres/utility/metricsrender.pixel.hlsl:main:ps_*", ""));
+SceneEngine/Tonemap.cpp:        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T")->Actualize()->GetShaderResource()));
+SceneEngine/Tonemap.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/Tonemap.cpp:            "xleres/Effects/distantblur.pixel.hlsl:HorizontalBlur_DistanceWeighted:ps_*");
+SceneEngine/Tonemap.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/Tonemap.cpp:            "xleres/Effects/distantblur.pixel.hlsl:VerticalBlur_DistanceWeighted:ps_*");
+SceneEngine/Tonemap.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/Tonemap.cpp:            "xleres/Effects/distantblur.pixel.hlsl:integrate:ps_*");
+
+SceneEngine/VegetationSpawn.cpp:                "xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
+
+
+
+
+SceneEngine/VolumetricFog.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:            "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:BuildExponentialShadowMap:ps_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalBoxFilter11:ps_*",
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalBoxFilter11:ps_*",
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalFilter7:ps_*");
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalFilter7:ps_*");
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalFilter5:ps_*");
+SceneEngine/VolumetricFog.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:                "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalFilter5:ps_*");
+SceneEngine/VolumetricFog.cpp:            "xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
+SceneEngine/VolumetricFog.cpp:            "xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
+SceneEngine/VolumetricFog.cpp:                ? "xleres/basic2D.vertex.hlsl:fullscreen_flip_viewfrustumvector:vs_*"
+SceneEngine/VolumetricFog.cpp:                : "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*"
+SceneEngine/VolumetricFog.cpp:            vertexShader, "xleres/VolumetricEffect/resolvefog.pixel.hlsl:ResolveFog:ps_*", definesTable);
+SceneEngine/VolumetricFog.cpp:            vertexShader, "xleres/VolumetricEffect/resolvefog.pixel.hlsl:ResolveFogNoGrid:ps_*", definesTable);
+SceneEngine/VolumetricFog.cpp:                    "xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
+SceneEngine/VolumetricFog.cpp:            "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+SceneEngine/VolumetricFog.cpp:            "xleres/volumetriceffect/debugging.pixel.hlsl:VolumeShadows:ps_*",
+
+
+
+ShaderParser/StructureForPreview.cpp:        str << "xleres/System/PreviewTemplates.sh:" << templateName;
+ShaderParser/StructureForPreview.cpp:        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/System/BuildInterpolators.h", &fileSize);
+
+
+
+
+
+
+
+Tools/ToolsRig/ManipulatorsRender.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*",
+Tools/ToolsRig/ManipulatorsRender.cpp:                "xleres/ui/terrainmanipulators.sh:ps_circlehighlight:ps_*");
+Tools/ToolsRig/ManipulatorsRender.cpp:            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+Tools/ToolsRig/ManipulatorsRender.cpp:                "xleres/basic2D.vertex.hlsl:fullscreen_viewfrustumvector:vs_*",
+Tools/ToolsRig/ManipulatorsRender.cpp:					? "xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*"
+Tools/ToolsRig/ManipulatorsRender.cpp:					: "xleres/ui/terrainmanipulators.sh:ps_lockedareahighlight:ps_*");
+Tools/ToolsRig/ManipulatorsRender.cpp:            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+Tools/ToolsRig/ManipulatorsRender.cpp:                "xleres/ui/objgen/arealight.tech");
+Tools/ToolsRig/ManipulatorsRender.cpp:            "xleres/basic2D.vertex.hlsl:P2T:" VS_DefShaderModel, 
+Tools/ToolsRig/ManipulatorsRender.cpp:            "xleres/basic.pixel.hlsl:copy_bilinear:" PS_DefShaderModel);
+
+
+
+
+Tools/ToolsRig/ObjectPlaceholders.cpp:				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+Tools/ToolsRig/ObjectPlaceholders.cpp:				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+Tools/ToolsRig/ObjectPlaceholders.cpp:				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech");
+
+
+Tools/ToolsRig/PlacementsManipulators.cpp:                "xleres/DefaultResources/icon_save.png",
+Tools/ToolsRig/PlacementsManipulators.cpp:                "xleres/DefaultResources/icon_test.png",
+Tools/ToolsRig/PlacementsManipulators.cpp:                "xleres/DefaultResources/icon_test.png",
+
+
+
+
+
+
+Tools/ToolsRig/TerrainManipulatorsInterface.cpp:                "Utility\\DebuggingShapes.pixel.hlsl:SmallGridBackground");
+
+
+
+
+
+
+
+UnitTests/LightingParserExecuteTests.cpp:		~AmbientSettings; SpecularIBL=Game/xleres/DefaultResources/sky/samplesky2_specular.dds
+UnitTests/LightingParserExecuteTests.cpp:			SkyTexture=Game/xleres/DefaultResources/sky/samplesky2.dds; Flags=0i
+UnitTests/LightingParserExecuteTests.cpp:			DiffuseIBL=Game/xleres/DefaultResources/sky/samplesky2_diffuse.dds; SkyReflectionScale=1f
+
+
+
+
+
+
+UnitTests/PipelineAcceleratorTests.cpp:				resourceBindings.SetParameter(u("BoundTexture"), "xleres/DefaultResources/waternoise.png");
+
+
+
+
+UnitTests/ReusableDataFiles.h:		VertexShader=xleres/deferred/basic.vertex.hlsl:main
+UnitTests/ReusableDataFiles.h:		PixelShader=xleres/deferred/basic.pixel.hlsl:main
+UnitTests/ReusableDataFiles.h:		VertexShader=xleres/deferred/basic.vertex.hlsl:main
+UnitTests/ReusableDataFiles.h:		PixelShader=xleres/deferred/main.pixel.hlsl:frameworkEntry
+UnitTests/ReusableDataFiles.h:		VertexShader=xleres/deferred/basic.vertex.hlsl:main
+UnitTests/ReusableDataFiles.h:		PixelShader=xleres/deferred/main.pixel.hlsl:frameworkEntryWithEarlyRejection
+UnitTests/ShaderParserTests.cpp:					~Inherit; xleres/Techniques/Illum.tech:Deferred
+UnitTests/ShaderParserTests.cpp:					~Inherit; xleres/Techniques/Illum.tech:Deferred
+UnitTests/ShaderParserTests.cpp:					PixelShader=xleres/deferred/main.pixel.hlsl:frameworkEntry
+UnitTests/ShaderPatchCollection.cpp:				import templates = "xleres/Nodes/Templates.sh"
+UnitTests/ShaderPatchCollection.cpp:				import texture = "xleres/Nodes/Texture.sh"
+UnitTests/ShaderPatchCollection.cpp:				import gbuffer = "TechniqueLibrary/Core/gbuffer.hlsl"
+UnitTests/ShaderPatchCollection.cpp:				import templates = "xleres/Nodes/Templates.sh"
+UnitTests/ShaderPatchCollection.cpp:				import output = "xleres/Nodes/Output.sh"
+UnitTests/ShaderPatchCollection.cpp:				import materialParam = "xleres/Nodes/MaterialParam.sh"
+
+
+
+UnitTests/ShaderPatchCollection.cpp:				import templates = "xleres/Nodes/Templates.sh"
+UnitTests/ShaderPatchCollection.cpp:				import output = "xleres/Nodes/Output.sh"
+UnitTests/ShaderPatchCollection.cpp:				import materialParam = "xleres/Nodes/MaterialParam.sh"
+UnitTests/ShaderPatchCollection.cpp:					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
+UnitTests/ShaderPatchCollection.cpp:					"TechniqueLibrary/Core/gbuffer.hlsl",									// 1st level include from shader
+UnitTests/ShaderPatchCollection.cpp:					"xleres/Binding.hlsl"									// 2nd level include from shader
+UnitTests/ShaderPatchCollection.cpp:					"xleres/Nodes/Output.sh",				// imported but not used
+UnitTests/ShaderPatchCollection.cpp:					"TechniqueLibrary/Framework/CommonResources.hlsl",			// raw shaders will be imported, but will not show up as dep vals from InstantiateShader
+UnitTests/ShaderPatchCollection.cpp:					"TechniqueLibrary/Framework/MainGeometry.hlsl"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

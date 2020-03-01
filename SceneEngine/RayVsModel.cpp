@@ -35,6 +35,7 @@
 #include "../Assets/DepVal.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -334,7 +335,7 @@ namespace SceneEngine
 			metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
 		#endif
 
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
 		auto techDelegate = CreateTechniqueDelegate(techniqueSetFile, sharedResources);
 

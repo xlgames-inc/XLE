@@ -16,6 +16,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -64,8 +65,8 @@ namespace SceneEngine
             // the CPU.
         const auto& shader = ::Assets::GetAssetDep<Metal::DeepShaderProgram>(
             (StringMeld<MaxPath, ::Assets::ResChar>() << shaderName << ":metricsrig_main:!vs_*").get(),
-            "xleres/utility/metricsrender.gsh:main:gs_*",
-            "xleres/utility/metricsrender.psh:main:ps_*",
+            METRICS_RENDER_GEO_HLSL ":main:gs_*",
+            METRICS_RENDER_PIXEL_HLSL ":main:ps_*",
             "", "", 
             (StringMeld<64>() << "VALUE_SOURCE_COUNT=" << valueSources.size()).get());
         Metal::BoundClassInterfaces boundInterfaces(shader);

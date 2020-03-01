@@ -1,6 +1,6 @@
 
-#include "../Transform.h"
-#include "../MainGeometry.h"
+#include "../TechniqueLibrary/Framework/Transform.hlsl"
+#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 float GetSceneTime()
 {

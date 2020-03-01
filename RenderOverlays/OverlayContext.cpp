@@ -27,6 +27,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -447,25 +448,25 @@ namespace RenderOverlays
         if (desc._topology == Topology::PointList) {
 
             if (desc._format == PCR) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CR:vs_*":"xleres/basic3D.vsh:PCR:vs_*";
-                geometryShaderSource = "xleres/basic.gsh:PCR:gs_*";
-                pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)? BASIC2D_VERTEX_HLSL ":P2CR:vs_*" : BASIC3D_VERTEX_HLSL ":PCR:vs_*";
+                geometryShaderSource = BASIC_GEO_HLSL ":PCR:gs_*";
+                pixelShaderDefault = BASIC_PIXEL_HLSL ":PC:ps_*";
                 inputLayout = MakeIteratorRange(Vertex_PCR::inputElements);
             }
 
         } else {
 
             if (desc._format == PC) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2C:vs_*":"xleres/basic3D.vsh:PC:vs_*";
-                pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)? BASIC2D_VERTEX_HLSL ":P2C:vs_*" : BASIC3D_VERTEX_HLSL ":PC:vs_*";
+                pixelShaderDefault = BASIC_PIXEL_HLSL ":PC:ps_*";
                 inputLayout = MakeIteratorRange(Vertex_PC::inputElements);
             } else if (desc._format == PCT) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CT:vs_*":"xleres/basic3D.vsh:PCT:vs_*";
-                pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)? BASIC2D_VERTEX_HLSL ":P2CT:vs_*" : BASIC3D_VERTEX_HLSL ":PCT:vs_*";
+                pixelShaderDefault = BASIC_PIXEL_HLSL ":PCT:ps_*";
                 inputLayout = MakeIteratorRange(Vertex_PCT::inputElements);
             } else if (desc._format == PCCTT) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CCTT:vs_*":"xleres/basic3D.vsh:PCCTT:vs_*";
-                pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)? BASIC2D_VERTEX_HLSL ":P2CCTT:vs_*" : BASIC3D_VERTEX_HLSL ":PCCTT:vs_*";
+                pixelShaderDefault = BASIC_PIXEL_HLSL ":PCT:ps_*";
                 inputLayout = MakeIteratorRange(Vertex_PCCTT::inputElements);
             }
 

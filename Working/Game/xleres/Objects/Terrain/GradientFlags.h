@@ -7,7 +7,7 @@
 #if !defined(GRADIENT_FLAGS_H)
 #define GRADIENT_FLAGS_H
 
-#include "../../Utility/EdgeDetection.h"
+#include "../../TechniqueLibrary/Math/EdgeDetection.hlsl"
 
 float2 CalculateDHDXY(int2 coord)
 {

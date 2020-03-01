@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Cubemap.h"
-#include "../Utility/MathConstants.h"
-#include "../Lighting/LightingAlgorithm.h"
+#include "../TechniqueLibrary/Math/MathConstants.hlsl"
+#include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
 
 Texture2D Input;
 SamplerState DefaultSampler;

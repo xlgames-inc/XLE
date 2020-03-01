@@ -63,8 +63,8 @@ namespace SceneEngine
 			auto& metalContext = *Metal::DeviceContext::Get(context);
 
             const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
-                "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-                "xleres/forward/illum.psh:main", 
+                "xleres/forward/illum.vertex.hlsl:main:" VS_DefShaderModel, 
+                "xleres/forward/illum.pixel.hlsl:main", 
                 "GEO_HAS_COLOR=1");
             BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
 			VertexBufferView vbvs[] = {&vertexBuffer};

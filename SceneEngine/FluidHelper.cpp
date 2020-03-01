@@ -11,6 +11,7 @@
 #include "../RenderCore/Techniques/CommonUtils.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -372,13 +373,13 @@ namespace SceneEngine
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar) {
-                pixelShader = "xleres/cfd/debug.sh:ps_scalarfield:ps_*";
+                pixelShader = "xleres/cfd/debug.hlsl:ps_scalarfield:ps_*";
             } else if (debuggingMode == RenderFluidMode::Vector) {
-                pixelShader = "xleres/cfd/debug.sh:ps_vectorfield:ps_*";
+                pixelShader = "xleres/cfd/debug.hlsl:ps_vectorfield:ps_*";
             }
 
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic3D.vsh:PT:vs_*", pixelShader);
+                BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
 
             Float2 wsDims = dimensions;
 
@@ -446,10 +447,10 @@ namespace SceneEngine
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
-            if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";
-            else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "xleres/cfd/debug3d.sh:ps_vectorfield:ps_*";
+            if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.hlsl:ps_scalarfield:ps_*";
+            else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "xleres/cfd/debug3d.hlsl:ps_vectorfield:ps_*";
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>("xleres/basic3D.vsh:PT:vs_*", pixelShader);
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
             Float2 wsDims = Truncate(dimensions);
 
             struct Vertex { Float3 position; Float2 texCoord; } 

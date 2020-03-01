@@ -1,0 +1,12 @@
+~Illum
+~DepthOnly
+~Deferred
+    ~Parameters
+    VertexShader=xleres/ocean/simplepatch.vertex.hlsl:main
+    PixelShader=xleres/ocean/ocean.pixel.hlsl:main
+~ShadowGen
+    ~Parameters
+    VertexShader=xleres/ocean/simplepatch.vertex.hlsl:main
+    GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
+    PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
+~OrderIndependentTransparency

@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ITerrainTexturing.h"
-#include "../Utility/MathConstants.h"
-#include "../Utility/perlinnoise.h"
+#include "../Math/MathConstants.h"
+#include "../TechniqueLibrary/Math/perlinnoise.hlsl"
 #include "HeightsSample.h"
 
 class GradFlagTexturing : ITerrainTexturing

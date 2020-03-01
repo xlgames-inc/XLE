@@ -17,6 +17,7 @@
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFutureContinuation.h"
+#include "../../xleres/FileList.h"
 #include <sstream>
 
 namespace RenderCore { namespace Techniques
@@ -104,7 +105,7 @@ namespace RenderCore { namespace Techniques
 
 	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
 	{
-		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>("xleres/Techniques/IllumLegacy.ds");
+		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>(ILLUM_LEGACY_DS);
 	}
 
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>>

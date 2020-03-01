@@ -9,8 +9,8 @@
 
 #include "TerrainGenerator.h"
 #include "HeightsSample.h"
-#include "../../MainGeometry.h"
-#include "../../Transform.h"
+#include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../../TechniqueLibrary/Framework/Transform.hlsl"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

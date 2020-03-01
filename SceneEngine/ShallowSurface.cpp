@@ -29,6 +29,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -473,7 +474,7 @@ namespace SceneEngine
 
             // First, render the tiles that are currently being simulated
         auto shader = simMaterial.FindVariation(
-            parserContext, techniqueIndex, "xleres/ocean/shallowsurface.tech");
+            parserContext, techniqueIndex, SCENE_ENGINE_RES "/Ocean/shallowsurface.tech");
         if (shader._shader._shaderProgram) {
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
                 auto page = _pimpl->_sim->BuildCellConstants(i->_gridCoord);
@@ -503,7 +504,7 @@ namespace SceneEngine
 
             //  We must also render distant tiles that don't have active simulation
         auto unsimShader = unsimMaterial.FindVariation(
-            parserContext, techniqueIndex, "xleres/ocean/shallowsurface.tech");
+            parserContext, techniqueIndex, SCENE_ENGINE_RES "/Ocean/shallowsurface.tech");
         if (unsimShader._shader._shaderProgram) {
             for (auto i=unsimulated.cbegin(); i!=unsimulated.cend(); ++i) {
                 auto& grid = _pimpl->_simGrids[*i];

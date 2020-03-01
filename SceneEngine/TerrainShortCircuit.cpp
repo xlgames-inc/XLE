@@ -27,6 +27,7 @@
 #include "../Math/Transformations.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"       // for UpdateSubResource below
 
@@ -65,8 +66,8 @@ namespace SceneEngine
 
     ShortCircuitResources::ShortCircuitResources(const Desc& desc)
     {
-        const ::Assets::ResChar firstPassShader[] = "xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
-        const ::Assets::ResChar secondPassShader[] = "xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
+        const ::Assets::ResChar firstPassShader[] = SCENE_ENGINE_RES "/Terrain/copyterraintile.hlsl:WriteToMidway:cs_*";
+        const ::Assets::ResChar secondPassShader[] = SCENE_ENGINE_RES "/Terrain/copyterraintile.hlsl:CommitToFinal:cs_*";
         StringMeld<64, char> defines; 
         defines << "VALUE_FORMAT=" << unsigned(desc._valueFormat) << ";FILTER_TYPE=" << desc._filterType;
         auto encodedGradientFlags = desc._gradientFlagsEnable;
@@ -74,7 +75,7 @@ namespace SceneEngine
 
         _cs0 = &::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
         _cs1 = &::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
-        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Terrain/copyterraintile.hlsl:DirectToFinal:cs_*", defines.get());
 
 		UniformsStreamInterface usi;
         usi.BindConstantBuffer(0, {Hash64("Parameters")});

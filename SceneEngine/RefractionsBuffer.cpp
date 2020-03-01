@@ -18,6 +18,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/DX11/Metal/Format.h"
@@ -93,8 +94,8 @@ namespace SceneEngine
             if (needStepDown) {
                 metalContext.Bind(
                     ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
+                        BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                        SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:SingleStepDownSample:ps_*",
                         (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
                 metalContext.Draw(4);
 
@@ -110,8 +111,8 @@ namespace SceneEngine
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
+                    BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                    SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:HorizontalBlur:ps_*"));
             metalContext.Draw(4);
 
             MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);
@@ -121,8 +122,8 @@ namespace SceneEngine
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsBackSRV));
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
+                    BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                    SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:VerticalBlur:ps_*"));
             metalContext.Draw(4);
                         
             MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);

@@ -35,6 +35,7 @@
 #include "../Assets/AsyncMarkerGroup.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
+#include "../xleres/FileList.h"
 
 #include <set>
 
@@ -626,9 +627,9 @@ namespace SceneEngine
                 using namespace RenderCore;
                 using namespace RenderCore::Metal;
                 auto& metricsShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "xleres/utility/metricsrender.vsh:main:vs_*", 
-                        "xleres/utility/metricsrender.gsh:main:gs_*",
-                        "xleres/utility/metricsrender.psh:main:ps_*",
+                        METRICS_RENDER_VERTEX_HLSL ":main:vs_*", 
+                        METRICS_RENDER_GEO_HLSL ":main:gs_*",
+                        METRICS_RENDER_PIXEL_HLSL ":main:ps_*",
                         "");
                 metalContext->Bind(metricsShader);
                 metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(

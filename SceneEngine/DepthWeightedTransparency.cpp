@@ -20,6 +20,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -135,8 +136,8 @@ namespace SceneEngine
         {
             SetupVertexGeneratorShader(*_context);
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2d.vsh:fullscreen:vs_*",
-                "xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+                "xleres/forward/transparency/depthweighted.hlsl:resolve:ps_*");
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Accumulator"));

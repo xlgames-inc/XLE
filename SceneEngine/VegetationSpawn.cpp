@@ -402,7 +402,7 @@ namespace SceneEngine
                 MakeMetalCB(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
 
             metalContext->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
+                SCENE_ENGINE_RES "/Vegetation/InstanceSpawnSeparate.compute.hlsl:main:cs_*", 
                 shaderParams.get()));
             metalContext->Dispatch(StreamOutputMaxCount / 256);
 

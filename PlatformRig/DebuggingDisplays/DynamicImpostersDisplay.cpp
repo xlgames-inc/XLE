@@ -38,7 +38,7 @@ namespace PlatformRig { namespace Overlays
             AsPixelCoords(Coord2(statsArea.GetMaximumSize()._bottomRight[0], statsArea.GetMaximumSize()._bottomRight[1])),
             ColorB(0x4f7f7f7f), ColorB::White,
             Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(borderSize, roundedProportion), Float2(borderSize, roundedProportion),
-            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+            "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         const unsigned lineHeight = 18;
         statsArea.AllocateFullWidth(5 * lineHeight);

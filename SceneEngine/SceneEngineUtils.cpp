@@ -25,6 +25,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/IteratorUtils.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h" // for TextureDesc
@@ -626,8 +627,8 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2d.vsh:fullscreen:vs_*",
-                "xleres/basic.psh:copy_depth:ps_*"));
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+                BASIC_PIXEL_HLSL ":copy_depth:ps_*"));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
@@ -659,20 +660,20 @@ namespace SceneEngine
                     // only sample some pixels in large downsampling 
                     // operations)
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "xleres/basic.psh:copy_boxfilter:ps_*");
+                    BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
+                    BASIC_PIXEL_HLSL ":copy_boxfilter:ps_*");
                 break;
 
             case CopyFilter::BoxFilterAlphaComplementWeight:
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "xleres/basic.psh:copy_boxfilter_alphacomplementweight:ps_*");
+                    BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
+                    BASIC_PIXEL_HLSL ":copy_boxfilter_alphacomplementweight:ps_*");
                 break;
 
             default:
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2d.vsh:screenspacerect:vs_*",
-                    "xleres/basic.psh:copy_bilinear:ps_*");
+                    BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
+                    BASIC_PIXEL_HLSL ":copy_bilinear:ps_*");
                 break;
             }
 			UniformsStreamInterface usi;

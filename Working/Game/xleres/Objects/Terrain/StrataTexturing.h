@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ITerrainTexturing.h"
-#include "../../CommonResources.h"
-#include "../../Utility/perlinnoise.h"
-#include "../../Colour.h"
+#include "../../TechniqueLibrary/Framework/CommonResources.hlsl"
+#include "../../TechniqueLibrary/Math/perlinnoise.hlsl"
+#include "../../TechniqueLibrary/Utility/Colour.hlsl"
 
     //	Big stack of terrain texture -- including normal maps and specularity textures at each level
     //	For each strata:

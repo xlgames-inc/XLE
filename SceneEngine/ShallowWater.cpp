@@ -32,6 +32,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 #pragma warning(disable:4505)       // warning C4505: 'SceneEngine::BuildSurfaceHeightsTexture' : unreferenced local function has been removed
 
@@ -552,8 +553,8 @@ namespace SceneEngine
                 _simulationGrid->_waterVelocitiesUAV[2],
                 _simulationGrid->_waterVelocitiesUAV[3]));
 
-            auto& cshaderH = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:RunSimulationH:cs_*", shaderDefines);
-            auto& cshaderV = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:RunSimulationV:cs_*", shaderDefines);
+            auto& cshaderH = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/ShallowWaterSim.compute.hlsl:RunSimulationH:cs_*", shaderDefines);
+            auto& cshaderV = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/ShallowWaterSim.compute.hlsl:RunSimulationV:cs_*", shaderDefines);
 
             for (unsigned p=0; p<2; ++p) {
                     // flip forward and reverse iteration through "box._activeSimulationElements" every frame
@@ -575,7 +576,7 @@ namespace SceneEngine
                 //  the pipe model to calculate a rough approximation of the movement of water.
             if (Tweakable("OceanVelMethod", 1)==0) {
                 auto& cshaderVel = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                    "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
+                    SCENE_ENGINE_RES "/Ocean/PipeModelShallowWaterSim.compute.hlsl:UpdateVelocities:cs_*", shaderDefines);
                 metalContext.Bind(cshaderVel);
                 DispatchEachElement(
                     context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
@@ -589,13 +590,13 @@ namespace SceneEngine
                     5, _simulationGrid->_slopesBufferUAV[0],
                     _simulationGrid->_slopesBufferUAV[1]));
 
-                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
+                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/ShallowWaterSim.compute.hlsl:UpdateVelocities0:cs_*", shaderDefines));
                 DispatchEachElement(
                     context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
                     settings, _gridDimension);
 
 
-                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
+                metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/ShallowWaterSim.compute.hlsl:UpdateVelocities1:cs_*", shaderDefines));
                 DispatchEachElement(
                     context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
                     settings, _gridDimension);
@@ -605,10 +606,10 @@ namespace SceneEngine
 
                 // have to run all of the "update velocities" first and then update heights
             auto& cshader0 = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", 
+                SCENE_ENGINE_RES "/Ocean/PipeModelShallowWaterSim.compute.hlsl:UpdateVelocities:cs_*", 
                 (StringMeld<256>() << shaderDefines << ";WRITING_VELOCITIES=1").get());
             auto& cshader1 = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", shaderDefines);
+                SCENE_ENGINE_RES "/Ocean/PipeModelShallowWaterSim.compute.hlsl:UpdateHeights:cs_*", shaderDefines);
 
                 // order is important... We must start in the bottom right corner and work to the top left
             auto sortedElements = _activeSimulationElements;
@@ -705,7 +706,7 @@ namespace SceneEngine
         BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode, _lookupTableSRV.IsGood());
 
         auto& initcshader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-            usePipeModel?"xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
+            usePipeModel?SCENE_ENGINE_RES "/Ocean/InitSimGrid.compute.hlsl:InitPipeModel:cs_*" : SCENE_ENGINE_RES "/Ocean/InitSimGrid.compute.hlsl:main:cs_*", shaderDefines);
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
         auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
@@ -762,7 +763,7 @@ namespace SceneEngine
                 _simulationGrid->_waterVelocitiesUAV[7]));
 
             auto& cshader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-                "xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
+                SCENE_ENGINE_RES "/Ocean/InitSimGrid2.compute.hlsl:InitPipeModel2:cs_*", shaderDefines);
             metalContext.Bind(cshader);
             for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
                 SetCellConstants(*context._metalContext, initCellConstantsBuffer, *i, std::vector<ActiveElement>());
@@ -954,7 +955,7 @@ namespace SceneEngine
             std::copy(gridsDestroyedThisFrame.begin(), gridsDestroyedThisFrame.end(), clearGridsConstants._indices);
             clearGridsConstants._indexCount = unsigned(gridsDestroyedThisFrame.size());
 
-            metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
+            metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/InitSimGrid.compute.hlsl:ClearGrids:cs_*"));
             metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(0, MakeMetalCB(&clearGridsConstants, sizeof(clearGridsConstants))));
             metalContext.Dispatch(unsigned(gridsDestroyedThisFrame.size()));
 
@@ -977,8 +978,8 @@ namespace SceneEngine
                 //  for slices that aren't actually used.
         if (!_simulationGrid->_normalsTextureUAV.empty()) {
 
-            auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
-            auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
+            auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/OceanNormalsShallow.compute.hlsl:BuildDerivatives:cs_*", shaderDefines);
+            auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/OceanNormalsShallow.compute.hlsl:BuildDerivativesMipmap:cs_*", shaderDefines);
 
                 // build devs shader needs to know adjacent cells on right, bottom and bottom-right edges
             int buildDevsConstants[4*128];
@@ -1027,8 +1028,8 @@ namespace SceneEngine
             // {
             //  SetupVertexGeneratorShader(context);
             //  context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
-            //      "xleres/basic2D.vsh:fullscreen:vs_*", 
-            //      "xleres/Ocean/FFTDebugging.psh:ShallowWaterDebugging:ps_*"));
+            //      "xleres/basic2D.vertex.hlsl:fullscreen:vs_*", 
+            //      "xleres/Ocean/FFTDebugging.pixel.hlsl:ShallowWaterDebugging:ps_*"));
             //  context->BindPS(MakeResourceList(   4, box._simulationGrid->_waterHeightsSRV[thisFrameBuffer],
             //                                      box._simulationGrid->_surfaceHeightsSRV));
             //  context->Draw(4);
@@ -1055,9 +1056,9 @@ namespace SceneEngine
 
         unsigned thisFrameBuffer = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
         auto& patchRender = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/Ocean/OceanPatch.vsh:ShallowWater:vs_*",
-            "xleres/solidwireframe.gsh:main:gs_*",
-            "xleres/solidwireframe.psh:main:ps_*",
+            SCENE_ENGINE_RES "/Ocean/OceanPatch.vertex.hlsl:ShallowWater:vs_*",
+            SOLID_WIREFRAME_GEO_HLSL ":main:gs_*",
+            SOLID_WIREFRAME_PIXEL_HLSL ":main:ps_*",
             shaderDefines);
 		UniformsStreamInterface usi;
 		usi.BindConstantBuffer(0, {Hash64("OceanMaterialSettings")});
@@ -1110,8 +1111,8 @@ namespace SceneEngine
 
         unsigned thisFrameBuffer = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
         auto& patchRender = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/Ocean/OceanVelocitiesDebugging.sh:vs_main:vs_*",
-            "xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
+            SCENE_ENGINE_RES "/Ocean/OceanVelocitiesDebugging.hlsl:vs_main:vs_*",
+            SCENE_ENGINE_RES "/Ocean/OceanVelocitiesDebugging.hlsl:ps_main:ps_*",
             shaderDefines);
 
 		UniformsStreamInterface usi;

@@ -29,7 +29,7 @@ attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000",
 
 
 
-#include "TextureAlgorithm.h" 	// for SystemInputs
+#include "TechniqueLibrary/Math/TextureAlgorithm.hlsl" 	// for SystemInputs
 #include "Lighting/Forward.h"
 
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))

@@ -19,6 +19,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/PtrUtils.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -103,7 +104,7 @@ namespace SceneEngine
 	RenderStep_Forward::RenderStep_Forward(bool precisionTargets)
 	: _forward(RenderCore::PipelineType::Graphics)
 	{
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
 
 			//  We must disable z write (so all shaders can be early-depth-stencil)
@@ -230,7 +231,7 @@ namespace SceneEngine
 	{
 		_techniqueDelegate = customDelegate;
 		if (!_techniqueDelegate) {
-			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("xleres/Techniques/New/Illum.tech");
+			std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 			auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
 			_techniqueDelegate = RenderCore::Techniques::CreateTechniqueDelegate_DepthOnly(techniqueSetFile, sharedResources);
 		}

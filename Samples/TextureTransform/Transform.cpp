@@ -25,6 +25,7 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../xleres/FileList.h"
 #include <map>
 #include <fstream>
 
@@ -205,7 +206,7 @@ namespace TextureTransform
                 psShaderName += ":" PS_DefShaderModel;
 
             auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
-            auto vsByteCode = LoadShaderImmediate("xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
+            auto vsByteCode = LoadShaderImmediate(BASIC2D_VERTEX_HLSL ":fullscreen:" VS_DefShaderModel);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Material")});

@@ -29,6 +29,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
+#include "../xleres/FileList.h"
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
@@ -170,8 +171,8 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._dssReadOnly);
 
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2D.vsh:fullscreen:vs_*", 
-                "xleres/forward/transparency/cloudresolve.psh:main:ps_*");
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                "xleres/forward/transparency/cloudresolve.pixel.hlsl:main:ps_*");
             context->Bind(resolveShader);
             context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
             SetupVertexGeneratorShader(*context);

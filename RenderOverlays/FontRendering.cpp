@@ -13,6 +13,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Math/Vector.h"
 #include "../Core/Exceptions.h"
+#include "../xleres/FileList.h"
 #include <initializer_list>
 #include <tuple>        // We can't use variadic template parameters, or initializer_lists, so use tr1 tuples :(
 #include <assert.h>
@@ -191,8 +192,8 @@ namespace RenderOverlays
 	TextStyleResources::TextStyleResources(const Desc& desc)
 	{
 		using namespace RenderCore;
-		const char vertexShaderSource[]   = "xleres/basic2D.vsh:P2CT:" VS_DefShaderModel;
-		const char pixelShaderSource[]    = "xleres/basic.psh:PCT_Text:" PS_DefShaderModel;
+		const char vertexShaderSource[]   = BASIC2D_VERTEX_HLSL ":P2CT:" VS_DefShaderModel;
+		const char pixelShaderSource[]    = BASIC_PIXEL_HLSL ":PCT_Text:" PS_DefShaderModel;
 
 		const auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
 		Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);

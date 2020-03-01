@@ -46,12 +46,12 @@ namespace RenderCore { namespace Metal_DX11
     /// functions.
     /// For example:
     /// <code>\code
-    ///     auto& shader = Assets::GetAssetDep<ShaderProgram>("shaders/basic.vsh:main:vs_*", "shaders/basic.psh:main:ps_*");
+    ///     auto& shader = Assets::GetAssetDep<ShaderProgram>("shaders/basic.vertex.hlsl:main:vs_*", "shaders/basic.pixel.hlsl:main:ps_*");
     /// \endcode</code>
     ///
     /// But it's also possible to construct a ShaderProgram as a basic object. 
     /// <code>\code
-    ///     ShaderProgram myShaderProgram("shaders/basic.vsh:main:vs_*", "shaders/basic.psh:main:ps_*");
+    ///     ShaderProgram myShaderProgram("shaders/basic.vertex.hlsl:main:vs_*", "shaders/basic.pixel.hlsl:main:ps_*");
     /// \endcode</code>
     ///
     /// Note that the parameters ":main:vs_*" specify the entry point and shader compilation model.

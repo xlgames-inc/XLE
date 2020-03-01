@@ -33,6 +33,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 #include <random>
 
@@ -214,7 +215,7 @@ namespace SceneEngine
 
             ////////////
         _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
-            "xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BuildMask.compute.hlsl:BuildMask:cs_*");
 
         StringMeld<256> definesBuffer;
         definesBuffer 
@@ -225,22 +226,22 @@ namespace SceneEngine
             ;
 
         _buildReflections = &::Assets::GetAssetDep<Metal::ComputeShader>(
-            "xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BuildReflection.compute.hlsl:BuildReflection:cs_*",
             definesBuffer.get());
     
         _downsampleTargets = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*",
-            "xleres/screenspacerefl/DownsampleStep.psh:main:ps_*",
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/DownsampleStep.pixel.hlsl:main:ps_*",
             definesBuffer.get());
 
         _horizontalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*",
-            "xleres/screenspacerefl/BlurStep.psh:HorizontalBlur:ps_*",
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BlurStep.pixel.hlsl:HorizontalBlur:ps_*",
             definesBuffer.get());
 
         _verticalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*",
-            "xleres/screenspacerefl/BlurStep.psh:VerticalBlur:ps_*",
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BlurStep.pixel.hlsl:VerticalBlur:ps_*",
             definesBuffer.get());
 
             ////////////
@@ -395,8 +396,8 @@ namespace SceneEngine
             << "DOWNSAMPLE_SCALE=" << resources._desc._downsampleScale 
             << ";INTERPOLATE_SAMPLES=" << int(resources._desc._interpolateSamples);
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
-            "xleres/screenspacerefl/debugging.psh:main:ps_*",
+            BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*", 
+            SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/Debugging.pixel.hlsl:main:ps_*",
             definesBuffer.get());
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);

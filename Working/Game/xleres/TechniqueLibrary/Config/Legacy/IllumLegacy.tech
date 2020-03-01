@@ -1,0 +1,125 @@
+
+~Forward
+	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	PixelShader=xleres/forward/illum.pixel.hlsl:main
+
+~Deferred
+	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Deferred
+	VertexShader=xleres/deferred/basic.vertex.hlsl:main
+	PixelShader=xleres/deferred/basic.pixel.hlsl:main
+
+~OrderIndependentTransparency
+	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_oi
+
+~StochasticTransparency
+	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+	~Selectors
+		STOCHASTIC_SAMPLE_COUNT=8
+		STOCHASTIC_TRANS_PRIMITIVEID
+		STOCHASTIC_TRANS_OPACITY
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_stochastic
+
+~DepthWeightedTransparency
+	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	PixelShader=xleres/forward/transparency/depthweighted.hlsl:main_depth_weighted_oi
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	~~ "Silhouette" related rendering
+	~~      for example, for rendering to the shadow depths texture, or doing a pre-depth pass.
+
+~DepthOnly
+	~Inherit; ../Illum.tech:Silhouette
+	~Selectors
+		MAT_ALPHA_TEST_PREDEPTH
+		STOCHASTIC_TRANS
+		STOCHASTIC_TRANS_PRIMITIVEID
+		STOCHASTIC_TRANS_OPACITY
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	PixelShader=xleres/forward/depthonly.pixel.hlsl:main
+
+~ShadowGen
+	~Inherit; ../Illum.tech:Silhouette
+	~Selectors
+		MAT_ALPHA_DITHER_SHADOWS
+		FRUSTUM_FILTER=63
+		SHADOW_CASCADE_MODE
+		OUTPUT_SHADOW_PROJECTION_COUNT=6
+		SHADOW_ENABLE_NEAR_CASCADE
+	VertexShader=xleres/shadowgen/depthonly.vertex.hlsl:main
+	GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
+	PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
+
+~RayTest
+	~Inherit; ../Illum.tech:Silhouette
+	~Selectors
+		OUTPUT_WORLD_POSITION=1
+		INTERSECTION_TEST
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+	PixelShader=null
+
+~WriteTriangleIndex
+	~Inherit; ../Illum.tech:Silhouette
+	~Selectors
+		OUTPUT_WORLD_POSITION=0
+		SHADOW_CASCADE_MODE
+	VertexShader=xleres/shadowgen/rtwritetiles.hlsl:vs_writetris
+	GeometryShader=xleres/shadowgen/rtwritetiles.hlsl:gs_writetris
+	PixelShader=null
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~VisNormals
+	~Selectors
+		OUTPUT_WORLD_POSITION=1
+		OUTPUT_NORMAL=1
+		GEO_HAS_TEXTANGENT
+		GEO_HAS_TEXBITANGENT
+		GEO_HAS_NORMAL
+		RES_HAS_NormalsTexture
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	GeometryShader=xleres/vis/geowires.geo.hlsl:NormalsAndTangents
+	PixelShader=xleres/basic.pixel.hlsl:PC
+
+~VisWireframe
+	~Selectors
+		GEO_HAS_TEXCOORD
+		OUTPUT_WORLD_POSITION=1
+	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	GeometryShader=xleres/solidwireframe.geo.hlsl:main
+	PixelShader=xleres/solidwireframe.pixel.hlsl:main
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~Technique
+    Forward = Forward
+    Deferred = Deferred
+    OrderIndependentTransparency = OrderIndependentTransparency
+    StochasticTransparency = StochasticTransparency
+    DepthWeightedTransparency = DepthWeightedTransparency
+    DepthOnly = DepthOnly
+    ShadowGen = ShadowGen
+    RayTest = RayTest
+    WriteTriangleIndex = WriteTriangleIndex
+    VisNormals = VisNormals
+    VisWireframe = VisWireframe
+
+    CBLayout = <:(
+        float3  MaterialDiffuse = {1.f,1.f,1.f}c;
+        float   Opacity = 1;
+        float3  MaterialSpecular = {1.f,1.f,1.f}c;
+        float   AlphaThreshold = .33f;
+        float   RoughnessMin = 0.5f;
+        float   RoughnessMax = 1.f;
+        float   SpecularMin = 0.1f;
+        float   SpecularMax = 1.f;
+        float   MetalMin = 0.f;
+        float   MetalMax = 1.f;
+    ):>
+

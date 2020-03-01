@@ -7,7 +7,7 @@
 #if !defined(TERRAIN_GENERATOR_H)
 #define TERRAIN_GENERATOR_H
 
-#include "../../Utility/perlinnoise.h"
+#include "../../TechniqueLibrary/Math/perlinnoise.hlsl"
 
 cbuffer TerrainLighting : register(b6)
 {

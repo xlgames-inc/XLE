@@ -48,7 +48,7 @@ attributes visualNode23(PreviewGeometry:"plane2d", X:"-181.000000", Y:"-344.0000
 
 
 
-#include "TextureAlgorithm.h" 	// for SystemInputs
+#include "TechniqueLibrary/Math/TextureAlgorithm.hlsl" 	// for SystemInputs
 #include "Lighting/Forward.h"
 
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))

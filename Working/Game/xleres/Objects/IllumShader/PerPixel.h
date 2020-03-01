@@ -7,15 +7,15 @@
 #if !defined(ILLUM_PER_PIXEL)
 #define ILLUM_PER_PIXEL
 
-#include "../CommonResources.h"
-#include "../MainGeometry.h"
-#include "../Surface.h"
-#include "../gbuffer.h"
-#include "../BasicMaterial.h"
-#include "../Lighting/LightingAlgorithm.h"
-// #include "../Utility/perlinnoise.h"
-#include "../Colour.h"
-#include "../Binding.h"
+#include "../TechniqueLibrary/Framework/CommonResources.hlsl"
+#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../BasicMaterial.hlsl"
+#include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
+// #include "../TechniqueLibrary/Math/perlinnoise.hlsl"
+#include "../TechniqueLibrary/Utility/Colour.hlsl"
+#include "../TechniqueLibrary/System/Binding.hlsl"
 
 Texture2D       ParametersTexture       BIND_MAT_T2;
 Texture2D       SpecularColorTexture    BIND_MAT_T3;

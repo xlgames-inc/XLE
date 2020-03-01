@@ -22,6 +22,7 @@
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
+#include "../../xleres/FileList.h"
 
 namespace RenderOverlays
 {
@@ -78,8 +79,8 @@ namespace RenderOverlays
 
         {
             auto shader = LoadShaderProgram(
-                "xleres/basic2D.vsh:fullscreen:vs_*", 
-                "xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                HIGHLIGHT_VIS_PIXEL_HLSL ":HighlightByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(*shader);
@@ -88,8 +89,8 @@ namespace RenderOverlays
 
         {
             auto shader = LoadShaderProgram(
-                "xleres/basic2D.vsh:fullscreen:vs_*", 
-                "xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+                HIGHLIGHT_VIS_PIXEL_HLSL ":OutlineByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(*shader);
@@ -155,16 +156,16 @@ namespace RenderOverlays
     {
         //// ////
         _drawHighlight = LoadShaderProgram(
-            "xleres/basic2D.vsh:fullscreen:vs_*", 
-            "xleres/effects/outlinehighlight.psh:main:ps_*");
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            OUTLINE_VIS_PIXEL_HLSL ":main:ps_*");
 		UniformsStreamInterface drawHighlightInterface;
 		drawHighlightInterface.BindConstantBuffer(0, { Hash64("$Globals") });
 		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, {}, {}, drawHighlightInterface);
 
         //// ////
         _drawShadow = LoadShaderProgram(
-            "xleres/basic2D.vsh:fullscreen:vs_*", 
-            "xleres/effects/outlinehighlight.psh:main_shadow:ps_*");
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            OUTLINE_VIS_PIXEL_HLSL ":main_shadow:ps_*");
 		UniformsStreamInterface drawShadowInterface;
 		drawShadowInterface.BindConstantBuffer(0, { Hash64("ShadowHighlightSettings") });
 		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, {}, {}, drawShadowInterface);

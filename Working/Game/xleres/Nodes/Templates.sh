@@ -1,6 +1,6 @@
 
-#include "../MainGeometry.h"
-#include "../gbuffer.h"
+#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../TechniqueLibrary/Core/gbuffer.hlsl"
 #include "MaterialParam.sh"
 
 float3 CoordinatesToColor(float3 coords);

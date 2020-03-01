@@ -155,17 +155,17 @@ namespace RenderCore { namespace Assets
 
             ///////////////////////////////////////////////
 
-        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P4:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P2:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P1:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:P0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:P0:" VS_DefShaderModel);
-        const char* geometryShaderSourceP           = "xleres/animation/skinning.gsh:P:" GS_DefShaderModel;
+        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":P4:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":P4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":P2:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":P2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":P1:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":P1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":P0:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":P0:" VS_DefShaderModel);
+        const char* geometryShaderSourceP           = SKINNING_GEO_HLSL ":P:" GS_DefShaderModel;
 
-        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN4:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN4:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN2:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN2:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN1:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN1:" VS_DefShaderModel);
-        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
-        const char* geometryShaderSourcePN          = "xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
+        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":PN4:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":PN4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":PN2:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":PN2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":PN1:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":PN1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? (SKINNING_VERTEX_HLSL ":PN0:" VS_DefShaderModel) : (SKINNING_VIA_TBUFFER ":PN0:" VS_DefShaderModel);
+        const char* geometryShaderSourcePN          = SKINNING_GEO_HLSL ":PN:" GS_DefShaderModel;
 
         const bool hasNormals = !!HasElement(MakeIteratorRange(skinningOutputLayout), "NORMAL");
 
@@ -793,8 +793,8 @@ namespace RenderCore { namespace Assets
         auto metalContext = Metal::DeviceContext::Get(context);
 
         const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
-            "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-            "xleres/forward/illum.psh:main", "GEO_HAS_COLOR=1");
+            ILLUM_FORWARD_VERTEX_HLSL ":main:" VS_DefShaderModel, 
+            ILLUM_FORWARD_PIXEL_HLSL ":main", "GEO_HAS_COLOR=1");
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
         metalContext->Bind(shaderProgram);
 

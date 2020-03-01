@@ -7,10 +7,10 @@
 #if !defined(NODES_TEXTURE_SH)
 #define NODES_TEXTURE_SH
 
-#include "../CommonResources.h"
-#include "../MainGeometry.h"
-#include "../Surface.h"
-#include "../Utility/perlinnoise.h"
+#include "../TechniqueLibrary/Framework/CommonResources.hlsl"
+#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../TechniqueLibrary/Math/perlinnoise.hlsl"
 
 float4 SampleAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
 {

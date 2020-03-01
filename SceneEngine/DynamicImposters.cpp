@@ -38,6 +38,7 @@
 #include "../Utility/Meta/ClassAccessors.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 #include "../Utility/Meta/AccessorSerialize.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -407,7 +408,7 @@ namespace SceneEngine
             return;
 
         auto shader = _pimpl->_material.FindVariation(
-            parserContext, techniqueIndex, "xleres/vegetation/impostermaterial.tech");
+            parserContext, techniqueIndex, SCENE_ENGINE_RES "/Vegetation/Vegetation.tech");
         if (!shader._shader._shaderProgram) return;
 
             // For each object here, we should look to see if we have a prepared

@@ -25,6 +25,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
+#include "../xleres/FileList.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"       // for unbinding depth buffer
 
@@ -79,8 +80,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _commitShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
-            "xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
+            "xleres/effects/occludingsunflare.hlsl:vs_sunflare:vs_*",
+            "xleres/effects/occludingsunflare.hlsl:ps_sunflare:ps_*",
             (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
 
 		UniformsStreamInterface commitUsi;
@@ -95,8 +96,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _blurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2d.vsh:fullscreen:vs_*",
-            "xleres/effects/occludingsunflare.sh:ps_blur:ps_*",
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+            "xleres/effects/occludingsunflare.hlsl:ps_blur:ps_*",
             (StringMeld<128>() 
                 << "SINGLE_PASS=" << int(desc._singlePass)
                 << ";ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)
@@ -114,8 +115,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _toRadialShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
-            "xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
+            "xleres/effects/occludingsunflare.hlsl:vs_sunflare_full:vs_*",
+            "xleres/effects/occludingsunflare.hlsl:ps_toradial:ps_*");
 
 		UniformsStreamInterface toRadialUsi;
         toRadialUsi.BindConstantBuffer(0, {Hash64("Settings")});
@@ -129,8 +130,8 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _directBlurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
-            "xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
+            "xleres/effects/occludingsunflare.hlsl:vs_sunflare:vs_*",
+            "xleres/effects/occludingsunflare.hlsl:ps_sunflare_directblur:ps_*");
 
 		UniformsStreamInterface directBlurUsi;
         directBlurUsi.BindConstantBuffer(0, {Hash64("Settings")});

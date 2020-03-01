@@ -18,6 +18,7 @@
 #include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../xleres/FileList.h"
 
 namespace RenderOverlays
 {
@@ -50,8 +51,8 @@ namespace RenderOverlays
 		SkeletonPreviewResourceBox(const Desc&)
 		{
 			_shader = ::Assets::ActualizePtr<Metal::ShaderProgram>( 
-				"xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
-				"xleres/forward/unlit.psh:main", "GEO_HAS_COLOR=1");
+				ILLUM_FORWARD_VERTEX_HLSL ":main:" VS_DefShaderModel, 
+				ILLUM_FORWARD_UNLIT_PIXEL_HLSL ":main", "GEO_HAS_COLOR=1");
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});

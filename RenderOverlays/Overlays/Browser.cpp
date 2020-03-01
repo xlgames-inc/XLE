@@ -6,6 +6,7 @@
 
 #include "Browser.h"
 #include "../Font.h"
+#include "../../xleres/FileList.h"
 
 #include "../../../Tools/ToolsRig/ModelVisualisation.h"
 
@@ -162,8 +163,8 @@ namespace Overlays
         auto vertexBuffer = MakeVertexBuffer(GetObjectFactory(), MakeIteratorRange(vertices));
 
         const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
-            "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
-            "xleres/basic.psh:copy_point_scrolllimit:" PS_DefShaderModel);
+            BASIC2D_VERTEX_HLSL ":P2T:" VS_DefShaderModel, 
+            BASIC_PIXEL_HLSL ":copy_point_scrolllimit:" PS_DefShaderModel);
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
 		VertexBufferView vbvs[] = { VertexBufferView{&vertexBuffer} };
         boundVertexInputLayout.Apply(*context, MakeIteratorRange(vbvs));

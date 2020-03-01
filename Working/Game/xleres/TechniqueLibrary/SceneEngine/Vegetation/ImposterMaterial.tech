@@ -1,0 +1,40 @@
+~Illum
+    ~Inherit;
+    ~Parameters
+        ~Geometry
+        ~GlobalEnvironment
+            SKIP_MATERIAL_DIFFUSE=0
+        ~Material
+            MAT_BLEND_FOG=0
+            MAT_SKIP_LIGHTING_SCALE=0
+        ~Runtime
+            BASIC_LIGHT_COUNT=1
+            SHADOW_CASCADE_MODE=2
+    VertexShader0=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:vs_main
+    PixelShader0=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:ps_illum
+~DepthOnly
+    ~Inherit;
+    ~Parameters
+        ~Geometry
+        ~Material
+            MAT_ALPHA_TEST
+            MAT_ALPHA_TEST_PREDEPTH
+        ~Runtime
+    VertexShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:vs_main
+    PixelShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:ps_depthonly
+    GeometryShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:gs_main
+~Deferred
+    ~Inherit; ../techniques/shared.tech:Deferred
+    ~Parameters
+        ~Geometry
+        ~GlobalEnvironment
+    VertexShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:vs_main
+    PixelShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:ps_deferred
+    GeometryShader=xleres/TechniqueLibrary/SceneEngine/Vegetation/imposter.hlsl:gs_main
+~VisWireframe
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_POSITION=1
+    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    GeometryShader=xleres/solidwireframe.geo.hlsl:main
+    PixelShader=xleres/solidwireframe.pixel.hlsl:main

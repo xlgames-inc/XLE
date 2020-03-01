@@ -32,6 +32,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
+#include "../xleres/FileList.h"
 
 #include <stack>
 
@@ -227,12 +228,12 @@ namespace SceneEngine
             }
 
         const char* ps = isTextured 
-            ? "xleres/objects/terrain/TerrainBasePS.sh:ps_main:!ps_*" 
-            : "xleres/solidwireframe.psh:main:ps_*";
+            ? "xleres/objects/terrain/TerrainBasePS.hlsl:ps_main:!ps_*" 
+            : SOLID_WIREFRAME_PIXEL_HLSL ":main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
-            ps = "xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:!ps_*";
+            ps = "xleres/objects/terrain/TerrainTexturing.hlsl:ps_main_forward:!ps_*";
         }
 
         InputElementDesc eles[] = {
@@ -245,22 +246,22 @@ namespace SceneEngine
             unsigned strides = sizeof(float)*4;
             MetalStubs::SetDefaultStreamOutputInitializers(
 				StreamOutputInitializers{MakeIteratorRange(eles), MakeIteratorRange(&strides, &strides+1)});
-            gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
+            gs = "xleres/objects/terrain/TerrainIntersection.hlsl:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
             ps = "null";
-            gs = "xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
+            gs = SCENE_ENGINE_RES "/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*";
         } else if (desc._drawWireframe) {
-            gs = "xleres/solidwireframe.gsh:main:gs_*";
+            gs = SOLID_WIREFRAME_GEO_HLSL ":main:gs_*";
         }
 
         const DeepShaderProgram* shaderProgram;
         TRY {
             shaderProgram = &::Assets::GetAssetDep<DeepShaderProgram>(
-                "xleres/objects/terrain/GeoGenerator.sh:vs_dyntess_main:vs_*", 
+                "xleres/objects/terrain/GeoGenerator.hlsl:vs_dyntess_main:vs_*", 
                 gs, ps, 
-                "xleres/objects/terrain/GeoGenerator.sh:hs_main:hs_*",
-                "xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
+                "xleres/objects/terrain/GeoGenerator.hlsl:hs_main:hs_*",
+                "xleres/objects/terrain/GeoGenerator.hlsl:ds_main:ds_*",
                 definesBuffer.get());
         } CATCH (...) {
 			MetalStubs::SetDefaultStreamOutputInitializers(StreamOutputInitializers{});
@@ -329,18 +330,18 @@ namespace SceneEngine
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "xleres/solidwireframe.gsh:main:gs_*", 
-                    "xleres/solidwireframe.psh:main:ps_*", "");
+                    "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
+                    SOLID_WIREFRAME_GEO_HLSL ":main:gs_*", 
+                    SOLID_WIREFRAME_PIXEL_HLSL ":main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
+                    "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
+                    SCENE_ENGINE_RES "/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             } else {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
-                    "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*", 
+                    "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
+                    "xleres/objects/terrain/TerrainIntersection.hlsl:gs_intersectiontest:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             }
 

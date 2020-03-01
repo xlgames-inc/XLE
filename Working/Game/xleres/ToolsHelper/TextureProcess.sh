@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Colour.h"
+#include "../TechniqueLibrary/Utility/Colour.hlsl"
 
 Texture2D	Input : register(t0);
 

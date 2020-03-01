@@ -1,0 +1,79 @@
+~Illum
+    ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System
+    ~Parameters
+        ~Geometry
+            GEO_HAS_COLOR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_TEXTANGENT
+            GEO_HAS_NORMAL
+        ~GlobalEnvironment
+            SKIP_MATERIAL_DIFFUSE=0
+        ~Material
+            MAT_BLEND_FOG=1
+    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    PixelShader=xleres/forward/illum.pixel.hlsl:main
+~DepthOnly
+    ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
+    ~Parameters
+        ~Geometry
+            GEO_HAS_TEXCOORD
+        ~Material
+            MAT_ALPHA_TEST
+    VertexShader=xleres/forward/depthonly.vertex.hlsl:main
+    PixelShader=xleres/forward/depthonly.pixel.hlsl:main
+~Deferred
+    ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System; ../techniques/shared.tech:Deferred
+    ~Parameters
+        ~Geometry
+            GEO_HAS_COLOR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_TEXTANGENT
+            GEO_HAS_NORMAL
+        ~GlobalEnvironment
+            CLASSIFY_NORMAL_MAP
+            SKIP_MATERIAL_DIFFUSE=0
+    VertexShader=xleres/deferred/basic.vertex.hlsl:main
+    PixelShader=xleres/deferred/basic.pixel.hlsl:main
+~ShadowGen
+    ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
+    ~Parameters
+        ~Geometry
+            GEO_HAS_TEXCOORD
+            GEO_HAS_COLOR
+            GEO_HAS_NORMAL
+        ~Material
+            MAT_ALPHA_TEST
+            MAT_VCOLOR_IS_ANIM_PARAM
+        ~Runtime
+            FRUSTUM_FILTER=63
+            SHADOW_CASCADE_MODE
+            OUTPUT_SHADOW_PROJECTION_COUNT=6
+            SHADOW_ENABLE_NEAR_CASCADE
+    VertexShader=xleres/shadowgen/depthonly.vertex.hlsl:main
+    GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
+    PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
+~OrderIndependentTransparency
+    ~Inherit; ../techniques/shared.tech:CommonMaterial; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn; ../techniques/shared.tech:System
+    ~Parameters
+        ~Geometry
+            GEO_HAS_COLOR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_TEXTANGENT
+            GEO_HAS_NORMAL
+            OUTPUT_LOCAL_NORMAL=1
+            OUTPUT_LOCAL_VIEW_VECTOR=1
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_WORLD_POSITION=1
+    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main
+~RayTest
+    ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
+    ~Parameters
+        ~Geometry
+            GEO_HAS_TEXCOORD
+            OUTPUT_WORLD_POSITION=1
+        ~Material
+            MAT_ALPHA_TEST
+    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+    PixelShader=null

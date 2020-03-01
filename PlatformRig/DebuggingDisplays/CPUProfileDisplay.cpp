@@ -122,7 +122,7 @@ namespace PlatformRig { namespace Overlays
                 Float2(0.f, 0.f), Float2(1.f, 1.f),
                 Float2(settings._barBorderSize, settings._barRoundedProportion),
                 Float2(settings._barBorderSize, settings._barRoundedProportion),
-                "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=CrossHatchFill,Outline=SolidFill");
+                "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=CrossHatchFill,Outline=SolidFill");
         } else {
             Coord barMaxWidth = rect._bottomRight[0] - rect._topLeft[0];
             Coord barWidth = Coord(std::min(barSize, 1.f) * float(barMaxWidth));

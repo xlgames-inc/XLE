@@ -236,7 +236,7 @@ namespace ToolsRig
                 AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
                 ColorB(0xffffffff), ColorB(0xffffffff),
                 Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(alpha, 0.f), Float2(alpha, 0.f),
-                "Utility\\DebuggingShapes.psh:SmallGridBackground");
+                "Utility\\DebuggingShapes.pixel.hlsl:SmallGridBackground");
 
                 // text label (name and value)
             char buffer[256];

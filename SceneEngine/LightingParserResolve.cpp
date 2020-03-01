@@ -40,6 +40,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -809,8 +810,8 @@ namespace SceneEngine
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);
         auto* perSampleMask = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*", 
-            "xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            "xleres/deferred/persamplemask.pixel.hlsl:main:ps_*", definesTable);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, perSampleMask->GetDependencyValidation());

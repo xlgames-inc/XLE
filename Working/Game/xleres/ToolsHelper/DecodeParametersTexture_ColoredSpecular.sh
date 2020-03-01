@@ -1,5 +1,5 @@
 // CompoundDocument:1
-#include "xleres/System/Prefix.h"
+#include "xleres/TechniqueLibrary/System/Prefix.hlsl"
 
 #include "xleres/Nodes/Basic.sh"
 #include "xleres/Nodes/MaterialParam.sh"

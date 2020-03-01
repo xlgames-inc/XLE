@@ -21,6 +21,7 @@
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
+#include "../../xleres/FileList.h"
 #include <sstream>
 #include <regex>
 #include <cctype>
@@ -377,7 +378,7 @@ namespace RenderCore { namespace Techniques
 	, _rasterization(rasterization)
 	, _depthStencil(depthStencil)
 	{
-		const char* techFile = "xleres/Techniques/Illum.tech";
+		const char* techFile = ILLUM_LEGACY_TECH;
 		auto techniqueSetFuture = ::Assets::MakeAsset<Technique>(techFile);
 		_variationSetFuture = std::make_shared<::Assets::AssetFuture<VariationSet>>(techFile);
 		::Assets::WhenAll(techniqueSetFuture).ThenConstructToFuture<VariationSet>(

@@ -7,10 +7,10 @@
 #define DIFFUSE_METHOD 1
 #define FORCE_GGX_REF 1
 
-#include "../Utility/MathConstants.h"
-#include "../gbuffer.h"
-#include "../Lighting/DirectionalResolve.h"
-#include "../Colour.h"
+#include "../TechniqueLibrary/Math/MathConstants.hlsl"
+#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/SceneEngine/Lighting/DirectionalResolve.hlsl"
+#include "../TechniqueLibrary/Utility/Colour.hlsl"
 
 float3 BRDF(float3 lightDir, float3 view, float3 normal, float3 tangent, float3 bitangent)
 {

@@ -161,9 +161,9 @@ namespace RenderCore
     /// <example>
     /// For example:
     ///     <code>\code
-    ///         CompiledShaderByteCode byteCode("shaders/basic.psh:MainFunction:ps_5_0");
+    ///         CompiledShaderByteCode byteCode("shaders/basic.pixel.hlsl:MainFunction:ps_5_0");
     ///     \endcode</code>
-    ///     This will load the file <b>shaders/basic.psh</b>, and look for the entry point
+    ///     This will load the file <b>shaders/basic.pixel.hlsl</b>, and look for the entry point
     ///     <b>MainFunction</b>. The shader will be compiled with pixel shader 5.0 shader model.
     /// </example>
     ///

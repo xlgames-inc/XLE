@@ -45,6 +45,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
+#include "../xleres/FileList.h"
 
 #pragma warning(disable:4127)       // warning C4127: conditional expression is constant
 #pragma warning(disable:4505)       // warning C4505: 'SceneEngine::SortByGridIndex' : unreferenced local function has been removed
@@ -73,7 +74,7 @@ namespace SceneEngine
         context->Bind(newViewport);
 
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/Ocean/FFTDebugging.pixel.hlsl:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds")->Actualize()->GetShaderResource()));
         SetupVertexGeneratorShader(*context);
@@ -81,8 +82,8 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(*context);
         context->Bind(oldViewport);
 
-        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_1:cs_*");
-        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
+        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_1:cs_*");
+        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_2:cs_*");
 
         context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(box._workingTextureRealUVA, box._workingTextureImaginaryUVA));
         unsigned constants[4] = {1, 0, 0, 0};
@@ -90,7 +91,7 @@ namespace SceneEngine
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/FFT.csh:Lowpass:cs_*"));
+        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:Lowpass:cs_*"));
         context->Dispatch((dimensions + (32-1))/32);
 
         constants[0] = 0;
@@ -101,7 +102,7 @@ namespace SceneEngine
 
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:main:ps_*"));
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/Ocean/FFTDebugging.pixel.hlsl:main:ps_*"));
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(box._workingTextureRealSRV, box._workingTextureImaginarySRV));
         context->Draw(4);
     }
@@ -499,8 +500,8 @@ namespace SceneEngine
             auto temporaryBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(lines));
 
             auto& shader = ::Assets::GetAsset<ShaderProgram>(
-                "xleres/forward/illum.vsh:main:vs_*", 
-                "xleres/forward/illum.psh:main:ps_*",
+                "xleres/forward/illum.vertex.hlsl:main:vs_*", 
+                "xleres/forward/illum.pixel.hlsl:main:ps_*",
                 "GEO_HAS_COLOR=1");
             auto localTransform = Techniques::MakeLocalTransform(
                 Identity<Float4x4>(), 
@@ -721,9 +722,9 @@ namespace SceneEngine
         } else {
 
             auto& patchRender = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/Ocean/OceanPatch.vsh:main:vs_*",
-                "xleres/solidwireframe.gsh:main:gs_*",
-                "xleres/solidwireframe.psh:outlinepatch:ps_*",
+                SCENE_ENGINE_RES "/Ocean/OceanPatch.vertex.hlsl:main:vs_*",
+                SOLID_WIREFRAME_GEO_HLSL ":main:gs_*",
+                SOLID_WIREFRAME_PIXEL_HLSL ":outlinepatch:ps_*",
                 "SOLIDWIREFRAME_TEXCOORD=1");
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {HashMaterialConstants});

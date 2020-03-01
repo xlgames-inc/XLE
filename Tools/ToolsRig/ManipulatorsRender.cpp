@@ -28,6 +28,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../xleres/FileList.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -121,8 +122,8 @@ namespace ToolsRig
         {
                 // note -- we might need access to the MSAA defines for this shader
             auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-                "xleres/ui/terrainmanipulators.sh:ps_circlehighlight:ps_*");
+                BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
+                "xleres/ui/terrainmanipulators.hlsl:ps_circlehighlight:ps_*");
             
             struct HighlightParameters
             {
@@ -198,10 +199,10 @@ namespace ToolsRig
         {
                 // note -- we might need access to the MSAA defines for this shader
             auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
+                BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
                 (type == RectangleHighlightType::Tool)
-					? "xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*"
-					: "xleres/ui/terrainmanipulators.sh:ps_lockedareahighlight:ps_*");
+					? "xleres/ui/terrainmanipulators.hlsl:ps_rectanglehighlight:ps_*"
+					: "xleres/ui/terrainmanipulators.hlsl:ps_lockedareahighlight:ps_*");
             
             struct HighlightParameters
             {
@@ -352,8 +353,8 @@ namespace ToolsRig
         auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
 
         const auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
-            "xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
+            BASIC2D_VERTEX_HLSL ":P2T:" VS_DefShaderModel, 
+            BASIC_PIXEL_HLSL ":copy_bilinear:" PS_DefShaderModel);
         Metal::BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
 		VertexBufferView vbvs[] = {&vertexBuffer};
         boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));

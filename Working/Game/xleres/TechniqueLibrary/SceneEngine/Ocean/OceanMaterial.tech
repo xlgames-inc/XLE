@@ -1,0 +1,31 @@
+~Illum
+    ~Parameters
+        ~Material
+            MAT_USE_DERIVATIVES_MAP
+            MAT_USE_SHALLOW_WATER
+            MAT_DO_REFRACTION
+            MAT_DYNAMIC_REFLECTION
+            SHALLOW_WATER_TILE_DIMENSION=32
+            SKY_PROJECTION
+        ~GlobalEnvironment
+            OCEAN_SEPARATE=0
+    VertexShader=xleres/ocean/oceanpatch.vertex.hlsl:main
+    PixelShader=xleres/ocean/ocean.pixel.hlsl:Illum
+~Deferred
+    ~Parameters
+        ~Material
+            MAT_USE_DERIVATIVES_MAP
+            MAT_USE_SHALLOW_WATER
+            MAT_DO_REFRACTION
+            MAT_DYNAMIC_REFLECTION
+            SHALLOW_WATER_TILE_DIMENSION=32
+            SKY_PROJECTION
+        ~GlobalEnvironment
+            OCEAN_SEPARATE=0
+    VertexShader=xleres/ocean/oceanpatch.vertex.hlsl:main
+    PixelShader=xleres/ocean/ocean.pixel.hlsl:Deferred
+~ShadowGen
+    ~Parameters
+    VertexShader=xleres/ocean/oceanpatch.vertex.hlsl:main
+    GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
+    PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main

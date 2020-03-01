@@ -21,6 +21,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
+#include "../../xleres/FileList.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -939,8 +940,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& globals = VulkanGlobalsTemp::GetInstance();
 		globals._globalPools = &globalPools;
 
-        globals._graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignature.cfg");
-        globals._computeRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignatureCS.cfg");
+        globals._graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>(ROOT_SIGNATURE_CFG);
+        globals._computeRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>(ROOT_SIGNATURE_COMPUTE_CFG);
 
 		globals._boundGraphicsSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_ALL_GRAPHICS);
 		globals._boundGraphicsSignatures->RegisterSignatureFile(VulkanGlobalsTemp::s_mainSignature, *globals._graphicsRootSignatureFile);

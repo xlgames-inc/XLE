@@ -1,5 +1,5 @@
 
-#include "../Utility/perlinnoise.h"
+#include "../TechniqueLibrary/Math/perlinnoise.hlsl"
 
 float3 FBMNormalMap(float2 position, float hgrid, float gain, float lacunarity, int octaves, float slopeScale, float tightness)
 {

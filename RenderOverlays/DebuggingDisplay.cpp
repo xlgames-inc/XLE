@@ -310,7 +310,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             ColorB::Zero, colour,
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(width, roundedProportion), Float2(width, roundedProportion),
-            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=None,Outline=SolidFill");
+            "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=None,Outline=SolidFill");
     }
 
     void DrawRoundedRectangle(
@@ -329,7 +329,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             backgroundColour, outlineColour,
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(borderWidth, roundedProportion), Float2(borderWidth, roundedProportion),
-            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=SolidFill");
+            "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=SolidFill");
     }
 
     void DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour)
@@ -599,7 +599,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             HeaderBkColor, HeaderBkOutColor, 
             Float2(0.f, 0.f), Float2(1.f, 1.f),
             Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+            "ui\\dd\\shapes.hlsl:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style{DrawTextOptions(false, true)};
 
@@ -641,7 +641,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             BkColor, BkOutColor, 
             Float2(0.f, 0.f), Float2(1.f, 1.f),
             Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+            "ui\\dd\\shapes.hlsl:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style{DrawTextOptions(true, false)};
 
@@ -796,7 +796,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             AsPixelCoords(Coord2(r._bottomRight[0], r._bottomRight[1])),
             ColorB(0xffffffff), ColorB(0xffffffff),
             Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(t, 0.f), Float2(t, 0.f),
-            "Utility\\DebuggingShapes.psh:ScrollBarShader");
+            "Utility\\DebuggingShapes.pixel.hlsl:ScrollBarShader");
     }
 
     void HScrollBar_DrawLabel(IOverlayContext* context, const Rect& rect)
@@ -807,7 +807,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
             ColorB(0xffffffff), ColorB(0xffffffff),
             Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "Utility\\DebuggingShapes.psh:TagShader");
+            "Utility\\DebuggingShapes.pixel.hlsl:TagShader");
     }
 
     void HScrollBar_DrawGridBackground(IOverlayContext* context, const Rect& rect)
@@ -818,7 +818,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
             ColorB(0xffffffff), ColorB(0xffffffff),
             Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "Utility\\DebuggingShapes.psh:GridBackgroundShader");
+            "Utility\\DebuggingShapes.pixel.hlsl:GridBackgroundShader");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////

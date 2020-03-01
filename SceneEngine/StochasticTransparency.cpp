@@ -21,6 +21,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
+#include "../xleres/FileList.h"
 #include <tuple>
 #include <type_traits>
 #include <random>
@@ -259,8 +260,8 @@ namespace SceneEngine
         {
             SetupVertexGeneratorShader(*_context);
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2d.vsh:fullscreen:vs_*",
-                "xleres/basic.psh:copy:ps_*");
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+                BASIC_PIXEL_HLSL ":copy:ps_*");
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("DiffuseTexture"));
             Metal::BoundUniforms uniforms(
@@ -286,8 +287,8 @@ namespace SceneEngine
                 [box](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext)
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "xleres/basic2d.vsh:fullscreen:vs_*",
-                        "xleres/forward/transparency/stochasticdebug.sh:ps_pixelmetrics:ps_*");
+                        BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+                        "xleres/forward/transparency/stochasticdebug.hlsl:ps_pixelmetrics:ps_*");
 					UniformsStreamInterface usi;
 					usi.BindShaderResource(0, Hash64("DepthsTexture"));
 					usi.BindShaderResource(1, Hash64("LitSamplesMetrics"));
@@ -307,15 +308,15 @@ namespace SceneEngine
                     RenderGPUMetrics(
                         context, parserContext,
 						MetricsBox{MetricsBox::Desc{}},
-                        "xleres/forward/transparency/stochasticdebug.sh",
+                        "xleres/forward/transparency/stochasticdebug.hlsl",
                         {"LitFragmentCount", "AveLitFragment", "PartialLitFragment"});
                 });
         }
 
         if (Tweakable("StochTransDebug", false)) {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2d.vsh:fullscreen:vs_*",
-                "xleres/forward/transparency/stochasticdebug.sh:ps_depthave:ps_*");
+                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
+                "xleres/forward/transparency/stochasticdebug.hlsl:ps_depthave:ps_*");
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("DepthsTexture"));
             Metal::BoundUniforms uniforms(

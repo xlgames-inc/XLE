@@ -834,9 +834,9 @@ namespace PlatformRig { namespace Overlays
                 forkedContext->Bind(box._viewport);
 
                 auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/basic2d.vsh:P2C:vs_*",
-                    "xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
-                    "xleres/basic.psh:P:ps_*",
+                    BASIC2D_VERTEX_HLSL ":P2C:vs_*",
+                    SCENE_ENGINE_RES "/ShadowGen/ConsRaster.hlsl:gs_conservativeRasterization:gs_*",
+                    BASIC_PIXEL_HLSL ":P:ps_*",
                     "");
             
                 class Vertex
@@ -883,8 +883,8 @@ namespace PlatformRig { namespace Overlays
         TRY
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "xleres/basic2d.vsh:P2CT:vs_*",
-                "xleres/basic.psh:PCT:ps_*",
+                BASIC2D_VERTEX_HLSL ":P2CT:vs_*",
+                BASIC_PIXEL_HLSL ":PCT:ps_*",
                 "");
 
             class Vertex

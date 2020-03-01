@@ -1,5 +1,5 @@
 // CompoundDocument:1
-#include "xleres/System/Prefix.h"
+#include "xleres/TechniqueLibrary/System/Prefix.hlsl"
 
 #include "xleres/Nodes/Texture.sh"
 #include "xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
