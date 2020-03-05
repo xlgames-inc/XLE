@@ -11,6 +11,8 @@
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IDevice.h"
 #include <msclr\auto_handle.h>
 #include <memory>
@@ -32,35 +34,10 @@ namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
-
     public interface class IManipulatorExtra
     {
     public:
         virtual bool ClearBeforeDraw() = 0;
-    };
-
-    private ref class DesignControlAdapterOverlay : public GUILayer::IOverlaySystem
-    {
-    public:
-        virtual void Render(
-            RenderCore::IThreadContext& device,
-			const GUILayer::RenderTargetWrapper& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext) override
-        {
-            auto context = gcnew GUILayer::SimpleRenderingContext(&device, RetainedResources, &parserContext);
-            try
-            {
-                OnRender(context);
-            }
-            finally
-            {
-                delete context;
-            }
-        }
-
-        event RenderCallback^ OnRender;
-        property GUILayer::RetainedRenderResources^ RetainedResources;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +59,7 @@ namespace XLEBridgeUtils
             _sceneManager = sceneManager;
             _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
             _layerControl->AddSystem(_mainOverlay);
-            _manipulatorOverlay = gcnew DesignControlAdapterOverlay;
+            _manipulatorOverlay = gcnew GUILayer::SimpleRenderingContextOverlaySystem();
             _manipulatorOverlay->RetainedResources = savedRes;
             _layerControl->AddSystem(_manipulatorOverlay);
             SceCamera = camera;
@@ -133,7 +110,7 @@ namespace XLEBridgeUtils
             // (void)compViewMat; (void)compProjMat; (void)proj; (void)viewMat;
         }
 
-        void AddRenderCallback(RenderCallback^ callback)
+        void AddRenderCallback(GUILayer::RenderCallback^ callback)
         {
             _manipulatorOverlay->OnRender += callback;
         }
@@ -203,7 +180,7 @@ namespace XLEBridgeUtils
         GUILayer::IOverlaySystem^ _mainOverlay;
 
     private:
-        DesignControlAdapterOverlay^ _manipulatorOverlay;
+        GUILayer::SimpleRenderingContextOverlaySystem^ _manipulatorOverlay;
         Sce::Atf::Rendering::Camera^ _camera;
     };
 

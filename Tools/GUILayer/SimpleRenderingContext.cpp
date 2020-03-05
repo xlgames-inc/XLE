@@ -9,6 +9,7 @@
 #include "NativeEngineDevice.h"
 #include "EditorInterfaceUtils.h"
 #include "GUILayerUtil.h"
+#include "IOverlaySystem.h"
 #include "LevelEditorScene.h"
 #include "MathLayer.h"
 #include "ExportedNativeTypes.h"
@@ -22,6 +23,8 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/CommonUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
@@ -346,6 +349,33 @@ namespace GUILayer
             using ClearFilter = RenderCore::Metal::DeviceContext::ClearFilter;
             metalContext.Clear(dsv, ClearFilter::Depth|ClearFilter::Stencil, 1.f, 0u);
         }
+    };
+
+
+	public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
+
+    public ref class SimpleRenderingContextOverlaySystem : public GUILayer::IOverlaySystem
+    {
+    public:
+        virtual void Render(
+            RenderCore::IThreadContext& threadContext,
+			const GUILayer::RenderTargetWrapper& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override
+        {
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
+            auto context = gcnew GUILayer::SimpleRenderingContext(&threadContext, RetainedResources, &parserContext);
+            try
+            {
+                OnRender(context);
+            }
+            finally
+            {
+                delete context;
+            }
+        }
+
+        event RenderCallback^ OnRender;
+        property GUILayer::RetainedRenderResources^ RetainedResources;
     };
 
 }

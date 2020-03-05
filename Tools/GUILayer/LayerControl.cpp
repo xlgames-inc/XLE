@@ -116,12 +116,11 @@ namespace GUILayer
 				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-				_managedOverlay->Render(threadContext, RenderTargetWrapper{renderTarget}, parserContext);
+				_managedOverlay->Render(threadContext, GUILayer::RenderTargetWrapper{renderTarget}, parserContext);
             }
 
             void SetActivationState(bool newState)
             {
-                _managedOverlay->SetActivationState(newState);
             }
 
             OverlaySystemAdapter(::GUILayer::IOverlaySystem^ managedOverlay) : _managedOverlay(managedOverlay) {}
@@ -130,6 +129,8 @@ namespace GUILayer
             msclr::auto_gcroot<::GUILayer::IOverlaySystem^> _managedOverlay;
         };
     }
+
+	IOverlaySystem::~IOverlaySystem() {}
 
     void LayerControl::AddSystem(IOverlaySystem^ overlay)
     {
@@ -141,7 +142,8 @@ namespace GUILayer
     void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
     {
             // create an input listener that feeds into a stack of manipulators
-        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(settings->GetUnderlying(), _pimpl->_globalTechniqueContext);
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(settings->GetUnderlying(), _pimpl->_globalTechniqueContext, pipelineAcceleratorPool);
         manipulators->Register(
             ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "NativeEngineDevice.h"
 #include <memory>
 
 namespace RenderCore { class IThreadContext; class IResource; }
@@ -14,26 +13,15 @@ namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace GUILayer 
 {
+	class RenderTargetWrapper;
     public ref class IOverlaySystem abstract
     {
     public:
-            //  There are some problems using std::shared_ptr<> with
-            //  managed methods. It's fine if the caller and implementor
-            //  are both in GUILayer.dll.
-            //
-            //  But these methods can't be exported across dlls without
-            //  using #pragma make_public... And that doesn't work with
-            //  template types
-        // typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
-        // virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
-
         virtual void Render(
             RenderCore::IThreadContext& threadContext, 
 			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) = 0; 
-		virtual void SetActivationState(bool newState) {}
-
-        virtual ~IOverlaySystem() {}
+        virtual ~IOverlaySystem();
     };
 }
 
