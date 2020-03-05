@@ -488,7 +488,7 @@ namespace RenderOverlays
                     //
                     // Build a version of this shader with dynamic linking enabled,
                     // and create a binding for the class interfaces we want.
-                assetName << "xleres/" << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
+                assetName << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
 
 				if (geometryShaderSource) {
 					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
@@ -516,7 +516,7 @@ namespace RenderOverlays
                     }
                 }
             } else {
-                assetName << "xleres/" << desc._pixelShaderName << ":ps_*";
+                assetName << desc._pixelShaderName << ":ps_*";
 				if (geometryShaderSource) {
 					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
 				} else

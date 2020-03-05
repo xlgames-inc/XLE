@@ -32,6 +32,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
+#include "../../xleres/FileList.h"
 #include <vector>
 
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -128,7 +129,7 @@ namespace GUILayer
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
 				{});
 
-            auto variation = material.FindVariation(parsingContext, techniqueIndex, "unlit.tech");
+            auto variation = material.FindVariation(parsingContext, techniqueIndex, UNLIT_TECH);
             if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }

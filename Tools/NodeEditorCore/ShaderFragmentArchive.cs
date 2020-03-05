@@ -474,7 +474,6 @@ namespace NodeEditorCore
                                     || extension.Equals(".geo.hlsl", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".hlsl", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".tech", StringComparison.CurrentCultureIgnoreCase)
-                                    || extension.Equals(".hlsl", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".graph", StringComparison.CurrentCultureIgnoreCase)
                                     )
                                 {

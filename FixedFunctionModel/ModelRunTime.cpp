@@ -238,7 +238,7 @@ namespace FixedFunctionModel
                 // fill in the details for all of the material references we found
 				// Note that we no longer store a shader name in the material itself,
 				// it's usually provided by some external source
-            const ::Assets::ResChar* shaderName = ILLUM_TECH;
+            const ::Assets::ResChar* shaderName = ILLUM_LEGACY_TECH;
 			for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 i->second._shaderName = sharedStateSet.InsertTechniqueConfig(shaderName);
                 i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);

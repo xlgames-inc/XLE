@@ -16,6 +16,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/IntrusivePtr.h"
+#include "../xleres/FileList.h"
 #include <stdarg.h>
 #include <assert.h>
 #include <string.h>
@@ -310,7 +311,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             ColorB::Zero, colour,
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(width, roundedProportion), Float2(width, roundedProportion),
-            "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=None,Outline=SolidFill");
+            RENDEROVERLAYS_SHAPES_HLSL ":Paint,Shape=RoundedRectShape,Fill=None,Outline=SolidFill");
     }
 
     void DrawRoundedRectangle(
@@ -329,7 +330,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             backgroundColour, outlineColour,
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(borderWidth, roundedProportion), Float2(borderWidth, roundedProportion),
-            "ui\\dd\\shapes.hlsl:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=SolidFill");
+            RENDEROVERLAYS_SHAPES_HLSL ":Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=SolidFill");
     }
 
     void DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour)
@@ -599,7 +600,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             HeaderBkColor, HeaderBkOutColor, 
             Float2(0.f, 0.f), Float2(1.f, 1.f),
             Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "ui\\dd\\shapes.hlsl:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+            RENDEROVERLAYS_SHAPES_HLSL ":Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style{DrawTextOptions(false, true)};
 
@@ -641,7 +642,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             BkColor, BkOutColor, 
             Float2(0.f, 0.f), Float2(1.f, 1.f),
             Float2(0.f, 0.f), Float2(0.f, 0.f),
-            "ui\\dd\\shapes.hlsl:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+            RENDEROVERLAYS_SHAPES_HLSL ":Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style{DrawTextOptions(true, false)};
 
