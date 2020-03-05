@@ -1006,16 +1006,16 @@ namespace RenderCore { namespace Techniques
 		// Check to make sure we've got a skeleton binding for each referenced geo call to world referenced
 		for (unsigned g=0; g<cmdStream.GetGeoCallCount(); g++) {
 			unsigned machineOutput = ~0u;
-			if (cmdStream.GetGeoCall(c)._transformMarker < _skeletonBinding.GetModelJointCount())
-				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetGeoCall(c)._transformMarker);
+			if (cmdStream.GetGeoCall(g)._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetGeoCall(g)._transformMarker);
 			if (machineOutput >= _baseTransformCount)
 				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
 		}
 
 		for (unsigned g=0; g<cmdStream.GetSkinCallCount(); g++) {
 			unsigned machineOutput = ~0u;
-			if (cmdStream.GetSkinCall(c)._transformMarker < _skeletonBinding.GetModelJointCount())
-				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetSkinCall(c)._transformMarker);
+			if (cmdStream.GetSkinCall(g)._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetSkinCall(g)._transformMarker);
 			if (machineOutput >= _baseTransformCount)
 				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
 		}
