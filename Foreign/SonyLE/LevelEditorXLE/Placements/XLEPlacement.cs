@@ -84,11 +84,18 @@ namespace LevelEditorXLE.Placements
         #region IListable Members
         public void GetInfo(ItemInfo info)
         {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "<" + Path.GetFileNameWithoutExtension(Model.OriginalString) + ">";
+            try
+            {
+                info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+                info.Label = "<" + Path.GetFileNameWithoutExtension(Model.OriginalString) + ">";
 
-            if (IsLocked)
-                info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
+                if (IsLocked)
+                    info.StateImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.LockImage);
+            }
+            catch (Exception e)
+            {
+                info.Label = "Exception during GetInfo: " + e.Message;
+            }
         }
         #endregion
         #region IVisible Members
@@ -160,7 +167,7 @@ namespace LevelEditorXLE.Placements
             // we need to build a predicate that looks for placements that are using this model
             var predicate = new Sce.Atf.Dom.DomNodePropertyPredicate();
             predicate.AddPropertyNameExpression("Model");
-            var searchName = Path.GetFileNameWithoutExtension(modelName.LocalPath);
+            var searchName = Path.GetFileNameWithoutExtension(modelName.OriginalString);
             predicate.AddValueStringSearchExpression(searchName, (UInt64)StringQuery.Contains, false);
             return predicate;
         }
@@ -170,7 +177,7 @@ namespace LevelEditorXLE.Placements
             // note -- we will only compare the "model"
             var predicate = new Sce.Atf.Dom.DomNodePropertyPredicate();
             predicate.AddPropertyNameExpression("Model");
-            var searchName = Path.GetFileNameWithoutExtension(bkmrk.Model.LocalPath);
+            var searchName = Path.GetFileNameWithoutExtension(bkmrk.Model.OriginalString);
             predicate.AddValueStringSearchExpression(searchName, (UInt64)StringQuery.Matches, false);
             return predicate;
         }

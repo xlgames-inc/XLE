@@ -104,13 +104,42 @@ namespace RenderingInterop
                 XLEBridgeUtils.Utils.GlobalSceneManager = s_underlyingScene;
                 s_entityInterface = s_underlyingScene.GetEntityInterface();
                 CriticalError = "";
+
+                System.Text.StringBuilder typesBuilder = new System.Text.StringBuilder();
+                typesBuilder.Append("<ResourceDescriptor Type='Model' name='Model' Description='Model' Ext='");
+                bool first = true;
+                foreach (var ext in GUILayer.Utils.GetModelExtensions())
+                {
+                    if (!first)
+                        typesBuilder.Append(',');
+                    first = false;
+                    string e = ext.Extension;
+                    if (!string.IsNullOrEmpty(e) && e[0] == '.')
+                        e = e.Substring(1);
+                    typesBuilder.Append(e);
+                }
+                typesBuilder.Append("' />\n");
+
+                typesBuilder.Append("<ResourceDescriptor Type='AnimationSet' name='AnimationSet' Description='AnimationSet' Ext='");
+                first = true;
+                foreach (var ext in GUILayer.Utils.GetAnimationSetExtensions())
+                {
+                    if (!first)
+                        typesBuilder.Append(',');
+                    first = false;
+                    string e = ext.Extension;
+                    if (!string.IsNullOrEmpty(e) && e[0] == '.')
+                        e = e.Substring(1);
+                    typesBuilder.Append(e);
+                }
+                typesBuilder.Append("' />\n");
+
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
                         <SupportedResources>
-                            <ResourceDescriptor Type='Model' Name='Model' Description='Model' Ext='.dae' />
-                            <ResourceDescriptor Type='ModelBookmark' Name='ModelBookmark' Description='ModelBookmark' Ext='.modelbookmark' />
-                            <ResourceDescriptor Type='Texture' Name='Texture' Description='Texture' Ext='.dds,.tga,.bmp,.jpg,.jpeg,.png,.tif,.tiff,.gif,.hpd,.jxr,.wdp,.ico,.hdr,.exr' />
-                            <ResourceDescriptor Type='Prefab' Name='Prefab' Description='Prefab' Ext='.prefab' />
+                            " + typesBuilder.ToString() + @"
+                            <ResourceDescriptor Type='ModelBookmark' Name='ModelBookmark' Description='ModelBookmark' Ext='modelbookmark' />
+                            <ResourceDescriptor Type='Texture' Name='Texture' Description='Texture' Ext='dds,tga,bmp,jpg,jpeg,png,tif,tiff,gif,hpd,jxr,wdp,ico,hdr,exr' />
                         </SupportedResources>
                     </EngineInfo>");
 

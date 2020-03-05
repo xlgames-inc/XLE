@@ -71,6 +71,16 @@ namespace LevelEditor
             get { return m_metadataFileExts; }
         }
 
+        private static string GetExtension(string filename)
+        {
+            // Path.GetExtension() only returns the part after the last '.' - we want the part after the first dot
+            string basename = System.IO.Path.GetFileName(filename);
+            int extStart = basename.IndexOf('.');
+            if (extStart == -1)
+                return String.Empty;
+            return basename.Substring(extStart + 1).ToLower();
+        }
+
         IEnumerable<object> IResourceMetadataService.GetMetadata(IEnumerable<Uri> resourceUris)
         {           
             List<DomNode> rootNodes = new List<DomNode>();
@@ -78,7 +88,7 @@ namespace LevelEditor
             {
                 if (!resourceUri.IsAbsoluteUri) continue;
 
-                string reExt = System.IO.Path.GetExtension(resourceUri.LocalPath).ToLower();
+                string reExt = GetExtension(resourceUri.LocalPath);
 
                 ResourceMetadataInfo resInfo;
                 m_extMap.TryGetValue(reExt, out resInfo);

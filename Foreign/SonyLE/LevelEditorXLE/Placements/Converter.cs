@@ -46,7 +46,7 @@ namespace LevelEditorXLE.Placements
                     {
                         var target = _resLister.ContextMenuTarget;
                         if (target == null) return false;
-                        var ext = System.IO.Path.GetExtension(target);
+                        var ext = GetExtension(target);
 
                         // we can only do this for model files, or model bookmarks
                         return IsModelExtension(ext) || IsModelBookmarkExtension(ext);
@@ -54,6 +54,16 @@ namespace LevelEditorXLE.Placements
             }
 
             return false;
+        }
+
+        private static string GetExtension(string filename)
+        {
+            // Path.GetExtension() only returns the part after the last '.' - we want the part after the first dot
+            string basename = System.IO.Path.GetFileName(filename);
+            int extStart = basename.IndexOf('.');
+            if (extStart == -1)
+                return String.Empty;
+            return basename.Substring(extStart + 1).ToLower();
         }
 
         public void DoCommand(object commandTag)
@@ -72,7 +82,7 @@ namespace LevelEditorXLE.Placements
                         // note --  we could use the IResourceService to do the type resolution here by
                         //          calling IResourceService.Load... However, if the load operation is
                         //          expensive, we might not always want to do it.
-                        var ext = System.IO.Path.GetExtension(target);
+                        var ext = GetExtension(target);
                         if (IsModelExtension(ext))
                         {
                             predicate = XLEPlacementObject.CreateSearchPredicate(new Uri(target, UriKind.Relative));

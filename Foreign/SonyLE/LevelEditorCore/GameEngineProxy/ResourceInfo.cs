@@ -257,6 +257,15 @@ namespace LevelEditorCore
             return m_extensions.Contains(ext);
         }
 
+        public bool IsSupportedFullFilename(string fullfilename)
+        {
+            string basename = Path.GetFileName(fullfilename);
+            int extStart = basename.IndexOf('.');
+            if (extStart == -1)
+                return false;
+            return IsSupported(basename.Substring(extStart + 1).ToLower());
+        }
+
 
         // file extensions for this resource type
         private HashSet<string> m_extensions =

@@ -37,14 +37,13 @@ namespace RenderingInterop
             }
             else
             {
-                string ext = Path.GetExtension(fileName).ToLower();
                 var res = m_gameEngine.Info.ResourceInfos.GetByType(ResourceTypes.Model);
-                if (res.IsSupported(ext))
+                if (res.IsSupportedFullFilename(fileName))
                 {
                     resource = new ModelResource(uri, ResourceTypes.Model);
                 } 
                 else
-                if (m_gameEngine.Info.ResourceInfos.GetByType("ModelBookmark").IsSupported(ext))
+                if (m_gameEngine.Info.ResourceInfos.GetByType("ModelBookmark").IsSupportedFullFilename(fileName))
                 {
                     resource = new ModelBookmarkResource(uri);
                 }
