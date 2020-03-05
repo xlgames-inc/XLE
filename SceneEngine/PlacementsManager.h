@@ -14,13 +14,14 @@
 #include <string>
 #include <functional>
 
-namespace FixedFunctionModel { class ModelCache; class DelayedDrawCall; enum class DelayStep : unsigned; }
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class ModelCache; class DrawablesPacket; class IPreDrawDelegate; } }
 namespace Utility { class OutputStream; template<typename CharType> class InputStreamFormatter; }
 namespace Assets { class DirectorySearchRules; }
 
 namespace SceneEngine
 {
+	using PlacementsModelCache = RenderCore::Techniques::ModelCache;
+
     class WorldPlacementsConfig
     {
     public:
@@ -74,7 +75,7 @@ namespace SceneEngine
         const std::shared_ptr<PlacementsIntersections>& GetIntersections();
         std::shared_ptr<PlacementsEditor> CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
 
-        PlacementsManager(std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+        PlacementsManager(std::shared_ptr<PlacementsModelCache> modelCache);
         ~PlacementsManager();
     protected:
         class Pimpl;
@@ -86,44 +87,23 @@ namespace SceneEngine
     class PlacementCell;
     class PlacementsCache;
     class PreparedScene;
-    typedef std::pair<uint64_t, uint64_t> PlacementGUID;
+    using PlacementGUID = std::pair<uint64_t, uint64_t>;
+	class SceneExecuteContext;
     
     class PlacementsRenderer
     {
     public:
             // -------------- Rendering --------------
-        void Render(
-            RenderCore::Metal::DeviceContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex,
-            const PlacementCellSet& cellSet);
-        void Render(
-            RenderCore::Metal::DeviceContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            PreparedScene& preparedScene,
-            unsigned techniqueIndex,
-            const PlacementCellSet& cellSet);
-        void CommitTransparent(
-            RenderCore::Metal::DeviceContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex, FixedFunctionModel::DelayStep delayStep);
-        bool HasPrepared(FixedFunctionModel::DelayStep delayStep);
-        
-            // -------------- Cull --------------
-        void CullToPreparedScene(
-            PreparedScene& preparedScene,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            const PlacementCellSet& cellSet);
+        void BuildDrawables(
+            SceneExecuteContext& executeContext,
+			const PlacementCellSet& cellSet);
 
             // -------------- Render filtered --------------
-        using DrawCallPredicate = std::function<bool(const FixedFunctionModel::DelayedDrawCall&)>;
-        void RenderFiltered(
-            RenderCore::Metal::DeviceContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex,
+        void BuildDrawables(
+            SceneExecuteContext& executeContext,
             const PlacementCellSet& cellSet,
             const PlacementGUID* begin, const PlacementGUID* end,
-            const DrawCallPredicate& predicate = DrawCallPredicate(nullptr));
+			const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& preDrawDelegate = nullptr);
 
             // -------------- Utilities --------------
         auto GetVisibleQuadTrees(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
@@ -137,7 +117,7 @@ namespace SceneEngine
 
         PlacementsRenderer(
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+            std::shared_ptr<PlacementsModelCache> modelCache);
         ~PlacementsRenderer();
     protected:
         class Pimpl;
@@ -174,7 +154,7 @@ namespace SceneEngine
 
         PlacementsIntersections(
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+            std::shared_ptr<PlacementsModelCache> modelCache);
         ~PlacementsIntersections();
     protected:
         class Pimpl;
@@ -253,7 +233,7 @@ namespace SceneEngine
             std::shared_ptr<PlacementCellSet> cellSet,
             std::shared_ptr<PlacementsManager> manager,
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+            std::shared_ptr<PlacementsModelCache> modelCache);
         ~PlacementsEditor();
     protected:
         class Pimpl;

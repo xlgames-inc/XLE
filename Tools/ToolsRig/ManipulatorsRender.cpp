@@ -8,6 +8,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/MetalStubs.h"
+#include "../../SceneEngine/RenderStep.h"
 #include "../../FixedFunctionModel/ModelRunTime.h"
 #include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -21,6 +22,9 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/SimpleModelRenderer.h"
+#include "../../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
@@ -39,26 +43,64 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex,
+        const RenderCore::Techniques::SequencerContext& sequencerTechnique,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        if (materialGuid == ~0ull) {
-            renderer.RenderFiltered(*metalContext.get(), parserContext, techniqueIndex, cellSet, filterBegin, filterEnd);
-        } else {
-                //  render with a predicate to compare the material binding index to
-                //  the given value
-            renderer.RenderFiltered(
-                *metalContext, parserContext, techniqueIndex, cellSet, filterBegin, filterEnd,
-                [=](const FixedFunctionModel::DelayedDrawCall& e) { 
-                    return ((const FixedFunctionModel::ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
-                });
-        }
+		class PreDrawDelegate : public RenderCore::Techniques::IPreDrawDelegate
+		{
+		public:
+			virtual bool OnDraw(
+				Metal::DeviceContext&, RenderCore::Techniques::ParsingContext&,
+				const RenderCore::Techniques::Drawable&,
+				uint64_t materialGuid, unsigned drawCallIdx)
+			{
+				return materialGuid == _materialGuid;
+			}
+			uint64_t _materialGuid;
+			PreDrawDelegate(uint64_t materialGuid) : _materialGuid(materialGuid) {}
+		};
+
+		using namespace RenderCore;
+		using namespace SceneEngine;
+		SceneExecuteContext sceneExeContext;
+		auto viewDelegate = std::make_shared<BasicViewDelegate>();
+		sceneExeContext.AddView({SceneView::Type::Normal, parserContext.GetProjectionDesc()}, viewDelegate);
+		if (materialGuid == ~0ull) {
+			renderer.BuildDrawables(
+				sceneExeContext,
+				cellSet, filterBegin, filterEnd);
+		} else {
+			auto del = std::make_shared<PreDrawDelegate>(materialGuid);
+			renderer.BuildDrawables(sceneExeContext, cellSet, filterBegin, filterEnd, del);
+		}
+
+		Techniques::Draw(
+			threadContext, parserContext, 
+			sequencerTechnique, 
+			viewDelegate->_pkt);
     }
+
+	class TechniqueBox
+	{
+	public:
+		std::shared_ptr<Techniques::TechniqueSetFile> _techniqueSetFile;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _techniqueSetFile->GetDependencyValidation(); }
+
+		struct Desc {};
+		TechniqueBox(const Desc&)
+		{
+			_techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+			_techniqueSharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+			_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(_techniqueSetFile, _techniqueSharedResources, RenderCore::Techniques::TechniqueDelegateForwardFlags::DisableDepthWrite);
+		}
+	};
 
     void Placements_RenderHighlight(
         RenderCore::IThreadContext& threadContext,
@@ -71,8 +113,14 @@ namespace ToolsRig
     {
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
+			RenderCore::Techniques::SequencerContext seqContext;
+			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
+				highlight.GetFrameBufferDesc());
+			seqContext._sequencerConfig = sequencerCfg.get();
             Placements_RenderFiltered(
-                threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
+                threadContext, parserContext, 
+				seqContext,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithOutline(threadContext, Float3(.65f, .8f, 1.5f));
         CATCH_ASSETS_END(parserContext)
@@ -89,8 +137,14 @@ namespace ToolsRig
     {
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
-            Placements_RenderFiltered(
-                threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
+            RenderCore::Techniques::SequencerContext seqContext;
+			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
+				highlight.GetFrameBufferDesc());
+			seqContext._sequencerConfig = sequencerCfg.get();
+			Placements_RenderFiltered(
+                threadContext, parserContext, 
+				seqContext,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithShadow(threadContext, Float4(.025f, .025f, .025f, 0.85f));
         CATCH_ASSETS_END(parserContext)

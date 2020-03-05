@@ -71,6 +71,9 @@
       <Filter>Resources &amp; states</Filter>
     </ClInclude>
     <ClInclude Include="..\Techniques\Services.h" />
+    <ClInclude Include="..\Techniques\ModelCache.h">
+      <Filter>Model Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\DrawableMaterial.cpp">
@@ -134,6 +137,9 @@
       <Filter>Resources &amp; states</Filter>
     </ClCompile>
     <ClCompile Include="..\Techniques\Services.cpp" />
+    <ClCompile Include="..\Techniques\ModelCache.cpp">
+      <Filter>Model Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Drawables">

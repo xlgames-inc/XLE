@@ -179,7 +179,7 @@ namespace ToolsRig
 
 		std::pair<Float3, Float3> GetBoundingBox() const  { return { Float3{-1.0f, 1.0f, 1.0f}, Float3{1.0f, 1.0f, 1.0f} }; }
 		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const { return { {}, {} }; }
-		std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate>& delegate) { return nullptr; }
+		std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& delegate) { return nullptr; }
 		void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 

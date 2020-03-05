@@ -9,6 +9,7 @@
 #include "IOverlaySystem.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
+#include "NativeEngineDevice.h"
 
 #include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
@@ -86,25 +87,6 @@ namespace GUILayer
         }
 
         if (1) { // parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-            auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
-            CATCH_ASSETS_BEGIN
-                for (auto i:delaySteps)
-                    if (i != FixedFunctionModel::DelayStep::OpaqueRender) {
-                        scene._placementsManager->GetRenderer()->CommitTransparent(
-                            metalContext, parserContext, techniqueIndex, i);
-                    } else {
-                        if (batchFilter == RenderCore::Techniques::BatchFilter::General) {
-                            scene._placementsManager->GetRenderer()->Render(
-                                metalContext, parserContext, preparedPackets,
-                                techniqueIndex, *scene._placementsCells);
-                        } else {
-                            scene._placementsManager->GetRenderer()->Render(
-                                metalContext, parserContext,
-                                techniqueIndex, *scene._placementsCells);
-                        }
-                    }
-            CATCH_ASSETS_END(parserContext)
-
             CATCH_ASSETS_BEGIN
                 //for (auto i:delaySteps)
                 //    scene._vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
@@ -129,7 +111,7 @@ namespace GUILayer
         auto& scene = *_editorScene;
         if (scene._terrainManager) {
             scene._terrainManager->Prepare(context, parserContext, preparedPackets);
-            scene._placementsManager->GetRenderer()->CullToPreparedScene(preparedPackets, parserContext, *scene._placementsCells);
+            // scene._placementsManager->GetRenderer()->CullToPreparedScene(preparedPackets, parserContext, *scene._placementsCells);
         }
     }
 
@@ -211,6 +193,7 @@ namespace GUILayer
         RenderCore::IThreadContext& threadContext,
 		SceneExecuteContext& executeContext) const
 	{
+		_editorScene->_placementsManager->GetRenderer()->BuildDrawables(executeContext, *_editorScene->_placementsCells);
 	}
 
     EditorSceneParser::EditorSceneParser(const std::shared_ptr<EditorScene>& editorScene)

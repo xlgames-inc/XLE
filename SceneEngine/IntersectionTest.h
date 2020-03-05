@@ -13,7 +13,7 @@
 #include "../Math/Vector.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; }}
+namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; class IPipelineAcceleratorPool; }}
 namespace RenderCore { class PresentationChainDesc; }
 
 namespace SceneEngine
@@ -46,6 +46,7 @@ namespace SceneEngine
 		RenderCore::Techniques::CameraDesc _cameraDesc;
 		Int2 _viewportMins, _viewportMaxs;
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
     };
 
     class IIntersectionTester;

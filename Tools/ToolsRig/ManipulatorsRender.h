@@ -12,7 +12,7 @@
 #include "../../Core/Types.h"
 #include <utility>
 
-namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class SequencerContext; }}
 namespace SceneEngine 
 { 
     class PlacementCellSet;
@@ -34,7 +34,7 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex,
+        const RenderCore::Techniques::SequencerContext& sequencerTechnique,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin = nullptr,

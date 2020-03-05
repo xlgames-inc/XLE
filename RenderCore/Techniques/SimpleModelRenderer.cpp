@@ -173,7 +173,7 @@ namespace RenderCore { namespace Techniques
 	class SimpleModelDrawable_Delegate : public SimpleModelDrawable
 	{
 	public:
-		std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate> _delegate;
+		std::shared_ptr<IPreDrawDelegate> _delegate;
 	};
 
 	static void DrawFn_SimpleModelDelegate(
@@ -1107,7 +1107,7 @@ namespace RenderCore { namespace Techniques
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
     }
 
-	SimpleModelRenderer::IPreDrawDelegate::~IPreDrawDelegate() {}
+	IPreDrawDelegate::~IPreDrawDelegate() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

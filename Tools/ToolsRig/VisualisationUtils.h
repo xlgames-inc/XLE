@@ -115,7 +115,8 @@ namespace ToolsRig
 	public:
 		virtual std::pair<Float3, Float3> GetBoundingBox() const = 0;
 
-		virtual std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
+		virtual std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(
+			const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>&) = 0;
 		virtual void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 

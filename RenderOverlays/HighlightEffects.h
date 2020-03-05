@@ -11,6 +11,7 @@
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
+namespace RenderCore { class FrameBufferDesc; }
 
 namespace RenderOverlays
 {
@@ -50,6 +51,8 @@ namespace RenderOverlays
         void FinishWithOutline(RenderCore::IThreadContext& threadContext, Float3 outlineColor);
         void FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor);
         void FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor);
+
+		const RenderCore::FrameBufferDesc& GetFrameBufferDesc() const;
         
         BinaryHighlight(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::FrameBufferPool& fbPool, RenderCore::Techniques::AttachmentPool& namedRes);
         ~BinaryHighlight();

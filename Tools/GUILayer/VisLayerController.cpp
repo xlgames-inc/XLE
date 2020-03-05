@@ -162,7 +162,7 @@ namespace GUILayer
 
 		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
-			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext);
+			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext, pipelineAcceleratorPool);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
 				ToolsRig::CreateCameraManipulator(

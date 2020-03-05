@@ -93,5 +93,21 @@ namespace SceneEngine
 	std::shared_ptr<IRenderStep> CreateRenderStep_Direct(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customDelegate = nullptr);
 	std::shared_ptr<IRenderStep> CreateRenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
 	std::shared_ptr<IRenderStep> CreateRenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets);
+
+	class BasicViewDelegate : public SceneEngine::IViewDelegate
+	{
+	public:
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) override
+		{
+			return (batch == RenderCore::Techniques::BatchFilter::General) ? &_pkt : nullptr;
+		}
+
+		void Reset() override
+		{
+			_pkt.Reset();
+		}
+
+		RenderCore::Techniques::DrawablesPacket _pkt;
+	};
 	
 }

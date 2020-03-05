@@ -1556,8 +1556,6 @@ namespace ToolsRig
         _activeManipulatorIndex = 0;
         _drawSelectedModel = false;
 
-        std::string selectedModel = "game\\model\\nature\\lupinus\\lupinusb.DAE";
-
         auto manipulators = CreatePlacementManipulators(this, editor, renderer);
         manipulators[0]->SetActivationState(true);
 
@@ -1565,7 +1563,6 @@ namespace ToolsRig
         _intersectionTestScene = intersectionTestScene;
         _browser = std::move(browser);
         _manipulators = std::move(manipulators);
-        _selectedModel = std::move(selectedModel);
 		_camera = camera;
 		_techniqueContext = techniqueContext;
     }

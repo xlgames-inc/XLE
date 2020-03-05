@@ -11,6 +11,7 @@
 #include "PlacementsManager.h"
 #include "SceneParser.h"
 #include "LightingParserContext.h"
+#include "RenderStep.h"
 
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -76,7 +77,7 @@ namespace SceneEngine
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
-        RenderCore::Metal::DeviceContext& metalContext, 
+        RenderCore::IThreadContext& threadContext, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		ModelIntersectionStateContext& stateContext,
         SceneEngine::PlacementsRenderer& placementsRenderer, SceneEngine::PlacementCellSet& cellSet,
@@ -91,13 +92,26 @@ namespace SceneEngine
             // immediate context can't be doing anything else in another thread.
             //
             // This will require more complex threading support in the future!
-        assert(metalContext.IsImmediate());
+        // assert(metalContext.IsImmediate());
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
-        placementsRenderer.RenderFiltered(
-            metalContext, parsingContext, RenderCore::Techniques::TechniqueIndex::RayTest,		// <-- ray test technique is no longer required with the new drawable delegate based intersection system. But placements don't support that yet
-            cellSet, &object, &object+1);
+		
+		{
+			using namespace RenderCore;
+			using namespace SceneEngine;
+			SceneExecuteContext sceneExeContext;
+			auto viewDelegate = std::make_shared<BasicViewDelegate>();
+			sceneExeContext.AddView({SceneView::Type::Other, parsingContext.GetProjectionDesc()}, viewDelegate);
+			placementsRenderer.BuildDrawables(
+				sceneExeContext,
+				cellSet, &object, &object+1);
+			Techniques::Draw(
+				threadContext, parsingContext, 
+				stateContext.MakeRayTestSequencerTechnique(), 
+				viewDelegate->_pkt);
+		}
+
         return stateContext.GetResults();
     }
 
@@ -111,8 +125,8 @@ namespace SceneEngine
         Result result;
 
 		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
-        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
 		RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
+		parsingContext._pipelineAcceleratorPool = context._pipelineAcceleratorPool.get();
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
@@ -158,7 +172,7 @@ namespace SceneEngine
                     for (unsigned c=0; c<count; ++c) {
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
-                            metalContext, parsingContext, intersectionContext, 
+                            threadContext, parsingContext, intersectionContext, 
                             *_placementsEditor->GetManager()->GetRenderer(), *_placements,
                             guid);
 
@@ -223,7 +237,6 @@ namespace SceneEngine
         std::vector<Result> result;
 
         auto& threadContext = *RenderCore::Techniques::GetThreadContext();
-		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         if ((filter & Type::Placement) && _placements && _placementsEditor) {
             auto intersections = _placementsEditor->GetManager()->GetIntersections();
@@ -242,6 +255,7 @@ namespace SceneEngine
                 TRY
                 {
 					RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
+					parsingContext._pipelineAcceleratorPool = context._pipelineAcceleratorPool.get();
                     ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::FrustumTest,
                         threadContext, parsingContext, &context._cameraDesc);
@@ -267,7 +281,7 @@ namespace SceneEngine
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
                             auto results = PlacementsIntersection(
-                                metalContext, parsingContext, intersectionContext, 
+                                threadContext, parsingContext, intersectionContext, 
                                 *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid);
                             isInside = !results.empty();
                         }

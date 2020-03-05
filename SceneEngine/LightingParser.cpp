@@ -726,22 +726,6 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class BasicViewDelegate : public SceneEngine::IViewDelegate
-	{
-	public:
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) override
-		{
-			return (batch == RenderCore::Techniques::BatchFilter::General) ? &_pkt : nullptr;
-		}
-
-		void Reset() override
-		{
-			_pkt.Reset();
-		}
-
-		RenderCore::Techniques::DrawablesPacket _pkt;
-	};
-
 	void ExecuteSceneRaw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,

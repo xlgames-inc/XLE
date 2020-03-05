@@ -189,6 +189,8 @@ namespace RenderCore { namespace Techniques
 
 	::Assets::FuturePtr<Metal::ShaderProgram> ShaderVariationFactory_Basic::MakeShaderVariation(StringSection<> defines) 
 	{
+		assert(!_entry->_vertexShaderName.empty());
+		assert(!_entry->_pixelShaderName.empty());
 		if (_entry->_geometryShaderName.empty()) {
 			return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_pixelShaderName, defines);
 		} else {

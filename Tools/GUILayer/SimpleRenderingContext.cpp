@@ -320,7 +320,7 @@ namespace GUILayer
                     ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetFrameBufferPool(), context->GetParsingContext().GetNamedResources());
                     ToolsRig::Placements_RenderFiltered(
                         threadContext, context->GetParsingContext(), 
-                        RenderCore::Techniques::TechniqueIndex::Forward,
+						{}, // RenderCore::Techniques::TechniqueIndex::Forward,
                         renderer->GetNative(), placements->GetNative().GetCellSet(), 
                         nullptr, nullptr, materialGuid);
 

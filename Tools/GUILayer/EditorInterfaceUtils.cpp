@@ -110,7 +110,8 @@ namespace GUILayer
             {
 				SceneEngine::IntersectionTestContext testContext {
 					*camera->_native, UInt2{0,0}, UInt2{0,0},
-					techniqueContext->_techniqueContext.GetNativePtr()
+					techniqueContext->_techniqueContext.GetNativePtr(),
+					EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool()
 				};
                 auto firstResult = testScene->_scene->FirstRayIntersection(
                     testContext, std::make_pair(AsFloat3(start), AsFloat3(end)), filter);
@@ -157,7 +158,8 @@ namespace GUILayer
 
                 SceneEngine::IntersectionTestContext testContext {
 					*camera->_native, UInt2{0,0}, UInt2{0,0},
-					techniqueContext->_techniqueContext.GetNativePtr()
+					techniqueContext->_techniqueContext.GetNativePtr(),
+					EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool()
 				};
 				auto nativeResults = testScene->_scene->FrustumIntersection(
                     testContext, worldToProjection, filter);

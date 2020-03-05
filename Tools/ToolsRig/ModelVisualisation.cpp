@@ -29,10 +29,11 @@ namespace ToolsRig
 	using RenderCore::Assets::SkeletonScaffold;
     using RenderCore::Assets::SkeletonMachine;
 	using RenderCore::Techniques::SimpleModelRenderer;
+	using RenderCore::Techniques::IPreDrawDelegate;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class MaterialFilterDelegate : public RenderCore::Techniques::SimpleModelRenderer::IPreDrawDelegate
+	class MaterialFilterDelegate : public RenderCore::Techniques::IPreDrawDelegate
 	{
 	public:
 		virtual bool OnDraw( 
@@ -130,7 +131,7 @@ namespace ToolsRig
 			return r->_renderer->GetModelScaffold()->GetStaticBoundingBox(); 
 		}
 
-		std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate>& delegate)
+		std::shared_ptr<IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<IPreDrawDelegate>& delegate)
 		{
 			auto oldDelegate = delegate;
 			std::swap(_preDrawDelegate, oldDelegate);
@@ -278,7 +279,7 @@ namespace ToolsRig
         }
 
     protected:
-		std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate>			_preDrawDelegate;
+		std::shared_ptr<IPreDrawDelegate>			_preDrawDelegate;
 		
 		struct RendererState
 		{

@@ -43,8 +43,8 @@ namespace GUILayer
 
         auto manip = ToolsRig::CreateTerrainManipulators(terrain, context);
         for (auto& t : manip) {
-            _pimpl->_terrainManipulators.push_back(
-                TerrainManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));
+			auto name = t->GetName();
+            _pimpl->_terrainManipulators.emplace_back(name, std::move(t));
         }
     }
 

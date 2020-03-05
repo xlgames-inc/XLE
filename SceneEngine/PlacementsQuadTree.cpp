@@ -372,6 +372,7 @@ namespace SceneEngine
         const Float4x4& cellToClipAligned, 
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
+		unsigned outputIdxOffset,
         Metrics* metrics) const
     {
         visObjsCount = 0;
@@ -428,7 +429,7 @@ namespace SceneEngine
                             if ((visObjsCount+1) > visObjMaxCount) {
                                 return false;
                             }
-                            visObjs[visObjsCount++] = *i; 
+                            visObjs[visObjsCount++] = *i + outputIdxOffset; 
                         }
                     }
                 }
@@ -458,7 +459,7 @@ namespace SceneEngine
                 }
 
                 for (auto i=payload._objects.cbegin(); i!=payload._objects.cend(); ++i) {
-                    visObjs[visObjsCount++] = *i; 
+                    visObjs[visObjsCount++] = *i + outputIdxOffset; 
                 }
             }
         }

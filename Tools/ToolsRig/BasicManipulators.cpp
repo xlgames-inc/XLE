@@ -209,7 +209,7 @@ namespace ToolsRig
 		SceneEngine::IntersectionTestContext intersectionContext {
 			AsCameraDesc(*_camera),
 			context._viewMins, context._viewMaxs,
-			_techniqueContext };
+			_techniqueContext, _pipelineAcceleratorPool };
 
         if (!_activeManipulators.empty()) {
             bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
@@ -242,9 +242,11 @@ namespace ToolsRig
 
     ManipulatorStack::ManipulatorStack(
         const std::shared_ptr<VisCameraSettings>& camera,
-		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool)
     : _camera(camera)
 	, _techniqueContext(techniqueContext)
+	, _pipelineAcceleratorPool(pipelineAcceleratorPool)
     {}
     ManipulatorStack::~ManipulatorStack()
     {}

@@ -46,6 +46,7 @@ namespace SceneEngine
             const Float4x4& cellToClipAligned,
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
+			unsigned outputIdxOffset,
             Metrics* metrics = nullptr) const;
 
         unsigned GetMaxResults() const;

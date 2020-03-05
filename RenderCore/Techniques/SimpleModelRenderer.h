@@ -34,22 +34,22 @@ namespace RenderCore { namespace Techniques
 	class IDeformOperation;
 	class IUniformBufferDelegate;
 
+	class IPreDrawDelegate
+	{
+	public:
+		virtual bool OnDraw(
+			Metal::DeviceContext&, ParsingContext&,
+			const Drawable&,
+			uint64_t materialGuid, unsigned drawCallIdx) = 0;
+		virtual ~IPreDrawDelegate();
+	};
+	
 	class SimpleModelRenderer
 	{
 	public:
 		void BuildDrawables(
 			IteratorRange<DrawablesPacket** const> pkts,
 			const Float4x4& localToWorld = Identity<Float4x4>()) const;
-
-		class IPreDrawDelegate
-		{
-		public:
-			virtual bool OnDraw(
-				Metal::DeviceContext&, ParsingContext&,
-				const Drawable&,
-				uint64_t materialGuid, unsigned drawCallIdx) = 0;
-			virtual ~IPreDrawDelegate();
-		};
 
 		void BuildDrawables(
 			IteratorRange<DrawablesPacket** const> pkts,

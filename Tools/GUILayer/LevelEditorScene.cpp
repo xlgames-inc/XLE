@@ -14,6 +14,7 @@
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "Exceptions.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/PlacementEntities.h"
 #include "../EntityInterface/TerrainEntities.h"
@@ -36,6 +37,7 @@
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SurfaceHeightsProvider.h"
+#include "../../RenderCore/Techniques/ModelCache.h"
 #include "../../FixedFunctionModel/ModelCache.h"
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../Utility/Streams/StreamTypes.h"
@@ -80,8 +82,10 @@ namespace GUILayer
 
     EditorScene::EditorScene()
     {
-        auto modelCache = std::make_shared<FixedFunctionModel::ModelCache>();
-        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(modelCache);
+        auto fixedFunctionModelCache = std::make_shared<FixedFunctionModel::ModelCache>();
+		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+		auto newModelCache = std::make_shared<RenderCore::Techniques::ModelCache>(pipelineAcceleratorPool);
+        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(newModelCache);
         _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
         _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor(_placementsCells);
@@ -90,12 +94,12 @@ namespace GUILayer
             //          for some settings (like the gradient flags settings!)
         auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));
         _terrainManager = std::make_shared<SceneEngine::TerrainManager>(defTerrainFormat);
-        _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(modelCache);
+        _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(fixedFunctionModelCache);
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(_flexObjects);
-        _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(modelCache->GetSharedStateSet());
+        _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(fixedFunctionModelCache->GetSharedStateSet());
         _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
         _currentTime = 0.f;
     }

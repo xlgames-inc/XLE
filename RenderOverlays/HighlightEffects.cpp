@@ -181,11 +181,17 @@ namespace RenderOverlays
         IThreadContext*                 _threadContext;
         Techniques::AttachmentPool*	_namedRes;
         Techniques::RenderPassInstance  _rpi;
+		FrameBufferDesc _fbDesc;
 
         Pimpl(IThreadContext& threadContext, Techniques::AttachmentPool& namedRes)
         : _threadContext(&threadContext), _namedRes(&namedRes) {}
         ~Pimpl() {}
     };
+
+	const RenderCore::FrameBufferDesc& BinaryHighlight::GetFrameBufferDesc() const
+	{
+		return _pimpl->_fbDesc;
+	}
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
@@ -230,8 +236,9 @@ namespace RenderOverlays
 		fbDescFrag.AddSubpass(std::move(subpass1));
         
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
+		_pimpl->_fbDesc = Techniques::BuildFrameBufferDesc(std::move(fbDescFrag));
         _pimpl->_rpi = Techniques::RenderPassInstance(
-            threadContext, Techniques::BuildFrameBufferDesc(std::move(fbDescFrag)), 
+            threadContext, _pimpl->_fbDesc, 
 			fbPool, namedRes,
 			{MakeIteratorRange(clearValues)});
     }
