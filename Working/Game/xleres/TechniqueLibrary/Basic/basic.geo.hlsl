@@ -109,14 +109,14 @@ struct OutputVertex_PN
 struct InputVertex_PCR
 {
 	float4 position		: SV_Position;
-	float4 colour		: COLOR0;
+	float4 color		: COLOR0;
 	float radius		: RADIUS;
 };
 
 struct OutputVertex_PC
 {
 	float4 position		: SV_Position;
-	float4 colour		: COLOR0;
+	float4 color		: COLOR0;
 };
 
 [maxvertexcount(3)]
@@ -124,7 +124,7 @@ struct OutputVertex_PC
 {
 	OutputVertex_PC outVert;
 	outVert.position = input[0].position;
-	outVert.colour = input[0].colour;
+	outVert.color = input[0].color;
 	outputStream.Append(outVert);
 }
 

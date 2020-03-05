@@ -4,10 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
-#define OUTPUT_WORLD_VIEW_VECTOR 1
+#define VSOUT_HAS_TEXCOORD 1
+#define VSOUT_HAS_WORLD_VIEW_VECTOR 1
 #define DO_REFLECTION_IN_VS 1
-#define OUTPUT_FOG_COLOR 1
+#define VSOUT_HAS_FOG_COLOR 1
 
 #if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
 	#define VSOUTPUT_EXTRA float4 dynamicReflectionTexCoord : DYNREFLTC; float2 specularityTC : SPECTC;
@@ -166,9 +166,9 @@ float CalcShallowWaterHeight(float2 worldCoords, out float3 shallowWaterTexCoord
 
 	////////////////////////////   M A I N   ////////////////////////////
 
-VSOutput main(uint vertexId : SV_VertexId)
+VSOUT main(uint vertexId : SV_VertexId)
 {
-	VSOutput output;
+	VSOUT output;
 	uint2 gridCoords = uint2(vertexId%GridPatchWidth, vertexId/GridPatchWidth);
 
 	float3 baseLocalPosition, displacement;
@@ -186,7 +186,7 @@ VSOutput main(uint vertexId : SV_VertexId)
 
 	output.position = mul(LocalToClip, float4(finalLocalPosition,1));
 
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		output.worldViewVector = LocalSpaceView2.xyz - finalLocalPosition.xyz;
 	#endif
 
@@ -205,7 +205,7 @@ VSOutput main(uint vertexId : SV_VertexId)
 	output.specularityTC	 =	worldSpaceTC * SpecularityFrequency
 								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		// (this only works correctly because the Z values in local space are the same as world space)
 		output.fogColor = ResolveOutputFogColor(finalLocalPosition, LocalSpaceView2);
 	#endif
@@ -213,7 +213,7 @@ VSOutput main(uint vertexId : SV_VertexId)
 	return output;
 }
 
-VSOutput ShallowWater(uint vertexId : SV_VertexId)
+VSOUT ShallowWater(uint vertexId : SV_VertexId)
 {
 	const int TileDimension = SHALLOW_WATER_TILE_DIMENSION;
 	uint2 gridCoords	 = uint2(vertexId%TileDimension, vertexId/TileDimension);
@@ -223,7 +223,7 @@ VSOutput ShallowWater(uint vertexId : SV_VertexId)
 		WorldSpaceOffset.x + (SimulatingIndex.x + gridCoords.x / float(TileDimension)) * ShallowGridPhysicalDimension,
 		WorldSpaceOffset.y + (SimulatingIndex.y + gridCoords.y / float(TileDimension)) * ShallowGridPhysicalDimension,
 		waterHeight);
-	VSOutput output;
+	VSOUT output;
 	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	return output;
 }

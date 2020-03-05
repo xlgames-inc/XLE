@@ -16,7 +16,7 @@ class RoundedRectShape : IShape2D
         DebuggingShapesCoords coords,
         ShapeDesc desc)
     {
-        float2 texCoord = GetTexCoord(coords);
+        float2 texCoord = VSOUT_GetTexCoord0(coords);
         float2 minCoords = desc._minCoords, maxCoords = desc._maxCoords;
         [branch] if (
                 texCoord.x < minCoords.x || texCoord.x > maxCoords.x
@@ -84,7 +84,7 @@ class RectShape : IShape2D
     {
             // we'll assume pixel-perfect coords, so we don't have handle
             // partially covered pixels on the edges.
-        float2 texCoord = GetTexCoord(coords);
+        float2 texCoord = VSOUT_GetTexCoord0(coords);
         float2 minCoords = shapeDesc._minCoords, maxCoords = shapeDesc._maxCoords;
         bool fill =
                texCoord.x >= minCoords.x && texCoord.x < maxCoords.x
@@ -107,7 +107,7 @@ class ScrollBarShape : IShape2D
         float2 minCoords = shapeDesc._minCoords;
         float2 maxCoords = shapeDesc._maxCoords;
         float thumbPosition = shapeDesc._param0;
-        float2 texCoord = GetTexCoord(coords);
+        float2 texCoord = VSOUT_GetTexCoord0(coords);
         float aspectRatio = GetAspectRatio(coords);
 
         float2 baseLineMin = float2(minCoords.x, lerp(minCoords.y, maxCoords.y, 0.4f));

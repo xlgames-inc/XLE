@@ -6,7 +6,7 @@
 
 #include "../Framework/CommonResources.hlsl"
 #include "../Utility/Colour.hlsl"
-#include "../System/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 
 Texture2D		InputTexture BIND_MAT_T0;
 

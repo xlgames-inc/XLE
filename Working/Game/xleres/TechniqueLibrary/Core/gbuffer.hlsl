@@ -7,7 +7,7 @@
 #if !defined(GBUFFER_H)
 #define GBUFFER_H
 
-#include "../System/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 #include "../Framework/CommonResources.hlsl"    // for ClampingSampler
 
 Texture2D       NormalsFittingTexture BIND_NUMERIC_T14;

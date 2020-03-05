@@ -3,17 +3,17 @@
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
-            OUTPUT_WORLD_VIEW_VECTOR=1
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_VIEW_VECTOR=1
+            VSOUT_HAS_WORLD_POSITION=1
         ~Runtime
             BASIC_LIGHT_COUNT=1
     VertexShader=xleres/forward/illum.vertex.hlsl:main
-    GeometryShader=xleres/solidwireframe.geo.hlsl:main
-    PixelShader=xleres/solidwireframe.pixel.hlsl:marker
+    GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
+    PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:marker
 ~RayTest
     ~Parameters
         ~Geometry
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
         ~Runtime
             INTERSECTION_TEST
     VertexShader=xleres/forward/illum.vertex.hlsl:main

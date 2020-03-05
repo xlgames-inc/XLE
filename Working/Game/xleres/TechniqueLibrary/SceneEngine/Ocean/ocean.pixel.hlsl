@@ -4,10 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
-#define OUTPUT_WORLD_VIEW_VECTOR 1
+#define VSOUT_HAS_TEXCOORD 1
+#define VSOUT_HAS_WORLD_VIEW_VECTOR 1
 #define DO_REFLECTION_IN_VS 1
-#define OUTPUT_FOG_COLOR 1
+#define VSOUT_HAS_FOG_COLOR 1
 
 #if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
 	#define VSOUTPUT_EXTRA float4 dynamicReflectionTexCoord : DYNREFLTC; float2 specularityTC : SPECTC;
@@ -271,7 +271,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 }
 
 [earlydepthstencil]
-	GBufferEncoded Deferred(VSOutput geo)
+	GBufferEncoded Deferred(VSOUT geo)
 {
 	GBufferValues result = GBufferValues_Default();
 
@@ -300,7 +300,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 }
 
 [earlydepthstencil]
-	float4 Illum(VSOutput geo) : SV_Target0
+	float4 Illum(VSOUT geo) : SV_Target0
 {
 	float3 shallowWaterCoords = 0.0.xxx;
 	float shallowWaterWeight = 0.f;
@@ -374,16 +374,16 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 		return float4(LightingScale * refractedAttenuation.xxx, 1.f);
 	#endif
 
-	float3 colour =
+	float3 color =
 		  parts.transmission * refractedAttenuation * parts.refracted
 		+ parts.transmission * parts.upwelling
 		+ (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
 		+ (foamTex * parts.foamAlbedo)
 		;
 
-	#if OUTPUT_FOG_COLOR == 1
-		colour.rgb = geo.fogColor.rgb + colour.rgb * geo.fogColor.a;
+	#if VSOUT_HAS_FOG_COLOR == 1
+		color.rgb = geo.fogColor.rgb + color.rgb * geo.fogColor.a;
 	#endif
 
-	return float4(LightingScale * colour, 1.f);
+	return float4(LightingScale * color, 1.f);
 }

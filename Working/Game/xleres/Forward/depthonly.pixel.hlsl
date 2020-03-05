@@ -12,7 +12,7 @@
 #if (STOCHASTIC_TRANS)
 
 	void main(
-		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		VSOUT geo, uint primitiveID : SV_PrimitiveID,
 		out uint oCoverage : SV_Coverage
 		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 			, out uint oPrimId : SV_Target0
@@ -37,10 +37,10 @@
 
 #else
 
-	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))) && (VULKAN!=1)
+	#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))) && (VULKAN!=1)
 		[earlydepthstencil]
 	#endif
-	void main(VSOutput geo)
+	void main(VSOUT geo)
 	{
 		DoAlphaTest(geo, GetAlphaThreshold());
 	}

@@ -219,8 +219,8 @@ CalculateInscatter_Result CalculateInscatter(int3 dispatchThreadId, float densit
 		float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
 		float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
 
-		float3 colour = MonochromeRaleighScattering(cosTheta) * lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
-		float3 result = inscatterScalar * colour;
+		float3 color = MonochromeRaleighScattering(cosTheta) * lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
+		float3 result = inscatterScalar * color;
 
 		const bool pointLightSources = false;
 		if (pointLightSources)

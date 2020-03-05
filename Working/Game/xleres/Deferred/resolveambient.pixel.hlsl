@@ -14,7 +14,7 @@
 #include "../TechniqueLibrary/SceneEngine/Lighting/RangeFogResolve.hlsl"
 #include "../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
 #include "../TechniqueLibrary/Utility/Colour.hlsl"	// for LightingScale
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 cbuffer AmbientLightBuffer BIND_MAT_B1
 {

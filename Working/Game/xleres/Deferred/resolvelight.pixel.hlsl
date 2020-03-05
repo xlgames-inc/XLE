@@ -12,7 +12,7 @@
 #include "../TechniqueLibrary/SceneEngine/Lighting/ShadowTypes.hlsl"
 #include "../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
 #include "../TechniqueLibrary/Utility/Colour.hlsl" // for LightingScale
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 #include "resolveutil.hlsl"
 
 #if HAS_SCREENSPACE_AO==1

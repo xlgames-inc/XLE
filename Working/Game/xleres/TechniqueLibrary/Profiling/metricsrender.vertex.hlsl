@@ -6,7 +6,7 @@
 
 #include "Metrics.hlsl"
 
-struct VSOutput
+struct VSOUT
 {
 	float2	topLeft : TOPLEFT;
 	float2	bottomRight : BOTTOMRIGHT;
@@ -22,14 +22,14 @@ uint TileCount()
 	return ((ScreenDimensions.x + 15) / 16) * ((ScreenDimensions.y + 15) / 16);
 }
 
-VSOutput main(uint vertexId : SV_VertexId)
+VSOUT main(uint vertexId : SV_VertexId)
 {
 
 		//		Get the value we want to write from the metrics
 		//		buffer, and 
 
 	const float lineHeight = 64.f/2.f;
-	VSOutput output;
+	VSOUT output;
 	output.topLeft = float2(64.f, lineHeight*float(4+vertexId));
 	output.bottomRight = float2(256.f+64.f, lineHeight*float(5+vertexId));
 	// output.bottomRight = topLeft + float2(256.f, lineHeight);		(for some reason this line causes the compiler to crash!)

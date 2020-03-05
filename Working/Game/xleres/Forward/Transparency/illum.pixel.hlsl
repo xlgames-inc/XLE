@@ -7,10 +7,10 @@
 #include "util.hlsl"
 #include "../illum.pixel.hlsl"
 
-//#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+//#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 //	[earlydepthstencil]	// (this has a big effect, because otherwise UAV output wouldn't be occluded by depth buffer)
 //#endif
-float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
+float4 main_oi(VSOUT geo, SystemInputs sys) : SV_Target
 {
 		// Do depth rejection against the depth buffer duplicate early.
 		// This prevents us having to do the lighting calculations (which might
@@ -74,7 +74,7 @@ float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 }
 
 [earlydepthstencil]
-float4 main_stochastic(VSOutput geo,
+float4 main_stochastic(VSOUT geo,
 	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 		uint primitiveID : SV_PrimitiveID,
 	#endif

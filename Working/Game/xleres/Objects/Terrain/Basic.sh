@@ -4,15 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
+#define VSOUT_HAS_TEXCOORD 1
 
 #include "TerrainGenerator.h"
 #include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
-VSOutput vs_basic(uint vertexIndex : SV_VertexId)
+VSOUT vs_basic(uint vertexIndex : SV_VertexId)
 {
-    VSOutput output;
+    VSOUT output;
 
     int x = vertexIndex % TileDimensionsInVertices;
     int y = vertexIndex / TileDimensionsInVertices;
@@ -28,11 +28,11 @@ VSOutput vs_basic(uint vertexIndex : SV_VertexId)
     worldPosition        = AddNoise(worldPosition);
     output.position		 = mul( SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-    #if (OUTPUT_WORLD_POSITION==1)
+    #if (VSOUT_HAS_WORLD_POSITION==1)
         output.worldPosition = worldPosition;
     #endif
 
-    #if (OUTPUT_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD==1)
         output.texCoord = 0.0.xx;
     #endif
 

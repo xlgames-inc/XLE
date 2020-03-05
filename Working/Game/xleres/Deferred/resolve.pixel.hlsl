@@ -16,7 +16,7 @@
 #include "../TechniqueLibrary/SceneEngine/Lighting/LightDesc.hlsl"
 #include "../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
 #include "../TechniqueLibrary/Utility/Colour.hlsl"	// for LightingScale
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 #if HAS_SCREENSPACE_AO==1
     Texture2D<float>			AmbientOcclusion		: register(t5);

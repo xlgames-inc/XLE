@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
+#define VSOUT_HAS_TEXCOORD 1
 
 #include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
@@ -61,7 +61,7 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
 }
 
 [maxvertexcount(1)]
-    void gs_intersectiontest(triangle VSOutput input[3], inout PointStream<IntersectionResult> intersectionHits)
+    void gs_intersectiontest(triangle VSOUT input[3], inout PointStream<IntersectionResult> intersectionHits)
 {
         //
         //		Given the input triangle, look for an intersection with the ray we're currently
@@ -73,7 +73,7 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
         //		triangles that get rendered (which means that the result seems consistant to the user)
         //
 
-    #if (OUTPUT_WORLD_POSITION==1)
+    #if (VSOUT_HAS_WORLD_POSITION==1)
         float3 testingTriangle[3];
         testingTriangle[0] = input[0].worldPosition;
         testingTriangle[1] = input[1].worldPosition;
@@ -83,7 +83,7 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
         float intersection = RayVsTriangle(RayStart, RayEnd, testingTriangle, barycentric);
         if (intersection >= 0.f && intersection < 1.f) {
 
-            #if (OUTPUT_TEXCOORD==1)
+            #if (VSOUT_HAS_TEXCOORD==1)
                 float2 surfaceCoordinates =
                       barycentric.x * input[0].texCoord
                     + barycentric.y * input[1].texCoord

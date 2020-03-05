@@ -47,19 +47,19 @@ float4 HDRDebugging(float4 position : SV_Position, float2 texCoord : TEXCOORD0) 
 	return result;
 }
 
-struct VSOutput
+struct VSOUT
 {
 	float2	topLeft : TOPLEFT;
 	float2	bottomRight : BOTTOMRIGHT;
 	float	value : VALUE;
 };
 
-VSOutput LuminanceValue(uint vertexId : SV_VertexId)
+VSOUT LuminanceValue(uint vertexId : SV_VertexId)
 {
 		//	this is a vertex shader that should feed into
 		//	the metric render geometry shader.
 	const float lineHeight = 64.f/2.f;
-	VSOutput output;
+	VSOUT output;
 	output.topLeft = float2(64.f, lineHeight*float(2+vertexId));
 	output.bottomRight = float2(256.f+64.f, lineHeight*float(5+vertexId));
 

@@ -10,25 +10,25 @@
 struct TerrainLayerVSOutput /////////////////////////////////////////
 {
 	float4 position 	: SV_Position;
-	float4 colour 		: COLOR0;
+	float4 color 		: COLOR0;
 	float2 texCoord 	: TEXCOORD0;
 	float2 baseTexCoord : TEXCOORD1;
 	float3 normal		: NORMAL;
 
-	#if OUTPUT_LOCAL_VIEW_VECTOR==1
+	#if VSOUT_HAS_LOCAL_VIEW_VECTOR==1
         float3 localViewVector 	: LOCALVIEWVECTOR;
     #endif
 
-    #if OUTPUT_WORLD_VIEW_VECTOR==1
+    #if VSOUT_HAS_WORLD_VIEW_VECTOR==1
         float3 worldViewVector 	: WORLDVIEWVECTOR;
     #endif
 	
-	#if OUTPUT_TANGENT_FRAME==1
+	#if VSOUT_HAS_TANGENT_FRAME==1
 		float3 tangent : TEXTANGENT;
 		float3 bitangent : TEXBITANGENT;
 	#endif
 
-    #if (OUTPUT_FOG_COLOR==1)
+    #if (VSOUT_HAS_FOG_COLOR==1)
         float4 fogColor : FOGCOLOR;
     #endif
 }; //////////////////////////////////////////////////////////////////

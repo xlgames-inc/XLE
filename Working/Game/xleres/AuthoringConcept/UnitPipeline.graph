@@ -2,7 +2,7 @@
 import templates = "xleres/nodes/templates.sh"
 import unit = "game/xleres/authoringconcept/unit.graph"
 
-float4 main(VSOutput geo, float4 inputColor) implements templates::AmendColor
+float4 main(VSOUT geo, float4 inputColor) implements templates::AmendColor
 {
 	node node_0 = [[visualNode1]]unit::Hologram2(geo:geo);
 	return [[visualNode0]]unit::Freeze2(geo:geo, inputColor:inputColor).result;

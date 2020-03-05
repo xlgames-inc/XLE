@@ -63,19 +63,19 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 		//	One way to deal with this is to do an early depth pass that would set
 		//	the depth buffer depth for fully opaque parts; or just after a fixed
 		//	number of layers...?
-float4 LightSample(GBufferValues sample, VSOutput geo, SystemInputs sys)
+float4 LightSample(GBufferValues sample, VSOUT geo, SystemInputs sys)
 {
 	float3 directionToEye = 0.0.xxx;
-	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+	#if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
 		directionToEye = normalize(geo.worldViewVector);
 	#endif
 
 	float4 result = float4(
 		ResolveLitColor(
-			sample, directionToEye, GetWorldPosition(geo),
+			sample, directionToEye, VSOUT_GetWorldPosition(geo),
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 

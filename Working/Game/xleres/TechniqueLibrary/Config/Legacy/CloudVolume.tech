@@ -49,7 +49,7 @@
 ~VisWireframe
     ~Parameters
         ~Geometry
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     VertexShader=xleres/forward/illum.vertex.hlsl:main
-    GeometryShader=xleres/solidwireframe.geo.hlsl:main
-    PixelShader=xleres/solidwireframe.pixel.hlsl:blend
+    GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
+    PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:blend

@@ -12,18 +12,14 @@
 #include "SystemUniforms.hlsl"
 #include "../Math/SurfaceAlgorithm.hlsl"
 #include "../Core/Animation/SkinTransform.hlsl"
-#include "../System/Binding.hlsl"
-
-Texture2D		DiffuseTexture          BIND_MAT_T0;
-Texture2D		NormalsTexture          BIND_MAT_T1;
 
 	//	Accessors for properties in MainGeometry structs
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-	//		VSInput			//
+	//		VSIN			//
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 VSIn_GetLocalPosition(VSInput input)
+float3 VSIN_GetLocalPosition(VSIN input)
 {
 	#if GEO_HAS_BONEWEIGHTS
 		return TransformPositionThroughSkinning(input, input.position.xyz);
@@ -32,7 +28,7 @@ float3 VSIn_GetLocalPosition(VSInput input)
 	#endif
 }
 
-float4 VSIn_GetLocalTangent(VSInput input)
+float4 VSIN_GetLocalTangent(VSIN input)
 {
     #if (GEO_HAS_TEXTANGENT==1)
         return float4(TransformDirectionVectorThroughSkinning(input, input.tangent.xyz), input.tangent.w);
@@ -42,7 +38,7 @@ float4 VSIn_GetLocalTangent(VSInput input)
 }
 
 #if GEO_HAS_NORMAL==1
-	float3 VSIn_GetLocalNormal(VSInput input)
+	float3 VSIN_GetLocalNormal(VSIN input)
 	{
 		#if GEO_V_NORMAL_UNSIGNED==1
             return TransformDirectionVectorThroughSkinning(input, input.normal * 2.0.xxx - 1.0.xxx);
@@ -52,13 +48,13 @@ float4 VSIn_GetLocalTangent(VSInput input)
 	}
 #endif
 
-float3 VSIn_GetLocalBitangent(VSInput input)
+float3 VSIN_GetLocalBitangent(VSIN input)
 {
 	#if (GEO_HAS_TEXBITANGENT==1)
 		return TransformDirectionVectorThroughSkinning(input, input.bitangent.xyz);
     #elif (GEO_HAS_TEXTANGENT==1) && (GEO_HAS_NORMAL==1)
-		float4 tangent = VSIn_GetLocalTangent(input);
-		float3 normal = VSIn_GetLocalNormal(input);
+		float4 tangent = VSIN_GetLocalTangent(input);
+		float3 normal = VSIN_GetLocalNormal(input);
 		return cross(tangent.xyz, normal) * GetWorldTangentFrameHandiness(tangent);
     #else
         return 0.0.xxx;
@@ -66,14 +62,14 @@ float3 VSIn_GetLocalBitangent(VSInput input)
 }
 
 #if GEO_HAS_NORMAL!=1
-	float3 VSIn_GetLocalNormal(VSInput input)
+	float3 VSIN_GetLocalNormal(VSIN input)
 	{
 	    #if GEO_HAS_TEXTANGENT==1
 	            //  if the tangent and bitangent are unit-length and perpendicular, then we
 	            //  shouldn't have to normalize here. Since the inputs are coming from the
 	            //  vertex buffer, let's assume it's ok
-	        float4 localTangent = VSIn_GetLocalTangent(input);
-	        float3 localBitangent = VSIn_GetLocalBitangent(input);
+	        float4 localTangent = VSIN_GetLocalTangent(input);
+	        float3 localBitangent = VSIN_GetLocalBitangent(input);
 	        return NormalFromTangents(localTangent.xyz, localBitangent.xyz, GetWorldTangentFrameHandiness(localTangent));
 	    #else
 	        return float3(0,0,1);
@@ -82,12 +78,12 @@ float3 VSIn_GetLocalBitangent(VSInput input)
 #endif
 
 #if (GEO_HAS_TEXTANGENT==1)
-    TangentFrameStruct VSIn_GetWorldTangentFrame(VSInput input)
+    TangentFrameStruct VSIN_GetWorldTangentFrame(VSIN input)
     {
         	//	If we can guarantee no scale on local-to-world, we can skip normalize of worldtangent/worldbitangent
-        float4 localTangent     = VSIn_GetLocalTangent(input);
+        float4 localTangent     = VSIN_GetLocalTangent(input);
 		float3 worldTangent 	= LocalToWorldUnitVector(localTangent.xyz);
-		float3 worldBitangent 	= LocalToWorldUnitVector(VSIn_GetLocalBitangent(input));
+		float3 worldBitangent 	= LocalToWorldUnitVector(VSIN_GetLocalBitangent(input));
 		float handiness 		= GetWorldTangentFrameHandiness(localTangent);
 
             //  There's some issues here. If local-to-world has a flip on it, it might flip
@@ -96,7 +92,7 @@ float3 VSIn_GetLocalBitangent(VSInput input)
             //  (worldNormal shouldn't need to be normalized, so long as worldTangent
             //  and worldNormal are perpendicular to each other)
 		#if GEO_HAS_NORMAL==1
-			float3 worldNormal	= LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
+			float3 worldNormal	= LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
 		#else
 			float3 worldNormal  = NormalFromTangents(worldTangent, worldBitangent, handiness);
 		#endif
@@ -105,62 +101,62 @@ float3 VSIn_GetLocalBitangent(VSInput input)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-	//		VSOutput			//
+	//		VSOUT			//
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float2 GetTexCoord(VSOutput geo)
+float2 VSOUT_GetTexCoord0(VSOUT geo)
 {
-	#if OUTPUT_TEXCOORD==1 /////////////////////////////////////////////
+	#if VSOUT_HAS_TEXCOORD==1 /////////////////////////////////////////////
 		return geo.texCoord;
 	#else
 	    return 0.0.xx;
 	#endif //////////////////////////////////////////////////////////////
 }
 
-float4 GetColor(VSOutput geo)
+float4 VSOUT_GetColor0(VSOUT geo)
 {
-	#if OUTPUT_COLOUR>=2 ////////////////////////////////////////////////
-	    return float4(geo.colour.rgb, 1.f);
-	#elif OUTPUT_COLOUR>=1
-		return geo.colour;
+	#if VSOUT_HAS_COLOR>=2 ////////////////////////////////////////////////
+	    return float4(geo.color.rgb, 1.f);
+	#elif VSOUT_HAS_COLOR>=1
+		return geo.color;
 	#else
 	    return 1.0.xxxx;
 	#endif //////////////////////////////////////////////////////////////
 }
 
-float3 GetWorldViewVector(VSOutput geo)
+float3 VSOUT_GetWorldViewVector(VSOUT geo)
 {
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		return geo.worldViewVector;
-	#elif OUTPUT_WORLD_POSITION==1
+	#elif VSOUT_HAS_WORLD_POSITION==1
 		return SysUniform_GetWorldSpaceView().xyz - geo.worldPosition;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
 	#else
 		return 0.0.xxx;
 	#endif
 }
 
-float3 GetLocalViewVector(VSOutput geo)
+float3 VSOUT_GetLocalViewVector(VSOUT geo)
 {
-	#if OUTPUT_LOCAL_VIEW_VECTOR==1
+	#if VSOUT_HAS_LOCAL_VIEW_VECTOR==1
 		return geo.localViewVector;
 	#else
 		return 0.0.xxx;
 	#endif
 }
 
-float3 GetWorldPosition(VSOutput geo)
+float3 VSOUT_GetWorldPosition(VSOUT geo)
 {
-	#if OUTPUT_WORLD_POSITION==1
+	#if VSOUT_HAS_WORLD_POSITION==1
 		return geo.worldPosition;
-	#elif OUTPUT_WORLD_VIEW_VECTOR==1
+	#elif VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		return SysUniform_GetWorldSpaceView().xyz - geo.worldViewVector;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
 	#else
 		return 0.0.xxx;
 	#endif
 }
 
-#if (OUTPUT_TANGENT_FRAME==1)
-    TangentFrameStruct GetWorldTangentFrame(VSOutput geo)
+#if (VSOUT_HAS_TANGENT_FRAME==1)
+    TangentFrameStruct VSOUT_GetWorldTangentFrame(VSOUT geo)
     {
         TangentFrameStruct result;
 		result.tangent = geo.tangent.xyz;
@@ -184,14 +180,14 @@ float3 GetWorldPosition(VSOutput geo)
     }
 #endif
 
-#if (OUTPUT_LOCAL_TANGENT_FRAME==1)
-    TangentFrameStruct GetLocalTangentFrame(VSOutput geo)
+#if (VSOUT_HAS_LOCAL_TANGENT_FRAME==1)
+    TangentFrameStruct VSOUT_GetLocalTangentFrame(VSOUT geo)
     {
         TangentFrameStruct result;
         result.tangent	 	= normalize(geo.localTangent.xyz);
         result.bitangent    = normalize(geo.localBitangent);
 		result.handiness 	= GetWorldTangentFrameHandiness(geo.localTangent);
-        #if (OUTPUT_LOCAL_NORMAL)
+        #if (VSOUT_HAS_LOCAL_NORMAL)
             result.normal   = normalize(geo.localNormal);
         #else
                 // note --  it's possible that the tangent and bitangent could
@@ -206,94 +202,16 @@ float3 GetWorldPosition(VSOutput geo)
     }
 #endif
 
-float3 GetVertexNormal(VSOutput geo)
+float3 VSOUT_GetVertexNormal(VSOUT geo)
 {
-	#if OUTPUT_TANGENT_FRAME==1
+	#if VSOUT_HAS_TANGENT_FRAME==1
 		return normalize(geo.normal);
-	#elif OUTPUT_LOCAL_TANGENT_FRAME==1
-		return GetLocalTangentFrame(geo).normal;
-	#elif (OUTPUT_NORMAL==1)
+	#elif VSOUT_HAS_LOCAL_TANGENT_FRAME==1
+		return VSOUT_GetLocalTangentFrame(geo).normal;
+	#elif (VSOUT_HAS_NORMAL==1)
 		return normalize(geo.normal);
 	#else
 		return 0.0.xxx;
-	#endif
-}
-
-float3 SampleDefaultNormalMap(VSOutput geo)
-{
-	#if defined(RES_HAS_NormalsTexture_DXT)
-		bool dxtNormalMap = RES_HAS_NormalsTexture_DXT==1;
-	#else
-		bool dxtNormalMap = false;
-	#endif
-
-	return SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, GetTexCoord(geo));
-}
-
-float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOutput geo)
-{
-	#if OUTPUT_TANGENT_FRAME==1
-
-		TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
-		float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
-		return mul(normalTextureSample, normalsTextureToWorld);
-
-    #elif OUTPUT_LOCAL_TANGENT_FRAME==1
-
-		TangentFrameStruct localTangentFrame = GetLocalTangentFrame(geo);
-		float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
-		float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
-
-            // note --  Problems when there is a scale on SysUniform_GetLocalToWorld() here.
-            //          There are many objects with uniform scale values, and they require a normalize here.
-            //          Ideally we'd have a SysUniform_GetLocalToWorld() matrix with the scale removed,
-            //          or at least a "uniform scale" scalar to remove the scaling
-        return normalize(mul(GetLocalToWorldUniformScale(), localNormal));
-
-	#elif (OUTPUT_NORMAL==1) && ((OUTPUT_WORLD_VIEW_VECTOR==1) || (OUTPUT_WORLD_VIEW_VECTOR==1)) && (OUTPUT_TEXCOORD > 0)
-
-	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
-			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
-		return mul(normalTextureSample, normalsTextureToWorld);
-
-    #elif (OUTPUT_LOCAL_NORMAL==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1) && (OUTPUT_TEXCOORD > 0)
-
-		float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.localNormal), GetLocalViewVector(geo), geo.texCoord);
-			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
-		return mul(normalTextureSample, normalsTextureToWorld);
-
-    #elif (OUTPUT_NORMAL==1)
-
-        return normalize(geo.normal);
-
-	#else
-
-		return 0.0.xxx;
-
-	#endif
-}
-
-float3 GetNormal(VSOutput geo)
-{
-	#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
-		return TransformNormalMapToWorld(SampleDefaultNormalMap(geo), geo);
-	#elif (OUTPUT_NORMAL==1)
-		return normalize(geo.normal);
-	#elif OUTPUT_LOCAL_TANGENT_FRAME==1
-		return normalize(mul(GetLocalToWorldUniformScale(), GetLocalTangentFrame(geo).normal));
-	#else
-		return 0.0.xxx;
-	#endif
-}
-
-void DoAlphaTest(VSOutput geo, float alphaThreshold)
-{
-	#if (OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
-		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
-			AlphaTestAlgorithm(DiffuseTexture, ClampingSampler, geo.texCoord, alphaThreshold);
-		#else
-        	AlphaTestAlgorithm(DiffuseTexture, MaybeAnisotropicSampler, geo.texCoord, alphaThreshold);
-		#endif
 	#endif
 }
 

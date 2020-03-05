@@ -73,10 +73,10 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 		return 0.0.xxx;
 }
 
-#if OUTPUT_TEXCOORD==1
-	float2 GetTexCoord(VSOutput input) { return input.texCoord; }
+#if VSOUT_HAS_TEXCOORD==1
+	float2 VSOUT_GetTexCoord0(VSOUT input) { return input.texCoord; }
 #else
-	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
+	float2 VSOUT_GetTexCoord0(VSOUT input) { return 1.0.xx; }
 #endif
 
 bool PtInFrustum(float4 pt)
@@ -101,7 +101,7 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 }
 
 [maxvertexcount(1)]
-	void triangles(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
+	void triangles(triangle VSOUT input[3], inout PointStream<GSOutput> outputStream)
 {
 	// Test the triangle to see if there is an intersection with the given ray.
 	// If we get an intersection, write the result to "outputStream"
@@ -127,11 +127,11 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 		// used for "picking" tests in tools. Without this alpha test check,
 		// the alpha tested triangles will behave like opaque triangles, which
 		// will give a confusing result for the user.
-		#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
+		#if (VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
 			float2 texCoord =
-				  barycentric.x * GetTexCoord(input[0])
-				+ barycentric.y * GetTexCoord(input[1])
-				+ barycentric.z * GetTexCoord(input[2])
+				  barycentric.x * VSOUT_GetTexCoord0(input[0])
+				+ barycentric.y * VSOUT_GetTexCoord0(input[1])
+				+ barycentric.z * VSOUT_GetTexCoord0(input[2])
 				;
 			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a >= AlphaThreshold;
 		#endif

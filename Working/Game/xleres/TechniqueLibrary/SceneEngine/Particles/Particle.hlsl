@@ -12,7 +12,7 @@ struct ParticleVStoGS
     float3 position : POSITION0;
 	
 	#if GEO_HAS_COLOR==1
-		float4 colour : COLOR0;
+		float4 color : COLOR0;
 	#endif
 
 	#if GEO_HAS_TEXCOORD==1
@@ -22,7 +22,7 @@ struct ParticleVStoGS
     float4 texCoordScale : TEXCOORDSCALE;
 	float4 screenRot : PARTICLEROTATION;
 
-    #if (OUTPUT_FOG_COLOR==1)
+    #if (VSOUT_HAS_FOG_COLOR==1)
         float4 fogColor : FOGCOLOR;
     #endif
 };

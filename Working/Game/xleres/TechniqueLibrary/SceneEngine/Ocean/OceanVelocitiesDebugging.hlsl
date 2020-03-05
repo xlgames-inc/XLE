@@ -17,13 +17,13 @@ Texture2DArray<float>	ShallowWaterHeights	: register(t1);
 	Texture2D<float>	SoftMaterials : register(t3);
 #endif
 
-class VSOutput
+class VSOUT
 {
 	float4 position : SV_Position;
 	float2 gridCoords : GRIDCOORDS;
 };
 
-VSOutput vs_main(uint vertexId : SV_VertexId)
+VSOUT vs_main(uint vertexId : SV_VertexId)
 {
 	const float TileDimension = float(SHALLOW_WATER_TILE_DIMENSION);
 	uint2 gridCoords = uint2(vertexId%TileDimension, vertexId/TileDimension);
@@ -32,7 +32,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
 
 	worldPosition.z += 2.f;
 
-	VSOutput output;
+	VSOUT output;
 	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	output.gridCoords = SimulatingIndex * TileDimension + gridCoords;
 	return output;
@@ -60,7 +60,7 @@ bool ArrowStencil(float2 tc)
 	return y > .3f;
 }
 
-float4 ps_main(VSOutput input) : SV_Target0
+float4 ps_main(VSOUT input) : SV_Target0
 {
 		// load the velocities information from the grid coordinates
 

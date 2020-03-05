@@ -13,7 +13,7 @@ interface IGetValue
     IGetValue ValueSource[VALUE_SOURCE_COUNT];
 #endif
 
-struct VSOutput
+struct VSOUT
 {
     float2	topLeft : TOPLEFT;
     float2	bottomRight : BOTTOMRIGHT;
@@ -27,14 +27,14 @@ uint TileCount()
     return ((ScreenDimensions.x + 15) / 16) * ((ScreenDimensions.y + 15) / 16);
 }
 
-VSOutput metricsrig_main(uint vertexId : SV_VertexId)
+VSOUT metricsrig_main(uint vertexId : SV_VertexId)
 {
 
         //		Get the value we want to write from the metrics
         //		buffer, and
 
     const float lineHeight = 64.f/2.f;
-    VSOutput output;
+    VSOUT output;
     output.topLeft = float2(64.f, lineHeight*float(4+vertexId));
     output.bottomRight = float2(256.f+64.f, lineHeight*float(5+vertexId));
 

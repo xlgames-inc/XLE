@@ -7,7 +7,7 @@
 #include "Particle.hlsl"
 
 [maxvertexcount(4)]
-	void main(point ParticleVStoGS input[1], inout TriangleStream<VSOutput> outputStream)
+	void main(point ParticleVStoGS input[1], inout TriangleStream<VSOUT> outputStream)
 {
 		//		Expand an input vertex into a quad on screen
 		//		Our vertex shader mostly just passes coordinates in
@@ -36,18 +36,18 @@
 	};
 
 	for (uint c=0; c<4; ++c) {
-		VSOutput output;
+		VSOUT output;
 		float3 worldPosition = input[0].position
 			+ rotatedRight * axes[c].x
 			+ rotatedUp * axes[c].y
 			;
 		output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-		#if OUTPUT_COLOUR==1
-			output.colour 		= input[0].colour;
+		#if VSOUT_HAS_COLOR==1
+			output.color 		= input[0].color;
 		#endif
 
-		#if OUTPUT_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD==1
 					// (not tested in X3; but it theory it should look like this)
 				// output.texCoord 	= input[0].texCoord + (input[0].texCoordScale.yz*2.f-1.0.xx) * texCoords[c];
 			output.texCoord = input[0].texCoord + input[0].texCoordScale.xy * texCoords[c];
@@ -55,11 +55,11 @@
 
 			// todo -- can also output tangent space (if we need it)
 
-		#if OUTPUT_WORLD_VIEW_VECTOR==1
+		#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 			output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 		#endif
 
-		#if OUTPUT_FOG_COLOR==1
+		#if VSOUT_HAS_FOG_COLOR==1
 			output.fogColor 		= input[0].fogColor;
 		#endif
 
@@ -69,7 +69,7 @@
 
 
 [maxvertexcount(4)]
-	void autoquads(lineadj VSOutput input[4], inout TriangleStream<VSOutput> outputStream)
+	void autoquads(lineadj VSOUT input[4], inout TriangleStream<VSOUT> outputStream)
 {
 	outputStream.Append(input[0]);
 	outputStream.Append(input[1]);

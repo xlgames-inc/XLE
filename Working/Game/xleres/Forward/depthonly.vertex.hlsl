@@ -9,14 +9,14 @@
 #include "../TechniqueLibrary/Math/TransformAlgorithm.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
 
-VSOutput main(VSInput input)
+VSOUT main(VSIN input)
 {
-	VSOutput output;
-	float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(VSIn_GetLocalPosition(input),1));
+	VSOUT output;
+	float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(VSIN_GetLocalPosition(input),1));
 	output.position		 = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-	#if OUTPUT_TEXCOORD==1
-		output.texCoord = VSIn_GetTexCoord(input);
+	#if VSOUT_HAS_TEXCOORD==1
+		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 
 	return output;

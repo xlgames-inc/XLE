@@ -58,7 +58,7 @@
 ~RayTest
 	~Inherit; ../Illum.tech:Silhouette
 	~Selectors
-		OUTPUT_WORLD_POSITION=1
+		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	VertexShader=xleres/forward/illum.vertex.hlsl:main
 	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
@@ -67,7 +67,7 @@
 ~WriteTriangleIndex
 	~Inherit; ../Illum.tech:Silhouette
 	~Selectors
-		OUTPUT_WORLD_POSITION=0
+		VSOUT_HAS_WORLD_POSITION=0
 		SHADOW_CASCADE_MODE
 	VertexShader=xleres/shadowgen/rtwritetiles.hlsl:vs_writetris
 	GeometryShader=xleres/shadowgen/rtwritetiles.hlsl:gs_writetris
@@ -77,23 +77,23 @@
 
 ~VisNormals
 	~Selectors
-		OUTPUT_WORLD_POSITION=1
-		OUTPUT_NORMAL=1
+		VSOUT_HAS_WORLD_POSITION=1
+		VSOUT_HAS_NORMAL=1
 		GEO_HAS_TEXTANGENT
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
 		RES_HAS_NormalsTexture
 	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	GeometryShader=xleres/vis/geowires.geo.hlsl:NormalsAndTangents
-	PixelShader=xleres/basic.pixel.hlsl:PC
+	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
+	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
 ~VisWireframe
 	~Selectors
 		GEO_HAS_TEXCOORD
-		OUTPUT_WORLD_POSITION=1
+		VSOUT_HAS_WORLD_POSITION=1
 	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	GeometryShader=xleres/solidwireframe.geo.hlsl:main
-	PixelShader=xleres/solidwireframe.pixel.hlsl:main
+	GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:main
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

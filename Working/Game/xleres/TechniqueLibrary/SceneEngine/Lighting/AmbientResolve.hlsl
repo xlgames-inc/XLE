@@ -12,7 +12,7 @@
 #include "Constants.hlsl"
 #include "../../Math/TextureAlgorithm.hlsl"
 #include "../../Utility/Colour.hlsl"	                 // for LightingScale
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
     #include "../../Utility/LoadGBuffer.hlsl"
@@ -242,7 +242,7 @@ float3 LightResolve_Ambient(
     #if CALCULATE_SCREENSPACE_REFLECTIONS==1
             //	The "screen space" reflections block out the sky reflections.
             //	If we get a collision with the screen space reflections, then we need
-            //	to blend from the sky reflection colour into that colour.
+            //	to blend from the sky reflection color into that color.
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
         float4 dynamicReflections = CalculateScreenSpaceReflections(

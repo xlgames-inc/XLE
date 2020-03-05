@@ -60,10 +60,10 @@
             GEO_HAS_TEXCOORD
             GEO_HAS_TEXTANGENT
             GEO_HAS_NORMAL
-            OUTPUT_LOCAL_NORMAL=1
-            OUTPUT_LOCAL_VIEW_VECTOR=1
-            OUTPUT_WORLD_VIEW_VECTOR=1
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_LOCAL_NORMAL=1
+            VSOUT_HAS_LOCAL_VIEW_VECTOR=1
+            VSOUT_HAS_WORLD_VIEW_VECTOR=1
+            VSOUT_HAS_WORLD_POSITION=1
     VertexShader=xleres/forward/illum.vertex.hlsl:main
     PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main
 ~RayTest
@@ -71,7 +71,7 @@
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
         ~Material
             MAT_ALPHA_TEST
     VertexShader=xleres/forward/illum.vertex.hlsl:main

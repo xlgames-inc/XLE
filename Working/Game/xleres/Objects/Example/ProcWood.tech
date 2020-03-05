@@ -6,7 +6,7 @@ import materialparam = "xleres/nodes/materialparam.sh"
 
 void main()
 {
-	node node_0 = [[visualNode2]]output::Output_PerPixel(diffuseAlbedo:[[visualNode0]]wood_04_g::Wood_04_G(coords:[[visualNode1]]surface::GetWorldPosition().result).color, material:[[visualNode3]]materialparam::CommonMaterialParam_Make(roughness:".3", specular:".05", metal:"0").result, worldSpaceNormal:[[visualNode4]]surface::GetNormal().result, blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"1.0f", cookedLightOcclusion:"1.0f", transmission:"0");
+	node node_0 = [[visualNode2]]output::Output_PerPixel(diffuseAlbedo:[[visualNode0]]wood_04_g::Wood_04_G(coords:[[visualNode1]]surface::VSOUT_GetWorldPosition().result).color, material:[[visualNode3]]materialparam::CommonMaterialParam_Make(roughness:".3", specular:".05", metal:"0").result, worldSpaceNormal:[[visualNode4]]surface::VSOUT_GetNormal().result, blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"1.0f", cookedLightOcclusion:"1.0f", transmission:"0");
 }
 attributes visualNode0(PreviewGeometry:"sphere", X:"281.000000", Y:"252.000000", State:"Normal", OutputToVisualize:"");
 attributes visualNode1(PreviewGeometry:"sphere", X:"-91.000000", Y:"340.000000", State:"Collapsed", OutputToVisualize:"");
@@ -19,7 +19,7 @@ attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000",
 	<HasTechniqueConfig>true</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
 		<d2p1:KeyValueOfstringstring>
-			<d2p1:Key>OUTPUT_WORLD_POSITION</d2p1:Key>
+			<d2p1:Key>VSOUT_HAS_WORLD_POSITION</d2p1:Key>
 			<d2p1:Value>1</d2p1:Value>
 		</d2p1:KeyValueOfstringstring>
 	</ShaderParameters>
@@ -32,7 +32,7 @@ attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000",
 #include "TechniqueLibrary/Math/TextureAlgorithm.hlsl" 	// for SystemInputs
 #include "Lighting/Forward.h"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
 float4 forward_main(, SystemInputs sys) : SV_Target0
@@ -49,23 +49,23 @@ float4 forward_main(, SystemInputs sys) : SV_Target0
     main(, sample);
 
 	float3 directionToEye = 0.0.xxx;
-	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+	#if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
 		directionToEye = normalize(geo.worldViewVector);
 	#endif
 
 	float4 result = float4(
 		ResolveLitColor(
-			sample, directionToEye, GetWorldPosition(geo),
+			sample, directionToEye, VSOUT_GetWorldPosition(geo),
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;
 
-    #if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
-        result.rgb *= geo.colour.rgb;
+    #if (VSOUT_HAS_COLOR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+        result.rgb *= geo.color.rgb;
     #endif
 
 	#if MAT_SKIP_LIGHTING_SCALE==0
@@ -76,7 +76,7 @@ float4 forward_main(, SystemInputs sys) : SV_Target0
 
 
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
 GBufferEncoded deferred_main()
@@ -133,7 +133,7 @@ float4 io_main(, SystemInputs sys) : SV_Target0
 
 
 [earlydepthstencil]
-float4 stochastic_main(VSOutput geo,
+float4 stochastic_main(VSOUT geo,
 	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 		uint primitiveID : SV_PrimitiveID,
 	#endif
@@ -164,7 +164,7 @@ float4 stochastic_main(VSOutput geo,
 #if (STOCHASTIC_TRANS)
 
 	void depthonly_main(
-		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		VSOUT geo, uint primitiveID : SV_PrimitiveID,
 		out uint oCoverage : SV_Coverage
 		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 			, out uint oPrimId : SV_Target0
@@ -192,12 +192,12 @@ float4 stochastic_main(VSOutput geo,
 
 #else
 
-	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+	#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 		[earlydepthstencil]
 	#endif
-	void depthonly_main(VSOutput geo)
+	void depthonly_main(VSOUT geo)
 	{
-		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 				// execute sampling only for discard() events
 			GBufferValues sample;
 			main(, sample);
@@ -212,27 +212,27 @@ float4 stochastic_main(VSOutput geo,
 ~Forward
     ~Parameters
         ~Material
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     PixelShader=<.>:forward_main
 ~Deferred
     ~Parameters
         ~Material
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     PixelShader=<.>:deferred_main
 ~OrderIndependentTransparency
     ~Parameters
         ~Material
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     PixelShader=<.>:oi_main
 ~StochasticTransparency
     ~Parameters
         ~Material
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     PixelShader=<.>:stochastic_main
 ~DepthOnly
     ~Parameters
         ~Material
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_WORLD_POSITION=1
     PixelShader=<.>:depthonly_main
 )--*/
 

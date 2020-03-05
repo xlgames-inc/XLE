@@ -69,7 +69,7 @@ float3 LoadInputColor(int2 pos)
 	#endif
 }
 
-float CalculateLuminance(float3 colour)
+float CalculateLuminance(float3 color)
 {
 		//
 		//	Typical weights for calculating luminance (assuming
@@ -90,20 +90,20 @@ float CalculateLuminance(float3 colour)
 			//			http://stackoverflow.com/questions/596216/formula-to-determine-brightness-of-rgb-color
 			//		scroll down on the stackoverflow page to see how this
 			//		method distributes brightness evenly and randomly through
-			//		a colour cube -- curious property...?
+			//		a color cube -- curious property...?
 			//
 		const float3 componentWeights = float3(0.299f, .587f, .114f);
-		return sqrt(max(0,dot(componentWeights, colour*colour)));		// negatives cause havok... we have to be careful!
+		return sqrt(max(0,dot(componentWeights, color*color)));		// negatives cause havok... we have to be careful!
 	} else {
 		const float3 componentWeights = float3(0.2126f, 0.7152f, 0.0722f);
-		return dot(colour, componentWeights);
+		return dot(color, componentWeights);
 	}
 }
 
-float3 BrightPassFilter(float3 colour)
+float3 BrightPassFilter(float3 color)
 {
 	const float scale	= SceneKey / max(1e-4, OutputLuminanceBuffer[0]._currentLuminance);
-	float3 l			= scale * colour.rgb;
+	float3 l			= scale * color.rgb;
 
 	const float threshold = BloomThreshold;
 	l = l/threshold - 1.0.xxx;

@@ -31,17 +31,17 @@ float4 DepthsDebuggingTexture(float4 pos : SV_Position, float2 texCoord : TEXCOO
 		uint count = DebuggingLightCountTexture.Load(int3(pos.xy, 0));
 		if (count > 0) {
 			uint textureOffset = 10;
-			float4 colour = float4(0.0.xxx,1);
+			float4 color = float4(0.0.xxx,1);
 			if ((count/10) < 3) {
 				float3 colourTable[3] = { float3(0,0,.3), float3(0,.3,0), float3(3.,0,0) };
-				colour = float4(colourTable[count/10], 1);
+				color = float4(colourTable[count/10], 1);
 				textureOffset = count%10;
 			}
 			float4 textureQuery = DigitsTexture.Load(int3((pos.x%16)+(textureOffset*16), pos.y%16, 0));
 			float2 A = float2(pos.xy%16)-8.0.xx;
 			float radiusSq = dot(A, A);
 			if (radiusSq < 7.f*7.f) {
-				return float4(colour.rgb + textureQuery.rgb, .75f*(colour.a + textureQuery.r));
+				return float4(color.rgb + textureQuery.rgb, .75f*(color.a + textureQuery.r));
 			}
 		}
 

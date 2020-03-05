@@ -10,7 +10,7 @@
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
 #include "../../Utility/Colour.hlsl"
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 
 #if SKY_PROJECTION==1
 	Texture2D ReflectionBox[3]	BIND_NUMERIC_T0;
@@ -103,27 +103,27 @@ float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 
 }
 
 [earlydepthstencil]
-float4 ps_HalfCube(VSOutput geo) : SV_Target0
+float4 ps_HalfCube(VSOUT geo) : SV_Target0
 {
-	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - SysUniform_GetWorldSpaceView()), GetWorldPosition(geo));
+	return CalculateColour0(VSOUT_GetTexCoord0(geo), normalize(VSOUT_GetWorldPosition(geo) - SysUniform_GetWorldSpaceView()), VSOUT_GetWorldPosition(geo));
 }
 
 	//////////////////////////////////
 
-VSOutput vs_main(VSInput input)
+VSOUT vs_main(VSIN input)
 {
-	VSOutput output;
-	float3 localPosition = VSIn_GetLocalPosition(input);
+	VSOUT output;
+	float3 localPosition = VSIN_GetLocalPosition(input);
 	float3 worldPosition = float3(50.f * localPosition.xy + SysUniform_GetWorldSpaceView().xy, 2.f * 50.f * localPosition.z);
 	output.position		 = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
 	output.position.z	 = 1.0f * output.position.w;		// push to infinity
 
-	#if OUTPUT_TEXCOORD==1
-		output.texCoord = VSIn_GetTexCoord(input);
+	#if VSOUT_HAS_TEXCOORD==1
+		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 
-	#if OUTPUT_WORLD_POSITION==1
+	#if VSOUT_HAS_WORLD_POSITION==1
 		output.worldPosition = worldPosition.xyz;
 	#endif
 

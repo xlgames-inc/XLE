@@ -12,7 +12,7 @@ struct Rectangle
 	float2	bottomRight;
 };
 
-struct VSOutput
+struct VSOUT
 {
 	float2		topLeft		: TOPLEFT;
 	float2		bottomRight : BOTTOMRIGHT;
@@ -78,7 +78,7 @@ bool RequiresComma(int digitPlace)
 }
 
 [maxvertexcount(80)]
-	void main(point VSOutput input[1], inout TriangleStream<GSOutput> outputStream)
+	void main(point VSOUT input[1], inout TriangleStream<GSOutput> outputStream)
 {
 	Rectangle rect;
 	rect.topLeft = input[0].topLeft;

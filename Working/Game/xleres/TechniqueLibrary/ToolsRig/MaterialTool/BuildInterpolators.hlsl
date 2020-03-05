@@ -16,64 +16,64 @@
 
 //////////////////////////////////////////////////////////////////
 
-float3 BuildInterpolator_WORLDPOSITION(VSInput input)
+float3 BuildInterpolator_WORLDPOSITION(VSIN input)
 {
 	#if defined(GEO_PRETRANSFORMED)
-		return VSIn_GetLocalPosition(input).xyz;
+		return VSIN_GetLocalPosition(input).xyz;
 	#else
-		float3 localPosition = VSIn_GetLocalPosition(input);
+		float3 localPosition = VSIN_GetLocalPosition(input);
 		return mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 	#endif
 }
 
-float4 BuildInterpolator_COLOR(VSInput input)
+float4 BuildInterpolator_COLOR(VSIN input)
 {
 	#if (MAT_VCOLOR_IS_ANIM_PARAM!=1)
-		return VSIn_GetColour(input);
+		return VSIN_GetColor0(input);
 	#else
 		return 1.0.xxxx;
 	#endif
 }
 
-float2 BuildInterpolator_TEXCOORD(VSInput input) { return VSIn_GetTexCoord(input); }
+float2 BuildInterpolator_TEXCOORD(VSIN input) { return VSIN_GetTexCoord0(input); }
 
-float4 BuildInterpolator_COLOR0(VSInput input) { return BuildInterpolator_COLOR(input); }
-float2 BuildInterpolator_TEXCOORD0(VSInput input) { return BuildInterpolator_TEXCOORD(input); }
+float4 BuildInterpolator_COLOR0(VSIN input) { return BuildInterpolator_COLOR(input); }
+float2 BuildInterpolator_TEXCOORD0(VSIN input) { return BuildInterpolator_TEXCOORD(input); }
 
-float3 BuildInterpolator_WORLDVIEWVECTOR(VSInput input)
+float3 BuildInterpolator_WORLDVIEWVECTOR(VSIN input)
 {
 	return SysUniform_GetWorldSpaceView().xyz - BuildInterpolator_WORLDPOSITION(input);
 }
 
-float4 BuildInterpolator_LOCALTANGENT(VSInput input)
+float4 BuildInterpolator_LOCALTANGENT(VSIN input)
 {
-	return VSIn_GetLocalTangent(input);
+	return VSIN_GetLocalTangent(input);
 }
 
-float3 BuildInterpolator_LOCALBITANGENT(VSInput input)
+float3 BuildInterpolator_LOCALBITANGENT(VSIN input)
 {
-	return VSIn_GetLocalBitangent(input);
+	return VSIN_GetLocalBitangent(input);
 }
 
-VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
+VSOUT BuildInterpolator_VSOutput(VSIN input) : NE_WritesVSOutput
 {
-	VSOutput output;
-	float3 localPosition = VSIn_GetLocalPosition(input);
+	VSOUT output;
+	float3 localPosition = VSIN_GetLocalPosition(input);
 	float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
-	float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
+	float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
 
-	#if OUTPUT_COLOUR==1
-		output.colour = BuildInterpolator_COLOR0(input);
+	#if VSOUT_HAS_COLOR==1
+		output.color = BuildInterpolator_COLOR0(input);
 	#endif
 
-	#if OUTPUT_TEXCOORD==1
-		output.texCoord = VSIn_GetTexCoord(input);
+	#if VSOUT_HAS_TEXCOORD==1
+		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 
 	#if GEO_HAS_TEXTANGENT==1
-		TangentFrameStruct worldSpaceTangentFrame = VSIn_GetWorldTangentFrame(input);
+		TangentFrameStruct worldSpaceTangentFrame = VSIN_GetWorldTangentFrame(input);
 
-		#if OUTPUT_TANGENT_FRAME==1
+		#if VSOUT_HAS_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;
 			output.bitangent = worldSpaceTangentFrame.bitangent;
 		#endif
@@ -84,7 +84,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	float3 worldViewVector = BuildInterpolator_WORLDVIEWVECTOR(input);
-	float3 localNormal = VSIn_GetLocalNormal(input);
+	float3 localNormal = VSIN_GetLocalNormal(input);
 
 	#if (MAT_DOUBLE_SIDED_LIGHTING==1)
 		if (dot(worldNormal, worldViewVector) < 0.f) {
@@ -93,46 +93,46 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 		}
 	#endif
 
-	#if (OUTPUT_NORMAL==1)
+	#if (VSOUT_HAS_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
 
 	#if defined(GEO_PRETRANSFORMED)
-		output.position = float4(VSIn_GetLocalPosition(input).xyz, 1);
+		output.position = float4(VSIN_GetLocalPosition(input).xyz, 1);
 	#else
 		output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 	#endif
 
-	#if OUTPUT_LOCAL_TANGENT_FRAME==1
+	#if VSOUT_HAS_LOCAL_TANGENT_FRAME==1
 		output.localTangent = BuildInterpolator_LOCALTANGENT(input);
 		output.localBitangent = BuildInterpolator_LOCALBITANGENT(input);
 	#endif
 
-	#if (OUTPUT_LOCAL_NORMAL==1)
+	#if (VSOUT_HAS_LOCAL_NORMAL==1)
 		output.localNormal = localNormal;
 	#endif
 
-	#if OUTPUT_LOCAL_VIEW_VECTOR==1
+	#if VSOUT_HAS_LOCAL_VIEW_VECTOR==1
 		output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
 	#endif
 
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		output.worldViewVector = worldViewVector;
 	#endif
 
-	#if OUTPUT_WORLD_POSITION==1
+	#if VSOUT_HAS_WORLD_POSITION==1
 		output.worldPosition = worldPosition.xyz;
 	#endif
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, SysUniform_GetWorldSpaceView().xyz);
 	#endif
 
-	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
+	#if (VSOUT_HAS_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
 		output.ambientOcclusion = 1.f; // GetInstanceShadowing(input);
 	#endif
 
-	#if (OUTPUT_INSTANCE_ID==1) && (GEO_HAS_INSTANCE_ID==1)
+	#if (VSOUT_HAS_INSTANCE_ID==1) && (GEO_HAS_INSTANCE_ID==1)
 		output.instanceId = input.instanceId;
 	#endif
 
@@ -141,12 +141,12 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 
 //////////////////////////////////////////////////////////////////
 
-LightScreenDest BuildSystem_LightScreenDest(VSOutput input, SystemInputs sys)
+LightScreenDest BuildSystem_LightScreenDest(VSOUT input, SystemInputs sys)
 {
 	return LightScreenDest_Create(int2(input.position.xy), GetSampleIndex(sys));
 }
 
-SystemInputs BuildSystem_SystemInputs(VSOutput input, SystemInputs sys)
+SystemInputs BuildSystem_SystemInputs(VSOUT input, SystemInputs sys)
 {
 	return sys;
 }
@@ -188,11 +188,11 @@ float2 InterpolateVariable_YAxis(float2 lhs, float2 rhs, float2 a) { return lerp
 float3 InterpolateVariable_YAxis(float3 lhs, float3 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
 float4 InterpolateVariable_YAxis(float4 lhs, float4 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
 
-float3 BuildRefractionNormal(VSOutput geo, SystemInputs sys) { return -GetNormal(geo); }
-float3 BuildRefractionIncident(VSOutput geo, SystemInputs sys) { return normalize(float3(1.0f, 0.15f, 0.0f)); }
-float3 BuildRefractionOutgoing(VSOutput geo, SystemInputs sys)
+float3 BuildRefractionNormal(VSOUT geo, SystemInputs sys) { return -VSOUT_GetNormal(geo); }
+float3 BuildRefractionIncident(VSOUT geo, SystemInputs sys) { return normalize(float3(1.0f, 0.15f, 0.0f)); }
+float3 BuildRefractionOutgoing(VSOUT geo, SystemInputs sys)
 {
-	float3 worldSpacePosition = GetNormal(geo);
+	float3 worldSpacePosition = VSOUT_GetNormal(geo);
 	return normalize(SysUniform_GetWorldSpaceView().xyz - worldSpacePosition);
 }
 

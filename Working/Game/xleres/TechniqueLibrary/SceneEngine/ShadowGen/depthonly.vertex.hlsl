@@ -10,12 +10,13 @@
 #include "../Vegetation/InstanceVS.hlsl"
 #include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSShadowOutput.hlsl"
 #include "../../Math/TransformAlgorithm.hlsl"
 #include "../../Framework/Surface.hlsl"
 
-VSShadowOutput main(VSInput input)
+VSShadowOutput main(VSIN input)
 {
-	float3 localPosition = VSIn_GetLocalPosition(input);
+	float3 localPosition = VSIN_GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
 		float3 objectCentreWorld;
@@ -24,20 +25,20 @@ VSShadowOutput main(VSInput input)
 	#else
 		float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
-		float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
+		float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
 	#endif
 
 		// note that when rendering shadows, we actually only need the normal
 		// for doing the vertex wind animation
 	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TEXTANGENT==1)
-		worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
+		worldNormal =  VSIN_GetWorldTangentFrame(input).normal;
 	#endif
 
 	VSShadowOutput result;
 
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input).rgb);
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input).rgb);
 
-	#if OUTPUT_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD==1
 		result.texCoord = input.texCoord;
 	#endif
 

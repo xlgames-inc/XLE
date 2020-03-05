@@ -106,9 +106,9 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 		float2 minTC = images[imageArrayIndex].xy;
 		float2 maxTC = images[imageArrayIndex].zw;
 
-			//	Calculate grass properties (size, colour, image index, etc)...
+			//	Calculate grass properties (size, color, image index, etc)...
 
-			//		\todo -- lookup sin/cos, size, colour from large random texture
+			//		\todo -- lookup sin/cos, size, color from large random texture
 
 		float ratio = (images[imageArrayIndex].w-images[imageArrayIndex].y) / (images[imageArrayIndex].z-images[imageArrayIndex].x);
 		float width = lerp(0.75f, 2.f, frac(noiseValue * 32.917f));
@@ -130,7 +130,7 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 		float2 baseOffset = baseOffsetMagnitude * sineCosine.yx;
 		instancePosition.xy += baseOffset;
 
-			//	Some grass objects read colour from the terrain texture
+			//	Some grass objects read color from the terrain texture
 			//	(others don't)
 
 		float3 color = .2.xxx;
@@ -254,7 +254,7 @@ bool CullTriangle(WorkingTriangle tri)
 }
 
 [maxvertexcount(112)]
-	void main(triangle VSOutput input[3], inout TriangleStream<GSOutput> outputStream)
+	void main(triangle VSOUT input[3], inout TriangleStream<GSOutput> outputStream)
 {
 
 		//
@@ -347,7 +347,7 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 }
 
 [maxvertexcount(113)]
-	void wireframe(triangle VSOutput input[3], inout LineStream<GSOutput> outputStream)
+	void wireframe(triangle VSOUT input[3], inout LineStream<GSOutput> outputStream)
 {
 	GSOutput output;
 	output.color = 1.0.xxx;

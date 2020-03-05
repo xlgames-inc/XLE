@@ -7,7 +7,7 @@
 #if !defined(TONE_MAP_H)
 #define TONE_MAP_H
 
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 
 cbuffer ToneMapSettings BIND_MAT_B0
 {

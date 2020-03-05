@@ -21,7 +21,7 @@ float3 ResolveLitColor(
 {
 	float3 result = 0.0.xxx;
 
-	#if (OUTPUT_NORMAL==1)
+	#if (VSOUT_HAS_NORMAL==1)
 
 			// Calculate the shadowing of light sources (where we can)
 

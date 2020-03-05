@@ -7,7 +7,7 @@
 #if !defined(COMMON_RESOURCES_H)
 #define COMMON_RESOURCES_H
 
-#include "../System/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 
 SamplerState	DefaultSampler          BIND_NUMERIC_S0;
 SamplerState	ClampingSampler         BIND_NUMERIC_S1;

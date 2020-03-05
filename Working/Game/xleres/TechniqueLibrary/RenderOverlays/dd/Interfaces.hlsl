@@ -23,11 +23,11 @@ struct DebuggingShapesCoords
 
 float4 GetPosition(DebuggingShapesCoords coords) { return coords.position; }
 float2 GetOutputDimensions(DebuggingShapesCoords coords) { return coords.outputDimensions; }
-float2 GetTexCoord(DebuggingShapesCoords coords) { return coords.texCoord; }
+float2 VSOUT_GetTexCoord0(DebuggingShapesCoords coords) { return coords.texCoord; }
 
 #if 0
-    float2 GetUDDS(DebuggingShapesCoords coords) { return float2(ddx(GetTexCoord(coords).x), ddy(GetTexCoord(coords).x)); }
-    float2 GetVDDS(DebuggingShapesCoords coords) { return float2(ddx(GetTexCoord(coords).y), ddy(GetTexCoord(coords).y)); }
+    float2 GetUDDS(DebuggingShapesCoords coords) { return float2(ddx(VSOUT_GetTexCoord0(coords).x), ddy(VSOUT_GetTexCoord0(coords).x)); }
+    float2 GetVDDS(DebuggingShapesCoords coords) { return float2(ddx(VSOUT_GetTexCoord0(coords).y), ddy(VSOUT_GetTexCoord0(coords).y)); }
     float GetAspectRatio(DebuggingShapesCoords coords)
     {
         float a = length(GetUDDS(coords));

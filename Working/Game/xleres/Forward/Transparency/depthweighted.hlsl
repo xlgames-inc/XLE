@@ -13,7 +13,7 @@ struct DepthWeightedOutput
     float3 refraction   : SV_Target2;
 };
 
-DepthWeightedOutput BuildDepthWeightedOutput(float4 color, VSOutput geo, SystemInputs sys)
+DepthWeightedOutput BuildDepthWeightedOutput(float4 color, VSOUT geo, SystemInputs sys)
 {
     DepthWeightedOutput result;
 
@@ -48,7 +48,7 @@ DepthWeightedOutput BuildDepthWeightedOutput(float4 color, VSOutput geo, SystemI
 }
 
 [earlydepthstencil]
-DepthWeightedOutput main_depth_weighted_oi(VSOutput geo, SystemInputs sys)
+DepthWeightedOutput main_depth_weighted_oi(VSOUT geo, SystemInputs sys)
 {
     // This is based on "A Phenomenological Scattering Model for Order-Independent Transparency"
     // by McGuire and Mara.
@@ -56,23 +56,23 @@ DepthWeightedOutput main_depth_weighted_oi(VSOutput geo, SystemInputs sys)
     GBufferValues sample = IllumShader_PerPixel(geo);
 
     float3 directionToEye = 0.0.xxx;
-    #if (OUTPUT_WORLD_VIEW_VECTOR==1)
+    #if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
         directionToEye = normalize(geo.worldViewVector);
     #endif
 
     float4 result = float4(
         ResolveLitColor(
-            sample, directionToEye, GetWorldPosition(geo),
+            sample, directionToEye, VSOUT_GetWorldPosition(geo),
             LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
-    #if OUTPUT_FOG_COLOR == 1
+    #if VSOUT_HAS_FOG_COLOR == 1
 		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;
 
-	#if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
-		result.rgb *= geo.colour.rgb;
+	#if (VSOUT_HAS_COLOR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+		result.rgb *= geo.color.rgb;
 	#endif
 
 	#if MAT_SKIP_LIGHTING_SCALE==0

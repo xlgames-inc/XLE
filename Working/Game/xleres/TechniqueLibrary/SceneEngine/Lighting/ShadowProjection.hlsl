@@ -8,7 +8,7 @@
 #define SHADOW_PROJECTION_H
 
 #include "../../Framework/MainGeometry.hlsl"
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 
 static const uint ShadowMaxSubProjections = 6;
 
@@ -77,7 +77,7 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint casca
     }
 }
 
-float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex, uint cascadeMode)
+float4 ShadowProjection_GetOutput(VSIN geo, uint cascadeIndex, uint cascadeMode)
 {
 	return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
 }

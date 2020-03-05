@@ -8,13 +8,14 @@
 #include "../Lighting/ShadowProjection.hlsl"
 #include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSShadowOutput.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 
 	// support up to 6 output frustums (for cube map point light source projections)
 [maxvertexcount(18)]
 	void main(	triangle VSShadowOutput input[3],
 				uint primitiveId : SV_PrimitiveID,
-				inout TriangleStream<VSOutput> outputStream)
+				inout TriangleStream<VSOUT> outputStream)
 {
 		// todo -- perhaps do backface removal here to
 		//		quickly reject half of the triangles
@@ -69,42 +70,42 @@
 		p1.z -= halfDepthBufferPrecision * p1.w;
 		p2.z -= halfDepthBufferPrecision * p2.w;
 
-		VSOutput output;
+		VSOUT output;
 		output.position = p0;
-		#if OUTPUT_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD==1
 			output.texCoord = input[0].texCoord;
 		#endif
-		#if OUTPUT_COLOUR==1
-			output.colour = input[0].colour;
+		#if VSOUT_HAS_COLOR==1
+			output.color = input[0].color;
 		#endif
 		output.renderTargetIndex = c;
-		#if (OUTPUT_PRIMITIVE_ID==1)
+		#if (VSOUT_HAS_PRIMITIVE_ID==1)
 			output.primitiveId = primitiveId;
 		#endif
 		outputStream.Append(output);
 
 		output.position = p1;
-		#if OUTPUT_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD==1
 			output.texCoord = input[1].texCoord;
 		#endif
-		#if OUTPUT_COLOUR>=1
-			output.colour = input[1].colour;
+		#if VSOUT_HAS_COLOR>=1
+			output.color = input[1].color;
 		#endif
 		output.renderTargetIndex = c;
-		#if (OUTPUT_PRIMITIVE_ID==1)
+		#if (VSOUT_HAS_PRIMITIVE_ID==1)
 			output.primitiveId = primitiveId;
 		#endif
 		outputStream.Append(output);
 
 		output.position = p2;
-		#if OUTPUT_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD==1
 			output.texCoord = input[2].texCoord;
 		#endif
-		#if OUTPUT_COLOUR>=1
-			output.colour = input[2].colour;
+		#if VSOUT_HAS_COLOR>=1
+			output.color = input[2].color;
 		#endif
 		output.renderTargetIndex = c;
-		#if (OUTPUT_PRIMITIVE_ID==1)
+		#if (VSOUT_HAS_PRIMITIVE_ID==1)
 			output.primitiveId = primitiveId;
 		#endif
 		outputStream.Append(output);
@@ -135,42 +136,42 @@
 			p1.z -= halfDepthBufferPrecision * p1.w;
 			p2.z -= halfDepthBufferPrecision * p2.w;
 
-			VSOutput output;
+			VSOUT output;
 			output.position = p0;
-			#if OUTPUT_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD==1
 				output.texCoord = input[0].texCoord;
 			#endif
-			#if OUTPUT_COLOUR==1
-				output.colour = input[0].colour;
+			#if VSOUT_HAS_COLOR==1
+				output.color = input[0].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;
-			#if (OUTPUT_PRIMITIVE_ID==1)
+			#if (VSOUT_HAS_PRIMITIVE_ID==1)
 				output.primitiveId = primitiveId;
 			#endif
 			outputStream.Append(output);
 
 			output.position = p1;
-			#if OUTPUT_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD==1
 				output.texCoord = input[1].texCoord;
 			#endif
-			#if OUTPUT_COLOUR==1
-				output.colour = input[1].colour;
+			#if VSOUT_HAS_COLOR==1
+				output.color = input[1].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;
-			#if (OUTPUT_PRIMITIVE_ID==1)
+			#if (VSOUT_HAS_PRIMITIVE_ID==1)
 				output.primitiveId = primitiveId;
 			#endif
 			outputStream.Append(output);
 
 			output.position = p2;
-			#if OUTPUT_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD==1
 				output.texCoord = input[2].texCoord;
 			#endif
-			#if OUTPUT_COLOUR==1
-				output.colour = input[2].colour;
+			#if VSOUT_HAS_COLOR==1
+				output.color = input[2].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;
-			#if (OUTPUT_PRIMITIVE_ID==1)
+			#if (VSOUT_HAS_PRIMITIVE_ID==1)
 				output.primitiveId = primitiveId;
 			#endif
 			outputStream.Append(output);

@@ -7,20 +7,20 @@
 #include "particle.hlsl"
 #include "../Lighting/Atmosphere.hlsl"
 
-ParticleVStoGS main(VSInput input)
+ParticleVStoGS main(VSIN input)
 {
 	ParticleVStoGS output;
 	output.position = input.position;
 
 	#if GEO_HAS_COLOR==1
-		output.colour 		= VSIn_GetColour(input);
+		output.color 		= VSIN_GetColor0(input);
 	#endif
 
 	#if GEO_HAS_TEXCOORD==1
-		output.texCoord 	= VSIn_GetTexCoord(input);
+		output.texCoord 	= VSIN_GetTexCoord0(input);
 	#endif
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		output.fogColor = CalculateFog(input.position.z, SysUniform_GetWorldSpaceView() - input.position, NegativeDominantLightDirection);
 	#endif
 
@@ -29,9 +29,9 @@ ParticleVStoGS main(VSInput input)
 	return output;
 }
 
-VSOutput nogs(VSInput input)
+VSOUT nogs(VSIN input)
 {
-	VSOutput output;
+	VSOUT output;
 
 	float3 cameraRight	= float3(SysUniform_GetCameraBasis()[0].x, SysUniform_GetCameraBasis()[1].x, SysUniform_GetCameraBasis()[2].x);
 	float3 cameraUp		= float3(SysUniform_GetCameraBasis()[0].y, SysUniform_GetCameraBasis()[1].y, SysUniform_GetCameraBasis()[2].y);
@@ -47,15 +47,15 @@ VSOutput nogs(VSInput input)
 		;
 	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-	#if OUTPUT_COLOUR==1
-		output.colour 		= input.colour;
+	#if VSOUT_HAS_COLOR==1
+		output.color 		= input.color;
 	#endif
 
-	#if OUTPUT_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD==1
 		output.texCoord 	= input.texCoord;
 	#endif
 
-	#if (OUTPUT_TANGENT_FRAME==1)
+	#if (VSOUT_HAS_TANGENT_FRAME==1)
 		// build the correct tangent frame for the vertex, assuming
 		// texturing over the full surface, as normal
 		output.tangent = normalize(rotatedRight);
@@ -63,15 +63,15 @@ VSOutput nogs(VSInput input)
 		output.normal = normalize(cross(output.tangent, output.bitangent));
 	#endif
 
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 	#endif
 
-	#if (OUTPUT_BLEND_TEXCOORD==1)
+	#if (VSOUT_HAS_BLEND_TEXCOORD==1)
 		output.blendTexCoord = input.blendTexCoord.xyz;
 	#endif
 
-    #if (OUTPUT_FOG_COLOR==1)
+    #if (VSOUT_HAS_FOG_COLOR==1)
         output.fogColor = CalculateFog(worldPosition.z, SysUniform_GetWorldSpaceView() - worldPosition, NegativeDominantLightDirection);
     #endif
 

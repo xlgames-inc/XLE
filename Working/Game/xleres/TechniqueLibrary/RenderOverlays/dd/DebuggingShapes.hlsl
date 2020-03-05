@@ -17,7 +17,7 @@ class TagShape : IShape2D
 {
 	ShapeResult Calculate(DebuggingShapesCoords coords, ShapeDesc shapeDesc)
 	{
-		float2 texCoord = GetTexCoord(coords);
+		float2 texCoord = VSOUT_GetTexCoord0(coords);
 		float2 minCoords = shapeDesc._minCoords, maxCoords = shapeDesc._maxCoords;
 		float aspectRatio = GetAspectRatio(coords);
 

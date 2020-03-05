@@ -9,9 +9,9 @@
 #include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
-VSOutput main(VSInput input)
+VSOUT main(VSIN input)
 {
-	VSOutput output;
+	VSOUT output;
 	float3 localPosition	= float3(input.position.xy, input.texCoord.x);
 	float3 worldPosition 	= mul(SysUniform_GetLocalToWorld(), float4(localPosition,1));
 	output.position = float4(worldPosition, 1);

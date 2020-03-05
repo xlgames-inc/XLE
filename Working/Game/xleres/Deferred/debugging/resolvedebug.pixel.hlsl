@@ -8,7 +8,7 @@
 #include "../../TechniqueLibrary/SceneEngine/Lighting/LightShapes.hlsl"
 #include "../resolveutil.hlsl"
 #include "../../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
-#include "../../TechniqueLibrary/System/Binding.hlsl"
+#include "../../TechniqueLibrary/Framework/Binding.hlsl"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -8,12 +8,12 @@ import basic = "game/xleres/nodes/basic.sh"
 import materialparam = "xleres/nodes/materialparam.sh"
 import unitpipeline = "game/xleres/authoringconcept/unitpipeline.graph"
 
-GBufferValues ps_main(VSOutput geo) implements templates::PerPixel
+GBufferValues ps_main(VSOUT geo) implements templates::PerPixel
 {
 	captures Uniforms = [[visualNode1]](Texture2D DiffuseTexture, Texture2D ParametersTexture, float3 MaterialSpecular, Texture2D SpecularColorTexture);
-	node node_0 = [[visualNode2]]surface::GetTexCoord(geo:geo);
+	node node_0 = [[visualNode2]]surface::VSOUT_GetTexCoord0(geo:geo);
 	node node_1 = [[visualNode3]]world::CloudShadows(UV:node_0.result);
-	return [[visualNode4]]output::Output_PerPixel(worldSpaceNormal:[[visualNode0]]surface::GetNormal(geo:geo).result, diffuseAlbedo:[[visualNode5]]basic::Multiply4Scalar(lhs:[[visualNode6]]unitpipeline::main(inputColor:[[visualNode7]]texture::SampleAnisotropic(inputTexture:Uniforms.DiffuseTexture, texCoord:node_0.result).result, geo:geo).result, rhs:"1").result, material:[[visualNode8]]materialparam::CommonMaterialParam_Make(specular:".25", metal:"0", roughness:".4").result, cookedAmbientOcclusion:"1", cookedLightOcclusion:"1", blendingAlpha:"1", normalMapAccuracy:"1").result;
+	return [[visualNode4]]output::Output_PerPixel(worldSpaceNormal:[[visualNode0]]surface::VSOUT_GetNormal(geo:geo).result, diffuseAlbedo:[[visualNode5]]basic::Multiply4Scalar(lhs:[[visualNode6]]unitpipeline::main(inputColor:[[visualNode7]]texture::SampleAnisotropic(inputTexture:Uniforms.DiffuseTexture, texCoord:node_0.result).result, geo:geo).result, rhs:"1").result, material:[[visualNode8]]materialparam::CommonMaterialParam_Make(specular:".25", metal:"0", roughness:".4").result, cookedAmbientOcclusion:"1", cookedLightOcclusion:"1", blendingAlpha:"1", normalMapAccuracy:"1").result;
 }
 attributes visualNode8(PreviewGeometry:"plane2d", X:"-235", Y:"742", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode0(PreviewGeometry:"plane2d", X:"-131", Y:"693", State:"Collapsed", OutputToVisualize:"");

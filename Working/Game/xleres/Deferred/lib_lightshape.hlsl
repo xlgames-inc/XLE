@@ -6,7 +6,7 @@
 
 #include "../TechniqueLibrary/Lighting/LightShapes.hlsl"
 #include "../TechniqueLibrary/TechniqueLibrary/Utility/LoadGBuffer.hlsl"
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 #if MSAA_SAMPLES > 1
     #define MAYBE_SAMPLE_INDEX , uint sampleIndex

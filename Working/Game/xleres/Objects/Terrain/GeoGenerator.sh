@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
+#define VSOUT_HAS_TEXCOORD 1
 #define VSOUTPUT_EXTRA float2 dhdxy : DHDXY;
 
 #include "TerrainGenerator.h"
@@ -209,7 +209,7 @@ PatchOutputControlPoint hs_main(
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 [domain("quad")]
-    VSOutput ds_main(	HS_ConstantOutput input, float2 UV : SV_DomainLocation,
+    VSOUT ds_main(	HS_ConstantOutput input, float2 UV : SV_DomainLocation,
                         const OutputPatch<PatchInputControlPoint, ControlPointCount> inputPatch)
 {
         //	After the hardware tessellator has run, let's
@@ -278,10 +278,10 @@ PatchOutputControlPoint hs_main(
 
     float4 clipPosition  = mul( SysUniform_GetWorldToClip(), float4(worldPosition, 1));
 
-    VSOutput output;
+    VSOUT output;
     output.position = clipPosition;
     output.texCoord = UV.xy;
-    #if (OUTPUT_WORLD_POSITION==1)
+    #if (VSOUT_HAS_WORLD_POSITION==1)
         output.worldPosition = worldPosition;
     #endif
         // output height derivatives from domain shader (instead of normals

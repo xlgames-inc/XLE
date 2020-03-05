@@ -4,13 +4,13 @@
 #include "MaterialParam.sh"
 
 float3 CoordinatesToColor(float3 coords);
-float4 AmendColor(VSOutput geo, float4 inputColor);
+float4 AmendColor(VSOUT geo, float4 inputColor);
 
-bool EarlyRejectionTest(VSOutput geo);
-GBufferValues PerPixel(VSOutput geo);
+bool EarlyRejectionTest(VSOUT geo);
+GBufferValues PerPixel(VSOUT geo);
     
 void PerPixel_Separate(
-    VSOutput geo, 
+    VSOUT geo, 
     out float3 diffuseAlbedo,
     out float3 worldSpaceNormal,
 

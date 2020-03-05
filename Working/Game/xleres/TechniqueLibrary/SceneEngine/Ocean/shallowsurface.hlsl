@@ -33,9 +33,9 @@ cbuffer ShallowWaterLighting
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-VSOutput vs_main(uint vertexId : SV_VertexId)
+VSOUT vs_main(uint vertexId : SV_VertexId)
 {
-    VSOutput output;
+    VSOUT output;
 
     uint2 p = uint2(
         vertexId % (SHALLOW_WATER_TILE_DIMENSION+1),
@@ -61,15 +61,15 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
 
     output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-    #if (OUTPUT_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD==1)
         output.texCoord = localPosition.xy;
     #endif
 
-    #if OUTPUT_WORLD_VIEW_VECTOR==1
+    #if VSOUT_HAS_WORLD_VIEW_VECTOR==1
         output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
     #endif
 
-    #if OUTPUT_FOG_COLOR == 1
+    #if VSOUT_HAS_FOG_COLOR == 1
 		output.fogColor = ResolveOutputFogColor(worldPosition.xyz, SysUniform_GetWorldSpaceView().xyz);
 	#endif
 
@@ -115,10 +115,10 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 }
 
 [earlydepthstencil]
-    float4 ps_main(VSOutput geo) : SV_Target0
+    float4 ps_main(VSOUT geo) : SV_Target0
 {
     float3 directionToEye = 0.0.xxx;
-    #if (OUTPUT_WORLD_VIEW_VECTOR==1)
+    #if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
         directionToEye = normalize(geo.worldViewVector);
     #endif
 
@@ -182,19 +182,19 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
     parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.75f);
     float foamTex = CalculateFoamFromFoamQuantity(0.05f * geo.texCoord, 0.5f * parts.foamQuantity);
 
-    float3 colour =
+    float3 color =
           parts.transmission * refractedAttenuation * parts.refracted
         + parts.transmission * parts.upwelling
         + (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
         + FoamColor * foamTex
         ;
 
-    #if OUTPUT_FOG_COLOR == 1
-		colour.rgb = geo.fogColor.rgb + colour.rgb * geo.fogColor.a;
+    #if VSOUT_HAS_FOG_COLOR == 1
+		color.rgb = geo.fogColor.rgb + color.rgb * geo.fogColor.a;
 	#endif
 
     float4 result;
-    result = float4(colour, 1.f);
+    result = float4(color, 1.f);
 
     #if MAT_SKIP_LIGHTING_SCALE==0
         result.rgb *= LightingScale;		// (note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)

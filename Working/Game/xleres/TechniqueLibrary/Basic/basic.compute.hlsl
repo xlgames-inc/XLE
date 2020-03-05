@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../System/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 
 RWTexture2D<float4> OutputTexture BIND_NUMERIC_U0;
 Texture2D<float4> InputTexture BIND_NUMERIC_T0;

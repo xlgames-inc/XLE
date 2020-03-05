@@ -6,7 +6,7 @@ import materialparam = "xleres/nodes/materialparam.sh"
 
 void ProcWood()
 {
-	node node_0 = [[visualNode2]]output::Output_PerPixel(diffuseAlbedo:[[visualNode0]]wood_04_g::Wood_04_G(coords:[[visualNode1]]surface::GetWorldPosition().result).color, material:[[visualNode3]]materialparam::CommonMaterialParam_Make(roughness:".3", specular:".05", metal:"0").result, worldSpaceNormal:[[visualNode4]]surface::GetNormal().result, blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"1.0f", cookedLightOcclusion:"1.0f", transmission:"0");
+	node node_0 = [[visualNode2]]output::Output_PerPixel(diffuseAlbedo:[[visualNode0]]wood_04_g::Wood_04_G(coords:[[visualNode1]]surface::VSOUT_GetWorldPosition().result).color, material:[[visualNode3]]materialparam::CommonMaterialParam_Make(roughness:".3", specular:".05", metal:"0").result, worldSpaceNormal:[[visualNode4]]surface::VSOUT_GetNormal().result, blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"1.0f", cookedLightOcclusion:"1.0f", transmission:"0");
 }
 attributes visualNode0(PreviewGeometry:"sphere", X:"281.000000", Y:"252.000000", State:"Normal", OutputToVisualize:"");
 attributes visualNode1(PreviewGeometry:"sphere", X:"-91.000000", Y:"340.000000", State:"Collapsed", OutputToVisualize:"");
@@ -19,7 +19,7 @@ attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000",
 	<HasTechniqueConfig>true</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
 		<d2p1:KeyValueOfstringstring>
-			<d2p1:Key>OUTPUT_WORLD_POSITION</d2p1:Key>
+			<d2p1:Key>VSOUT_HAS_WORLD_POSITION</d2p1:Key>
 			<d2p1:Value>1</d2p1:Value>
 		</d2p1:KeyValueOfstringstring>
 	</ShaderParameters>

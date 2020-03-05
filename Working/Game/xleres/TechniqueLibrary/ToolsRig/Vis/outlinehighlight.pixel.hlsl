@@ -24,7 +24,7 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 	float2 dhdp = 0.0.xx;
 	for (int y=0; y<5; ++y) {
 		for (int x=0; x<5; ++x) {
-				//	We need to convert the input colour values to some
+				//	We need to convert the input color values to some
 				//	kind of scalar. We could use luminance. But if we
 				//	just want to find the outline of a rendered area,
 				//	then we can use the alpha channel

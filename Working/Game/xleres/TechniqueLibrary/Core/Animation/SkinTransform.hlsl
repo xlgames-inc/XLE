@@ -74,7 +74,7 @@ float3 TransformPoint_QT(float2x4 qt, float3 inputPosition)
 	return qt[1].xyz + TransformVector_Q(qt[0], inputPosition);
 }
 
-float3 TransformPositionThroughSkinning(VSInput input, float3 position)
+float3 TransformPositionThroughSkinning(VSIN input, float3 position)
 {
     #if GEO_HAS_BONEWEIGHTS
         float3 result = 0.0.xxx;
@@ -97,7 +97,7 @@ float3 TransformPositionThroughSkinning(VSInput input, float3 position)
     #endif
 }
 
-float3 TransformDirectionVectorThroughSkinning(VSInput input, float3 directionVector)
+float3 TransformDirectionVectorThroughSkinning(VSIN input, float3 directionVector)
 {
     #if GEO_HAS_BONEWEIGHTS
         float3 result = 0.0.xxx;

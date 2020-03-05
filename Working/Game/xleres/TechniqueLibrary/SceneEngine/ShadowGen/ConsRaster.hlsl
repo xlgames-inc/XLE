@@ -6,23 +6,23 @@
 
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 
-float4 GetPosition(VSOutput v) { return v.position; }
+float4 GetPosition(VSOUT v) { return v.position; }
 
 struct GSOutput
 {
-    VSOutput v;
+    VSOUT v;
     #if (OUTPUT_PRIM_ID==1)
         nointerpolation uint primId : PRIMID;
     #endif
 };
 
-GSOutput MakeVertex(VSOutput current, float2 semiDiagonalAdj, uint primId);
+GSOutput MakeVertex(VSOUT current, float2 semiDiagonalAdj, uint primId);
 
 // float SpecialSign(float i) { return sign(i); }
 float SpecialSign(float i) { return i >= 0.f ? 1.f : -1.f; }
 
 void GenerateCorner(
-    VSOutput prev, VSOutput current, VSOutput next,
+    VSOUT prev, VSOUT current, VSOUT next,
     inout GSOutput starterVertex, bool isFirst, uint primId,
     inout TriangleStream<GSOutput> outputStream)
 {
@@ -96,7 +96,7 @@ void GenerateCorner(
     }
 }
 
-GSOutput MakeVertex(VSOutput current, float2 semiDiagonalAdj, uint primId)
+GSOutput MakeVertex(VSOUT current, float2 semiDiagonalAdj, uint primId)
 {
     // float2 pixelSize = float2(2.f/64.f, 2.f/64.f);
     float2 pixelSize = float2(2.f/256.f, 2.f/256.f);
@@ -116,7 +116,7 @@ GSOutput MakeVertex(VSOutput current, float2 semiDiagonalAdj, uint primId)
     // (if we could output triangle lists, worse case output would be 9 vertices)
     [maxvertexcount(16)]
         void gs_conservativeRasterization(
-            triangle VSOutput input[3],
+            triangle VSOUT input[3],
             #if (OUTPUT_PRIM_ID==1)
                 uint primId : SV_PrimitiveID,
             #endif
@@ -172,7 +172,7 @@ GSOutput MakeVertex(VSOutput current, float2 semiDiagonalAdj, uint primId)
             uint primId = 0;
         #endif
 
-        VSOutput v[3];
+        VSOUT v[3];
         v[0].position = float4(input[0].a_v0.xy, 0.f, 1.f);
         v[1].position = float4(input[0].a_v0.xy + input[0].a_v0.zw, 0.f, 1.f);
         v[2].position = float4(input[0].a_v0.xy + input[0].v1, 0.f, 1.f);

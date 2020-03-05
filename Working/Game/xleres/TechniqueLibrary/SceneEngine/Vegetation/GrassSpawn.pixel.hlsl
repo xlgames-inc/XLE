@@ -4,16 +4,16 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
+#define VSOUT_HAS_TEXCOORD 1
 #define MAT_ALPHA_TEST 1
-#define OUTPUT_COLOUR 2
+#define VSOUT_HAS_COLOR 2
 
 #include "../TechniqueLibrary/Framework/CommonResources.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
 #include "../BasicMaterial.hlsl"
 
-void main(	VSOutput geo,
+void main(	VSOUT geo,
 			out float4 oDiffuse : SV_Target0,
 			out float4 oWorldSpaceNormal : SV_Target1)
 {
@@ -22,7 +22,7 @@ void main(	VSOutput geo,
 	DoAlphaTest(geo, AlphaThreshold);
 	oDiffuse = DiffuseTexture.SampleLevel(ClampingSampler, geo.texCoord, 0);
 	// oDiffuse = 1.0.xxxx;
-	oDiffuse.rgb *= geo.colour.rgb;
+	oDiffuse.rgb *= geo.color.rgb;
 	oDiffuse.a = 1.f;
 
 	const bool uNormNormalsFormat = true;

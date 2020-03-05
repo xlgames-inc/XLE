@@ -4,7 +4,7 @@ import output = "game/xleres/nodes/output.sh"
 import surface = "game/xleres/surface.h"
 import materialparam = "game/xleres/nodes/materialparam.sh"
 
-GBufferValues ps_main(VSOutput geo) implements templates::PerPixel
+GBufferValues ps_main(VSOUT geo) implements templates::PerPixel
 {
 	return [[visualNode1]]output::Output_PerPixel(worldSpaceNormal:[[visualNode0]]surface::GetNormal(geo:geo).result, material:[[visualNode2]]materialparam::CommonMaterialParam_Make(roughness:".5", specular:"0.05", metal:"0").result, diffuseAlbedo:"float3(.75, 0.75, 0.25)", blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"0.0", cookedLightOcclusion:"0.0", transmission:"float3(0.0, 0.0, 0.0)").result;
 }

@@ -5,7 +5,7 @@
 #if !defined(TRANSFORM_H)
 #define TRANSFORM_H
 
-#include "../System/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 
 cbuffer GlobalTransform BIND_SEQ_B0
 {

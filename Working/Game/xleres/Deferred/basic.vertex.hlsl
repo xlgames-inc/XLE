@@ -10,10 +10,10 @@
 #include "../TechniqueLibrary/SceneEngine/Vegetation/WindAnim.hlsl"
 #include "../TechniqueLibrary/SceneEngine/Vegetation/InstanceVS.hlsl"
 
-VSOutput main(VSInput input)
+VSOUT main(VSIN input)
 {
-	VSOutput output;
-	float3 localPosition = VSIn_GetLocalPosition(input);
+	VSOUT output;
+	float3 localPosition = VSIN_GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
 		float3 objectCentreWorld;
@@ -22,21 +22,21 @@ VSOutput main(VSInput input)
 	#else
 		float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
-		float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
+		float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
 	#endif
 
-	#if OUTPUT_COLOUR==1
-		output.colour 		= VSIn_GetColour(input);
+	#if VSOUT_HAS_COLOR==1
+		output.color 		= VSIN_GetColor0(input);
 	#endif
 
-	#if OUTPUT_TEXCOORD==1
-		output.texCoord 	= VSIn_GetTexCoord(input);
+	#if VSOUT_HAS_TEXCOORD==1
+		output.texCoord 	= VSIN_GetTexCoord0(input);
 	#endif
 
 	#if GEO_HAS_TEXTANGENT==1
-		TangentFrameStruct worldSpaceTangentFrame = VSIn_GetWorldTangentFrame(input);
+		TangentFrameStruct worldSpaceTangentFrame = VSIN_GetWorldTangentFrame(input);
 
-		#if OUTPUT_TANGENT_FRAME==1
+		#if VSOUT_HAS_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;
 			output.bitangent = worldSpaceTangentFrame.bitangent;
 		#endif
@@ -46,43 +46,43 @@ VSOutput main(VSInput input)
 		#endif
 	#endif
 
-	#if (OUTPUT_NORMAL==1)
+	#if (VSOUT_HAS_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
 
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input).rgb);
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input).rgb);
 
 	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-	#if OUTPUT_WORLD_POSITION==1
+	#if VSOUT_HAS_WORLD_POSITION==1
 		output.worldPosition = worldPosition;
 	#endif
 
-	#if OUTPUT_LOCAL_TANGENT_FRAME==1
-		output.localTangent = VSIn_GetLocalTangent(input);
-		output.localBitangent = VSIn_GetLocalBitangent(input);
+	#if VSOUT_HAS_LOCAL_TANGENT_FRAME==1
+		output.localTangent = VSIN_GetLocalTangent(input);
+		output.localBitangent = VSIN_GetLocalBitangent(input);
 	#endif
 
-	#if (OUTPUT_LOCAL_NORMAL==1)
-		output.localNormal = VSIn_GetLocalNormal(input);
+	#if (VSOUT_HAS_LOCAL_NORMAL==1)
+		output.localNormal = VSIN_GetLocalNormal(input);
 	#endif
 
-	#if OUTPUT_LOCAL_VIEW_VECTOR==1
+	#if VSOUT_HAS_LOCAL_VIEW_VECTOR==1
 		output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
 	#endif
 
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
 	#endif
 
-	#if (OUTPUT_PER_VERTEX_AO==1)
+	#if (VSOUT_HAS_PER_VERTEX_AO==1)
 		output.ambientOcclusion =  1.f;
 		#if (GEO_HAS_PER_VERTEX_AO==1)
 			output.ambientOcclusion = input.ambientOcclusion;
 		#endif
 	#endif
 
-	#if (OUTPUT_PER_VERTEX_MLO==1)
+	#if (VSOUT_HAS_PER_VERTEX_MLO==1)
 		output.mainLightOcclusion =  1.f;
 		#if (GEO_HAS_INSTANCE_ID==1)
 			output.mainLightOcclusion *= GetInstanceShadowing(input);

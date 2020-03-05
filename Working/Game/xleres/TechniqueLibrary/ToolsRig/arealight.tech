@@ -153,36 +153,36 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
     }
 }
 
-VSOutput MakeVSOutput(GeneratedVertex genVertex)
+VSOUT MakeVSOutput(GeneratedVertex genVertex)
 {
-	VSOutput output;
+	VSOUT output;
 
-	#if OUTPUT_COLOUR>=1
-		output.colour = 5.0.xxxx;
+	#if VSOUT_HAS_COLOR>=1
+		output.color = 5.0.xxxx;
 	#endif
 
-	#if OUTPUT_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD==1
 		output.texCoord = 0.0.xx;
 	#endif
 
-	#if (OUTPUT_NORMAL==1)
+	#if (VSOUT_HAS_NORMAL==1)
 		output.normal = genVertex.worldNormal;
 	#endif
 
 	output.position = mul(SysUniform_GetWorldToClip(), float4(genVertex.worldPosition,1));
 
-	#if OUTPUT_WORLD_VIEW_VECTOR==1
+	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
 		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - genVertex.worldPosition.xyz;
 	#endif
 
-	#if OUTPUT_WORLD_POSITION==1
+	#if VSOUT_HAS_WORLD_POSITION==1
 		output.worldPosition = worldPosition.xyz;
 	#endif
 
 	return output;
 }
 
-VSOutput vs_main(uint vIndex : SV_VertexID)
+VSOUT vs_main(uint vIndex : SV_VertexID)
 {
     return MakeVSOutput(GenVertex(vIndex, SHAPE));
 }
@@ -194,7 +194,7 @@ VSOutput vs_main(uint vIndex : SV_VertexID)
         ~Material
             SHAPE=1
         ~Geometry
-            OUTPUT_NORMAL=0
-            OUTPUT_COLOUR=1
+            VSOUT_HAS_NORMAL=0
+            VSOUT_HAS_COLOR=1
     VertexShader=<.>:vs_main
 )--*/

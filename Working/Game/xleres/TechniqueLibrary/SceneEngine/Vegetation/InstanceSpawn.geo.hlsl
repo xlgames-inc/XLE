@@ -221,7 +221,7 @@ float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
 }
 
 [maxvertexcount(112)]
-	void main(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
+	void main(triangle VSOUT input[3], inout PointStream<GSOutput> outputStream)
 {
 
 		//
@@ -234,7 +234,7 @@ float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
 		//
 
 	WorkingTriangle tri;
-	#if (OUTPUT_WORLD_POSITION==1)
+	#if (VSOUT_HAS_WORLD_POSITION==1)
 		tri.pts[0] = input[0].worldPosition.xyz;
 		tri.pts[1] = input[1].worldPosition.xyz;
 		tri.pts[2] = input[2].worldPosition.xyz;
@@ -245,7 +245,7 @@ float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
 	#endif
 
 	float2 tc0 = 0.0.xx, tc1 = 0.0.xx, tc2 = 0.0.xx;
-	#if (OUTPUT_TEXCOORD==1)
+	#if (VSOUT_HAS_TEXCOORD==1)
 		tc0 = input[0].texCoord.xy;
 		tc1 = input[1].texCoord.xy;
 		tc2 = input[2].texCoord.xy;
@@ -344,7 +344,7 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 }
 
 [maxvertexcount(113)]
-	void wireframe(triangle VSOutput input[3], inout LineStream<GSOutputWire> outputStream)
+	void wireframe(triangle VSOUT input[3], inout LineStream<GSOutputWire> outputStream)
 {
 	GSOutputWire output;
 	output.color = 1.0.xxx;

@@ -10,12 +10,13 @@
 #include "../TechniqueLibrary/Framework/CommonResources.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../TechniqueLibrary/Framework/LegacySurface.hlsl"
 #include "../TechniqueLibrary/Core/gbuffer.hlsl"
 #include "../BasicMaterial.hlsl"
 #include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
 // #include "../TechniqueLibrary/Math/perlinnoise.hlsl"
 #include "../TechniqueLibrary/Utility/Colour.hlsl"
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 Texture2D       ParametersTexture       BIND_MAT_T2;
 Texture2D       SpecularColorTexture    BIND_MAT_T3;
@@ -33,18 +34,18 @@ PerPixelMaterialParam DefaultMaterialValues();
     //          M A I N   P E R   P I X E L   W O R K
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-GBufferValues IllumShader_PerPixel(VSOutput geo)
+GBufferValues IllumShader_PerPixel(VSOUT geo)
 {
     GBufferValues result = GBufferValues_Default();
 
-    //#if (OUTPUT_PER_VERTEX_AO==1)
+    //#if (VSOUT_HAS_PER_VERTEX_AO==1)
     //    result.diffuseAlbedo = geo.ambientOcclusion.xxx;
-    //    result.worldSpaceNormal = GetNormal(geo);
+    //    result.worldSpaceNormal = VSOUT_GetNormal(geo);
     //    return result;
     //#endif
 
     float4 diffuseTextureSample = 1.0.xxxx;
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
         #if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
             diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
         #else
@@ -54,8 +55,8 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.blendingAlpha = diffuseTextureSample.a;
     #endif
 
-    #if (OUTPUT_COLOUR==1) && MAT_MODULATE_VERTEX_ALPHA
-        result.blendingAlpha *= geo.colour.a;
+    #if (VSOUT_HAS_COLOR==1) && MAT_MODULATE_VERTEX_ALPHA
+        result.blendingAlpha *= geo.color.a;
     #endif
 
     #if (SKIP_MATERIAL_DIFFUSE!=1)
@@ -72,7 +73,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
 
     result.material = DefaultMaterialValues();
 
-    #if (OUTPUT_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD==1)
         #if (RES_HAS_ParametersTexture!=0)
                 //	Just using a trilinear sample for this. Anisotropy disabled.
             result.material = DecodeParametersTexture_RMS(
@@ -88,11 +89,11 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.diffuseAlbedo *= SRGBToLinear(MaterialDiffuse);
     #endif
 
-    #if (OUTPUT_COLOUR==1)
-        result.diffuseAlbedo.rgb *= geo.colour.rgb;
+    #if (VSOUT_HAS_COLOR==1)
+        result.diffuseAlbedo.rgb *= geo.color.rgb;
     #endif
 
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_Occlusion==1)
+    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_Occlusion==1)
             // use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
         result.cookedAmbientOcclusion = Occlusion.Sample(DefaultSampler, geo.texCoord).r;
 
@@ -113,16 +114,16 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         // }
     #endif
 
-    #if (OUTPUT_PER_VERTEX_AO==1)
+    #if (VSOUT_HAS_PER_VERTEX_AO==1)
         result.cookedAmbientOcclusion *= geo.ambientOcclusion;
         result.cookedLightOcclusion *= geo.ambientOcclusion;
     #endif
 
-    #if (OUTPUT_PER_VERTEX_MLO==1)
+    #if (VSOUT_HAS_PER_VERTEX_MLO==1)
         result.cookedLightOcclusion *= geo.mainLightOcclusion;
     #endif
 
-    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (OUTPUT_TEXCOORD==1)
+    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD==1)
             // some pipelines put a AO term in the blue channel of the normal map
             // we can factor it in here...
         float cookedAO = NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
@@ -130,7 +131,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.cookedAmbientOcclusion *= cookedAO;
     #endif
 
-    #if (OUTPUT_TANGENT_FRAME==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+    #if (VSOUT_HAS_TANGENT_FRAME==1) && (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
         // const bool scratchMapTest = false;
         // if (scratchMapTest) {
         //
@@ -149,7 +150,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         //     float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
         //     float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
         //
-        //     TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
+        //     TangentFrameStruct tangentFrame = VSOUT_GetWorldTangentFrame(geo);
         //     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
         //     result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
         //
@@ -161,7 +162,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         // } else
     #endif
     {
-        result.worldSpaceNormal = GetNormal(geo);
+        result.worldSpaceNormal = VSOUT_GetNormal(geo);
     }
 
     // result.diffuseAlbedo.xyz = 0.5f + 0.5f * result.worldSpaceNormal.xyz;
@@ -212,11 +213,11 @@ PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample)
 
 PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(inout float3 diffuseSample, float3 specColorSample)
 {
-		// 	Some old textures just have a specular colour in the parameters
+		// 	Some old textures just have a specular color in the parameters
 		//	texture. We could do some conversion in a pre-processing step. But
 		//	let's just do a prototype conversion here.
 		//
-		//	If the specular colour is not similar to the diffuse (and particularly if
+		//	If the specular color is not similar to the diffuse (and particularly if
 		//	the diffuse is dark), then we can take that as a hint of metallicness.
 		//	But this is very rough.
     // PerPixelMaterialParam result = PerPixelMaterialParam_Default();

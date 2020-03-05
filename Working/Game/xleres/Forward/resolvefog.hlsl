@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#if OUTPUT_FOG_COLOR == 1
+#if VSOUT_HAS_FOG_COLOR == 1
 
     #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
     #include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"

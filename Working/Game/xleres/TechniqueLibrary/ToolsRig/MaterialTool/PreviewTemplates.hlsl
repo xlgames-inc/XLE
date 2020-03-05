@@ -85,11 +85,11 @@ float4 ps_main(NE_PSInput input, float2 chartCoords : CHARTCOORDS, float4 positi
 ):>
 
 ~vs_main; item=<:(
-void vs_main(uint vertexId : SV_VertexID, VSInput vsInput, out NE_PSInput OUT, out float2 chartCoords : CHARTCOORDS)
+void vs_main(uint vertexId : SV_VertexID, VSIN vsInput, out NE_PSInput OUT, out float2 chartCoords : CHARTCOORDS)
 {
 	{{#InitGeo}}OUT.geo = BuildInterpolator_VSOutput(vsInput);{{/InitGeo}}
 	float3 worldPosition = BuildInterpolator_WORLDPOSITION(vsInput);
-	float3 localPosition = VSIn_GetLocalPosition(vsInput);
+	float3 localPosition = VSIN_GetLocalPosition(vsInput);
 {{VaryingInitialization}}
 	chartCoords = .5.xx + 0.5f * localPosition.xy;
 }

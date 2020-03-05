@@ -43,7 +43,7 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 }
 
 [earlydepthstencil]
-	float4 main(VSOutput geo, bool isFrontFace : SV_IsFrontFace) : SV_Target
+	float4 main(VSOUT geo, bool isFrontFace : SV_IsFrontFace) : SV_Target
 {
 	float4 result = 1.0.xxxx;
 		//	use a negative depth value to mark back faces.

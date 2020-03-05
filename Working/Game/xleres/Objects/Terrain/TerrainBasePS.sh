@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
+#define VSOUT_HAS_TEXCOORD 1
 #define VSOUTPUT_EXTRA float2 dhdxy : DHDXY;
 
 #define GBUFFER_TYPE 1	// hack -- (not being set by the client code currently)
@@ -31,7 +31,7 @@ struct PSInput
     float2 texCoord : TEXCOORD0;
     float2 dhdxy : DHDXY;
 
-    #if (OUTPUT_WORLD_POSITION==1)
+    #if (VSOUT_HAS_WORLD_POSITION==1)
         float3 worldPosition : WORLDPOSITION;
     #endif
 };
@@ -40,15 +40,15 @@ struct PSInput
     float3 BlendWireframe(PSInput geo, float3 baseColour);
 #endif
 
-#if OUTPUT_WORLD_POSITION==1
-    float3 GetWorldPosition(PSInput geo) { return geo.worldPosition; }
+#if VSOUT_HAS_WORLD_POSITION==1
+    float3 VSOUT_GetWorldPosition(PSInput geo) { return geo.worldPosition; }
 #else
-    float3 GetWorldPosition(PSInput geo) { return 0.0.xxx; }
+    float3 VSOUT_GetWorldPosition(PSInput geo) { return 0.0.xxx; }
 #endif
 
 float TerrainResolve_AngleBasedShadows(PSInput geo)
 {
-    #if (OUTPUT_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
 
             // "COVERAGE_2" is the angle based shadows layer.
         #if defined(COVERAGE_2)
@@ -118,10 +118,10 @@ TerrainTextureOutput TerrainResolve_BaseTexturing(PSInput geo)
                 
             // note --  On some hardware, the shader compiler fails if we use MainTexturing.Calculate here.
             //          We must hardcode the default texturing method -- 
-            TerrainTextureOutput sample0 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[0], geo.texCoord + tcOffset[0]);
-            TerrainTextureOutput sample1 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[1], geo.texCoord + tcOffset[1]);
-            TerrainTextureOutput sample2 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[2], geo.texCoord + tcOffset[2]);
-            TerrainTextureOutput sample3 = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[3], geo.texCoord + tcOffset[3]);
+            TerrainTextureOutput sample0 = GradFlagTexturing_Calculate(VSOUT_GetWorldPosition(geo), geo.dhdxy, materialId[0], geo.texCoord + tcOffset[0]);
+            TerrainTextureOutput sample1 = GradFlagTexturing_Calculate(VSOUT_GetWorldPosition(geo), geo.dhdxy, materialId[1], geo.texCoord + tcOffset[1]);
+            TerrainTextureOutput sample2 = GradFlagTexturing_Calculate(VSOUT_GetWorldPosition(geo), geo.dhdxy, materialId[2], geo.texCoord + tcOffset[2]);
+            TerrainTextureOutput sample3 = GradFlagTexturing_Calculate(VSOUT_GetWorldPosition(geo), geo.dhdxy, materialId[3], geo.texCoord + tcOffset[3]);
             
             procTexture = TerrainTextureOutput_Blank();
             procTexture = AddWeighted(procTexture, sample0, w[0]);
@@ -130,7 +130,7 @@ TerrainTextureOutput TerrainResolve_BaseTexturing(PSInput geo)
             procTexture = AddWeighted(procTexture, sample3, w[3]);
         }
     #else
-        procTexture = GradFlagTexturing_Calculate(GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
+        procTexture = GradFlagTexturing_Calculate(VSOUT_GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
     #endif
 
     return procTexture;
@@ -216,7 +216,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
         p.diffuseAlbedo = BlendWireframe(geo, p.diffuseAlbedo);
     #endif
 
-    #if (OUTPUT_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
+    #if (VSOUT_HAS_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
         if ((dot(uint2(geo.position.xy), uint2(1,1))/4)%4 == 0) {
             float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
             uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));

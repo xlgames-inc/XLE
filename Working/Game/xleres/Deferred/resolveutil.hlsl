@@ -9,7 +9,7 @@
 
 #include "../TechniqueLibrary/Math/TextureAlgorithm.hlsl"		// for LoadFloat1
 #include "../TechniqueLibrary/Math/TransformAlgorithm.hlsl"		// float NDC->linear conversions
-#include "../TechniqueLibrary/System/Binding.hlsl"
+#include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

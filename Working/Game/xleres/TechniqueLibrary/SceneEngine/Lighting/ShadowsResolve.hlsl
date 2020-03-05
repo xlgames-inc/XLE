@@ -11,7 +11,7 @@
 #include "../../Math/TransformAlgorithm.hlsl"
 #include "../../Math/Misc.hlsl"
 #include "../../Math/MathConstants.hlsl"
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 #include "xleres/Deferred/resolvertshadows.hlsl"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

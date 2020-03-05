@@ -53,7 +53,7 @@
 ~RayTest
 	~Inherit; Silhouette
 	~Selectors
-		OUTPUT_WORLD_POSITION=1
+		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	VertexShader=xleres/forward/illum.vertex.hlsl:main
 	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles

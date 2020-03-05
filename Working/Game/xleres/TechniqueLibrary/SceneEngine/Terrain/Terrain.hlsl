@@ -16,9 +16,9 @@ cbuffer TerrainTile
 }
 
 #if (RES_HAS_NormalsTexture==1)
-	#undef OUTPUT_TANGENT_FRAME
-	#define OUTPUT_TANGENT_FRAME 1
-	#define OUTPUT_NORMAL 1
+	#undef VSOUT_HAS_TANGENT_FRAME
+	#define VSOUT_HAS_TANGENT_FRAME 1
+	#define VSOUT_HAS_NORMAL 1
 #endif
 
 #endif

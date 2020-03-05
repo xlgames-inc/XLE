@@ -7,7 +7,7 @@
 #if !defined(BASIC_MATERIAL_H)
 #define BASIC_MATERIAL_H
 
-#include "TechniqueLibrary/System/Binding.hlsl"
+#include "TechniqueLibrary/Framework/Binding.hlsl"
 
     //  This cbuffer contains basic constants are used frequently enough that
     //  we can add support for them in most shaders.

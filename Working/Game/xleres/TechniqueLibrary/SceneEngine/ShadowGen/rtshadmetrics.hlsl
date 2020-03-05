@@ -28,7 +28,7 @@ float4 ps_main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, Syste
         finalCascadeIndex, cascadeNormCoords,
         texCoord, GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys)));
     if (finalCascadeIndex==0) {
-        // Draw a heat-map type colour based on the number of triangles that
+        // Draw a heat-map type color based on the number of triangles that
         // need to be tested for shadowing of this pixel
 
         float3 postDivideCoord = cascadeNormCoords.xyz/cascadeNormCoords.w;

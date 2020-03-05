@@ -10,7 +10,7 @@
 #if !defined(DISTINCT_COLORS)
 #define DISTINCT_COLORS
 
-#include "../../System/Binding.hlsl"
+#include "../../Framework/Binding.hlsl"
 
 #if 0
     static const uint ColourListCount = 47;

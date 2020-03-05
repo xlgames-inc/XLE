@@ -21,9 +21,9 @@
 
     StructuredBuffer<InstanceDef> InstanceOffsets : register(t15);
 
-    float3 InstanceWorldPosition(VSInput input, out float3 worldNormal, out float3 objectCentreWorld)
+    float3 InstanceWorldPosition(VSIN input, out float3 worldNormal, out float3 objectCentreWorld)
     {
-        float3 localPosition = VSIn_GetLocalPosition(input);
+        float3 localPosition = VSIN_GetLocalPosition(input);
 
             // Ideally the object we're instantiating should have an
             // identity local-to-world. But if it doesn't we need to transform
@@ -31,7 +31,7 @@
         localPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 
         objectCentreWorld = InstanceOffsets[input.instanceId].posAndShadowing.xyz;
-        float3 localNormal = VSIn_GetLocalNormal(input);
+        float3 localNormal = VSIN_GetLocalNormal(input);
 
         #if GEO_INSTANCE_ALIGN_UP==1
             float3x3 rotMat = InstanceOffsets[input.instanceId].rotationMatrix;
@@ -50,7 +50,7 @@
         #endif
     }
 
-    float GetInstanceShadowing(VSInput input)
+    float GetInstanceShadowing(VSIN input)
     {
         return InstanceOffsets[input.instanceId].posAndShadowing.w;
     }

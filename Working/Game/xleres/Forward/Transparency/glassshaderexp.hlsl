@@ -26,7 +26,7 @@ static const float3 NegativeLightDirection = float3(SqrtHalf, 0.f, SqrtHalf);
 // 	return f0 + (1.f - f0) * q;	// (note, use lerp for this..?)
 // }
 
-float FresnelForReflection_Local(VSOutput geo, float refractiveIndex)
+float FresnelForReflection_Local(VSOUT geo, float refractiveIndex)
 {
     float3 localSpaceNormal = normalize(geo.localNormal);
     float3 localViewDirection = normalize(geo.localViewVector);
@@ -37,9 +37,9 @@ float FresnelForReflection_Local(VSOutput geo, float refractiveIndex)
     return SchlickFresnel(localViewDirection, halfVector, refractiveIndex);
 }
 
-float FresnelForReflection_World(VSOutput geo, float refractiveIndex)
+float FresnelForReflection_World(VSOUT geo, float refractiveIndex)
 {
-    float3 worldSpaceNormal = GetNormal(geo);
+    float3 worldSpaceNormal = VSOUT_GetNormal(geo);
     float3 worldViewDirection = normalize(geo.worldViewVector);
     float3 worldSpaceReflection = reflect(-worldViewDirection, worldSpaceNormal);
 
@@ -53,9 +53,9 @@ float FresnelForReflection_World(VSOutput geo, float refractiveIndex)
 
 Texture2D SkyReflectionTexture[3] : register(t7);
 
-void GlassShader(VSOutput geo)
+void GlassShader(VSOUT geo)
 {
-    float3 worldSpaceNormal = GetNormal(geo);
+    float3 worldSpaceNormal = VSOUT_GetNormal(geo);
     // worldSpaceNormal = normalize(worldSpaceNormal);
 
     // float noiseValue2 = PerlinNoise3D(45.f * geo.worldPosition);

@@ -20,18 +20,18 @@ struct RTS_VSOutput
 {
     float4 position : POSITION;
 
-    #if OUTPUT_TEXCOORD==1
+    #if VSOUT_HAS_TEXCOORD==1
         float2 texCoord : TEXCOORD;
     #endif
 
-    #if (OUTPUT_WORLD_POSITION==1)
+    #if (VSOUT_HAS_WORLD_POSITION==1)
         float3 worldPosition : WORLDPOSITION;
     #endif
 };
 
-void vs_writetris(VSInput input, out RTS_VSOutput output)
+void vs_writetris(VSIN input, out RTS_VSOutput output)
 {
-    float3 localPosition	= VSIn_GetLocalPosition(input);
+    float3 localPosition	= VSIN_GetLocalPosition(input);
 
     #if GEO_HAS_INSTANCE_ID==1
         float3 objectCentreWorld;
@@ -40,19 +40,19 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
     #else
         float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
         float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
-        float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
+        float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
     #endif
 
-    #if OUTPUT_TEXCOORD==1
-        output.texCoord = VSIn_GetTexCoord(input);
+    #if VSOUT_HAS_TEXCOORD==1
+        output.texCoord = VSIN_GetTexCoord0(input);
     #endif
 
     #if (GEO_HAS_NORMAL==1) || (GEO_HAS_TEXTANGENT==1)
         #if (GEO_HAS_NORMAL==0) && (GEO_HAS_TEXTANGENT==1)
-            worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
+            worldNormal =  VSIN_GetWorldTangentFrame(input).normal;
         #endif
 
-        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input));
+        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input));
     #endif
 
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
@@ -63,7 +63,7 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
         output.position = float4(cascadePos, 1.f);
     #endif
 
-    #if OUTPUT_WORLD_POSITION==1
+    #if VSOUT_HAS_WORLD_POSITION==1
         output.worldPosition = worldPosition.xyz;
     #endif
 }

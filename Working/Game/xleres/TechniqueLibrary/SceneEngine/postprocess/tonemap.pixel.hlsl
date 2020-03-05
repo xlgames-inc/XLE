@@ -41,7 +41,7 @@ float4 Uncharted2Tonemap(float4 x)
 	return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
-float3 ApplyToneMap(float3 colour)
+float3 ApplyToneMap(float3 color)
 {
 	const float imageLuminance = max(1e-4, LuminanceBuffer[0]._currentLuminance);
 	float scale = SceneKey / imageLuminance;
@@ -51,7 +51,7 @@ float3 ApplyToneMap(float3 colour)
 
 			//	Basic Reinhard operator. Not very effective result
 			//	(for demonstration purposes)
-		float3 L = scale * colour;
+		float3 L = scale * color;
 		const float3 LWhite = float3(2.,2.,2.);
 		const float3 A = 1.0.xxx + L/(LWhite*LWhite);
 		return (L * A) / (1.f + L);
@@ -63,7 +63,7 @@ float3 ApplyToneMap(float3 colour)
 			//		See Uncharted 2 programmer's blog:
 			//			http://filmicgames.com/archives/75
 
-		float3 L = scale * colour;
+		float3 L = scale * color;
 		const float whitepoint = Whitepoint;
 		float4 postToneMap = Uncharted2Tonemap(float4(L,whitepoint));
 
@@ -76,12 +76,12 @@ float3 ApplyToneMap(float3 colour)
 	} else if (toneMapOperator==2) {
 
 		#if OPERATOR==2
-			return CryToneMapOperator(colour, scale);
+			return CryToneMapOperator(color, scale);
 		#endif
 
 	}
 
-	return scale * colour;
+	return scale * color;
 }
 
 bool ToneMapOutputsLinearSpace()
@@ -96,7 +96,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 	input.rgb /= LightingScale;
 
 	#if ENABLE_BLOOM==1
-			//	Should the bloom colour go through the
+			//	Should the bloom color go through the
 			//	tonemapping, also?... It seems to work much
 			//	better when it does. (plus, SRGB is handled correctly).
 		float3 bloomValue = BloomScale * BloomMap.SampleLevel(ClampingSampler, texCoord, 0).rgb;

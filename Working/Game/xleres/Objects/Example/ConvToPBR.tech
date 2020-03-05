@@ -3,15 +3,15 @@ import surface = "xleres/surface.h"
 import texture = "xleres/nodes/texture.sh"
 import output = "xleres/nodes/output.sh"
 import basic = "xleres/nodes/basic.sh"
-import colour = "xleres/colour.h"
+import color = "xleres/color.h"
 import decodeparameterstexture_coloredspecular = "xleres/toolshelper/decodeparameterstexture_coloredspecular.sh"
 
 void main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture, auto MetalMin, auto MetalMax, auto RoughnessMin, auto RoughnessMax, auto SpecularMin, auto SpecularMax, auto MaterialDiffuse, out auto Out)
 {
 	node node_0 = [[visualNode8]]texture::GetVertexAOMultiplier();
 	node node_1 = [[visualNode11]]texture::SampleTextureDiffuse();
-	node node_2 = [[visualNode13]]decodeparameterstexture_coloredspecular::DecodeParametersTexture_ColoredSpecular(specColorSample:[[visualNode10]]texture::SampleAnisotropic(texCoord:[[visualNode16]]surface::GetTexCoord().result, inputTexture:SpecularColorTexture).result, diffuseSample:node_1.rgb, specularRange:[[visualNode21]]basic::Combine2(r:SpecularMin, g:SpecularMax).result, roughnessRange:[[visualNode22]]basic::Combine2(r:RoughnessMin, g:RoughnessMax).result, metalRange:[[visualNode23]]basic::Combine2(r:MetalMin, g:MetalMax).result);
-	Out = [[visualNode7]]output::Output_PerPixel(cookedLightOcclusion:node_0.result, blendingAlpha:[[visualNode9]]basic::Multiply1(lhs:[[visualNode15]]basic::Multiply1(lhs:[[visualNode14]]texture::MaybeDoAlphaTest(alpha:node_1.alpha, alphaThreshold:AlphaThreshold).result, rhs:[[visualNode18]]texture::GetVertexOpacityMultiplier().result).result, rhs:Opacity).result, worldSpaceNormal:[[visualNode12]]texture::MaybeMakeDoubleSided(normal:[[visualNode0]]surface::GetNormal().result).result, material:node_2.materialParam, cookedAmbientOcclusion:[[visualNode17]]basic::Multiply1(rhs:[[visualNode6]]texture::SampleTextureAO().result, lhs:node_0.result).result, diffuseAlbedo:[[visualNode20]]basic::Multiply3(rhs:node_2.finalDiffuseSample, lhs:[[visualNode19]]colour::SRGBToLinear(input:MaterialDiffuse).result).result, normalMapAccuracy:"1.0f", transmission:"float3(0,0,0)").result;
+	node node_2 = [[visualNode13]]decodeparameterstexture_coloredspecular::DecodeParametersTexture_ColoredSpecular(specColorSample:[[visualNode10]]texture::SampleAnisotropic(texCoord:[[visualNode16]]surface::VSOUT_GetTexCoord0().result, inputTexture:SpecularColorTexture).result, diffuseSample:node_1.rgb, specularRange:[[visualNode21]]basic::Combine2(r:SpecularMin, g:SpecularMax).result, roughnessRange:[[visualNode22]]basic::Combine2(r:RoughnessMin, g:RoughnessMax).result, metalRange:[[visualNode23]]basic::Combine2(r:MetalMin, g:MetalMax).result);
+	Out = [[visualNode7]]output::Output_PerPixel(cookedLightOcclusion:node_0.result, blendingAlpha:[[visualNode9]]basic::Multiply1(lhs:[[visualNode15]]basic::Multiply1(lhs:[[visualNode14]]texture::MaybeDoAlphaTest(alpha:node_1.alpha, alphaThreshold:AlphaThreshold).result, rhs:[[visualNode18]]texture::GetVertexOpacityMultiplier().result).result, rhs:Opacity).result, worldSpaceNormal:[[visualNode12]]texture::MaybeMakeDoubleSided(normal:[[visualNode0]]surface::VSOUT_GetNormal().result).result, material:node_2.materialParam, cookedAmbientOcclusion:[[visualNode17]]basic::Multiply1(rhs:[[visualNode6]]texture::SampleTextureAO().result, lhs:node_0.result).result, diffuseAlbedo:[[visualNode20]]basic::Multiply3(rhs:node_2.finalDiffuseSample, lhs:[[visualNode19]]color::SRGBToLinear(input:MaterialDiffuse).result).result, normalMapAccuracy:"1.0f", transmission:"float3(0,0,0)").result;
 }
 attributes visualNode8(PreviewGeometry:"plane2d", X:"773.000000", Y:"621.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode0(PreviewGeometry:"plane2d", X:"653.000000", Y:"182.000000", State:"Collapsed", OutputToVisualize:"");
@@ -51,7 +51,7 @@ attributes visualNode23(PreviewGeometry:"plane2d", X:"-181.000000", Y:"-344.0000
 #include "TechniqueLibrary/Math/TextureAlgorithm.hlsl" 	// for SystemInputs
 #include "Lighting/Forward.h"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
 float4 forward_main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture, auto MetalMin, auto MetalMax, auto RoughnessMin, auto RoughnessMax, auto SpecularMin, auto SpecularMax, auto MaterialDiffuse, SystemInputs sys) : SV_Target0
@@ -68,23 +68,23 @@ float4 forward_main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture
     main(Opacity, AlphaThreshold, SpecularColorTexture, MetalMin, MetalMax, RoughnessMin, RoughnessMax, SpecularMin, SpecularMax, MaterialDiffuse, sample);
 
 	float3 directionToEye = 0.0.xxx;
-	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+	#if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
 		directionToEye = normalize(geo.worldViewVector);
 	#endif
 
 	float4 result = float4(
 		ResolveLitColor(
-			sample, directionToEye, GetWorldPosition(geo),
+			sample, directionToEye, VSOUT_GetWorldPosition(geo),
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;
 
-    #if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
-        result.rgb *= geo.colour.rgb;
+    #if (VSOUT_HAS_COLOR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+        result.rgb *= geo.color.rgb;
     #endif
 
 	#if MAT_SKIP_LIGHTING_SCALE==0
@@ -95,7 +95,7 @@ float4 forward_main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture
 
 
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
 GBufferEncoded deferred_main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture, auto MetalMin, auto MetalMax, auto RoughnessMin, auto RoughnessMax, auto SpecularMin, auto SpecularMax, auto MaterialDiffuse)
@@ -152,7 +152,7 @@ float4 io_main(auto Opacity, auto AlphaThreshold, auto SpecularColorTexture, aut
 
 
 [earlydepthstencil]
-float4 stochastic_main(VSOutput geo,
+float4 stochastic_main(VSOUT geo,
 	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 		uint primitiveID : SV_PrimitiveID,
 	#endif
@@ -183,7 +183,7 @@ float4 stochastic_main(VSOutput geo,
 #if (STOCHASTIC_TRANS)
 
 	void depthonly_main(
-		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		VSOUT geo, uint primitiveID : SV_PrimitiveID,
 		out uint oCoverage : SV_Coverage
 		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 			, out uint oPrimId : SV_Target0
@@ -211,12 +211,12 @@ float4 stochastic_main(VSOutput geo,
 
 #else
 
-	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+	#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 		[earlydepthstencil]
 	#endif
-	void depthonly_main(VSOutput geo)
+	void depthonly_main(VSOUT geo)
 	{
-		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 				// execute sampling only for discard() events
 			GBufferValues sample;
 			main(Opacity, AlphaThreshold, SpecularColorTexture, MetalMin, MetalMax, RoughnessMin, RoughnessMax, SpecularMin, SpecularMax, MaterialDiffuse, sample);

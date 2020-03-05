@@ -4,9 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define OUTPUT_TEXCOORD 1
-#define OUTPUT_TANGENT_FRAME 1
-#define OUTPUT_NORMAL 1
+#define VSOUT_HAS_TEXCOORD 1
+#define VSOUT_HAS_TANGENT_FRAME 1
+#define VSOUT_HAS_NORMAL 1
 #define GEO_HAS_TEXCOORD 1
 #define VSINPUT_EXTRA uint spriteIndex : SPRITEINDEX;
 #define VSOUTPUT_EXTRA uint spriteIndex : SPRITEINDEX;
@@ -37,10 +37,10 @@ VSSprite vs_main(VSSprite input)
 }
 
 [maxvertexcount(4)]
-    void gs_main(point VSSprite input[1], inout TriangleStream<VSOutput> outputStream)
+    void gs_main(point VSSprite input[1], inout TriangleStream<VSOUT> outputStream)
 {
-    VSOutput output;
-    #if OUTPUT_FOG_COLOR == 1
+    VSOUT output;
+    #if VSOUT_HAS_FOG_COLOR == 1
         output.fogColor = ResolveOutputFogColor(input[0].position.xyz, SysUniform_GetWorldSpaceView().xyz);
     #endif
 
@@ -58,12 +58,12 @@ VSSprite vs_main(VSSprite input)
     float3 bitangent = input[0].yAxis;
     float3 normal = NormalFromTangents(tangent, bitangent, -1.f);    // (assuming orthogonal tangent & bitangent)
 
-    #if OUTPUT_TANGENT_FRAME==1
+    #if VSOUT_HAS_TANGENT_FRAME==1
         output.tangent = tangent;
         output.bitangent = bitangent;
     #endif
 
-    #if OUTPUT_NORMAL==1
+    #if VSOUT_HAS_NORMAL==1
         output.normal = normal;
     #endif
 
@@ -74,21 +74,21 @@ VSSprite vs_main(VSSprite input)
         float3 localPosition = input[0].position + o.x * xAxis + o.y * yAxis;
         float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 
-        #if OUTPUT_TEXCOORD==1
+        #if VSOUT_HAS_TEXCOORD==1
             output.texCoord = texCoord[c];
         #endif
 
         output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-        #if OUTPUT_LOCAL_VIEW_VECTOR==1
+        #if VSOUT_HAS_LOCAL_VIEW_VECTOR==1
             output.localViewVector = SysUniform_GetLocalSpaceView().xyz - localPosition.xyz;
         #endif
 
-        #if OUTPUT_WORLD_VIEW_VECTOR==1
+        #if VSOUT_HAS_WORLD_VIEW_VECTOR==1
             output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - worldPosition.xyz;
         #endif
 
-        #if OUTPUT_WORLD_POSITION==1
+        #if VSOUT_HAS_WORLD_POSITION==1
             output.worldPosition = worldPosition.xyz;
         #endif
 
@@ -101,7 +101,7 @@ void ps_depthonly(float4 pos : SV_Position) {}
 #if !(MAT_ALPHA_TEST==1) && (VULKAN!=1)
     [earlydepthstencil]
 #endif
-float4 main(VSOutput geo) : SV_Target0
+float4 main(VSOUT geo) : SV_Target0
 {
     return 1.0.xxxx;
 }
@@ -167,7 +167,7 @@ float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
 }
 
 // [earlydepthstencil]
-GBufferEncoded ps_deferred(VSOutput geo)
+GBufferEncoded ps_deferred(VSOUT geo)
 {
     if (0) {
         float3 color0 = float3(1.0f, 0.f, 0.f);
@@ -210,7 +210,7 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // Normals are stored in the view space that was originally
         // used to render the sprite.
         // It's equivalent to the tangent space of the sprite.
-    TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
+    TangentFrameStruct tangentFrame = VSOUT_GetWorldTangentFrame(geo);
     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
 
         // note that we can skip the decompression step here if we use

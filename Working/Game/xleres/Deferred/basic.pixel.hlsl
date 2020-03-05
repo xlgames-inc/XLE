@@ -7,26 +7,26 @@
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../Objects/IllumShader/PerPixel.h"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
-GBufferEncoded main(VSOutput geo)
+GBufferEncoded main(VSOUT geo)
 {
 	DoAlphaTest(geo, GetAlphaThreshold());
 
-	#if (VIS_ANIM_PARAM!=0) && (OUTPUT_COLOUR==1)
+	#if (VIS_ANIM_PARAM!=0) && (VSOUT_HAS_COLOR==1)
 		{
 			GBufferValues visResult = GBufferValues_Default();
 			#if VIS_ANIM_PARAM==1
-				visResult.diffuseAlbedo = geo.colour.rrr;
+				visResult.diffuseAlbedo = geo.color.rrr;
 			#elif VIS_ANIM_PARAM==2
-				visResult.diffuseAlbedo = geo.colour.ggg;
+				visResult.diffuseAlbedo = geo.color.ggg;
 			#elif VIS_ANIM_PARAM==3
-				visResult.diffuseAlbedo = geo.colour.bbb;
+				visResult.diffuseAlbedo = geo.color.bbb;
 			#elif VIS_ANIM_PARAM==4
-				visResult.diffuseAlbedo = geo.colour.aaa;
+				visResult.diffuseAlbedo = geo.color.aaa;
 			#elif VIS_ANIM_PARAM==5
-				visResult.diffuseAlbedo = geo.colour.rgb;
+				visResult.diffuseAlbedo = geo.color.rgb;
 			#endif
 			return Encode(visResult);
 		}
@@ -36,7 +36,7 @@ GBufferEncoded main(VSOutput geo)
 	return Encode(result);
 }
 
-GBufferEncoded invalid(VSOutput geo)
+GBufferEncoded invalid(VSOUT geo)
 {
 	float3 color0 = float3(1.0f, 0.f, 0.f);
 	float3 color1 = float3(0.0f, 0.f, 1.f);

@@ -4,13 +4,13 @@
 #if (VULKAN!=1)
     [earlydepthstencil]
 #endif
-GBufferEncoded frameworkEntry(VSOutput geo)
+GBufferEncoded frameworkEntry(VSOUT geo)
 {
 	GBufferValues result = PerPixel(geo);
 	return Encode(result);
 }
 
-GBufferEncoded frameworkEntryWithEarlyRejection(VSOutput geo)
+GBufferEncoded frameworkEntryWithEarlyRejection(VSOUT geo)
 {
     if (EarlyRejectionTest(geo))
         discard;

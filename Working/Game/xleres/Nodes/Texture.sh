@@ -22,7 +22,7 @@ float4 Sample(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
     return inputTexture.Sample(DefaultSampler, texCoord);
 }
 
-float4 GetPixelCoords(VSOutput geo)
+float4 GetPixelCoords(VSOUT geo)
 {
     return geo.position;
 }
@@ -32,10 +32,10 @@ float4 LoadAbsolute(Texture2D inputTexture, uint2 pixelCoords)
     return inputTexture.Load(uint3(pixelCoords, 0));
 }
 
-void SampleTextureDiffuse(VSOutput geo, out float3 rgb, out float alpha)
+void SampleTextureDiffuse(VSOUT geo, out float3 rgb, out float alpha)
 {
     float4 diffuseTextureSample = 1.0.xxxx;
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
         #if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
             diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
         #else
@@ -46,58 +46,58 @@ void SampleTextureDiffuse(VSOutput geo, out float3 rgb, out float alpha)
     alpha = diffuseTextureSample.a;
 }
 
-float SampleTextureAO(VSOutput geo)
+float SampleTextureAO(VSOUT geo)
 {
     float result = 1.f;
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_Occlusion==1)
+    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_Occlusion==1)
         result *= Occlusion.Sample(DefaultSampler, geo.texCoord).r;
     #endif
 
-    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (OUTPUT_TEXCOORD==1)
+    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD==1)
         result *= NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
     #endif
     return result;
 }
 
-float3 GetParametersTexture(VSOutput geo)
+float3 GetParametersTexture(VSOUT geo)
 {
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
         return ParametersTexture.Sample(DefaultSampler, geo.texCoord).rgb;
     #else
         return float3(1.f, 1.f, 1.f);
     #endif
 }
 
-float GetVertexOpacityMultiplier(VSOutput geo)
+float GetVertexOpacityMultiplier(VSOUT geo)
 {
-    #if (OUTPUT_COLOUR==1) && MAT_MODULATE_VERTEX_ALPHA
-        return geo.colour.a;
+    #if (VSOUT_HAS_COLOR==1) && MAT_MODULATE_VERTEX_ALPHA
+        return geo.color.a;
     #else
         return 1.f;
     #endif
 }
 
-float GetVertexAOMultiplier(VSOutput geo)
+float GetVertexAOMultiplier(VSOUT geo)
 {
-    #if (OUTPUT_PER_VERTEX_AO==1)
+    #if (VSOUT_HAS_PER_VERTEX_AO==1)
         return geo.ambientOcclusion;
     #else
         return 1.f;
     #endif
 }
 
-float GetVertexMainLightMultiplier(VSOutput geo)
+float GetVertexMainLightMultiplier(VSOUT geo)
 {
-    #if (OUTPUT_PER_VERTEX_MLO==1)
+    #if (VSOUT_HAS_PER_VERTEX_MLO==1)
         return geo.mainLightOcclusion;
     #else
         return 1.f;
     #endif
 }
 
-float3 MaybeMakeDoubleSided(VSOutput geo, float3 normal)
+float3 MaybeMakeDoubleSided(VSOUT geo, float3 normal)
 {
-    #if (MAT_DOUBLE_SIDED_LIGHTING==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+    #if (MAT_DOUBLE_SIDED_LIGHTING==1) && (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
             // We can use either the per-pixel normal or the vertex normal
             // in this calculation.
             // Using the vertex normal might add some complication to the shader
@@ -109,7 +109,7 @@ float3 MaybeMakeDoubleSided(VSOutput geo, float3 normal)
             // directly. Or we can flip the vertex normal that is used in the normal map
             // algorithm. Each way will express a different kind of underlying shape to the
             // geometry.
-        if (dot(GetVertexNormal(geo), geo.worldViewVector) < 0.f)
+        if (dot(VSOUT_GetVertexNormal(geo), geo.worldViewVector) < 0.f)
             return -1.f * normal;
     #endif
     return normal;
@@ -117,7 +117,7 @@ float3 MaybeMakeDoubleSided(VSOutput geo, float3 normal)
 
 float MaybeDoAlphaTest(float alpha, float alphaThreshold)
 {
-    #if (OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
+    #if (VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
         if (alpha < alphaThreshold) discard;
     #endif
     return alpha;
@@ -126,7 +126,7 @@ float MaybeDoAlphaTest(float alpha, float alphaThreshold)
 float3 SampleNormalMap(
   Texture2D normalMap,
   float2 texCoord : TEXCOORD0,
-  VSOutput geo)
+  VSOUT geo)
 {
     const bool dxtNormalMap = false;
     float3 normalTextureSample = SampleNormalMap(normalMap, DefaultSampler, dxtNormalMap, texCoord);

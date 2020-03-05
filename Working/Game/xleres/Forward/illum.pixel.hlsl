@@ -8,33 +8,33 @@
 #include "../Objects/IllumShader/PerPixel.h"
 #include "../TechniqueLibrary/SceneEngine/Lighting/Forward.hlsl"
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
-float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
+float4 main(VSOUT geo, SystemInputs sys) : SV_Target0
 {
 	DoAlphaTest(geo, GetAlphaThreshold());
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 
 	float3 directionToEye = 0.0.xxx;
-	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+	#if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
 		directionToEye = normalize(geo.worldViewVector);
 	#endif
 
 	float4 result = float4(
 		ResolveLitColor(
-			sample, directionToEye, GetWorldPosition(geo),
+			sample, directionToEye, VSOUT_GetWorldPosition(geo),
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
-	#if OUTPUT_FOG_COLOR == 1
+	#if VSOUT_HAS_FOG_COLOR == 1
 		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;
 
-    #if (OUTPUT_COLOUR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
-        result.rgb *= geo.colour.rgb;
+    #if (VSOUT_HAS_COLOR>=1) && (MAT_VCOLOR_IS_ANIM_PARAM==0)
+        result.rgb *= geo.color.rgb;
     #endif
 
 	#if MAT_SKIP_LIGHTING_SCALE==0
@@ -43,7 +43,7 @@ float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
 	return result;
 }
 
-float4 invalid(VSOutput geo) : SV_Target0
+float4 invalid(VSOUT geo) : SV_Target0
 {
 	float3 color0 = float3(1.0f, 0.f, 0.f);
 	float3 color1 = float3(0.0f, 0.f, 1.f);

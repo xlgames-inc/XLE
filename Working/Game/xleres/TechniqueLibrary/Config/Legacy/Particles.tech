@@ -50,10 +50,10 @@
         ~Geometry
             GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
-            OUTPUT_LOCAL_NORMAL=1
-            OUTPUT_LOCAL_VIEW_VECTOR=1
-            OUTPUT_WORLD_VIEW_VECTOR=1
-            OUTPUT_WORLD_POSITION=1
+            VSOUT_HAS_LOCAL_NORMAL=1
+            VSOUT_HAS_LOCAL_VIEW_VECTOR=1
+            VSOUT_HAS_WORLD_VIEW_VECTOR=1
+            VSOUT_HAS_WORLD_POSITION=1
             GEO_HAS_PARTICLE_INPUTS=1
         ~Material
             MAT_ALPHA_TEST

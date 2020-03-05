@@ -22,7 +22,7 @@ cbuffer BasicMaterialConstants
 	float SpecularMax;
 	float3 MaterialDiffuse;
 }
-void Basic(VSOutput geo, out GBufferValues result)
+void Basic(VSOUT geo, out GBufferValues result)
 {
 	float3 Output_63_rgb;
 	float Output_63_alpha;
@@ -41,13 +41,13 @@ void Basic(VSOutput geo, out GBufferValues result)
 	Output_80_result = Multiply1( Output_67_result, Opacity );
 
 	float3 Output_68_result;
-	Output_68_result = GetNormal( geo );
+	Output_68_result = VSOUT_GetNormal( geo );
 
 	float3 Output_64_result;
 	Output_64_result = MaybeMakeDoubleSided( geo, Output_68_result );
 
 	float2 Output_69_result;
-	Output_69_result = GetTexCoord( geo );
+	Output_69_result = VSOUT_GetTexCoord0( geo );
 
 	float4 Output_62_result;
 	Output_62_result = SampleAnisotropic( SpecularColorTexture, Output_69_result );
@@ -434,13 +434,13 @@ void Basic(VSOutput geo, out GBufferValues result)
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:GetNormal</FragmentArchiveName>
+			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:VSOUT_GetNormal</FragmentArchiveName>
 			<NodeId>68</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:GetTexCoord</FragmentArchiveName>
+			<FragmentArchiveName>TechniqueLibrary/Framework/Surface.hlsl:VSOUT_GetTexCoord0</FragmentArchiveName>
 			<NodeId>69</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
@@ -774,10 +774,10 @@ void Basic(VSOutput geo, out GBufferValues result)
 
 
 
-#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
-GBufferEncoded deferred_main(VSOutput geo)
+GBufferEncoded deferred_main(VSOUT geo)
 {
     // If we're doing to do the alpha threshold test, we
     // should try to do as early in the shader as we can!
@@ -794,7 +794,7 @@ GBufferEncoded deferred_main(VSOutput geo)
 
 #include "xleres/Forward/Transparency/util.h"
 
-float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
+float4 io_main(VSOUT geo, SystemInputs sys) : SV_Target0
 {
     float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
 	float ndcComparison = geo.position.z; // / geo.position.w;
@@ -831,7 +831,7 @@ float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
 
 
 [earlydepthstencil]
-float4 stochastic_main(VSOutput geo,
+float4 stochastic_main(VSOUT geo,
 	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 		uint primitiveID : SV_PrimitiveID,
 	#endif
@@ -862,7 +862,7 @@ float4 stochastic_main(VSOutput geo,
 #if (STOCHASTIC_TRANS)
 
 	void depthonly_main(
-		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		VSOUT geo, uint primitiveID : SV_PrimitiveID,
 		out uint oCoverage : SV_Coverage
 		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 			, out uint oPrimId : SV_Target0
@@ -890,12 +890,12 @@ float4 stochastic_main(VSOutput geo,
 
 #else
 
-	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+	#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 		[earlydepthstencil]
 	#endif
-	void depthonly_main(VSOutput geo)
+	void depthonly_main(VSOUT geo)
 	{
-		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 				// execute sampling only for discard() events
 			GBufferValues sample;
 			Basic(geo, sample);
