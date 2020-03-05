@@ -67,14 +67,14 @@ namespace Assets
 	FileDesc File_OS::GetDesc() const never_throws
 	{
 		if (!_file.IsGood()) 
-			return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+			return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
 		auto size = _file.GetSize();
 		auto ft = _file.GetFileTime();
 
 		return FileDesc
 		{ 
-			_fn, FileDesc::State::Normal, 
+			_fn, _fn, FileDesc::State::Normal, 
 			ft, size
 		};
 	}
@@ -274,29 +274,35 @@ namespace Assets
 			std::basic_string<utf8> str((const utf8*)PtrAdd(AsPointer(marker.begin()), 2));
 			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
 			if (!attrib)
-				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+				return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+
+			std::basic_string<utf8> mountedName((const utf8*)PtrAdd(AsPointer(marker.begin()), 2 + _rootUTF8.size()));
 
             auto attribv = *attrib;
 			return FileDesc
 				{
-					str, FileDesc::State::Normal,
+					str, mountedName, FileDesc::State::Normal,
 					attribv._lastWriteTime, attribv._size
 				};
 		} else if (type == 2) {
 			std::basic_string<ucs2> str((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2));
 			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
 			if (!attrib)
-				return FileDesc { std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+				return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+
+			std::basic_string<ucs2> mountedName((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2 + 2*_rootUTF16.size()));
 
 			auto attribv = *attrib;
             return FileDesc
 				{
-					Conversion::Convert<std::basic_string<utf8>>(str), FileDesc::State::Normal,
+					Conversion::Convert<std::basic_string<utf8>>(str), 
+					Conversion::Convert<std::basic_string<utf8>>(mountedName),
+					FileDesc::State::Normal,
 					attribv._lastWriteTime, attribv._size
 				};
 		} 
 
-		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+		return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 	}
 
     std::vector<IFileSystem::Marker> FileSystem_OS::FindFiles(

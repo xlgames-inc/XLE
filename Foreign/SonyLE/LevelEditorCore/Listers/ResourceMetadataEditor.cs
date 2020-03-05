@@ -47,7 +47,7 @@ namespace LevelEditorCore
             {
                 var desc = resourceQueryService.GetDesc(o);
                 if (!desc.HasValue) continue;
-                uris.Add(new Uri(desc.Value.NaturalName, UriKind.Relative));
+                uris.Add(new Uri(desc.Value.MountedName, UriKind.Relative));
             }
             object[] mdatadata = m_resourceMetadataService.GetMetadata(uris).ToArray();
             m_propertyGrid.Bind(mdatadata);            

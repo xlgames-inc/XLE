@@ -167,6 +167,7 @@ namespace XLEBridgeUtils
 
 			::Assets::IFileSystem::Marker marker;
 			::Assets::IFileSystem* fs = nullptr;
+			std::basic_string<utf8> mountBase;
 			{
 				pin_ptr<uint8_t> pinnedBytes = &markerAndFS[0];
 				auto fsId = *(const ::Assets::FileSystemId*)pinnedBytes;
@@ -177,6 +178,7 @@ namespace XLEBridgeUtils
 				auto markerSize = markerAndFS->Length - sizeof(::Assets::FileSystemId);
 				marker.resize(markerSize);
 				memcpy(marker.data(), &pinnedBytes[sizeof(::Assets::FileSystemId)], markerSize);
+				mountBase = ::Assets::MainFileSystem::GetMountPoint(fsId);
 			}
 
 			auto desc = fs->TryGetDesc(marker);
@@ -184,6 +186,7 @@ namespace XLEBridgeUtils
 				return LevelEditorCore::ResourceQueryService::GetDesc(input);
 
 			LevelEditorCore::ResourceDesc result;
+			result.MountedName = Marshal(mountBase) + Marshal(desc._mountedName);
 			result.NaturalName = Marshal(desc._naturalName);
 			auto naturalNameSplitter = MakeFileNameSplitter(desc._naturalName);
 			result.ShortName = Marshal(naturalNameSplitter.FileAndExtension());

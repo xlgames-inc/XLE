@@ -51,6 +51,7 @@ namespace Assets
 		MountID			Mount(StringSection<utf8> mountPoint, std::shared_ptr<IFileSystem> system);
 		void			Unmount(MountID mountId);
 		IFileSystem*	GetMountedFileSystem(MountID);
+		std::basic_string<utf8>		GetMountPoint(MountID);
 
 		enum class AbsolutePathMode { MountingTree, RawOS };
 		void        SetAbsolutePathMode(AbsolutePathMode newMode);
@@ -75,6 +76,7 @@ namespace Assets
 	public:
 		std::shared_ptr<IFileSystem>	_fileSystem;
 		IFileSystem::Marker				_marker;
+		std::basic_string<utf8>			_mountPoint;
 	};
 
 	class MountingTree::EnumerableLookup

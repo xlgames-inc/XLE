@@ -145,13 +145,15 @@ namespace Assets
 
 				assert(candidateObject._fileSystem);
 				auto res = candidateObject._fileSystem->TryGetDesc(candidateObject._marker);
-				if (res._state != FileDesc::State::DoesNotExist)
+				if (res._state != FileDesc::State::DoesNotExist) {
+					res._mountedName = candidateObject._mountPoint + res._mountedName;
 					return res;
+				}
 			}
 
 			if (s_defaultFileSystem)
 				return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
-			return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+			return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 		}
 	}
 
@@ -247,6 +249,11 @@ namespace Assets
 		return s_mainMountingTree->GetMountedFileSystem(id);		// in all current cases the FileSystemId overlaps with the MountId in s_mainMountingTree
 	}
 
+	std::basic_string<utf8> MainFileSystem::GetMountPoint(FileSystemId id)
+	{
+		return s_mainMountingTree->GetMountPoint(id);
+	}
+
 	FileSystemWalker MainFileSystem::BeginWalk(StringSection<utf8> initialSubDirectory)
 	{
 		return s_mainMountingTree->BeginWalk(initialSubDirectory);
@@ -305,7 +312,7 @@ namespace Assets
 		auto transResult = fs.TryTranslate(marker, fn);
 		if (transResult == IFileSystem::TranslateResult::Success)
 			return fs.TryGetDesc(marker);
-		return FileDesc{std::basic_string<utf8>(), AsFileState(transResult)};
+		return FileDesc{std::basic_string<utf8>(), std::basic_string<utf8>(), AsFileState(transResult)};
 	}
 
 	template IFileSystem::IOReason TryOpen<utf8, std::unique_ptr<IFileInterface>>(std::unique_ptr<IFileInterface>& result, IFileSystem& fs, StringSection<utf8> fn, const char openMode[], FileShareMode::BitField shareMode);
@@ -423,6 +430,7 @@ namespace Assets
 					// first. Normally this should only happen when 2 different filesystems have a file
 					// with the same name, mounted at the same location.
 					if (existing == _files.end()) {
+						desc._mountedName = MainFileSystem::GetMountPoint(fs._fsId) + desc._mountedName;
 						_files.emplace_back(SubFile{
 							fsIdx, std::move(m), 
 							std::move(desc), hash});

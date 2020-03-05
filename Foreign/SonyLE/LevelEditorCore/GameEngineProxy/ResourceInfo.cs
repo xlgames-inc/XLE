@@ -30,6 +30,7 @@ namespace LevelEditorCore
     public struct ResourceDesc
     {
         public string ShortName;
+        public string MountedName;
         public string NaturalName;
         public string Filesystem;
         public UInt64 SizeInBytes;
@@ -66,6 +67,7 @@ namespace LevelEditorCore
                 ResourceDesc result;
                 string typeName = shfi.szTypeName;
                 result.NaturalName = resourceUri.LocalPath;
+                result.MountedName = resourceUri.LocalPath;
                 result.ShortName = Path.GetFileName(result.NaturalName);
                 result.Filesystem = "RawFS";
                 result.Types = 0;

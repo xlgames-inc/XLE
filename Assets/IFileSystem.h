@@ -212,6 +212,7 @@ namespace Assets
 		enum class State { DoesNotExist, Normal, Mounting, Invalid };
 
 		std::basic_string<utf8>	_naturalName;
+		std::basic_string<utf8>	_mountedName;
 		State					_state;
 		FileTime				_modificationTime;
 		uint64					_size;
@@ -247,6 +248,7 @@ namespace Assets
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
 		static IFileSystem* GetFileSystem(FileSystemId id);
+		static std::basic_string<utf8> GetMountPoint(FileSystemId id);
 
 		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory = u(""));
 

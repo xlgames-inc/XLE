@@ -103,6 +103,7 @@ namespace Assets
 				if (transResult == IFileSystem::TranslateResult::Success) {
 					result._fileSystem = mt._fileSystem;
 					result._marker = std::move(marker);
+					result._mountPoint = mt._mountPointBuffer;
 					return Result::Success;
 				}
 				continue;
@@ -154,6 +155,7 @@ namespace Assets
 				if (transResult == IFileSystem::TranslateResult::Success) {
 					result._fileSystem = mt._fileSystem;
 					result._marker = std::move(marker);
+					result._mountPoint = mt._mountPointBuffer;
 					return Result::Success;
 				}
 			}
@@ -265,6 +267,8 @@ namespace Assets
 			// on how we interpret the mount point.
 			// Also, we assume that mount point should already be simplified (ie, no '.' or '..' parts)
 		auto mountPoint = mountPointInput.AsString();
+		if (mountPoint.empty() || (*(mountPoint.end()-1) != '/' && *(mountPoint.end()-1) != '\\'))
+			mountPoint += '/';
 		auto split = MakeSplitPath(mountPoint);
 		#if defined(_DEBUG)
 			for (auto i:split.GetSections()) 
@@ -305,6 +309,17 @@ namespace Assets
 		if (i != _pimpl->_mounts.end())
 			return i->_fileSystem.get();
 		return nullptr;
+	}
+
+	std::basic_string<utf8> MountingTree::GetMountPoint(MountID mountId)
+	{
+		ScopedLock(_pimpl->_mountsLock);
+		auto i = std::find_if(
+			_pimpl->_mounts.begin(), _pimpl->_mounts.end(),
+			[mountId](const Pimpl::Mount& m) { return m._id == mountId; });
+		if (i != _pimpl->_mounts.end())
+			return i->_mountPointBuffer;
+		return {};
 	}
 
 	void MountingTree::SetAbsolutePathMode(AbsolutePathMode newMode)

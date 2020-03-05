@@ -85,7 +85,7 @@ namespace Assets
 	{
 		return FileDesc
 			{
-				u("<<in memory>>"),
+				u("<<in memory>>"), {},
 				FileDesc::State::Normal,
 				0, uint64_t(_blob ? _blob->size() : 0)
 			};
@@ -259,7 +259,7 @@ namespace Assets
 	{
 		// Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::GetDesc() unimplemented"));
 		return {
-			{}, FileDesc::State::Normal, 0,
+			{}, {}, FileDesc::State::Normal, 0,
 			_decompressedSize
 		};
 	}
@@ -420,18 +420,20 @@ namespace Assets
 
 	FileDesc FileSystem_Memory::TryGetDesc(const Marker& marker)
 	{
-		if (marker.size() < sizeof(MarkerStruct)) return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+		if (marker.size() < sizeof(MarkerStruct)) return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
 		if (m._fileIdx >= _filesAndContents.size())
-			return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+			return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
 
 		auto i = _filesAndContents.begin();
 		std::advance(i, m._fileIdx);
 
+		auto name = Conversion::Convert<std::basic_string<utf8>>(i->first);
 		return FileDesc
 			{
-				Conversion::Convert<std::basic_string<utf8>>(i->first), FileDesc::State::Normal,
+				name, name,
+				FileDesc::State::Normal,
 				0, (uint64_t)i->second->size()
 			};
 	}

@@ -554,7 +554,7 @@ namespace LevelEditorCore
                 {
                     var desc = m_resourceQueryService.GetDesc(item.Tag);
                     if (desc.HasValue)
-                        yield return desc.Value.NaturalName;
+                        yield return desc.Value.MountedName;
                 }
             }
         }
@@ -571,7 +571,7 @@ namespace LevelEditorCore
             else
             {
                 var desc = m_resourceQueryService.GetDesc(m_listViewAdapter.GetItemAt(point));
-                resourceUri = desc.HasValue? desc.Value.NaturalName : null;
+                resourceUri = desc.HasValue? desc.Value.MountedName : null;
             }
 
             return resourceUri;
