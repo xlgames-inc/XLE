@@ -486,7 +486,7 @@ namespace RenderCore { namespace Assets
 			auto containerState = containerFuture->CheckStatusBkgrnd(containerActual, containerDepVal, containerLog);
 			if (!containerActual) {
 				if (containerState == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(containerFuture->GetDependencyValidation(), nullptr);
+					thatFuture.SetInvalidAsset(containerDepVal, containerLog);
 					return false;
 				}
 				return true;
