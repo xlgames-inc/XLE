@@ -203,14 +203,6 @@ namespace PlatformRig
 		auto presentationTarget = context.BeginFrame(*presChain);
 		auto presentationTargetDesc = presentationTarget->GetDesc();
 
-		// Bind the presentation target as the default output for the parser context
-		// (including setting the normalized width and height)
-		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
-		parserContext.GetNamedResources().Bind(
-			RenderCore::FrameBufferProperties {
-				presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
-				presentationTargetDesc._textureDesc._samples });
-
 		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
@@ -218,43 +210,72 @@ namespace PlatformRig
             //  during the begin frame or present
         context.InvalidateCachedState();
 
-        ////////////////////////////////
+		TRY {
 
-		_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
-		_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
+				// Bind the presentation target as the default output for the parser context
+				// (including setting the normalized width and height)
+				parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
+				parserContext.GetNamedResources().Bind(
+					RenderCore::FrameBufferProperties {
+						presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
+						presentationTargetDesc._textureDesc._samples });
 
-        ////////////////////////////////
+				////////////////////////////////
 
-        // auto f = _pimpl->_frameRate.GetPerformanceStats();
-        // auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
-        // 
-        // DrawFrameRate(
-        //     context, res._frameRateFont.get(), res._smallDebugFont.get(), std::get<0>(f), std::get<1>(f), std::get<2>(f), 
-        //     heapMetrics._usage, _pimpl->_prevFrameAllocationCount._allocationCount);
+				TRY {
+					_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
+				}
+				CATCH_ASSETS(parserContext)
+				CATCH(const std::exception& e) {
+					StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in main overlay system render: " << e.what() << "\n";
+				}
+				CATCH_END
 
-        {
-            if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
-                auto f = _pimpl->_frameRate.GetPerformanceStats();
-                Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
-                    // todo -- we should get a rolling average of these values
-                if (_pimpl->_prevFrameAllocationCount._allocationCount) {
-					Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
-                }
-            }
-        }
+				TRY {
+					_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
+				}
+				CATCH_ASSETS(parserContext)
+				CATCH(const std::exception& e) {
+					StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in debug screens overlay system render: " << e.what() << "\n";
+				}
+				CATCH_END
 
-		parserContext.GetNamedResources().UnbindAll();
+				////////////////////////////////
 
-        {
-            CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
-            context.Present(*presChain);
-        }
+				// auto f = _pimpl->_frameRate.GetPerformanceStats();
+				// auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
+				// 
+				// DrawFrameRate(
+				//     context, res._frameRateFont.get(), res._smallDebugFont.get(), std::get<0>(f), std::get<1>(f), std::get<2>(f), 
+				//     heapMetrics._usage, _pimpl->_prevFrameAllocationCount._allocationCount);
 
-        {
-            for (auto i=_pimpl->_postPresentCallbacks.begin(); i!=_pimpl->_postPresentCallbacks.end(); ++i) {
-                (*i)(context);
-            }
-        }
+				{
+					if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
+						auto f = _pimpl->_frameRate.GetPerformanceStats();
+						Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
+							// todo -- we should get a rolling average of these values
+						if (_pimpl->_prevFrameAllocationCount._allocationCount) {
+							Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
+						}
+					}
+				}
+
+				parserContext.GetNamedResources().UnbindAll();
+
+			{
+				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
+				context.Present(*presChain);
+			}
+
+			{
+				for (auto i=_pimpl->_postPresentCallbacks.begin(); i!=_pimpl->_postPresentCallbacks.end(); ++i) {
+					(*i)(context);
+				}
+			}
+
+		} CATCH(const std::exception& e) {
+			Log(Error) << "Suppressed error in frame rig render: " << e.what() << std::endl;
+		} CATCH_END
 
 		context.GetAnnotator().Frame_End(context);
 
