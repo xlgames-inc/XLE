@@ -66,11 +66,20 @@ namespace Assets
 	};
 
 	template<typename AssetType>
-		static bool IsInvalidated(const AssetFuture<AssetType>& future)
+		static bool IsInvalidated(AssetFuture<AssetType>& future)
 	{
-		auto state = future.GetAssetState();
-		if (state == AssetState::Pending) return false;
-		return future.GetDependencyValidation()->GetValidationIndex() > 0;
+		// We must check the "background state" here. If it's invalidated in the
+		// background, we can restart the compile; even if that invalidated state hasn't
+		// reached the "foreground" yet.
+		AssetPtr<AssetType> actualized;
+		DepValPtr depVal;
+		Blob actualizationLog;
+		auto state = future.CheckStatusBkgrnd(actualized, depVal, actualizationLog);
+		if (state == AssetState::Pending)
+			return false;
+		if (!depVal)
+			return false;
+		return depVal->GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>
