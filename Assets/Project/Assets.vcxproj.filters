@@ -67,10 +67,10 @@
     <ClInclude Include="..\AssetFutureContinuation.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
-    <ClInclude Include="..\AsyncMarkerGroup.cpp">
+    <ClInclude Include="..\AsyncMarkerGroup.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
-    <ClInclude Include="..\AsyncMarkerGroup.h">
+    <ClInclude Include="..\AssetLRUHeap.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
   </ItemGroup>
@@ -119,6 +119,7 @@
       <Filter>CompileAndAsync</Filter>
     </ClCompile>
     <ClCompile Include="..\RawFileAsset.cpp" />
+    <ClCompile Include="..\AsyncMarkerGroup.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="AssetHeaps">

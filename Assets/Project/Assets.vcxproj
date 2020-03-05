@@ -46,6 +46,7 @@
     <ClInclude Include="..\ArchiveCache.h" />
     <ClInclude Include="..\AssetFuture.h" />
     <ClInclude Include="..\AssetHeap.h" />
+    <ClInclude Include="..\AssetLRUHeap.h" />
     <ClInclude Include="..\Assets.h" />
     <ClInclude Include="..\AssetsCore.h" />
     <ClInclude Include="..\AssetSetManager.h" />
