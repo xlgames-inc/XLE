@@ -25,7 +25,7 @@
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "../../Framework/Surface.hlsl"
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 #include "../../Math/TextureAlgorithm.hlsl"
 #include "../../Utility/Colour.hlsl"
 #include "../../Math/perlinnoise.hlsl"

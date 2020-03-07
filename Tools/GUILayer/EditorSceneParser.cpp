@@ -92,7 +92,7 @@ namespace GUILayer
                 //    scene._vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
             CATCH_ASSETS_END(parserContext)
         
-            if (batchFilter == BF::Transparent) {
+            if (batchFilter == BF::PostOpaque) {
                 CATCH_ASSETS_BEGIN
                     scene._placeholders->Render(metalContext, parserContext, techniqueIndex);
                     scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), lightingParserContext._delegate->GetGlobalLightingDesc());

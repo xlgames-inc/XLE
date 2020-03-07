@@ -32,7 +32,7 @@ VSOUT vs_basic(uint vertexIndex : SV_VertexId)
         output.worldPosition = worldPosition;
     #endif
 
-    #if (VSOUT_HAS_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD>=1)
         output.texCoord = 0.0.xx;
     #endif
 

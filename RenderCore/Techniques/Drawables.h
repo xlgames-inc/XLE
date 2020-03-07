@@ -118,10 +118,9 @@ namespace RenderCore { namespace Techniques
 	enum class BatchFilter
     {
         General,                // general rendering batch
-        Transparent,            // transparent objects (particularly those that require some object based sorting)
-        OITransparent,          // order independent transparent
+        PostOpaque,				// forward rendering mode after the deferred render step (where alpha blending can be used)
+        SortedBlending,         // blending step with pixel-accurate depth sorting
 		PreDepth,               // objects that should get a pre-depth pass
-        TransparentPreDepth,	// pre-depth pass for objects considered "transparent" (ie, opaque parts of transparent objects)
 		Max
     };
 

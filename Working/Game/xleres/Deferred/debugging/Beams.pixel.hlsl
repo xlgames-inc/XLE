@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../../TechniqueLibrary/Framework/gbuffer.hlsl"
 
 #if SHADOWS==1
 

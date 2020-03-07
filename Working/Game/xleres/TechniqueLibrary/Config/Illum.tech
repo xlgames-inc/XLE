@@ -13,6 +13,7 @@
 		MAT_ALPHA_TEST
 		RES_HAS_DiffuseTexture
 		MAT_VCOLOR_IS_ANIM_PARAM
+	VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -32,13 +33,9 @@
 
 ~Forward
 	~Inherit; IllumShared; shared.tech:Forward
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/illum.pixel.hlsl:main
 
 ~Deferred
 	~Inherit; IllumShared; shared.tech:Deferred
-	VertexShader=xleres/deferred/basic.vertex.hlsl:main
-	PixelShader=xleres/deferred/basic.pixel.hlsl:main
 
 ~DepthOnly
 	~Inherit; Silhouette
@@ -47,52 +44,52 @@
 		STOCHASTIC_TRANS
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/depthonly.pixel.hlsl:main
 
 ~RayTest
 	~Inherit; Silhouette
 	~Selectors
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
 	PixelShader=null
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ~Deferred_NoPatches
 	~Inherit; Deferred
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
 ~Deferred_PerPixel
 	~Inherit; Deferred
-	PixelShader=xleres/deferred/main.pixel.hlsl:frameworkEntry
+	PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
 ~Deferred_PerPixelAndEarlyRejection
 	~Inherit; Deferred
-	PixelShader=xleres/deferred/main.pixel.hlsl:frameworkEntryWithEarlyRejection
+	PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ~Forward_NoPatches
 	~Inherit; Forward
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:forward
 
 ~Forward_PerPixel
 	~Inherit; Forward
-	PixelShader=xleres/forward/main.pixel.hlsl:frameworkEntry
+	PixelShader=xleres/TechniqueLibrary/Standard/forward.pixel.hlsl:frameworkEntry
 
 ~Forward_PerPixelAndEarlyRejection
 	~Inherit; Forward
-	PixelShader=xleres/forward/main.pixel.hlsl:frameworkEntryWithEarlyRejection
+	PixelShader=xleres/TechniqueLibrary/Standard/forward.pixel.hlsl:frameworkEntryWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ~DepthOnly_NoPatches
 	~Inherit; DepthOnly
+	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnly
 
 ~DepthOnly_EarlyRejection
 	~Inherit; DepthOnly
-	PixelShader=xleres/forward/main.pixel.hlsl:frameworkEntryForDepthOnlyEarlyRejection
+	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnlyWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -101,5 +98,5 @@
 
 ~RayTest_EarlyRejection
 	~Inherit; RayTest
-	PixelShader=xleres/forward/main.pixel.hlsl:frameworkEntryForDepthOnlyEarlyRejection
+	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnlyWithEarlyRejection
 

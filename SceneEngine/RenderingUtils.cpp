@@ -17,6 +17,7 @@
 #include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -63,8 +64,8 @@ namespace SceneEngine
 			auto& metalContext = *Metal::DeviceContext::Get(context);
 
             const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
-                "xleres/forward/illum.vertex.hlsl:main:" VS_DefShaderModel, 
-                "xleres/forward/illum.pixel.hlsl:main", 
+                NO_PATCHES_VERTEX_HLSL ":main:" VS_DefShaderModel, 
+                NO_PATCHES_PIXEL_HLSL ":forward", 
                 "GEO_HAS_COLOR=1");
             BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
 			VertexBufferView vbvs[] = {&vertexBuffer};

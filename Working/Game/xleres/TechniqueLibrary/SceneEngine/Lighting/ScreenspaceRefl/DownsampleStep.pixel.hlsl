@@ -8,7 +8,7 @@
 #include "../MaterialQuery.hlsl"
 #include "../TechniqueLibrary/Math/TransformAlgorithm.hlsl"
 #include "../TechniqueLibrary/Math/TextureAlgorithm.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 
 // #define USE_UINT_DBUFFER
 

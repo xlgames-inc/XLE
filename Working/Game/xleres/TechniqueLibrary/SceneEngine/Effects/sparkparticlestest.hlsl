@@ -9,7 +9,7 @@
 #include "../../Math/perlinnoise.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 #include "../../Math/Misc.hlsl"
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 
 	//	Rain particles simulation that allows us to track a single particle's position from frame to frame.
 	//	This way we can calculate collisions, or perform other tricks

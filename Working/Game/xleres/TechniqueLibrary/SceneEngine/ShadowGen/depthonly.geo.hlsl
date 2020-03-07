@@ -72,10 +72,10 @@
 
 		VSOUT output;
 		output.position = p0;
-		#if VSOUT_HAS_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD>=1
 			output.texCoord = input[0].texCoord;
 		#endif
-		#if VSOUT_HAS_COLOR==1
+		#if VSOUT_HAS_COLOR>=1
 			output.color = input[0].color;
 		#endif
 		output.renderTargetIndex = c;
@@ -85,7 +85,7 @@
 		outputStream.Append(output);
 
 		output.position = p1;
-		#if VSOUT_HAS_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD>=1
 			output.texCoord = input[1].texCoord;
 		#endif
 		#if VSOUT_HAS_COLOR>=1
@@ -98,7 +98,7 @@
 		outputStream.Append(output);
 
 		output.position = p2;
-		#if VSOUT_HAS_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD>=1
 			output.texCoord = input[2].texCoord;
 		#endif
 		#if VSOUT_HAS_COLOR>=1
@@ -138,10 +138,10 @@
 
 			VSOUT output;
 			output.position = p0;
-			#if VSOUT_HAS_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD>=1
 				output.texCoord = input[0].texCoord;
 			#endif
-			#if VSOUT_HAS_COLOR==1
+			#if VSOUT_HAS_COLOR>=1
 				output.color = input[0].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;
@@ -151,10 +151,10 @@
 			outputStream.Append(output);
 
 			output.position = p1;
-			#if VSOUT_HAS_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD>=1
 				output.texCoord = input[1].texCoord;
 			#endif
-			#if VSOUT_HAS_COLOR==1
+			#if VSOUT_HAS_COLOR>=1
 				output.color = input[1].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;
@@ -164,10 +164,10 @@
 			outputStream.Append(output);
 
 			output.position = p2;
-			#if VSOUT_HAS_TEXCOORD==1
+			#if VSOUT_HAS_TEXCOORD>=1
 				output.texCoord = input[2].texCoord;
 			#endif
-			#if VSOUT_HAS_COLOR==1
+			#if VSOUT_HAS_COLOR>=1
 				output.color = input[2].color;
 			#endif
 			output.renderTargetIndex = nearCascadeIndex;

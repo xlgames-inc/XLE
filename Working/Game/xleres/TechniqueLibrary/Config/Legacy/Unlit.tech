@@ -5,8 +5,8 @@
 
 ~Forward
 	~Inherit; Silhouette; ../shared.tech:System
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/unlit.pixel.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/Standard/unlit.pixel.hlsl:main
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -14,8 +14,8 @@
 	~Inherit; Silhouette
 	~Selectors
 		MAT_ALPHA_TEST_PREDEPTH
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/depthonly.pixel.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:depthonly
 
 ~ShadowGen
 	~Inherit; Silhouette
@@ -34,8 +34,8 @@
 	~Selectors
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
 	PixelShader=null
 
 ~WriteTriangleIndex
@@ -57,7 +57,7 @@
 		GEO_HAS_TEXTANGENT
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
@@ -65,7 +65,7 @@
 	~Selectors
 		GEO_HAS_TEXCOORD
 		VSOUT_HAS_WORLD_POSITION=1
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:main
 

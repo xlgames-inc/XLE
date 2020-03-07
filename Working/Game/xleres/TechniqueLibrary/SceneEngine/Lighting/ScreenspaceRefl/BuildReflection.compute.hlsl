@@ -8,7 +8,7 @@
 #include "../../../Math/TransformAlgorithm.hlsl"
 #include "../../../Math/TextureAlgorithm.hlsl"
 #include "../../../Framework/CommonResources.hlsl"
-#include "../../../Core/gbuffer.hlsl"
+#include "../../../Framework/gbuffer.hlsl"
 
 Texture2D_MaybeMS<float4>	GBuffer_Diffuse		: register(t0);
 Texture2D<float4>			DownSampledNormals	: register(t1);

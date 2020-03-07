@@ -500,8 +500,8 @@ namespace SceneEngine
             auto temporaryBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(lines));
 
             auto& shader = ::Assets::GetAsset<ShaderProgram>(
-                "xleres/forward/illum.vertex.hlsl:main:vs_*", 
-                "xleres/forward/illum.pixel.hlsl:main:ps_*",
+                NO_PATCHES_VERTEX_HLSL ":main:vs_*", 
+                NO_PATCHES_PIXEL_HLSL ":forward:ps_*",
                 "GEO_HAS_COLOR=1");
             auto localTransform = Techniques::MakeLocalTransform(
                 Identity<Float4x4>(), 

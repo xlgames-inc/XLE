@@ -1,6 +1,7 @@
 
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/DeformVertex.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "MaterialParam.sh"
 
 float3 CoordinatesToColor(float3 coords);
@@ -23,3 +24,4 @@ void PerPixel_Separate(
 
     out float3 transmission);
 
+DeformedVertex DeformVertex(VSIN input);

@@ -40,10 +40,13 @@ namespace SceneEngine
 	DeepOceanSimSettings GlobalOceanSettings; 
     OceanLightingSettings GlobalOceanLightingSettings; 
 
-	void LightingParser_ResolveGBuffer( 
+	class ViewDelegate_Deferred;
+	static void LightingParser_DeferredPostGBuffer(
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext);
+        LightingParserContext& lightingParserContext,
+		const ViewDelegate_Deferred& executedScene,
+		const Techniques::SequencerConfig& sequencerCfg);
 	
 	class RenderStep_GBuffer : public IRenderStep
 	{
@@ -157,16 +160,15 @@ namespace SceneEngine
 			case Techniques::BatchFilter::General:
 				return &_gbufferOpaque;
 
-			case Techniques::BatchFilter::Transparent:
+			case Techniques::BatchFilter::PostOpaque:
 				return &_transparent;
 
-			case Techniques::BatchFilter::OITransparent:
+			case Techniques::BatchFilter::SortedBlending:
 				return &_oiTransparent;
 
-			case Techniques::BatchFilter::TransparentPreDepth:
+			case Techniques::BatchFilter::PreDepth:
 				return &_transparentPreDepth;
 
-			case Techniques::BatchFilter::PreDepth:
 			default:
 				return nullptr;
 			}
@@ -231,17 +233,81 @@ namespace SceneEngine
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(threadContext, parsingContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_Deferred);
-
-        /*
-        CATCH_ASSETS_BEGIN
-            LightingParser_DeferredPostGBuffer(threadContext, parsingContext, lightingParserContext, sceneParser, preparedScene, mainTargets);
-        CATCH_ASSETS_END(parsingContext)
-		*/
 	}
 
 	std::shared_ptr<IRenderStep> CreateRenderStep_GBuffer(unsigned gbufferType, bool precisionTargets)
 	{
 		return std::make_shared<RenderStep_GBuffer>(gbufferType, precisionTargets);
+	}
+
+	class RenderStep_PostDeferredOpaque : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override;
+		const RenderStepFragmentInterface& GetInterface() const override { return _postOpaque; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
+
+		RenderStep_PostDeferredOpaque(bool precisionTargets);
+		~RenderStep_PostDeferredOpaque();
+	private:
+		RenderStepFragmentInterface _postOpaque;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+	};
+
+	RenderStep_PostDeferredOpaque::RenderStep_PostDeferredOpaque(bool precisionTargets)
+	: _postOpaque(RenderCore::PipelineType::Graphics)
+	{
+		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+
+		_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(
+			techniqueSetFile,
+			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
+
+        auto msDepth = _postOpaque.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
+		auto lightingResoolve = _postOpaque.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
+
+		SubpassDesc subpass;
+		subpass.AppendOutput(lightingResoolve);
+		subpass.SetDepthStencil(msDepth);
+
+		// todo -- parameters should be configured based on how the scene is set up
+		ParameterBox box;
+		// box.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+		box.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", 1);
+		box.SetParameter((const utf8*)"HAS_SPECULAR_IBL", 1);
+		_postOpaque.AddSubpass(std::move(subpass), _forwardIllumDelegate, std::move(box));
+	}
+
+	RenderStep_PostDeferredOpaque::~RenderStep_PostDeferredOpaque() {}
+
+	std::shared_ptr<IViewDelegate> RenderStep_PostDeferredOpaque::CreateViewDelegate()
+	{
+		return nullptr;
+	}
+
+	void RenderStep_PostDeferredOpaque::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		RenderStepFragmentInstance& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		assert(viewDelegate);
+		const auto& drawables = *checked_cast<ViewDelegate_Deferred*>(viewDelegate);
+
+		CATCH_ASSETS_BEGIN
+            LightingParser_DeferredPostGBuffer(threadContext, parsingContext, lightingParserContext, drawables, *rpi.GetSequencerConfig());
+        CATCH_ASSETS_END(parsingContext)
+	}
+
+	std::shared_ptr<IRenderStep> CreateRenderStep_PostDeferredOpaque(bool precisionTargets)
+	{
+		return std::make_shared<RenderStep_PostDeferredOpaque>(precisionTargets);
 	}
 
 	void LightingParser_PreTranslucency(
@@ -301,8 +367,8 @@ namespace SceneEngine
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
-		ViewDelegate_Deferred& executedScene,
-		const RenderCore::Techniques::SequencerConfig& sequencerCfg)
+		const ViewDelegate_Deferred& executedScene,
+		const Techniques::SequencerConfig& sequencerCfg)
     {
 		auto& mainTargets = lightingParserContext.GetMainTargets();
 
@@ -321,6 +387,7 @@ namespace SceneEngine
             //      shaders in a forward-lit way
         auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, *lightingParserContext._delegate);
 		if (lightBindRes._skyTextureProjection != ~0u) {
+			// These can be configured via the pipeline accelerator interface now
 			parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
 			parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
 			parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
@@ -449,6 +516,6 @@ namespace SceneEngine
             mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal));
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, Techniques::BatchFilter::Transparent, TechniqueIndex_General);
+            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, Techniques::BatchFilter::PostOpaque, TechniqueIndex_General);
     }
 }

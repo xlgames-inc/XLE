@@ -24,11 +24,11 @@ struct VSIN //////////////////////////////////////////////////////
 {
 	float3 position : POSITION0;
 
-	#if GEO_HAS_COLOR==1
+	#if GEO_HAS_COLOR>=1
 		float4 color : COLOR0;
 	#endif
 
-	#if GEO_HAS_TEXCOORD==1
+	#if GEO_HAS_TEXCOORD>=1
 		float2 texCoord : TEXCOORD;
 	#endif
 
@@ -77,7 +77,7 @@ struct VSIN //////////////////////////////////////////////////////
 	#endif
 #endif
 
-#if GEO_HAS_COLOR==1
+#if GEO_HAS_COLOR>=1
 		// vertex is used only in the vertex shader when
 		// "MAT_VCOLOR_IS_ANIM_PARAM" is set. So, in this case,
 		// don't output to further pipeline stages.
@@ -92,7 +92,7 @@ struct VSIN //////////////////////////////////////////////////////
 	#endif
 #endif
 
-#if GEO_HAS_TEXCOORD==1
+#if GEO_HAS_TEXCOORD>=1
 	#if !defined(VSOUT_HAS_TEXCOORD)
 		#define VSOUT_HAS_TEXCOORD 1
 	#endif
@@ -128,7 +128,7 @@ struct VSIN //////////////////////////////////////////////////////
 	#endif
 #endif
 
-#if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD==1) && (RES_HAS_NormalsTexture==1)
+#if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD>=1) && (RES_HAS_NormalsTexture==1)
 	#undef VSOUT_HAS_TANGENT_FRAME
 	#define VSOUT_HAS_TANGENT_FRAME 1
 
@@ -138,13 +138,13 @@ struct VSIN //////////////////////////////////////////////////////
 	#endif
 #endif
 
-#if GEO_HAS_COLOR==1 ///////////////////////////////////////////////
+#if GEO_HAS_COLOR>=1 ///////////////////////////////////////////////
 	float4 VSIN_GetColor0(VSIN input) { return input.color; }
 #else
 	float4 VSIN_GetColor0(VSIN input) { return 1.0.xxxx; }
 #endif //////////////////////////////////////////////////////////////
 
-#if GEO_HAS_TEXCOORD==1 /////////////////////////////////////////////
+#if GEO_HAS_TEXCOORD>=1 /////////////////////////////////////////////
 	float2 VSIN_GetTexCoord0(VSIN input) { return input.texCoord; }
 #else
 	float2 VSIN_GetTexCoord0(VSIN input) { return 0.0.xx; }
@@ -176,7 +176,7 @@ struct VSOUT /////////////////////////////////////////////////////
 		float4 color : COLOR0;
 	#endif
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		float2 texCoord : TEXCOORD0;
 	#endif
 

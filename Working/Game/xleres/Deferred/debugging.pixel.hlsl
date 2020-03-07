@@ -9,7 +9,7 @@
 #include "../TechniqueLibrary/Math/TextureAlgorithm.hlsl"
 #include "../TechniqueLibrary/RenderOverlays/dd/DebuggingShapes.hlsl"
 #include "../TechniqueLibrary/RenderOverlays/dd/DebuggingPanels.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 
 Texture2D<float4>		LightOutput : register(t0);
 Texture2D<float>		DebuggingTextureMin : register(t1);

@@ -4,10 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../TechniqueLibrary/Framework/CommonResources.hlsl"
-#include "../BasicMaterial.hlsl"
-#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
+#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/CommonResources.hlsl"
+#include "../../BasicMaterial.hlsl"
+#include "../Framework/SystemUniforms.hlsl"
 
 struct GSOutput
 {
@@ -73,7 +73,7 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 		return 0.0.xxx;
 }
 
-#if VSOUT_HAS_TEXCOORD==1
+#if VSOUT_HAS_TEXCOORD>=1
 	float2 VSOUT_GetTexCoord0(VSOUT input) { return input.texCoord; }
 #else
 	float2 VSOUT_GetTexCoord0(VSOUT input) { return 1.0.xx; }
@@ -127,7 +127,7 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 		// used for "picking" tests in tools. Without this alpha test check,
 		// the alpha tested triangles will behave like opaque triangles, which
 		// will give a confusing result for the user.
-		#if (VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
+		#if (VSOUT_HAS_TEXCOORD>=1) && (MAT_ALPHA_TEST==1)
 			float2 texCoord =
 				  barycentric.x * VSOUT_GetTexCoord0(input[0])
 				+ barycentric.y * VSOUT_GetTexCoord0(input[1])

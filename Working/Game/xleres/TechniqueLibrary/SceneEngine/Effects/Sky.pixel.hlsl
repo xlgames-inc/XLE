@@ -119,7 +119,7 @@ VSOUT vs_main(VSIN input)
 
 	output.position.z	 = 1.0f * output.position.w;		// push to infinity
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 

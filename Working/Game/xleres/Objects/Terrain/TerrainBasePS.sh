@@ -15,7 +15,7 @@
 #include "TerrainGenerator.h"
 #include "ITerrainTexturing.h"
 
-#include "../../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../../Utility/DistinctColors.h"
 
 #define DO_DEFORM_NORMAL 1
@@ -48,7 +48,7 @@ struct PSInput
 
 float TerrainResolve_AngleBasedShadows(PSInput geo)
 {
-    #if (VSOUT_HAS_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (SOLIDWIREFRAME_TEXCOORD==1)
 
             // "COVERAGE_2" is the angle based shadows layer.
         #if defined(COVERAGE_2)
@@ -216,7 +216,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
         p.diffuseAlbedo = BlendWireframe(geo, p.diffuseAlbedo);
     #endif
 
-    #if (VSOUT_HAS_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
+    #if (VSOUT_HAS_TEXCOORD>=1) && defined(VISUALIZE_COVERAGE)
         if ((dot(uint2(geo.position.xy), uint2(1,1))/4)%4 == 0) {
             float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
             uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));

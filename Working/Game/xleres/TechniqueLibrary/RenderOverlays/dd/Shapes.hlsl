@@ -25,7 +25,7 @@ float4 Paint(
 	//		interface style dynamic linking correctly. Those drivers will crash inside
 	//		the shader compiler dll when attempting to compile this shader -- it's unclear
 	//		at the moment why this is happening, and if there is a work around.
-	return 0;
+	// return 0;
 
     DebuggingShapesCoords coords =
         DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);

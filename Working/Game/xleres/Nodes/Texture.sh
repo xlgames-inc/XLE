@@ -35,7 +35,7 @@ float4 LoadAbsolute(Texture2D inputTexture, uint2 pixelCoords)
 void SampleTextureDiffuse(VSOUT geo, out float3 rgb, out float alpha)
 {
     float4 diffuseTextureSample = 1.0.xxxx;
-    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_DiffuseTexture!=0)
         #if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
             diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
         #else
@@ -49,11 +49,11 @@ void SampleTextureDiffuse(VSOUT geo, out float3 rgb, out float alpha)
 float SampleTextureAO(VSOUT geo)
 {
     float result = 1.f;
-    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_Occlusion==1)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Occlusion==1)
         result *= Occlusion.Sample(DefaultSampler, geo.texCoord).r;
     #endif
 
-    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD==1)
+    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD>=1)
         result *= NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
     #endif
     return result;
@@ -61,7 +61,7 @@ float SampleTextureAO(VSOUT geo)
 
 float3 GetParametersTexture(VSOUT geo)
 {
-    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_ParametersTexture!=0)
         return ParametersTexture.Sample(DefaultSampler, geo.texCoord).rgb;
     #else
         return float3(1.f, 1.f, 1.f);
@@ -117,7 +117,7 @@ float3 MaybeMakeDoubleSided(VSOUT geo, float3 normal)
 
 float MaybeDoAlphaTest(float alpha, float alphaThreshold)
 {
-    #if (VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
+    #if (VSOUT_HAS_TEXCOORD>=1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
         if (alpha < alphaThreshold) discard;
     #endif
     return alpha;

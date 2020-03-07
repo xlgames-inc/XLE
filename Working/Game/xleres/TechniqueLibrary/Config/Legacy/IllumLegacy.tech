@@ -1,17 +1,17 @@
 
 ~Forward
 	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/illum.pixel.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:forward
 
 ~Deferred
 	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Deferred
-	VertexShader=xleres/deferred/basic.vertex.hlsl:main
-	PixelShader=xleres/deferred/basic.pixel.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
 ~OrderIndependentTransparency
 	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_oi
 
 ~StochasticTransparency
@@ -20,12 +20,12 @@
 		STOCHASTIC_SAMPLE_COUNT=8
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_stochastic
 
 ~DepthWeightedTransparency
 	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/depthweighted.hlsl:main_depth_weighted_oi
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,8 +40,8 @@
 		STOCHASTIC_TRANS
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	PixelShader=xleres/forward/depthonly.pixel.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:depthonly
 
 ~ShadowGen
 	~Inherit; ../Illum.tech:Silhouette
@@ -60,8 +60,8 @@
 	~Selectors
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
-	GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
 	PixelShader=null
 
 ~WriteTriangleIndex
@@ -83,7 +83,7 @@
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
 		RES_HAS_NormalsTexture
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
@@ -91,7 +91,7 @@
 	~Selectors
 		GEO_HAS_TEXCOORD
 		VSOUT_HAS_WORLD_POSITION=1
-	VertexShader=xleres/forward/illum.vertex.hlsl:main
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:main
 

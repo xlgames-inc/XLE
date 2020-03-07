@@ -64,8 +64,10 @@ namespace SceneEngine
 
 		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
 		if (lightingModel != LightingModel::Direct) {
-			if (lightingModel == LightingModel::Deferred)
+			if (lightingModel == LightingModel::Deferred) {
 				result.push_back(CreateRenderStep_LightingResolve(gbufferType, precisionTargets));
+				result.push_back(CreateRenderStep_PostDeferredOpaque(precisionTargets));
+			}
 			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
 			result.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
 			result.push_back(resolveHDR);
@@ -425,9 +427,7 @@ namespace SceneEngine
 				CATCH_ASSETS_BEGIN
 					auto range = MakeIteratorRange(AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter), AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
 					RenderStepFragmentInstance rpf(rpi, *stepRemappingIterator, range);
-					IViewDelegate* viewDelegate = nullptr;
-					if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
-
+					IViewDelegate* viewDelegate = executeContext.GetViewDelegates()[0].get();
 					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
 					subpassCounter += (unsigned)range.size();
 				CATCH_ASSETS_END(parsingContext)

@@ -51,13 +51,13 @@ namespace UnitTests
 		{
 			float4 gsOut : POINT0;
 		};
-		struct VSOutput
+		struct VSOUT
 		{
 			float4 vsOut : SV_Position;
 		};
 
 		[maxvertexcount(1)]
-			void main(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
+			void main(triangle VSOUT input[3], inout PointStream<GSOutput> outputStream)
 		{
 			GSOutput result;
 			result.gsOut.x = max(max(input[0].vsOut.x, input[1].vsOut.x), input[2].vsOut.x);

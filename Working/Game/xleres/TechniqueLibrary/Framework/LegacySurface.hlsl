@@ -26,13 +26,13 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOUT geo)
 {
 	#if VSOUT_HAS_TANGENT_FRAME==1
 
-		TangentFrameStruct tangentFrame = VSOUT_GetWorldTangentFrame(geo);
+		TangentFrame tangentFrame = VSOUT_GetWorldTangentFrame(geo);
 		float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
 		return mul(normalTextureSample, normalsTextureToWorld);
 
     #elif VSOUT_HAS_LOCAL_TANGENT_FRAME==1
 
-		TangentFrameStruct localTangentFrame = VSOUT_GetLocalTangentFrame(geo);
+		TangentFrame localTangentFrame = VSOUT_GetLocalTangentFrame(geo);
 		float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
 		float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
 
@@ -67,7 +67,7 @@ float3 TransformNormalMapToWorld(float3 normalTextureSample, VSOUT geo)
 
 void DoAlphaTest(VSOUT geo, float alphaThreshold)
 {
-	#if (VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
+	#if (VSOUT_HAS_TEXCOORD>=1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
 		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
 			AlphaTestAlgorithm(DiffuseTexture, ClampingSampler, geo.texCoord, alphaThreshold);
 		#else
@@ -78,7 +78,7 @@ void DoAlphaTest(VSOUT geo, float alphaThreshold)
 
 float3 VSOUT_GetNormal(VSOUT geo)
 {
-	#if (RES_HAS_NormalsTexture==1) && (VSOUT_HAS_TEXCOORD==1)
+	#if (RES_HAS_NormalsTexture==1) && (VSOUT_HAS_TEXCOORD>=1)
 		return TransformNormalMapToWorld(SampleDefaultNormalMap(geo), geo);
 	#elif (VSOUT_HAS_NORMAL==1)
 		return normalize(geo.normal);

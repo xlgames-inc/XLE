@@ -1,5 +1,6 @@
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../Nodes/Templates.sh"
+#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/gbuffer.hlsl"
+#include "../../Nodes/Templates.sh"
 
 #if (VULKAN!=1)
     [earlydepthstencil]
@@ -18,3 +19,4 @@ GBufferEncoded frameworkEntryWithEarlyRejection(VSOUT geo)
 	GBufferValues result = PerPixel(geo);
 	return Encode(result);
 }
+

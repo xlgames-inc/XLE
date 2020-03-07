@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
 
 float4 CubicSCurve4(float4 x)        { return x * x * ( 3.0f - 2.0f * x ); }
 float4 TriangleWave4(float4 x)       { return abs( frac( x + 0.5f ) * 2.0f - 1.0f ); }

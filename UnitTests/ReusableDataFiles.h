@@ -19,7 +19,7 @@ static const char* s_examplePerPixelShaderFile = R"--(
 		float4 HairColor;
 	}
 
-	GBufferValues PerPixelInShaderFile(VSOutput geo)
+	GBufferValues PerPixelInShaderFile(VSOUT geo)
 	{
 		GBufferValues result = GBufferValues_Default();
 
@@ -36,10 +36,10 @@ static const char* s_examplePerPixelShaderFile = R"--(
 
 
 static const char* s_exampleGraphFile = R"--(
-	import example_perpixel = "example-perpixel.psh";
-	import templates = "xleres/nodes/templates.sh"
+	import example_perpixel = "example-perpixel.pixel.hlsl";
+	import templates = "xleres/nodes/templates.hlsl"
 
-	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
+	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{
 		return example_perpixel::PerPixelInShaderFile(geo:geo).result;
 	}
@@ -48,17 +48,17 @@ static const char* s_exampleGraphFile = R"--(
 static const char* s_complicatedGraphFile = R"--(
 	import simple_example = "example.graph";
 	import simple_example_dupe = "ut-data/example.graph";
-	import example_perpixel = "example-perpixel.psh";
-	import templates = "xleres/nodes/templates.sh";
-	import conditions = "xleres/nodes/conditions.sh";
+	import example_perpixel = "example-perpixel.pixel.hlsl";
+	import templates = "xleres/nodes/templates.hlsl";
+	import conditions = "xleres/nodes/conditions.hlsl";
 	import internalComplicatedGraph = "internalComplicatedGraph.graph";
 
-	GBufferValues Internal_PerPixel(VSOutput geo)
+	GBufferValues Internal_PerPixel(VSOUT geo)
 	{
 		return example_perpixel::PerPixelInShaderFile(geo:geo).result;
 	}
 
-	GBufferValues Bind2_PerPixel(VSOutput geo) implements templates::PerPixel
+	GBufferValues Bind2_PerPixel(VSOUT geo) implements templates::PerPixel
 	{
 		captures MaterialUniforms = ( float3 DiffuseColor, float SomeFloat = "0.25" );
 		captures AnotherCaptures = ( float2 Test0, float4 Test2 = "{1,2,3,4}", float SecondaryCaptures = "0.7f" );
@@ -66,7 +66,7 @@ static const char* s_complicatedGraphFile = R"--(
 		if "!defined(SIMPLE_BIND)" return Internal_PerPixel(geo:geo).result;
 	}
 
-	bool Bind_EarlyRejectionTest(VSOutput geo) implements templates::EarlyRejectionTest
+	bool Bind_EarlyRejectionTest(VSOUT geo) implements templates::EarlyRejectionTest
 	{
 		captures MaterialUniforms = ( float AlphaWeight = "0.5" );
 		if "defined(ALPHA_TEST)" return conditions::LessThan(lhs:MaterialUniforms.AlphaWeight, rhs:"0.5").result;
@@ -77,7 +77,7 @@ static const char* s_complicatedGraphFile = R"--(
 static const char* s_internalShaderFile = R"--(
 	#include "xleres/MainGeometry.h"
 
-	bool ShouldBeRejected(VSOutput geo, float threshold)
+	bool ShouldBeRejected(VSOUT geo, float threshold)
 	{
 		#if defined(SELECTOR_0) && defined(SELECTOR_1)
 			return true;
@@ -88,9 +88,9 @@ static const char* s_internalShaderFile = R"--(
 )--";
 
 static const char* s_internalComplicatedGraph = R"--(
-	import internal_shader_file = "internalShaderFile.psh";
+	import internal_shader_file = "internalShaderFile.pixel.hlsl";
 	
-	bool Bind_EarlyRejectionTest(VSOutput geo) implements templates::EarlyRejectionTest
+	bool Bind_EarlyRejectionTest(VSOUT geo) implements templates::EarlyRejectionTest
 	{
 		captures MaterialUniforms = ( float AnotherHiddenUniform = "0.5" );
 		return internal_shader_file::ShouldBeRejected(geo:geo, threshold:MaterialUniforms.AnotherHiddenUniform).result;
@@ -105,16 +105,16 @@ static const char* s_basicTechniqueFile = R"--(
 
 	~Deferred_NoPatches
 		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/basic.psh:main
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
 	~Deferred_PerPixel
 		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/main.psh:frameworkEntry
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
 	~Deferred_PerPixelAndEarlyRejection
 		~Inherit; Shared
-		VertexShader=xleres/deferred/basic.vsh:main
-		PixelShader=xleres/deferred/main.psh:frameworkEntryWithEarlyRejection
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 )--";

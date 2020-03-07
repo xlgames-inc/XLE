@@ -15,7 +15,7 @@ struct ParticleVStoGS
 		float4 color : COLOR0;
 	#endif
 
-	#if GEO_HAS_TEXCOORD==1
+	#if GEO_HAS_TEXCOORD>=1
 		float2 texCoord : TEXCOORD;
 	#endif
 

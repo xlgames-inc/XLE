@@ -29,14 +29,14 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 static const char* s_entryPointsInRawShader = R"--(
 	#include "xleres/MainGeometry.h"
 	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.hlsl"
 
-	GBufferValues PerPixel(VSOutput geo)
+	GBufferValues PerPixel(VSOUT geo)
 	{
 		return GBufferValues_Default();
 	}
 
-	bool EarlyRejectionTest(VSOutput geo)
+	bool EarlyRejectionTest(VSOUT geo)
 	{
 		return false;
 	}
@@ -45,12 +45,12 @@ static const char* s_entryPointsInRawShader = R"--(
 namespace UnitTests
 {
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
-		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example-perpixel.pixel.hlsl", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
-		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
+		std::make_pair("internalShaderFile.pixel.hlsl", ::Assets::AsBlob(s_internalShaderFile)),
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
-		std::make_pair("entryPointsInRawShader.psh", ::Assets::AsBlob(s_entryPointsInRawShader))
+		std::make_pair("entryPointsInRawShader.pixel.hlsl", ::Assets::AsBlob(s_entryPointsInRawShader))
 	};
 
 	TEST_CLASS(NodeGraphInstantiationTests)
@@ -147,7 +147,7 @@ namespace UnitTests
 		TEST_METHOD(InstantiateFromRawShader)
 		{
 			ShaderSourceParser::InstantiationRequest instRequests[] {
-				{ "ut-data/entryPointsInRawShader.psh" }
+				{ "ut-data/entryPointsInRawShader.pixel.hlsl" }
 			};
 
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;

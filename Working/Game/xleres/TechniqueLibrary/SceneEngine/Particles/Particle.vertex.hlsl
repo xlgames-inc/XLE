@@ -16,7 +16,7 @@ ParticleVStoGS main(VSIN input)
 		output.color 		= VSIN_GetColor0(input);
 	#endif
 
-	#if GEO_HAS_TEXCOORD==1
+	#if GEO_HAS_TEXCOORD>=1
 		output.texCoord 	= VSIN_GetTexCoord0(input);
 	#endif
 
@@ -47,11 +47,11 @@ VSOUT nogs(VSIN input)
 		;
 	output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-	#if VSOUT_HAS_COLOR==1
+	#if VSOUT_HAS_COLOR>=1
 		output.color 		= input.color;
 	#endif
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		output.texCoord 	= input.texCoord;
 	#endif
 

@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 
 Texture2DMS<float>		DepthBuffer : register(t0);
 Texture2DMS<float4>		GBuffer_Normals : register(t1);

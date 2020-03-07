@@ -11,7 +11,7 @@
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
 #include "../TechniqueLibrary/Framework/LegacySurface.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../BasicMaterial.hlsl"
 #include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
 // #include "../TechniqueLibrary/Math/perlinnoise.hlsl"
@@ -45,7 +45,7 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
     //#endif
 
     float4 diffuseTextureSample = 1.0.xxxx;
-    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_DiffuseTexture!=0)
         #if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
             diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
         #else
@@ -55,7 +55,7 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
         result.blendingAlpha = diffuseTextureSample.a;
     #endif
 
-    #if (VSOUT_HAS_COLOR==1) && MAT_MODULATE_VERTEX_ALPHA
+    #if (VSOUT_HAS_COLOR>=1) && MAT_MODULATE_VERTEX_ALPHA
         result.blendingAlpha *= geo.color.a;
     #endif
 
@@ -73,7 +73,7 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
 
     result.material = DefaultMaterialValues();
 
-    #if (VSOUT_HAS_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD>=1)
         #if (RES_HAS_ParametersTexture!=0)
                 //	Just using a trilinear sample for this. Anisotropy disabled.
             result.material = DecodeParametersTexture_RMS(
@@ -89,11 +89,11 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
         result.diffuseAlbedo *= SRGBToLinear(MaterialDiffuse);
     #endif
 
-    #if (VSOUT_HAS_COLOR==1)
+    #if (VSOUT_HAS_COLOR>=1)
         result.diffuseAlbedo.rgb *= geo.color.rgb;
     #endif
 
-    #if (VSOUT_HAS_TEXCOORD==1) && (RES_HAS_Occlusion==1)
+    #if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Occlusion==1)
             // use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
         result.cookedAmbientOcclusion = Occlusion.Sample(DefaultSampler, geo.texCoord).r;
 
@@ -123,7 +123,7 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
         result.cookedLightOcclusion *= geo.mainLightOcclusion;
     #endif
 
-    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD==1)
+    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (VSOUT_HAS_TEXCOORD>=1)
             // some pipelines put a AO term in the blue channel of the normal map
             // we can factor it in here...
         float cookedAO = NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
@@ -150,7 +150,7 @@ GBufferValues IllumShader_PerPixel(VSOUT geo)
         //     float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
         //     float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
         //
-        //     TangentFrameStruct tangentFrame = VSOUT_GetWorldTangentFrame(geo);
+        //     TangentFrame tangentFrame = VSOUT_GetWorldTangentFrame(geo);
         //     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
         //     result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
         //

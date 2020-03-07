@@ -8,7 +8,7 @@
 #define NODES_OUTPUT_H
 
 #include "MaterialParam.sh"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 
 GBufferValues Output_PerPixel(
   float3 diffuseAlbedo,

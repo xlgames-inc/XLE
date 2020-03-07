@@ -21,7 +21,7 @@ void DoDitherAlphaTest(VSOUT geo, int2 pixelCoords, uint primitiveID)
 		// We can also write a translucency value to a second bound render
 		// target (perhaps with a "max" blend). This could be used to soften
 		// the shadows cast by translucent geometry.
-	#if (VSOUT_HAS_TEXCOORD==1)
+	#if (VSOUT_HAS_TEXCOORD>=1)
 		float alphaValue = DiffuseTexture.Sample(DefaultSampler, geo.texCoord.xy).a;
 
 			// integrating in the primitive id here gives us a better result when many
@@ -35,12 +35,12 @@ void DoDitherAlphaTest(VSOUT geo, int2 pixelCoords, uint primitiveID)
 	#endif
 }
 
-#if !((VSOUT_HAS_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1))) && (VULKAN!=1)
+#if !((VSOUT_HAS_TEXCOORD>=1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1))) && (VULKAN!=1)
 	[earlydepthstencil]
 #endif
 void main(VSOUT geo)
 {
-	#if (VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_DITHER_SHADOWS==1)
+	#if (VSOUT_HAS_TEXCOORD>=1) && (MAT_ALPHA_DITHER_SHADOWS==1)
 		// DoDitherAlphaTest(geo, int2(geo.position.xy), geo.primitiveId);
 		AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, 0.5f);
 	#else

@@ -11,8 +11,8 @@
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Surface.hlsl"
 #include "../../Math/TextureAlgorithm.hlsl"		// for SystemInputs
-#include "../SceneEngine/Lighting/LightDesc.hlsl"		// for LightScreenDest
-#include "xleres/Forward/resolvefog.hlsl"
+#include "../../SceneEngine/Lighting/LightDesc.hlsl"		// for LightScreenDest
+#include "../../SceneEngine/Lighting/resolvefog.hlsl"
 
 //////////////////////////////////////////////////////////////////
 
@@ -62,16 +62,16 @@ VSOUT BuildInterpolator_VSOutput(VSIN input) : NE_WritesVSOutput
 	float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
 	float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
 
-	#if VSOUT_HAS_COLOR==1
+	#if VSOUT_HAS_COLOR>=1
 		output.color = BuildInterpolator_COLOR0(input);
 	#endif
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 
 	#if GEO_HAS_TEXTANGENT==1
-		TangentFrameStruct worldSpaceTangentFrame = VSIN_GetWorldTangentFrame(input);
+		TangentFrame worldSpaceTangentFrame = VSIN_GetWorldTangentFrame(input);
 
 		#if VSOUT_HAS_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;

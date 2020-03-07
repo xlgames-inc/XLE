@@ -8,10 +8,10 @@
 #define MAT_ALPHA_TEST 1
 #define VSOUT_HAS_COLOR 2
 
-#include "../TechniqueLibrary/Framework/CommonResources.hlsl"
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../TechniqueLibrary/Framework/Surface.hlsl"
-#include "../BasicMaterial.hlsl"
+#include "../../Framework/CommonResources.hlsl"
+#include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/Surface.hlsl"
+#include "../../../BasicMaterial.hlsl"
 
 void main(	VSOUT geo,
 			out float4 oDiffuse : SV_Target0,

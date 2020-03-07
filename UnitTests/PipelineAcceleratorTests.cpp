@@ -48,9 +48,9 @@ static const char s_exampleTechniqueFragments[] = R"--(
 static const char* s_colorFromSelectorShaderFile = R"--(
 	#include "xleres/MainGeometry.h"
 	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.hlsl"
 
-	GBufferValues PerPixel(VSOutput geo)
+	GBufferValues PerPixel(VSOUT geo)
 	{
 		GBufferValues result = GBufferValues_Default();
 		#if (OUTPUT_TEXCOORD==1)
@@ -69,17 +69,17 @@ static const char* s_colorFromSelectorShaderFile = R"--(
 
 static const char s_techniqueForColorFromSelector[] = R"--(
 	~main
-		ut-data/colorFromSelector.psh::PerPixel
+		ut-data/colorFromSelector.pixel.hlsl::PerPixel
 )--";
 
 static const char* s_basicTexturingGraph = R"--(
-	import templates = "xleres/nodes/templates.sh"
-	import output = "xleres/nodes/output.sh"
-	import texture = "xleres/nodes/texture.sh"
-	import basic = "xleres/nodes/basic.sh"
-	import materialParam = "xleres/nodes/materialparam.sh"
+	import templates = "xleres/nodes/templates.hlsl"
+	import output = "xleres/nodes/output.hlsl"
+	import texture = "xleres/nodes/texture.hlsl"
+	import basic = "xleres/nodes/basic.hlsl"
+	import materialParam = "xleres/nodes/materialparam.hlsl"
 
-	GBufferValues Bind_PerPixel(VSOutput geo) implements templates::PerPixel
+	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{
 		captures MaterialUniforms = ( float3 Multiplier = "{1,1,1}", Texture2D BoundTexture );
 		node loadFromTexture = texture::LoadAbsolute(
@@ -103,12 +103,12 @@ namespace UnitTests
 {
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
 		std::make_pair("basic.tech", ::Assets::AsBlob(s_basicTechniqueFile)),
-		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example-perpixel.pixel.hlsl", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
-		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
+		std::make_pair("internalShaderFile.pixel.hlsl", ::Assets::AsBlob(s_internalShaderFile)),
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
-		std::make_pair("colorFromSelector.psh", ::Assets::AsBlob(s_colorFromSelectorShaderFile)),
+		std::make_pair("colorFromSelector.pixel.hlsl", ::Assets::AsBlob(s_colorFromSelectorShaderFile)),
 		std::make_pair("basicTexturingGraph.graph", ::Assets::AsBlob(s_basicTexturingGraph))
 	};
 

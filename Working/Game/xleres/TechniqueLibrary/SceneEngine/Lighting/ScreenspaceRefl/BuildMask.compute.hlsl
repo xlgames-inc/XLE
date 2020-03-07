@@ -8,7 +8,7 @@
 #include "../LightingAlgorithm.hlsl"
 #include "../../../Math/TransformAlgorithm.hlsl"
 #include "../../../Math/TextureAlgorithm.hlsl"
-#include "../../../Core/gbuffer.hlsl"
+#include "../../../Framework/gbuffer.hlsl"
 
 RWTexture2D<float2>			ReflectionsMask;
 Texture2D<float4>			DownSampledNormals	: register(t1);

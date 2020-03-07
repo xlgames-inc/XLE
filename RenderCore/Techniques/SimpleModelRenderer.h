@@ -119,10 +119,12 @@ namespace RenderCore { namespace Techniques
 		{
 			std::shared_ptr<PipelineAccelerator> _pipelineAccelerator;
 			::Assets::FuturePtr<DescriptorSetAccelerator> _compiledDescriptorSet;
+			unsigned _batchFilter;
 		};
 
 		std::vector<GeoCall> _geoCalls;
 		std::vector<GeoCall> _boundSkinnedControllerGeoCalls;
+		unsigned _drawablesCount[4];
 
 		RenderCore::Assets::SkeletonBinding _skeletonBinding;
 

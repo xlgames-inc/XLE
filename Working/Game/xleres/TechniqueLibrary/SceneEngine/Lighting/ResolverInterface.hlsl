@@ -7,7 +7,7 @@
 #if !defined(RESOLVER_INTERFACE_H)
 #define RESOLVER_INTERFACE_H
 
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 #include "LightDesc.hlsl"
 
 interface ILightResolver

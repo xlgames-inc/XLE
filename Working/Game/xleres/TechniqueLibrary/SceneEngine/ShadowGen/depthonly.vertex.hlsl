@@ -38,7 +38,7 @@ VSShadowOutput main(VSIN input)
 
 	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input).rgb);
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		result.texCoord = input.texCoord;
 	#endif
 

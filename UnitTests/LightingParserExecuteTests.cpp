@@ -38,9 +38,9 @@
 static const char* s_colorFromSelectorShaderFile = R"--(
 	#include "xleres/MainGeometry.h"
 	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.hlsl"
 
-	GBufferValues PerPixel(VSOutput geo)
+	GBufferValues PerPixel(VSOUT geo)
 	{
 		GBufferValues result = GBufferValues_Default();
 		#if (OUTPUT_TEXCOORD==1)
@@ -59,7 +59,7 @@ static const char* s_colorFromSelectorShaderFile = R"--(
 
 static const char s_techniqueForColorFromSelector[] = R"--(
 	~main
-		ut-data/colorFromSelector.psh::PerPixel
+		ut-data/colorFromSelector.pixel.hlsl::PerPixel
 )--";
 
 static const char s_defaultEnvironmentSettings[] = R"--(
@@ -83,7 +83,7 @@ namespace UnitTests
 {
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
 		std::make_pair("basic.tech", ::Assets::AsBlob(s_basicTechniqueFile)),
-		std::make_pair("colorFromSelector.psh", ::Assets::AsBlob(s_colorFromSelectorShaderFile)),
+		std::make_pair("colorFromSelector.pixel.hlsl", ::Assets::AsBlob(s_colorFromSelectorShaderFile)),
 		std::make_pair("envsettings.dat", ::Assets::AsBlob(s_defaultEnvironmentSettings))
 	};
 

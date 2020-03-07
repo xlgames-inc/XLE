@@ -12,7 +12,7 @@
 #include "../../Utility/Colour.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "xleres/BasicMaterial.hlsl"
-#include "xleres/Forward/resolvefog.hlsl"
+#include "../Lighting/resolvefog.hlsl"
 
 Texture2D					Foam_Diffuse : register(t4);
 Texture2DArray<float2>		ShallowDerivatives : register(t5);
@@ -61,7 +61,7 @@ VSOUT vs_main(uint vertexId : SV_VertexId)
 
     output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-    #if (VSOUT_HAS_TEXCOORD==1)
+    #if (VSOUT_HAS_TEXCOORD>=1)
         output.texCoord = localPosition.xy;
     #endif
 

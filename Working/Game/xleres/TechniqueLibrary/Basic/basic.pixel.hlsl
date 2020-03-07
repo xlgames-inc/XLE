@@ -129,3 +129,11 @@ float4 copy_point_scrolllimit(float4 position : SV_Position, float2 texCoord : T
 	float alpha = saturate((position.y - ScrollAreaMin) / 12.f) * saturate((ScrollAreaMax - position.y) / 12.f);
 	return float4(InputTexture.SampleLevel(PointClampSampler, texCoord, 0).rgb, alpha);
 }
+
+float4 invalid(float4 position : SV_Position)
+{
+	float3 color0 = float3(1.0f, 0.f, 0.f);
+	float3 color1 = float3(0.0f, 0.f, 1.f);
+	uint flag = (uint(position.x/4.f) + uint(position.y/4.f))&1;
+	return float4(flag?color0:color1, 1.0f);
+}

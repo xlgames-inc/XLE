@@ -35,6 +35,7 @@ namespace SceneEngine
 		{
 			switch (batch) {
 			case Techniques::BatchFilter::General:
+			case Techniques::BatchFilter::PostOpaque:
 				return &_general;
 			case Techniques::BatchFilter::PreDepth:
 				return &_preDepth;
@@ -138,7 +139,13 @@ namespace SceneEngine
 		mainSubpass.SetDepthStencil(depth);
 
 		_forward.AddSubpass(depthOnlySubpass.SetName("DepthOnly"), _depthOnlyDelegate);
-		_forward.AddSubpass(mainSubpass.SetName("MainForward"), _forwardIllumDelegate);
+
+		// todo -- parameters should be configured based on how the scene is set up
+		ParameterBox box;
+		// box.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+		box.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", 1);
+		box.SetParameter((const utf8*)"HAS_SPECULAR_IBL", 1);
+		_forward.AddSubpass(mainSubpass.SetName("MainForward"), _forwardIllumDelegate, std::move(box));
 	}
 
 	RenderStep_Forward::~RenderStep_Forward() {}
@@ -156,6 +163,7 @@ namespace SceneEngine
 		{
 			switch (batch) {
 			case Techniques::BatchFilter::General:
+			case Techniques::BatchFilter::PostOpaque:
 				return &_general;
 			default:
 				return nullptr;

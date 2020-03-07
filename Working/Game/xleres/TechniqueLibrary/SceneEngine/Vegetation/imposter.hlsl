@@ -16,9 +16,9 @@
 #include "../../Framework/Surface.hlsl"
 #include "../../Framework/SystemUniforms.hlsl"
 #include "../../Math/TransformAlgorithm.hlsl"
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 #include "../../Framework/CommonResources.hlsl"
-#include "xleres/forward/resolvefog.hlsl"
+#include "../Lighting/resolvefog.hlsl"
 
 Texture2D ImposterAltas[2] : register(t0);
 
@@ -74,7 +74,7 @@ VSSprite vs_main(VSSprite input)
         float3 localPosition = input[0].position + o.x * xAxis + o.y * yAxis;
         float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 
-        #if VSOUT_HAS_TEXCOORD==1
+        #if VSOUT_HAS_TEXCOORD>=1
             output.texCoord = texCoord[c];
         #endif
 
@@ -210,7 +210,7 @@ GBufferEncoded ps_deferred(VSOUT geo)
         // Normals are stored in the view space that was originally
         // used to render the sprite.
         // It's equivalent to the tangent space of the sprite.
-    TangentFrameStruct tangentFrame = VSOUT_GetWorldTangentFrame(geo);
+    TangentFrame tangentFrame = VSOUT_GetWorldTangentFrame(geo);
     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
 
         // note that we can skip the decompression step here if we use

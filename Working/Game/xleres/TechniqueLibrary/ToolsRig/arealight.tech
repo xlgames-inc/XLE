@@ -161,7 +161,7 @@ VSOUT MakeVSOutput(GeneratedVertex genVertex)
 		output.color = 5.0.xxxx;
 	#endif
 
-	#if VSOUT_HAS_TEXCOORD==1
+	#if VSOUT_HAS_TEXCOORD>=1
 		output.texCoord = 0.0.xx;
 	#endif
 

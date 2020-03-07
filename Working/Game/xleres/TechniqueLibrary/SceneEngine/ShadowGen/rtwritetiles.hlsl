@@ -20,7 +20,7 @@ struct RTS_VSOutput
 {
     float4 position : POSITION;
 
-    #if VSOUT_HAS_TEXCOORD==1
+    #if VSOUT_HAS_TEXCOORD>=1
         float2 texCoord : TEXCOORD;
     #endif
 
@@ -43,7 +43,7 @@ void vs_writetris(VSIN input, out RTS_VSOutput output)
         float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
     #endif
 
-    #if VSOUT_HAS_TEXCOORD==1
+    #if VSOUT_HAS_TEXCOORD>=1
         output.texCoord = VSIN_GetTexCoord0(input);
     #endif
 

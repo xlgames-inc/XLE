@@ -7,7 +7,7 @@
 
 #define ILLUM_FORWARD_VERTEX_HLSL "xleres/Forward/illum.vertex.hlsl"
 #define ILLUM_FORWARD_PIXEL_HLSL "xleres/Forward/illum.pixel.hlsl"
-#define ILLUM_FORWARD_UNLIT_PIXEL_HLSL "xleres/Forward/unlit.pixel.hlsl"
+#define ILLUM_FORWARD_UNLIT_PIXEL_HLSL "xleres/TechniqueLibrary/Standard/unlit.pixel.hlsl"
 
 #define ILLUM_TECH "xleres/TechniqueLibrary/Config/Illum.tech"
 #define UNLIT_TECH "xleres/TechniqueLibrary/Config/Legacy/Unlit.tech"
@@ -23,6 +23,9 @@
 #define BASIC_COMPUTE_HLSL "xleres/TechniqueLibrary/Basic/basic.compute.hlsl"
 #define BASIC_GEO_HLSL "xleres/TechniqueLibrary/Basic/basic.geo.hlsl"
 #define BASIC_PIXEL_HLSL "xleres/TechniqueLibrary/Basic/basic.pixel.hlsl"
+
+#define NO_PATCHES_VERTEX_HLSL "xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl"
+#define NO_PATCHES_PIXEL_HLSL "xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl"
 
 #define CASCADE_VIS_HLSL "xleres/deferred/debugging/cascadevis.pixel.hlsl"
 #define HIGHLIGHT_VIS_PIXEL_HLSL "xleres/TechniqueLibrary/ToolsRig/Vis/HighlightVis.pixel.hlsl"

@@ -25,7 +25,7 @@
 #include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/CommonResources.hlsl"
 #include "../../Math/perlinnoise.hlsl"
-#include "xlres/Forward/resolvefog.hlsl"
+#include "../Lighting/resolvefog.hlsl"
 
 #if !defined(SHALLOW_WATER_TILE_DIMENSION)
 	#define SHALLOW_WATER_TILE_DIMENSION 32

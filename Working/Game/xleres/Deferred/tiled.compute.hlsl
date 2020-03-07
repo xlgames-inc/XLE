@@ -33,7 +33,7 @@ cbuffer LightCulling : register(b2)
 }
 
 #include "../TechniqueLibrary/Math/TransformAlgorithm.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../TechniqueLibrary/Profiling/Metrics.hlsl"
 
 #if MSAA_SAMPLES > 1

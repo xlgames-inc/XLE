@@ -57,12 +57,12 @@ namespace UnitTests
 		std::make_pair(
 			"outergraph.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
-				import texture = "xleres/Nodes/Texture.sh"
+				import templates = "xleres/Nodes/Templates.hlsl"
+				import texture = "xleres/Nodes/Texture.hlsl"
 				import gbuffer = "xleres/gbuffer.h"
 
 				auto deferred_pass_main(
-					VSOutput geo,
+					VSOUT geo,
 					graph<templates::EarlyRejectionTest> rejectionTest,
 					graph<templates::PerPixel> perPixel)
 				{
@@ -85,11 +85,11 @@ namespace UnitTests
 		std::make_pair(
 			"perpixel.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
-				import output = "xleres/Nodes/Output.sh"
-				import materialParam = "xleres/Nodes/MaterialParam.sh"
+				import templates = "xleres/Nodes/Templates.hlsl"
+				import output = "xleres/Nodes/Output.hlsl"
+				import materialParam = "xleres/Nodes/MaterialParam.hlsl"
 
-				auto Default_PerPixel(VSOutput geo) implements templates::PerPixel
+				auto Default_PerPixel(VSOUT geo) implements templates::PerPixel
 				{
 					return output::Output_PerPixel(
 						diffuseAlbedo:"float3(1,1,1)",
@@ -104,7 +104,7 @@ namespace UnitTests
 			)--")),
 
 		std::make_pair(
-			"shader_with_selectors.psh",
+			"shader_with_selectors.pixel.hlsl",
 			::Assets::AsBlob(R"--(
 				#include "xleres/MainGeometry.h"
 				#include "xleres/CommonResources.h"
@@ -124,7 +124,7 @@ namespace UnitTests
 					return result;
 				}
 
-				GBufferValues PerPixel(VSOutput geo)
+				GBufferValues PerPixel(VSOUT geo)
 				{
 					GBufferValues result = GBufferValues_Default();
 					result.material = DefaultMaterialValues();
@@ -150,21 +150,21 @@ namespace UnitTests
 		std::make_pair(
 			"shader_with_selectors_adapter.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
-				import output = "xleres/Nodes/Output.sh"
-				import materialParam = "xleres/Nodes/MaterialParam.sh"
-				import shader = "ut-data/shader_with_selectors.psh"
+				import templates = "xleres/Nodes/Templates.hlsl"
+				import output = "xleres/Nodes/Output.hlsl"
+				import materialParam = "xleres/Nodes/MaterialParam.hlsl"
+				import shader = "ut-data/shader_with_selectors.pixel.hlsl"
 
-				GBufferValues Default_PerPixel(VSOutput geo) implements templates::PerPixel
+				GBufferValues Default_PerPixel(VSOUT geo) implements templates::PerPixel
 				{
 					return shader::PerPixel(geo:geo).result;
 				}
 			)--")),
 
-		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example-perpixel.pixel.hlsl", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
-		std::make_pair("internalShaderFile.psh", ::Assets::AsBlob(s_internalShaderFile)),
+		std::make_pair("internalShaderFile.pixel.hlsl", ::Assets::AsBlob(s_internalShaderFile)),
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
 	};
 
@@ -277,14 +277,14 @@ namespace UnitTests
 			{
 				const char* dependenciesToCheck[] = {
 					"ut-data/shader_with_selectors_adapter.graph",		// root graph
-					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
-					"ut-data/shader_with_selectors.psh",				// shader directly imported by root graph
+					"xleres/Nodes/Templates.hlsl",						// import into root graph, used only by "implements" part of signature
+					"ut-data/shader_with_selectors.pixel.hlsl",				// shader directly imported by root graph
 					"xleres/gbuffer.h",									// 1st level include from shader
 					"xleres/Binding.h"									// 2nd level include from shader
 				};
 
 				const char* nonDependencies[] = {
-					"xleres/Nodes/Output.sh",				// imported but not used
+					"xleres/Nodes/Output.hlsl",				// imported but not used
 					"ut-data/complicated.graph",			// not even referenced
 					"shader_with_selectors_adapter.graph"	// incorrect path
 				};
@@ -315,7 +315,7 @@ namespace UnitTests
 					"ut-data/complicated.graph",
 					"ut-data/internalComplicatedGraph.graph",
 					"ut-data/example.graph",
-					"ut-data/example-perpixel.psh"
+					"ut-data/example-perpixel.pixel.hlsl"
 				};
 
 				const char* nonDependencies[] = {

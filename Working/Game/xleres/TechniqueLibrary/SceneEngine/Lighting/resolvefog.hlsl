@@ -6,11 +6,11 @@
 
 #if VSOUT_HAS_FOG_COLOR == 1
 
-    #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-    #include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
-    #include "../TechniqueLibrary/SceneEngine/Lighting/RangeFogResolve.hlsl"
-    #include "../TechniqueLibrary/SceneEngine/Lighting/BasicLightingEnvironment.hlsl"
-    #include "../TechniqueLibrary/SceneEngine/VolumetricEffect/resolvefog.hlsl"
+    #include "../../Framework/MainGeometry.hlsl"
+    #include "../../Framework/SystemUniforms.hlsl"
+    #include "RangeFogResolve.hlsl"
+    #include "BasicLightingEnvironment.hlsl"
+    #include "../VolumetricEffect/resolvefog.hlsl"
 
     float4 ResolveOutputFogColor(float3 localPosition, float3 localSpaceView)
     {

@@ -7,7 +7,7 @@
 #if !defined(LOAD_GBUFFER_H)
 #define LOAD_GBUFFER_H
 
-#include "../Core/gbuffer.hlsl"
+#include "../Framework/gbuffer.hlsl"
 #include "../Math/TextureAlgorithm.hlsl"
 
 Texture2D_MaybeMS<float4>		GBuffer_Diffuse		BIND_NUMERIC_T0;

@@ -9,7 +9,7 @@
 
 #include "LightingAlgorithm.hlsl"
 #include "Constants.hlsl"
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 
 cbuffer MaterialOverride : register(b9)
 {

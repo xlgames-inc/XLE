@@ -12,7 +12,7 @@
 #include "LightDesc.hlsl"
 
 #include "materialquery.hlsl"
-#include "../../Core/gbuffer.hlsl"
+#include "../../Framework/gbuffer.hlsl"
 #include "../../Math/MathConstants.hlsl"
 
 float3 LightResolve_Diffuse_NdotL(

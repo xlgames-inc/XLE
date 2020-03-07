@@ -1,21 +1,20 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../Objects/IllumShader/PerPixel.h"
-#include "../TechniqueLibrary/SceneEngine/Lighting/Forward.hlsl"
+#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/gbuffer.hlsl"
+#include "../SceneEngine/Lighting/Forward.hlsl"
+#include "../../Nodes/Templates.sh"
 
-#if !((VSOUT_HAS_TEXCOORD==1) && (MAT_ALPHA_TEST==1)) && (VULKAN!=1)
+#if (VULKAN!=1)
 	[earlydepthstencil]
 #endif
-float4 main(VSOUT geo, SystemInputs sys) : SV_Target0
+float4 frameworkEntry(VSOUT geo, SystemInputs sys) : SV_Target0
 {
 	DoAlphaTest(geo, GetAlphaThreshold());
 
-	GBufferValues sample = IllumShader_PerPixel(geo);
+	GBufferValues sample = PerPixel(geo);
 
 	float3 directionToEye = 0.0.xxx;
 	#if (VSOUT_HAS_WORLD_VIEW_VECTOR==1)
@@ -43,10 +42,7 @@ float4 main(VSOUT geo, SystemInputs sys) : SV_Target0
 	return result;
 }
 
-float4 invalid(VSOUT geo) : SV_Target0
+float4 frameworkEntryWithEarlyRejection(VSOUT geo, SystemInputs sys) : SV_Target0
 {
-	float3 color0 = float3(1.0f, 0.f, 0.f);
-	float3 color1 = float3(0.0f, 0.f, 1.f);
-	uint flag = (uint(geo.position.x/4.f) + uint(geo.position.y/4.f))&1;
-	return float4(flag?color0:color1, 1.f);
+	return 1.0.xxxx;
 }

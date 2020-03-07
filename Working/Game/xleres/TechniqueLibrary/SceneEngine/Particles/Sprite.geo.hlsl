@@ -43,11 +43,11 @@
 			;
 		output.position = mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 
-		#if VSOUT_HAS_COLOR==1
+		#if VSOUT_HAS_COLOR>=1
 			output.color 		= input[0].color;
 		#endif
 
-		#if VSOUT_HAS_TEXCOORD==1
+		#if VSOUT_HAS_TEXCOORD>=1
 					// (not tested in X3; but it theory it should look like this)
 				// output.texCoord 	= input[0].texCoord + (input[0].texCoordScale.yz*2.f-1.0.xx) * texCoords[c];
 			output.texCoord = input[0].texCoord + input[0].texCoordScale.xy * texCoords[c];

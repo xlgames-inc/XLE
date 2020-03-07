@@ -17,5 +17,5 @@
         ~Runtime
             INTERSECTION_TEST
     VertexShader=xleres/forward/illum.vertex.hlsl:main
-    GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
+    GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
     PixelShader=null

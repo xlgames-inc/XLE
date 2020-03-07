@@ -92,8 +92,16 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld) const
 	{
-		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
-		if (!generalPkt) return;
+		SimpleModelDrawable* drawables[dimof(_drawablesCount)];
+		for (unsigned c=0; c<dimof(_drawablesCount); ++c) {
+			if (!_drawablesCount[c]) {
+				drawables[c] = nullptr;
+				continue;
+			}
+			if (!pkts[c])
+				Throw(::Exceptions::BasicLabel("Drawables packet not provided for batch filter %i", c));
+			drawables[c] = pkts[c]->_drawables.Allocate<SimpleModelDrawable>(_drawablesCount[c]);
+		}
 
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
@@ -107,12 +115,11 @@ namespace RenderCore { namespace Techniques
             assert(machineOutput < _baseTransformCount);
 			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
-			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
-				auto& drawable = allocatedDrawables[d];
+				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
@@ -139,7 +146,6 @@ namespace RenderCore { namespace Techniques
             assert(machineOutput < _baseTransformCount);
 			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
-			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
@@ -149,7 +155,7 @@ namespace RenderCore { namespace Techniques
                     // index buffer and vertex buffer and topology
                     // then we just execute the draw command
 
-				auto& drawable = allocatedDrawables[d];
+				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
@@ -196,8 +202,16 @@ namespace RenderCore { namespace Techniques
 			return;
 		}
 
-		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
-		if (!generalPkt) return;
+		SimpleModelDrawable_Delegate* drawables[dimof(_drawablesCount)];
+		for (unsigned c=0; c<dimof(_drawablesCount); ++c) {
+			if (!_drawablesCount[c]) {
+				drawables[c] = nullptr;
+				continue;
+			}
+			if (!pkts[c])
+				Throw(::Exceptions::BasicLabel("Drawables packet not provided for batch filter %i", c));
+			drawables[c] = pkts[c]->_drawables.Allocate<SimpleModelDrawable_Delegate>(_drawablesCount[c]);
+		}
 
 		unsigned drawCallCounter = 0;
 		const auto& cmdStream = _modelScaffold->CommandStream();
@@ -211,12 +225,11 @@ namespace RenderCore { namespace Techniques
             assert(machineOutput < _baseTransformCount);
 			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
-			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
 
-				auto& drawable = allocatedDrawables[d];
+				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
@@ -243,7 +256,6 @@ namespace RenderCore { namespace Techniques
             assert(machineOutput < _baseTransformCount);
 			auto geoCallToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
-			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 				const auto& compiledGeoCall = geoCallIterator[drawCall._subMaterialIndex];
@@ -253,7 +265,7 @@ namespace RenderCore { namespace Techniques
                     // index buffer and vertex buffer and topology
                     // then we just execute the draw command
 
-				auto& drawable = allocatedDrawables[d];
+				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
@@ -832,6 +844,22 @@ namespace RenderCore { namespace Techniques
 					MakeIteratorRange(inputElements),
 					topology,
 					mat->_stateSet);
+
+			resultGeoCall._batchFilter = (unsigned)BatchFilter::General;
+			if (mat->_stateSet._forwardBlendOp == BlendOp::NoBlending) {
+                resultGeoCall._batchFilter = (unsigned)BatchFilter::General;
+            } else {
+                if (mat->_stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType) {
+                    switch (RenderCore::Assets::RenderStateSet::BlendType(mat->_stateSet._blendType)) {
+                    case RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal: resultGeoCall._batchFilter = (unsigned)BatchFilter::General; break;
+                    case RenderCore::Assets::RenderStateSet::BlendType::Ordered: resultGeoCall._batchFilter = (unsigned)BatchFilter::SortedBlending; break;
+                    default: resultGeoCall._batchFilter = (unsigned)BatchFilter::PostOpaque; break;
+                    }
+                } else {
+                    resultGeoCall._batchFilter = (unsigned)BatchFilter::General;
+                }
+            }
+
 			return resultGeoCall;
 		}
 	};
@@ -1004,20 +1032,41 @@ namespace RenderCore { namespace Techniques
 		}
 
 		// Check to make sure we've got a skeleton binding for each referenced geo call to world referenced
+		// Also count up the number of drawables that are going to be requires
+		static_assert(dimof(_drawablesCount) == (size_t)BatchFilter::Max);
+		XlZeroMemory(_drawablesCount);
+		auto geoCallIterator = _geoCalls.begin();
 		for (unsigned g=0; g<cmdStream.GetGeoCallCount(); g++) {
 			unsigned machineOutput = ~0u;
-			if (cmdStream.GetGeoCall(g)._transformMarker < _skeletonBinding.GetModelJointCount())
-				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetGeoCall(g)._transformMarker);
+			auto& geoCall = cmdStream.GetGeoCall(g);
+			if (geoCall._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
 			if (machineOutput >= _baseTransformCount)
 				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
+
+			auto& rawGeo = modelScaffold->ImmutableData()._geos[geoCall._geoId];
+			for (const auto&d:rawGeo._drawCalls) {
+				const auto& compiledGeoCall = geoCallIterator[d._subMaterialIndex];
+				++_drawablesCount[compiledGeoCall._batchFilter];
+			}
+			geoCallIterator += geoCall._materialCount;
 		}
 
+		geoCallIterator = _boundSkinnedControllerGeoCalls.begin();
 		for (unsigned g=0; g<cmdStream.GetSkinCallCount(); g++) {
 			unsigned machineOutput = ~0u;
-			if (cmdStream.GetSkinCall(g)._transformMarker < _skeletonBinding.GetModelJointCount())
-				machineOutput = _skeletonBinding.ModelJointToMachineOutput(cmdStream.GetSkinCall(g)._transformMarker);
+			auto& geoCall = cmdStream.GetSkinCall(g);
+			if (geoCall._transformMarker < _skeletonBinding.GetModelJointCount())
+				machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
 			if (machineOutput >= _baseTransformCount)
 				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
+
+			auto& rawGeo = modelScaffold->ImmutableData()._boundSkinnedControllers[geoCall._geoId];
+			for (const auto&d:rawGeo._drawCalls) {
+				const auto& compiledGeoCall = geoCallIterator[d._subMaterialIndex];
+				++_drawablesCount[compiledGeoCall._batchFilter];
+			}
+			geoCallIterator += geoCall._materialCount;
 		}
 
 		_depVal = std::make_shared<::Assets::DependencyValidation>();

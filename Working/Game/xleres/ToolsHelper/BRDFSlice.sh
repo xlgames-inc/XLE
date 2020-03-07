@@ -8,7 +8,7 @@
 #define FORCE_GGX_REF 1
 
 #include "../TechniqueLibrary/Math/MathConstants.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../TechniqueLibrary/SceneEngine/Lighting/DirectionalResolve.hlsl"
 #include "../TechniqueLibrary/Utility/Colour.hlsl"
 

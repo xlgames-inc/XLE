@@ -37,44 +37,44 @@ namespace UnitTests
 	// The following data is mounted as virtual files in the folder "ut-data"
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
 		std::make_pair(
-			"outershader.sh",
+			"outershader.hlsl",
 			::Assets::AsBlob(R"--(
-#include "ut-data/innershader.sh"
+#include "ut-data/innershader.hlsl"
 static const int NonPreprocessorLine0 = 0;
-#include "innershader.sh"					
+#include "innershader.hlsl"					
 				static const int NonPreprocessorLine1 = 0; /*
 					block comment
-				*/ #inClUdE "innershader.sh"
-				#    INCLUDE "middleshader.sh"
-	/*  */		#	INCLUDE		<middleshader.sh>			   
-		/**/	#  include<ut-data/innershader.sh>			   random trailing stuff
+				*/ #inClUdE "innershader.hlsl"
+				#    INCLUDE "middleshader.hlsl"
+	/*  */		#	INCLUDE		<middleshader.hlsl>			   
+		/**/	#  include<ut-data/innershader.hlsl>			   random trailing stuff
 			)--")),
 
 		std::make_pair(
-			"innershader.sh",
+			"innershader.hlsl",
 			::Assets::AsBlob(R"--(static const int ThisIsFromTheInnerShader = 0;)--")),
 
 		std::make_pair(
-			"middleshader.sh",
+			"middleshader.hlsl",
 			::Assets::AsBlob(R"--(
 				static const int ThisIsFromTheMiddleShader0 = 0;
-				#include "innershader.sh"
+				#include "innershader.hlsl"
 				static const int ThisIsFromTheMiddleShader1 = 0;
 			)--")),
 
 
 		std::make_pair(
-			"outershader-noincludes.sh",
+			"outershader-noincludes.hlsl",
 			::Assets::AsBlob(R"--(
-#include__ "ut-data/innershader0.sh"
-/*#include "innershader1.sh"*/					
+#include__ "ut-data/innershader0.hlsl"
+/*#include "innershader1.hlsl"*/					
 				/*
 					block comment
-				#inClUdE "innershader2.sh" */ 
-				// #    INCLUDE "innershader3.sh"
+				#inClUdE "innershader2.hlsl" */ 
+				// #    INCLUDE "innershader3.hlsl"
 				// extended line comment \
-	/*  */		#	INCLUDE		<innershader4.sh>			   
-		// /**/	#  include<ut-data/innershader5.sh>			   random trailing stuff
+	/*  */		#	INCLUDE		<innershader4.hlsl>			   
+		// /**/	#  include<ut-data/innershader5.hlsl>			   random trailing stuff
 			)--")),
 
 		std::make_pair(
@@ -85,10 +85,10 @@ static const int NonPreprocessorLine0 = 0;
 
 				~PerPixel
 					~Inherit; xleres/Techniques/Illum.tech:Deferred
-					PixelShader=xleres/deferred/main.psh:frameworkEntry
+					PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 			)--")),
 
-		std::make_pair("example-perpixel.psh", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
+		std::make_pair("example-perpixel.pixel.hlsl", ::Assets::AsBlob(s_examplePerPixelShaderFile)),
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile))
 	};
 
@@ -141,13 +141,13 @@ static const int NonPreprocessorLine0 = 0;
 		TEST_METHOD(ExpandOutIncludes)
 		{
 			{
-				auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader.sh");
+				auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader.hlsl");
 				Assert::IsNotNull(outerShader.get());
 				Assert::AreNotEqual(outerShader->size(), (size_t)0);
 				auto expanded = ShaderSourceParser::ExpandIncludes(
 					StringSection<char>{(char*)AsPointer(outerShader->begin()), (char*)AsPointer(outerShader->end())},
-					"ut-data/outershader.sh",
-					::Assets::DefaultDirectorySearchRules("ut-data/outershader.sh"));
+					"ut-data/outershader.hlsl",
+					::Assets::DefaultDirectorySearchRules("ut-data/outershader.hlsl"));
 				Assert::AreEqual(expanded._lineMarkers.size(), (size_t)16);
 				Assert::AreEqual(expanded._processedSourceLineCount, 21u);
 			}
@@ -156,13 +156,13 @@ static const int NonPreprocessorLine0 = 0;
 				// In the following test, none of the #include statements should actually be followed
 				// We will probably get an exception if they are (inside the files don't exist).
 				// But we can also check the output
-				auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader-noincludes.sh");
+				auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader-noincludes.hlsl");
 				Assert::IsNotNull(outerShader.get());
 				Assert::AreNotEqual(outerShader->size(), (size_t)0);
 				auto expanded = ShaderSourceParser::ExpandIncludes(
 					StringSection<char>{(char*)AsPointer(outerShader->begin()), (char*)AsPointer(outerShader->end())},
-					"ut-data/outershader.sh",
-					::Assets::DefaultDirectorySearchRules("ut-data/outershader-noincludes.sh"));
+					"ut-data/outershader.hlsl",
+					::Assets::DefaultDirectorySearchRules("ut-data/outershader-noincludes.hlsl"));
 				Assert::AreEqual(expanded._lineMarkers.size(), (size_t)1);	// one straight block of text, no includes are followed
 			}
 		}
@@ -174,6 +174,21 @@ static const int NonPreprocessorLine0 = 0;
 					#if defined(THIRD_SELECTOR)
 					#endif
 				#endif
+
+				#if defined(SELECTOR_0) || defined(SELECTOR_1)
+					#define SECONDARY_DEFINE
+				#endif
+
+				#if defined(SECONDARY_DEFINE) && defined(DEPENDENT_SELECTOR)
+				#endif
+
+				#if defined(SELECTOR_3) && defined(SELECTOR_4)
+					#define SECONDARY_DEFINE_2 1
+				#endif
+
+				#if (SECONDARY_DEFINE_2 == 1) && defined(DEPENDENT_SELECTOR_2)
+				#endif
+
 			)--";
 			auto analysis = ShaderSourceParser::AnalyzeSelectors(exampleShader);
 			Assert::AreEqual(analysis._selectorRelevance["SOME_SELECTOR"], std::string{"1"});

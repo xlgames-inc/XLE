@@ -114,7 +114,7 @@ namespace SceneEngine
         const bool doTiledRenderingTest     = Tweakable("DoTileRenderingTest", false);
         const bool tiledBeamsTransparent    = Tweakable("TiledBeamsTransparent", false);
 
-        const bool isTransparentPass = batch == Techniques::BatchFilter::Transparent;
+        const bool isTransparentPass = batch == Techniques::BatchFilter::PostOpaque;
         if (doTiledRenderingTest && tiledBeamsTransparent == isTransparentPass) {
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
             ViewportDesc viewport = metalContext.GetBoundViewport();

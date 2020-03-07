@@ -12,7 +12,7 @@
 #include "../../Math/MathConstants.hlsl"
 #include "../../Math/ProjectionMath.hlsl"
 
-#include "../Terrain.hlsl"
+#include "../Terrain/Terrain.hlsl"
 #include "../../Math/perlinnoise.hlsl"
 #include "xleres/Objects/Terrain/TerrainGenerator.hlsl"
 
@@ -245,7 +245,7 @@ float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
 	#endif
 
 	float2 tc0 = 0.0.xx, tc1 = 0.0.xx, tc2 = 0.0.xx;
-	#if (VSOUT_HAS_TEXCOORD==1)
+	#if (VSOUT_HAS_TEXCOORD>=1)
 		tc0 = input[0].texCoord.xy;
 		tc1 = input[1].texCoord.xy;
 		tc2 = input[2].texCoord.xy;

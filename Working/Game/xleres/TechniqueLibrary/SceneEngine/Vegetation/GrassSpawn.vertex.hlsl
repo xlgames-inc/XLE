@@ -6,8 +6,8 @@
 
 #define GEO_HAS_TEXCOORD 1
 
-#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
+#include "../../Framework/MainGeometry.hlsl"
 
 VSOUT main(VSIN input)
 {

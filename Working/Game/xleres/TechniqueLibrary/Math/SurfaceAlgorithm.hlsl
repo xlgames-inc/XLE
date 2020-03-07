@@ -9,15 +9,21 @@
 
 #include "../Framework/SystemUniforms.hlsl"
 
-struct TangentFrameStruct
+struct CompressedTangentFrame
+{
+	float3 basisVector0, basisVector1;
+	float handiness;
+};
+
+struct TangentFrame
 {
     float3 tangent, bitangent, normal;
     float handiness;
 };
 
-TangentFrameStruct BuildTangentFrame(float3 tangent, float3 bitangent, float3 normal, float handiness)
+TangentFrame BuildTangentFrame(float3 tangent, float3 bitangent, float3 normal, float handiness)
 {
-    TangentFrameStruct result;
+    TangentFrame result;
     result.tangent = tangent;
     result.bitangent = bitangent;
     result.normal = normal;
@@ -67,7 +73,7 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 }
 
 float3 NormalMapAlgorithm(  Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap,
-                            float2 texCoord, TangentFrameStruct tangentFrame)
+                            float2 texCoord, TangentFrame tangentFrame)
 {
     row_major float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
     float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);

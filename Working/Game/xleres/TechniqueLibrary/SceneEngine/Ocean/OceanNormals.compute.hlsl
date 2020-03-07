@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Ocean.hlsl"
-#include "../TechniqueLibrary/Core/gbuffer.hlsl"
+#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../TechniqueLibrary/Math/Misc.hlsl"
 
 RWTexture2D<uint4>	OutputNormalsTexture;

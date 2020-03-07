@@ -4,8 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../../Framework/SystemUniforms.hlsl"
+#include "../../Framework/MainGeometry.hlsl"
 
 #if GEO_HAS_INSTANCE_ID==1
     struct InstanceDef

@@ -418,25 +418,24 @@ namespace SceneEngine
 
         switch (filter) {
         case BF::General:
-        case BF::PreDepth:
             {
                 static DelayStep result[] { DelayStep::OpaqueRender };
                 return MakeIteratorRange(result);
             }
 
-        case BF::Transparent:
+        case BF::PostOpaque:
             {
                 static DelayStep result[] { DelayStep::PostDeferred };
                 return MakeIteratorRange(result);
             }
         
-        case BF::TransparentPreDepth:
+        case BF::PreDepth:
             {
                 static DelayStep result[] { DelayStep::PostDeferred, DelayStep::SortedBlending };
                 return MakeIteratorRange(result);
             }
         
-        case BF::OITransparent:
+        case BF::SortedBlending:
             {
                 static DelayStep result[] { DelayStep::SortedBlending };
                 return MakeIteratorRange(result);
