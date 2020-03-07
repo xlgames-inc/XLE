@@ -141,6 +141,10 @@ namespace LevelEditorXLE.Terrain
             _nativeManip.Render(context); 
         }
 
+        public void RenderPostProcessing(object context, ViewControl vc)
+        {
+        }
+
         public bool ClearBeforeDraw() { return false; }
 
         public Control GetHoveringControl()

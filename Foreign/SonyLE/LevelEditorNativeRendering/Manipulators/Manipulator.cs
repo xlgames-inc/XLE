@@ -36,6 +36,7 @@ namespace RenderingInterop
             return ManipulatorPickResult.DeferredBeginDrag;
         }
         public abstract void Render(object context, ViewControl vc);
+        public abstract void RenderPostProcessing(object context, ViewControl vc);
         public abstract void OnBeginDrag(ViewControl vc, Point scrPt);
         public abstract void OnDragging(ViewControl vc, Point scrPt);
         public abstract void OnEndDrag(ViewControl vc, Point scrPt);

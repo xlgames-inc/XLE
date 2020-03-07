@@ -87,7 +87,7 @@ namespace ToolsRig
 	class TechniqueBox
 	{
 	public:
-		std::shared_ptr<Techniques::TechniqueSetFile> _techniqueSetFile;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
 
@@ -125,6 +125,34 @@ namespace ToolsRig
             highlight.FinishWithOutline(threadContext, Float3(.65f, .8f, 1.5f));
         CATCH_ASSETS_END(parserContext)
     }
+
+	void Placements_RenderHighlightWithOutlineAndOverlay(
+        RenderCore::IThreadContext& threadContext,
+        Techniques::ParsingContext& parserContext,
+        SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
+		const SceneEngine::PlacementGUID* filterBegin,
+        const SceneEngine::PlacementGUID* filterEnd,
+        uint64 materialGuid)
+    {
+		CATCH_ASSETS_BEGIN
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
+			RenderCore::Techniques::SequencerContext seqContext;
+			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
+				highlight.GetFrameBufferDesc());
+			seqContext._sequencerConfig = sequencerCfg.get();
+            Placements_RenderFiltered(
+                threadContext, parserContext, 
+				seqContext,
+                renderer, cellSet, filterBegin, filterEnd, materialGuid);
+
+			const Float3 highlightCol(.75f, .8f, 0.4f);
+            const unsigned overlayCol = 2;
+
+            highlight.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
+        CATCH_ASSETS_END(parserContext)
+	}
 
     void Placements_RenderShadow(
         RenderCore::IThreadContext& threadContext,

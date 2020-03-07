@@ -179,6 +179,8 @@ namespace RenderingInterop
             Util3D.DrawCube(context, xform, zcolor);
         }
 
+        public override void RenderPostProcessing(object context, ViewControl vc) { }
+
         public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             m_activeOp = null;

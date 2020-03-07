@@ -316,19 +316,12 @@ namespace GUILayer
         {
             auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
-                CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetFrameBufferPool(), context->GetParsingContext().GetNamedResources());
-                    ToolsRig::Placements_RenderFiltered(
-                        threadContext, context->GetParsingContext(), 
-						{}, // RenderCore::Techniques::TechniqueIndex::Forward,
-                        renderer->GetNative(), placements->GetNative().GetCellSet(), 
-                        nullptr, nullptr, materialGuid);
 
-                    const Float3 highlightCol(.75f, .8f, 0.4f);
-                    const unsigned overlayCol = 2;
-
-					highlightRenderer.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
-                CATCH_ASSETS_END(context->GetParsingContext())
+				ToolsRig::Placements_RenderHighlight(
+                    threadContext, context->GetParsingContext(), 
+                    renderer->GetNative(), placements->GetNative().GetCellSet(),
+					nullptr, nullptr,
+                    materialGuid);
 
             } else {
                 if (highlight->IsEmpty()) return;
@@ -362,19 +355,23 @@ namespace GUILayer
 			const GUILayer::RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override
         {
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
-            auto context = gcnew GUILayer::SimpleRenderingContext(&threadContext, RetainedResources, &parserContext);
-            try
-            {
-                OnRender(context);
-            }
-            finally
-            {
-                delete context;
-            }
+			auto context = gcnew GUILayer::SimpleRenderingContext(&threadContext, RetainedResources, &parserContext);
+			try
+			{
+				{
+					auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
+					OnRender(context);
+				}
+				OnRenderPostProcess(context);
+			}
+			finally
+			{
+				delete context;
+			}
         }
 
         event RenderCallback^ OnRender;
+		event RenderCallback^ OnRenderPostProcess;
         property GUILayer::RetainedRenderResources^ RetainedResources;
     };
 

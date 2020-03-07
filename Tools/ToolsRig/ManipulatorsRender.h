@@ -31,6 +31,15 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd = nullptr,
         uint64 materialGuid = ~0ull);
 
+	void Placements_RenderHighlightWithOutlineAndOverlay(
+        RenderCore::IThreadContext& threadContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::PlacementsRenderer& renderer,
+        const SceneEngine::PlacementCellSet& cellSet,
+		const SceneEngine::PlacementGUID* filterBegin = nullptr,
+        const SceneEngine::PlacementGUID* filterEnd = nullptr,
+        uint64 materialGuid = ~0ull);
+
     void Placements_RenderFiltered(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,

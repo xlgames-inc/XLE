@@ -46,6 +46,7 @@ namespace RenderingInterop
 
             Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderManipulators(context, designView));
             Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderExtras(context, designView));
+            Adapter.AddNonRenderPassCallback((GUILayer.SimpleRenderingContext context) => RenderManipulatorsPostProcess(context, designView));
         }
 
         public ulong SurfaceId
@@ -363,6 +364,15 @@ namespace RenderingInterop
             }
 
             mani.Render(context, this);
+        }
+
+        private void RenderManipulatorsPostProcess(GUILayer.SimpleRenderingContext context, DesignView designView)
+        {
+            var mani = designView.Manipulator;
+            if (mani == null) return;
+
+            var extra = mani as IManipulatorExtra;
+            mani.RenderPostProcessing(context, this);
         }
 
         private void RenderExtras(GUILayer.SimpleRenderingContext context, DesignView designView)

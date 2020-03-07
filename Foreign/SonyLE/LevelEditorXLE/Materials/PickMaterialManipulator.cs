@@ -86,7 +86,9 @@ namespace LevelEditorXLE.Materials
 
         public void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
 
-        public void Render(object opaqueContext, ViewControl vc)
+        public void Render(object opaqueContext, ViewControl vc) { }
+
+        public void RenderPostProcessing(object opaqueContext, ViewControl vc)
         {
             if (m_highlightMaterialGUID == ~0ul) return;
 

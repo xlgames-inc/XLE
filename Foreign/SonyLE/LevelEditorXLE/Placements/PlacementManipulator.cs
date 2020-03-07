@@ -41,6 +41,10 @@ namespace LevelEditorXLE.Placements
             _nativeManip.Render(context); 
         }
 
+        public void RenderPostProcessing(object context, ViewControl vc)
+        {
+        }
+
         public ManipulatorInfo ManipulatorInfo
         {
             get

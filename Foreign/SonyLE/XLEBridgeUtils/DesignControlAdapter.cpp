@@ -115,6 +115,11 @@ namespace XLEBridgeUtils
             _manipulatorOverlay->OnRender += callback;
         }
 
+		void AddNonRenderPassCallback(GUILayer::RenderCallback^ callback)
+        {
+            _manipulatorOverlay->OnRenderPostProcess += callback;
+        }
+
         property GUILayer::EditorSceneManager^ SceneManager {
             virtual GUILayer::EditorSceneManager^ get() { return _sceneManager; }
         }

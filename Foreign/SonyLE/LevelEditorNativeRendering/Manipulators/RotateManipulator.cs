@@ -152,6 +152,8 @@ namespace RenderingInterop
             Util3D.DrawRing(context, xform, lColor);
         }
 
+        public override void RenderPostProcessing(object context, ViewControl vc) { }
+
         public override void OnBeginDrag(ViewControl vc, Point scrPt)
         {
             if (m_hitRegion == HitRegion.None)

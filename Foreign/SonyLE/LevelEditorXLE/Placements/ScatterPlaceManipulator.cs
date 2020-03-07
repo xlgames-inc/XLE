@@ -339,6 +339,10 @@ namespace LevelEditorXLE.Placements
             }
         }
 
+        public void RenderPostProcessing(object context, ViewControl vc)
+        {
+        }
+
         public System.Windows.Forms.Control GetHoveringControl() { return null; }
         public event System.EventHandler OnHoveringControlChanged;
 

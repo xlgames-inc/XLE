@@ -24,6 +24,7 @@ namespace LevelEditorCore
         /// <summary>
         /// Render manipulator.</summary>
         void Render(object context, ViewControl vc);
+        void RenderPostProcessing(object context, ViewControl vc);
 
         /// <summary>
         /// Begin drag
