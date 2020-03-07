@@ -47,7 +47,8 @@ namespace LevelEditorXLE
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
-                typeof(ControlsLibraryExt.Material.ActiveMaterialContext), 
+                typeof(ControlsLibraryExt.Material.ActiveMaterialContext),
+                typeof(ControlsLibraryExt.Material.MatTab),
                 typeof(Materials.PickMaterialManipulator),
 
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)

@@ -25,13 +25,6 @@ namespace XLEBridgeUtils
                 // Using the C++ layer give us a little more flexibility. 
             if (name->Length < 2) return false;
 
-            /*if (name->Equals("TechniqueConfig")) {
-                if (type != String::typeid)
-                    return false;
-                result = _material->TechniqueConfig;
-                return true;
-            }*/
-
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;
             if (name[0] == 'C' && name[1] == '-') {
@@ -40,7 +33,9 @@ namespace XLEBridgeUtils
                 list = _material->MaterialParameterBox;
             } else if (name[0] == 'R' && name[1] == '-') {
                 list = _material->ResourceBindings;
-            }
+            } else {
+				return false;
+			}
 
             for each(auto v in list) {
                 if (String::Compare(cName, v->Name) == 0) {
@@ -78,13 +73,6 @@ namespace XLEBridgeUtils
 
         virtual bool TrySetMember(String^ name, bool caseInsensitive, Object^ value)
         {
-            /*if (name->Equals("TechniqueConfig")) {
-                String^ input = dynamic_cast<String^>(value);
-                if (!input) return false;
-                _material->TechniqueConfig = input;
-                return true;
-            }*/
-
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;
             if (name[0] == 'C' && name[1] == '-') {
@@ -93,7 +81,9 @@ namespace XLEBridgeUtils
                 list = _material->MaterialParameterBox;
             } else if (name[0] == 'R' && name[1] == '-') {
                 list = _material->ResourceBindings;
-            }
+            } else {
+				return false;
+			}
 
             for each(auto v in list) {
                 if (String::Compare(cName, v->Name) == 0) {

@@ -354,7 +354,7 @@ namespace RenderCore { namespace Techniques
 		return Techniques::DrawableGeo::VertexStream { LoadVertexBuffer(modelScaffold, vertices ) };
 	}
 
-	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() const { return _modelScaffold->GetDependencyValidation(); }
+	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() const { return _depVal; }
 
 	namespace Internal
 	{
@@ -1019,6 +1019,10 @@ namespace RenderCore { namespace Techniques
 			if (machineOutput >= _baseTransformCount)
 				Throw(std::runtime_error("Geocall to world unbound in skeleton binding"));
 		}
+
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterAssetDependency(_depVal, _modelScaffold->GetDependencyValidation());
+		::Assets::RegisterAssetDependency(_depVal, _materialScaffold->GetDependencyValidation());
 	}
 
 	SimpleModelRenderer::~SimpleModelRenderer() {}

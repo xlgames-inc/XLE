@@ -274,6 +274,29 @@ namespace SceneEngine
 		return sequencer;
 	}
 
+	class ModelIntersectionTechniqueBox
+	{
+	public:
+		FrameBufferDesc _fbDesc;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _techniqueSetFile->GetDependencyValidation(); }
+
+		struct Desc {};
+		ModelIntersectionTechniqueBox(const Desc& desc)
+		{
+			_techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+			_techniqueSharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+			_forwardIllumDelegate = CreateTechniqueDelegate(_techniqueSetFile, _techniqueSharedResources);
+
+			std::vector<SubpassDesc> subpasses;
+			subpasses.emplace_back(SubpassDesc{});
+			_fbDesc  = FrameBufferDesc { {}, std::move(subpasses) };
+		}
+	};
+
     ModelIntersectionStateContext::ModelIntersectionStateContext(
         TestType testType,
         RenderCore::IThreadContext& threadContext,
@@ -335,16 +358,10 @@ namespace SceneEngine
 			metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
 		#endif
 
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
-		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
-		auto techDelegate = CreateTechniqueDelegate(techniqueSetFile, sharedResources);
-
-		std::vector<SubpassDesc> subpasses;
-		subpasses.emplace_back(SubpassDesc{});
-		FrameBufferDesc fbDesc { {}, std::move(subpasses) };
+		auto& box = ConsoleRig::FindCachedBoxDep2<ModelIntersectionTechniqueBox>();
 		_pimpl->_sequencerConfig = parsingContext._pipelineAcceleratorPool->CreateSequencerConfig(
-			techDelegate,
-			{}, fbDesc);
+			box._forwardIllumDelegate,
+			{}, box._fbDesc);
 
 		// metalContext.Bind(_pimpl->_res->_dds);
 		// metalContext.Bind(_pimpl->_res->_rs);

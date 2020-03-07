@@ -139,6 +139,8 @@ namespace RenderCore { namespace Techniques
 		std::string _modelScaffoldName;
 		std::string _materialScaffoldName;
 
+		::Assets::DepValPtr _depVal;
+
 		class GeoCallBuilder;
 	};
 

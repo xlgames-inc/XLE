@@ -457,9 +457,13 @@ namespace RenderCore { namespace Assets
                 char finalLogFileName[MaxPath];
                 c->_shaderCacheSet->MakeIntermediateName(finalLogFileName, dimof(finalLogFileName), logFileName.AsStringSection());
                 RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(finalLogFileName).DriveAndPath());
-                auto file = ::Assets::MainFileSystem::OpenFileInterface(finalLogFileName, "wb");
-                file->Write(errors->data(), errors->size());
-                Log(Error) << "Debug log written to " << logFileName.get() << std::endl;
+                std::unique_ptr<::Assets::IFileInterface> file;
+				if (::Assets::MainFileSystem::TryOpen(file, finalLogFileName, "wb") == ::Assets::MainFileSystem::IOReason::Success) {
+					file->Write(errors->data(), errors->size());
+					Log(Error) << "Debug log written to " << logFileName.get() << std::endl;
+				} else {
+					Log(Error) << "Failed to write debug log to " << logFileName.get() << std::endl;
+				}
             }
 
                 // Create the artifact and add it to the compile marker

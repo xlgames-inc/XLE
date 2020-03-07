@@ -50,6 +50,7 @@ namespace RenderCore { namespace Techniques
 		InputStreamFormatter<utf8>& input, 
 		const ::Assets::DirectorySearchRules&, 
 		const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
 	{
 		Document<InputStreamFormatter<utf8>> dom(input);
 		auto colorSpace = dom.FirstChild().Attribute(u("colorSpace"));
