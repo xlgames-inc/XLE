@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="..\AmbientOcclusion.cpp" />
     <ClCompile Include="..\CloudsForm.cpp" />
+    <ClCompile Include="..\CommonTechniqueDelegates.cpp" />
     <ClCompile Include="..\DepthWeightedTransparency.cpp" />
     <ClCompile Include="..\DualContour.cpp" />
     <ClCompile Include="..\DualContourRender.cpp" />
@@ -197,6 +198,7 @@
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h" />
     <ClInclude Include="..\CloudsForm.h" />
+    <ClInclude Include="..\CommonTechniqueDelegates.h" />
     <ClInclude Include="..\DepthWeightedTransparency.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DualContour.h" />

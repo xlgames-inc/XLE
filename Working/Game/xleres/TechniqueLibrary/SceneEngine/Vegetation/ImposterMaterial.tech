@@ -35,6 +35,6 @@
     ~Parameters
         ~Geometry
             VSOUT_HAS_WORLD_POSITION=1
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
     PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:main

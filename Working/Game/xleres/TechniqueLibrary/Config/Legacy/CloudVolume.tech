@@ -11,7 +11,7 @@
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/illum.pixel.hlsl:main
 ~DepthOnly
 ~Deferred
@@ -41,7 +41,7 @@
     PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
 ~OrderIndependentTransparency
     ~Parameters
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/transparency/cloudvolume.pixel.hlsl:main
 ~PrepareVegetationSpawn
 ~RayTest
@@ -50,6 +50,6 @@
     ~Parameters
         ~Geometry
             VSOUT_HAS_WORLD_POSITION=1
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
     PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:blend

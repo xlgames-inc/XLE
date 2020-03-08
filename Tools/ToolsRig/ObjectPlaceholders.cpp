@@ -36,6 +36,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../xleres/FileList.h"
 
 namespace ToolsRig
 {
@@ -299,6 +300,7 @@ namespace ToolsRig
 			}
 	}
 
+#if 0
 	static void DrawGenObject(
 		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
 		const ObjectParams& params,
@@ -322,6 +324,7 @@ namespace ToolsRig
 			devContext.Draw(visBox._cubeVBCount);
 		}
 	}
+#endif
 
     static void DrawTriMeshMarker(
         Metal::DeviceContext& devContext,
@@ -389,7 +392,7 @@ namespace ToolsRig
     {
         auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
 
-		const auto* baseTechnique = "xleres/techniques/illum.tech";
+		const auto* baseTechnique = ILLUM_LEGACY_TECH;
 		if (Tweakable("DrawMarkers", true)) {
 
 			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 
@@ -409,10 +412,11 @@ namespace ToolsRig
 				}
 			}
 
+#if 0		// disabled because arealight.tech is deprecated
 			if (!_areaLightAnnotation.empty()) {
-				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
-				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
-				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech");
+				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
+				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
+				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
 				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
 					auto objects = _objects->FindEntitiesOfType(a->_typeId);
 					for (const auto&o : objects) {
@@ -433,10 +437,11 @@ namespace ToolsRig
 					}
 				}
 			}
+#endif
 
 		}
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker.tech");
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, MESH_MARKER_TECH);
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);

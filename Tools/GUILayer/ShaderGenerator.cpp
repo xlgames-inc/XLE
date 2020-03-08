@@ -119,7 +119,7 @@ namespace GUILayer
 
 				// Many node graphs need the world position as input. Ideally we would be able to detect
 				// this directly from the graph structure -- but until then, we'll just have to force it on
-				str << "OUTPUT_WORLD_POSITION=1;";
+				str << "VSOUT_HAS_WORLD_POSITION=1;";
 
 				definesTable = str.str();
 			}
@@ -418,7 +418,7 @@ namespace GUILayer
 
 				sw->WriteLine();
 				sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
-				sw->Write("~Inherit; xleres/techniques/illum.tech"); sw->WriteLine();
+				sw->Write("~Inherit; xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.tech"); sw->WriteLine();
 
 				WriteTechniqueConfigSection(sw, "Forward", "forward_main", context->ShaderParameters);
 				WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);

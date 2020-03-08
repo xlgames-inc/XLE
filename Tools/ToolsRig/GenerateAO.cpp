@@ -177,7 +177,7 @@ namespace ToolsRig
         Techniques::ParsingContext parserContext(techniqueContext);
 		parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
         parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
-        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
+        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"VSOUT_HAS_SHADOW_PROJECTION_COUNT", 5u);
 
         SceneEngine::SetFrameGlobalStates(metalContext);
 

@@ -44,14 +44,14 @@ VSShadowOutput main(VSIN input)
 
 	result.shadowFrustumFlags = 0;
 
-	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), OUTPUT_SHADOW_PROJECTION_COUNT);
+	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), VSOUT_HAS_SHADOW_PROJECTION_COUNT);
 
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 		result.position = float4(worldPosition.xyz, 1);
 
-		#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
+		#if (VSOUT_HAS_SHADOW_PROJECTION_COUNT>0)
 			for (uint c=0; c<count; ++c) {
 				float4 p = ShadowProjection_GetOutput(worldPosition, c, GetShadowCascadeMode());
 				bool	left	= p.x < -p.w,

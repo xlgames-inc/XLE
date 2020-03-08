@@ -36,14 +36,14 @@
 #endif
 
 static const char* s_colorFromSelectorShaderFile = R"--(
-	#include "xleres/MainGeometry.h"
-	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
+	#include "xleres/Nodes/Templates.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{
 		GBufferValues result = GBufferValues_Default();
-		#if (OUTPUT_TEXCOORD==1)
+		#if (VSOUT_HAS_TEXCOORD>=1)
 			#if defined(COLOR_RED)
 				result.diffuseAlbedo = float3(1,0,0);
 			#elif defined(COLOR_GREEN)

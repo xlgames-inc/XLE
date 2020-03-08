@@ -1,21 +1,26 @@
 ~Illum
-    ~Inherit; shared.tech:System
-    ~Parameters
-        ~Geometry
-            GEO_HAS_TEXCOORD
-            VSOUT_HAS_WORLD_VIEW_VECTOR=1
-            VSOUT_HAS_WORLD_POSITION=1
-        ~Runtime
-            BASIC_LIGHT_COUNT=1
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    ~Inherit; ../shared.tech:System
+    ~Selectors
+		GEO_HAS_TEXCOORD
+		VSOUT_HAS_WORLD_VIEW_VECTOR=1
+		VSOUT_HAS_WORLD_POSITION=1
+		BASIC_LIGHT_COUNT=1
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
     PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:marker
 ~RayTest
-    ~Parameters
-        ~Geometry
-            VSOUT_HAS_WORLD_POSITION=1
-        ~Runtime
-            INTERSECTION_TEST
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    ~Selectors
+		VSOUT_HAS_WORLD_POSITION=1
+		INTERSECTION_TEST
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
     PixelShader=null
+
+~Technique
+	Forward = Illum
+	RayTest = RayTest
+
+	CBLayout = <:(
+		float3  MaterialDiffuse = {1.f,1.f,1.f}c;
+		float   Opacity = 1;
+	):>

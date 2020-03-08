@@ -66,7 +66,7 @@ namespace MaterialTool
             _type.SelectedIndex = diagContext.HasTechniqueConfig ? 1 : 0;
             _needsWorldPosition.CheckState = CheckState.Unchecked;
             foreach (var i in diagContext.ShaderParameters)
-                if (i.Key.Equals("OUTPUT_WORLD_POSITION"))
+                if (i.Key.Equals("VSOUT_HAS_WORLD_POSITION"))
                     _needsWorldPosition.CheckState = CheckState.Checked;
             _previewModel.Text = diagContext.PreviewModelFile;
 
@@ -83,9 +83,9 @@ namespace MaterialTool
             var diagContext = _context.GraphMetaData;
             diagContext.HasTechniqueConfig = _type.SelectedIndex == 1;
             if (_needsWorldPosition.CheckState == CheckState.Checked)
-                diagContext.ShaderParameters["OUTPUT_WORLD_POSITION"] = "1";
+                diagContext.ShaderParameters["VSOUT_HAS_WORLD_POSITION"] = "1";
             else
-                diagContext.ShaderParameters.Remove("OUTPUT_WORLD_POSITION");
+                diagContext.ShaderParameters.Remove("VSOUT_HAS_WORLD_POSITION");
 
             diagContext.PreviewModelFile = _previewModel.Text;
 

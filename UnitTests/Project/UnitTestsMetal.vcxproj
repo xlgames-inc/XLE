@@ -140,6 +140,7 @@
     <ClInclude Include="..\InputLayoutShaders_HLSL.h" />
     <ClInclude Include="..\InputLayoutShaders_MSL.h" />
     <ClInclude Include="..\MetalUnitTest.h" />
+    <ClInclude Include="..\ReusableDataFiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

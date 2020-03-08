@@ -148,7 +148,7 @@ namespace SceneEngine
                 definesBuffer);
         } else {
             assert(desc._geoType == HalfCube);
-            _snprintf_s(definesBuffer, _TRUNCATE, "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;SKY_PROJECTION=2;BLEND_FOG=%i", int(desc._blendFog));
+            _snprintf_s(definesBuffer, _TRUNCATE, "GEO_HAS_TEXCOORD=1;VSOUT_HAS_WORLD_POSITION=1;SKY_PROJECTION=2;BLEND_FOG=%i", int(desc._blendFog));
             _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:vs_main:vs_*",
                 SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:ps_HalfCube:ps_*",
@@ -167,7 +167,7 @@ namespace SceneEngine
             _postFogShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 SCENE_ENGINE_RES "/Effects/sky.pixel.hlsl:vs_main:vs_*",
                 "game/xleres_cry/effects/skypostfog.pixel.hlsl:ps_HalfCube_PostFogPass:ps_*",
-                "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;SKY_PROJECTION=2");
+                "GEO_HAS_TEXCOORD=1;VSOUT_HAS_WORLD_POSITION=1;SKY_PROJECTION=2");
         }
 
 		UniformsStreamInterface usi;

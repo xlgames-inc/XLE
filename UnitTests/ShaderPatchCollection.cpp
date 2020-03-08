@@ -57,8 +57,8 @@ namespace UnitTests
 		std::make_pair(
 			"outergraph.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.hlsl"
-				import texture = "xleres/Nodes/Texture.hlsl"
+				import templates = "xleres/Nodes/Templates.sh"
+				import texture = "xleres/Nodes/Texture.sh"
 				import gbuffer = "xleres/gbuffer.h"
 
 				auto deferred_pass_main(
@@ -85,9 +85,9 @@ namespace UnitTests
 		std::make_pair(
 			"perpixel.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.hlsl"
-				import output = "xleres/Nodes/Output.hlsl"
-				import materialParam = "xleres/Nodes/MaterialParam.hlsl"
+				import templates = "xleres/Nodes/Templates.sh"
+				import output = "xleres/Nodes/Output.sh"
+				import materialParam = "xleres/Nodes/MaterialParam.sh"
 
 				auto Default_PerPixel(VSOUT geo) implements templates::PerPixel
 				{
@@ -130,16 +130,16 @@ namespace UnitTests
 					result.material = DefaultMaterialValues();
 
 					float4 diffuseTextureSample = 1.0.xxxx;
-					#if (OUTPUT_TEXCOORD==1) && (RES_HAS_Texture0!=0)
+					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Texture0!=0)
 						diffuseTextureSample = Texture0.Sample(MaybeAnisotropicSampler, geo.texCoord);
 						result.diffuseAlbedo = diffuseTextureSample.rgb;
 						result.blendingAlpha = diffuseTextureSample.a;
 					#endif
 
-					#if (OUTPUT_TEXCOORD==1) && (RES_HAS_Texture1!=0)
+					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Texture1!=0)
 						float3 normalMapSample = SampleNormalMap(Texture1, DefaultSampler, true, geo.texCoord);
 						result.worldSpaceNormal = normalMapSample; // TransformNormalMapToWorld(normalMapSample, geo);
-					#elif (OUTPUT_NORMAL==1)
+					#elif (VSOUT_HAS_NORMAL==1)
 						result.worldSpaceNormal = normalize(geo.normal);
 					#endif
 
@@ -150,9 +150,9 @@ namespace UnitTests
 		std::make_pair(
 			"shader_with_selectors_adapter.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.hlsl"
-				import output = "xleres/Nodes/Output.hlsl"
-				import materialParam = "xleres/Nodes/MaterialParam.hlsl"
+				import templates = "xleres/Nodes/Templates.sh"
+				import output = "xleres/Nodes/Output.sh"
+				import materialParam = "xleres/Nodes/MaterialParam.sh"
 				import shader = "ut-data/shader_with_selectors.pixel.hlsl"
 
 				GBufferValues Default_PerPixel(VSOUT geo) implements templates::PerPixel
@@ -277,10 +277,10 @@ namespace UnitTests
 			{
 				const char* dependenciesToCheck[] = {
 					"ut-data/shader_with_selectors_adapter.graph",		// root graph
-					"xleres/Nodes/Templates.hlsl",						// import into root graph, used only by "implements" part of signature
-					"ut-data/shader_with_selectors.pixel.hlsl",				// shader directly imported by root graph
-					"xleres/gbuffer.h",									// 1st level include from shader
-					"xleres/Binding.h"									// 2nd level include from shader
+					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
+					"ut-data/shader_with_selectors.pixel.sh",			// shader directly imported by root graph
+					"xleres/TechniqueLibrary/Framework/gbuffer.hlsl",	// 1st level include from shader
+					"xleres/TechniqueLibrary/Framework/Binding.hlsl"	// 2nd level include from shader
 				};
 
 				const char* nonDependencies[] = {

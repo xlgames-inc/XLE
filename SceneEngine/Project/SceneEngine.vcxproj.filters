@@ -163,6 +163,7 @@
     <ClCompile Include="..\RenderStep_Forward.cpp" />
     <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
     <ClCompile Include="..\RenderStepUtils.cpp" />
+    <ClCompile Include="..\CommonTechniqueDelegates.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -344,6 +345,7 @@
     <ClInclude Include="..\RenderStepUtils.h" />
     <ClInclude Include="..\RenderStep_PrepareShadows.h" />
     <ClInclude Include="..\RenderStep_ResolveHDR.h" />
+    <ClInclude Include="..\CommonTechniqueDelegates.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

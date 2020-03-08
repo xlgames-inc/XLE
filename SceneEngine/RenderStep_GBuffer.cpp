@@ -10,6 +10,7 @@
 #include "RenderStepUtils.h"
 #include "LightingParser.h"
 #include "LightInternal.h"
+#include "CommonTechniqueDelegates.h"
 
 #include "Ocean.h"
 #include "DeepOceanSim.h"
@@ -30,6 +31,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetTraits.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/FunctionUtils.h"
 #include "../xleres/FileList.h"
 
@@ -72,11 +74,7 @@ namespace SceneEngine
 	: _gbufferType(gbufferType)
 	, _createGBuffer(RenderCore::PipelineType::Graphics)
 	{
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
-
-		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Deferred(
-			techniqueSetFile,
-			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
+		_deferredIllumDelegate = ConsoleRig::FindCachedBoxDep2<CommonTechniqueDelegateBox>()._deferredIllumDelegate;
 
 		// This render pass will include just rendering to the gbuffer and doing the initial
         // lighting resolve.
@@ -262,13 +260,9 @@ namespace SceneEngine
 	RenderStep_PostDeferredOpaque::RenderStep_PostDeferredOpaque(bool precisionTargets)
 	: _postOpaque(RenderCore::PipelineType::Graphics)
 	{
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+		_forwardIllumDelegate = ConsoleRig::FindCachedBoxDep2<CommonTechniqueDelegateBox>()._forwardIllumDelegate_DisableDepthWrite;
 
-		_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(
-			techniqueSetFile,
-			std::make_shared<RenderCore::Techniques::TechniqueSharedResources>());
-
-        auto msDepth = _postOpaque.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
+		auto msDepth = _postOpaque.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
 		auto lightingResoolve = _postOpaque.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
 
 		SubpassDesc subpass;

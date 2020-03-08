@@ -23,7 +23,7 @@
 	//if (BackfaceSign(float4(input[0].position,1), float4(input[1].position,1), float4(input[2].position,1)) > 0)
 	//	return;
 
-	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), OUTPUT_SHADOW_PROJECTION_COUNT);
+	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), VSOUT_HAS_SHADOW_PROJECTION_COUNT);
 	for (uint c=0; c<count; ++c) {
 		#if defined(FRUSTUM_FILTER)
 			if ((FRUSTUM_FILTER & (1<<c)) == 0) {

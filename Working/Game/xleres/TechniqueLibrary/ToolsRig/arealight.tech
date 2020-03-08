@@ -188,7 +188,7 @@ VSOUT vs_main(uint vIndex : SV_VertexID)
 }
 
 /* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; xleres/techniques/illum.tech
+~Inherit; xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.tech
 ~*
     ~Parameters
         ~Material

@@ -906,7 +906,7 @@ float4 stochastic_main(VSOUT geo,
 
 
 /* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; xleres/techniques/illum.tech
+~Inherit; xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.tech
 ~Deferred
     PixelShader=<.>:deferred_main
 ~OrderIndependentTransparency

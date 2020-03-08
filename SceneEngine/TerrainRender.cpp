@@ -213,7 +213,7 @@ namespace SceneEngine
         definesBuffer << "DO_EXTRA_SMOOTHING=" << int(desc._doExtraSmoothing);
         definesBuffer << ";SOLIDWIREFRAME_TEXCOORD=" << int(isTextured);
         definesBuffer << ";DO_ADD_NOISE=" << int(desc._noisyTerrain);
-        definesBuffer << ";OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1";
+        definesBuffer << ";VSOUT_HAS_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1";
         definesBuffer << ";DRAW_WIREFRAME=" << int(desc._drawWireframe);
         definesBuffer << ";STRATA_COUNT=" << desc._strataCount;
         if (desc._encodedGradientFlags)
@@ -337,12 +337,12 @@ namespace SceneEngine
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
                     "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
                     SCENE_ENGINE_RES "/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*", 
-                    "", "OUTPUT_WORLD_POSITION=1");
+                    "", "VSOUT_HAS_WORLD_POSITION=1");
             } else {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
                     "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
                     "xleres/objects/terrain/TerrainIntersection.hlsl:gs_intersectiontest:gs_*", 
-                    "", "OUTPUT_WORLD_POSITION=1");
+                    "", "VSOUT_HAS_WORLD_POSITION=1");
             }
 
             context.Bind(*shaderProgram);

@@ -8,9 +8,9 @@
 //
 
 static const char* s_examplePerPixelShaderFile = R"--(
-	#include "xleres/MainGeometry.h"
-	#include "xleres/CommonResources.h"
-	#include "xleres/gbuffer.h"
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/CommonResources.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
 
 	Texture2D       Texture0		BIND_MAT_T0;		// Diffuse
 
@@ -24,7 +24,7 @@ static const char* s_examplePerPixelShaderFile = R"--(
 		GBufferValues result = GBufferValues_Default();
 
 		float4 diffuseTextureSample = 1.0.xxxx;
-		#if (OUTPUT_TEXCOORD==1) && (RES_HAS_Texture0!=0)
+		#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Texture0!=0)
 			diffuseTextureSample = Texture0.Sample(MaybeAnisotropicSampler, geo.texCoord);
 			result.diffuseAlbedo = diffuseTextureSample.rgb;
 			result.blendingAlpha = diffuseTextureSample.a;
@@ -37,7 +37,7 @@ static const char* s_examplePerPixelShaderFile = R"--(
 
 static const char* s_exampleGraphFile = R"--(
 	import example_perpixel = "example-perpixel.pixel.hlsl";
-	import templates = "xleres/nodes/templates.hlsl"
+	import templates = "xleres/nodes/templates.sh"
 
 	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{
@@ -49,8 +49,8 @@ static const char* s_complicatedGraphFile = R"--(
 	import simple_example = "example.graph";
 	import simple_example_dupe = "ut-data/example.graph";
 	import example_perpixel = "example-perpixel.pixel.hlsl";
-	import templates = "xleres/nodes/templates.hlsl";
-	import conditions = "xleres/nodes/conditions.hlsl";
+	import templates = "xleres/nodes/templates.sh";
+	import conditions = "xleres/nodes/conditions.sh";
 	import internalComplicatedGraph = "internalComplicatedGraph.graph";
 
 	GBufferValues Internal_PerPixel(VSOUT geo)
@@ -75,7 +75,7 @@ static const char* s_complicatedGraphFile = R"--(
 )--";
 
 static const char* s_internalShaderFile = R"--(
-	#include "xleres/MainGeometry.h"
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
 
 	bool ShouldBeRejected(VSOUT geo, float threshold)
 	{
@@ -105,16 +105,16 @@ static const char* s_basicTechniqueFile = R"--(
 
 	~Deferred_NoPatches
 		~Inherit; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
 	~Deferred_PerPixel
 		~Inherit; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
 	~Deferred_PerPixelAndEarlyRejection
 		~Inherit; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:main
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 )--";

@@ -24,8 +24,8 @@
 //	#define VSOUT_HAS_PRIMITIVE_ID 1
 //#endif
 
-#if !defined(OUTPUT_SHADOW_PROJECTION_COUNT)
-	#define OUTPUT_SHADOW_PROJECTION_COUNT 6
+#if !defined(VSOUT_HAS_SHADOW_PROJECTION_COUNT)
+	#define VSOUT_HAS_SHADOW_PROJECTION_COUNT 6
 #endif
 
 // Normal is only required when wind animation is enabled

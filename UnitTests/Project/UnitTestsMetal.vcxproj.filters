@@ -15,5 +15,6 @@
     <ClInclude Include="..\InputLayoutShaders_MSL.h" />
     <ClInclude Include="..\MetalUnitTest.h" />
     <ClInclude Include="..\InputLayoutShaders_HLSL.h" />
+    <ClInclude Include="..\ReusableDataFiles.h" />
   </ItemGroup>
 </Project>

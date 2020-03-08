@@ -14,12 +14,12 @@ struct VSShadowOutput /////////////////////////////////////////////////////
 	#endif
 
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
-		#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
-			float4 shadowPosition[OUTPUT_SHADOW_PROJECTION_COUNT] : SHADOWPOSITION;
+		#if (VSOUT_HAS_SHADOW_PROJECTION_COUNT>0)
+			float4 shadowPosition[VSOUT_HAS_SHADOW_PROJECTION_COUNT] : SHADOWPOSITION;
 		#endif
 	#endif
 
-	#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
+	#if (VSOUT_HAS_SHADOW_PROJECTION_COUNT>0)
 		uint shadowFrustumFlags : SHADOWFLAGS;
 	#endif
 

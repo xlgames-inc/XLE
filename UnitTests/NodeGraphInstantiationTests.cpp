@@ -27,9 +27,9 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 static const char* s_entryPointsInRawShader = R"--(
-	#include "xleres/MainGeometry.h"
-	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.h"
+	#include "xleres/TechniqueLibrary/Framework/gbuffer.h"
+	#include "xleres/Nodes/Templates.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{

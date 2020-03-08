@@ -7,6 +7,7 @@
 #include "LightInternal.h"
 #include "SceneEngineUtils.h"
 #include "RenderStepUtils.h"
+#include "CommonTechniqueDelegates.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -18,6 +19,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/PtrUtils.h"
 #include "../xleres/FileList.h"
 
@@ -105,17 +107,14 @@ namespace SceneEngine
 	RenderStep_Forward::RenderStep_Forward(bool precisionTargets)
 	: _forward(RenderCore::PipelineType::Graphics)
 	{
-		std::shared_ptr<Techniques::TechniqueSetFile> techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
-		auto sharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
-
 			//  We must disable z write (so all shaders can be early-depth-stencil)
             //      (this is because early-depth-stencil will normally write to the depth
             //      buffer before the alpha test has been performed. The pre-depth pass
             //      will switch early-depth-stencil on and off as necessary, but in the second
             //      pass we want it on permanently because the depth reject will end up performing
             //      the same job as alpha testing)
-		_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(techniqueSetFile, sharedResources, RenderCore::Techniques::TechniqueDelegateForwardFlags::DisableDepthWrite);
-		_depthOnlyDelegate = RenderCore::Techniques::CreateTechniqueDelegate_DepthOnly(techniqueSetFile, sharedResources);
+		_forwardIllumDelegate = ConsoleRig::FindCachedBoxDep2<CommonTechniqueDelegateBox>()._forwardIllumDelegate_DisableDepthWrite;
+		_depthOnlyDelegate = ConsoleRig::FindCachedBoxDep2<CommonTechniqueDelegateBox>()._depthOnlyDelegate;
 
 		AttachmentDesc lightResolveAttachmentDesc =
 			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,

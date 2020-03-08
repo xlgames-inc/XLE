@@ -46,14 +46,14 @@ static const char s_exampleTechniqueFragments[] = R"--(
 )--";
 
 static const char* s_colorFromSelectorShaderFile = R"--(
-	#include "xleres/MainGeometry.h"
-	#include "xleres/gbuffer.h"
-	#include "xleres/Nodes/Templates.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
+	#include "xleres/Nodes/Templates.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{
 		GBufferValues result = GBufferValues_Default();
-		#if (OUTPUT_TEXCOORD==1)
+		#if (VSOUT_HAS_TEXCOORD>=1)
 			#if defined(COLOR_RED)
 				result.diffuseAlbedo = float3(1,0,0);
 			#elif defined(COLOR_GREEN)
@@ -73,11 +73,11 @@ static const char s_techniqueForColorFromSelector[] = R"--(
 )--";
 
 static const char* s_basicTexturingGraph = R"--(
-	import templates = "xleres/nodes/templates.hlsl"
-	import output = "xleres/nodes/output.hlsl"
-	import texture = "xleres/nodes/texture.hlsl"
-	import basic = "xleres/nodes/basic.hlsl"
-	import materialParam = "xleres/nodes/materialparam.hlsl"
+	import templates = "xleres/nodes/templates.sh"
+	import output = "xleres/nodes/output.sh"
+	import texture = "xleres/nodes/texture.sh"
+	import basic = "xleres/nodes/basic.sh"
+	import materialParam = "xleres/nodes/materialparam.sh"
 
 	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{

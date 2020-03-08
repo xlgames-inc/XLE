@@ -23,7 +23,7 @@
 		MAT_ALPHA_DITHER_SHADOWS
 		FRUSTUM_FILTER=63
 		SHADOW_CASCADE_MODE
-		OUTPUT_SHADOW_PROJECTION_COUNT=6
+		VSOUT_HAS_SHADOW_PROJECTION_COUNT=6
 		SHADOW_ENABLE_NEAR_CASCADE
 	VertexShader=xleres/shadowgen/depthonly.vertex.hlsl:main
 	GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main

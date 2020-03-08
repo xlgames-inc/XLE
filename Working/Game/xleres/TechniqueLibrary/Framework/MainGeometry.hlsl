@@ -69,7 +69,7 @@ struct VSIN //////////////////////////////////////////////////////
 
 #if (SPAWNED_INSTANCE==1)
 	#define GEO_HAS_INSTANCE_ID 1
-	#if !defined(OUTPUT_SHADOW_PROJECTION_COUNT)        // DavidJ -- HACK -- disabling this for shadow shaders
+	#if !defined(VSOUT_HAS_SHADOW_PROJECTION_COUNT)        // DavidJ -- HACK -- disabling this for shadow shaders
 		#define PER_INSTANCE_MLO 1
 	#endif
 	#if (PER_INSTANCE_MLO==1)

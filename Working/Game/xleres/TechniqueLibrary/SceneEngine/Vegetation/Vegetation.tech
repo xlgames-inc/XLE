@@ -10,7 +10,7 @@
             SKIP_MATERIAL_DIFFUSE=0
         ~Material
             MAT_BLEND_FOG=1
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/illum.pixel.hlsl:main
 ~DepthOnly
     ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
@@ -47,7 +47,7 @@
         ~Runtime
             FRUSTUM_FILTER=63
             SHADOW_CASCADE_MODE
-            OUTPUT_SHADOW_PROJECTION_COUNT=6
+            VSOUT_HAS_SHADOW_PROJECTION_COUNT=6
             SHADOW_ENABLE_NEAR_CASCADE
     VertexShader=xleres/shadowgen/depthonly.vertex.hlsl:main
     GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
@@ -64,7 +64,7 @@
             VSOUT_HAS_LOCAL_VIEW_VECTOR=1
             VSOUT_HAS_WORLD_VIEW_VECTOR=1
             VSOUT_HAS_WORLD_POSITION=1
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main
 ~RayTest
     ~Inherit; ../techniques/shared.tech:Skinnable; ../techniques/shared.tech:VegetationSpawn
@@ -74,6 +74,6 @@
             VSOUT_HAS_WORLD_POSITION=1
         ~Material
             MAT_ALPHA_TEST
-    VertexShader=xleres/forward/illum.vertex.hlsl:main
+    VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
     PixelShader=null

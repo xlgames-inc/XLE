@@ -10,6 +10,7 @@
 #include "../TechniqueLibrary/Framework/CommonResources.hlsl"
 #include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
 #include "../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../TechniqueLibrary/Framework/LegacySurface.hlsl"
 #include "../TechniqueLibrary/Math/perlinnoise.hlsl"
 
 float4 SampleAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
