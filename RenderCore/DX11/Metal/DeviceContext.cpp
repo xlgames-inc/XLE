@@ -103,19 +103,24 @@ namespace RenderCore { namespace Metal_DX11
 		D3D11_VIEWPORT d3dViewports[D3D11_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
 		auto cnt = std::min(viewports.size(), dimof(d3dViewports));
 		for (unsigned c=0; c<cnt; ++c) {
-			assert(viewports[c].OriginIsUpperLeft);
-			d3dViewports[c] = *(const D3D11_VIEWPORT*)(viewports.begin() + c);
+			const auto& srcViewport = viewports[c];
+			d3dViewports[c] = *(const D3D11_VIEWPORT*)&srcViewport;
+			if (!viewports[c].OriginIsUpperLeft) {
+				d3dViewports[c].TopLeftY = _renderTargetHeight - srcViewport.Y - srcViewport.Height;
+			}
 		}
 		_underlying->RSSetViewports((UINT)cnt, d3dViewports);
 
 		D3D11_RECT rects[D3D11_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
 		cnt = std::min(scissorRects.size(), dimof(rects));
 		for (unsigned c=0; c<cnt; ++c) {
-			assert(scissorRects[c].OriginIsUpperLeft);
 			rects[c].left = scissorRects[c].X;
 			rects[c].top = scissorRects[c].Y;
 			rects[c].right = scissorRects[c].X + scissorRects[c].Width;
 			rects[c].bottom = scissorRects[c].Y + scissorRects[c].Height;
+			if (!viewports[c].OriginIsUpperLeft) {
+				rects[c].top = _renderTargetHeight - scissorRects[c].Y - scissorRects[c].Height;
+			}
 		}
 		_underlying->RSSetScissorRects((UINT)cnt, rects);
 	}

@@ -469,8 +469,14 @@ namespace RenderCore { namespace Metal_DX11
 						XlZeroMemory(variableDesc);
 						variable->GetDesc(&variableDesc);
 						assert(variableDesc.Name!=nullptr);
-						assert(variableDesc.StartOffset == elements[c]._offset);
-						assert(variableDesc.Size == std::max(1u, elements[c]._arrayElementCount) * BitsPerPixel(elements[c]._nativeFormat) / 8);
+						#if defined(_DEBUG)
+							D3D11_SHADER_VARIABLE_DESC desc;
+							variable->GetDesc(&desc);
+							if (variableDesc.StartOffset != elements[c]._offset)
+								Log(Warning) << "CB element offset not correct for element (" << desc.Name << ")" << std::endl;
+							if (variableDesc.Size != std::max(1u, elements[c]._arrayElementCount) * BitsPerPixel(elements[c]._nativeFormat) / 8)
+								Log(Warning) << "CB element size not correct for element (" << desc.Name << ")" << std::endl;
+						#endif
 					} else {
 						Log(Warning) << "Missing while binding constant buffer elements to shader (" << elements[c]._semanticHash << ")" << std::endl;
 					}
