@@ -106,6 +106,8 @@ namespace RenderCore { namespace Techniques
 	public:
 		SourceCodeWithRemapping AssembleDirectFromFile(StringSection<> filename)
 		{
+			assert(!XlEqString(filename, "-0"));
+
 			// Fall back to loading the file directly (without any real preprocessing)
 			SourceCodeWithRemapping result;
 			result._dependencies.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(filename));
@@ -127,10 +129,13 @@ namespace RenderCore { namespace Techniques
 			if (!std::regex_match(filename.begin(), filename.end(), matches, filenameExp) || matches.size() < 3)
 				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
 
-			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16).value();
-			auto i = LowerBound(_registry, patchCollectionGuid);
-			if (i == _registry.end() || i->first != patchCollectionGuid)
-				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
+			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16);
+			if (!patchCollectionGuid.has_value())
+				return AssembleDirectFromFile(filename);
+
+			auto i = LowerBound(_registry, patchCollectionGuid.value());
+			if (i == _registry.end() || i->first != patchCollectionGuid.value())
+				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));		// don't understand the input filename, we can't expand this
 
 			auto& patchCollection = *i->second;
 			if (patchCollection.GetInterface().GetPatches().empty())
@@ -163,9 +168,12 @@ namespace RenderCore { namespace Techniques
 
 		void Register(uint64_t id, const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection)
 		{
+			if (id == 0)
+				return;
+
 			auto i = LowerBound(_registry, id);
 			if (i != _registry.end() && i->first == id) {
-				assert(i->second == patchCollection);
+				// assert(i->second == patchCollection);
 			} else {
 				_registry.insert(i, std::make_pair(id, patchCollection));
 			}
@@ -205,13 +213,16 @@ namespace RenderCore { namespace Techniques
 		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
 			ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
 		{
+			assert(!initializer.IsEmpty());
+
 			char temp[MaxPath];
 			auto meld = StringMeldInPlace(temp);
 			auto sep = std::find(initializer.begin(), initializer.end(), ':');
 			meld << MakeStringSection(initializer.begin(), sep);
 
 			// patch collection & expansions
-			if (!XlEqString(MakeStringSection(initializer.begin(), sep), "null")) {
+			if (!XlEqString(MakeStringSection(initializer.begin(), sep), "null")
+				&& _patchCollection && _patchCollection->GetGUID() != 0) {
 				meld << "-" << std::hex << _patchCollection->GetGUID();
 				for (auto exp:_patchExpansions) meld << "-" << exp;
 			}
@@ -440,6 +451,7 @@ namespace RenderCore { namespace Techniques
 
 	static const auto s_perPixel = Hash64("PerPixel");
 	static const auto s_earlyRejectionTest = Hash64("EarlyRejectionTest");
+	static const auto s_deformVertex = Hash64("DeformVertex");
 	static uint64_t s_patchExp_perPixelAndEarlyRejection[] = { s_perPixel, s_earlyRejectionTest };
 	static uint64_t s_patchExp_perPixel[] = { s_perPixel };
 	static uint64_t s_patchExp_earlyRejection[] = { s_earlyRejectionTest };
@@ -464,23 +476,33 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
 		{
-			IteratorRange<const uint64_t*> patchExpansions = {};
-			const TechniqueEntry* techEntry = &_noPatches;
+			std::vector<uint64_t> patchExpansions;
+			const TechniqueEntry* psTechEntry = &_noPatches;
 			switch (CalculateIllumType(*shaderPatches)) {
 			case IllumType::PerPixel:
-				techEntry = &_perPixel;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+				psTechEntry = &_perPixel;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_perPixel, &s_patchExp_perPixel[dimof(s_patchExp_perPixel)]);
 				break;
 			case IllumType::PerPixelAndEarlyRejection:
-				techEntry = &_perPixelAndEarlyRejection;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+				psTechEntry = &_perPixelAndEarlyRejection;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_perPixelAndEarlyRejection, &s_patchExp_perPixelAndEarlyRejection[dimof(s_patchExp_perPixelAndEarlyRejection)]);
 				break;
 			default:
 				break;
 			}
 
+			const TechniqueEntry* vsTechEntry = &_vsNoPatchesSrc;
+			if (shaderPatches->GetInterface().HasPatchType(s_deformVertex)) {
+				vsTechEntry = &_vsDeformVertexSrc;
+				patchExpansions.push_back(s_deformVertex);
+			}
+
+			// note -- we could premerge all of the combinations in the constructor, to cut down on cost here
+			TechniqueEntry mergedTechEntry = *vsTechEntry;
+			mergedTechEntry.MergeIn(*psTechEntry);
+
 			ResolvedTechnique result;
-			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._rasterization = BuildDefaultRastizerDesc(stateSet);
 
 			bool deferredDecal = 
@@ -502,22 +524,30 @@ namespace RenderCore { namespace Techniques
 			const auto noPatchesHash = Hash64("Deferred_NoPatches");
 			const auto perPixelHash = Hash64("Deferred_PerPixel");
 			const auto perPixelAndEarlyRejectionHash = Hash64("Deferred_PerPixelAndEarlyRejection");
+			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
+			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
 			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
 			auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
 			auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
-			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
+			auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
+			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
 				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
 			}
 
 			_noPatches = *noPatchesSrc;
 			_perPixel = *perPixelSrc;
 			_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+			_vsNoPatchesSrc = *vsNoPatchesSrc;
+			_vsDeformVertexSrc = *vsDeformVertexSrc;
 		}
 	private:
 		std::shared_ptr<TechniqueSetFile> _techniqueSet;
 		TechniqueEntry _noPatches;
 		TechniqueEntry _perPixel;
 		TechniqueEntry _perPixelAndEarlyRejection;
+		TechniqueEntry _vsNoPatchesSrc;
+		TechniqueEntry _vsDeformVertexSrc;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
@@ -537,23 +567,32 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
 		{
-			IteratorRange<const uint64_t*> patchExpansions = {};
-			const TechniqueEntry* techEntry = &_noPatches;
+			std::vector<uint64_t> patchExpansions;
+			const TechniqueEntry* psTechEntry = &_noPatches;
 			switch (CalculateIllumType(*shaderPatches)) {
 			case IllumType::PerPixel:
-				techEntry = &_perPixel;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixel);
+				psTechEntry = &_perPixel;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_perPixel, &s_patchExp_perPixel[dimof(s_patchExp_perPixel)]);
 				break;
 			case IllumType::PerPixelAndEarlyRejection:
-				techEntry = &_perPixelAndEarlyRejection;
-				patchExpansions = MakeIteratorRange(s_patchExp_perPixelAndEarlyRejection);
+				psTechEntry = &_perPixelAndEarlyRejection;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_perPixelAndEarlyRejection, &s_patchExp_perPixelAndEarlyRejection[dimof(s_patchExp_perPixelAndEarlyRejection)]);
 				break;
 			default:
 				break;
 			}
 
+			const TechniqueEntry* vsTechEntry = &_vsNoPatchesSrc;
+			if (shaderPatches->GetInterface().HasPatchType(s_deformVertex)) {
+				vsTechEntry = &_vsDeformVertexSrc;
+				patchExpansions.push_back(s_deformVertex);
+			}
+
+			TechniqueEntry mergedTechEntry = *vsTechEntry;
+			mergedTechEntry.MergeIn(*psTechEntry);
+
 			ResolvedTechnique result;
-			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._rasterization = BuildDefaultRastizerDesc(stateSet);
 
 			if (stateSet._flag & Assets::RenderStateSet::Flag::ForwardBlend) {
@@ -583,16 +622,22 @@ namespace RenderCore { namespace Techniques
 			const auto noPatchesHash = Hash64("Forward_NoPatches");
 			const auto perPixelHash = Hash64("Forward_PerPixel");
 			const auto perPixelAndEarlyRejectionHash = Hash64("Forward_PerPixelAndEarlyRejection");
+			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
+			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
 			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
 			auto* perPixelSrc = _techniqueSet->FindEntry(perPixelHash);
 			auto* perPixelAndEarlyRejectionSrc = _techniqueSet->FindEntry(perPixelAndEarlyRejectionHash);
-			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc) {
+			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
+			auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
+			if (!noPatchesSrc || !perPixelSrc || !perPixelAndEarlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
 				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
 			}
 
 			_noPatches = *noPatchesSrc;
 			_perPixel = *perPixelSrc;
 			_perPixelAndEarlyRejection = *perPixelAndEarlyRejectionSrc;
+			_vsNoPatchesSrc = *vsNoPatchesSrc;
+			_vsDeformVertexSrc = *vsDeformVertexSrc;
 		}
 	private:
 		std::shared_ptr<TechniqueSetFile> _techniqueSet;
@@ -600,6 +645,8 @@ namespace RenderCore { namespace Techniques
 		TechniqueEntry _perPixel;
 		TechniqueEntry _perPixelAndEarlyRejection;
 		DepthStencilDesc _depthStencil;
+		TechniqueEntry _vsNoPatchesSrc;
+		TechniqueEntry _vsDeformVertexSrc;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Forward(
@@ -620,15 +667,24 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
 		{
-			IteratorRange<const uint64_t*> patchExpansions = {};
-			const TechniqueEntry* techEntry = &_noPatches;
+			std::vector<uint64_t> patchExpansions;
+			const TechniqueEntry* psTechEntry = &_noPatches;
 			if (shaderPatches->GetInterface().HasPatchType(s_earlyRejectionTest)) {
-				techEntry = &_earlyRejectionSrc;
-				patchExpansions = MakeIteratorRange(s_patchExp_earlyRejection);
+				psTechEntry = &_earlyRejectionSrc;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_earlyRejection, &s_patchExp_perPixel[dimof(s_patchExp_earlyRejection)]);
 			}
 
+			const TechniqueEntry* vsTechEntry = &_vsNoPatchesSrc;
+			if (shaderPatches->GetInterface().HasPatchType(s_deformVertex)) {
+				vsTechEntry = &_vsDeformVertexSrc;
+				patchExpansions.push_back(s_deformVertex);
+			}
+
+			TechniqueEntry mergedTechEntry = *vsTechEntry;
+			mergedTechEntry.MergeIn(*psTechEntry);
+
 			ResolvedTechnique result;
-			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 
 			unsigned cullDisable    = !!(stateSet._flag & Assets::RenderStateSet::Flag::DoubleSided);
 			result._rasterization = _rs[cullDisable];
@@ -650,19 +706,27 @@ namespace RenderCore { namespace Techniques
 
 			const auto noPatchesHash = Hash64("DepthOnly_NoPatches");
 			const auto earlyRejectionHash = Hash64("DepthOnly_EarlyRejection");
+			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
+			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
 			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
 			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
-			if (!noPatchesSrc || !earlyRejectionSrc) {
+			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
+			auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
+			if (!noPatchesSrc || !earlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
 				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
 			}
 
 			_noPatches = *noPatchesSrc;
 			_earlyRejectionSrc = *earlyRejectionSrc;
+			_vsNoPatchesSrc = *vsNoPatchesSrc;
+			_vsDeformVertexSrc = *vsDeformVertexSrc;
 		}
 	private:
 		std::shared_ptr<TechniqueSetFile> _techniqueSet;
 		TechniqueEntry _noPatches;
 		TechniqueEntry _earlyRejectionSrc;
+		TechniqueEntry _vsNoPatchesSrc;
+		TechniqueEntry _vsDeformVertexSrc;
 
 		RasterizationDesc _rs[2];
 	};
@@ -687,15 +751,24 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
 		{
-			IteratorRange<const uint64_t*> patchExpansions = {};
-			const TechniqueEntry* techEntry = &_noPatches;
+			std::vector<uint64_t> patchExpansions;
+			const TechniqueEntry* psTechEntry = &_noPatches;
 			if (shaderPatches->GetInterface().HasPatchType(s_earlyRejectionTest)) {
-				techEntry = &_earlyRejectionSrc;
-				patchExpansions = MakeIteratorRange(s_patchExp_earlyRejection);
+				psTechEntry = &_earlyRejectionSrc;
+				patchExpansions.insert(patchExpansions.end(), s_patchExp_earlyRejection, &s_patchExp_perPixel[dimof(s_patchExp_earlyRejection)]);
 			}
 
+			const TechniqueEntry* vsTechEntry = &_vsNoPatchesSrc;
+			if (shaderPatches->GetInterface().HasPatchType(s_deformVertex)) {
+				vsTechEntry = &_vsDeformVertexSrc;
+				patchExpansions.push_back(s_deformVertex);
+			}
+
+			TechniqueEntry mergedTechEntry = *vsTechEntry;
+			mergedTechEntry.MergeIn(*psTechEntry);
+
 			ResolvedTechnique result;
-			result._shaderProgram = ResolveVariation(shaderPatches, selectors, *techEntry, patchExpansions);
+			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._depthStencil = CommonResources()._dsDisable;
 			// result._rasterization = CommonResources()._rsDisable;
 			return result;
@@ -713,19 +786,27 @@ namespace RenderCore { namespace Techniques
 
 			const auto noPatchesHash = Hash64("RayTest_NoPatches");
 			const auto earlyRejectionHash = Hash64("RayTest_EarlyRejection");
+			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
+			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
 			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
 			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
-			if (!noPatchesSrc || !earlyRejectionSrc) {
+			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
+			auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
+			if (!noPatchesSrc || !earlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
 				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
 			}
 
 			_noPatches = *noPatchesSrc;
 			_earlyRejectionSrc = *earlyRejectionSrc;
+			_vsNoPatchesSrc = *vsNoPatchesSrc;
+			_vsDeformVertexSrc = *vsDeformVertexSrc;
 		}
 	private:
 		std::shared_ptr<TechniqueSetFile> _techniqueSet;
 		TechniqueEntry _noPatches;
 		TechniqueEntry _earlyRejectionSrc;
+		TechniqueEntry _vsNoPatchesSrc;
+		TechniqueEntry _vsDeformVertexSrc;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(

@@ -24,4 +24,4 @@ void PerPixel_Separate(
 
     out float3 transmission);
 
-DeformedVertex DeformVertex(VSIN input);
+DeformedVertex DeformVertex(DeformedVertex preDeform, VSIN input);

@@ -22,7 +22,9 @@
 
 struct VSIN //////////////////////////////////////////////////////
 {
-	float3 position : POSITION0;
+	#if !defined(GEO_NO_POSITION)
+		float3 position : POSITION0;
+	#endif
 
 	#if GEO_HAS_COLOR>=1
 		float4 color : COLOR0;
@@ -56,6 +58,10 @@ struct VSIN //////////////////////////////////////////////////////
 		#define VSOUT_HAS_BLEND_TEXCOORD 1
 	#endif
 
+	#if GEO_HAS_VERTEX_ID==1
+		uint vertexId : SV_VertexID;
+	#endif
+	
 	#if GEO_HAS_INSTANCE_ID==1
 		uint instanceId : SV_InstanceID;
 	#endif

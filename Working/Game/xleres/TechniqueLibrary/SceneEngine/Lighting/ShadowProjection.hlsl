@@ -79,7 +79,11 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint casca
 
 float4 ShadowProjection_GetOutput(VSIN geo, uint cascadeIndex, uint cascadeMode)
 {
-	return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
+	#if !defined(GEO_NO_POSITION)
+		return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
+	#else
+		return 0.0.xxxx;
+	#endif
 }
 
 float4 ShadowProjection_GetMiniProj_NotNear(uint cascadeIndex, uint cascadeMode)

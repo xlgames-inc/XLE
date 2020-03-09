@@ -73,6 +73,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\CompoundMaterialTests.cpp" />
     <ClCompile Include="..\CoordinateSpaces.cpp" />
     <ClCompile Include="..\InputLayout.cpp" />
     <ClCompile Include="..\LightingParserExecuteTests.cpp" />

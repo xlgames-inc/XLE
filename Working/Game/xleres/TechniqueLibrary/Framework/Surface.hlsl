@@ -20,7 +20,11 @@
 
 float3 VSIN_GetLocalPosition(VSIN input)
 {
-	return input.position.xyz;
+	#if !defined(GEO_NO_POSITION)
+		return input.position.xyz;
+	#else
+		return 0.0.xxx;
+	#endif
 }
 
 float4 VSIN_GetLocalTangent(VSIN input)

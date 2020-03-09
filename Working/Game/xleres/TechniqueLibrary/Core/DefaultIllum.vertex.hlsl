@@ -34,14 +34,18 @@ VSOUT DefaultIllumVertex(
 		output.texCoord = VSIN_GetTexCoord0(input);
 	#endif
 
-	#if (VSOUT_HAS_NORMAL==1)
-		output.normal = worldSpaceTangentFrame.normal;
-	#endif
-
 	#if GEO_HAS_TEXTANGENT==1
 		#if VSOUT_HAS_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;
 			output.bitangent = worldSpaceTangentFrame.bitangent;
+		#endif
+
+		#if (VSOUT_HAS_NORMAL==1)
+			output.normal = worldSpaceTangentFrame.normal;
+		#endif
+	#else
+		#if (VSOUT_HAS_NORMAL==1)
+			output.normal = mul(GetLocalToWorldUniformScale(), VSIN_GetLocalNormal(input));
 		#endif
 	#endif
 
@@ -50,12 +54,29 @@ VSOUT DefaultIllumVertex(
 	#endif
 
 	#if VSOUT_HAS_LOCAL_TANGENT_FRAME==1
-		output.localTangent = VSIN_GetLocalTangent(input);
-		output.localBitangent = VSIN_GetLocalBitangent(input);
-	#endif
-
-	#if (VSOUT_HAS_LOCAL_NORMAL==1)
-		output.localNormal = VSIN_GetLocalNormal(input);
+		if (deformedVertex.coordinateSpace == 0) {
+			TangentFrame localTangentFrame = AsTangentFrame(deformedVertex.tangentFrame);
+			output.localTangent = localTangentFrame.tangent;
+			output.localBitangent = localTangentFrame.bitangent;
+			#if (VSOUT_HAS_LOCAL_NORMAL==1)
+				output.localNormal = localTangentFrame.normal;
+			#endif
+		} else {
+			output.localTangent = VSIN_GetLocalTangent(input);
+			output.localBitangent = VSIN_GetLocalBitangent(input);
+			#if (VSOUT_HAS_LOCAL_NORMAL==1)
+				output.localNormal = VSIN_GetLocalNormal(input);
+			#endif
+		}
+	#else
+		#if (VSOUT_HAS_LOCAL_NORMAL==1)
+			if (deformedVertex.coordinateSpace == 0) {
+				TangentFrame localTangentFrame = AsTangentFrame(deformedVertex.tangentFrame);
+				output.localNormal = localTangentFrame.normal;
+			} else {
+				output.localNormal = VSIN_GetLocalNormal(input);
+			}
+		#endif
 	#endif
 
 	#if VSOUT_HAS_LOCAL_VIEW_VECTOR==1

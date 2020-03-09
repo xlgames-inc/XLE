@@ -13,7 +13,14 @@
 		MAT_ALPHA_TEST
 		RES_HAS_DiffuseTexture
 		MAT_VCOLOR_IS_ANIM_PARAM
-	VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
+
+~VS_NoPatches
+	~Inherit; Silhouette
+	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+
+~VS_DeformVertex
+	~Inherit; Silhouette
+	VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntryWithDeformVertex
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -22,7 +29,7 @@
 	~~      the object in it's "main" visual look -- with all of the assigned material, texture & lighting properties
 
 ~IllumShared
-	~Inherit; Silhouette; shared.tech:LegacyCommonMaterial; shared.tech:System
+	~Inherit; shared.tech:LegacyCommonMaterial; shared.tech:System
 	~Selectors
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
@@ -38,7 +45,6 @@
 	~Inherit; IllumShared; shared.tech:Deferred
 
 ~DepthOnly
-	~Inherit; Silhouette
 	~Selectors
 		MAT_ALPHA_TEST_PREDEPTH
 		STOCHASTIC_TRANS
@@ -46,7 +52,6 @@
 		STOCHASTIC_TRANS_OPACITY
 
 ~RayTest
-	~Inherit; Silhouette
 	~Selectors
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
@@ -99,4 +104,3 @@
 ~RayTest_EarlyRejection
 	~Inherit; RayTest
 	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnlyWithEarlyRejection
-

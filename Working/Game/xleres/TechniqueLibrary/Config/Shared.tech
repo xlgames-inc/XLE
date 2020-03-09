@@ -32,6 +32,9 @@
 		~PREFER_ANISOTROPIC; relevance=value!=0
 		~TANGENT_PROCESS_IN_PS; relevance=value!=0
 		LOCAL_TO_WORLD_HAS_FLIP
+		~GEO_HAS_INSTANCE_ID; relevance=value!=0
+		~GEO_HAS_VERTEX_ID; relevance=value!=0
+		~GEO_NO_POSITION; relevance=value!=0
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
