@@ -74,7 +74,7 @@ namespace RenderCore { namespace Assets
 
 		InputStreamFormatter<utf8> formatter(
 			StringSection<utf8>{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
-		_patchCollections = DeserializeShaderPatchCollectionSet(formatter);
+		_patchCollections = DeserializeShaderPatchCollectionSet(formatter, {}, depVal);
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws

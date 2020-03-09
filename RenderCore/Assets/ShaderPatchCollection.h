@@ -20,6 +20,7 @@ namespace RenderCore { namespace Assets
 	{
 	public:
 		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> GetPatches() const { return MakeIteratorRange(_patches); }
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 		uint64_t GetHash() const { return _hash; }
 
 		void MergeInto(ShaderPatchCollection& dest) const;
@@ -31,7 +32,7 @@ namespace RenderCore { namespace Assets
 		friend bool operator<(uint64_t lhs, const ShaderPatchCollection& rhs);
 
 		ShaderPatchCollection();
-		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter);
+		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
 		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches);
 		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches);
 		~ShaderPatchCollection();
@@ -39,11 +40,12 @@ namespace RenderCore { namespace Assets
 	private:
 		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>> _patches;
 		uint64_t _hash = ~0ull;
+		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
 		void SortAndCalculateHash();
 	};
 	
-	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter);
+	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
 
 	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection);

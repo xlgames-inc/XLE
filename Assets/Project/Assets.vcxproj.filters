@@ -99,9 +99,6 @@
     <ClCompile Include="..\CompilationThread.cpp">
       <Filter>CompileAndAsync</Filter>
     </ClCompile>
-    <ClCompile Include="..\DeferredConstruction.cpp">
-      <Filter>AssetHeaps</Filter>
-    </ClCompile>
     <ClCompile Include="..\OSFileSystem.cpp">
       <Filter>FileSystems</Filter>
     </ClCompile>

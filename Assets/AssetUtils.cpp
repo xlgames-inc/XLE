@@ -218,6 +218,11 @@ namespace Assets
         AddSearchDirectory(MakeFileNameSplitter(filename).DriveAndPath());
     }
 
+	void DirectorySearchRules::SetBaseFile(StringSection<ResChar> file)
+	{
+		XlCopyString(_baseFile, file);
+	}
+
     std::string DirectorySearchRules::AnySearchDirectory() const
     {
         assert(_startPointCount > 0);
@@ -258,6 +263,15 @@ namespace Assets
 
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, StringSection<ResChar> baseName) const
     {
+		if (XlEqString(baseName, "<.>")) {
+			if (_baseFile[0]) {
+				XlCopyString(destination, destinationCount, _baseFile);
+			} else {
+				XlCopyString(destination, destinationCount, baseName);
+			}
+			return;
+		}
+
         ResChar tempBuffer[MaxPath];
 
         auto splitter = MakeFileNameSplitter(baseName);
@@ -383,6 +397,7 @@ namespace Assets
     DirectorySearchRules::DirectorySearchRules()
     {
         _buffer[0] = '\0';
+		_baseFile[0] = '\0';
         _startPointCount = 0;
         _bufferUsed = 0;
         std::fill(_startOffsets, &_startOffsets[dimof(_startOffsets)], 0);
@@ -395,6 +410,7 @@ namespace Assets
         std::copy(copyFrom._startOffsets, &copyFrom._startOffsets[dimof(_startOffsets)], _startOffsets);
         _bufferUsed = copyFrom._bufferUsed;
         _startPointCount = copyFrom._startPointCount;
+		XlCopyString(_baseFile, copyFrom._baseFile);
     }
 
     DirectorySearchRules& DirectorySearchRules::operator=(const DirectorySearchRules& copyFrom)
@@ -404,6 +420,7 @@ namespace Assets
         _bufferOverflow = copyFrom._bufferOverflow;
         _bufferUsed = copyFrom._bufferUsed;
         _startPointCount = copyFrom._startPointCount;
+		XlCopyString(_baseFile, copyFrom._baseFile);
         return *this;
     }
 
@@ -414,8 +431,10 @@ namespace Assets
         std::copy(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(_startOffsets)], _startOffsets);
         _bufferUsed = moveFrom._bufferUsed;
         _startPointCount = moveFrom._startPointCount;
+		XlCopyString(_baseFile, moveFrom._baseFile);
 
 		moveFrom._buffer[0] = '\0';
+		moveFrom._baseFile[0] = '\0';
         moveFrom._startPointCount = 0;
         moveFrom._bufferUsed = 0;
         std::fill(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(moveFrom._startOffsets)], 0);
@@ -428,8 +447,10 @@ namespace Assets
         _bufferOverflow = std::move(moveFrom._bufferOverflow);
         _bufferUsed = moveFrom._bufferUsed;
         _startPointCount = moveFrom._startPointCount;
+		XlCopyString(_baseFile, moveFrom._baseFile);
 
 		moveFrom._buffer[0] = '\0';
+		moveFrom._baseFile[0] = '\0';
         moveFrom._startPointCount = 0;
         moveFrom._bufferUsed = 0;
         std::fill(moveFrom._startOffsets, &moveFrom._startOffsets[dimof(moveFrom._startOffsets)], 0);
@@ -440,6 +461,7 @@ namespace Assets
     {
         Assets::DirectorySearchRules searchRules;
         searchRules.AddSearchDirectoryFromFilename(baseFile);
+		searchRules.SetBaseFile(baseFile);
         return searchRules;
     }
 

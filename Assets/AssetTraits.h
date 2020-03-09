@@ -122,7 +122,7 @@ namespace Assets
 	{
 		TRY {
 			auto container = ConfigFileContainer<>(blob, depVal);
-			auto fmttr = requestParameters.IsEmpty() ? container.GetRootFormatter() : container.GetFormatter(MakeStringSection((const utf8*)requestParameters.begin(), (const utf8*)requestParameters.end()));
+			auto fmttr = requestParameters.IsEmpty() ? container.GetRootFormatter() : container.GetFormatter(requestParameters.Cast<utf8>());
 			return std::make_unique<AssetType>(
 				fmttr,
 				DirectorySearchRules{},

@@ -91,7 +91,6 @@
     <ClCompile Include="..\CompilationThread.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
-    <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\GeneralCompiler.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />

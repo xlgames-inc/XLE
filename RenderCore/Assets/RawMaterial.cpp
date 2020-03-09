@@ -317,7 +317,7 @@ namespace RenderCore { namespace Assets
                     } else if (XlEqString(eleName, u("States"))) {
                         _stateSet = DeserializeStateSet(formatter);
 					} else if (XlEqString(eleName, u("Patches"))) {
-						_patchCollection = ShaderPatchCollection(formatter);
+						_patchCollection = ShaderPatchCollection(formatter, searchRules, depVal);
                     } else {
                         formatter.SkipElement();
                     }
@@ -454,7 +454,7 @@ namespace RenderCore { namespace Assets
         _validationCallback = depVal;
     }
 
-	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material") || XlEqStringI(extension, "hlsl"); }
 
 	void RawMaterial::ConstructToFuture(
 		::Assets::AssetFuture<RawMaterial>& future,

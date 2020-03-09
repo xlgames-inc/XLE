@@ -18,6 +18,7 @@ namespace Assets
         void AddSearchDirectory(StringSection<ResChar> dir);
         void AddSearchDirectoryFromFilename(StringSection<ResChar> filename);
         std::string AnySearchDirectory() const;
+		void SetBaseFile(StringSection<ResChar> file);
 
         void ResolveFile(
             ResChar destination[], unsigned destinationCount, 
@@ -46,6 +47,8 @@ namespace Assets
     
         unsigned _bufferUsed;
         unsigned _startPointCount;
+
+		ResChar _baseFile[MaxPath];
     };
 
     DirectorySearchRules DefaultDirectorySearchRules(StringSection<ResChar> baseFile);

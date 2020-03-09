@@ -6,6 +6,7 @@
 #include "../../Assets/DepVal.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 
 namespace RenderCore { namespace Assets
@@ -29,17 +30,20 @@ namespace RenderCore { namespace Assets
 	ShaderPatchCollection::ShaderPatchCollection()
 	{
 		_hash = 0;
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
 	ShaderPatchCollection::ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches)
 	: _patches(patches.begin(), patches.end())
 	{
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		SortAndCalculateHash();
 	}
 
 	ShaderPatchCollection::ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches)
 	: _patches(std::move(patches))
 	{
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		SortAndCalculateHash();
 	}
 
@@ -94,7 +98,7 @@ namespace RenderCore { namespace Assets
 		}
 	}
 
-	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter)
+	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		ShaderSourceParser::InstantiationRequest result;
 
@@ -110,7 +114,22 @@ namespace RenderCore { namespace Assets
 						Throw(FormatException("Expecting only a single attribute in each fragment, which is the entry point name, with no value", formatter.GetLocation()));
 					if (!result._archiveName.empty())
 						Throw(FormatException("Multiple entry points found for a single technique fragment declaration", formatter.GetLocation()));
-					result._archiveName = name.Cast<char>().AsString();
+
+					auto splitName = MakeFileNameSplitter(name.Cast<char>());
+					if (splitName.DriveAndPath().IsEmpty()) {
+						char resolvedFile[MaxPath];
+						searchRules.ResolveFile(resolvedFile, splitName.FileAndExtension());
+						if (resolvedFile[0]) {
+							result._archiveName = resolvedFile;
+							result._archiveName.insert(result._archiveName.end(), splitName.ParametersWithDivider().begin(), splitName.ParametersWithDivider().end());
+						} else {
+							result._archiveName = name.Cast<char>().AsString();
+						}
+					} else {
+						result._archiveName = name.Cast<char>().AsString();
+					}
+					assert(!result._archiveName.empty());
+
 					continue;
 				}
 
@@ -122,7 +141,7 @@ namespace RenderCore { namespace Assets
 					result._parameterBindings.emplace(
 						std::make_pair(
 							name.Cast<char>().AsString(),
-							DeserializeInstantiationRequest(formatter)));
+							DeserializeInstantiationRequest(formatter, searchRules)));
 
 					if (!formatter.TryEndElement())
 						Throw(FormatException("Expecting end element", formatter.GetLocation()));
@@ -141,7 +160,8 @@ namespace RenderCore { namespace Assets
 		}
 	}
 
-	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter)
+	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
 	{
 		for (;;) {
 			auto next = formatter.PeekNext();
@@ -150,7 +170,7 @@ namespace RenderCore { namespace Assets
 				StringSection<utf8> name;
 				if (!formatter.TryBeginElement(name))
 					Throw(FormatException("Could not parse element", formatter.GetLocation()));
-				_patches.emplace_back(std::make_pair(name.Cast<char>().AsString(), DeserializeInstantiationRequest(formatter)));
+				_patches.emplace_back(std::make_pair(name.Cast<char>().AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
 
 				if (!formatter.TryEndElement())
 					Throw(FormatException("Expecting end element", formatter.GetLocation()));
@@ -166,7 +186,7 @@ namespace RenderCore { namespace Assets
 		SortAndCalculateHash();
 	}
 
-	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter)
+	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
 	{
 		std::vector<ShaderPatchCollection> result;
 		for (;;) {
@@ -177,7 +197,7 @@ namespace RenderCore { namespace Assets
 					StringSection<utf8> name;
 					if (!formatter.TryBeginElement(name))
 						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result.emplace_back(ShaderPatchCollection(formatter));
+					result.emplace_back(ShaderPatchCollection(formatter, searchRules, depVal));
 
 					if (!formatter.TryEndElement())
 						Throw(FormatException("Expecting end element", formatter.GetLocation()));
