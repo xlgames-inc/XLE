@@ -119,17 +119,21 @@ namespace RenderCore { namespace Techniques
 			//////////////////////////////////////////////////////////////////////////////
 
 			VertexBufferView vbv[4];
-			for (unsigned c=0; c<drawable._geo->_vertexStreamCount; ++c) {
-				auto& stream = drawable._geo->_vertexStreams[c];
-				vbv[c]._resource = stream._resource ? stream._resource.get() : temporaryVB.get();
-				vbv[c]._offset = stream._vbOffset;
-			}
+			if (drawable._geo) {
+				for (unsigned c=0; c<drawable._geo->_vertexStreamCount; ++c) {
+					auto& stream = drawable._geo->_vertexStreams[c];
+					vbv[c]._resource = stream._resource ? stream._resource.get() : temporaryVB.get();
+					vbv[c]._offset = stream._vbOffset;
+				}
 
-			pipeline->ApplyVertexBuffers(metalContext, MakeIteratorRange(vbv));
+				pipeline->ApplyVertexBuffers(metalContext, MakeIteratorRange(vbv));
 
-			if (drawable._geo->_ibFormat != Format(0)) {
-				auto* ib = drawable._geo->_ib ? drawable._geo->_ib.get() : temporaryIB.get();
-				metalContext.Bind(Metal::AsResource(*ib), drawable._geo->_ibFormat);
+				if (drawable._geo->_ibFormat != Format(0)) {
+					auto* ib = drawable._geo->_ib ? drawable._geo->_ib.get() : temporaryIB.get();
+					metalContext.Bind(Metal::AsResource(*ib), drawable._geo->_ibFormat);
+				}
+			} else {
+				metalContext.UnbindInputLayout();
 			}
 
 			//////////////////////////////////////////////////////////////////////////////

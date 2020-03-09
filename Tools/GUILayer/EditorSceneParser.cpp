@@ -194,6 +194,13 @@ namespace GUILayer
 		SceneExecuteContext& executeContext) const
 	{
 		_editorScene->_placementsManager->GetRenderer()->BuildDrawables(executeContext, *_editorScene->_placementsCells);
+
+		for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
+			RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+			for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+				pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
+			_editorScene->_placeholders->BuildDrawables(MakeIteratorRange(pkts));
+		}
 	}
 
     EditorSceneParser::EditorSceneParser(const std::shared_ptr<EditorScene>& editorScene)

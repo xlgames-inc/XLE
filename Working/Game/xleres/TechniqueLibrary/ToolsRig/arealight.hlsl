@@ -10,6 +10,7 @@
 
 #include "../Framework/SystemUniforms.hlsl"
 #include "../Framework/MainGeometry.hlsl"
+#include "../Framework/DeformVertex.hlsl"
 #include "../Math/SurfaceAlgorithm.hlsl"
 #include "../Math/MathConstants.hlsl"
 
@@ -153,48 +154,47 @@ GeneratedVertex GenVertex(uint vIndex, uint shape)
     }
 }
 
-VSOUT MakeVSOutput(GeneratedVertex genVertex)
+#if !defined(GEO_HAS_VERTEX_ID)
+	#error Expecting GEO_HAS_VERTEX_ID to be set
+#endif
+
+DeformedVertex DeformVertex(DeformedVertex preDeform, VSIN vInput)
 {
-	VSOUT output;
-
-	#if VSOUT_HAS_COLOR>=1
-		output.color = 5.0.xxxx;
-	#endif
-
-	#if VSOUT_HAS_TEXCOORD>=1
-		output.texCoord = 0.0.xx;
-	#endif
-
-	#if (VSOUT_HAS_NORMAL==1)
-		output.normal = genVertex.worldNormal;
-	#endif
-
-	output.position = mul(SysUniform_GetWorldToClip(), float4(genVertex.worldPosition,1));
-
-	#if VSOUT_HAS_WORLD_VIEW_VECTOR==1
-		output.worldViewVector = SysUniform_GetWorldSpaceView().xyz - genVertex.worldPosition.xyz;
-	#endif
-
-	#if VSOUT_HAS_WORLD_POSITION==1
-		output.worldPosition = worldPosition.xyz;
-	#endif
-
-	return output;
+	GeneratedVertex genVertex = GenVertex(vInput.vertexId, SHAPE);
+	DeformedVertex dv;
+	dv.position = genVertex.worldPosition;
+	dv.tangentFrame.basisVector0 = 0.0.xxx;
+	dv.tangentFrame.basisVector1 = 0.0.xxx;
+	dv.tangentFrame.handiness = 0;
+	dv.coordinateSpace = 1;
+	return dv;
 }
 
-VSOUT vs_main(uint vIndex : SV_VertexID)
-{
-    return MakeVSOutput(GenVertex(vIndex, SHAPE));
-}
+// note -- 	this ensures that that the preprocessor recognizes SHAPE as a required preprocessor macro
+#if defined(SHAPE)
+#endif
 
-/* <<Chunk:TechniqueConfig:main>>--(
-~Inherit; xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.tech
-~*
-    ~Parameters
-        ~Material
-            SHAPE=1
-        ~Geometry
-            VSOUT_HAS_NORMAL=0
-            VSOUT_HAS_COLOR=1
-    VertexShader=<.>:vs_main
+/* <<Chunk:RawMaterial:main>>--(
+
+~sphere
+	~Patches
+		~main
+			<.>::DeformVertex
+	~ShaderParams
+		SHAPE=1
+
+~tube
+	~Patches
+		~main
+			<.>::DeformVertex
+	~ShaderParams
+		SHAPE=2
+
+~rectangle
+	~Patches
+		~main
+			<.>::DeformVertex
+	~ShaderParams
+		SHAPE=3
+
 )--*/

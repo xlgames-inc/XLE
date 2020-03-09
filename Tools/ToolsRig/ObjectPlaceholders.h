@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class DrawablesPacket; class IPipelineAcceleratorPool; } }
 namespace SceneEngine { class IIntersectionTester; }
 
 namespace EntityInterface { class RetainedEntities; }
@@ -26,11 +26,15 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
+		void BuildDrawables(IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts);
+
         void AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType);
 
         std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
 
-        ObjectPlaceholders(std::shared_ptr<EntityInterface::RetainedEntities> objects);
+        ObjectPlaceholders(
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const std::shared_ptr<EntityInterface::RetainedEntities>& objects);
         ~ObjectPlaceholders();
     protected:
         std::shared_ptr<EntityInterface::RetainedEntities> _objects;
@@ -44,6 +48,8 @@ namespace ToolsRig
 		std::vector<Annotation> _directionalAnnotations;
         std::vector<Annotation> _triMeshAnnotations;
 		std::vector<Annotation> _areaLightAnnotation;
+
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 
         class IntersectionTester;
     };

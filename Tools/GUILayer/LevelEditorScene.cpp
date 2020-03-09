@@ -98,7 +98,7 @@ namespace GUILayer
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
-        _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(_flexObjects);
+        _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(pipelineAcceleratorPool, _flexObjects);
         _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(fixedFunctionModelCache->GetSharedStateSet());
         _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
         _currentTime = 0.f;

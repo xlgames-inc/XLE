@@ -13,11 +13,17 @@
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/CommonUtils.h"
+#include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/DescriptorSetAccelerator.h"
+#include "../../RenderCore/Techniques/Drawables.h"
+#include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
@@ -29,6 +35,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Math/Transformations.h"
@@ -36,6 +43,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/VariantUtils.h"
 #include "../../xleres/FileList.h"
 
 namespace ToolsRig
@@ -54,40 +62,69 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class SimpleModelDrawable : public Techniques::Drawable
+	{
+	public:
+		RenderCore::Assets::DrawCallDesc _drawCall;
+		Float4x4 _objectToWorld;
+		bool _indexed = true;
+
+		static void DrawFn(
+			Techniques::ParsingContext& parserContext,
+			const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+			const SimpleModelDrawable& drawable)
+		{
+			ConstantBufferView cbvs[1];
+			cbvs[0] = {
+				Techniques::MakeLocalTransformPacket(
+					drawable._objectToWorld, 
+					ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
+
+			drawFnContext.ApplyUniforms(UniformsStream{MakeIteratorRange(cbvs)});
+			if (drawable._indexed) {
+				drawFnContext.DrawIndexed(drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
+			} else {
+				drawFnContext.Draw(drawable._drawCall._indexCount, drawable._drawCall._firstVertex);
+			}
+		}
+	};
+
 	class SimpleModel
 	{
 	public:
-		void Render(
-			Metal::DeviceContext& devContext,
-			Techniques::ParsingContext& parserContext,
-			Metal::ConstantBufferPacket localTransform,
-			unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
-			const ParameterBox& materialParams) const;
+		void BuildDrawables(
+			IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts,
+			const ParameterBox& materialParams,
+			const Float4x4& localToWorld = Identity<Float4x4>());
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-		SimpleModel(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile);
-		SimpleModel(StringSection<::Assets::ResChar> filename);
+		SimpleModel(
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+			const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile);
+		SimpleModel(
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+			StringSection<::Assets::ResChar> filename);
 		~SimpleModel();
 	private:
-		IResourcePtr _vb;
-		IResourcePtr _ib;
+		std::shared_ptr<RenderCore::Techniques::DrawableGeo> _drawableGeo;
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
-		FixedFunctionModel::SimpleShaderVariationManager _material;
-		unsigned _vbStride;
-		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
+		
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
+		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
+		std::shared_ptr<RenderCore::UniformsStreamInterface> _usi;
 
 		void Build(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile);
 	};
 
-	void SimpleModel::Render(
-		Metal::DeviceContext& devContext,
-		Techniques::ParsingContext& parserContext,
-		Metal::ConstantBufferPacket localTransform,
-		unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
-		const ParameterBox& materialParams) const
+	void SimpleModel::BuildDrawables(
+		IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts,
+		const ParameterBox& materialParams,
+		const Float4x4& localToWorld)
 	{
+#if 0
 		auto shader = _material.FindVariation(parserContext, techniqueIndex, techniqueConfig);
 		if (shader._shader._shaderProgram) {
 			auto matParams0 = shader._cbLayout->BuildCBDataAsPkt(materialParams, RenderCore::Techniques::GetDefaultShaderLanguage());
@@ -113,6 +150,19 @@ namespace ToolsRig
 				devContext.DrawIndexed(_drawCalls[1]._indexCount, _drawCalls[1]._firstIndex, _drawCalls[1]._firstVertex);
 			}
 		}
+#endif
+
+		auto* drawables = pkts[(unsigned)RenderCore::Techniques::BatchFilter::General]->_drawables.Allocate<SimpleModelDrawable>(_drawCalls.size());
+		for (const auto& drawCall:_drawCalls) {
+			auto& drawable = *drawables++;
+			drawable._pipeline = _pipelineAccelerator;
+			drawable._descriptorSet = _descriptorSetAccelerator;
+			drawable._geo = _drawableGeo;
+			drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&SimpleModelDrawable::DrawFn;
+			drawable._uniformsInterface = _usi;
+			drawable._drawCall = drawCall;
+            drawable._objectToWorld = localToWorld;
+        }
 	}
 
 	static std::vector<uint8_t> ReadFromFile(::Assets::IFileInterface& file, size_t size, size_t offset)
@@ -123,13 +173,19 @@ namespace ToolsRig
 		return result;
 	}
 
-	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile)
+	SimpleModel::SimpleModel(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile)
 	{
+		_pipelineAcceleratorPool = pipelineAcceleratorPool;
 		Build(geo, largeBlocksFile);
 	}
 
-	SimpleModel::SimpleModel(StringSection<::Assets::ResChar> filename)
+	SimpleModel::SimpleModel(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+		StringSection<::Assets::ResChar> filename)
 	{
+		_pipelineAcceleratorPool = pipelineAcceleratorPool;
 		auto& scaffold = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
 		if (scaffold.ImmutableData()._geoCount > 0) {
 			auto largeBlocksFile = scaffold.OpenLargeBlocks();
@@ -144,19 +200,42 @@ namespace ToolsRig
 		auto largeBlocksOffset = largeBlocksFile.TellP();
 		auto vbData = ReadFromFile(largeBlocksFile, geo._vb._size, geo._vb._offset + largeBlocksOffset);
 		auto ibData = ReadFromFile(largeBlocksFile, geo._ib._size, geo._ib._offset + largeBlocksOffset);
-		_vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vbData));
-		_ib = RenderCore::Techniques::CreateStaticIndexBuffer(MakeIteratorRange(vbData));
+		auto vb = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(vbData));
+		auto ib = RenderCore::Techniques::CreateStaticIndexBuffer(MakeIteratorRange(ibData));
+		_drawableGeo = std::make_shared<RenderCore::Techniques::DrawableGeo>();
+		_drawableGeo->_vertexStreams[0]._resource = vb;
+		_drawableGeo->_vertexStreamCount = 1;
+		_drawableGeo->_ib = ib;
+		_drawableGeo->_ibFormat = geo._ib._format;
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
-		_vbStride = geo._vb._ia._vertexStride;
-		_ibFormat = geo._ib._format;
 
 		// also construct a technique material for the geometry format
-		std::vector<InputElementDesc> eles;
+		std::vector<InputElementDesc> inputElements;
 		for (const auto&i:geo._vb._ia._elements)
-			eles.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
-		_material = FixedFunctionModel::SimpleShaderVariationManager(
-			MakeIteratorRange(eles),
-			{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants }, ParameterBox());
+			inputElements.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
+
+		auto dsf = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+			ParameterBox {}, ParameterBox {},
+			RenderCore::Techniques::GetFallbackMaterialDescriptorSetLayout(),
+			"SimpleModel descriptor set");
+		dsf->StallWhilePending();
+		_descriptorSetAccelerator = dsf->Actualize();
+
+		// The topology must be the same for all draw calls
+		assert(!_drawCalls.empty());
+		for (unsigned c=1; c<_drawCalls.size(); ++c) {
+			assert(_drawCalls[c]._topology == _drawCalls[0]._topology);
+		}
+
+		_pipelineAccelerator = _pipelineAcceleratorPool->CreatePipelineAccelerator(
+			std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(),
+			ParameterBox {},	// material selectors
+			MakeIteratorRange(inputElements),
+			_drawCalls[0]._topology,
+			RenderCore::Assets::RenderStateSet {});
+
+		_usi = std::make_shared<UniformsStreamInterface>();
+		_usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
 	}
 
 	SimpleModel::~SimpleModel() {}
@@ -169,53 +248,68 @@ namespace ToolsRig
     class VisGeoBox
     {
     public:
-        class Desc {};
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _genSphere;
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _genTube;
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _genRectangle;
+		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
+		std::shared_ptr<RenderCore::UniformsStreamInterface> _usi;
+		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
-        RenderCore::IResourcePtr	_cubeVB;
-        unsigned					_cubeVBCount;
-        unsigned					_cubeVBStride;
-		FixedFunctionModel::SimpleShaderVariationManager	_material;
-		FixedFunctionModel::SimpleShaderVariationManager	_materialP;
-		FixedFunctionModel::SimpleShaderVariationManager	_materialGenSphere;
-		FixedFunctionModel::SimpleShaderVariationManager	_materialGenTube;
-		FixedFunctionModel::SimpleShaderVariationManager	_materialGenRectangle;
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const  { return _depVal; }
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
-        VisGeoBox(const Desc&);
+        VisGeoBox();
         ~VisGeoBox();
-    protected:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<VisGeoBox>&,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool);
     };
+
+	static std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> BuildPipelineAccelerator(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const RenderCore::Assets::RawMaterial& mat)
+	{
+		return pipelineAcceleratorPool->CreatePipelineAccelerator(
+			std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(mat._patchCollection),
+			mat._matParamBox,
+			{},
+			Topology::TriangleList,
+			mat._stateSet);
+	}
     
-    VisGeoBox::VisGeoBox(const Desc&)
-    : _material(
-        ToolsRig::Vertex3D_InputLayout, 
-        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-        ParameterBox())
-    , _materialP(
-        GlobalInputLayouts::P,
-        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-        ParameterBox())
-	, _materialGenSphere(
-		InputLayout{},
-		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-		ParameterBox({ std::make_pair(u("SHAPE"), "1") }))
-	, _materialGenTube(
-		InputLayout{},
-		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-		ParameterBox({ std::make_pair(u("SHAPE"), "2") }))
-	, _materialGenRectangle(
-		InputLayout{},
-		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-		ParameterBox({ std::make_pair(u("SHAPE"), "3") }))
+    void VisGeoBox::ConstructToFuture(
+		::Assets::AssetFuture<VisGeoBox>& future,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool)
     {
-        auto cubeVertices = ToolsRig::BuildCube();
-        _cubeVBCount = (unsigned)cubeVertices.size();
-        _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
-        _cubeVB = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
+		auto sphereMatFuture = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(AREA_LIGHT_TECH":sphere");
+		auto tubeMatFuture = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(AREA_LIGHT_TECH":tube");
+		auto rectangleMatFuture = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(AREA_LIGHT_TECH":rectangle");
+		auto dsf = RenderCore::Techniques::MakeDescriptorSetAccelerator(
+			ParameterBox {}, ParameterBox {},
+			RenderCore::Techniques::GetFallbackMaterialDescriptorSetLayout(),
+			"SimpleModel descriptor set");
+
+		::Assets::WhenAll(sphereMatFuture, tubeMatFuture, rectangleMatFuture, dsf).ThenConstructToFuture<VisGeoBox>(
+			future,
+			[pipelineAcceleratorPool](
+				const std::shared_ptr<RenderCore::Assets::RawMaterial>& sphereMat,
+				const std::shared_ptr<RenderCore::Assets::RawMaterial>& tubeMat,
+				const std::shared_ptr<RenderCore::Assets::RawMaterial>& rectangleMat,
+				const std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator>& descriptorSet) {
+
+				auto res = std::make_shared<VisGeoBox>();
+				res->_genSphere = BuildPipelineAccelerator(pipelineAcceleratorPool, *sphereMat);
+				res->_genTube = BuildPipelineAccelerator(pipelineAcceleratorPool, *tubeMat);
+				res->_genRectangle = BuildPipelineAccelerator(pipelineAcceleratorPool, *rectangleMat);
+
+				res->_descriptorSetAccelerator = descriptorSet;
+				res->_usi = std::make_shared<UniformsStreamInterface>();
+				res->_usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
+				return res;
+			});
     }
 
+	VisGeoBox::VisGeoBox() {}
     VisGeoBox::~VisGeoBox() {}
 
     static Float4x4 GetTransform(const RetainedEntity& obj)
@@ -258,78 +352,121 @@ namespace ToolsRig
 		}
 	};
 
-    static void DrawSphereStandIn(
-        Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
-		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
+    void DrawSphereStandIn(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+        IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts,
+		const Float4x4& localToWorld, 
+		const ParameterBox& matParams = {})
     {
-		CATCH_ASSETS_BEGIN
-			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
-			asset.Render(devContext, parserContext, params._localTransform, techniqueIndex, technique, params._matParams);
-			return;
-		CATCH_ASSETS_END(parserContext)
-
-		// after an asset exception, we can just render some simple stand-in
-		if (fallbackShader._shader._shaderProgram) {
-			VertexBufferView vbv { visBox._cubeVB, 0 };
-			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
-			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
-			devContext.Draw(visBox._cubeVBCount);
-		}
+		auto* asset = ::Assets::MakeAsset<SimpleModel>(pipelineAcceleratorPool, "game/model/simple/spherestandin.dae")->TryActualize().get();
+		if (asset)
+			asset->BuildDrawables(pkts, matParams, localToWorld);
     }
 
 	static void DrawPointerStandIn(
-		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext,
-		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+        IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts,
+		const Float4x4& localToWorld, 
+		const ParameterBox& matParams = {})
 	{
-		CATCH_ASSETS_BEGIN
-			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/pointerstandin.dae");
-		asset.Render(devContext, parserContext, params._localTransform, techniqueIndex, technique, params._matParams);
-		return;
-		CATCH_ASSETS_END(parserContext)
+		auto* asset = ::Assets::MakeAsset<SimpleModel>(pipelineAcceleratorPool, "game/model/simple/pointerstandin.dae")->TryActualize().get();
+		if (asset)
+			asset->BuildDrawables(pkts, matParams, localToWorld);
+	}
 
-			// after an asset exception, we can just render some simple stand-in
-			if (fallbackShader._shader._shaderProgram) {
-				VertexBufferView vbv { visBox._cubeVB, 0 };
-				fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-				ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
-				fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
-				devContext.Draw(visBox._cubeVBCount);
+	void ObjectPlaceholders::BuildDrawables(IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts)
+	{
+		if (Tweakable("DrawMarkers", true)) {
+			for (const auto& a:_cubeAnnotations) {
+				auto objects = _objects->FindEntitiesOfType(a._typeId);
+				for (const auto&o:objects) {
+					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+					DrawSphereStandIn(_pipelineAcceleratorPool, pkts, GetTransform(*o));
+				}
 			}
+
+			for (const auto& a:_directionalAnnotations) {
+				auto objects = _objects->FindEntitiesOfType(a._typeId);
+				for (const auto&o : objects) {
+					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+
+					auto trans = GetTransform(*o);
+						// reorient the transform similar to represent the orientation of directional lights
+					auto translation = ExtractTranslation(trans);
+					trans = MakeObjectToWorld(-Normalize(translation), Float3(0.f, 0.f, 1.f), translation);
+
+					DrawPointerStandIn(_pipelineAcceleratorPool, pkts, trans);
+				}
+			}
+
+			if (!_areaLightAnnotation.empty()) {
+				auto visBox = ::Assets::MakeAsset<VisGeoBox>(_pipelineAcceleratorPool)->TryActualize();
+				if (visBox) {
+					for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
+						auto objects = _objects->FindEntitiesOfType(a->_typeId);
+						for (const auto&o : objects) {
+							if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
+
+							auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
+							unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
+
+							auto& drawable = *pkts[(unsigned)RenderCore::Techniques::BatchFilter::General]->_drawables.Allocate<SimpleModelDrawable>(1);
+							switch (shape) { 
+							case 2: drawable._pipeline = visBox->_genTube; break;
+							case 3: drawable._pipeline = visBox->_genRectangle; vertexCount = 6*6; break;
+							default: drawable._pipeline = visBox->_genSphere; break;
+							}
+							drawable._descriptorSet = visBox->_descriptorSetAccelerator;
+							drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&SimpleModelDrawable::DrawFn;
+							drawable._drawCall = RenderCore::Assets::DrawCallDesc { 0, vertexCount };
+							drawable._objectToWorld = GetTransform(*o);
+							drawable._indexed = false;
+							drawable._uniformsInterface = visBox->_usi;
+						}
+					}
+				}
+			}
+		}
 	}
 
-#if 0
-	static void DrawGenObject(
-		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
-		const ObjectParams& params,
-		const FixedFunctionModel::SimpleShaderVariationManager::Variation& generatorShader, unsigned vertexCount,
-		const VisGeoBox& visBox, const FixedFunctionModel::SimpleShaderVariationManager::Variation& fallbackShader)
+	class OldVisGeoBox
+    {
+	public:
+		RenderCore::IResourcePtr	_cubeVB;
+        unsigned					_cubeVBCount;
+        unsigned					_cubeVBStride;
+		FixedFunctionModel::SimpleShaderVariationManager	_material;
+		FixedFunctionModel::SimpleShaderVariationManager	_materialP;
+
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const  { return _depVal; }
+
+		struct Desc {};
+		OldVisGeoBox(const Desc&);
+	protected:
+		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+	};
+
+	OldVisGeoBox::OldVisGeoBox(const Desc&)
+    : _material(
+        ToolsRig::Vertex3D_InputLayout, 
+        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
+        ParameterBox())
+    , _materialP(
+        GlobalInputLayouts::P,
+        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
+        ParameterBox())
 	{
-		if (generatorShader._shader._shaderProgram) {
-			generatorShader._shader.Apply(devContext, parserContext, {});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
-			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
-			devContext.Bind(Topology::TriangleList);
-			devContext.Draw(vertexCount);
-			return;
-		}
-
-		if (fallbackShader._shader._shaderProgram) {
-			VertexBufferView vbv { visBox._cubeVB, 0 };
-			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
-			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams, RenderCore::Techniques::GetDefaultShaderLanguage())} };
-			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
-			devContext.Draw(visBox._cubeVBCount);
-		}
+		auto cubeVertices = ToolsRig::BuildCube();
+        _cubeVBCount = (unsigned)cubeVertices.size();
+        _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
+        _cubeVB = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
-#endif
 
-    static void DrawTriMeshMarker(
+	static void DrawTriMeshMarker(
         Metal::DeviceContext& devContext,
         Techniques::ParsingContext& parserContext,
-        const VisGeoBox& visBox,
+        const OldVisGeoBox& visBox,
         const FixedFunctionModel::SimpleShaderVariationManager::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
@@ -390,57 +527,7 @@ namespace ToolsRig
         Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-        auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
-
-		const auto* baseTechnique = ILLUM_LEGACY_TECH;
-		if (Tweakable("DrawMarkers", true)) {
-
-			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 
-			for (const auto& a:_cubeAnnotations) {
-				auto objects = _objects->FindEntitiesOfType(a._typeId);
-				for (const auto&o:objects) {
-					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
-					DrawSphereStandIn(metalContext, parserContext, ObjectParams(*o, parserContext), techniqueIndex, baseTechnique, visBox, fallbackShader);
-				}
-			}
-
-			for (const auto& a:_directionalAnnotations) {
-				auto objects = _objects->FindEntitiesOfType(a._typeId);
-				for (const auto&o : objects) {
-					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
-					DrawPointerStandIn(metalContext, parserContext, ObjectParams(*o, parserContext, true), techniqueIndex, baseTechnique, visBox, fallbackShader);
-				}
-			}
-
-#if 0		// disabled because arealight.tech is deprecated
-			if (!_areaLightAnnotation.empty()) {
-				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
-				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
-				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, AREA_LIGHT_TECH);
-				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
-					auto objects = _objects->FindEntitiesOfType(a->_typeId);
-					for (const auto&o : objects) {
-						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
-
-						auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
-						FixedFunctionModel::SimpleShaderVariationManager::Variation* var;
-						unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
-						switch (shape) { 
-						case 2: var = &tubeShader; break;
-						case 3: var = &rectangleShader; vertexCount = 6*6; break;
-						default: var = &sphereShader; break;
-						}
-						DrawGenObject(
-							metalContext, parserContext, 
-							ObjectParams(*o, parserContext), *var, vertexCount,
-							visBox, fallbackShader);
-					}
-				}
-			}
-#endif
-
-		}
-
+        auto& visBox = ::ConsoleRig::FindCachedBox2<OldVisGeoBox>();
         auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, MESH_MARKER_TECH);
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
@@ -581,8 +668,11 @@ namespace ToolsRig
         return std::make_shared<IntersectionTester>(shared_from_this());
     }
 
-    ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<RetainedEntities> objects)
-    : _objects(std::move(objects))
+    ObjectPlaceholders::ObjectPlaceholders(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
+		const std::shared_ptr<RetainedEntities>& objects)
+    : _objects(objects)
+	, _pipelineAcceleratorPool(pipelineAcceleratorPool)
     {}
 
     ObjectPlaceholders::~ObjectPlaceholders() {}
