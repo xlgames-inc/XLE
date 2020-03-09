@@ -209,17 +209,24 @@ namespace ToolsRig
 		ModelScene(
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const ModelVisSettings& settings)
+		: _pipelineAcceleratorPool(pipelineAcceleratorPool), _settings(settings)
 		{
 			if (settings._materialBindingFilter)
 				_preDrawDelegate = std::make_shared<MaterialFilterDelegate>(settings._materialBindingFilter);
 
+			BuildRendererStateFuture();
+		}
+
+	protected:
+		void BuildRendererStateFuture() const
+		{
 			_rendererStateFuture = std::make_shared<::Assets::AssetFuture<RendererState>>("Model Scene Renderer");
 
-			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(pipelineAcceleratorPool, settings._modelName, settings._materialName, "skin");
+			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(_pipelineAcceleratorPool, _settings._modelName, _settings._materialName, "skin");
 
-			if (!settings._animationFileName.empty() && !settings._skeletonFileName.empty()) {
-				auto animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(settings._animationFileName);
-				auto skeletonFuture = ::Assets::MakeAsset<SkeletonScaffold>(settings._skeletonFileName);
+			if (!_settings._animationFileName.empty() && !_settings._skeletonFileName.empty()) {
+				auto animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(_settings._animationFileName);
+				auto skeletonFuture = ::Assets::MakeAsset<SkeletonScaffold>(_settings._skeletonFileName);
 				::Assets::WhenAll(rendererFuture, animationSetFuture, skeletonFuture).ThenConstructToFuture<RendererState>(
 					*_rendererStateFuture, 
 					[](	const std::shared_ptr<SimpleModelRenderer>& renderer,
@@ -242,8 +249,8 @@ namespace ToolsRig
 								std::move(animBinding), depVal,
 							});
 					});
-			} else if (!settings._animationFileName.empty()) {
-				auto animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(settings._animationFileName);
+			} else if (!_settings._animationFileName.empty()) {
+				auto animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(_settings._animationFileName);
 				::Assets::WhenAll(rendererFuture, animationSetFuture).ThenConstructToFuture<RendererState>(
 					*_rendererStateFuture, 
 					[](	const std::shared_ptr<SimpleModelRenderer>& renderer,
@@ -278,8 +285,9 @@ namespace ToolsRig
 			}
         }
 
-    protected:
 		std::shared_ptr<IPreDrawDelegate>			_preDrawDelegate;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
+		ModelVisSettings							_settings;
 		
 		struct RendererState
 		{
@@ -320,12 +328,23 @@ namespace ToolsRig
 				animState._changeEvent.Invoke();
 			}
 		};
-		::Assets::FuturePtr<RendererState>				_rendererStateFuture;
+		mutable ::Assets::FuturePtr<RendererState> _rendererStateFuture;
 		mutable std::shared_ptr<RendererState> _actualized;
 
 		RendererState* TryActualize() const
 		{
-			if (_actualized) return _actualized.get();
+			if (_actualized && !_actualized->GetDependencyValidation()->GetValidationIndex())
+				return _actualized.get();
+
+			if (_rendererStateFuture->GetAssetState() == ::Assets::AssetState::Pending)
+				return nullptr;
+
+			// Check if we need a reload -- 
+			if (_rendererStateFuture->GetDependencyValidation()->GetValidationIndex()) {
+				_actualized = nullptr;
+				BuildRendererStateFuture();
+			}
+
 			_actualized = _rendererStateFuture->TryActualize();
 			if (_actualized && _animationState) {
 				_actualized->BindAnimState(*_animationState);
