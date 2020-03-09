@@ -145,9 +145,12 @@ namespace Assets
 		}
 	}
 
+	static Threading::ThreadId s_mainThreadId;
+
     AssetSetManager::AssetSetManager()
     {
         _pimpl = std::make_unique<Pimpl>();
+		s_mainThreadId = Threading::CurrentThreadId();
     }
 
     AssetSetManager::~AssetSetManager()
@@ -163,7 +166,20 @@ namespace Assets
 
 		void DeregisterFrameBarrierCallback(unsigned markerId)
 		{
-			GetAssetSetManager().DeregisterFrameBarrierCallback(markerId);
+			// This can be called while the asset set manager is being shutdown; at that time it is
+			// not available as a singleton
+			if (HasAssetSetManager())
+				GetAssetSetManager().DeregisterFrameBarrierCallback(markerId);
+		}
+
+		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime)
+		{
+			if (Threading::CurrentThreadId() == s_mainThreadId) {
+				auto timeDiff = std::chrono::steady_clock::now() - stallStartTime;
+				if (timeDiff > std::chrono::milliseconds(100)) {
+					Log(Warning) << "Long stall on main thread while waiting for asset (" << std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count() << ") milliseconds" << std::endl;
+				}
+			}
 		}
 	}
 

@@ -100,6 +100,8 @@ namespace Assets
 
 		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn);
 		void DeregisterFrameBarrierCallback(unsigned);
+
+		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime);
 	}
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +263,8 @@ namespace Assets
 	template<typename AssetType>
         std::optional<AssetState>   AssetFuture<AssetType>::StallWhilePending(std::chrono::milliseconds timeout) const
 	{
-        auto timeToCancel = std::chrono::steady_clock::now() + timeout;
+		auto startTime = std::chrono::steady_clock::now();
+        auto timeToCancel = startTime + timeout;
 
 		auto* that = const_cast<AssetFuture<AssetType>*>(this);	// hack to defeat the "const" on this method
 		std::unique_lock<decltype(that->_lock)> lock(that->_lock);
@@ -300,6 +303,7 @@ namespace Assets
                     lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
                     assert(!that->_pollingFunction);
                     that->_pollingFunction = std::move(pollingFunction);
+					DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
                     return {};
                 }
 
@@ -316,7 +320,10 @@ namespace Assets
 		}
 
 		for (;;) {
-			if (that->_state != AssetState::Pending) return (AssetState)that->_state;
+			if (that->_state != AssetState::Pending) {
+				DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
+				return (AssetState)that->_state;
+			}
 			if (that->_pendingState != AssetState::Pending) {
 				// Force the background version into the foreground (see OnFrameBarrier)
 				// This is required because we can be woken up by SetAsset, which only set the
@@ -330,12 +337,16 @@ namespace Assets
 				that->_actualizationLog = std::move(that->_pendingActualizationLog);
 				that->_actualizedDepVal = std::move(that->_pendingDepVal);
 				that->_state = that->_pendingState;
+				DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
 				return (AssetState)that->_state;
 			}
             if (timeout.count() != 0) {
                 auto waitResult = that->_conditional.wait_until(lock, timeToCancel);
                 // If we timed out during wait, we should cancel and return
-                if (waitResult == std::cv_status::timeout) return {};
+                if (waitResult == std::cv_status::timeout) {
+					DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
+					return {};
+				}
             } else {
                 that->_conditional.wait(lock);
             }
