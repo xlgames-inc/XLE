@@ -8,6 +8,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
@@ -48,6 +49,8 @@ namespace PlatformRig
 
     void ResizePresentationChain::OnResize(unsigned newWidth, unsigned newHeight)
     {
+		_fbPool->Reset();
+
 		auto chain = _presentationChain.lock();
         if (chain) {
                 //  When we become an icon, we'll end up with zero width and height.
@@ -59,8 +62,11 @@ namespace PlatformRig
         }
     }
 
-    ResizePresentationChain::ResizePresentationChain(std::shared_ptr<RenderCore::IPresentationChain> presentationChain)
+    ResizePresentationChain::ResizePresentationChain(
+		const std::shared_ptr<RenderCore::IPresentationChain>& presentationChain,
+		const std::shared_ptr<RenderCore::Techniques::FrameBufferPool>& fbPool)
     : _presentationChain(presentationChain)
+	, _fbPool(fbPool)
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

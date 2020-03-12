@@ -80,19 +80,23 @@ namespace Sample
 
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
 
-            //  Tie in the window handler so we get presentation chain resizes, and give our
-            //  window a title
-        window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(sampleGlobals._presentationChain));
-        auto v = sampleGlobals._renderDevice->GetDesc();
-        window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
-
-            // Some secondary initalisation:
-            //  * attach compilers
-            //  * the global technique context contains some global rendering settings
-        renderAssetServices->InitModelCompilers();
-        sampleGlobals._techniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
-
         {
+			auto attachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>();
+			auto frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
+
+				//  Tie in the window handler so we get presentation chain resizes, and give our
+				//  window a title
+			window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(sampleGlobals._presentationChain, frameBufferPool));
+			auto v = sampleGlobals._renderDevice->GetDesc();
+			window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
+
+				// Some secondary initalisation:
+				//  * attach compilers
+				//  * the global technique context contains some global rendering settings
+			renderAssetServices->InitModelCompilers();
+			sampleGlobals._techniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
+
+
                 // currently we need to maintain a reference on these two fonts -- 
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
             auto defaultFont1 = RenderOverlays::GetX2Font("Vera", 16);
@@ -131,19 +135,16 @@ namespace Sample
 			frameRig.GetMainOverlaySystem()->AddSystem(sampleOverlay);
 			sampleOverlay->OnStartup(sampleGlobals);
 
-            RenderCore::Techniques::AttachmentPool attachmentPool;
-			RenderCore::Techniques::FrameBufferPool frameBufferPool;
-
                 //  Finally, we execute the frame loop
             while (PlatformRig::OverlappedWindow::DoMsgPump() != PlatformRig::OverlappedWindow::PumpResult::Terminate) {
                     // ------- Render ----------------------------------------
-                RenderCore::Techniques::ParsingContext parserContext(*sampleGlobals._techniqueContext, &attachmentPool, &frameBufferPool);
+                RenderCore::Techniques::ParsingContext parserContext(*sampleGlobals._techniqueContext, attachmentPool.get(), frameBufferPool.get());
                 auto frameResult = frameRig.ExecuteFrame(
                     *threadContext.get(), sampleGlobals._presentationChain.get(), 
 					parserContext, &cpuProfiler);
 
                     // ------- Update ----------------------------------------
-                RenderCore::Assets::Services::GetBufferUploads().Update(*threadContext, false);
+                RenderCore::Techniques::Services::GetBufferUploads().Update(*threadContext, false);
 				sampleOverlay->OnUpdate(frameResult._elapsedTime * Tweakable("TimeScale", 1.0f));
                 cpuProfiler.EndFrame();
             }
@@ -163,12 +164,14 @@ namespace Sample
 
         assetServices->GetAssetSets().Clear();
 		ConsoleRig::ResourceBoxes_Shutdown();
+		TerminateFileSystemMonitoring();
+		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
+		assetServices->GetAssetSets().Clear();
+		ConsoleRig::ResourceBoxes_Shutdown();
 
 		techniquesServices.reset();
 		renderAssetServices.reset();
         assetServices.reset();
-
-		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
     }
 
 	static void InitProfilerDisplays(

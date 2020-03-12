@@ -212,55 +212,55 @@ namespace PlatformRig
 
 		TRY {
 
-				// Bind the presentation target as the default output for the parser context
-				// (including setting the normalized width and height)
-				parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
-				parserContext.GetNamedResources().Bind(
-					RenderCore::FrameBufferProperties {
-						presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
-						presentationTargetDesc._textureDesc._samples });
+			// Bind the presentation target as the default output for the parser context
+			// (including setting the normalized width and height)
+			parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
+			parserContext.GetNamedResources().Bind(
+				RenderCore::FrameBufferProperties {
+					presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
+					presentationTargetDesc._textureDesc._samples });
 
-				////////////////////////////////
+			////////////////////////////////
 
-				TRY {
-					_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
-				}
-				CATCH_ASSETS(parserContext)
-				CATCH(const std::exception& e) {
-					StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in main overlay system render: " << e.what() << "\n";
-				}
-				CATCH_END
+			TRY {
+				_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
+			}
+			CATCH_ASSETS(parserContext)
+			CATCH(const std::exception& e) {
+				StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in main overlay system render: " << e.what() << "\n";
+			}
+			CATCH_END
 
-				TRY {
-					_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
-				}
-				CATCH_ASSETS(parserContext)
-				CATCH(const std::exception& e) {
-					StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in debug screens overlay system render: " << e.what() << "\n";
-				}
-				CATCH_END
+			TRY {
+				_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
+			}
+			CATCH_ASSETS(parserContext)
+			CATCH(const std::exception& e) {
+				StringMeldAppend(parserContext._stringHelpers->_errorString) << "Exception in debug screens overlay system render: " << e.what() << "\n";
+			}
+			CATCH_END
 
-				////////////////////////////////
+			////////////////////////////////
 
-				// auto f = _pimpl->_frameRate.GetPerformanceStats();
-				// auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
-				// 
-				// DrawFrameRate(
-				//     context, res._frameRateFont.get(), res._smallDebugFont.get(), std::get<0>(f), std::get<1>(f), std::get<2>(f), 
-				//     heapMetrics._usage, _pimpl->_prevFrameAllocationCount._allocationCount);
+			// auto f = _pimpl->_frameRate.GetPerformanceStats();
+			// auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
+			// 
+			// DrawFrameRate(
+			//     context, res._frameRateFont.get(), res._smallDebugFont.get(), std::get<0>(f), std::get<1>(f), std::get<2>(f), 
+			//     heapMetrics._usage, _pimpl->_prevFrameAllocationCount._allocationCount);
 
-				{
-					if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
-						auto f = _pimpl->_frameRate.GetPerformanceStats();
-						Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
-							// todo -- we should get a rolling average of these values
-						if (_pimpl->_prevFrameAllocationCount._allocationCount) {
-							Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
-						}
+			{
+				if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
+					auto f = _pimpl->_frameRate.GetPerformanceStats();
+					Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
+						// todo -- we should get a rolling average of these values
+					if (_pimpl->_prevFrameAllocationCount._allocationCount) {
+						Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
 					}
 				}
+			}
 
-				parserContext.GetNamedResources().UnbindAll();
+			parserContext.GetNamedResources().UnbindAll();
 
 			{
 				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);

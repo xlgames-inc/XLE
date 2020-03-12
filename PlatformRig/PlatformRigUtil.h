@@ -12,7 +12,7 @@
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
 namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class FrameBufferPool; } }
 
 namespace PlatformRig
 {
@@ -38,9 +38,11 @@ namespace PlatformRig
         void    OnResize(unsigned newWidth, unsigned newHeight);
 
         ResizePresentationChain(
-            std::shared_ptr<RenderCore::IPresentationChain> presentationChain);
+            const std::shared_ptr<RenderCore::IPresentationChain>& presentationChain,
+			const std::shared_ptr<RenderCore::Techniques::FrameBufferPool>& fbPool);
     protected:
         std::weak_ptr<RenderCore::IPresentationChain> _presentationChain;
+		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _fbPool;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
