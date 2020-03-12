@@ -66,8 +66,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
                     TextureDesc1D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_RTV_DIMENSION_TEXTURE1DARRAY : D3D11_RTV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -79,8 +81,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
                     TextureDesc2D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewDesc::Flags::ForceSingleSample)) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D11_RTV_DIMENSION_TEXTURE2DMS;
                         viewDesc.Texture2DMSArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -160,8 +164,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
                     TextureDesc1D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_DSV_DIMENSION_TEXTURE1DARRAY : D3D11_DSV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -173,8 +179,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
                     TextureDesc2D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+					if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewDesc::Flags::ForceSingleSample)) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY : D3D11_DSV_DIMENSION_TEXTURE2DMS;
                         viewDesc.Texture2DMSArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -233,8 +241,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
                     TextureDesc1D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE1DARRAY : D3D11_UAV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -246,8 +256,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
                     TextureDesc2D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE2DARRAY : D3D11_UAV_DIMENSION_TEXTURE2D;
                     viewDesc.Texture2DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -317,8 +329,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
                     TextureDesc1D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURE1DARRAY : D3D11_SRV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MostDetailedMip = window._mipRange._min;
                     viewDesc.Texture1DArray.MipLevels = window._mipRange._count;
@@ -331,8 +345,10 @@ namespace RenderCore { namespace Metal_DX11
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
                     TextureDesc2D textureDesc(resource);
-                    auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (window._arrayLayerRange._min >= textureDesc.ArraySize)
+						Throw(std::runtime_error("Array layer range minimum is larger than the total texture array size"));
+                    auto arraySize = std::min(textureDesc.ArraySize - window._arrayLayerRange._min, window._arrayLayerRange._count);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._count != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     if (textureDesc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURECUBEARRAY : D3D11_SRV_DIMENSION_TEXTURECUBE;
                         viewDesc.TextureCubeArray.MostDetailedMip = window._mipRange._min;
