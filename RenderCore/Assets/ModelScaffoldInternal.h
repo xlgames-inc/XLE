@@ -80,10 +80,10 @@ namespace RenderCore { namespace Assets
     class DrawCallDesc
     {
     public:
-        unsigned    _firstIndex, _indexCount;
-        unsigned    _firstVertex;
-        unsigned    _subMaterialIndex;
-        Topology	_topology;
+        unsigned    _firstIndex = 0, _indexCount = 0;
+        unsigned    _firstVertex = 0;
+        unsigned    _subMaterialIndex = 0;
+        Topology	_topology = (Topology)4; // Topology::TriangleList;
     };
 
     class VertexElement
