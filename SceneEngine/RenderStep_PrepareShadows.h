@@ -6,6 +6,9 @@
 
 #include "RenderStep.h"
 
+namespace RenderCore { namespace Techniques { struct RSDepthBias; }}
+namespace RenderCore { enum class CullMode; }
+
 namespace SceneEngine
 {
 	class RenderStep_PrepareDMShadows : public IRenderStep
@@ -21,7 +24,11 @@ namespace SceneEngine
 
 		RenderCore::IResourcePtr _resource;
 
-		RenderStep_PrepareDMShadows(RenderCore::Format format, UInt2 dims, unsigned projectionCount);
+		RenderStep_PrepareDMShadows(
+			RenderCore::Format format, UInt2 dims, unsigned projectionCount,
+			const RenderCore::Techniques::RSDepthBias& singleSidedBias,
+			const RenderCore::Techniques::RSDepthBias& doubleSidedBias,
+			RenderCore::CullMode cullMode);
 		~RenderStep_PrepareDMShadows();
 	private:
 		RenderStepFragmentInterface _fragment;

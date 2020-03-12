@@ -9,6 +9,7 @@
 #include "../resolveutil.hlsl"
 #include "../../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
 #include "../../TechniqueLibrary/Framework/Binding.hlsl"
+#include "../../TechniqueLibrary/Framework/SystemUniforms.hlsl"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -56,8 +57,8 @@ float4 main(
     float2 tc = MousePosition.xy / float2(ViewportDimensions);
     float3 viewFrustumVector =
         lerp(
-            lerp(SysUniform_GetFrustumCorners(0].xyz, FrustumCorners[1).xyz, tc.y),
-            lerp(SysUniform_GetFrustumCorners(2].xyz, FrustumCorners[3).xyz, tc.y),
+            lerp(SysUniform_GetFrustumCorners(0).xyz, SysUniform_GetFrustumCorners(1).xyz, tc.y),
+            lerp(SysUniform_GetFrustumCorners(2).xyz, SysUniform_GetFrustumCorners(3).xyz, tc.y),
             tc.x);
     float3 worldPosition = CalculateWorldPosition(MousePosition, 0, viewFrustumVector);
 

@@ -39,6 +39,13 @@ namespace RenderCore { namespace Techniques
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
         CullMode cullMode = CullMode::Back);
 
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_ShadowGen(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const RSDepthBias& singleSidedBias = RSDepthBias(),
+        const RSDepthBias& doubleSidedBias = RSDepthBias(),
+        CullMode cullMode = CullMode::Back);
+
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
 		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,

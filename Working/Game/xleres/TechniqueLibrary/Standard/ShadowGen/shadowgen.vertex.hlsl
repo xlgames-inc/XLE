@@ -1,42 +1,33 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "GeometryConfiguration.hlsl"
-#include "../Lighting/ShadowProjection.hlsl"
-#include "../Vegetation/WindAnim.hlsl"
-#include "../Vegetation/InstanceVS.hlsl"
+#include "ShadowGenGeometryConfiguration.hlsl"
+#include "../../SceneEngine/Lighting/ShadowProjection.hlsl"
 #include "../../Framework/SystemUniforms.hlsl"
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/VSShadowOutput.hlsl"
-#include "../../Math/TransformAlgorithm.hlsl"
+#include "../../Framework/DeformVertex.hlsl"
 #include "../../Framework/Surface.hlsl"
+#include "../../Math/TransformAlgorithm.hlsl"
+#include "../../Nodes/Templates.sh"
 
-VSShadowOutput main(VSIN input)
+#if !defined(SHADOW_CASCADE_MODE)
+	#error expecting SHADOW_CASCADE_MODE to be set
+#endif
+
+VSShadowOutput BuildVSShadowOutput(
+	DeformedVertex deformedVertex,
+	VSIN input)
 {
-	float3 localPosition = VSIN_GetLocalPosition(input);
-
-	#if GEO_HAS_INSTANCE_ID==1
-		float3 objectCentreWorld;
-		float3 worldNormal;
-		float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
-	#else
-		float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
-		float3 objectCentreWorld = float3(SysUniform_GetLocalToWorld()[0][3], SysUniform_GetLocalToWorld()[1][3], SysUniform_GetLocalToWorld()[2][3]);
-		float3 worldNormal = LocalToWorldUnitVector(VSIN_GetLocalNormal(input));
-	#endif
-
-		// note that when rendering shadows, we actually only need the normal
-		// for doing the vertex wind animation
-	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TEXTANGENT==1)
-		worldNormal =  VSIN_GetWorldTangentFrame(input).normal;
-	#endif
+	float3 worldPosition;
+	if (deformedVertex.coordinateSpace == 0) {
+		worldPosition = mul(SysUniform_GetLocalToWorld(), float4(deformedVertex.position,1)).xyz;
+	} else {
+		worldPosition = deformedVertex.position;
+	}
 
 	VSShadowOutput result;
-
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input).rgb);
 
 	#if VSOUT_HAS_TEXCOORD>=1
 		result.texCoord = input.texCoord;
@@ -88,4 +79,17 @@ VSShadowOutput main(VSIN input)
 	#endif
 
 	return result;
+}
+
+VSShadowOutput nopatches(VSIN input)
+{
+	DeformedVertex deformedVertex = DeformedVertex_Initialize(input);
+	return BuildVSShadowOutput(deformedVertex, input);
+}
+
+VSShadowOutput frameworkEntryWithDeformVertex(VSIN input)
+{
+	DeformedVertex deformedVertex = DeformedVertex_Initialize(input);
+	deformedVertex = DeformVertex(deformedVertex, input);
+	return BuildVSShadowOutput(deformedVertex, input);
 }

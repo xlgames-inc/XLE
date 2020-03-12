@@ -24,6 +24,26 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+~ShadowGenShared
+	~Selectors
+		MAT_ALPHA_DITHER_SHADOWS
+		FRUSTUM_FILTER=63
+		SHADOW_CASCADE_MODE
+		VSOUT_HAS_SHADOW_PROJECTION_COUNT=6
+		SHADOW_ENABLE_NEAR_CASCADE
+
+~VSShadowGen_NoPatches
+	~Inherit; Silhouette; ShadowGenShared
+	VertexShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.vertex.hlsl:nopatches
+	GeometryShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.geo.hlsl:main
+
+~VSShadowGen_DeformVertex
+	~Inherit; Silhouette; ShadowGenShared
+	VertexShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.vertex.hlsl:frameworkEntryWithDeformVertex
+	GeometryShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.geo.hlsl:main
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	~~ "Illum" style techniques
 	~~      -- these are techniques that are used when drawing the object into the main scene and we're drawing
 	~~      the object in it's "main" visual look -- with all of the assigned material, texture & lighting properties

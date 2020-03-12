@@ -45,18 +45,16 @@ namespace SceneEngine
 		~RenderStepFragmentInterface();
 
 		const RenderCore::Techniques::FrameBufferDescFragment& GetFrameBufferDescFragment() const { return _frameBufferDescFragment; }
-	private:
-		RenderCore::Techniques::FrameBufferDescFragment _frameBufferDescFragment;
 
 		struct SubpassExtension
 		{
 			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 			ParameterBox _sequencerSelectors;
 		};
-		std::vector<SubpassExtension> _subpassExtensions;
-
 		IteratorRange<const SubpassExtension*> GetSubpassAddendums() const { return MakeIteratorRange(_subpassExtensions); }
-		friend class CompiledSceneTechnique;
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _frameBufferDescFragment;
+		std::vector<SubpassExtension> _subpassExtensions;
 	};
 
 	class RenderStepFragmentInstance : public RenderCore::Techniques::RenderPassFragment

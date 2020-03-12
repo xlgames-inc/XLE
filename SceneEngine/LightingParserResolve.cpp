@@ -273,8 +273,8 @@ namespace SceneEngine
                 DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._specularIBL)->Actualize()->GetShaderResource()));
             }
 
-            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(10, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(16, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT")->Actualize()->GetShaderResource()));
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(17, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(9, 
 				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosslut.dds:LT")->Actualize()->GetShaderResource(),
 				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT")->Actualize()->GetShaderResource()));

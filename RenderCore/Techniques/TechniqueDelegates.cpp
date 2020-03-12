@@ -696,7 +696,8 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 			const RSDepthBias& singleSidedBias,
 			const RSDepthBias& doubleSidedBias,
-			CullMode cullMode)
+			CullMode cullMode,
+			bool shadowGen)
 		: _techniqueSet(techniqueSet)
 		{
 			_sharedResources = sharedResources;
@@ -706,8 +707,12 @@ namespace RenderCore { namespace Techniques
 
 			const auto noPatchesHash = Hash64("DepthOnly_NoPatches");
 			const auto earlyRejectionHash = Hash64("DepthOnly_EarlyRejection");
-			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
-			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
+			auto vsNoPatchesHash = Hash64("VS_NoPatches");
+			auto vsDeformVertexHash = Hash64("VS_DeformVertex");
+			if (shadowGen) {
+				vsNoPatchesHash = Hash64("VSShadowGen_NoPatches");
+				vsDeformVertexHash = Hash64("VSShadowGen_DeformVertex");
+			}
 			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
 			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
 			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
@@ -738,7 +743,17 @@ namespace RenderCore { namespace Techniques
         const RSDepthBias& doubleSidedBias,
         CullMode cullMode)
 	{
-		return std::make_shared<TechniqueDelegate_DepthOnly>(techniqueSet, sharedResources, singleSidedBias, doubleSidedBias, cullMode);
+		return std::make_shared<TechniqueDelegate_DepthOnly>(techniqueSet, sharedResources, singleSidedBias, doubleSidedBias, cullMode, false);
+	}
+
+	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_ShadowGen(
+		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		const RSDepthBias& singleSidedBias,
+        const RSDepthBias& doubleSidedBias,
+        CullMode cullMode)
+	{
+		return std::make_shared<TechniqueDelegate_DepthOnly>(techniqueSet, sharedResources, singleSidedBias, doubleSidedBias, cullMode, true);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

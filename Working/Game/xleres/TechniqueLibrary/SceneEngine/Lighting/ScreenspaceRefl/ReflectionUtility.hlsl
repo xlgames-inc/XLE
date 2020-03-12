@@ -36,8 +36,8 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
  	float weight3 = tc.x * tc.y;
 
  	float3 viewFrustumVector =
- 			weight0 * SysUniform_GetFrustumCorners(0].xyz + weight1 * FrustumCorners[1).xyz
- 		+   weight2 * SysUniform_GetFrustumCorners(2].xyz + weight3 * FrustumCorners[3).xyz
+ 			weight0 * SysUniform_GetFrustumCorners(0).xyz + weight1 * SysUniform_GetFrustumCorners(1).xyz
+ 		+   weight2 * SysUniform_GetFrustumCorners(2).xyz + weight3 * SysUniform_GetFrustumCorners(3).xyz
  		;
 
     outputLinearDepth = linear0To1Depth;

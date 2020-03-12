@@ -29,30 +29,4 @@ namespace SceneEngine
         ShadowResourcesBox(const Desc& desc);
         ~ShadowResourcesBox();
     };
-
-    class ShadowWriteResources
-    {
-    public:
-        class Desc
-        {
-        public:
-            using RSDepthBias = RenderCore::Techniques::RSDepthBias;
-            RSDepthBias     _singleSidedBias;
-            RSDepthBias     _doubleSidedBias;
-            RenderCore::CullMode	_windingCullMode;
-
-            Desc(   const RSDepthBias& singleSidedBias,
-                    const RSDepthBias& doubleSidedBias,
-                    RenderCore::CullMode windingCullMode) 
-            : _singleSidedBias(singleSidedBias)
-            , _doubleSidedBias(doubleSidedBias)
-            , _windingCullMode(windingCullMode) {}
-        };
-
-        RenderCore::Metal::RasterizerState _rasterizerState;
-        std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _stateResolver;
-
-        ShadowWriteResources(const Desc& desc);
-        ~ShadowWriteResources();
-    };
 }

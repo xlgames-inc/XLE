@@ -4,8 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TechniqueLibrary/Lighting/LightShapes.hlsl"
-#include "../TechniqueLibrary/TechniqueLibrary/Utility/LoadGBuffer.hlsl"
+#include "../TechniqueLibrary/SceneEngine/Lighting/LightShapes.hlsl"
+#include "../TechniqueLibrary/Utility/LoadGBuffer.hlsl"
 #include "../TechniqueLibrary/Framework/Binding.hlsl"
 
 #if MSAA_SAMPLES > 1

@@ -24,6 +24,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
@@ -347,6 +348,9 @@ namespace SceneEngine
 			SetFrameGlobalStates(metalContext);
 		CATCH_ASSETS_END(parsingContext)
 
+		auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
+		parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
+
 		// Preparation steps (including shadows prepare)
         {
             GPUAnnotation anno(threadContext, "Prepare");
@@ -364,10 +368,17 @@ namespace SceneEngine
 						continue;
 
 					if (shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+
+						RenderCore::Techniques::RSDepthBias singleSidedBias {
+							shadowDelegate._shadowProj._rasterDepthBias, shadowDelegate._shadowProj._depthBiasClamp, shadowDelegate._shadowProj._slopeScaledBias };
+						RenderCore::Techniques::RSDepthBias doubleSidedBias {
+							shadowDelegate._shadowProj._dsRasterDepthBias, shadowDelegate._shadowProj._dsDepthBiasClamp, shadowDelegate._shadowProj._dsSlopeScaledBias };
+
 						RenderStep_PrepareDMShadows renderStep(
 							shadowDelegate._shadowProj._format, 
 							UInt2(shadowDelegate._shadowProj._width, shadowDelegate._shadowProj._height),
-							shadowDelegate._shadowProj._projections.Count());
+							shadowDelegate._shadowProj._projections.Count(),
+							singleSidedBias, doubleSidedBias, shadowDelegate._shadowProj._cullMode);
 						auto interf = renderStep.GetInterface();
 
 						auto merged = Techniques::MergeFragments(
@@ -376,10 +387,14 @@ namespace SceneEngine
 						Techniques::AttachmentPool shadowsAttachmentPool;
 						auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 
+						auto sequencerConfig = technique._pipelineAccelerators->CreateSequencerConfig(
+							interf.GetSubpassAddendums()[0]._techniqueDelegate,
+							interf.GetSubpassAddendums()[0]._sequencerSelectors,
+							fbDesc,
+							0);
+
 						Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), shadowsAttachmentPool);
-						RenderStepFragmentInstance rpf(rpi, merged._remapping[0], {});
-						Metal::DeviceContext::Get(threadContext)->Bind(
-							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
+						RenderStepFragmentInstance rpf(rpi, merged._remapping[0], MakeIteratorRange(&sequencerConfig, &sequencerConfig+1));
 
 						renderStep._resource = shadowsAttachmentPool.GetResource(0);
 						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
@@ -404,9 +419,6 @@ namespace SceneEngine
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
 				technique._sampling });
-
-		auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
-		parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
 
 		technique._pipelineAccelerators->RebuildAllOutOfDatePipelines();		// (check for pipelines that need hot reloading)
 

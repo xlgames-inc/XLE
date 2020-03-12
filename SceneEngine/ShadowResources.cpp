@@ -13,51 +13,6 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-#if 0
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-    ShadowTargetsBox::ShadowTargetsBox(const Desc& desc)
-    {
-        auto& uploads = GetBufferUploads();
-        auto uploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource|BindFlag::DepthStencil,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._formats._resourceFormat, 1, uint8(desc._targetCount)),
-            "Shadows");
-
-        auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr);
-        Metal::DepthStencilView depthStencilView(
-			shadowTexture->GetUnderlying(), 
-			TextureViewDesc{
-				TextureViewDesc::Aspect::Depth, 
-				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{0, desc._targetCount}});
-        Metal::ShaderResourceView shaderResource(
-			shadowTexture->GetUnderlying(), 
-			TextureViewDesc{
-				TextureViewDesc::Aspect::ColorLinear,
-				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{0, desc._targetCount}});
-
-        std::vector<Metal::DepthStencilView> dsvBySlice;
-        for (unsigned c=0; c<desc._targetCount; ++c) {
-			auto window = TextureViewDesc{
-				TextureViewDesc::Aspect::Depth,
-				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{ c, 1 }};
-            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->GetUnderlying(), window));
-        }
-
-        _shaderResource = std::move(shaderResource);
-        _depthStencilView = std::move(depthStencilView);
-        _shadowTexture = std::move(shadowTexture);
-        _dsvBySlice = std::move(dsvBySlice);
-    }
-
-    ShadowTargetsBox::~ShadowTargetsBox() {}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
     class ShadowParameters
     {
     public:
@@ -109,24 +64,5 @@ namespace SceneEngine
 
     ShadowResourcesBox::~ShadowResourcesBox() {}
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-    ShadowWriteResources::ShadowWriteResources(const Desc& desc)
-    {
-            // note --  should we be doing back-face culling during shadow rasterization?
-            //          There are potentially some problems if the shadow camera enters
-            //          the rasterized shape.
-        _rasterizerState = Metal::RasterizerState(
-            desc._windingCullMode, true, 
-            FillMode::Solid,
-            desc._singleSidedBias._depthBias, 
-            desc._singleSidedBias._depthBiasClamp, 
-            desc._singleSidedBias._slopeScaledBias);
-
-        _stateResolver = Techniques::CreateRenderStateDelegate_DepthOnly(
-            desc._singleSidedBias, desc._doubleSidedBias, desc._windingCullMode);
-    }
-
-    ShadowWriteResources::~ShadowWriteResources() {}
 }
 

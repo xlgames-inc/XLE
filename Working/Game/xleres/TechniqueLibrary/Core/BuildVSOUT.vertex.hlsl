@@ -8,7 +8,7 @@
 #include "../Framework/Surface.hlsl"
 #include "../SceneEngine/Lighting/resolvefog.hlsl"
 
-VSOUT DefaultIllumVertex(
+VSOUT BuildVSOUT(
 	DeformedVertex deformedVertex,
 	VSIN input)
 {

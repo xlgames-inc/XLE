@@ -17,13 +17,16 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../Assets/Assets.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/FunctionUtils.h"
+#include "../xleres/FileList.h"
 
 namespace SceneEngine
 {
@@ -32,11 +35,47 @@ namespace SceneEngine
 	static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
     static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
 
+	class ShadowGenTechniqueDelegateBox
+	{
+	public:
+		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
+		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _shadowGenDelegate;
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
+
+		class Desc
+        {
+        public:
+            using RSDepthBias = RenderCore::Techniques::RSDepthBias;
+            RSDepthBias     _singleSidedBias;
+            RSDepthBias     _doubleSidedBias;
+            RenderCore::CullMode	_windingCullMode;
+
+            Desc(   const RSDepthBias& singleSidedBias,
+                    const RSDepthBias& doubleSidedBias,
+                    RenderCore::CullMode windingCullMode) 
+            : _singleSidedBias(singleSidedBias)
+            , _doubleSidedBias(doubleSidedBias)
+            , _windingCullMode(windingCullMode) {}
+        };
+
+		ShadowGenTechniqueDelegateBox(const Desc& desc)
+		{
+			_techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+			_techniqueSharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+			_shadowGenDelegate = RenderCore::Techniques::CreateTechniqueDelegate_ShadowGen(
+				_techniqueSetFile, _techniqueSharedResources,
+				desc._singleSidedBias, desc._doubleSidedBias, desc._windingCullMode);
+		}
+	};
+
     static PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext, 
-		ViewDelegate_Shadow& executedScene)
+		ViewDelegate_Shadow& executedScene,
+		RenderStepFragmentInstance& rpi)
     {
 		const ShadowProjectionDesc& frustum = executedScene._shadowProj;
         auto projectionCount = std::min(frustum._projections.Count(), MaxShadowTexturesPerLight);
@@ -64,7 +103,7 @@ namespace SceneEngine
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
-        parserContext.GetSubframeShaderSelectors().SetParameter(
+        /*parserContext.GetSubframeShaderSelectors().SetParameter(
             StringShadowCascadeMode, 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
         parserContext.GetSubframeShaderSelectors().SetParameter(
@@ -74,36 +113,29 @@ namespace SceneEngine
             [&parserContext]() {
                 parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowCascadeMode, 0);
                 parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowEnableNearCascade, 0);
-            });
+            });*/
 
             /////////////////////////////////////////////
 
-        RenderCore::Techniques::RSDepthBias singleSidedBias(
-            frustum._rasterDepthBias, frustum._depthBiasClamp, frustum._slopeScaledBias);
-        RenderCore::Techniques::RSDepthBias doubleSidedBias(
-            frustum._dsRasterDepthBias, frustum._dsDepthBiasClamp, frustum._dsSlopeScaledBias);
-        auto& resources = ConsoleRig::FindCachedBox2<ShadowWriteResources>(
-            singleSidedBias, doubleSidedBias, frustum._cullMode);
-
-            /////////////////////////////////////////////
-
-        /* Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
+        Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
         parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
         auto cleanup2 = MakeAutoCleanup(
             [&parserContext, &savedWorldToProjection]() {
                 parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
-            }); */
+            });
 
             /////////////////////////////////////////////
 
-		// RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
-		// ExecuteDrawablesContext executeDrawablesContext(parserContext);
-        metalContext.Bind(resources._rasterizerState);
-        ExecuteDrawables(
-            threadContext, parserContext,
-			MakeSequencerContext(parserContext, TechniqueIndex_ShadowGen),
-            executedScene._general,
-            "ShadowGen-Prepare");
+        CATCH_ASSETS_BEGIN
+			// RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
+			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
+			// metalContext.Bind(resources._rasterizerState);
+			ExecuteDrawables(
+				threadContext, parserContext,
+				MakeSequencerContext(parserContext, *rpi.GetSequencerConfig(), TechniqueIndex_ShadowGen),
+				executedScene._general,
+				"ShadowGen-Prepare");
+		CATCH_ASSETS_END(parserContext)
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(threadContext, parserContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_ShadowGen);
@@ -126,13 +158,18 @@ namespace SceneEngine
 		auto shadow = LightingParser_PrepareDMShadow(
 			threadContext, parsingContext,
 			lightingParserContext,
-			shadowDelegate);
+			shadowDelegate,
+			rpi);
 		shadow._srv = Metal::ShaderResourceView(_resource, TextureViewDesc{TextureViewDesc::Aspect::Depth});
 		if (shadow.IsReady())
 			lightingParserContext._preparedDMShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
 	}
 
-	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount)
+	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(
+		Format format, UInt2 dims, unsigned projectionCount,
+		const RenderCore::Techniques::RSDepthBias& singleSidedBias,
+        const RenderCore::Techniques::RSDepthBias& doubleSidedBias,
+        CullMode cullMode)
 	: _fragment(RenderCore::PipelineType::Graphics)
 	{
 		auto output = _fragment.DefineAttachment(
@@ -143,12 +180,23 @@ namespace SceneEngine
                 projectionCount,
 				AttachmentDesc::DimensionsMode::Absolute, 
                 AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
+		
+        auto& resources = ConsoleRig::FindCachedBox2<ShadowGenTechniqueDelegateBox>(
+            singleSidedBias, doubleSidedBias, cullMode);
+
+		ParameterBox box;
+		bool enableNearCascade = true;		// preparedResult._enableNearCascade
+		auto projectionMode = ShadowProjectionDesc::Projections::Mode::Ortho;  // preparedResult._mode
+		box.SetParameter(StringShadowCascadeMode, projectionMode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        box.SetParameter(StringShadowEnableNearCascade, enableNearCascade?1:0);
 
 		_fragment.AddSubpass(
 			SubpassDesc {
 				{},
 				{output, LoadStore::Clear, LoadStore::Retain}
-			});
+			},
+			resources._shadowGenDelegate,
+			std::move(box));
 	}
 
 	RenderStep_PrepareDMShadows::~RenderStep_PrepareDMShadows() {}
