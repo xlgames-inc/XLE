@@ -405,6 +405,17 @@ namespace RenderCore
 
         case Format::RGBA1_ETC2_TYPELESS:
         case Format::RGBA1_ETC2_UNORM_SRGB: return Format::RGBA1_ETC2_UNORM;
+
+        case Format::R32G32B32A32_TYPELESS: return Format::R32G32B32A32_FLOAT;
+        case Format::R32G32B32_TYPELESS: return Format::R32G32B32_FLOAT;
+        case Format::R32G32_TYPELESS: return Format::R32G32_FLOAT;
+        case Format::R32_TYPELESS: return Format::R32_FLOAT;
+        case Format::R16G16B16A16_TYPELESS: return Format::R16G16B16A16_FLOAT;		// ambiguous with the UNORM format
+        case Format::R16G16_TYPELESS: return Format::R16G16_FLOAT;					// ambiguous with the UNORM format
+        case Format::R16_TYPELESS: return Format::R16_FLOAT;
+        case Format::R10G10B10A2_TYPELESS: return Format::R10G10B10A2_UNORM;
+        case Format::R8G8_TYPELESS: return Format::R8G8_UNORM;
+        case Format::R8_TYPELESS: return Format::R8_UNORM;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }
