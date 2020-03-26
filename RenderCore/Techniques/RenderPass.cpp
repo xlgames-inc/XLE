@@ -130,6 +130,19 @@ namespace RenderCore { namespace Techniques
         return _rpi->GetDesc(i->second);
     }
 
+	auto RenderPassFragment::GetDepthStencilAttachmentSRV(const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	{
+		auto passIndex = _currentPassIndex;
+        auto i = std::find_if(
+            _mapping->_depthStencilAttachmentMapping.begin(), _mapping->_depthStencilAttachmentMapping.end(),
+            [passIndex](const std::pair<unsigned, AttachmentName>& p) {
+                return p.first == passIndex;
+            });
+        if (i == _mapping->_depthStencilAttachmentMapping.end())
+            return nullptr;
+        return _rpi->GetSRV(i->second, window);
+	}
+
     void RenderPassFragment::NextSubpass()
     {
         _rpi->NextSubpass();
@@ -1465,7 +1478,10 @@ namespace RenderCore { namespace Techniques
                     newSubpass._output[c]._resourceName = Remap(attachmentRemapping, newSubpass._output[c]._resourceName);
 					passFragment._outputAttachmentMapping.push_back({{p, c}, newSubpass._output[c]._resourceName});
 				}
-                newSubpass._depthStencil._resourceName = Remap(attachmentRemapping, newSubpass._depthStencil._resourceName);
+				if (newSubpass._depthStencil._resourceName != ~0u) {
+					newSubpass._depthStencil._resourceName = Remap(attachmentRemapping, newSubpass._depthStencil._resourceName);
+					passFragment._depthStencilAttachmentMapping.push_back({p, newSubpass._depthStencil._resourceName});
+				}
                 for (unsigned c=0; c<(unsigned)newSubpass._input.size(); ++c) {
                     newSubpass._input[c]._resourceName = Remap(attachmentRemapping, newSubpass._input[c]._resourceName);
                     passFragment._inputAttachmentMapping.push_back({{p, c}, newSubpass._input[c]._resourceName});

@@ -68,7 +68,7 @@ namespace SceneEngine
         unsigned    _frustumCount;
         bool        _enableNearCascade;
 
-        ShadowProjectionDesc::Projections::Mode::Enum _mode;
+        ShadowProjectionMode			_mode;
         CB_ArbitraryShadowProjection    _arbitraryCBSource;
         CB_OrthoShadowProjection        _orthoCBSource;
 

@@ -169,7 +169,7 @@ namespace PlatformRig
             //  Calculate a simple set of shadow frustums.
             //  This method is non-ideal, but it's just a place holder for now
         result._normalProjCount = 5;
-        result._mode = ShadowProjectionDesc::Projections::Mode::Arbitrary;
+        result._mode = ShadowProjectionMode::Arbitrary;
         for (unsigned c=0; c<result._normalProjCount; ++c) {
             const float projectionWidth = shadowWidthScale * std::pow(projectionSizePower, float(c));
             auto& p = result._fullProj[c];
@@ -301,7 +301,7 @@ namespace PlatformRig
 
         ShadowProjectionDesc::Projections result;
         result._normalProjCount = settings._frustumCount;
-        result._mode = ShadowProjectionDesc::Projections::Mode::Ortho;
+        result._mode = ShadowProjectionMode::Ortho;
 
         const float shadowNearPlane = -settings._maxDistanceFromCamera;
         const float shadowFarPlane = settings._maxDistanceFromCamera;
@@ -428,6 +428,52 @@ namespace PlatformRig
 
     
 
+	SceneEngine::ShadowGeneratorDesc
+		CalculateShadowGeneratorDesc(
+			const DefaultShadowFrustumSettings& settings)
+	{
+		SceneEngine::ShadowGeneratorDesc result;
+		result._width   = settings._textureSize;
+        result._height  = settings._textureSize;
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
+            // note --  currently having problems in Vulkan with reading from the D24_UNORM_XX format
+            //          might be better to move to 32 bit format now, anyway
+            result._format = RenderCore::Format::D32_FLOAT;
+        } else {
+            result._format = RenderCore::Format::D16_UNORM;
+        }
+
+		if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {
+			result._arrayCount = 5;
+			result._enableNearCascade = false;
+			result._projectionMode = SceneEngine::ShadowProjectionMode::Arbitrary;
+		} else {
+			result._arrayCount = settings._frustumCount + 1;		// (add one for the special "near" cascade
+			result._enableNearCascade = true;
+			result._projectionMode = SceneEngine::ShadowProjectionMode::Ortho;
+		}
+
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::RayTraced) {
+            result._resolveType = SceneEngine::ShadowResolveType::RayTraced;
+        } else {
+            result._resolveType = SceneEngine::ShadowResolveType::DepthTexture;
+        }
+
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
+            result._cullMode = RenderCore::CullMode::Front;
+        } else {
+            result._cullMode = RenderCore::CullMode::Back;
+        }
+
+        result._slopeScaledBias = settings._slopeScaledBias;
+        result._depthBiasClamp = settings._depthBiasClamp;
+        result._rasterDepthBias = settings._rasterDepthBias;
+        result._dsSlopeScaledBias = settings._dsSlopeScaledBias;
+        result._dsDepthBiasClamp = settings._dsDepthBiasClamp;
+        result._dsRasterDepthBias = settings._dsRasterDepthBias;
+		return result;
+	}
+
     SceneEngine::ShadowProjectionDesc 
         CalculateDefaultShadowCascades(
             const SceneEngine::LightDesc& lightDesc,
@@ -443,15 +489,6 @@ namespace PlatformRig
         using namespace SceneEngine;
 
         ShadowProjectionDesc result;
-        result._width   = settings._textureSize;
-        result._height  = settings._textureSize;
-        if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
-            // note --  currently having problems in Vulkan with reading from the D24_UNORM_XX format
-            //          might be better to move to 32 bit format now, anyway
-            result._format = RenderCore::Format::D32_FLOAT;
-        } else {
-            result._format = RenderCore::Format::D16_UNORM;
-        }
         
         if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {
             auto t = BuildBasicShadowProjections(lightDesc, mainSceneProjectionDesc, settings);
@@ -463,31 +500,17 @@ namespace PlatformRig
             result._worldToClip = t.second;
         }
 
-        if (settings._flags & DefaultShadowFrustumSettings::Flags::RayTraced) {
-            result._resolveType = ShadowProjectionDesc::ResolveType::RayTraced;
-        } else {
-            result._resolveType = ShadowProjectionDesc::ResolveType::DepthTexture;
-        }
-
-        if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
-            result._cullMode = RenderCore::CullMode::Front;
-        } else {
-            result._cullMode = RenderCore::CullMode::Back;
-        }
-
-        result._slopeScaledBias = settings._slopeScaledBias;
-        result._depthBiasClamp = settings._depthBiasClamp;
-        result._rasterDepthBias = settings._rasterDepthBias;
-        result._dsSlopeScaledBias = settings._dsSlopeScaledBias;
-        result._dsDepthBiasClamp = settings._dsDepthBiasClamp;
-        result._dsRasterDepthBias = settings._dsRasterDepthBias;
-
         result._worldSpaceResolveBias = settings._worldSpaceResolveBias;
         result._tanBlurAngle = settings._tanBlurAngle;
         result._minBlurSearch = settings._minBlurSearch;
         result._maxBlurSearch = settings._maxBlurSearch;
 
         result._lightId = lightId;
+
+		result._shadowGeneratorDesc = CalculateShadowGeneratorDesc(settings);
+		assert(result._shadowGeneratorDesc._enableNearCascade == result._projections._useNearProj);
+		assert(result._shadowGeneratorDesc._arrayCount == result._projections.Count());
+		assert(result._shadowGeneratorDesc._projectionMode == result._projections._mode);
 
         return result;
     }

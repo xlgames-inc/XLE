@@ -11,7 +11,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
-namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; }
+namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; class ShadowGeneratorDesc; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class FrameBufferPool; } }
 
 namespace PlatformRig
@@ -94,6 +94,10 @@ namespace PlatformRig
         unsigned lightId,
         const RenderCore::Techniques::ProjectionDesc& mainSceneCameraDesc,
         const DefaultShadowFrustumSettings& settings);
+
+	SceneEngine::ShadowGeneratorDesc
+		CalculateShadowGeneratorDesc(
+			const DefaultShadowFrustumSettings& settings);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

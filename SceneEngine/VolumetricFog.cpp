@@ -530,7 +530,7 @@ namespace SceneEngine
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", false); }
     static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
     {
-        return (shadowFrustum._mode == ShadowProjectionDesc::Projections::Mode::Ortho) ? 2u : 1u;
+        return (shadowFrustum._mode == ShadowProjectionMode::Ortho) ? 2u : 1u;
     }
     static unsigned GetShadowFilterMode()   { return Tweakable("VolFogFilter", 0); }
     static float GetShadowFilterStdDev()    { return Tweakable("VolFogStdDev", 2.2f); }

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../resolveutil.hlsl"
-#include "../../TechniqueLibrary/ScenEngine/Lighting/CascadeResolve.hlsl"
+#include "../../TechniqueLibrary/SceneEngine/Lighting/CascadeResolve.hlsl"
 #include "../../TechniqueLibrary/Utility/Colour.hlsl"
 #include "../../TechniqueLibrary/Math/ProjectionMath.hlsl"
 

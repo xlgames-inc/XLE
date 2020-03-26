@@ -205,6 +205,7 @@ namespace RenderCore { namespace Techniques
         using PassAndSlot = std::pair<unsigned, unsigned>;
         std::vector<std::pair<PassAndSlot, AttachmentName>> _outputAttachmentMapping;
 		std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+		std::vector<std::pair<unsigned, AttachmentName>> _depthStencilAttachmentMapping;
         unsigned _subpassCount;
     };
 
@@ -239,7 +240,9 @@ namespace RenderCore { namespace Techniques
         auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+
 		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
+		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
         void NextSubpass();
 

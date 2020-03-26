@@ -6,8 +6,7 @@
 
 #include "RenderStep.h"
 
-namespace RenderCore { namespace Techniques { struct RSDepthBias; }}
-namespace RenderCore { enum class CullMode; }
+namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; }}
 
 namespace SceneEngine
 {
@@ -22,13 +21,7 @@ namespace SceneEngine
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) override;
 
-		RenderCore::IResourcePtr _resource;
-
-		RenderStep_PrepareDMShadows(
-			RenderCore::Format format, UInt2 dims, unsigned projectionCount,
-			const RenderCore::Techniques::RSDepthBias& singleSidedBias,
-			const RenderCore::Techniques::RSDepthBias& doubleSidedBias,
-			RenderCore::CullMode cullMode);
+		RenderStep_PrepareDMShadows(const ShadowGeneratorDesc& desc);
 		~RenderStep_PrepareDMShadows();
 	private:
 		RenderStepFragmentInterface _fragment;
@@ -62,5 +55,29 @@ namespace SceneEngine
 		ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection);
 		~ViewDelegate_Shadow();
 	};
-}
 
+	class ICompiledShadowGenerator
+	{
+	public:
+		virtual void ExecutePrepare(
+			RenderCore::IThreadContext& threadContext, 
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			ViewDelegate_Shadow& shadowDelegate,
+			RenderCore::Techniques::FrameBufferPool& shadowGenFrameBufferPool,
+			RenderCore::Techniques::AttachmentPool& shadowGenAttachmentPool) = 0;
+		~ICompiledShadowGenerator();
+	};
+
+	class ShadowGeneratorDesc;
+	std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(
+		const ShadowGeneratorDesc& desc, 
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerator);
+
+	class MainTargets;
+	void ShadowGen_DrawShadowFrustums(
+        RenderCore::Metal::DeviceContext& devContext, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        MainTargets mainTargets,
+		const ShadowProjectionDesc& projectionDesc);
+}

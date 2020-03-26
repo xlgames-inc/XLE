@@ -7,123 +7,18 @@
 #include "ShadowFrustumDebugger.h"
 #include "../IOverlayContext.h"
 #include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/LightInternal.h"
+#include "../../SceneEngine/RenderStep_PrepareShadows.h"
+#include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Format.h"
-#include "../../Assets/Assets.h"
-#include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Math/Transformations.h"
-#include "../../Utility/StringFormat.h"
-#include "../../xleres/FileList.h"
+#include "../../ConsoleRig/Console.h"
 
 namespace Overlays
 {
     using namespace RenderOverlays;
     using namespace RenderCore;
-
-    class SFDResources
-    {
-    public:
-        class Desc 
-        {
-        public:
-            unsigned    _cascadeMode;
-            bool        _enableNearCascade;
-
-            Desc(unsigned cascadeMode, bool enableNearCascade) 
-            : _cascadeMode(cascadeMode), _enableNearCascade(enableNearCascade) {}
-        };
-
-        const Metal::ShaderProgram*    _shader;
-        Metal::BoundUniforms           _uniforms;
-        
-        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
-        SFDResources(const Desc&);
-        ~SFDResources();
-    protected:
-        ::Assets::DepValPtr _depVal;
-    };
-
-    SFDResources::SFDResources(const Desc& desc)
-    {
-        _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
-            CASCADE_VIS_HLSL ":main:ps_*",
-            (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 
-                << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
-                << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));
-
-		UniformsStreamInterface uniformsInterf;
-		uniformsInterf.BindConstantBuffer(0, { Hash64("ArbitraryShadowProjection") });
-		uniformsInterf.BindConstantBuffer(1, { Hash64("OrthogonalShadowProjection") });
-		uniformsInterf.BindConstantBuffer(2, { Hash64("ScreenToShadowProjection") });
-		uniformsInterf.BindConstantBuffer(3, { Hash64("DepthTexture") });
-		_uniforms = Metal::BoundUniforms(
-			*_shader,
-			Metal::PipelineLayoutConfig{},
-			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
-			uniformsInterf);
-        
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_depVal, _shader->GetDependencyValidation());
-    }
-
-    SFDResources::~SFDResources() {}
-
-#if 0
-    static void OverlayShadowFrustums(
-        Metal::DeviceContext& devContext, 
-        const RenderCore::Techniques::ProjectionDesc& mainCameraProjDesc,
-        const SceneEngine::ShadowProjectionDesc& projectionDesc,
-        RenderCore::Techniques::AttachmentPool* namedResources,
-        const Metal::UniformsStream& globalUniforms)
-    {
-        devContext.Bind(Techniques::CommonResources()._dssDisable);
-        devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-
-        Metal::ShaderResourceView* depthSrv = nullptr;
-        if (namedResources)
-            depthSrv = namedResources->GetSRV(2u);
-
-        auto& res = ConsoleRig::FindCachedBoxDep2<SFDResources>(
-            (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,
-            projectionDesc._projections._useNearProj);
-        devContext.Bind(*res._shader);
-
-        SceneEngine::CB_ArbitraryShadowProjection arbitraryCB;
-        SceneEngine::CB_OrthoShadowProjection orthoCB;
-        BuildShadowConstantBuffers(arbitraryCB, orthoCB, projectionDesc._projections);
-
-        Metal::ConstantBufferPacket constantBufferPackets[3];
-        constantBufferPackets[0] = RenderCore::MakeSharedPkt(arbitraryCB);
-        constantBufferPackets[1] = RenderCore::MakeSharedPkt(orthoCB);
-        constantBufferPackets[2] = BuildScreenToShadowConstants(
-            projectionDesc._projections._normalProjCount,
-            arbitraryCB, orthoCB, 
-            mainCameraProjDesc._cameraToWorld,
-            mainCameraProjDesc._cameraToProjection);
-        const Metal::ShaderResourceView* srv[] = { depthSrv };
-
-        res._uniforms.Apply(
-            devContext, globalUniforms,
-            Metal::UniformsStream(
-                constantBufferPackets, nullptr, dimof(constantBufferPackets),
-                srv, dimof(srv)));
-
-        devContext.Bind(Topology::TriangleStrip);
-        devContext.Draw(4);
-
-        devContext.UnbindPS<Metal::ShaderResourceView>(4, 1);
-    }
-#endif
 
     void ShadowFrustumDebugger::Render( 
         IOverlayContext& context, Layout& layout, 
@@ -137,6 +32,7 @@ namespace Overlays
             return;
         }
 
+		RenderCore::Techniques::ParsingContext& parserContext = /* ... */;
         static SceneEngine::ShadowProjectionDesc projectionDesc;
         if (!Tweakable("ShadowDebugLock", false)) {
             projectionDesc = _scene->GetShadowProjectionDesc(0, context.GetProjectionDesc());
@@ -144,9 +40,9 @@ namespace Overlays
 
         auto devContext = Metal::DeviceContext::Get(*context.GetDeviceContext());
         context.ReleaseState();
-        OverlayShadowFrustums(
-            *devContext, context.GetProjectionDesc(), projectionDesc,
-            context.GetNamedResources(), context.GetGlobalUniformsStream());
+        SceneEngine::ShadowGen_DrawShadowFrustums(
+            *devContext, context, SceneEngine::MainTargets{},
+			projectionDesc);
         context.CaptureState();
         
             //  Get the first shadow projection from the scene, and draw an

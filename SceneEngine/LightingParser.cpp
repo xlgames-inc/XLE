@@ -44,6 +44,8 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
 	{
 		std::vector<std::shared_ptr<IRenderStep>> result;
@@ -100,6 +102,10 @@ namespace SceneEngine
 
 		RenderCore::TextureSamples _sampling;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+
+		std::vector<std::pair<uint64_t, std::shared_ptr<ICompiledShadowGenerator>>> _shadowGenerators;
+		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _shadowGenFrameBufferPool;
+		std::shared_ptr<RenderCore::Techniques::AttachmentPool> _shadowGenAttachmentPool;
 
 		CompiledSceneTechnique(
 			const SceneTechniqueDesc& techniqueDesc,
@@ -206,6 +212,22 @@ namespace SceneEngine
 
 			_renderPasses.emplace_back(std::move(newRenderPass));
 			renderStepIterator = renderStepEnd;
+		}
+
+		// 
+		//		Shadow Generators
+		//
+
+		_shadowGenAttachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>();
+		_shadowGenFrameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
+		if (!techniqueDesc._shadowGenerators.empty()) {
+			for (const auto&shdGen:techniqueDesc._shadowGenerators) {
+				auto hash = Hash(shdGen);
+				_shadowGenerators.emplace_back(hash, CreateCompiledShadowGenerator(shdGen, _pipelineAccelerators));
+			}
+			std::sort(
+				_shadowGenerators.begin(), _shadowGenerators.end(), 
+				CompareFirst<uint64_t, std::shared_ptr<ICompiledShadowGenerator>>());
 		}
 
 		// 
@@ -317,12 +339,17 @@ namespace SceneEngine
 			executeContext.AddView(SceneView{SceneView::Type::Normal, mainSceneProjection}, step);
 		}
 
+		std::vector<std::shared_ptr<ViewDelegate_Shadow>> shadowViewDelegates;
+		shadowViewDelegates.reserve(lightingDelegate.GetShadowProjectionCount());
+
 		for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
 			auto proj = lightingDelegate.GetShadowProjectionDesc(s, mainSceneProjection);
 			// todo -- what's the correct projection to give to this view?
+			auto viewDelegate = std::make_shared<ViewDelegate_Shadow>(proj);
 			executeContext.AddView(
 				SceneView{SceneView::Type::Shadow, /*proj*/mainSceneProjection},
-				std::make_shared<ViewDelegate_Shadow>(proj));
+				viewDelegate);
+			shadowViewDelegates.push_back(std::move(viewDelegate));
 		}
 
 		// No, go ahead and execute the scene, which should generate a lot of Drawables (and potentially other scene preparation elements)
@@ -360,49 +387,29 @@ namespace SceneEngine
                 CATCH_ASSETS_END(parsingContext)
             }
 
-			auto viewDelegates = executeContext.GetViewDelegates();
-			for (unsigned c=1; c<viewDelegates.size(); ++c) {
+			for (unsigned s=0; s<lightingDelegate.GetShadowProjectionCount(); ++s) {
+				auto proj = lightingDelegate.GetShadowProjectionDesc(s, mainSceneProjection);
 				CATCH_ASSETS_BEGIN
-					auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegates[c].get());
+					auto& shadowDelegate = *shadowViewDelegates[s];
 					if (shadowDelegate._general._drawables.empty())
 						continue;
 
-					if (shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+					assert(proj._projections.Count() == proj._shadowGeneratorDesc._arrayCount);
+					assert(proj._projections._mode == proj._shadowGeneratorDesc._projectionMode);
+					assert(proj._projections._useNearProj == proj._shadowGeneratorDesc._enableNearCascade);
 
-						RenderCore::Techniques::RSDepthBias singleSidedBias {
-							shadowDelegate._shadowProj._rasterDepthBias, shadowDelegate._shadowProj._depthBiasClamp, shadowDelegate._shadowProj._slopeScaledBias };
-						RenderCore::Techniques::RSDepthBias doubleSidedBias {
-							shadowDelegate._shadowProj._dsRasterDepthBias, shadowDelegate._shadowProj._dsDepthBiasClamp, shadowDelegate._shadowProj._dsSlopeScaledBias };
-
-						RenderStep_PrepareDMShadows renderStep(
-							shadowDelegate._shadowProj._format, 
-							UInt2(shadowDelegate._shadowProj._width, shadowDelegate._shadowProj._height),
-							shadowDelegate._shadowProj._projections.Count(),
-							singleSidedBias, doubleSidedBias, shadowDelegate._shadowProj._cullMode);
-						auto interf = renderStep.GetInterface();
-
-						auto merged = Techniques::MergeFragments(
-							{}, MakeIteratorRange(&interf.GetFrameBufferDescFragment(), &interf.GetFrameBufferDescFragment()+1));
-
-						Techniques::AttachmentPool shadowsAttachmentPool;
-						auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
-
-						auto sequencerConfig = technique._pipelineAccelerators->CreateSequencerConfig(
-							interf.GetSubpassAddendums()[0]._techniqueDelegate,
-							interf.GetSubpassAddendums()[0]._sequencerSelectors,
-							fbDesc,
-							0);
-
-						Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), shadowsAttachmentPool);
-						RenderStepFragmentInstance rpf(rpi, merged._remapping[0], MakeIteratorRange(&sequencerConfig, &sequencerConfig+1));
-
-						renderStep._resource = shadowsAttachmentPool.GetResource(0);
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+					auto generatorHash = Hash(proj._shadowGeneratorDesc);
+					auto existing = LowerBound(technique._shadowGenerators, generatorHash);
+					if (existing != technique._shadowGenerators.end() && existing->first == generatorHash) {
+						existing->second->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
 					} else {
-						RenderStep_PrepareRTShadows renderStep;
-						RenderStepFragmentInstance rpf;
-						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+						Log(Warning) << "Building temporary CompiledShadowGenerator because one was not configured before hand" << std::endl;
+						auto compiledShadowGenerator = CreateCompiledShadowGenerator(
+							proj._shadowGeneratorDesc,
+							technique._pipelineAccelerators);
+						compiledShadowGenerator->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
 					}
+					
 				CATCH_ASSETS_END(parsingContext)
 			}
         }
@@ -426,7 +433,6 @@ namespace SceneEngine
 			Techniques::RenderPassInstance rpi;
 			if (rp._pipelineType == PipelineType::Graphics) {
 				rpi = Techniques::RenderPassInstance { threadContext, rp._fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources() };
-				// metalContext.Bind(Metal::ViewportDesc { 0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height) });
 			} else {
 				// construct a "non-metal" render pass instance. This just handles attachment remapping logic, but doesn't create an renderpass
 				// in the underlying graphics API

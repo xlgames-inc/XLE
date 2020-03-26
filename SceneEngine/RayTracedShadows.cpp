@@ -211,7 +211,7 @@ namespace SceneEngine
 
         parserContext.GetSubframeShaderSelectors().SetParameter(
             StringShadowCascadeMode, 
-            (preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho)?2:1);
+            (preparedResult._mode == ShadowProjectionMode::Ortho)?2:1);
 
             // Now, we need to transform the object's triangle buffer into shadow
             // projection space during this step (also applying skinning, wind bending, and

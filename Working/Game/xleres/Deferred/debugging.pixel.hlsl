@@ -61,6 +61,8 @@ Texture2D_MaybeMS<float4>		GBuffer_Normals		: register(t6);
 Texture2D_MaybeMS<float4>		GBuffer_Parameters	: register(t7);
 Texture2D_MaybeMS<float>		DepthTexture		: register(t8);
 
+Texture2DArray<float>			ShadowDepthTextures : register(t14);
+
 float4 GBufferDebugging(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	float2 outputDimensions = position.xy / texCoord.xy;
@@ -108,6 +110,26 @@ class Metal : ITextureLoader
 class CookedAO : ITextureLoader
 {
 	float4 Load(float2 tc, uint a, uint s) { return float4(Decode(GetGBufferEncoded(tc)).cookedAmbientOcclusion.xxx, 1); }
+};
+
+class ShadowCascade0 : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(ShadowDepthTextures.SampleLevel(DefaultSampler, float3(tc, 0.f), 0).xxx, 1); }
+};
+
+class ShadowCascade1 : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(ShadowDepthTextures.SampleLevel(DefaultSampler, float3(tc, 1.f), 0).xxx, 1); }
+};
+
+class ShadowCascade2 : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(ShadowDepthTextures.SampleLevel(DefaultSampler, float3(tc, 2.f), 0).xxx, 1); }
+};
+
+class ShadowCascade3 : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(ShadowDepthTextures.SampleLevel(DefaultSampler, float3(tc, 3.f), 0).xxx, 1); }
 };
 
 float4 GenericDebugging(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0

@@ -19,6 +19,46 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////
 
+	enum class ShadowProjectionMode { Arbitrary, Ortho };
+	enum class ShadowResolveType { DepthTexture, RayTraced };
+
+	class ShadowGeneratorDesc
+	{
+	public:
+            /// @{
+            /// Shadow texture definition
+        uint32_t			_width = 2048u;
+		uint32_t			_height = 2048u;
+        RenderCore::Format	_format = RenderCore::Format::D16_UNORM;
+		unsigned			_arrayCount = 0u;
+            /// @}
+
+            /// @{
+            /// single sided depth bias
+        float				_slopeScaledBias = 0.f;
+        float				_depthBiasClamp = 0.f;
+        int					_rasterDepthBias = 0;
+            /// @}
+
+            /// @{
+            /// Double sided depth bias
+            /// This is useful when flipping the culling mode during shadow
+            /// gen. In this case single sided geometry doesn't cause acne
+            /// (so we can have very small bias values). But double sided 
+            /// geometry still gets acne, so needs a larger bias!
+        float				_dsSlopeScaledBias = 0.f;
+        float				_dsDepthBiasClamp = 0.f;
+        int					_dsRasterDepthBias = 0;
+            /// @}
+
+		ShadowProjectionMode	_projectionMode = ShadowProjectionMode::Arbitrary;
+		RenderCore::CullMode	_cullMode = RenderCore::CullMode::Back;
+        ShadowResolveType		_resolveType = ShadowResolveType::DepthTexture;
+		bool					_enableNearCascade = false;
+	};
+
+	uint64_t Hash(const ShadowGeneratorDesc&);
+
     /// <summary>Represents a set of shared projections</summary>
     /// This class is intended to be used with cascaded shadows (and similiar
     /// cascaded effects). Multiple cascades require multiple projections, and
@@ -46,11 +86,9 @@ namespace SceneEngine
             Float3      _projMaxs;
         };
 
-        struct Mode { enum Enum { Arbitrary, Ortho }; };
-
-        typename Mode::Enum     _mode;
-        unsigned                _normalProjCount;
-        bool                    _useNearProj;
+        ShadowProjectionMode	_mode = ShadowProjectionMode::Arbitrary;
+        unsigned                _normalProjCount = 0;
+        bool                    _useNearProj = false;
 
         unsigned Count() const { return _normalProjCount + (_useNearProj?1:0); }
 
@@ -92,61 +130,29 @@ namespace SceneEngine
 
         Float4x4    _specialNearProjection;
         Float4      _specialNearMinimalProjection;
-
-        MultiProjection();
     };
 
     static const unsigned MaxShadowTexturesPerLight = 6;
 
     using LightId = unsigned;
+	
 
     /// <summary>Defines the projected shadows for a single light<summary>
     /// Tied to a specific light via the "_lightId" member.
     class ShadowProjectionDesc
     {
     public:
-            /// @{
-            /// Shadow texture definition
-        uint32      _width, _height;
-        using Format = RenderCore::Format;
-        Format      _format;
-            /// @}
-
-        typedef MultiProjection<MaxShadowTexturesPerLight> Projections;
+		ShadowGeneratorDesc		_shadowGeneratorDesc;
+        using Projections = MultiProjection<MaxShadowTexturesPerLight>;
 
         Projections     _projections;
-        Float4x4        _worldToClip;   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
+        Float4x4        _worldToClip = Identity<Float4x4>();   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
 
-            /// @{
-            /// single sided depth bias
-        float           _slopeScaledBias;
-        float           _depthBiasClamp;
-        int             _rasterDepthBias;
-            /// @}
+        float           _worldSpaceResolveBias = 0.f;
+        float           _tanBlurAngle = 0.f;
+        float           _minBlurSearch = 0.f, _maxBlurSearch = 0.f;
 
-            /// @{
-            /// Double sided depth bias
-            /// This is useful when flipping the culling mode during shadow
-            /// gen. In this case single sided geometry doesn't cause acne
-            /// (so we can have very small bias values). But double sided 
-            /// geometry still gets acne, so needs a larger bias!
-        float           _dsSlopeScaledBias;
-        float           _dsDepthBiasClamp;
-        int             _dsRasterDepthBias;
-            /// @}
-
-        float           _worldSpaceResolveBias;
-        float           _tanBlurAngle;
-        float           _minBlurSearch, _maxBlurSearch;
-
-        enum class ResolveType { DepthTexture, RayTraced };
-        ResolveType     _resolveType;
-
-        RenderCore::CullMode     _cullMode;
-
-        LightId         _lightId;
-
-        ShadowProjectionDesc();
+        LightId         _lightId = ~0u;
     };
 
     /// <summary>Defines a dynamic light</summary>
@@ -200,34 +206,5 @@ namespace SceneEngine
         GlobalLightingDesc();
         GlobalLightingDesc(const Utility::ParameterBox& paramBox);
     };
-
-    
-    template<int MaxProjections>
-        MultiProjection<MaxProjections>::MultiProjection()
-    {
-        _mode = Mode::Arbitrary;
-        _normalProjCount = 0;
-        _useNearProj = false;
-    }
-
-	inline ShadowProjectionDesc::ShadowProjectionDesc()
-	{
-		_width = _height = 0;
-		_format = RenderCore::Format(0); // RenderCore::Format::Unknown;
-		_worldToClip = Identity<Float4x4>();
-		_slopeScaledBias = 0.f;
-		_depthBiasClamp = 0.f;
-		_rasterDepthBias = 0;
-		_dsSlopeScaledBias = 0.f;
-		_dsDepthBiasClamp = 0.f;
-		_dsRasterDepthBias = 0;
-		_worldSpaceResolveBias = 0.f;
-		_tanBlurAngle = 0.f;
-		_minBlurSearch = _maxBlurSearch = 0.f;
-		_resolveType = ResolveType::DepthTexture;
-		_cullMode = RenderCore::CullMode::Back;
-		_lightId = ~0u;
-	}
-
 }
 

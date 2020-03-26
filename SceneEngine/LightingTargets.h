@@ -12,6 +12,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/FrameBuffer.h"
+#include "../RenderCore/Metal/Forward.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Math/Vector.h"
@@ -192,6 +193,10 @@ namespace SceneEngine
 		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
 		MainTargets mainTargets,
 		bool useMsaaSamplers, unsigned debuggingType);
+
+	void ShadowGen_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
+		RenderCore::Metal::ShaderResourceView srv);
 
 }
 

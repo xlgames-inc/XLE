@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "LightDesc.h"		// (required for ShadowGeneratorDesc in SceneTechniqueDesc)
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
@@ -36,6 +37,7 @@ namespace SceneEngine
 	class ILightingParserDelegate;
 	class ILightingParserPlugin;
 	class IRenderStep;
+	class ShadowGeneratorDesc;
 
     namespace ShaderLightDesc { class BasicEnvironment; }
 
@@ -47,6 +49,7 @@ namespace SceneEngine
     public:
 		IteratorRange<const std::shared_ptr<IRenderStep>*> _renderSteps = {};
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
+		std::vector<ShadowGeneratorDesc> _shadowGenerators = {};
 		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create();
     };
 

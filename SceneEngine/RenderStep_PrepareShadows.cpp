@@ -11,6 +11,7 @@
 #include "LightInternal.h"
 #include "ShadowResources.h"
 #include "RayTracedShadows.h"
+#include "LightingTargets.h"		// for ShadowGen_DrawDebugging
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -18,9 +19,11 @@
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Shader.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
@@ -96,24 +99,10 @@ namespace SceneEngine
         preparedResult._resolveParameters._tanBlurAngle = frustum._tanBlurAngle;
         preparedResult._resolveParameters._minBlurSearch = frustum._minBlurSearch;
         preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
-        preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._width, frustum._height);
+        preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._shadowGeneratorDesc._width, frustum._shadowGeneratorDesc._height);
         XlZeroMemory(preparedResult._resolveParameters._dummy);
         preparedResult._resolveParametersCB = MakeMetalCB(
             &preparedResult._resolveParameters, sizeof(preparedResult._resolveParameters));
-
-            //  we need to set the "shadow cascade mode" settings to the right
-            //  mode for this prepare step;
-        /*parserContext.GetSubframeShaderSelectors().SetParameter(
-            StringShadowCascadeMode, 
-            preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
-        parserContext.GetSubframeShaderSelectors().SetParameter(
-            StringShadowEnableNearCascade,  preparedResult._enableNearCascade?1:0);
-
-        auto cleanup = MakeAutoCleanup(
-            [&parserContext]() {
-                parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowCascadeMode, 0);
-                parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowEnableNearCascade, 0);
-            });*/
 
             /////////////////////////////////////////////
 
@@ -127,9 +116,6 @@ namespace SceneEngine
             /////////////////////////////////////////////
 
         CATCH_ASSETS_BEGIN
-			// RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
-			// ExecuteDrawablesContext executeDrawablesContext(parserContext);
-			// metalContext.Bind(resources._rasterizerState);
 			ExecuteDrawables(
 				threadContext, parserContext,
 				MakeSequencerContext(parserContext, *rpi.GetSequencerConfig(), TechniqueIndex_ShadowGen),
@@ -153,42 +139,60 @@ namespace SceneEngine
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
-		assert(shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture);
+		assert(shadowDelegate._shadowProj._shadowGeneratorDesc._resolveType == ShadowResolveType::DepthTexture);
 
 		auto shadow = LightingParser_PrepareDMShadow(
 			threadContext, parsingContext,
 			lightingParserContext,
 			shadowDelegate,
 			rpi);
-		shadow._srv = Metal::ShaderResourceView(_resource, TextureViewDesc{TextureViewDesc::Aspect::Depth});
-		if (shadow.IsReady())
+		shadow._srv = *rpi.GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::Depth});
+		if (shadow.IsReady()) {
 			lightingParserContext._preparedDMShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
+
+			if (lightingParserContext._preparedDMShadows.size() == Tweakable("ShadowGenDebugging", 0)) {
+				auto srvForDebugging = *rpi.GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::ColorLinear});
+				parsingContext._pendingOverlays.push_back(
+					std::bind(
+						&ShadowGen_DrawDebugging, 
+						std::placeholders::_1, std::placeholders::_2,
+						srvForDebugging));
+			}
+
+			if (lightingParserContext._preparedDMShadows.size() == Tweakable("ShadowGenFrustumDebugging", 0)) {
+				parsingContext._pendingOverlays.push_back(
+					std::bind(
+						&ShadowGen_DrawShadowFrustums, 
+						std::placeholders::_1, std::placeholders::_2,
+						lightingParserContext.GetMainTargets(),
+						shadowDelegate._shadowProj));
+			}
+		}
 	}
 
-	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(
-		Format format, UInt2 dims, unsigned projectionCount,
-		const RenderCore::Techniques::RSDepthBias& singleSidedBias,
-        const RenderCore::Techniques::RSDepthBias& doubleSidedBias,
-        CullMode cullMode)
+	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(const ShadowGeneratorDesc& desc)
 	: _fragment(RenderCore::PipelineType::Graphics)
 	{
+		RenderCore::Techniques::RSDepthBias singleSidedBias {
+			desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias };
+		RenderCore::Techniques::RSDepthBias doubleSidedBias {
+			desc._dsRasterDepthBias, desc._dsDepthBiasClamp, desc._dsSlopeScaledBias };
+
 		auto output = _fragment.DefineAttachment(
 			Techniques::AttachmentSemantics::ShadowDepthMap, 
             {
-                AsTypelessFormat(format),
-				float(dims[0]), float(dims[1]),
-                projectionCount,
+                AsTypelessFormat(desc._format),
+				float(desc._width), float(desc._height),
+                desc._arrayCount,
 				AttachmentDesc::DimensionsMode::Absolute, 
                 AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
 		
         auto& resources = ConsoleRig::FindCachedBox2<ShadowGenTechniqueDelegateBox>(
-            singleSidedBias, doubleSidedBias, cullMode);
+            singleSidedBias, doubleSidedBias, desc._cullMode);
 
 		ParameterBox box;
-		bool enableNearCascade = true;		// preparedResult._enableNearCascade
-		auto projectionMode = ShadowProjectionDesc::Projections::Mode::Ortho;  // preparedResult._mode
-		box.SetParameter(StringShadowCascadeMode, projectionMode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
-        box.SetParameter(StringShadowEnableNearCascade, enableNearCascade?1:0);
+		box.SetParameter(StringShadowCascadeMode, desc._projectionMode == ShadowProjectionMode::Ortho?2:1);
+        box.SetParameter(StringShadowEnableNearCascade, desc._enableNearCascade?1:0);
 
 		_fragment.AddSubpass(
 			SubpassDesc {
@@ -211,7 +215,7 @@ namespace SceneEngine
 		IViewDelegate* viewDelegate)
 	{
 		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
-		assert(shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::RayTraced);
+		assert(shadowDelegate._shadowProj._shadowGeneratorDesc._resolveType == ShadowResolveType::RayTraced);
 
 		auto shadow = PrepareRTShadows(threadContext, parsingContext, lightingParserContext, shadowDelegate);
         if (shadow.IsReady())
@@ -248,5 +252,188 @@ namespace SceneEngine
 	{
 	}
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ICompiledShadowGenerator::~ICompiledShadowGenerator() {}
+
+	class CompiledShadowGenerator : public ICompiledShadowGenerator
+	{
+	public:
+		void ExecutePrepare(
+			RenderCore::IThreadContext& threadContext, 
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			ViewDelegate_Shadow& shadowDelegate,
+			RenderCore::Techniques::FrameBufferPool& shadowGenFrameBufferPool,
+			RenderCore::Techniques::AttachmentPool& shadowGenAttachmentPool) override;
+
+		CompiledShadowGenerator(
+			const ShadowGeneratorDesc& desc,
+			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
+		~CompiledShadowGenerator();
+
+	private:
+		std::shared_ptr<IRenderStep> _renderStep;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+
+		RenderCore::FrameBufferDesc _fbDesc;
+		RenderCore::Techniques::FrameBufferFragmentMapping _fbRemapping;
+		std::vector<std::shared_ptr<RenderCore::Techniques::SequencerConfig>> _sequencerConfigs;
+	};
+
+	void CompiledShadowGenerator::ExecutePrepare(
+		RenderCore::IThreadContext& threadContext, 
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		ViewDelegate_Shadow& shadowDelegate,
+		RenderCore::Techniques::FrameBufferPool& shadowGenFrameBufferPool,
+		RenderCore::Techniques::AttachmentPool& shadowGenAttachmentPool)
+	{
+		if (!_fbDesc.GetSubpasses().empty()) {
+			Techniques::RenderPassInstance rpi(threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool);
+			RenderStepFragmentInstance rpf(rpi, _fbRemapping, MakeIteratorRange(_sequencerConfigs));
+			_renderStep->Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+		} else {
+			RenderStepFragmentInstance rpf;
+			_renderStep->Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+		}
+	}
+
+	CompiledShadowGenerator::CompiledShadowGenerator(
+		const ShadowGeneratorDesc& desc,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
+	: _pipelineAccelerators(pipelineAccelerators)
+	{
+		if (desc._resolveType == ShadowResolveType::DepthTexture) {
+
+			_renderStep = std::make_shared<RenderStep_PrepareDMShadows>(desc);
+
+			auto interf = _renderStep->GetInterface();
+			auto merged = Techniques::MergeFragments(
+				{}, MakeIteratorRange(&interf.GetFrameBufferDescFragment(), &interf.GetFrameBufferDescFragment()+1));
+			_fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
+
+			auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
+				interf.GetSubpassAddendums()[0]._techniqueDelegate,
+				interf.GetSubpassAddendums()[0]._sequencerSelectors,
+				_fbDesc,
+				0);
+
+			_fbRemapping = std::move(merged._remapping[0]);
+			_sequencerConfigs.push_back(std::move(sequencerConfig));
+
+		} else {
+			_renderStep = std::make_shared<RenderStep_PrepareRTShadows>();
+		}
+	}
+
+	CompiledShadowGenerator::~CompiledShadowGenerator() {}
+
+	std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(
+		const ShadowGeneratorDesc& desc, 
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerator)
+	{
+		return std::make_shared<CompiledShadowGenerator>(desc, pipelineAccelerator);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//		draw frustum debugging
+
+	class SFDResources
+    {
+    public:
+        class Desc 
+        {
+        public:
+            unsigned    _cascadeMode;
+            bool        _enableNearCascade;
+
+            Desc(unsigned cascadeMode, bool enableNearCascade) 
+            : _cascadeMode(cascadeMode), _enableNearCascade(enableNearCascade) {}
+        };
+
+        const Metal::ShaderProgram*    _shader;
+        Metal::BoundUniforms           _uniforms;
+        
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
+        SFDResources(const Desc&);
+        ~SFDResources();
+    protected:
+        ::Assets::DepValPtr _depVal;
+    };
+
+    SFDResources::SFDResources(const Desc& desc)
+    {
+        _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
+            CASCADE_VIS_HLSL ":main:ps_*",
+            (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 
+                << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
+                << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));
+
+		UniformsStreamInterface uniformsInterf;
+		uniformsInterf.BindConstantBuffer(0, { Hash64("ArbitraryShadowProjection") });
+		uniformsInterf.BindConstantBuffer(1, { Hash64("OrthogonalShadowProjection") });
+		uniformsInterf.BindConstantBuffer(2, { Hash64("ScreenToShadowProjection") });
+		uniformsInterf.BindShaderResource(0, { Hash64("DepthTexture") });
+		_uniforms = Metal::BoundUniforms(
+			*_shader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			uniformsInterf);
+        
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_depVal, _shader->GetDependencyValidation());
+    }
+
+    SFDResources::~SFDResources() {}
+
+    void ShadowGen_DrawShadowFrustums(
+        Metal::DeviceContext& devContext, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        MainTargets mainTargets,
+		const ShadowProjectionDesc& projectionDesc)
+    {
+        devContext.Bind(Techniques::CommonResources()._dssDisable);
+        devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+
+        Metal::ShaderResourceView depthSrv = mainTargets.GetSRV(
+			parserContext, 
+			Techniques::AttachmentSemantics::MultisampleDepth,
+			RenderCore::TextureViewDesc{RenderCore::TextureViewDesc::Aspect::ColorLinear});
+
+        auto& res = ConsoleRig::FindCachedBoxDep2<SFDResources>(
+            (projectionDesc._projections._mode == ShadowProjectionMode::Ortho)?2:1,
+            projectionDesc._projections._useNearProj);
+        devContext.Bind(*res._shader);
+
+        CB_ArbitraryShadowProjection arbitraryCB;
+        CB_OrthoShadowProjection orthoCB;
+        BuildShadowConstantBuffers(arbitraryCB, orthoCB, projectionDesc._projections);
+
+		auto mainCameraProjDesc = parserContext.GetProjectionDesc();
+
+        ConstantBufferView constantBufferPackets[3];
+        constantBufferPackets[0] = RenderCore::MakeSharedPkt(arbitraryCB);
+        constantBufferPackets[1] = RenderCore::MakeSharedPkt(orthoCB);
+        constantBufferPackets[2] = BuildScreenToShadowConstants(
+            projectionDesc._projections._normalProjCount,
+            arbitraryCB, orthoCB, 
+            mainCameraProjDesc._cameraToWorld,
+            mainCameraProjDesc._cameraToProjection);
+        const Metal::ShaderResourceView* srv[] = { &depthSrv };
+
+        res._uniforms.Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
+		res._uniforms.Apply(devContext, 1,
+            UniformsStream{
+                MakeIteratorRange(constantBufferPackets),
+				UniformsStream::MakeResources(MakeIteratorRange(srv))});
+
+        devContext.Bind(Topology::TriangleStrip);
+        devContext.Draw(4);
+
+        // devContext.UnbindPS<Metal::ShaderResourceView>(4, 1);
+    }
 }
 

@@ -223,7 +223,7 @@ namespace SceneEngine
             &dominantLight._orthoCBSource, sizeof(dominantLight._orthoCBSource));
 
         auto& rtState = parsingContext.GetSubframeShaderSelectors();
-        rtState.SetParameter(u("SHADOW_CASCADE_MODE"), dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        rtState.SetParameter(u("SHADOW_CASCADE_MODE"), dominantLight._mode == ShadowProjectionMode::Ortho?2:1);
         rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), dominantLight._enableNearCascade?1:0);
     }
 
@@ -506,44 +506,7 @@ namespace SceneEngine
             parsingContext._pendingOverlays.push_back(
                 std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(lightingParserContext)));
         }
-
-#if 0
-        if (Tweakable("LightResolveDebugging", false)) {
-                // we use the lamdba to store a copy of lightingResolveContext
-            parsingContext._pendingOverlays.push_back(
-                [&mainTargets, &lightingParserContext, &delegate, lightingResolveContext, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parsingContext)
-                {
-                    SavedTargets savedTargets(context);
-                    auto restoreMarker = savedTargets.MakeResetMarker(context);
-
-					#if GFXAPI_ACTIVE == GFXAPI_DX11
-						context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
-					#endif
-
-                    SetupVertexGeneratorShader(context);
-                    context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
-                    context.Bind(Techniques::CommonResources()._dssDisable);
-                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-						mainTargets.GetSRV(IMainTargets::GBufferDiffuse, {diffuseAspect}),
-                        mainTargets.GetSRV(IMainTargets::GBufferNormals),
-                        mainTargets.GetSRV(IMainTargets::GBufferParameters),
-                        Metal::ShaderResourceView(), 
-                        mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
-
-                    LightingParser_BindLightResolveResources(context, parsingContext, delegate);
-
-                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
-                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
-
-                    ResolveLights(context, parsingContext, lightingParserContext, delegate, lightingResolveContext, true);
-
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 9);
-                    context.Bind(Techniques::CommonResources()._defaultRasterizer);
-                    context.Bind(Techniques::CommonResources()._dssReadWrite);
-                });
-        }
-#endif
-    }
+	}
 
     static void ResolveLights(  Metal::DeviceContext& context,
 								Techniques::ParsingContext& parsingContext,
@@ -635,7 +598,7 @@ namespace SceneEngine
                     cbvs[CB::ScreenToShadow] = BuildScreenToShadowConstants(
                         preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
-                    if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
+                    if (preparedShadows._mode == ShadowProjectionMode::Ortho && allowOrthoShadowResolve) {
                         if (preparedShadows._enableNearCascade) {
                             shaderType._shadows = LightingResolveShaders::OrthShadowsNearCascade;
                         } else shaderType._shadows = LightingResolveShaders::OrthShadows;

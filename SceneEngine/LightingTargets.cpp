@@ -24,181 +24,8 @@
 #include "../Utility/StringFormat.h"
 #include "../xleres/FileList.h"
 
-#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
-
 namespace SceneEngine
 {
-#if 0
-    MainTargetsBox::Desc::Desc( unsigned width, unsigned height, 
-                                const FormatStack& diffuseFormat, const FormatStack& normalFormat, 
-                                const FormatStack& parametersFormat, const FormatStack& depthFormat,
-                                const BufferUploads::TextureSamples& sampling)
-    {
-            //  we have to "memset" this -- because padding adds 
-            //  random values in profile mode
-        std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
-
-        _width = width; _height = height;
-        _gbufferFormats[0] = diffuseFormat;
-        _gbufferFormats[1] = normalFormat;
-        _gbufferFormats[2] = parametersFormat;
-        _depthFormat = depthFormat;
-        _sampling = sampling;
-    }
-
-    MainTargetsBox::MainTargetsBox(const Desc& desc) 
-    : _desc(desc)
-    {
-        using namespace RenderCore;
-
-        IResourcePtr gbufferTextures[s_gbufferTextureCount];
-        Metal::RenderTargetView gbufferRTV[dimof(gbufferTextures)];
-        Metal::ShaderResourceView gbufferSRV[dimof(gbufferTextures)];
-        std::fill(gbufferTextures, &gbufferTextures[dimof(gbufferTextures)], nullptr);
-
-        auto bufferUploadsDesc = CreateDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget,
-            0, GPUAccess::Write | GPUAccess::Read,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, Format::Unknown, 1, 0, desc._sampling),
-            "GBuffer");
-        for (unsigned c=0; c<dimof(gbufferTextures); ++c) {
-            if (desc._gbufferFormats[c]._resourceFormat != Format::Unknown) {
-                bufferUploadsDesc._textureDesc._format = desc._gbufferFormats[c]._resourceFormat;
-                gbufferTextures[c] = CreateResourceImmediate(bufferUploadsDesc);
-                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._writeFormat);
-                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
-            }
-        }
-
-            /////////
-        
-        auto depthBufferDesc = CreateDesc(
-            BindFlag::ShaderResource|BindFlag::DepthStencil,
-            0, GPUAccess::Write | GPUAccess::Read,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, desc._depthFormat._resourceFormat, 1, 0, desc._sampling),
-            "MainDepth");
-        auto msaaDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
-        auto secondaryDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
-
-            /////////
-
-        for (unsigned c=0; c<dimof(_gbufferTextures); ++c) {
-            _gbufferTextures[c] = std::move(gbufferTextures[c]);
-            _gbufferRTVs[c] = std::move(gbufferRTV[c]);
-            _gbufferRTVsSRV[c] = std::move(gbufferSRV[c]);
-        }
-        _msaaDepthBufferTexture = std::move(msaaDepthBufferTexture);
-        _secondaryDepthBufferTexture = std::move(secondaryDepthBufferTexture);
-        _msaaDepthBuffer = std::move(msaaDepthBuffer);
-        _secondaryDepthBuffer = std::move(secondaryDepthBuffer);
-        _msaaDepthBufferSRV = std::move(msaaDepthBufferSRV);
-        _secondaryDepthBufferSRV = std::move(secondaryDepthBufferSRV);
-    }
-
-    MainTargetsBox::~MainTargetsBox() {}
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    ForwardTargetsBox::Desc::Desc( unsigned width, unsigned height, 
-                                const FormatStack& depthFormat,
-                                const BufferUploads::TextureSamples& sampling)
-    {
-            //  we have to "memset" this -- because padding adds random values in 
-            //  profile mode
-        std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
-
-        _width = width; _height = height;
-        _depthFormat = depthFormat;
-        _sampling = sampling;
-    }
-
-    ForwardTargetsBox::ForwardTargetsBox(const Desc& desc) 
-    : _desc(desc)
-    {
-        using namespace RenderCore;
-        auto bufferUploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource|BindFlag::DepthStencil,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, desc._depthFormat._resourceFormat, 1, 0, desc._sampling),
-            "ForwardTarget");
-
-        auto msaaDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
-        auto secondaryDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
-
-            /////////
-
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
-
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
-
-            /////////
-
-        _msaaDepthBufferTexture = std::move(msaaDepthBufferTexture);
-        _secondaryDepthBufferTexture = std::move(secondaryDepthBufferTexture);
-
-        _msaaDepthBuffer = std::move(msaaDepthBuffer);
-        _secondaryDepthBuffer = std::move(secondaryDepthBuffer);
-
-        _msaaDepthBufferSRV = std::move(msaaDepthBufferSRV);
-        _secondaryDepthBufferSRV = std::move(secondaryDepthBufferSRV);
-    }
-
-    ForwardTargetsBox::~ForwardTargetsBox() {}
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    LightingResolveTextureBox::Desc::Desc( unsigned width, unsigned height, 
-                                const FormatStack& lightingResolveFormat,
-                                const BufferUploads::TextureSamples& sampling)
-    {
-            //  we have to "memset" this -- because padding adds 
-            //  random values in profile mode
-        std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
-
-        _width = width; _height = height;
-        _lightingResolveFormat = lightingResolveFormat;
-        _sampling = sampling;
-    }
-    
-    LightingResolveTextureBox::LightingResolveTextureBox(const Desc& desc)
-    {
-        using namespace RenderCore;
-        auto bufferUploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, desc._lightingResolveFormat._resourceFormat, 1, 0, 
-                desc._sampling),
-            "LightResolve");
-
-        auto lightingResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
-        auto lightingResolveCopy = CreateResourceImmediate(bufferUploadsDesc);
-        bufferUploadsDesc._textureDesc._samples = TextureSamples::Create();
-
-        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._writeFormat);
-        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
-        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
-
-        _lightingResolveTexture = std::move(lightingResolveTexture);
-        _lightingResolveRTV = std::move(lightingResolveTarget);
-        _lightingResolveSRV = std::move(lightingResolveSRV);
-
-        _lightingResolveCopy = std::move(lightingResolveCopy);
-        _lightingResolveCopySRV = std::move(lightingResolveCopySRV);
-    }
-
-    LightingResolveTextureBox::~LightingResolveTextureBox()
-    {
-    }
-#endif
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     unsigned LightingResolveShaders::LightShaderType::ReservedIndexCount()
@@ -583,6 +410,35 @@ namespace SceneEngine
         context.Draw(4);
 
 		MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(context, 5, 4);
+    }
+
+	void ShadowGen_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+		RenderCore::Metal::ShaderResourceView srv)
+    {
+        using namespace RenderCore;
+
+        const auto* ps = "xleres/deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
+
+        StringMeld<256> meld;
+        
+        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", ps, meld.get());
+
+        Metal::BoundClassInterfaces boundInterfaces(debuggingShader);
+        auto loaders = Hash64("Loaders");
+        boundInterfaces.Bind(loaders, 0, "ShadowCascade0");
+        boundInterfaces.Bind(loaders, 1, "ShadowCascade1");
+        boundInterfaces.Bind(loaders, 2, "ShadowCascade2");
+        boundInterfaces.Bind(loaders, 3, "ShadowCascade3");
+        context.Bind(debuggingShader, boundInterfaces);
+
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(14, srv));
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+
+		MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(context, 14, 1);
     }
 
 }
