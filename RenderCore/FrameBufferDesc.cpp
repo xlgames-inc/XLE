@@ -96,12 +96,10 @@ namespace RenderCore
 
     uint64_t SubpassDesc::CalculateHash() const
     {
-        uint64_t result = Hash64(AsPointer(_output.begin()), AsPointer(_output.end()));
+        uint64_t result = Hash64(_attachmentViewBuffer, &_attachmentViewBuffer[BufferSpaceUsed()]);
         result = Hash64(&_depthStencil, &_depthStencil+1, result);
-        result = Hash64(AsPointer(_input.begin()), AsPointer(_input.end()), result);
-        result = Hash64(AsPointer(_preserve.begin()), AsPointer(_preserve.end()), result);
-        result = Hash64(AsPointer(_resolve.begin()), AsPointer(_resolve.end()), result);
-        result = Hash64(&_depthStencilResolve, &_depthStencilResolve+1, result);
+        // result = Hash64(AsPointer(_preserve.begin()), AsPointer(_preserve.end()), result);
+        result = Hash64(&_resolveDepthStencil, &_resolveDepthStencil+1, result);
         return result;
     }
 
@@ -117,7 +115,7 @@ namespace RenderCore
 		std::vector<AttachmentName> attachmentRemap;
 		attachmentRemap.resize(input.GetAttachments().size(), ~0u);
 		unsigned nextRemapIndex = 0;
-		for (auto&a:newSubpasses[0]._output) {
+		for (auto&a:MakeIteratorRange(newSubpasses[0]._attachmentViewBuffer, &newSubpasses[0]._attachmentViewBuffer[newSubpasses[0].BufferSpaceUsed()])) {
 			if (attachmentRemap[a._resourceName] == ~0u)
 				attachmentRemap[a._resourceName] = nextRemapIndex++;
 			a._resourceName = attachmentRemap[a._resourceName];
@@ -129,21 +127,10 @@ namespace RenderCore
 			newSubpasses[0]._depthStencil._resourceName = attachmentRemap[newSubpasses[0]._depthStencil._resourceName];
 		}
 
-		if (newSubpasses[0]._depthStencilResolve._resourceName != ~0u) {
-			if (attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] == ~0u)
-				attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName] = nextRemapIndex++;
-			newSubpasses[0]._depthStencilResolve._resourceName = attachmentRemap[newSubpasses[0]._depthStencilResolve._resourceName];
-		}
-
-		for (auto&a:newSubpasses[0]._input) {
-			if (attachmentRemap[a._resourceName] == ~0u)
-				attachmentRemap[a._resourceName] = nextRemapIndex++;
-			a._resourceName = attachmentRemap[a._resourceName];
-		}
-		for (auto&a:newSubpasses[0]._resolve) {
-			if (attachmentRemap[a._resourceName] == ~0u)
-				attachmentRemap[a._resourceName] = nextRemapIndex++;
-			a._resourceName = attachmentRemap[a._resourceName];
+		if (newSubpasses[0]._resolveDepthStencil._resourceName != ~0u) {
+			if (attachmentRemap[newSubpasses[0]._resolveDepthStencil._resourceName] == ~0u)
+				attachmentRemap[newSubpasses[0]._resolveDepthStencil._resourceName] = nextRemapIndex++;
+			newSubpasses[0]._resolveDepthStencil._resourceName = attachmentRemap[newSubpasses[0]._resolveDepthStencil._resourceName];
 		}
 
 		// note -- ignoring the "preserve" bindings; because those make less sense with a single subpass

@@ -56,8 +56,7 @@ namespace RenderCore { namespace Techniques
 		PipelineType				_pipelineType = PipelineType::Graphics;
     };
 
-    FrameBufferDesc BuildFrameBufferDesc(
-        FrameBufferDescFragment&& fragment);
+    FrameBufferDesc BuildFrameBufferDesc(FrameBufferDescFragment&& fragment);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -158,11 +157,25 @@ namespace RenderCore { namespace Techniques
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
 
-        // The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
-        auto GetResource(AttachmentName resName) const -> IResourcePtr;
-        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
-		AttachmentName RemapAttachmentName(AttachmentName inputName) const;
+		auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
+        auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
+        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
+		auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+
+		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
+		auto GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
+		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
+		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+
+		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		auto GetDepthStencilAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
+		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
+		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+
+		// The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
+        auto GetDescForAttachmentName(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
         RenderPassInstance(
             IThreadContext& context,
@@ -185,6 +198,8 @@ namespace RenderCore { namespace Techniques
         Metal::DeviceContext* _attachedContext;
         AttachmentPool* _attachmentPool;
         std::vector<AttachmentName> _attachmentPoolRemapping;
+
+		FrameBufferDesc _layout;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,21 +214,10 @@ namespace RenderCore { namespace Techniques
         State _stencilState = State::Uninitialized;
     };
 
-    class FrameBufferFragmentMapping
-    {
-    public:
-        using PassAndSlot = std::pair<unsigned, unsigned>;
-        std::vector<std::pair<PassAndSlot, AttachmentName>> _outputAttachmentMapping;
-		std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
-		std::vector<std::pair<unsigned, AttachmentName>> _depthStencilAttachmentMapping;
-        unsigned _subpassCount;
-    };
-
     class MergeFragmentsResult
     {
     public:
         FrameBufferDescFragment _mergedFragment;
-        std::vector<FrameBufferFragmentMapping> _remapping;
         std::vector<std::pair<uint64_t, AttachmentName>> _inputAttachments;
         std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
         std::string _log;
@@ -223,44 +227,6 @@ namespace RenderCore { namespace Techniques
         IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
         IteratorRange<const FrameBufferDescFragment*> fragments,
 		UInt2 dimenionsForCompatibilityTests = UInt2(1024, 1024));
-
-    /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
-    /// RenderPasses are often generated from many "fragments" -- which are merged together into a
-    /// single render pass using MergeFragments.
-    ///
-    /// Often we want to then iterate through the entire renderpass, one fragment at a time
-    /// This class is a useful utility that allows us to work with a single fragment at a time, even
-    /// after many fragments have been combined into a single uber-renderpass.
-    class RenderPassFragment
-    {
-    public:
-        const RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
-
-        // The indicies here refer to the slot of the input attachment
-        auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
-        auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
-
-		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
-		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
-
-        void NextSubpass();
-
-        RenderPassFragment(
-            RenderPassInstance& rpi,
-            const FrameBufferFragmentMapping& mapping);
-        RenderPassFragment();
-		~RenderPassFragment();
-
-        RenderPassFragment(const RenderPassFragment&) = delete;
-        RenderPassFragment& operator=(const RenderPassFragment&) = delete;
-    protected:
-        RenderPassInstance* _rpi;
-        const FrameBufferFragmentMapping* _mapping;
-        unsigned _currentPassIndex;
-
-        AttachmentName RemapToRPI(unsigned inputAttachmentSlot) const;
-    };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -120,8 +120,8 @@ namespace RenderOverlays
 			parsingContext.GetFrameBufferPool(),
 			parsingContext.GetNamedResources() };
 
-        auto stencilSrv = rpi.GetSRV(
-            1,
+        auto stencilSrv = rpi.GetInputAttachmentSRV(
+            0,
             TextureViewDesc{
                 {TextureViewDesc::Aspect::Stencil},
                 TextureViewDesc::All, TextureViewDesc::All, TextureDesc::Dimensionality::Undefined,
@@ -227,7 +227,7 @@ namespace RenderOverlays
 
 		SubpassDesc subpass0;
 		subpass0.AppendOutput(n_offscreen, LoadStore::Clear, LoadStore::Retain);
-		subpass0._depthStencil = AttachmentViewDesc { n_depth, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } };
+		subpass0.SetDepthStencil(AttachmentViewDesc { n_depth, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } });
 		fbDescFrag.AddSubpass(std::move(subpass0));
 
 		SubpassDesc subpass1;
@@ -245,7 +245,7 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
-        auto& srv = *_pimpl->_rpi.GetSRV(0);
+        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv.IsGood());
 
         _pimpl->_rpi.NextSubpass();
@@ -276,7 +276,7 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        auto& srv = *_pimpl->_rpi.GetSRV(0);
+        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv.IsGood());
         _pimpl->_rpi.NextSubpass();
 
@@ -301,7 +301,7 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        auto& srv = *_pimpl->_rpi.GetSRV(0);
+        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv.IsGood());
         _pimpl->_rpi.NextSubpass();
 

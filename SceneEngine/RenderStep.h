@@ -14,7 +14,6 @@
 namespace RenderCore { namespace Techniques 
 {
 	class FrameBufferDescFragment;
-	class RenderPassFragment;
 	class ITechniqueDelegate;
 	class SequencerConfig;
 }}
@@ -57,18 +56,21 @@ namespace SceneEngine
 		std::vector<SubpassExtension> _subpassExtensions;
 	};
 
-	class RenderStepFragmentInstance : public RenderCore::Techniques::RenderPassFragment
+	class RenderStepFragmentInstance
 	{
 	public:
 		const RenderCore::Techniques::SequencerConfig* GetSequencerConfig() const;
+		const RenderCore::Techniques::RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
+		RenderCore::Techniques::RenderPassInstance& GetRenderPassInstance() { return *_rpi; }
 
 		RenderStepFragmentInstance(
 			RenderCore::Techniques::RenderPassInstance& rpi,
-            const RenderCore::Techniques::FrameBufferFragmentMapping& mapping,
 			IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> sequencerConfigs);
 		RenderStepFragmentInstance();
 	private:
+		RenderCore::Techniques::RenderPassInstance* _rpi;
 		IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> _sequencerConfigs;
+		unsigned _firstSubpassIndex;
 	};
 
 	class IRenderStep

@@ -95,7 +95,6 @@ namespace SceneEngine
 			size_t _endRenderStep = 0;
 
 			std::vector<std::shared_ptr<RenderCore::Techniques::SequencerConfig>> _perSubpassSequencerConfigs;
-			std::vector<Techniques::FrameBufferFragmentMapping> _perStepRemappings;
 			std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
 		};
 		std::vector<RenderPass> _renderPasses;
@@ -190,7 +189,6 @@ namespace SceneEngine
 			newRenderPass._pipelineType = pipelineType;
 			newRenderPass._beginRenderStep = std::distance(_renderSteps.begin(), renderStepIterator);
 			newRenderPass._endRenderStep = std::distance(_renderSteps.begin(), renderStepEnd);
-			newRenderPass._perStepRemappings = std::move(merged._remapping);
 			newRenderPass._outputAttachments = std::move(merged._outputAttachments);
 
 			// Fill in the SequencerConfig for each render step
@@ -289,17 +287,17 @@ namespace SceneEngine
 
 	const RenderCore::Techniques::SequencerConfig* RenderStepFragmentInstance::GetSequencerConfig() const
 	{
-		if (_currentPassIndex >= _sequencerConfigs.size())
+		if ((_rpi->GetCurrentSubpassIndex()-_firstSubpassIndex) >= _sequencerConfigs.size())
 			return nullptr;
-		return _sequencerConfigs[_currentPassIndex].get();
+		return _sequencerConfigs[_rpi->GetCurrentSubpassIndex()-_firstSubpassIndex].get();
 	}
 
 	RenderStepFragmentInstance::RenderStepFragmentInstance(
 		RenderCore::Techniques::RenderPassInstance& rpi,
-        const RenderCore::Techniques::FrameBufferFragmentMapping& mapping,
 		IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> sequencerConfigs)
-	: RenderCore::Techniques::RenderPassFragment(rpi, mapping)
+	: _rpi(&rpi)
 	{
+		_firstSubpassIndex = _rpi->GetCurrentSubpassIndex();
 		_sequencerConfigs = sequencerConfigs;
 	}
 
@@ -439,23 +437,20 @@ namespace SceneEngine
 				rpi = Techniques::RenderPassInstance { rp._fbDesc, parsingContext.GetNamedResources() };
 			}
 
-			unsigned subpassCounter = 0;
-			auto stepRemappingIterator = rp._perStepRemappings.begin();
-			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
+			RenderStepFragmentInstance rpf(rpi, MakeIteratorRange(rp._perSubpassSequencerConfigs));
+			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step) {
 				CATCH_ASSETS_BEGIN
-					auto range = MakeIteratorRange(AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter), AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
-					RenderStepFragmentInstance rpf(rpi, *stepRemappingIterator, range);
 					IViewDelegate* viewDelegate = executeContext.GetViewDelegates()[0].get();
 					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
-					subpassCounter += (unsigned)range.size();
 				CATCH_ASSETS_END(parsingContext)
+				rpi.NextSubpass();
 			}
 
 			// Bind the output attachments from the render pass
 			// Note -- we never unbind any "exhausted" attachments. All attachments
 			//		that are written to end up here.
 			for (const auto&w:rp._outputAttachments)
-				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResource(w.second));
+				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResourceForAttachmentName(w.second));
 		}
 
 		parsingContext._pipelineAcceleratorPool = prevPipelineAccelerator;
@@ -495,11 +490,21 @@ namespace SceneEngine
 		std::set<::Assets::FuturePtr<Metal::GraphicsPipeline>> pendingPipelines;
 
 		for (const auto&rp:technique._renderPasses) {
-			unsigned subpassCounter = 0;
-			auto stepRemappingIterator = rp._perStepRemappings.begin();
-			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step, ++stepRemappingIterator) {
+			
+			auto sequencerConfigRange = MakeIteratorRange(rp._perSubpassSequencerConfigs);
+
+			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step) {
 				IViewDelegate* viewDelegate = nullptr;
 				if (step==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
+
+				// We need to know the number of subpasses in this render step in order to check what sequencer config apply to it
+				// We don't save this value, so we have to query the render step again
+				auto subpassCount = technique._renderSteps[step]->GetInterface().GetFrameBufferDescFragment()._subpasses.size();
+				if (!subpassCount)
+					continue;
+
+				assert(subpassCount <= sequencerConfigRange.size());
+				auto stepSequencerConfigs = MakeIteratorRange(sequencerConfigRange.begin(),  sequencerConfigRange.begin() + subpassCount);
 
 				for (unsigned b=0; b<(unsigned)RenderCore::Techniques::BatchFilter::Max; ++b) {
 					auto *drawablesPacket = viewDelegate ? viewDelegate->GetDrawablesPacket(RenderCore::Techniques::BatchFilter(b)) : nullptr;
@@ -507,16 +512,15 @@ namespace SceneEngine
 
 					for (auto d=drawablesPacket->_drawables.begin(); d!=drawablesPacket->_drawables.end(); ++d) {
 						const auto& drawable = *(RenderCore::Techniques::Drawable*)d.get();
-						auto range = MakeIteratorRange(
-							AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter), 
-							AsPointer(rp._perSubpassSequencerConfigs.begin() + subpassCounter + stepRemappingIterator->_subpassCount));
-						for (auto r:range) {
+						for (auto r:stepSequencerConfigs) {
 							auto pipelineAccelerator = pipelineAcceleratorPool->GetPipeline(*drawable._pipeline, *r);
 							if (pipelineAccelerator->GetAssetState() == ::Assets::AssetState::Pending)
 								pendingPipelines.insert(pipelineAccelerator);
 						}
 					}
 				}
+
+				sequencerConfigRange.first = stepSequencerConfigs.end();
 			}
 		}
 

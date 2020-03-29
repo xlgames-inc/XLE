@@ -46,9 +46,9 @@ namespace RenderCore { namespace Metal_DX11
 			unsigned initialViewportWidth = D3D11_VIEWPORT_BOUNDS_MAX;
 			unsigned initialViewportHeight = D3D11_VIEWPORT_BOUNDS_MAX;
 
-            sp._rtvCount = std::min((unsigned)spDesc._output.size(), s_maxMRTs);
+            sp._rtvCount = std::min((unsigned)spDesc.GetOutputs().size(), s_maxMRTs);
             for (unsigned r=0; r<sp._rtvCount; ++r) {
-				const auto& attachmentView = spDesc._output[r];
+				const auto& attachmentView = spDesc.GetOutputs()[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				auto* attachmentDesc = namedResources.GetDesc(attachmentView._resourceName);
 				if (!resource || !attachmentDesc)
@@ -68,14 +68,14 @@ namespace RenderCore { namespace Metal_DX11
 				initialViewportHeight = std::min(resDesc._textureDesc._height, initialViewportHeight);
 			}
 
-			if (spDesc._depthStencil._resourceName != ~0u) {
-				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
-				auto* attachmentDesc = namedResources.GetDesc(spDesc._depthStencil._resourceName);
+			if (spDesc.GetDepthStencil()._resourceName != ~0u) {
+				auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName);
+				auto* attachmentDesc = namedResources.GetDesc(spDesc.GetDepthStencil()._resourceName);
 				if (!resource || !attachmentDesc)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				auto completeView = CompleteTextureViewDesc(*attachmentDesc, spDesc._depthStencil._window, TextureViewDesc::Aspect::DepthStencil);
+				auto completeView = CompleteTextureViewDesc(*attachmentDesc, spDesc.GetDepthStencil()._window, TextureViewDesc::Aspect::DepthStencil);
 				sp._dsv = *dsvPool.GetView(resource, completeView);
-				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
+				sp._dsvLoad = spDesc.GetDepthStencil()._loadFromPreviousPhase;
 				if (HasClear(sp._dsvLoad)) {
 					sp._dsvClearValue = clearValueIterator++;
 				} else {

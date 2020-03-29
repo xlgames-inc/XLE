@@ -302,7 +302,7 @@ namespace SceneEngine
 			ReturnToSteadyState(metalContext);
 		}
 
-		rpi.NextSubpass();
+		rpi.GetRenderPassInstance().NextSubpass();
 
             /////
             

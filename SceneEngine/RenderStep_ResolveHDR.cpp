@@ -31,7 +31,7 @@ namespace SceneEngine
 		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
-		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
+		auto* postLightingResolveInput = rpi.GetRenderPassInstance().GetInputAttachmentSRV(0);
 		assert(postLightingResolveInput);
 
 		auto toneMapSettings = lightingParserContext._delegate->GetToneMapSettings();
@@ -70,8 +70,8 @@ namespace SceneEngine
 		auto ldrOutput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 
 		SubpassDesc subpass;
-		subpass._output.push_back({ ldrOutput, LoadStore::DontCare, LoadStore::Retain, {TextureViewDesc::Aspect::ColorSRGB} });
-		subpass._input.push_back({ hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare });
+		subpass.AppendOutput({ ldrOutput, LoadStore::DontCare, LoadStore::Retain, {TextureViewDesc::Aspect::ColorSRGB} });
+		subpass.AppendInput({ hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare });
 		_fragment.AddSubpass(std::move(subpass));
 	}
 
@@ -111,7 +111,7 @@ namespace SceneEngine
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");
 
-		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
+		auto* postLightingResolveInput = rpi.GetRenderPassInstance().GetInputAttachmentSRV(0);
 		assert(postLightingResolveInput);
 
 #if 0   // platformtemp
@@ -150,7 +150,7 @@ namespace SceneEngine
             //  other times we don't (because some tone map operations produce
             //  SRGB results, others give linear results)
 
-		auto* targetDesc = rpi.GetOutputAttachmentDesc(0);
+		auto* targetDesc = rpi.GetRenderPassInstance().GetOutputAttachmentDesc(0);
 		assert(targetDesc); (void)targetDesc;
 		// This parameter should be tied to whether the texture view for the output texture has SRGB enabled
 		// or not (ie, the hardware is writing out SRGB, rather than linear colors).

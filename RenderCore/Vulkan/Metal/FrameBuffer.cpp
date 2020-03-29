@@ -191,11 +191,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			const auto& spDesc = subpasses[spIdx];
 
 			std::vector<std::pair<const AttachmentViewDesc*, Internal::AttachmentUsageType::BitField>> subpassAttachments;
-			for (const auto& r:spDesc._output) 
+			for (const auto& r:spDesc.GetOutputs()) 
 				subpassAttachments.push_back({&r, Internal::AttachmentUsageType::Output});
-			if (spDesc._depthStencil._resourceName != SubpassDesc::Unused._resourceName)
-				subpassAttachments.push_back({&spDesc._depthStencil, Internal::AttachmentUsageType::DepthStencil});
-			for (const auto& r:spDesc._input) 
+			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName)
+				subpassAttachments.push_back({&spDesc.GetDepthStencil(), Internal::AttachmentUsageType::DepthStencil});
+			for (const auto& r:spDesc.GetInputs()) 
 				subpassAttachments.push_back({&r, Internal::AttachmentUsageType::Input});
 
 			//////////////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +331,7 @@ namespace RenderCore { namespace Metal_Vulkan
             // input attachments in the shader). Holy cow, the render pass, frame buffer, pipeline
             // layout, descriptor set and shader must all agree!
             auto beforeInputs = attachReferences.size();
-            for (auto& a:p._input) {
+            for (auto& a:p.GetInputs()) {
 				auto resource = a._resourceName;
 				auto i = LowerBound(workingAttachments, resource);
 				assert(i != workingAttachments.end() && i->first == resource);
@@ -342,7 +342,7 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.inputAttachmentCount = uint32_t(attachReferences.size() - beforeInputs);
 
             auto beforeOutputs = attachReferences.size();
-            for (auto& a:p._output) {
+            for (auto& a:p.GetOutputs()) {
 				auto resource = a._resourceName;
 				auto i = LowerBound(workingAttachments, resource);
 				assert(i != workingAttachments.end() && i->first == resource);
@@ -355,8 +355,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			desc.pPreserveAttachments = nullptr;
 			desc.preserveAttachmentCount = 0;
 
-            if (p._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
-				auto resource = p._depthStencil._resourceName;
+            if (p.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName) {
+				auto resource = p.GetDepthStencil()._resourceName;
 				auto i = LowerBound(workingAttachments, resource);
 				assert(i != workingAttachments.end() && i->first == resource);
 				auto internalName = std::distance(workingAttachments.begin(), i);
@@ -523,17 +523,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 
-			for (const auto& r:spDesc._output) {
+			for (const auto& r:spDesc.GetOutputs()) {
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Output});
 				BuildMaxDims(maxDims, r._resourceName, namedResources, props);
 			}
 
-			if (spDesc._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
-				attachments.push_back({spDesc._depthStencil._resourceName, Internal::AttachmentUsageType::DepthStencil});
-				BuildMaxDims(maxDims, spDesc._depthStencil._resourceName, namedResources, props);
+			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName) {
+				attachments.push_back({spDesc.GetDepthStencil()._resourceName, Internal::AttachmentUsageType::DepthStencil});
+				BuildMaxDims(maxDims, spDesc.GetDepthStencil()._resourceName, namedResources, props);
 			}
 
-			for (const auto& r:spDesc._input) {
+			for (const auto& r:spDesc.GetInputs()) {
 				// todo -- these srvs also need to be exposed to the caller, so they can be bound to
 				// the shader during the subpass
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Input});

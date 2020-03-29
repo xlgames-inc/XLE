@@ -197,7 +197,7 @@ namespace ToolsRig
 			parserContext.GetFrameBufferPool(),
 			parserContext.GetNamedResources() };
 
-        auto depthSrv = rpi.GetSRV(1, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv || !depthSrv->IsGood()) return;
 
         TRY
@@ -274,7 +274,7 @@ namespace ToolsRig
 			parserContext.GetFrameBufferPool(),
 			parserContext.GetNamedResources() };
 
-        auto depthSrv = rpi.GetSRV(1, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv || !depthSrv->IsGood()) return;
 
         TRY

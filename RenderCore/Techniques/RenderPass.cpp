@@ -47,17 +47,17 @@ namespace RenderCore
                 << (!subpass._name.empty()?subpass._name:std::string("<<no name>>")) << ", "
             #endif
             << "outputs [";
-        for (unsigned c=0; c<subpass._output.size(); ++c) { if (c!=0) str << ", "; str << subpass._output[c]._resourceName; }
+        for (unsigned c=0; c<subpass.GetOutputs().size(); ++c) { if (c!=0) str << ", "; str << subpass.GetOutputs()[c]._resourceName; }
         str << "], DepthStencil: ";
-        if (subpass._depthStencil._resourceName != ~0u) { str << subpass._depthStencil._resourceName; } else { str << "<<none>>"; }
+        if (subpass.GetDepthStencil()._resourceName != ~0u) { str << subpass.GetDepthStencil()._resourceName; } else { str << "<<none>>"; }
         str << ", inputs [";
-        for (unsigned c=0; c<subpass._input.size(); ++c) { if (c!=0) str << ", "; str << subpass._input[c]._resourceName; }
-        str << "], preserve [";
-        for (unsigned c=0; c<subpass._preserve.size(); ++c) { if (c!=0) str << ", "; str << subpass._preserve[c]._resourceName; }
+        for (unsigned c=0; c<subpass.GetInputs().size(); ++c) { if (c!=0) str << ", "; str << subpass.GetInputs()[c]._resourceName; }
+        /*str << "], preserve [";
+        for (unsigned c=0; c<subpass._preserve.size(); ++c) { if (c!=0) str << ", "; str << subpass._preserve[c]._resourceName; }*/
         str << "], resolve [";
-        for (unsigned c=0; c<subpass._resolve.size(); ++c) { if (c!=0) str << ", "; str << subpass._resolve[c]._resourceName; }
+        for (unsigned c=0; c<subpass.GetResolveOutputs().size(); ++c) { if (c!=0) str << ", "; str << subpass.GetResolveOutputs()[c]._resourceName; }
         str << "], resolveDepthStencil: ";
-        if (subpass._depthStencilResolve._resourceName != ~0u) { str << subpass._depthStencilResolve._resourceName << " }"; }
+        if (subpass.GetResolveDepthStencil()._resourceName != ~0u) { str << subpass.GetResolveDepthStencil()._resourceName << " }"; }
         else { str << "<<none>> }"; }
         return str;
     }
@@ -80,93 +80,6 @@ namespace RenderCore { namespace Techniques
 
     FrameBufferDescFragment::FrameBufferDescFragment() {}
     FrameBufferDescFragment::~FrameBufferDescFragment() {}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    auto RenderPassFragment::GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
-    {
-        auto remapped = RemapToRPI(inputAttachmentSlot);
-        if (remapped == ~0u) return nullptr;
-        return _rpi->GetSRV(remapped, window);
-    }
-
-    auto RenderPassFragment::GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*
-    {
-        auto remapped = RemapToRPI(inputAttachmentSlot);
-        if (remapped == ~0u) return nullptr;
-        return _rpi->GetDesc(remapped);
-    }
-
-    auto RenderPassFragment::GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
-    {
-        auto remapped = RemapToRPI(inputAttachmentSlot);
-        if (remapped == ~0u) return nullptr;
-        return _rpi->GetResource(remapped);
-    }
-
-    AttachmentName RenderPassFragment::RemapToRPI(unsigned inputAttachmentSlot) const
-    {
-        auto passIndex = _currentPassIndex;
-        auto i = std::find_if(
-            _mapping->_inputAttachmentMapping.begin(), _mapping->_inputAttachmentMapping.end(),
-            [passIndex, inputAttachmentSlot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
-                return p.first == std::make_pair(passIndex, inputAttachmentSlot);
-            });
-        if (i == _mapping->_inputAttachmentMapping.end())
-            return ~0u;
-        return i->second;
-    }
-
-	auto RenderPassFragment::GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
-    {
-        auto passIndex = _currentPassIndex;
-        auto i = std::find_if(
-            _mapping->_outputAttachmentMapping.begin(), _mapping->_outputAttachmentMapping.end(),
-            [passIndex, slot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
-                return p.first == std::make_pair(passIndex, slot);
-            });
-        if (i == _mapping->_outputAttachmentMapping.end())
-            return nullptr;
-        return _rpi->GetDesc(i->second);
-    }
-
-	auto RenderPassFragment::GetDepthStencilAttachmentSRV(const TextureViewDesc& window) const -> Metal::ShaderResourceView*
-	{
-		auto passIndex = _currentPassIndex;
-        auto i = std::find_if(
-            _mapping->_depthStencilAttachmentMapping.begin(), _mapping->_depthStencilAttachmentMapping.end(),
-            [passIndex](const std::pair<unsigned, AttachmentName>& p) {
-                return p.first == passIndex;
-            });
-        if (i == _mapping->_depthStencilAttachmentMapping.end())
-            return nullptr;
-        return _rpi->GetSRV(i->second, window);
-	}
-
-    void RenderPassFragment::NextSubpass()
-    {
-        _rpi->NextSubpass();
-        ++_currentPassIndex;
-    }
-
-    RenderPassFragment::RenderPassFragment(
-        RenderPassInstance& rpi,
-        const FrameBufferFragmentMapping& mapping)
-    : _rpi(&rpi), _mapping(&mapping)
-    , _currentPassIndex(0)
-    {
-    }
-
-	RenderPassFragment::RenderPassFragment()
-	: _rpi(nullptr), _mapping(nullptr), _currentPassIndex(~0u)
-	{
-	}
-
-    RenderPassFragment::~RenderPassFragment()
-    {
-        if (_mapping && _mapping->_subpassCount)
-            _rpi->NextSubpass();
-    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -340,7 +253,7 @@ namespace RenderCore { namespace Techniques
 		}
     }
 
-    auto RenderPassInstance::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    auto RenderPassInstance::GetDescForAttachmentName(AttachmentName resName) const -> const AttachmentDesc*
     {
         assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
@@ -348,7 +261,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
-    auto RenderPassInstance::GetResource(AttachmentName resName) const -> IResourcePtr
+    auto RenderPassInstance::GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr
     {
         assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
@@ -356,7 +269,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
-    auto RenderPassInstance::GetSRV(AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+    auto RenderPassInstance::GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
     {
         assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
@@ -364,11 +277,124 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
-	AttachmentName RenderPassInstance::RemapAttachmentName(AttachmentName resName) const
+	auto RenderPassInstance::GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*
 	{
-		if (resName < _attachmentPoolRemapping.size())
-			return _attachmentPoolRemapping[resName];
-		return ~0u;
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
+        return nullptr;
+	}
+
+    auto RenderPassInstance::GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+        return nullptr;
+	}
+
+    auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
+        return nullptr;
+	}
+	
+	auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        return nullptr;
+	}
+
+	auto RenderPassInstance::GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetOutputs()[slot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
+        return nullptr;
+	}
+
+	auto RenderPassInstance::GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+        return nullptr;
+	}
+
+    auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
+        return nullptr;
+	}
+	
+	auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        return nullptr;
+	}
+
+	auto RenderPassInstance::GetDepthStencilAttachmentSRV(const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetDepthStencil()._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        return nullptr;
+	}
+
+	auto RenderPassInstance::GetDepthStencilAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetDepthStencil()._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+        return nullptr;
+	}
+
+    auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetDepthStencil()._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
+        return nullptr;
+	}
+	
+	auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	{
+		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
+		auto resName = subPass.GetDepthStencil()._resourceName;
+		assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        return nullptr;
 	}
 
     RenderPassInstance::RenderPassInstance(
@@ -377,6 +403,7 @@ namespace RenderCore { namespace Techniques
         FrameBufferPool& frameBufferPool,
         AttachmentPool& attachmentPool,
         const RenderPassBeginDesc& beginInfo)
+	: _layout(layout)
     {
         auto fb = frameBufferPool.BuildFrameBuffer(
             Metal::GetObjectFactory(*context.GetDevice()),
@@ -392,6 +419,7 @@ namespace RenderCore { namespace Techniques
 	RenderPassInstance::RenderPassInstance(
         const FrameBufferDesc& layout,
         AttachmentPool& attachmentPool)
+	: _layout(layout)
     {
 		// This constructs a kind of "non-metal" RenderPassInstance
 		// It allows us to use the RenderPassInstance infrastructure (for example, for remapping attachment requests)
@@ -416,6 +444,7 @@ namespace RenderCore { namespace Techniques
     , _attachedContext(moveFrom._attachedContext)
     , _attachmentPool(moveFrom._attachmentPool)
     , _attachmentPoolRemapping(std::move(moveFrom._attachmentPoolRemapping))
+	, _layout(std::move(moveFrom._layout))
     {
         moveFrom._attachedContext = nullptr;
         moveFrom._attachmentPool = nullptr;
@@ -433,6 +462,7 @@ namespace RenderCore { namespace Techniques
         _attachmentPoolRemapping = std::move(moveFrom._attachmentPoolRemapping);
         moveFrom._attachedContext = nullptr;
         moveFrom._attachmentPool = nullptr;
+		_layout = std::move(moveFrom._layout);
         return *this;
     }
 
@@ -1007,7 +1037,7 @@ namespace RenderCore { namespace Techniques
     static DirectionFlags::BitField GetDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
     {
         DirectionFlags::BitField result = 0;
-        for (const auto&a:p._output)
+        for (const auto&a:p.GetOutputs())
             if (a._resourceName == attachment) {
                 result |= DirectionFlags::Reference;
                 if (HasRetain(a._loadFromPreviousPhase))
@@ -1015,24 +1045,24 @@ namespace RenderCore { namespace Techniques
                 if (HasRetain(a._storeToNextPhase))
                     result |= DirectionFlags::Store;
             }
-        if (p._depthStencil._resourceName == attachment) {
+        if (p.GetDepthStencil()._resourceName == attachment) {
             result |= DirectionFlags::Reference;
-            if (HasRetain(p._depthStencil._loadFromPreviousPhase))
+            if (HasRetain(p.GetDepthStencil()._loadFromPreviousPhase))
                 result |= DirectionFlags::Load;
-            if (HasRetain(p._depthStencil._storeToNextPhase))
+            if (HasRetain(p.GetDepthStencil()._storeToNextPhase))
                 result |= DirectionFlags::Store;
         }
-        for (const auto&a:p._input)
+        for (const auto&a:p.GetInputs())
             if (a._resourceName == attachment) {
                 result |= DirectionFlags::Reference | DirectionFlags::Load;
                 if (HasRetain(a._storeToNextPhase))
                     result |= DirectionFlags::RetainAfterLoad;
             }
-        for (const auto&a:p._resolve)
+        for (const auto&a:p.GetResolveOutputs())
             if (a._resourceName == attachment) {
                 result |= DirectionFlags::Reference | DirectionFlags::Store;
             }
-        if (p._depthStencilResolve._resourceName == attachment) {
+        if (p.GetResolveDepthStencil()._resourceName == attachment) {
             result |= DirectionFlags::Reference | DirectionFlags::Store;
         }
         return result;
@@ -1041,7 +1071,7 @@ namespace RenderCore { namespace Techniques
     static bool ImplicitlyRequiresShaderResourceFlag(const FrameBufferDescFragment& fragment, unsigned attachmentName)
     {
         for (const auto&p:fragment._subpasses)
-            for (const auto&a:p._input)
+            for (const auto&a:p.GetInputs())
                 if (a._resourceName == attachmentName)
                     return true;
         return false;
@@ -1149,6 +1179,41 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static SubpassDesc RemapSubpassDesc(
+		const SubpassDesc& input,
+		const std::function<AttachmentName(AttachmentName)>& remapFunction)
+	{
+		SubpassDesc result;
+		#if defined(_DEBUG)
+			result.SetName(result._name);
+		#endif
+		for (auto remapped:input.GetOutputs()) {
+			remapped._resourceName = remapFunction(remapped._resourceName);
+			result.AppendOutput(remapped);
+		}
+		if (input.GetDepthStencil()._resourceName != ~0u) {
+			auto remapped = input.GetDepthStencil();
+			remapped._resourceName = remapFunction(remapped._resourceName);
+			result.SetDepthStencil(remapped);
+		}
+		for (auto remapped:input.GetInputs()) {
+			remapped._resourceName = remapFunction(remapped._resourceName);
+			result.AppendInput(remapped);
+		}
+		for (auto remapped:input.GetResolveOutputs()) {
+			remapped._resourceName = remapFunction(remapped._resourceName);
+			result.AppendResolveOutput(remapped);
+		}
+		if (input.GetResolveDepthStencil()._resourceName != ~0u) {
+			auto remapped = input.GetResolveDepthStencil();
+			remapped._resourceName = remapFunction(remapped._resourceName);
+			result.SetResolveDepthStencil(remapped);
+		}
+		return result;
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     MergeFragmentsResult MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
         IteratorRange<const FrameBufferDescFragment*> fragments,
@@ -1167,9 +1232,8 @@ namespace RenderCore { namespace Techniques
         // together (along with the temporaries) to create a single cohesive render pass.
         // Where we can reuse the same temporary multiple times, we should do so
         FrameBufferDescFragment result;
-        std::vector<FrameBufferFragmentMapping> fragmentRemapping;
 
-        if (!fragments.size()) return { std::move(result), std::move(fragmentRemapping) };
+        if (!fragments.size()) return { std::move(result) };
 
         // Some attachments will need the "ShaderResource" flag set, so that we can use them as an
         // input to the a shader. This propagates backwards, since once any data is written to a
@@ -1471,25 +1535,10 @@ namespace RenderCore { namespace Techniques
                 // setup the subpasses & PassFragment
             std::sort(attachmentRemapping.begin(), attachmentRemapping.end(), CompareFirst<AttachmentName, AttachmentName>());
 
-            FrameBufferFragmentMapping passFragment;
             for (unsigned p=0; p<(unsigned)f->_subpasses.size(); ++p) {
-                SubpassDesc newSubpass = f->_subpasses[p];
-                for (unsigned c=0; c<(unsigned)newSubpass._output.size(); ++c) {
-                    newSubpass._output[c]._resourceName = Remap(attachmentRemapping, newSubpass._output[c]._resourceName);
-					passFragment._outputAttachmentMapping.push_back({{p, c}, newSubpass._output[c]._resourceName});
-				}
-				if (newSubpass._depthStencil._resourceName != ~0u) {
-					newSubpass._depthStencil._resourceName = Remap(attachmentRemapping, newSubpass._depthStencil._resourceName);
-					passFragment._depthStencilAttachmentMapping.push_back({p, newSubpass._depthStencil._resourceName});
-				}
-                for (unsigned c=0; c<(unsigned)newSubpass._input.size(); ++c) {
-                    newSubpass._input[c]._resourceName = Remap(attachmentRemapping, newSubpass._input[c]._resourceName);
-                    passFragment._inputAttachmentMapping.push_back({{p, c}, newSubpass._input[c]._resourceName});
-                }
-                for (auto&a:newSubpass._preserve)
-                    a._resourceName = Remap(attachmentRemapping, a._resourceName);
-                for (auto&a:newSubpass._resolve)
-                    a._resourceName = Remap(attachmentRemapping, a._resourceName);
+                SubpassDesc newSubpass = RemapSubpassDesc(
+					f->_subpasses[p],
+					std::bind(&Remap, std::ref(attachmentRemapping), std::placeholders::_1));
 
 				// DavidJ -- in some interesting cases, a single attachment can be used mutliple times in the same subpass
 				//		but I think this should only happen if different "aspects" of the resource are used each time
@@ -1508,8 +1557,6 @@ namespace RenderCore { namespace Techniques
 
                 result.AddSubpass(std::move(newSubpass));
             }
-            passFragment._subpassCount = (unsigned)f->_subpasses.size();
-            fragmentRemapping.emplace_back(std::move(passFragment));
 
             /////////////////////////////////////////////////////////////////////////////
 
@@ -1542,7 +1589,6 @@ namespace RenderCore { namespace Techniques
 
         MergeFragmentsResult finalResult;
         finalResult._mergedFragment = std::move(result);
-        finalResult._remapping = std::move(fragmentRemapping);
 
         for (auto& a:workingAttachments) {
             if (a._name == ~0u) continue;
@@ -1575,26 +1621,24 @@ namespace RenderCore { namespace Techniques
     }
 
 
-    static RenderCore::AttachmentViewDesc RemapAttachmentView(
-        const RenderCore::AttachmentViewDesc& input,
+    static AttachmentName RemapAttachmentName(
+        AttachmentName input,
         const RenderCore::Techniques::FrameBufferDescFragment& srcFragment,
         RenderCore::Techniques::FrameBufferDescFragment& dstFragment,
         std::vector<std::pair<RenderCore::AttachmentName, RenderCore::AttachmentName>>& remapping)
     {
-        if (input._resourceName == ~0u) return input;
+        if (input == ~0u) return input;
 
-        auto existing = LowerBound(remapping, input._resourceName);
-        if (existing == remapping.end() || existing->first != input._resourceName) {
-            auto semantic = srcFragment._attachments[input._resourceName].GetInputSemanticBinding();
+        auto existing = LowerBound(remapping, input);
+        if (existing == remapping.end() || existing->first != input) {
+            auto semantic = srcFragment._attachments[input].GetInputSemanticBinding();
             auto newName = dstFragment.DefineAttachment(
                 semantic,
-                srcFragment._attachments[input._resourceName]._desc);
-            existing = remapping.insert(existing, {input._resourceName, newName});
+                srcFragment._attachments[input]._desc);
+            existing = remapping.insert(existing, {input, newName});
         }
 
-        auto result = input;
-        result._resourceName = existing->second;
-        return result;
+        return existing->second;
     }
 
     bool CanBeSimplified(
@@ -1610,15 +1654,9 @@ namespace RenderCore { namespace Techniques
             for (const auto&subpass:inputFragment._subpasses) {
                 std::vector<std::pair<AttachmentName, AttachmentName>> remapping;
                 Fragment separatedFragment;
-                RenderCore::SubpassDesc remappedSubpass;
-                for (const auto&a:subpass._output) remappedSubpass._output.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
-                remappedSubpass._depthStencil = RemapAttachmentView(remappedSubpass._depthStencil, inputFragment, separatedFragment, remapping);
-                for (const auto&a:subpass._input) remappedSubpass._input.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
-                for (const auto&a:subpass._preserve) remappedSubpass._preserve.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
-                for (const auto&a:subpass._resolve) remappedSubpass._resolve.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
-                #if defined(_DEBUG)
-                    remappedSubpass.SetName(subpass._name);
-                #endif
+                auto remappedSubpass = RemapSubpassDesc(
+					subpass,
+					std::bind(&RemapAttachmentName, std::placeholders::_1, std::ref(inputFragment), std::ref(separatedFragment), std::ref(remapping)));
                 separatedFragment.AddSubpass(std::move(remappedSubpass));
                 testFragments.emplace_back(std::move(separatedFragment));
             }

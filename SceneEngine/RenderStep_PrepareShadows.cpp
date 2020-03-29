@@ -146,12 +146,12 @@ namespace SceneEngine
 			lightingParserContext,
 			shadowDelegate,
 			rpi);
-		shadow._srv = *rpi.GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::Depth});
+		shadow._srv = *rpi.GetRenderPassInstance().GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::Depth});
 		if (shadow.IsReady()) {
 			lightingParserContext._preparedDMShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
 
 			if (lightingParserContext._preparedDMShadows.size() == Tweakable("ShadowGenDebugging", 0)) {
-				auto srvForDebugging = *rpi.GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::ColorLinear});
+				auto srvForDebugging = *rpi.GetRenderPassInstance().GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::ColorLinear});
 				parsingContext._pendingOverlays.push_back(
 					std::bind(
 						&ShadowGen_DrawDebugging, 
@@ -194,11 +194,10 @@ namespace SceneEngine
 		box.SetParameter(StringShadowCascadeMode, desc._projectionMode == ShadowProjectionMode::Ortho?2:1);
         box.SetParameter(StringShadowEnableNearCascade, desc._enableNearCascade?1:0);
 
+		SubpassDesc subpass;
+		subpass.SetDepthStencil(output, LoadStore::Clear, LoadStore::Retain);
 		_fragment.AddSubpass(
-			SubpassDesc {
-				{},
-				{output, LoadStore::Clear, LoadStore::Retain}
-			},
+			std::move(subpass),
 			resources._shadowGenDelegate,
 			std::move(box));
 	}
@@ -278,7 +277,6 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		RenderCore::FrameBufferDesc _fbDesc;
-		RenderCore::Techniques::FrameBufferFragmentMapping _fbRemapping;
 		std::vector<std::shared_ptr<RenderCore::Techniques::SequencerConfig>> _sequencerConfigs;
 	};
 
@@ -292,7 +290,7 @@ namespace SceneEngine
 	{
 		if (!_fbDesc.GetSubpasses().empty()) {
 			Techniques::RenderPassInstance rpi(threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool);
-			RenderStepFragmentInstance rpf(rpi, _fbRemapping, MakeIteratorRange(_sequencerConfigs));
+			RenderStepFragmentInstance rpf(rpi, MakeIteratorRange(_sequencerConfigs));
 			_renderStep->Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
 		} else {
 			RenderStepFragmentInstance rpf;
@@ -320,7 +318,6 @@ namespace SceneEngine
 				_fbDesc,
 				0);
 
-			_fbRemapping = std::move(merged._remapping[0]);
 			_sequencerConfigs.push_back(std::move(sequencerConfig));
 
 		} else {

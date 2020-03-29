@@ -141,11 +141,11 @@ namespace SceneEngine
 								unsigned gbufferType,
                                 bool debugging = false);
 
-    static void SetupStateForDeferredLightingResolve(   
+    static void SetupStateForDeferredLightingResolve(
         Metal::DeviceContext& context, 
         LightingParserContext& lightingParserContext, 
         LightingResolveResources& resolveRes,
-		Techniques::RenderPassFragment& rpi,
+		Techniques::RenderPassInstance& rpi,
         bool doSampleFrequencyOptimisation,
 		bool precisionTargets)
     {
@@ -287,7 +287,7 @@ namespace SceneEngine
 
     void LightingParser_ResolveGBuffer(
         IThreadContext& threadContext, Techniques::ParsingContext& parsingContext, LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
+		RenderCore::Techniques::RenderPassInstance& rpi,
 		unsigned gbufferType)
     {
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -670,7 +670,7 @@ namespace SceneEngine
 		RenderStepFragmentInstance& rpi,
 		IViewDelegate* viewDelegate)
 	{
-		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi, _gbufferType);
+		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi.GetRenderPassInstance(), _gbufferType);
 	}
 
 	RenderStep_LightingResolve::RenderStep_LightingResolve(unsigned gbufferType, bool precisionTargets)
