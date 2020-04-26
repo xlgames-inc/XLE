@@ -53,14 +53,30 @@ namespace RenderCore { namespace Techniques
 
 		// Trigger loading of shader resources
 		std::vector<::Assets::FuturePtr<DeferredShaderResource>> pendingSRVs;
-		pendingSRVs.resize(layout._resources.size());
+		pendingSRVs.reserve(layout._resources.size());
+
 		for (unsigned c=0; c<layout._resources.size(); ++c) {
 			assert(layout._resources[c]._conditions.empty());		// note -- ignoring conditions on this object currently (this was added for when the descriptor set is parsed from a file, which isn't the usual path to get to here)
-			auto bindingName = resourceBindings.GetString<char>(MakeStringSection(layout._resources[c]._name));
-			if (!bindingName.empty()) {
-				pendingSRVs[c] = ::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(bindingName));
+			auto hashName = Hash64(layout._resources[c]._name);
+			if (layout._resources[c]._arrayElementCount) {
+				for (unsigned arrayIndex=0; arrayIndex<layout._resources[c]._arrayElementCount; ++arrayIndex) {
+					auto boundResourceName = resourceBindings.GetString<char>(hashName+arrayIndex);
+					if (!boundResourceName.empty()) {
+						pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName)));
+					} else {
+						pendingSRVs.push_back({});
+					}
+					usi.BindShaderResource(unsigned(pendingSRVs.size()-1), hashName+arrayIndex);
+				}
+			} else {
+				auto boundResourceName = resourceBindings.GetString<char>(hashName);
+				if (!boundResourceName.empty()) {
+					pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName)));
+				} else {
+					pendingSRVs.push_back({});
+				}
+				usi.BindShaderResource(unsigned(pendingSRVs.size()-1), hashName);
 			}
-			usi.BindShaderResource(c, Hash64(layout._resources[c]._name));
 		}
 
 		auto& device = Services::GetDevice();
