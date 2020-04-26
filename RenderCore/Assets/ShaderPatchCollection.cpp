@@ -8,6 +8,7 @@
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/StringFormat.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -23,6 +24,8 @@ namespace RenderCore { namespace Assets
 				i->second = p.second;
 			}
 		}
+		if (!_descriptorSet.empty())
+			dest._descriptorSet = _descriptorSet;
 
 		dest.SortAndCalculateHash();
 	}
@@ -65,8 +68,12 @@ namespace RenderCore { namespace Assets
 		for (const auto&p:_patches) {
 			// note that p.first doesn't actually contribute to the hash -- it's not used during the merge operation
 			assert(!p.second._customProvider);
-			_hash = HashCombine(Hash64(p.second._archiveName), _hash);
+			_hash = Hash64(p.second._archiveName, _hash);
 			_hash = HashCombine(p.second.CalculateInstanceHash(), _hash);
+		}
+
+		if (!_descriptorSet.empty()) {
+			_hash = Hash64(_descriptorSet, _hash);
 		}
 	}
 
@@ -96,6 +103,8 @@ namespace RenderCore { namespace Assets
 			SerializeInstantiationRequest(formatter, p.second);
 			formatter.EndElement(pele);
 		}
+		if (!_descriptorSet.empty())
+			formatter.WriteAttribute("DescriptorSet", _descriptorSet);
 	}
 
 	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
@@ -178,6 +187,16 @@ namespace RenderCore { namespace Assets
 			} else if (	next == InputStreamFormatter<utf8>::Blob::EndElement
 					||	next == InputStreamFormatter<utf8>::Blob::None) {
 				break;
+			} else if ( next == InputStreamFormatter<utf8>::Blob::AttributeName) {
+				InputStreamFormatter<utf8>::InteriorSection name, value;
+                formatter.TryAttribute(name, value);
+				if (XlEqString(name, u("DescriptorSet"))) {
+					if (!_descriptorSet.empty())
+						Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
+					_descriptorSet = value.Cast<char>().AsString();
+				} else {
+					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name.Cast<char>() << ") in ShaderPatchCollection", formatter.GetLocation()));
+				}
 			} else {
 				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
 			}

@@ -5,10 +5,12 @@
 #include "CompiledShaderPatchCollection.h"
 #include "TechniqueUtils.h"
 #include "../Assets/ShaderPatchCollection.h"
+#include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
 #include "../../ShaderParser/ShaderAnalysis.h"
 #include "../../Assets/DepVal.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -30,6 +32,14 @@ namespace RenderCore { namespace Techniques
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
 			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions, GetDefaultShaderLanguage());
 			BuildFromInstantiatedShader(inst);
+		}
+
+		if (!_interface._descriptorSet && !src.GetDescriptorSet().empty()) {
+			auto descriptorSetFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>(src.GetDescriptorSet());
+			descriptorSetFuture->StallWhilePending();
+			_interface._descriptorSet = descriptorSetFuture->Actualize();
+
+			::Assets::RegisterAssetDependency(_depVal, _interface._descriptorSet->GetDependencyValidation());
 		}
 	}
 
