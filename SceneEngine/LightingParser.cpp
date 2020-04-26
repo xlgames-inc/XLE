@@ -9,36 +9,37 @@
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
 #include "RenderStepUtils.h"
-#include "MetricsBox.h"
-#include "LightingTargets.h"
-#include "LightInternal.h"
 #include "RenderStep.h"
 #include "RenderStep_PrepareShadows.h"
 #include "RenderStep_ResolveHDR.h"
+#include "LightInternal.h"
 #include "PreparedScene.h"
 
-#include "RefractionsBuffer.h"
-#include "Ocean.h"
-#include "MetalStubs.h"
-
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
-#include "../RenderCore/Techniques/RenderStateResolver.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
-#include "../RenderCore/IDevice.h"
-#include "../RenderOverlays/Font.h"
+#include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AsyncMarkerGroup.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
-#include "../xleres/FileList.h"
 
 #include <set>
+
+// For some of the debugging / metrics stuff towards the end
+#include "MetricsBox.h"
+#include "RefractionsBuffer.h"
+#include "Ocean.h"
+#include "MetalStubs.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Shader.h"
+#include "../RenderOverlays/Font.h"
+#include "../xleres/FileList.h"
+
 
 namespace SceneEngine
 {

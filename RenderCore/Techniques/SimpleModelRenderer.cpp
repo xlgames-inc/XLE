@@ -765,6 +765,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		const RenderCore::Assets::MaterialScaffold* _materialScaffold;
 		std::string _materialScaffoldName;
+		std::set<std::shared_ptr<::Assets::DependencyValidation>> _depVals;
 
 		struct WorkingMaterial
 		{
@@ -799,12 +800,14 @@ namespace RenderCore { namespace Techniques
 				auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat->_patchCollection);
 				assert(patchCollection);
 				auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
+				_depVals.insert(compiledPatchCollection->GetDependencyValidation());
 
 				const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
 				if (!matDescriptorSet) {
 					// If we don't have a material descriptor set in the patch collection, and no
 					// patches -- then let's try falling back to a default built-in descriptor set
 					matDescriptorSet = &GetFallbackMaterialDescriptorSetLayout();
+					_depVals.insert(matDescriptorSet->GetDependencyValidation());
 				}
 
 				resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
@@ -1072,6 +1075,8 @@ namespace RenderCore { namespace Techniques
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterAssetDependency(_depVal, _modelScaffold->GetDependencyValidation());
 		::Assets::RegisterAssetDependency(_depVal, _materialScaffold->GetDependencyValidation());
+		for (const auto&depVal:geoCallBuilder._depVals)
+			::Assets::RegisterAssetDependency(_depVal, depVal);
 	}
 
 	SimpleModelRenderer::~SimpleModelRenderer() {}

@@ -12,8 +12,6 @@
 #endif
 float4 frameworkEntry(VSOUT geo, SystemInputs sys) : SV_Target0
 {
-	DoAlphaTest(geo, GetAlphaThreshold());
-
 	GBufferValues sample = PerPixel(geo);
 
 	float3 directionToEye = 0.0.xxx;

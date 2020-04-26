@@ -198,6 +198,8 @@ namespace RenderCore { namespace Techniques
 				return lhs._semanticIndex > rhs._semanticIndex;	// note -- reversing order
 			});
 
+		bool foundPosition = false;
+
 		// Build up the geometry selectors. 
 		for (auto i = sortedIA.begin(); i!=sortedIA.end(); ++i) {
 			// If we have the same name as the last one, we should just skip (because the
@@ -212,6 +214,18 @@ namespace RenderCore { namespace Techniques
 				buffer[8+c] = (char)std::toupper(i->_semanticName[c]);	// ensure that we're using upper case for the full semantic
 			buffer[8+c] = '\0';
 			_geoSelectors.SetParameter((const utf8*)buffer, i->_semanticIndex+1);
+
+			foundPosition |= XlEqStringI(i->_semanticName, "POSITION");
+		}
+
+		// If we have no IA elements at all, force on GEO_HAS_VERTEX_ID. Shaders will almost always
+		// require it in this case, because there's no other way to distinquish one vertex from
+		// the next.
+		if (sortedIA.empty()) {
+			_geoSelectors.SetParameter(u("GEO_HAS_VERTEX_ID"), 1);
+		}
+		if (!foundPosition) {
+			_geoSelectors.SetParameter(u("GEO_NO_POSITION"), 1);
 		}
 	}
 

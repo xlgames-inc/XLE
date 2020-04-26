@@ -19,7 +19,8 @@ set(Src
     TechniqueDelegates.cpp
     Techniques.cpp
     TechniqueUtils.cpp
-	Services.cpp)
+	Services.cpp
+	ModelCache.cpp)
 set(Headers
     BasicDelegates.h
     CommonBindings.h
@@ -44,7 +45,8 @@ set(Headers
     TechniqueMaterial.h
     Techniques.h
     TechniqueUtils.h
-	Services.h)
+	Services.h
+	ModelCache.h)
 
 BasicLibrary(RenderCoreTechniques "${Src};${Headers}")
 target_link_libraries(RenderCoreTechniques ForeignMisc)  # required to pull in interface include directories (etc)

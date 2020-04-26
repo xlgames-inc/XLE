@@ -60,7 +60,8 @@ set(Src
     Tonemap.cpp
     VegetationSpawnConfig.cpp
     VegetationSpawn.cpp
-    VolumetricFog.cpp)
+    VolumetricFog.cpp
+	CommonTechniqueDelegates.cpp)
 
 set(Headers
     AmbientOcclusion.h
@@ -129,7 +130,8 @@ set(Headers
     TiledLighting.h
     Tonemap.h
     VegetationSpawn.h
-    VolumetricFog.h)
+    VolumetricFog.h
+	CommonTechniqueDelegates.h)
 
 BasicLibrary(SceneEngine "${Src};${Headers}")
 target_link_libraries(SceneEngine ForeignMisc)  # required to pull in interface include directories (etc)

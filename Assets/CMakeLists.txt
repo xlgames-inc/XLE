@@ -12,7 +12,6 @@ set(Src
     CompilationThread.cpp
     CompileAndAsyncManager.cpp
     ConfigFileContainer.cpp
-    DeferredConstruction.cpp
     GeneralCompiler.cpp
     IntermediateAssets.cpp
     MainFileSystem.cpp
