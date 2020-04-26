@@ -72,6 +72,7 @@ namespace Utility
     protected:
         OutputStream*   _stream;
         unsigned        _currentIndentLevel;
+		unsigned		_indentLevelAtStartOfLine;
         bool            _hotLine;
         unsigned        _currentLineLength;
         bool            _pendingHeader;

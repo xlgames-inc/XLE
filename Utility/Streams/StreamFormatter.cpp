@@ -137,6 +137,7 @@ namespace Utility
         _hotLine = true;
         _currentLineLength += unsigned(nameEnd - nameStart + 1);
         ++_currentIndentLevel;
+		_indentLevelAtStartOfLine = _currentIndentLevel;
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
             auto id = _nextElementId;
@@ -181,7 +182,8 @@ namespace Utility
         const unsigned idealLineLength = 100;
         bool forceNewLine = 
             (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength
-            || _pendingHeader;
+            || _pendingHeader
+			|| _currentIndentLevel < _indentLevelAtStartOfLine;
 
         if (forceNewLine) {
             DoNewLine<CharType>();
@@ -245,6 +247,7 @@ namespace Utility
     : _stream(&stream)
     {
         _currentIndentLevel = 0;
+		_indentLevelAtStartOfLine = 0;
         _hotLine = false;
         _currentLineLength = 0;
         _pendingHeader = true;
