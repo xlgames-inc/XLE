@@ -31,6 +31,7 @@ namespace RenderCore { namespace Assets
 		{
 			std::string _name;
 			std::string _conditions;
+			unsigned _arrayElementCount = 0u;
 		};
 		std::vector<Resource> _resources;
 
@@ -38,6 +39,7 @@ namespace RenderCore { namespace Assets
 		{
 			std::string _name;
 			std::string _conditions;
+			unsigned _arrayElementCount = 0u;
 		};
 		std::vector<Sampler> _samplers;
 

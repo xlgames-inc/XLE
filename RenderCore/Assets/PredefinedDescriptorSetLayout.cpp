@@ -72,6 +72,24 @@ namespace RenderCore { namespace Assets
         result._name = name._value.AsString();
 
 		auto token = iterator.GetNextToken();
+
+		if (XlEqString(token._value, "[")) {
+			auto countToken = iterator.GetNextToken();
+			if (XlEqString(countToken._value, "]"))
+				Throw(FormatException("Expecting expecting array count, but apparently empty array brackets", token._start));
+
+			auto inte = ParseInteger<unsigned>(countToken._value);
+			if (!inte.has_value())
+				Throw(FormatException(StringMeld<256>() << "Expecting unsigned integer value for array count, but got " << countToken._value, token._start));
+			result._arrayElementCount = inte.value();
+
+			auto closeBracket = iterator.GetNextToken();
+			if (!XlEqString(closeBracket._value, "]"))
+				Throw(FormatException(StringMeld<256>() << "Expecting expecting closing bracket for array, but got " << closeBracket._value, token._start));
+
+			token = iterator.GetNextToken();
+		}
+
         if (!XlEqString(token._value, ";"))
             Throw(FormatException(StringMeld<256>() << "Expecting ; after resource, but got " << token._value, token._start));
 
@@ -91,6 +109,24 @@ namespace RenderCore { namespace Assets
         result._name = name._value.AsString();
 
 		auto token = iterator.GetNextToken();
+
+		if (XlEqString(token._value, "[")) {
+			auto countToken = iterator.GetNextToken();
+			if (XlEqString(countToken._value, "]"))
+				Throw(FormatException("Expecting expecting array count, but apparently empty array brackets", token._start));
+
+			auto inte = ParseInteger<unsigned>(countToken._value);
+			if (!inte.has_value())
+				Throw(FormatException(StringMeld<256>() << "Expecting unsigned integer value for array count, but got " << countToken._value, token._start));
+			result._arrayElementCount = inte.value();
+
+			auto closeBracket = iterator.GetNextToken();
+			if (!XlEqString(closeBracket._value, "]"))
+				Throw(FormatException(StringMeld<256>() << "Expecting expecting closing bracket for array, but got " << closeBracket._value, token._start));
+
+			token = iterator.GetNextToken();
+		}
+
         if (!XlEqString(token._value, ";"))
             Throw(FormatException(StringMeld<256>() << "Expecting ; after sampler, but got " << token._value, token._start));
 
