@@ -147,13 +147,6 @@ namespace Serialization
     }
 
     template<typename Type, typename Deletor>
-        void    Serialize  ( NascentBlockSerializer& serializer,const DynamicArray<Type, Deletor>& value )
-    {
-        serializer.SerializeSubBlock(MakeIteratorRange(value), NascentBlockSerializer::SpecialBuffer::UniquePtr);
-        SerializeValue(value.size());
-    }
-        
-    template<typename Type, typename Deletor>
         void    Serialize  ( NascentBlockSerializer& serializer,const std::unique_ptr<Type, Deletor>& value, size_t count )
     {
         serializer.SerializeSubBlock(MakeIteratorRange(value.get(), &value[count]), NascentBlockSerializer::SpecialBuffer::UniquePtr);

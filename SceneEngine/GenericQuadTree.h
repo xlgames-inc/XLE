@@ -52,7 +52,7 @@ namespace SceneEngine
 
 		enum class Orientation { YUp, ZUp };
 
-		static DynamicArray<uint8> BuildQuadTree(
+		static std::vector<uint8_t> BuildQuadTree(
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             size_t objCount, unsigned leafThreshold,
 			Orientation orientation = Orientation::ZUp);

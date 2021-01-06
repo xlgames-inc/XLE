@@ -529,7 +529,7 @@ namespace SceneEngine
 		return result;
 	}
 
-	DynamicArray<uint8> GenericQuadTree::BuildQuadTree(
+	std::vector<uint8_t> GenericQuadTree::BuildQuadTree(
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         size_t objCount, unsigned leafThreshold,
 		Orientation orientation)
@@ -570,7 +570,7 @@ namespace SceneEngine
 
         ::Serialization::NascentBlockSerializer serializer;
 		Serialize(serializer, *pimpl);
-		return DynamicArray<uint8>(
+		return std::vector<uint8_t>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());
     }

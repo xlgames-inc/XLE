@@ -224,7 +224,7 @@ namespace SceneEngine
         return GetPimpl()._desc._maxCullResults;
     }
 
-	DynamicArray<uint8> GenericGridPartitioning::Build(
+	std::vector<uint8_t> GenericGridPartitioning::Build(
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         size_t objCount, float cellSize,
 		Orientation orientation)
@@ -280,7 +280,7 @@ namespace SceneEngine
 
         ::Serialization::NascentBlockSerializer serializer;
 		Serialize(serializer, *pimpl);
-		return DynamicArray<uint8>(
+		return std::vector<uint8_t>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());
     }

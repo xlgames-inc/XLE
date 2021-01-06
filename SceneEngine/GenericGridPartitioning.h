@@ -35,7 +35,7 @@ namespace SceneEngine
 
 		enum class Orientation { YUp, ZUp };
 
-		static DynamicArray<uint8> Build(
+		static std::vector<uint8> Build(
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             size_t objCount, float cellSize,
 			Orientation orientation = Orientation::ZUp);
