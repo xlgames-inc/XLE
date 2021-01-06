@@ -616,7 +616,7 @@ namespace Utility
 
                         if (CastType(subType._type, cat) != CastType::Narrowing) {
                             bool castSuccess = Cast(   
-                                { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, TypeDesc(cat),
+                                { dstIterator, PtrAdd(dstIterator, TypeDesc(cat).GetSize()) }, TypeDesc(cat),
                                 { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType);
                             (void)castSuccess;
                             subType._type = cat;
