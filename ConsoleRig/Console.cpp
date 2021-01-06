@@ -263,7 +263,7 @@ namespace ConsoleRig
 
         while (currentOffset < stringLength) {
             const std::basic_string<ucs2>::size_type start = currentOffset;
-            const std::basic_string<ucs2>::size_type s     = message.find_first_of((ucs2*)L"\r\n", currentOffset);
+            const std::basic_string<ucs2>::size_type s     = message.find_first_of((ucs2*)u"\r\n", currentOffset);
             std::basic_string<ucs2>::size_type end;
             bool completeLine = false;
 

@@ -136,9 +136,12 @@ namespace Utility
     ///     static const uint64 HashValue = ConstHash64<'Skel', 'eton'>::Value
     /// \endcode</code>
     ///
-    /// Note that a better implementation would be possible with C++11... But
-    /// currently we're still supporting Visual Studio 2010, which doesn't have
-    /// an implementation of constexpr.
+    /// Note that a better implementation would be possible with with a compiler that
+    /// supports constexpr, but this was written before that was common. Still, it
+    /// provides.
+    ///
+    /// Note that with modern clang, we need to use the "constexpr" keyword, anyway
+    /// to prevent linker errors with missing copies of the "Value" static member. 
     template<unsigned S0, unsigned S1 = 0, unsigned S2 = 0, unsigned S3 = 0>
         struct ConstHash64
     {
@@ -152,11 +155,11 @@ namespace Utility
                     //  It might be OK, but no real testing has gone into it.
                     //  Note that since we're building a 64 bit hash value, any strings with
                     //  8 or fewer characters can be stored in their entirety, anyway
-                static const uint64 Value = (NewValue == 0) ? CumulativeHash : (((CumulativeHash << 21ull) | (CumulativeHash >> 43ull)) ^ uint64(NewValue));
+                static constexpr const uint64 Value = (NewValue == 0) ? CumulativeHash : (((CumulativeHash << 21ull) | (CumulativeHash >> 43ull)) ^ uint64(NewValue));
             };
 
-        static const uint64 Seed = 0xE49B0E3F5C27F17Eull;
-        static const uint64 Value = Calc<S3, Calc<S2, Calc<S1, Calc<S0, Seed>::Value>::Value>::Value>::Value;
+        static constexpr const uint64 Seed = 0xE49B0E3F5C27F17Eull;
+        static constexpr const uint64 Value = Calc<S3, Calc<S2, Calc<S1, Calc<S0, Seed>::Value>::Value>::Value>::Value;
     };
 
     uint64 ConstHash64FromString(const char* begin, const char* end);

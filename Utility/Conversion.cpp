@@ -222,6 +222,7 @@ namespace Conversion
 
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs4>& input)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         std::basic_string<wchar_t> result;
         result.resize(input.size());
         ucs4_2_ucs2(
@@ -329,7 +330,8 @@ namespace Conversion
 
 	template<> std::basic_string<wchar_t> Convert(StringSection<ucs4> input)
 	{
-		std::basic_string<wchar_t> result;
+		assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
+        std::basic_string<wchar_t> result;
 		result.resize(input.Length());
 		ucs4_2_ucs2(
 			AsPointer(input.begin()), input.Length(),
@@ -365,6 +367,7 @@ namespace Conversion
         wchar_t output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return utf8_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
     }
 
@@ -395,6 +398,7 @@ namespace Conversion
         wchar_t output[], size_t outputDim,
         const ucs2* begin, const ucs2* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         XlCopyNString((ucs2*)output, outputDim, begin, end-begin);
         return true;
     }
@@ -426,6 +430,7 @@ namespace Conversion
         wchar_t output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return ucs4_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
     }
 
@@ -456,6 +461,7 @@ namespace Conversion
         wchar_t output[], size_t outputDim,
         const char* begin, const char* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert((ucs2*)output, outputDim, (const utf8*)begin, (const utf8*)end);
     }
 
@@ -465,6 +471,7 @@ namespace Conversion
         utf8 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
@@ -472,6 +479,7 @@ namespace Conversion
         ucs2 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
@@ -479,6 +487,7 @@ namespace Conversion
         ucs4 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
@@ -486,6 +495,7 @@ namespace Conversion
         char output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert((utf8*)output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 

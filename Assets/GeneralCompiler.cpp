@@ -244,6 +244,9 @@ namespace Assets
 
 			case FormatterBlob::AttributeName:
 				Throw(Utility::FormatException("Unexpected attribute in CompileProductsFile", formatter.GetLocation()));
+
+			default:
+				/* intentional fall-through... */
 			}
 			break;
 		}

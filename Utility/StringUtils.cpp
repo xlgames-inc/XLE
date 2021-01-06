@@ -208,13 +208,6 @@ size_t XlStringSize(const ucs2* str)
 	return i - str;
 }
 
-#if 0
-size_t XlStringSize(const utf16* str)
-{
-	return XlStringSize((const ucs2*)str);
-}
-#endif
-
 size_t XlStringLen(const ucs4* str)
 {
     // TODO: enhance

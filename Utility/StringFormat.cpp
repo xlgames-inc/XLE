@@ -458,6 +458,7 @@ template<typename T>
                     if (sizeof(char) == sizeof(T)) {
                         xl_snprintf(buf, dimof(buf), (T*)"%d", width);
                     } else {
+                        assert(0); // line below is questionable
                         xl_snprintf(buf, dimof(buf), (T*)L"%d", width);
                     }
                     const T* text = buf;
@@ -476,6 +477,7 @@ template<typename T>
                 if (sizeof(char) == sizeof(T)) {
                     xl_snprintf(buf, dimof(buf), (T*)"%d", prec);
                 } else {
+                    assert(0); // line below is questionable
                     xl_snprintf(buf, dimof(buf), (T*)L"%d", prec);
                 }
                 const T* text = buf;
@@ -527,6 +529,7 @@ template<typename T>
                     if (sizeof(char) == sizeof(T)) {
                         XlCopyString(buf, dimof(buf), val.f_bool ? (T*)"true" : (T*)"false");
                     } else {
+                        assert(0); // line below is questionable
                         XlCopyString(buf, dimof(buf), val.f_bool ? (T*)L"true" : (T*)L"false");
                     }
                     break;

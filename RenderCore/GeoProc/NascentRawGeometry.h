@@ -8,7 +8,6 @@
 
 #include "../Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Types_Forward.h"
-#include "../../Utility/PtrUtils.h"            // for DynamicArray
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }

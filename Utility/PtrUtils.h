@@ -239,26 +239,7 @@ namespace Utility
 				}
 		#endif
 
-    #elif ((STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)) && !defined(__MINGW32__)
-
-        template <class Iterator>
-            decltype(&(*std::declval<std::__wrap_iter<Iterator>>())) AsPointer(std::__wrap_iter<Iterator> i) { return *reinterpret_cast<Iterator*>(&i); }
-
     #else
-
-        /*
-        template <typename Type>
-            Type * AsPointer( const typename std::vector<Type>::iterator & i )                   { return &(*i); }
-
-        template <typename Type> 
-            const Type * AsPointer( const typename std::vector<Type>::const_iterator & i )       { return &(*i); }
-    
-        template <typename Type>
-            Type * AsPointer( const typename std::basic_string<Type>::iterator & i )             { return &(*i); }
-    
-        template <typename Type>
-            const Type * AsPointer( const typename std::basic_string<Type>::const_iterator & i ) { return &(*i); }
-        */
 
         template <typename Iterator>
             decltype(&(*std::declval<Iterator>())) AsPointer(Iterator i) { return &(*i); }

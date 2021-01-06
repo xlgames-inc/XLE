@@ -651,9 +651,9 @@ namespace Overlays
     bool TextureBrowser::Filter(const std::basic_string<ucs2>& filename)
     {
             // we want to exclude items that have "_sp", "_spec" or "_ddn"
-        if (filename.find((ucs2*)L"_sp") != std::string::npos) { return false; }
-        if (filename.find((ucs2*)L"_spec") != std::string::npos) { return false; }
-        if (filename.find((ucs2*)L"_ddn") != std::string::npos) { return false; }
+        if (filename.find((ucs2*)u"_sp") != std::string::npos) { return false; }
+        if (filename.find((ucs2*)u"_spec") != std::string::npos) { return false; }
+        if (filename.find((ucs2*)u"_ddn") != std::string::npos) { return false; }
         return true;
     }
 

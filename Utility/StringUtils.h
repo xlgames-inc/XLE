@@ -15,6 +15,7 @@
 #include <cstring>
 #include <algorithm>
 #include <assert.h>
+#include <cstddef>
 
 #if REDIRECT_CLIB_WITH_PREPROCESSOR
     #include <stdlib.h>     // (this must be pulled in, so we can replace _itoa_s, etc)
@@ -103,7 +104,7 @@ namespace Utility
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
         StringSection(const CharType* nullTerm) : _start(nullTerm), _end(XlStringEnd(_start)) {}
-        StringSection(nullptr_t) = delete;      // prevent construction from nullptr constant (tends to be a common error)
+        StringSection(std::nullptr_t) = delete;      // prevent construction from nullptr constant (tends to be a common error)
         
 		template<typename CT, typename A>
 			StringSection(const std::basic_string<CharType, CT, A>& str) : _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
