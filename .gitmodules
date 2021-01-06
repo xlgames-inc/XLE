@@ -19,3 +19,6 @@
 [submodule "Foreign/future"]
 	path = Foreign/future
 	url = git@github.com:jbelloncastro/future.git
+[submodule "Foreign/freetype2"]
+	path = Foreign/freetype2
+	url = git@github.com:freetype/freetype2

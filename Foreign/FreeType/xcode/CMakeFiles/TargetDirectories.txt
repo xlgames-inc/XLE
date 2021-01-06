@@ -1,6 +1,0 @@
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/install.dir
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/package.dir
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/dist.dir
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/freetype.dir
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/ALL_BUILD.dir
-/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/CMakeFiles/ZERO_CHECK.dir
