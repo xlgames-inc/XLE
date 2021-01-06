@@ -22,9 +22,9 @@ set(Src
     RawFileAsset.cpp)
 
 if (WIN32)
-    list(APPEND WinAPISrc AsyncLoadOperation_WinAPI.cpp)
+    list(APPEND Src AsyncLoadOperation_WinAPI.cpp)
 endif ()
 
-BasicLibrary(Assets "${Src}")
-
-target_link_libraries(Assets ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(Assets STATIC ${Src})
+configure_xle_library(Assets)
+target_link_libraries(Assets PRIVATE ForeignMisc)

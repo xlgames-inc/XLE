@@ -17,5 +17,6 @@ set(Headers
     PreboundShaders.h
     SharedStateSet.h)
 
-BasicLibrary(FixedFunctionModel "${Src};${Headers}")
-target_link_libraries(FixedFunctionModel ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(FixedFunctionModel STATIC ${Src} ${Headers})
+configure_xle_library(FixedFunctionModel)
+target_link_libraries(FixedFunctionModel PRIVATE ForeignMisc)

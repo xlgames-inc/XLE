@@ -48,8 +48,10 @@ set(Headers
     ../GeoProc/NascentRawGeometry.h
     ../GeoProc/NascentSkeletonMachine.h)
 
-BasicLibrary(RenderCoreAssets "${Src};${Headers}")
-target_link_libraries(RenderCoreAssets ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(RenderCoreAssets STATIC ${Src} ${Headers})
+configure_xle_library(RenderCoreAssets)
+target_link_libraries(RenderCoreAssets PRIVATE ForeignMisc)
 
-BasicLibrary(RenderCoreAssetsServices "AssetUtils.cpp;Services.cpp")
-target_link_libraries(RenderCoreAssetsServices ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(RenderCoreAssetsServices STATIC "AssetUtils.cpp;Services.cpp")
+configure_xle_library(RenderCoreAssetsServices)
+target_link_libraries(RenderCoreAssetsServices PRIVATE ForeignMisc)

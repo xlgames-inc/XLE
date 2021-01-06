@@ -27,6 +27,7 @@ set(Headers
     Vector.h
     XLEMath.h)
 
-BasicLibrary(Math "${Src}" "${Headers}")
+add_library(Math STATIC ${Src} ${Headers})
+configure_xle_library(Math)
 
-target_link_libraries(Math ForeignMisc)  # required to pull in interface include directories (etc)
+target_link_libraries(Math PRIVATE ForeignMisc)

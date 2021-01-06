@@ -11,6 +11,7 @@ list(APPEND Src
     UniformsStream.cpp)
 file(GLOB Headers "*.h")
 
-BasicLibrary(RenderCore "${Src}" "${Headers}")
+add_library(RenderCore STATIC ${Src} ${Headers})
+configure_xle_library(RenderCore)
 
 target_link_libraries(RenderCore ForeignMisc)  # required to pull in interface include directories (etc)

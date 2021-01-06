@@ -19,6 +19,9 @@ set(Headers
     ResourceSource.h
     ThreadContext.h)
 
-BasicLibrary(BufferUploads "${Src};${Headers};DX11/PlatformInterfaceDX11.cpp")
-target_link_libraries(BufferUploads ForeignMisc)  # required to pull in interface include directories (etc)
+list(APPEND Src
+    DX11/PlatformInterfaceDX11.cpp)
 
+add_library(BufferUploads STATIC ${Src} ${Headers})
+configure_xle_library(BufferUploads)
+target_link_libraries(BufferUploads PRIVATE ForeignMisc)

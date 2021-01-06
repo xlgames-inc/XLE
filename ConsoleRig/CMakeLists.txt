@@ -15,9 +15,10 @@ if (WIN32)
 elseif(ANDROID)
     list(APPEND Src ${STUB_SRC})
 endif()
-BasicLibrary(ConsoleRig "${Src}")
+add_library(ConsoleRig STATIC ${Src})
+configure_xle_library(ConsoleRig)
 
-target_link_libraries(ConsoleRig ForeignMisc)  # required to pull in interface include directories (etc)
+target_link_libraries(ConsoleRig PRIVATE ForeignMisc)
 
 ##################################################################################################################################
 

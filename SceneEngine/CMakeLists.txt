@@ -133,5 +133,6 @@ set(Headers
     VolumetricFog.h
 	CommonTechniqueDelegates.h)
 
-BasicLibrary(SceneEngine "${Src};${Headers}")
-target_link_libraries(SceneEngine ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(SceneEngine STATIC ${Src} ${Headers})
+configure_xle_library(SceneEngine)
+target_link_libraries(SceneEngine PRIVATE ForeignMisc)

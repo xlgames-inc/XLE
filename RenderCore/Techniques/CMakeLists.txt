@@ -48,5 +48,6 @@ set(Headers
 	Services.h
 	ModelCache.h)
 
-BasicLibrary(RenderCoreTechniques "${Src};${Headers}")
-target_link_libraries(RenderCoreTechniques ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(RenderCoreTechniques STATIC ${Src} ${Headers})
+configure_xle_library(RenderCoreTechniques)
+target_link_libraries(RenderCoreTechniques PRIVATE ForeignMisc)

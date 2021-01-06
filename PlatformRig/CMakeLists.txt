@@ -51,6 +51,7 @@ if (WIN32)
     set(WinHeaders RunLoop_WinAPI.h)
 endif()
 
-BasicLibrary(PlatformRig "${Src};${WinSrc};${DebuggingDisplaysSrc}" "${Headers};${WinHeaders};${DebuggingDisplaysHeaders}")
+add_library(PlatformRig STATIC ${Src} ${WinSrc} ${DebuggingDisplaysSrc} ${Headers} ${WinHeaders} ${DebuggingDisplaysHeaders})
+configure_xle_library(PlatformRig)
 
-target_link_libraries(PlatformRig ForeignMisc)  # required to pull in interface include directories (etc)
+target_link_libraries(PlatformRig PRIVATE ForeignMisc)

@@ -40,7 +40,7 @@ set(Headers
     TimeUtils.h
     UTFUtils.h
     VariantUtils.h)
-set(NetworkingSrc Networking/socket.cpp)
+set(NetworkingSrc Networking/Socket.cpp)
 set(StreamsSrc 
     Streams/ConditionalPreprocessingTokenizer.cpp
     Streams/Data.cpp
@@ -59,9 +59,15 @@ set(MetaSrc Meta/AccessorSerialize.cpp Meta/ClassAccessors.cpp)
 if (WIN32)
     set(WinAPISrc WinAPI/System_WinAPI.cpp Streams/WinAPI/FileSystemMonitor_WinAPI.cpp Streams/WinAPI/FileUtils_WinAPI.cpp Threading/WinAPI/ThreadObject_WinAPI.cpp)
 elseif (NOT APPLE)
-    set(LinuxSrc Linux/System_Linux.cpp Streams/Linux/FileSystemMonitor_Linux.cpp Streams/Linux/FileUtils_Linux.cpp)
+    set(LinuxSrc Linux/System_Linux.cpp Streams/Linux/FileSystemMonitor_Linux.cpp Streams/Linux/FileUtils_Linux.cpp Streams/Linux/FileUtils_stdio.cpp)
 endif()
 
-BasicLibrary(Utility "${Src};${Headers};${NetworkingSrc};${StreamsSrc};${ThreadingSrc};${WinAPISrc};${ProfilingSrc};${MetaSrc};${LinuxSrc}")
-target_link_libraries(Utility ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(Utility STATIC ${Src} ${Headers} ${NetworkingSrc} ${StreamsSrc} ${ThreadingSrc} ${WinAPISrc} ${ProfilingSrc} ${MetaSrc} ${LinuxSrc})
+configure_xle_library(Utility)
+target_link_libraries(Utility PRIVATE ForeignMisc)
 
+if (WIN32)
+    target_link_libraries(Utility PRIVATE wsock32.lib ws2_32.lib)
+elseif (NOT APPLE)
+    target_link_libraries(Utility PRIVATE pthread)    
+endif ()

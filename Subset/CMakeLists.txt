@@ -29,5 +29,6 @@ if (WIN32)
         "../PlatformRig/WinAPI/RunLoop_WinAPI.cpp"
     )
 endif()
-BasicLibrary(XLESubset "${Src};${WinSrc}")
-target_link_libraries(XLESubset ForeignMisc)  # required to pull in interface include directories (etc)
+add_library(XLESubset STATIC ${Src} ${WinSrc})
+configure_xle_library(XLESubset)
+target_link_libraries(XLESubset PRIVATE ForeignMisc)

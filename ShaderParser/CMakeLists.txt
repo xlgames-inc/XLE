@@ -44,10 +44,11 @@ add_custom_command(
 	DEPENDS Grammar/Shader.g Grammar/GraphSyntax.g Grammar/GraphSyntaxEval.g Grammar/ShaderTreeWalk.g
 	BYPRODUCTS Grammar/GraphSyntax.tokens Grammar/GraphSyntaxEval.tokens Grammar/ShaderTreeWalk.tokens)
 
-BasicLibrary(ShaderParser "${Src};${Headers};${GeneratedGrammarFiles}")
+add_library(ShaderParser STATIC ${Src} ${Headers} ${GeneratedGrammarFiles})
+configure_xle_library(ShaderParser)
 
 target_include_directories(ShaderParser PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(ShaderParser ForeignMisc)  # required to pull in interface include directories (etc)
+target_link_libraries(ShaderParser PRIVATE ForeignMisc)  # required to pull in interface include directories (etc)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	target_compile_options(ShaderParser PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)

@@ -17,6 +17,6 @@ set(Src
     "Metal/TextureView.cpp"
     "Metal/PipelineLayout.cpp")
 
-BasicLibrary(RenderCore_DX11 "${Src}" "${Headers}")
-target_link_libraries(RenderCore_DX11 ForeignMisc)  # required to pull in interface include directories (etc)
-
+add_library(RenderCore_DX11 STATIC ${Src} ${Headers})
+configure_xle_library(RenderCore_DX11)
+target_link_libraries(RenderCore_DX11 PRIVATE ForeignMisc)

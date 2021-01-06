@@ -38,6 +38,6 @@ set(OverlaysHeaders
     Overlays/ToneMapSettings.h
     Overlays/VolFogSettings.h)
 
-BasicLibrary(RenderOverlays "${Src};${Headers};${OverlaysSrc};${OverlaysHeaders}")
-target_link_libraries(RenderOverlays ForeignMisc)  # required to pull in interface include directories (etc)
-target_include_directories(RenderOverlays PRIVATE ${FOREIGN_DIR}/FreeType/include)
+add_library(RenderOverlays STATIC ${Src} ${Headers} ${OverlaysSrc} ${OverlaysHeaders})
+configure_xle_library(RenderOverlays)
+target_link_libraries(RenderOverlays PRIVATE ForeignMisc freetype)
