@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Math/Vector.h"
+#include "../Math/MathSerialization.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Conversion.h"
@@ -192,7 +193,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(
                     MakeIteratorRange(mat._mappingConstant), 
-                    ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)),
+                    ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)},
                     MakeIteratorRange(buffer), parsedType);
                 
                 result._gradFlagMaterials.push_back(mat);
@@ -301,11 +302,6 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
 
     TEST_CASE( "StreamFormatter-ClassPropertiesPerformance", "[utility]" )
     {
-
-
-        // UnitTest_SetWorkingDirectory();
-        // ConsoleRig::GlobalServices services(GetStartupConfig());
-
         const unsigned iterationCount = 64 * 128;
         auto start = __rdtsc();
         RunPerformanceTest1(testString, iterationCount);

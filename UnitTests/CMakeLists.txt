@@ -2,6 +2,7 @@
 set(Src
     Utilities.cpp
     BasicMaths.cpp
+    MathSerialization.cpp
     StreamFormatter.cpp)
 
 add_executable(UnitTests ${Src})

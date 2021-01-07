@@ -243,8 +243,8 @@ namespace Utility
 							|| type._type == ImpliedTyping::TypeCat::Int32) {
 						int dest;
 						ImpliedTyping::Cast(
-							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeCat::Int32,
-							i.RawValue(), type._type);
+							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32},
+							i.RawValue(), ImpliedTyping::TypeDesc{type._type});
 						vars[name] = packToken(dest);
 						continue;
 					} else if (type._type == ImpliedTyping::TypeCat::UInt32
@@ -252,8 +252,8 @@ namespace Utility
 							|| type._type == ImpliedTyping::TypeCat::UInt64) {
 						int64_t dest;
 						ImpliedTyping::Cast(
-							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeCat::Int64,
-							i.RawValue(), type._type);
+							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int64},
+							i.RawValue(), ImpliedTyping::TypeDesc{type._type});
 						vars[name] = packToken(dest);
 						continue;
 					} else if (type._type == ImpliedTyping::TypeCat::Float) {

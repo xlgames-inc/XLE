@@ -403,20 +403,20 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         switch (glType) {
         case GL_FLOAT:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float};
         case GL_FLOAT_VEC2:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 2, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 2, ImpliedTyping::TypeHint::Vector};
         case GL_FLOAT_VEC3:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 3, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 3, ImpliedTyping::TypeHint::Vector};
         case GL_FLOAT_VEC4:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 4, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 4, ImpliedTyping::TypeHint::Vector};
 
         case GL_FLOAT_MAT2:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 4, ImpliedTyping::TypeHint::Matrix);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 4, ImpliedTyping::TypeHint::Matrix};
         case GL_FLOAT_MAT3:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 9, ImpliedTyping::TypeHint::Matrix);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 9, ImpliedTyping::TypeHint::Matrix};
         case GL_FLOAT_MAT4:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, 16, ImpliedTyping::TypeHint::Matrix);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, 16, ImpliedTyping::TypeHint::Matrix};
 
         case GL_SAMPLER_2D:
         case GL_SAMPLER_CUBE:
@@ -424,30 +424,30 @@ namespace RenderCore { namespace Metal_OpenGLES
         case GL_INT_SAMPLER_2D:
         case GL_UNSIGNED_INT_SAMPLER_2D:
         case GL_INT:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Int32);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32};
 
         case GL_INT_VEC2:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Int32, 2);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32, 2};
 
         case GL_INT_VEC3:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Int32, 3);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32, 3};
 
         case GL_INT_VEC4:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Int32, 4);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32, 4};
 
         case GL_BOOL:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Bool);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool};
 
         case GL_BOOL_VEC2:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Bool, 2, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 2, ImpliedTyping::TypeHint::Vector}
 
         case GL_BOOL_VEC3:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Bool, 3, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 3, ImpliedTyping::TypeHint::Vector};
 
         case GL_BOOL_VEC4:
-            return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Bool, 4, ImpliedTyping::TypeHint::Vector);
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 4, ImpliedTyping::TypeHint::Vector};
         }
-        return ImpliedTyping::TypeDesc();
+        return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Void};
     }
 
     Format SizedInternalFormatAsRenderCoreFormat(GLenum sizedInternalFormat)

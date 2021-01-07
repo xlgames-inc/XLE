@@ -194,8 +194,8 @@ namespace ToolsRig
 
     ImpliedTyping::TypeDesc AngleBasedShadowsOperator::GetOutputFormat() const
     {
-        return ImpliedTyping::TypeDesc(
-            ImpliedTyping::TypeCat::UInt16, 2);
+        return ImpliedTyping::TypeDesc{
+            ImpliedTyping::TypeCat::UInt16, 2};
     }
 
     void AngleBasedShadowsOperator::FillDefault(void* dst, unsigned count) const
@@ -222,7 +222,7 @@ namespace ToolsRig
 
     ImpliedTyping::TypeDesc AOOperator::GetOutputFormat() const 
     { 
-        return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt8); 
+        return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::UInt8}; 
     }
 
     void AOOperator::FillDefault(void* dst, unsigned count) const

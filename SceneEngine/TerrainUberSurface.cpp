@@ -75,9 +75,9 @@ namespace SceneEngine
         _width = hdr._width;
         _height = hdr._height;
         _dataStart = PtrAdd(mappedFile.GetData().begin(), sizeof(TerrainUberHeader));
-        _format = ImpliedTyping::TypeDesc(
+        _format = ImpliedTyping::TypeDesc{
             ImpliedTyping::TypeCat(hdr._typeCat), 
-            (uint16)hdr._typeArrayCount);
+            (uint16)hdr._typeArrayCount};
         _sampleBytes = _format.GetSize();
 
         if (mappedFile.GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * _sampleBytes))

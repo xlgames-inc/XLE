@@ -4,14 +4,12 @@
 
 #include "ImpliedTyping.h"
 #include "Conversion.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
+// #include "../Math/Vector.h"
+// #include "../Math/Matrix.h"
 #include <regex>
 
 namespace Utility
 {
-    static const unsigned NativeRepMaxSize = MaxPath * 4;
-
     namespace ImpliedTyping
     {
         uint32_t TypeDesc::GetSize() const
@@ -44,41 +42,6 @@ namespace Utility
             return lhs._type == rhs._type
                 && lhs._arrayCount == rhs._arrayCount;
         }
-
-        TypeDesc::TypeDesc(TypeCat cat, uint16_t arrayCount, TypeHint hint)
-        : _type(cat)
-        , _typeHint(hint)
-        , _arrayCount(arrayCount)
-        {}
-
-        template<> TypeDesc TypeOf<uint64_t>()        { return TypeDesc(TypeCat::UInt64); }
-        template<> TypeDesc TypeOf<int64_t>()         { return TypeDesc(TypeCat::Int64); }
-        template<> TypeDesc TypeOf<uint32_t>()        { return TypeDesc(TypeCat::UInt32); }
-        template<> TypeDesc TypeOf<int32_t>()         { return TypeDesc(TypeCat::Int32); }
-        template<> TypeDesc TypeOf<uint16_t>()        { return TypeDesc(TypeCat::UInt16); }
-        template<> TypeDesc TypeOf<int16_t>()         { return TypeDesc(TypeCat::Int16); }
-        template<> TypeDesc TypeOf<uint8_t>()         { return TypeDesc(TypeCat::UInt8); }
-        template<> TypeDesc TypeOf<int8_t>()          { return TypeDesc(TypeCat::Int8); }
-        template<> TypeDesc TypeOf<bool>()          { return TypeDesc(TypeCat::Bool); }
-        template<> TypeDesc TypeOf<float>()         { return TypeDesc(TypeCat::Float); }
-        template<> TypeDesc TypeOf<double>()        { return TypeDesc(TypeCat::Double); }
-        template<> TypeDesc TypeOf<void>()          { return TypeDesc(TypeCat::Void); }
-        template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float3>()        { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float4>()        { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float3x3>()      { return TypeDesc(TypeCat::Float, 9, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<Float3x4>()      { return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<Float4x4>()      { return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix); }
-        template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Int2>()          { return TypeDesc(TypeCat::Int32, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Int3>()          { return TypeDesc(TypeCat::Int32, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Int4>()          { return TypeDesc(TypeCat::Int32, 4, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16_t)~uint16_t(0), TypeHint::String); }
-        template<> TypeDesc TypeOf<const utf8*>()   { return TypeDesc(TypeCat::UInt8, (uint16_t)~uint16_t(0), TypeHint::String); }
-		template<> TypeDesc TypeOf<const utf16*>()	{ return TypeDesc(TypeCat::UInt16, (uint16_t)~uint16_t(0), TypeHint::String); }
-		template<> TypeDesc TypeOf<utf16>()			{ return TypeDesc(TypeCat::UInt16); }
 
         TypeDesc TypeOf(const char expression[]) 
         {
@@ -342,26 +305,26 @@ namespace Utility
                 auto destIterator = dest;
                 auto srcIterator = src;
                 for (unsigned c=0; c<destType._arrayCount; ++c) {
-                    if (destIterator.size() < TypeDesc(destType._type).GetSize()) {
+                    if (destIterator.size() < TypeDesc{destType._type}.GetSize()) {
                         return false;
                     }
                     if (c < srcType._arrayCount) {
-                        if (!Cast(destIterator, TypeDesc(destType._type),
-                            srcIterator, TypeDesc(srcType._type))) {
+                        if (!Cast(destIterator, TypeDesc{destType._type},
+                            srcIterator, TypeDesc{srcType._type})) {
                             return false;
                         }
 
-                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
-                        srcIterator.first = PtrAdd(srcIterator.first, TypeDesc(srcType._type).GetSize());
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc{destType._type}.GetSize());
+                        srcIterator.first = PtrAdd(srcIterator.first, TypeDesc{srcType._type}.GetSize());
                     } else {
                             // using HLSL rules for filling in blanks:
                             //  element 3 is 1, but others are 0
                         unsigned value = (c==3)?1:0;
-                        if (!Cast(destIterator, TypeDesc(destType._type),
-                            AsOpaqueIteratorRange(value), TypeDesc(TypeCat::UInt32))) {
+                        if (!Cast(destIterator, TypeDesc{destType._type},
+                            AsOpaqueIteratorRange(value), TypeDesc{TypeCat::UInt32})) {
                             return false;
                         }
-                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc{destType._type}.GetSize());
                     }
                 }
                 return true;
@@ -453,11 +416,11 @@ namespace Utility
             if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanTrue)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
-                return TypeDesc(TypeCat::Bool);
+                return TypeDesc{TypeCat::Bool};
             } else if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
-                return TypeDesc(TypeCat::Bool);
+                return TypeDesc{TypeCat::Bool};
             }
 
             std::match_results<const CharType*> cm; 
@@ -478,19 +441,19 @@ namespace Utility
                 if (precision == 8) {
                     assert(destSize >= sizeof(uint8_t));
                     *(uint8_t*)dest = (uint8_t)value;
-                    return TypeDesc(TypeCat::UInt8);
+                    return TypeDesc{TypeCat::UInt8};
                 } else if (precision == 16) {
                     assert(destSize >= sizeof(uint16_t));
                     *(uint16_t*)dest = (uint16_t)value;
-                    return TypeDesc(TypeCat::UInt16);
+                    return TypeDesc{TypeCat::UInt16};
                 } else if (precision == 32) {
                     assert(destSize >= sizeof(uint32_t));
                     *(uint32_t*)dest = (uint32_t)value;
-                    return TypeDesc(TypeCat::UInt32);
+                    return TypeDesc{TypeCat::UInt32};
                 } else if (precision == 64) {
                     assert(destSize >= sizeof(uint64_t));
                     *(uint64_t*)dest = (uint64_t)value;
-                    return TypeDesc(TypeCat::UInt64);
+                    return TypeDesc{TypeCat::UInt64};
                 }
 
                 assert(0);
@@ -513,19 +476,19 @@ namespace Utility
                 if (precision == 8) {
                     assert(destSize >= sizeof(int8_t));
                     *(int8_t*)dest = (int8_t)value;
-                    return TypeDesc(TypeCat::Int8);
+                    return TypeDesc{TypeCat::Int8};
                 } else if (precision == 16) {
                     assert(destSize >= sizeof(int16_t));
                     *(int16_t*)dest = (int16_t)value;
-                    return TypeDesc(TypeCat::Int16);
+                    return TypeDesc{TypeCat::Int16};
                 } else if (precision == 32) {
                     assert(destSize >= sizeof(int32_t));
                     *(int32_t*)dest = (int32_t)value;
-                    return TypeDesc(TypeCat::Int32);
+                    return TypeDesc{TypeCat::Int32};
                 } else if (precision == 64) {
                     assert(destSize >= sizeof(int64_t));
                     *(int64_t*)dest = (int64_t)value;
-                    return TypeDesc(TypeCat::Int64);
+                    return TypeDesc{TypeCat::Int64};
                 }
 
                 assert(0);
@@ -541,11 +504,11 @@ namespace Utility
                 if (doublePrecision) {
                     assert(destSize >= sizeof(double));
                     *(double*)dest = Conversion::Convert<double>(expression);
-                    return TypeDesc(TypeCat::Double);
+                    return TypeDesc{TypeCat::Double};
                 } else {
                     assert(destSize >= sizeof(float));
                     *(float*)dest = Conversion::Convert<float>(expression);
-                    return TypeDesc(TypeCat::Float);
+                    return TypeDesc{TypeCat::Float};
                 }
             }
 
@@ -598,7 +561,7 @@ namespace Utility
 
                         if (CalculateCastType(subType._type, cat) != CastType::Narrowing) {
                             bool castSuccess = Cast(   
-                                { dstIterator, PtrAdd(dstIterator, TypeDesc(cat).GetSize()) }, TypeDesc(cat),
+                                { dstIterator, PtrAdd(dstIterator, TypeDesc{cat}.GetSize()) }, TypeDesc{cat},
                                 { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType);
                             (void)castSuccess;
                             subType._type = cat;
@@ -607,7 +570,7 @@ namespace Utility
                             // Therefore, instead we modify the type we are reading and cast
                             // the previously read values to the new type
                             assert(CalculateCastType(cat, subType._type) == CastType::Widening);
-                            const auto catType = TypeDesc(cat);
+                            const auto catType = TypeDesc{cat};
                             const size_t cpySize = catType.GetSize() * count;
                             std::unique_ptr<uint8_t[]> tempCpy = std::make_unique<uint8_t[]>(cpySize);
                             auto tempCpyIterator = tempCpy.get();
@@ -644,11 +607,11 @@ namespace Utility
                         if (tolower(cm[2].str()[0]) == 'c') hint = TypeHint::Color;
                     }
 
-                    return TypeDesc(cat, uint16_t(count), hint);
+                    return TypeDesc{cat, uint16_t(count), hint};
                 }
             }
 
-            return TypeDesc(TypeCat::Void);
+            return TypeDesc{TypeCat::Void};
         }
 
 		template<>
@@ -658,28 +621,6 @@ namespace Utility
 		{
 			return Parse(expression.Cast<char>(), dest, destSize);
 		}
-
-        template <typename Type> std::optional<Type> Parse(StringSection<char> expression) 
-        {
-            char buffer[NativeRepMaxSize];
-            auto parseType = Parse(expression, buffer, sizeof(buffer));
-            if (parseType == TypeOf<Type>()) {
-                return *(Type*)buffer;
-            } else {
-                Type casted;
-                if (Cast(AsOpaqueIteratorRange(casted), TypeOf<Type>(),
-                    MakeIteratorRange(buffer), parseType)) {
-                    return casted;
-                }
-            }
-            return {};
-        }
-
-        template <typename Type>
-            std::optional<Type> Parse(StringSection<utf8> expression)
-        {
-            return Parse<Type>(expression.Cast<char>());
-        }
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
         {
@@ -735,7 +676,7 @@ namespace Utility
                 }
 
                     // skip forward one element
-                data = PtrAdd(data, TypeDesc(desc._type).GetSize());
+                data = PtrAdd(data, TypeDesc{desc._type}.GetSize());
             }
 
             if (arrayCount > 1) {
@@ -761,7 +702,7 @@ namespace Utility
         }
 
 
-        template std::optional<bool> Parse(StringSection<utf8>);
+        /*template std::optional<bool> Parse(StringSection<utf8>);
         template std::optional<unsigned> Parse(StringSection<utf8>);
         template std::optional<signed> Parse(StringSection<utf8>);
         template std::optional<uint64_t> Parse(StringSection<utf8>);
@@ -779,7 +720,7 @@ namespace Utility
         template std::optional<UInt4> Parse(StringSection<utf8>);
         template std::optional<Int2> Parse(StringSection<utf8>);
         template std::optional<Int3> Parse(StringSection<utf8>);
-        template std::optional<Int4> Parse(StringSection<utf8>);
+        template std::optional<Int4> Parse(StringSection<utf8>);*/
 
     }
 }

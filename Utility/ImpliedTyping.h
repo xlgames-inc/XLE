@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "Optional.h"
 #include "IteratorUtils.h"
 #include "StringUtils.h"            // for StringSection
-
+#include "Optional.h"
+        
 namespace Utility
 {
     namespace ImpliedTyping
@@ -18,11 +18,10 @@ namespace Utility
         class TypeDesc
         {
         public:
-            TypeCat     _type;
-            TypeHint    _typeHint;
-            uint16_t    _arrayCount;
+            TypeCat     _type = TypeCat::UInt32;
+            uint16_t    _arrayCount = 1;
+            TypeHint    _typeHint = TypeHint::None;
 
-            TypeDesc(TypeCat cat = TypeCat::UInt32, uint16_t arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32_t GetSize() const;
 
             template<typename Stream> void SerializeMethod(Stream& serializer) const;
@@ -51,7 +50,8 @@ namespace Utility
         /// For example, 3 floats could be a vector or a colour. We will use C++
         /// like postfix characters for this (eg, "{1,1,1}c" is a color)
         TypeDesc TypeOf(const char expression[]);
-        template<typename Type> TypeDesc TypeOf();
+
+        // "template<typename Type> TypeDesc TypeOf()" is declared below
 
         template<typename CharType>
             TypeDesc Parse(
@@ -74,12 +74,66 @@ namespace Utility
         std::string AsString(IteratorRange<const void*> data, const TypeDesc&, bool strongTyping = false);
 
         template<typename Type>
-            inline std::string AsString(const Type& type, bool strongTyping = false)
+            inline std::string AsString(const Type& type, bool strongTyping = false);
+        
+        void Cleanup();
+
+        static constexpr const unsigned NativeRepMaxSize = MaxPath * 4;
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            // Template implementations //
+        /////////////////////////////``/////////////////////////////////////////////////////////
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(uint64_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt64}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int64_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int64}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(uint32_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int32_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int32}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(uint16_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt16}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int16_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int16}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(uint8_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int8_t const*)          { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int8}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(char16_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt16}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(char32_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(bool const*)            { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Bool}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(float const*)           { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Float}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(double const*)          { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Double}; }
+
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const char* const*)     { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf8* const*)     { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf16* const*)    { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt16, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf32* const*)    { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const ucs4* const*)     { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
+
+        template<typename Type> 
+            decltype(InternalTypeOf(std::declval<Type const*>())) TypeOf() { return InternalTypeOf((Type const*)nullptr); }
+
+        template<typename Type>
+            inline std::string AsString(const Type& type, bool strongTyping)
             {
                 return AsString(&type, sizeof(Type), TypeOf<Type>(), strongTyping);
             }
-        
-        void Cleanup();
+
+        template <typename Type> std::optional<Type> Parse(StringSection<char> expression) 
+        {
+            char buffer[NativeRepMaxSize];
+            auto parseType = Parse(expression, buffer, sizeof(buffer));
+            if (parseType == TypeOf<Type>()) {
+                return *(Type*)buffer;
+            } else {
+                Type casted;
+                if (Cast(AsOpaqueIteratorRange(casted), TypeOf<Type>(),
+                    MakeIteratorRange(buffer), parseType)) {
+                    return casted;
+                }
+            }
+            return {};
+        }
+
+        template <typename Type>
+            std::optional<Type> Parse(StringSection<utf8> expression)
+        {
+            return Parse<Type>(expression.Cast<char>());
+        }
     }
 }
 
+using namespace Utility;

@@ -482,7 +482,7 @@ namespace ToolsRig
         auto ibData = std::make_unique<unsigned[]>(indexListType._arrayCount);
         bool success = obj._properties.GetParameter(
             IndexListHash, ibData.get(), 
-            ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt32, indexListType._arrayCount));
+            ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::UInt32, indexListType._arrayCount});
         if (!success) return;
 
         const auto& chld = obj._children;

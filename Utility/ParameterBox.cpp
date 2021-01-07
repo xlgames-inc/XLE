@@ -22,8 +22,6 @@
 
 namespace Utility
 {
-    static const unsigned NativeRepMaxSize = MaxPath * 4;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
@@ -61,11 +59,11 @@ namespace Utility
         using namespace ImpliedTyping;
         if (stringData.IsEmpty()) {
                 // null values or empty strings become "void" type parameters
-			SetParameter(name, {}, TypeDesc(TypeCat::Void, 0));
+			SetParameter(name, {}, TypeDesc{TypeCat::Void, 0});
             return;
         }
 
-        uint8 buffer[NativeRepMaxSize];
+        uint8_t buffer[NativeRepMaxSize];
 		assert(stringData.size() < NativeRepMaxSize);
         auto typeDesc = Parse(stringData, buffer, sizeof(buffer));
         if (typeDesc._type != TypeCat::Void) {
@@ -74,7 +72,7 @@ namespace Utility
             // no conversion... just store a string
             SetParameter(
 				name, MakeIteratorRange(stringData.begin(), stringData.end()),
-                TypeDesc(TypeCat::UInt8, (uint16)(stringData.size()), TypeHint::String));
+                TypeDesc{TypeCat::UInt8, (uint16_t)(stringData.size()), TypeHint::String});
         }
     }
 
@@ -90,21 +88,12 @@ namespace Utility
         SetParameter(name, MakeStringSection((const char*)value));
     }
 
-    template<typename Type>
-        void ParameterBox::SetParameter(StringSection<utf8> name, Type value)
-    {
-        const auto insertType = ImpliedTyping::TypeOf<Type>();
-        auto size = insertType.GetSize();
-        assert(size == sizeof(Type)); (void)size;
-        SetParameter(name, AsOpaqueIteratorRange(value), insertType);
-    }
-
-    static uint8* ValueTableOffset(SerializableVector<uint8>& values, size_t offset)
+    uint8_t* ValueTableOffset(SerializableVector<uint8_t>& values, size_t offset)
     {
         return PtrAdd(AsPointer(values.begin()), offset);
     }
 
-    static const uint8* ValueTableOffset(const SerializableVector<uint8>& values, size_t offset)
+    const uint8_t* ValueTableOffset(const SerializableVector<uint8_t>& values, size_t offset)
     {
         return PtrAdd(AsPointer(values.begin()), offset);
     }
@@ -144,7 +133,7 @@ namespace Utility
             auto valueOffset = _values.size();
             auto nameOffset = _names.size();
             
-            _values.insert(_values.end(), (const uint8*)value.begin(), (const uint8*)value.end());
+            _values.insert(_values.end(), (const uint8_t*)value.begin(), (const uint8_t*)value.end());
 
             if (!name.IsEmpty())
                 _names.insert(_names.end(), name.begin(), name.end());
@@ -176,7 +165,7 @@ namespace Utility
 
             _values.insert(
                 _values.cbegin()+dstOffsets._valueBegin, 
-                (uint8*)value.begin(), (uint8*)value.end());
+                (uint8_t*)value.begin(), (uint8_t*)value.end());
             if (!name.IsEmpty())
                 _names.insert(_names.cbegin()+dstOffsets._nameBegin, name.begin(), name.end());
             _names.insert(_names.cbegin()+dstOffsets._nameBegin+name.size(), 0);
@@ -195,7 +184,7 @@ namespace Utility
         if (offset._valueSize == value.size()) {
 
                 // same type, or type with the same size...
-            XlCopyMemory(ValueTableOffset(_values, offset._valueBegin), (uint8*)value.begin(), value.size());
+            XlCopyMemory(ValueTableOffset(_values, offset._valueBegin), (uint8_t*)value.begin(), value.size());
             _types[index] = insertType;
 
         } else {
@@ -218,7 +207,7 @@ namespace Utility
 			}
             _values.insert(
                 _values.cbegin()+dstOffsets._valueBegin, 
-                (uint8*)value.begin(), (uint8*)value.end());
+                (uint8_t*)value.begin(), (uint8_t*)value.end());
             _types[index] = insertType;
 
         }
@@ -265,29 +254,6 @@ namespace Utility
 		_types.erase(_types.begin() + index);
 	}
 
-    template<typename Type>
-        std::optional<Type> ParameterBox::GetParameter(ParameterName name) const
-    {
-        auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
-        if (i!=_hashNames.cend() && *i == name._hash) {
-            size_t index = std::distance(_hashNames.cbegin(), i);
-            auto offset = _offsets[index];
-
-            if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
-                return *(Type*)&_values[offset._valueBegin];
-            } else {
-                Type result;
-                if (ImpliedTyping::Cast(
-                    AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
-                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
-                    _types[index])) {
-					return result;
-                }
-            }
-        }
-		return {};
-    }
-    
     bool ParameterBox::GetParameter(ParameterName name, void* dest, const ImpliedTyping::TypeDesc& destType) const
     {
         auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
@@ -321,7 +287,7 @@ namespace Utility
         if (i!=_hashNames.cend() && *i == name._hash) {
             return _types[std::distance(_hashNames.cbegin(), i)];
         }
-        return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0);
+        return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Void, 0};
     }
 
 	IteratorRange<const void*> ParameterBox::GetParameterRawValue(ParameterName name) const
@@ -335,133 +301,23 @@ namespace Utility
 		return {};
 	}
 
-    template<typename CharType> std::basic_string<CharType> ParameterBox::GetString(ParameterName name) const
+    std::optional<std::string> ParameterBox::GetParameterAsString(ParameterName name) const
     {
-        auto type = GetParameterType(name);
-        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
-            std::basic_string<char> result;
-            result.resize((unsigned)type._arrayCount);
-            GetParameter(name, AsPointer(result.begin()), type);
-            return Conversion::Convert<std::basic_string<CharType>>(result);
+        auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
+        if (i!=_hashNames.cend() && *i == name._hash) {
+            size_t index = std::distance(_hashNames.cbegin(), i);
+            const auto& type = _types[index];
+            
+			auto offset = _offsets[index];
+			IteratorRange<const void*> rawValue{ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize)};
+
+            return ImpliedTyping::AsString(rawValue, type);
         }
 
-        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
-            std::basic_string<utf16> wideResult;
-            wideResult.resize((unsigned)type._arrayCount);
-            GetParameter(name, AsPointer(wideResult.begin()), type);
-            return Conversion::Convert<std::basic_string<CharType>>(wideResult);
-        }
-
-        return std::basic_string<CharType>();
+        return {};
     }
 
-    template<typename CharType> bool ParameterBox::GetString(ParameterName name, CharType dest[], size_t destCount) const
-    {
-        auto type = GetParameterType(name);
-        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
-            std::basic_string<char> intermediate;
-            intermediate.resize((unsigned)type._arrayCount);
-            GetParameter(name, AsPointer(intermediate.begin()), type);
-
-            auto finalLength = Conversion::Convert(dest, destCount-1,
-                AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
-            if (finalLength < 0) return false;
-
-            dest[std::min(destCount-1, (size_t)finalLength)] = CharType(0);
-            return true;
-        }
-
-        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
-            std::basic_string<utf16> intermediate;
-            intermediate.resize((unsigned)type._arrayCount);
-            GetParameter(name, AsPointer(intermediate.begin()), type);
-
-            auto finalLength = Conversion::Convert(dest, destCount-1,
-                AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
-            if (finalLength < 0) return false;
-
-            dest[std::min(destCount-1, (size_t)finalLength)] = CharType(0);
-            return true;
-        }
-
-        return false;
-    }
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, uint32 value);
-    template std::optional<uint32> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, int32 value);
-    template std::optional<int32> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, uint64 value);
-    template std::optional<uint64> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, int64 value);
-    template std::optional<int64> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, bool value);
-    template std::optional<bool> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, float value);
-    template std::optional<float> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, double value);
-    template std::optional<double> ParameterBox::GetParameter(ParameterName name) const;
-
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float2 value);
-    template std::optional<Float2> ParameterBox::GetParameter(ParameterName name) const;
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3 value);
-    template std::optional<Float3> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float4 value);
-    template std::optional<Float4> ParameterBox::GetParameter(ParameterName name) const;
-
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x3 value);
-    template std::optional<Float3x3> ParameterBox::GetParameter(ParameterName name) const;
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x4 value);
-    template std::optional<Float3x4> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Float4x4 value);
-    template std::optional<Float4x4> ParameterBox::GetParameter(ParameterName name) const;
-
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt2 value);
-    template std::optional<UInt2> ParameterBox::GetParameter(ParameterName name) const;
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt3 value);
-    template std::optional<UInt3> ParameterBox::GetParameter(ParameterName name) const;
-
-    template void ParameterBox::SetParameter(StringSection<utf8> name, UInt4 value);
-    template std::optional<UInt4> ParameterBox::GetParameter(ParameterName name) const;
-    
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Int2 value);
-    template std::optional<Int2> ParameterBox::GetParameter(ParameterName name) const;
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Int3 value);
-    template std::optional<Int3> ParameterBox::GetParameter(ParameterName name) const;
-    
-    template void ParameterBox::SetParameter(StringSection<utf8> name, Int4 value);
-    template std::optional<Int4> ParameterBox::GetParameter(ParameterName name) const;
-    
-    
-    template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;
-    template std::basic_string<utf8> ParameterBox::GetString(ParameterName name) const;
-	template std::basic_string<utf16> ParameterBox::GetString(ParameterName name) const;
-	// template std::basic_string<ucs2> ParameterBox::GetString(ParameterName name) const;
-    template std::basic_string<ucs4> ParameterBox::GetString(ParameterName name) const;
-
-    template bool ParameterBox::GetString(ParameterName name, char dest[], size_t destCount) const;
-    template bool ParameterBox::GetString(ParameterName name, utf8 dest[], size_t destCount) const;
-	template bool ParameterBox::GetString(ParameterName name, utf16 dest[], size_t destCount) const;
-	// template bool ParameterBox::GetString(ParameterName name, ucs2 dest[], size_t destCount) const;
-    template bool ParameterBox::GetString(ParameterName name, ucs4 dest[], size_t destCount) const;
-
-    uint64      ParameterBox::CalculateParameterNamesHash() const
+    uint64_t      ParameterBox::CalculateParameterNamesHash() const
     {
             //  Note that the parameter names are always in the same order (unless 
             //  two different names resolve to the same 32 hash value). So we should be
@@ -469,7 +325,7 @@ namespace Utility
         return Hash64(AsPointer(_hashNames.cbegin()), AsPointer(_hashNames.cend()));
     }
 
-    uint64      ParameterBox::CalculateHash() const
+    uint64_t      ParameterBox::CalculateHash() const
     {
         return Hash64(AsPointer(_values.cbegin()), AsPointer(_values.cend()));
     }
@@ -479,7 +335,7 @@ namespace Utility
         return (unsigned)_offsets.size();
     }
 
-    uint64      ParameterBox::GetHash() const
+    uint64_t      ParameterBox::GetHash() const
     {
         if (!_cachedHash) {
             _cachedHash = CalculateHash();
@@ -487,7 +343,7 @@ namespace Utility
         return _cachedHash;
     }
 
-    uint64      ParameterBox::GetParameterNamesHash() const
+    uint64_t      ParameterBox::GetParameterNamesHash() const
     {
         if (!_cachedParameterNameHash) {
             _cachedParameterNameHash = CalculateParameterNamesHash();
@@ -495,14 +351,14 @@ namespace Utility
         return _cachedParameterNameHash;
     }
 
-    uint64      ParameterBox::CalculateFilteredHashValue(const ParameterBox& source) const
+    uint64_t      ParameterBox::CalculateFilteredHashValue(const ParameterBox& source) const
     {
         if (_values.size() > 1024) {
             assert(0);
             return 0;
         }
 
-        uint8 temporaryValues[1024];
+        uint8_t temporaryValues[1024];
         std::copy(_values.cbegin(), _values.cend(), temporaryValues);
 
         auto i  = _hashNames.cbegin();
@@ -691,7 +547,7 @@ namespace Utility
 
             // note -- fixed size buffer here bottlenecks max size for native representations
             // of these values
-        uint8 nativeTypeBuffer[NativeRepMaxSize];
+        uint8_t nativeTypeBuffer[NativeRepMaxSize];
         std::vector<utf8> nameBuffer;
         std::vector<char> valueBuffer;
 
@@ -727,7 +583,7 @@ namespace Utility
                 continue;
             }
 
-            TypeDesc nativeType(TypeCat::Void);
+            TypeDesc nativeType{TypeCat::Void};
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
 
                 nativeType = Parse(
@@ -760,7 +616,7 @@ namespace Utility
                 SetParameter(
                     MakeStringSection(AsPointer(nameBuffer.cbegin()), PtrAdd(AsPointer(nameBuffer.cbegin()), nameLen)),
                     MakeIteratorRange(value.begin(), value.end()), 
-                    TypeDesc(TypeOf<CharType>()._type, uint16(value._end - value._start), TypeHint::String));
+                    TypeDesc{TypeOf<CharType>()._type, uint16_t(value._end - value._start), TypeHint::String});
             }
         }
     }

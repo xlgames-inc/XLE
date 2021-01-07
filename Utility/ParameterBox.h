@@ -77,16 +77,15 @@ namespace Utility
         TypeDesc        GetParameterType(ParameterName name) const;
 		IteratorRange<const void*>	GetParameterRawValue(ParameterName name) const;
 
-        T1(CharType) std::basic_string<CharType> GetString(ParameterName name) const;
-        T1(CharType) bool   GetString(ParameterName name, CharType dest[], size_t destCount) const;
+        std::optional<std::string>      GetParameterAsString(ParameterName name) const;
 
         ////////////////////////////////////////////////////////////////////////////////////////
             //      H A S H   V A L U E S                                   //
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        uint64  GetHash() const;
-        uint64  GetParameterNamesHash() const;
-        uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
+        uint64_t  GetHash() const;
+        uint64_t  GetParameterNamesHash() const;
+        uint64_t  CalculateFilteredHashValue(const ParameterBox& source) const;
         bool    AreParameterNamesEqual(const ParameterBox& other) const;
         IteratorRange<const void*> GetValueTable() const;
 
@@ -148,7 +147,7 @@ namespace Utility
         template<typename CharType>
             ParameterBox(InputStreamFormatter<CharType>& stream, 
 				IteratorRange<const void*> defaultValue = {}, 
-                const ImpliedTyping::TypeDesc& defaultValueType = ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0u));
+                const ImpliedTyping::TypeDesc& defaultValueType = ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Void, 0u});
         ParameterBox(ParameterBox&& moveFrom) never_throws;
         ParameterBox& operator=(ParameterBox&& moveFrom) never_throws;
 		
@@ -159,8 +158,8 @@ namespace Utility
 
         ~ParameterBox();
     private:
-        mutable uint64      _cachedHash;
-        mutable uint64      _cachedParameterNameHash;
+        mutable uint64_t      _cachedHash;
+        mutable uint64_t      _cachedParameterNameHash;
 
 		class OffsetsEntry
 		{
@@ -172,11 +171,11 @@ namespace Utility
         SerializableVector<ParameterNameHash>	_hashNames;
         SerializableVector<OffsetsEntry>		_offsets;
         SerializableVector<utf8>				_names;
-        SerializableVector<uint8>				_values;
+        SerializableVector<uint8_t>				_values;
         SerializableVector<TypeDesc>			_types;
 
-        uint64              CalculateHash() const;
-        uint64              CalculateParameterNamesHash() const;
+        uint64_t              CalculateHash() const;
+        uint64_t              CalculateParameterNamesHash() const;
 
         void SetParameter(
             ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
@@ -208,7 +207,7 @@ namespace Utility
         template<typename Stream>
             void TypeDesc::SerializeMethod(Stream& serializer) const
         {
-            Serialize(serializer, *(uint32*)this);
+            Serialize(serializer, *(uint32_t*)this);
         }
     }
 
@@ -235,6 +234,41 @@ namespace Utility
     inline ParameterBox::ParameterName::ParameterName(ParameterNameHash hash)
     {
         _hash = hash;
+    }
+
+    template<typename Type>
+        void ParameterBox::SetParameter(StringSection<utf8> name, Type value)
+    {
+        const auto insertType = ImpliedTyping::TypeOf<Type>();
+        auto size = insertType.GetSize();
+        assert(size == sizeof(Type)); (void)size;
+        SetParameter(name, AsOpaqueIteratorRange(value), insertType);
+    }
+    
+    uint8_t* ValueTableOffset(SerializableVector<uint8_t>& values, size_t offset);
+    const uint8_t* ValueTableOffset(const SerializableVector<uint8_t>& values, size_t offset);
+
+    template<typename Type>
+        std::optional<Type> ParameterBox::GetParameter(ParameterName name) const
+    {
+        auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
+        if (i!=_hashNames.cend() && *i == name._hash) {
+            size_t index = std::distance(_hashNames.cbegin(), i);
+            auto offset = _offsets[index];
+
+            if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
+                return *(Type*)&_values[offset._valueBegin];
+            } else {
+                Type result;
+                if (ImpliedTyping::Cast(
+                    AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
+                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
+                    _types[index])) {
+					return result;
+                }
+            }
+        }
+		return {};
     }
 
     template<typename Stream>

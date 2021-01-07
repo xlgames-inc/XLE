@@ -38,8 +38,8 @@ namespace Utility
                 }
 
                 bool result = false;
-                auto elementDesc = ImpliedTyping::TypeDesc(srcType._type);
-                auto elementSize = ImpliedTyping::TypeDesc(srcType._type).GetSize();
+                auto elementDesc = ImpliedTyping::TypeDesc{srcType._type};
+                auto elementSize = ImpliedTyping::TypeDesc{srcType._type}.GetSize();
                 for (unsigned c=0; c<srcType._arrayCount; ++c) {
                     auto* e = PtrAdd(src.begin(), c*elementSize);
 					assert(PtrAdd(e, elementDesc.GetSize()) <= src.end());

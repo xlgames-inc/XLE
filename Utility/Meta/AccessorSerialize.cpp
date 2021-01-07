@@ -41,7 +41,7 @@ namespace Utility
                         if (!props.TryOpaqueSet(
                             obj,
                             Hash64(name._start, name._end), MakeIteratorRange(value.begin(), value.end()), 
-                            ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
+                            ImpliedTyping::TypeDesc{charTypeCat, uint16(value._end - value._start)}, true)) {
 
                             Log(Warning) << "Failure while assigning property during deserialization -- " <<
                                 Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end)) << std::endl;
@@ -50,7 +50,7 @@ namespace Utility
                         auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
                         if (!props.TryOpaqueSet(
                             obj, Hash64(name._start, arrayBracket), arrayIndex, MakeIteratorRange(value.begin(), value.end()), 
-                            ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
+                            ImpliedTyping::TypeDesc{charTypeCat, uint16(value._end - value._start)}, true)) {
 
                             Log(Warning) << "Failure while assigning array property during deserialization -- " <<
                                 Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end)) << std::endl;
@@ -107,7 +107,7 @@ namespace Utility
             if (p._castTo) {
                 p._castTo(
                     obj, buffer, sizeof(buffer), 
-                    ImpliedTyping::TypeDesc(charTypeCat, dimof(buffer)), true);
+                    ImpliedTyping::TypeDesc{charTypeCat, dimof(buffer)}, true);
 
                 formatter.WriteAttribute(
                     (const utf8*)AsPointer(p._name.cbegin()), (const utf8*)AsPointer(p._name.cend()),
@@ -118,7 +118,7 @@ namespace Utility
                 for (size_t e=0; e<p._fixedArrayLength; ++e) {
                     p._castToArray(
                         obj, e, buffer, sizeof(buffer), 
-                        ImpliedTyping::TypeDesc(charTypeCat, dimof(buffer)), true);
+                        ImpliedTyping::TypeDesc{charTypeCat, dimof(buffer)}, true);
 
                     StringMeld<256, CharType> name;
                     name << p._name.c_str() << "[" << e << "]";

@@ -296,7 +296,7 @@ namespace ToolsRig
                     uberSurfaceFile, 
                     cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * layer._nodeDimensions[0],
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * layer._nodeDimensions[1],
-                    ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat(layer._typeCat), uint16(layer._typeCount)));
+                    ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat(layer._typeCat), uint16(layer._typeCount)});
 
             }
 
@@ -553,7 +553,7 @@ namespace ToolsRig
 
         RawFS::CreateDirectoryRecursive(outputDir);
 
-        auto dstSampleSize = ImpliedTyping::TypeDesc(dstType).GetSize();
+        auto dstSampleSize = ImpliedTyping::TypeDesc{dstType}.GetSize();
         uint64 resultSize = 
             sizeof(TerrainUberHeader)
             + finalDims[0] * finalDims[1] * dstSampleSize
@@ -710,7 +710,7 @@ namespace ToolsRig
                     if (y >= op._importMins[1] && y < op._importMaxs[1]) {
                         (*convFn)(
                             PtrAdd(outputArray, ((y - op._importMins[1]) * finalDims[0]) * dstSampleSize),
-                            ImpliedTyping::TypeDesc(dstType),
+                            ImpliedTyping::TypeDesc{dstType},
                             PtrAdd(stripBuffer.get(), op._importMins[0]*bitsPerPixel/8),
                             std::min(op._sourceDims[0], op._importMaxs[0]) - op._importMins[0],
                             valueOffset, valueScale);
@@ -734,7 +734,7 @@ namespace ToolsRig
                 for (unsigned x=op._sourceDims[0]; x<finalDims[0]; ++x)
                     ImpliedTyping::Cast(
                         { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
-                        ImpliedTyping::TypeDesc(dstType),
+                        ImpliedTyping::TypeDesc{dstType},
                         AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
                     
             }
@@ -744,7 +744,7 @@ namespace ToolsRig
             for (unsigned x=0; x<finalDims[0]; ++x)
                 ImpliedTyping::Cast(
                     { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
-                    ImpliedTyping::TypeDesc(dstType),
+                    ImpliedTyping::TypeDesc{dstType},
                     AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
         }
     }

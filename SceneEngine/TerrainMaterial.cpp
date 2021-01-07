@@ -217,7 +217,7 @@ namespace SceneEngine
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(
                     MakeIteratorRange(mat._mappingConstant), 
-                    ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)),
+                    ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)},
                     MakeIteratorRange(buffer), parsedType);
                 
                 _gradFlagMaterials.push_back(mat);

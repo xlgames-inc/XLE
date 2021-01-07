@@ -162,7 +162,7 @@ namespace Utility
                 ////   I N I T I A L I Z A T I O N   I N T E R F A C E   ////
 
         template<typename GetFn, typename SetFn>
-            void Add(const char name[], GetFn&& getter, SetFn&& setter, const ImpliedTyping::TypeDesc& naturalType = ImpliedTyping::TypeCat::Void, size_t fixedArrayLength = 1);
+            void Add(const char name[], GetFn&& getter, SetFn&& setter, const ImpliedTyping::TypeDesc& naturalType = ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Void}, size_t fixedArrayLength = 1);
 
         template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
             void AddChildList(const char name[], CreateFn&&, GetCountFn&&, GetByIndexFn&&, GetByKeyFn&&);

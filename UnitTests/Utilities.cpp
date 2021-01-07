@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "UnitTestHelper.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
@@ -14,7 +13,6 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
-#include "../Math/Vector.h"
 #include <stdexcept>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
@@ -75,14 +73,6 @@ namespace UnitTests
 
     TEST_CASE( "Utilities-ImpliedTypingTest", "[utility]" )
     {
-        auto t0 = ImpliedTyping::Parse<Float4>("{.5f, 10, true}");
-        REQUIRE(t0.has_value());
-        REQUIRE(Equivalent(t0.value(), Float4(.5f, 10.f, 1.f, 1.f), 0.001f));
-        
-        auto t1 = ImpliedTyping::Parse<Float4>("23");
-        REQUIRE(t1.has_value());
-        REQUIRE(Equivalent(t1.value(), Float4(23.f, 0.f, 0.f, 1.f), 0.001f));
-
         REQUIRE(ImpliedTyping::Parse<signed>("true").value() == 1);
         REQUIRE(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").value() == 1);
     }
