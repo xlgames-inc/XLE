@@ -13,7 +13,7 @@
 
 namespace Conversion
 {
-    template<typename Output> Output Convert(uint64);
+    template<typename Output> Output Convert(uint64_t);
     template<typename Output> Output Convert(const char[]);
     template<typename Type> const Type& Convert(const Type& input) { return input; }
 

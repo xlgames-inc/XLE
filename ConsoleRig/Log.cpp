@@ -186,18 +186,15 @@ namespace ConsoleRig
     {
         Document<InputStreamFormatter<char>> doc(formatter);
         Config cfg;
-        if (doc.Attribute("OutputToConsole")) {
-            bool outputToConsole = doc.Attribute("OutputToConsole", false);
+        if (doc.RootElement().Attribute("OutputToConsole")) {
+            bool outputToConsole = doc.RootElement().Attribute("OutputToConsole", false);
             cfg._cfg._enabledSinks = (outputToConsole ? MessageTargetConfiguration::Sink::Console : 0u);
             cfg._cfg._disabledSinks = ((!outputToConsole) ? MessageTargetConfiguration::Sink::Console : 0u);
         }
-        cfg._cfg._template = doc.Attribute("Template").Value().AsString();
+        cfg._cfg._template = doc.RootElement().Attribute("Template").Value().AsString();
 
-        auto inheritList = doc.Element("Inherit").FirstAttribute();
-        while (inheritList) {
-            cfg._inherit.push_back(inheritList.Name().AsString());
-            inheritList = inheritList.Next();
-        }
+        for (const auto& inherentElement:doc.RootElement().Element("Inherit").children())
+            cfg._inherit.push_back(inherentElement.Name().AsString());
 
         return cfg;
     }

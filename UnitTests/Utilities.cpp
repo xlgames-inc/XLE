@@ -37,7 +37,7 @@ namespace UnitTests
     bool ThrowOnDestructor::s_expectingDestroy = false;
     unsigned ThrowOnDestructor::s_destroyCount = 0;
 
-    TEST_CASE( "ParameterBoxTest", "[utility]" )
+    TEST_CASE( "Utilities-ParameterBoxTest", "[utility]" )
     {
         ParameterBox test(
             {
@@ -73,18 +73,18 @@ namespace UnitTests
 
     }
 
-    TEST_CASE( "ImpliedTypingTest", "[utility]" )
+    TEST_CASE( "Utilities-ImpliedTypingTest", "[utility]" )
     {
         auto t0 = ImpliedTyping::Parse<Float4>("{.5f, 10, true}");
-        REQUIRE(t0.first);
-        REQUIRE(Equivalent(t0.second, Float4(.5f, 10.f, 1.f, 1.f), 0.001f));
+        REQUIRE(t0.has_value());
+        REQUIRE(Equivalent(t0.value(), Float4(.5f, 10.f, 1.f, 1.f), 0.001f));
         
         auto t1 = ImpliedTyping::Parse<Float4>("23");
-        REQUIRE(t1.first);
-        REQUIRE(Equivalent(t1.second, Float4(23.f, 0.f, 0.f, 1.f), 0.001f));
+        REQUIRE(t1.has_value());
+        REQUIRE(Equivalent(t1.value(), Float4(23.f, 0.f, 0.f, 1.f), 0.001f));
 
-        REQUIRE(ImpliedTyping::Parse<signed>("true").second == 1);
-        REQUIRE(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").second == 1);
+        REQUIRE(ImpliedTyping::Parse<signed>("true").value() == 1);
+        REQUIRE(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").value() == 1);
     }
 
     template<typename CharType>
@@ -96,7 +96,7 @@ namespace UnitTests
             stream.Write((const ucs2*)u"<<StringD>>");
         }
 
-    TEST_CASE( "MemoryStreamTest", "[utility]" )
+    TEST_CASE( "Utilities-MemoryStreamTest", "[utility]" )
     {
         auto memStreamA = std::make_unique<MemoryOutputStream<char>>();
         auto memStreamB = std::make_unique<MemoryOutputStream<utf16>>();
@@ -121,7 +121,7 @@ namespace UnitTests
         REQUIRE(stringD == (const ucs2*)u"BD<<StringB>><<StringD>>");
     }
         
-    TEST_CASE( "MakeFunctionTest", "[utility]" )
+    TEST_CASE( "Utilities-MakeFunctionTest", "[utility]" )
     {
         using namespace std::placeholders;
             
@@ -144,7 +144,7 @@ namespace UnitTests
         REQUIRE( f4(1,2,3.5f) == 6.5_a );
     }
 
-    TEST_CASE( "VariationFunctionsTest", "[utility]" )
+    TEST_CASE( "Utilities-VariationFunctionsTest", "[utility]" )
     {
         using namespace std::placeholders;
 
@@ -204,7 +204,7 @@ namespace UnitTests
             fns.Add(100+i, [](int x, int y) { return x+y; });
     }
 
-    TEST_CASE( "MakeRelativePathTest", "[utility]" )
+    TEST_CASE( "Utilities-MakeRelativePathTest", "[utility]" )
     {
         REQUIRE(
             std::string("SomeDir/Source/SourceFile.cpp") ==
@@ -265,7 +265,7 @@ namespace UnitTests
             MakeRelativePath(SplitPath<char>("D:AnotherPath\\Something\\"), SplitPath<char>("D:SomePath\\Source\\SourceFile.cpp")));
     }
 
-    TEST_CASE( "CaseInsensitivePathHandling", "[utility]" )
+    TEST_CASE( "Utilities-CaseInsensitivePathHandling", "[utility]" )
     {
         // MakeRelativePath shoudl behave differently for case sensitive vs insensitive paths  
         FilenameRules caseInsensitiveRules('/', false);
@@ -282,7 +282,7 @@ namespace UnitTests
             MakeRelativePath(SplitPath<char>("D:\\LM\\code"), SplitPath<char>("D:\\LM\\Code\\SomeFolder\\SomeObject"), caseSensitiveRules));
     }
 
-    TEST_CASE( "MiscHashTest", "[utility]" )
+    TEST_CASE( "Utilities-MiscHashTest", "[utility]" )
     {
         StringSection<> s0("somestring"), s1("1234567890qwerty");
         REQUIRE(
@@ -293,7 +293,7 @@ namespace UnitTests
             ConstHash64FromString(s1.begin(), s1.end()));
     }
 
-    TEST_CASE( "ConditionalPreprocessingTest", "[utility]" )
+    TEST_CASE( "Utilities-ConditionalPreprocessingTest", "[utility]" )
     {
         const char* input = R"--(
             Token0 Token1

@@ -13,6 +13,7 @@ set(Src
     StringFormatTime.cpp
     StringUtils.cpp
     UTFUtils.cpp
+    ImpliedTyping.cpp
     xl_snprintf.cpp)
 set(Headers
     ArithmeticUtils.h
