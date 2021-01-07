@@ -145,22 +145,22 @@ namespace ToolsRig
             transform = AsFloat4x4(Float3(-_anchorPoint));
 
             if (XlAbs(_activeSubop._parameter[0]) > 0.f) {
-                Combine_InPlace(transform, RotationX(_activeSubop._parameter[0]));
+                Combine_IntoLHS(transform, RotationX(_activeSubop._parameter[0]));
             }
 
             if (XlAbs(_activeSubop._parameter[1]) > 0.f) {
-                Combine_InPlace(transform, RotationY(_activeSubop._parameter[1]));
+                Combine_IntoLHS(transform, RotationY(_activeSubop._parameter[1]));
             }
 
             if (XlAbs(_activeSubop._parameter[2]) > 0.f) {
-                Combine_InPlace(transform, RotationZ(_activeSubop._parameter[2]));
+                Combine_IntoLHS(transform, RotationZ(_activeSubop._parameter[2]));
             }
 
-            Combine_InPlace(transform, _anchorPoint);
+            Combine_IntoLHS(transform, _anchorPoint);
         } else if (_activeSubop._type == SubOperation::Scale) {
             transform = AsFloat4x4(Float3(-_anchorPoint));
-            Combine_InPlace(transform, ArbitraryScale(_activeSubop._parameter));
-            Combine_InPlace(transform, _anchorPoint);
+            Combine_IntoLHS(transform, ArbitraryScale(_activeSubop._parameter));
+            Combine_IntoLHS(transform, _anchorPoint);
         } else if (_activeSubop._type == SubOperation::Translate) {
             transform = AsFloat4x4(_activeSubop._parameter);
         } else if (_activeSubop._type == SubOperation::MoveAcrossTerrainSurface) {
@@ -629,10 +629,10 @@ namespace ToolsRig
             const char modelName[], const char materialName[]);
     };
 
-    static void Combine_InPlace_(RotationZ rotation, Float3x4& transform)
+    static void Combine_IntoRHS_(RotationZ rotation, Float3x4& transform)
     {
         auto temp = AsFloat4x4(transform);
-        Combine_InPlace(rotation, temp);
+        Combine_IntoRHS(rotation, temp);
         transform = AsFloat3x4(temp);
     }
 
@@ -646,7 +646,7 @@ namespace ToolsRig
         SceneEngine::PlacementsEditor::ObjTransDef newState(
             AsFloat3x4(newLocation), _manInterface->GetSelectedModel(), materialName, nullptr);
         if (_doRandomRotation) {
-            Combine_InPlace_(RotationZ(_placementRotation), newState._localToWorld);
+            Combine_IntoRHS_(RotationZ(_placementRotation), newState._localToWorld);
         }
 
         TRY {
@@ -654,7 +654,7 @@ namespace ToolsRig
                 _placementRotation = rand() * 2.f * gPI / float(RAND_MAX);
                 newState._localToWorld = AsFloat3x4(newLocation);
                 if (_doRandomRotation) {
-                    Combine_InPlace_(RotationZ(_placementRotation), newState._localToWorld);
+                    Combine_IntoRHS_(RotationZ(_placementRotation), newState._localToWorld);
                 }
 
                 _transaction->Create(newState);
@@ -1242,7 +1242,7 @@ namespace ToolsRig
             
         for (auto p=spawnPositions.begin(); p!=spawnPositions.end(); ++p) {
             auto objectToWorld = AsFloat4x4(*p);
-            Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
+            Combine_IntoRHS(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
             trans->Create(SceneEngine::PlacementsEditor::ObjTransDef(
                 AsFloat3x4(objectToWorld), modelName, materialName, nullptr));
         }

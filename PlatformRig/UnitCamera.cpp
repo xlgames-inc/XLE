@@ -54,7 +54,7 @@ namespace PlatformRig { namespace Camera
     void UnitCamManager::AlignUnitToCamera(ClientUnit* unit, float yaw)
     {
         Float4x4 rotation = unit->_localToWorld;
-        Combine_InPlace(RotationZ(yaw), rotation);
+        Combine_IntoRHS(RotationZ(yaw), rotation);
         unit->_localToWorld = rotation;
 
         _unitCam.unitYaw += yaw;
@@ -464,7 +464,7 @@ namespace PlatformRig { namespace Camera
 
         Float3 systemCameraPos = _unitCam.camPosition;
         auto systemCameraRotation = _unitCam.camRotation;
-        Combine_InPlace(RotationX(_unitCam.tiltPitch), systemCameraRotation);
+        Combine_IntoRHS(RotationX(_unitCam.tiltPitch), systemCameraRotation);
 
         float fov = Deg2Rad(Fov);
         _unitCam.fov = fov;
@@ -490,8 +490,8 @@ namespace PlatformRig { namespace Camera
     void UnitCamera::CalcRotation() 
     { 
         camRotation = Identity<Float4x4>();
-        Combine_InPlace(camRotation,    RotationX(pitch));
-        Combine_InPlace(camRotation,    RotationZ(unitYaw+yaw));
+        Combine_IntoLHS(camRotation,    RotationX(pitch));
+        Combine_IntoLHS(camRotation,    RotationZ(unitYaw+yaw));
     }
 }}
 

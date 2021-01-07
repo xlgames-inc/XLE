@@ -73,7 +73,7 @@ namespace XLEMath
         return result;
     }
 
-    void Combine_InPlace(const Float3& translate, Float4x4& transform)
+    void Combine_IntoRHS(const Float3& translate, Float4x4& transform)
     {
         Float4x4& lhs = transform;
         // const float rhs00 = 1.f, rhs11 = 1.f, rhs22 = 1.f;
@@ -101,7 +101,7 @@ namespace XLEMath
         lhs(3,3) = lhs(3,0) * rhs03 +   lhs(3,1) * rhs13 +  lhs(3,2) * rhs23 +      lhs(3,3) * rhs33;
     }
 
-    void Combine_InPlace(Float4x4& transform, const Float3& translate)
+    void Combine_IntoLHS(Float4x4& transform, const Float3& translate)
     {
         Float4x4& rhs = transform;
         // const float lhs00 = 1.f, lhs11 = 1.f, lhs22 = 1.f;
@@ -124,14 +124,14 @@ namespace XLEMath
         rhs(2,3) = rhs(2,3) + lhs23 * rhs(3,3);
     }
 
-    void Combine_InPlace(const UniformScale& scale, Float4x4& transform)
+    void Combine_IntoRHS(const UniformScale& scale, Float4x4& transform)
     {
         transform(0,0) *= scale._scale; transform(0,1) *= scale._scale; transform(0,2) *= scale._scale;
         transform(1,0) *= scale._scale; transform(1,1) *= scale._scale; transform(1,2) *= scale._scale;
         transform(2,0) *= scale._scale; transform(2,1) *= scale._scale; transform(2,2) *= scale._scale;
     }
 
-    void Combine_InPlace(const ArbitraryScale& scale, Float4x4& transform)
+    void Combine_IntoRHS(const ArbitraryScale& scale, Float4x4& transform)
     {
         auto& lhs = transform;
 		const auto& rhs = scale._scale;
@@ -201,7 +201,7 @@ namespace XLEMath
         return result;
     }
 
-    void Combine_InPlace(RotationX rotation, Float4x4& transform)
+    void Combine_IntoRHS(RotationX rotation, Float4x4& transform)
     {
             /*
                 Following the OpenGL standard for rotation around an axis
@@ -248,7 +248,7 @@ namespace XLEMath
         // lhs(3,3) = lhs(3,3) * rhs33;
     }
 
-    void Combine_InPlace(RotationY rotation, Float4x4& transform)
+    void Combine_IntoRHS(RotationY rotation, Float4x4& transform)
     {
             /*
                 Following the OpenGL standard for rotation around an axis
@@ -295,7 +295,7 @@ namespace XLEMath
         // lhs(3,3) = lhs(3,3);
     }
 
-    void Combine_InPlace(RotationZ rotation, Float4x4& transform)
+    void Combine_IntoRHS(RotationZ rotation, Float4x4& transform)
     {
             /*
                 Following the OpenGL standard for rotation around an axis
@@ -342,7 +342,7 @@ namespace XLEMath
         // lhs(3,3) = lhs(3,3) * rhs33;
     }
 
-    void Combine_InPlace(Float4x4& transform, RotationX rotation)
+    void Combine_IntoLHS(Float4x4& transform, RotationX rotation)
     {
         float sine, cosine;
         std::tie(sine, cosine) = XlSinCos(rotation._angle);
@@ -374,7 +374,7 @@ namespace XLEMath
         // rhs(3,3) = rhs(3,3);
     }
 
-    void Combine_InPlace(Float4x4& transform, RotationY rotation)
+    void Combine_IntoLHS(Float4x4& transform, RotationY rotation)
     {
         float sine, cosine;
         std::tie(sine, cosine) = XlSinCos(rotation._angle);
@@ -406,7 +406,7 @@ namespace XLEMath
         // rhs(3,3) = rhs(3,3);
     }
 
-    void Combine_InPlace(Float4x4& transform, RotationZ rotation)
+    void Combine_IntoLHS(Float4x4& transform, RotationZ rotation)
     {
         float sine, cosine;
         std::tie(sine, cosine) = XlSinCos(rotation._angle);
@@ -438,19 +438,19 @@ namespace XLEMath
         rhs(3,3) = rhs(3,3);
     }
 
-	void            Combine_InPlace(ArbitraryRotation rotation, Float4x4& transform)
+	void            Combine_IntoRHS(ArbitraryRotation rotation, Float4x4& transform)
 	{
 		// note -- inefficient implementation!
 		transform = Combine(MakeRotationMatrix(rotation._axis, rotation._angle), transform);
 	}
 	
-	void            Combine_InPlace(Float4x4& transform, ArbitraryRotation rotation)
+	void            Combine_IntoLHS(Float4x4& transform, ArbitraryRotation rotation)
 	{
 		// note -- inefficient implementation!
 		transform = Combine(transform, MakeRotationMatrix(rotation._axis, rotation._angle));
 	}
 
-	void            Combine_InPlace(Quaternion rotation, Float4x4& transform)
+	void            Combine_IntoRHS(Quaternion rotation, Float4x4& transform)
 	{
 		// note -- inefficient implementation!
 		// When using quaternions frequently, we're probably better off avoiding
@@ -459,20 +459,20 @@ namespace XLEMath
 		transform = Combine(AsFloat3x3(rotation), transform);
 	}
 
-	void            Combine_InPlace(Float4x4& transform, Quaternion rotation)
+	void            Combine_IntoLHS(Float4x4& transform, Quaternion rotation)
 	{
 		// note -- inefficient implementation!
 		transform = Combine(transform, AsFloat3x3(rotation));
 	}
 
-    void Combine_InPlace(Float4x4& transform, const UniformScale& scale)
+    void Combine_IntoLHS(Float4x4& transform, const UniformScale& scale)
     {
         transform(0,0) *= scale._scale; transform(0,1) *= scale._scale; transform(0,2) *= scale._scale; transform(0,3) *= scale._scale;
         transform(1,0) *= scale._scale; transform(1,1) *= scale._scale; transform(1,2) *= scale._scale; transform(1,3) *= scale._scale;
         transform(2,0) *= scale._scale; transform(2,1) *= scale._scale; transform(2,2) *= scale._scale; transform(2,3) *= scale._scale;
     }
 
-    void Combine_InPlace(Float4x4& transform, const ArbitraryScale& scale)
+    void Combine_IntoLHS(Float4x4& transform, const ArbitraryScale& scale)
     {
         transform(0,0) *= scale._scale[0]; transform(0,1) *= scale._scale[0]; transform(0,2) *= scale._scale[0]; transform(0,3) *= scale._scale[0];
         transform(1,0) *= scale._scale[1]; transform(1,1) *= scale._scale[1]; transform(1,2) *= scale._scale[1]; transform(1,3) *= scale._scale[1];
@@ -926,21 +926,21 @@ namespace XLEMath
     Float4x4    AsFloat4x4(const RotationX& input)
     {
         auto result = Identity<Float4x4>();
-        Combine_InPlace(result, input);
+        Combine_IntoLHS(result, input);
         return result;
     }
 
     Float4x4    AsFloat4x4(const RotationY& input)
     {
         auto result = Identity<Float4x4>();
-        Combine_InPlace(result, input);
+        Combine_IntoLHS(result, input);
         return result;
     }
 
     Float4x4    AsFloat4x4(const RotationZ& input)
     {
         auto result = Identity<Float4x4>();
-        Combine_InPlace(result, input);
+        Combine_IntoLHS(result, input);
         return result;
     }
 

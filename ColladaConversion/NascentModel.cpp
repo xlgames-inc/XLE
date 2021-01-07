@@ -852,14 +852,6 @@ namespace RenderCore { namespace ColladaConversion
 	    return false;
     }
 
-    template<typename Type>
-        Float4x4 AsFloat4x4(const Type& type)
-        {
-            Float4x4 result = Identity<Float4x4>();
-            Combine_InPlace(type, result);
-            return result;
-        }
-
     class ExtraDataCallback : public COLLADASaxFWL::IExtraDataCallbackHandler
     {
     public:
@@ -986,11 +978,11 @@ namespace RenderCore { namespace ColladaConversion
         #if 0   // (some basic checks for transform math functions)
             {
                 Float4x4 transform = Identity<Float4x4>();
-                Combine_InPlace(Float3(0.18012f, 0.62315f, 0.33130f),                   transform);
-                Combine_InPlace(RotationX(-90.0f),                                      transform);
-                Combine_InPlace(RotationY(0.0f),                                        transform);
-                Combine_InPlace(RotationZ(-82.46461f),                                  transform);
-                Combine_InPlace(ArbitraryScale(Float3(0.11485f, 0.11485f, 0.15507f)),   transform);
+                Combine_IntoRHS(Float3(0.18012f, 0.62315f, 0.33130f),                   transform);
+                Combine_IntoRHS(RotationX(-90.0f),                                      transform);
+                Combine_IntoRHS(RotationY(0.0f),                                        transform);
+                Combine_IntoRHS(RotationZ(-82.46461f),                                  transform);
+                Combine_IntoRHS(ArbitraryScale(Float3(0.11485f, 0.11485f, 0.15507f)),   transform);
 
                 const Float3 demoPoint(2.f, 1.5f, 3.f);
                 Float4 R1 = transform * Expand(demoPoint, 1.f);
@@ -1003,20 +995,20 @@ namespace RenderCore { namespace ColladaConversion
 
                     // [4x1] = [4x4][4x4][4x4][4x1]
 
-                Float4x4 rotX1 = Identity<Float4x4>(); Combine_InPlace(RotationX(-82.46461f), rotX1);
+                Float4x4 rotX1 = Identity<Float4x4>(); Combine_IntoRHS(RotationX(-82.46461f), rotX1);
                 Float4x4 rotX2 = Combine(MakeRotationMatrix(Float3(1,0,0), -82.46461f),         Identity<Float4x4>());
             
-                Float4x4 rotY1 = Identity<Float4x4>(); Combine_InPlace(RotationY(-82.46461f), rotY1);
+                Float4x4 rotY1 = Identity<Float4x4>(); Combine_IntoRHS(RotationY(-82.46461f), rotY1);
                 Float4x4 rotY2 = Combine(MakeRotationMatrix(Float3(0,1,0), -82.46461f),         Identity<Float4x4>());
             
-                Float4x4 rotZ1 = Identity<Float4x4>(); Combine_InPlace(RotationZ(-82.46461f), rotZ1);
+                Float4x4 rotZ1 = Identity<Float4x4>(); Combine_IntoRHS(RotationZ(-82.46461f), rotZ1);
                 Float4x4 rotZ2 = Combine(MakeRotationMatrix(Float3(0,0,1), -82.46461f),         Identity<Float4x4>());
 
                 Float4x4 cameraToWorld = Identity<Float4x4>();
-                Combine_InPlace(Float3(2.22403f, -1.63879f, 1.98092f),  cameraToWorld);
-                Combine_InPlace(RotationZ(-44.29106f),                  cameraToWorld);
-                Combine_InPlace(RotationY(-2.38208f),                   cameraToWorld);
-                Combine_InPlace(RotationX(60.80816f),                   cameraToWorld);
+                Combine_IntoRHS(Float3(2.22403f, -1.63879f, 1.98092f),  cameraToWorld);
+                Combine_IntoRHS(RotationZ(-44.29106f),                  cameraToWorld);
+                Combine_IntoRHS(RotationY(-2.38208f),                   cameraToWorld);
+                Combine_IntoRHS(RotationX(60.80816f),                   cameraToWorld);
                 Float4x4 worldToCamera = InvertOrthonormalTransform(cameraToWorld);
 
                 Float4x4 shouldBeIdentity = Combine(cameraToWorld, worldToCamera);

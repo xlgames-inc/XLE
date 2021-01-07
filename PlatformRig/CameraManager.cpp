@@ -158,16 +158,16 @@ namespace PlatformRig { namespace Camera
         Float3 rotYAxis = Truncate(camera._cameraToWorld * Float4(1.0f, 0.f, 0.f, 0.f));
 
         Float4x4 cameraToWorld = camera._cameraToWorld;
-        Combine_InPlace(cameraToWorld, Float3(-focusPoint));
+        Combine_IntoLHS(cameraToWorld, Float3(-focusPoint));
         cameraToWorld = Combine(cameraToWorld, MakeRotationMatrix(rotYAxis, deltaRotationY));
-        Combine_InPlace(cameraToWorld, RotationZ(deltaRotationX));
-        Combine_InPlace(cameraToWorld, focusPoint);
-        Combine_InPlace(cameraToWorld, Float3(deltaPos[2] * Normalize(focusPoint - ExtractTranslation(camera._cameraToWorld))));
+        Combine_IntoLHS(cameraToWorld, RotationZ(deltaRotationX));
+        Combine_IntoLHS(cameraToWorld, focusPoint);
+        Combine_IntoLHS(cameraToWorld, Float3(deltaPos[2] * Normalize(focusPoint - ExtractTranslation(camera._cameraToWorld))));
 
         Float3 cameraFocusDrift = 
             Float3(0.f, 0.f, deltaPos[1])
             + deltaPos[0] * Truncate(camera._cameraToWorld * Float4(1.0f, 0.f, 0.f, 0.f));
-        Combine_InPlace(cameraToWorld, cameraFocusDrift);
+        Combine_IntoLHS(cameraToWorld, cameraFocusDrift);
         focusPoint += cameraFocusDrift;
 
         camera._cameraToWorld = cameraToWorld;

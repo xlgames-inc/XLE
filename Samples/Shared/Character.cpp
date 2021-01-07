@@ -112,7 +112,7 @@ namespace Sample
             LinearInterpolate(-1500.f, 1500.f, rand() / float(RAND_MAX)) / CharactersScale,
             LinearInterpolate(-1500.f, 1500.f, rand() / float(RAND_MAX)) / CharactersScale,
             0.f);
-        Combine_InPlace(_localToWorld, translation);
+        Combine_IntoLHS(_localToWorld, translation);
 
         _currentVelScale = 1.f;
         _animDecisionTree = std::move(animDecisionTree);
@@ -175,14 +175,14 @@ namespace Sample
 
         const float maxAdjust    = (1.f + (1.f-_currentVelScale)) * Deg2Rad(Tweakable("NPCRotation", 50.f)*deltaTime);
         float rotation           = Clamp(flipDirection * (desiredAngle-currentAngle), -maxAdjust, maxAdjust);
-        Combine_InPlace(RotationZ(rotation), _localToWorld);
+        Combine_IntoRHS(RotationZ(rotation), _localToWorld);
 
         Float3 localMovement(0.f, _walkingVelocity * _currentVelScale * deltaTime, 0.f);
     
         if (_animDecisionTree) {
             _animState = _animDecisionTree->Update(deltaTime, _animState, localMovement, rotation);
         }
-        Combine_InPlace(localMovement, _localToWorld);
+        Combine_IntoRHS(localMovement, _localToWorld);
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -202,8 +202,8 @@ namespace Sample
             auto stateBundle = stateWorld.CreateAuthoritativePacket(
                 sizeof(StateBundleContents), Hash64("PlayerCharacter"));
 
-            // Combine_InPlace(Float3(2048.f, 2048.f, 100.f), _localToWorld);
-            Combine_InPlace(Float3(512.f, 512.f, 250.f), _localToWorld);
+            // Combine_IntoRHS(Float3(2048.f, 2048.f, 100.f), _localToWorld);
+            Combine_IntoRHS(Float3(512.f, 512.f, 250.f), _localToWorld);
 
             StateBundleContents contents;
             contents._translation   = ExtractTranslation(_localToWorld);
@@ -280,10 +280,10 @@ namespace Sample
             }
         }
 
-        Combine_InPlace(localMovement, _localToWorld);
+        Combine_IntoRHS(localMovement, _localToWorld);
 
         if (localRotation != 0.f) {
-            Combine_InPlace(RotationZ(localRotation), _localToWorld);
+            Combine_IntoRHS(RotationZ(localRotation), _localToWorld);
         }
 
             // clamp to terrain...
@@ -387,8 +387,8 @@ namespace Sample
         _currentValues._yaw          = LinearInterpolate(_currentValues._yaw, yaw, 0.1f);
 
         Float4x4 bundleLocalToWorld = Identity<Float4x4>();
-        Combine_InPlace(bundleLocalToWorld, RotationZ(_currentValues._yaw));
-        Combine_InPlace(bundleLocalToWorld, _currentValues._translation);
+        Combine_IntoLHS(bundleLocalToWorld, RotationZ(_currentValues._yaw));
+        Combine_IntoLHS(bundleLocalToWorld, _currentValues._translation);
 
         Float3 localMovement = TransformPoint(InvertOrthonormalTransform(_localToWorld), ExtractTranslation(bundleLocalToWorld));
 

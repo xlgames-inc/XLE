@@ -745,7 +745,7 @@ namespace SceneEngine
         float sunDirectionAngle;
         {
             auto trans = Identity<Float4x4>();
-            Combine_InPlace(trans, RotationZ(-_pimpl->_cfg.SunPathAngle()));
+            Combine_IntoLHS(trans, RotationZ(-_pimpl->_cfg.SunPathAngle()));
             auto transDirection = TransformDirectionVector(trans, sunDirection);
             sunDirectionAngle = XlATan2(transDirection[0], transDirection[2]);
         }
@@ -920,7 +920,7 @@ namespace SceneEngine
             //  could be a problem if attempting to move the terrain origin
             //  in-game.
         for (auto& i:_pimpl->_cells) {
-            Combine_InPlace(i._cellToWorld, change);
+            Combine_IntoLHS(i._cellToWorld, change);
             i._aabbMin += change;
             i._aabbMax += change;
         }

@@ -121,9 +121,9 @@ namespace XLEMath
     };
         
         //
-        //      "Combine" and "Combine_InPlace" patterns.
+        //      "Combine" and "Combine_IntoLHS/Combine_IntoRHS" patterns.
         //
-        //      For many transformation types, there are overloads for Combine & Combine_InPlace.
+        //      For many transformation types, there are overloads for Combine, Combine_IntoLHS, Combine_IntoRHS.
         //      This will combine two transforms together, in such a way that the first
         //      parameter is always the first transformation applied.
         //
@@ -134,7 +134,7 @@ namespace XLEMath
         //          ptMidway = Transform(A, ptOriginal)
         //          ptResult = Transform(B, ptMidway)
         //
-        //      Combine_InPlace provides basic optimisation when the output result is mostly
+        //      Combine_IntoLHS/Combine_IntoRHS provides basic optimisation when the output result is mostly
         //      the same as one of the input (perhaps only a few elements have changed)
         //
 
@@ -143,23 +143,23 @@ namespace XLEMath
         return secondTransform * firstTransform;
     }
     
-    void            Combine_InPlace(const Float3& translate, Float4x4& transform);
-    void            Combine_InPlace(const UniformScale& scale, Float4x4& transform);
-    void            Combine_InPlace(const ArbitraryScale& scale, Float4x4& transform);
-    void            Combine_InPlace(RotationX rotation, Float4x4& transform);
-    void            Combine_InPlace(RotationY rotation, Float4x4& transform);
-    void            Combine_InPlace(RotationZ rotation, Float4x4& transform);
-	void            Combine_InPlace(ArbitraryRotation rotation, Float4x4& transform);
-	void            Combine_InPlace(Quaternion rotation, Float4x4& transform);
+    void            Combine_IntoRHS(const Float3& translate, Float4x4& transform);
+    void            Combine_IntoRHS(const UniformScale& scale, Float4x4& transform);
+    void            Combine_IntoRHS(const ArbitraryScale& scale, Float4x4& transform);
+    void            Combine_IntoRHS(RotationX rotation, Float4x4& transform);
+    void            Combine_IntoRHS(RotationY rotation, Float4x4& transform);
+    void            Combine_IntoRHS(RotationZ rotation, Float4x4& transform);
+	void            Combine_IntoRHS(ArbitraryRotation rotation, Float4x4& transform);
+	void            Combine_IntoRHS(Quaternion rotation, Float4x4& transform);
 
-    void            Combine_InPlace(Float4x4& transform, const Float3& translate);
-    void            Combine_InPlace(Float4x4& transform, const UniformScale& scale);
-    void            Combine_InPlace(Float4x4& transform, const ArbitraryScale& scale);
-    void            Combine_InPlace(Float4x4& transform, RotationX rotation);
-    void            Combine_InPlace(Float4x4& transform, RotationY rotation);
-    void            Combine_InPlace(Float4x4& transform, RotationZ rotation);
-	void            Combine_InPlace(Float4x4& transform, ArbitraryRotation rotation);
-    void            Combine_InPlace(Float4x4& transform, Quaternion rotation);
+    void            Combine_IntoLHS(Float4x4& transform, const Float3& translate);
+    void            Combine_IntoLHS(Float4x4& transform, const UniformScale& scale);
+    void            Combine_IntoLHS(Float4x4& transform, const ArbitraryScale& scale);
+    void            Combine_IntoLHS(Float4x4& transform, RotationX rotation);
+    void            Combine_IntoLHS(Float4x4& transform, RotationY rotation);
+    void            Combine_IntoLHS(Float4x4& transform, RotationZ rotation);
+	void            Combine_IntoLHS(Float4x4& transform, ArbitraryRotation rotation);
+    void            Combine_IntoLHS(Float4x4& transform, Quaternion rotation);
 
     Float4x4        Combine(const Float3x3& rotation, const Float4x4& transform);
 	Float4x4        Combine(const Float4x4& transform, const Float3x3& rotation);

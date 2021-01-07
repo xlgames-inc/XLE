@@ -176,8 +176,8 @@ namespace UnitTests
                 auto tMat = Combine(AsFloat4x4(temp), initialMat);
 
                 auto cMat = initialMat;
-                Combine_InPlace(temp._translation, cMat);
-                Combine_InPlace(ArbitraryScale(temp._scale), cMat);
+                Combine_IntoRHS(temp._translation, cMat);
+                Combine_IntoRHS(ArbitraryScale(temp._scale), cMat);
                 // cMat = Combine(AsFloat4x4(ArbitraryScale(temp._scale)), cMat);
                 const float tolerance = 1e-3f;
                 Assert::IsTrue(Equivalent(cMat, tMat, tolerance), L"Scale/translate order problem");

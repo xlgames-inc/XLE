@@ -896,43 +896,43 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::Translate_Static:
                 // i = AdvanceTo16ByteAlignment(i);
-                Combine_InPlace(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), *workingTransform);
+                Combine_IntoRHS(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), *workingTransform);
                 i += 3;
                 break;
 
             case TransformStackCommand::RotateX_Static:
-                Combine_InPlace(RotationX(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
+                Combine_IntoRHS(RotationX(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
                 i++;
                 break;
 
             case TransformStackCommand::RotateY_Static:
-                Combine_InPlace(RotationY(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
+                Combine_IntoRHS(RotationY(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
                 i++;
                 break;
 
             case TransformStackCommand::RotateZ_Static:
-                Combine_InPlace(RotationZ(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
+                Combine_IntoRHS(RotationZ(Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
                 i++;
                 break;
 
             case TransformStackCommand::Rotate_Static:
                 // i = AdvanceTo16ByteAlignment(i);
-                Combine_InPlace(ArbitraryRotation(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i+3)))), *workingTransform);
+                Combine_IntoRHS(ArbitraryRotation(AsFloat3(reinterpret_cast<const float*>(AsPointer(i))), Deg2Rad(*reinterpret_cast<const float*>(AsPointer(i+3)))), *workingTransform);
                 i += 4;
                 break;
 
 			case TransformStackCommand::RotateQuaternion_Static:
-				Combine_InPlace(*reinterpret_cast<const Quaternion*>(AsPointer(i)), *workingTransform);
+				Combine_IntoRHS(*reinterpret_cast<const Quaternion*>(AsPointer(i)), *workingTransform);
 				i += 4;
 				break;
 
             case TransformStackCommand::UniformScale_Static:
-                Combine_InPlace(UniformScale(*reinterpret_cast<const float*>(AsPointer(i))), *workingTransform);
+                Combine_IntoRHS(UniformScale(*reinterpret_cast<const float*>(AsPointer(i))), *workingTransform);
                 i++;
                 break;
 
             case TransformStackCommand::ArbitraryScale_Static:
-                Combine_InPlace(ArbitraryScale(AsFloat3(reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
+                Combine_IntoRHS(ArbitraryScale(AsFloat3(reinterpret_cast<const float*>(AsPointer(i)))), *workingTransform);
                 i+=3;
                 break;
 
@@ -951,7 +951,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float3s.size()) {
-                        Combine_InPlace(float3s[parameterIndex], *workingTransform);
+                        Combine_IntoRHS(float3s[parameterIndex], *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for Translate_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -962,7 +962,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
-                        Combine_InPlace(RotationX(Deg2Rad(float1s[parameterIndex])), *workingTransform);
+                        Combine_IntoRHS(RotationX(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for RotateX_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -973,7 +973,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
-                        Combine_InPlace(RotationY(Deg2Rad(float1s[parameterIndex])), *workingTransform);
+                        Combine_IntoRHS(RotationY(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for RotateY_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -984,7 +984,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
-                        Combine_InPlace(RotationZ(Deg2Rad(float1s[parameterIndex])), *workingTransform);
+                        Combine_IntoRHS(RotationZ(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for RotateZ_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -995,7 +995,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float4s.size()) {
-						Combine_InPlace(ArbitraryRotation(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
+						Combine_IntoRHS(ArbitraryRotation(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for Rotate_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -1007,7 +1007,7 @@ namespace RenderCore { namespace Assets
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float4s.size()) {
 						const Float4& p = float4s[parameterIndex];
-                        Combine_InPlace(Quaternion(p[0], p[1], p[2], p[3]), *workingTransform);
+                        Combine_IntoRHS(Quaternion(p[0], p[1], p[2], p[3]), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for RotateQuaternion_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -1018,7 +1018,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
-                        Combine_InPlace(UniformScale(float1s[parameterIndex]), *workingTransform);
+                        Combine_IntoRHS(UniformScale(float1s[parameterIndex]), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for UniformScale_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
@@ -1029,7 +1029,7 @@ namespace RenderCore { namespace Assets
                 {
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float3s.size()) {
-                        Combine_InPlace(ArbitraryScale(float3s[parameterIndex]), *workingTransform);
+                        Combine_IntoRHS(ArbitraryScale(float3s[parameterIndex]), *workingTransform);
                     } else {
                         Log(Warning) << "Warning -- bad parameter index for ArbitraryScale_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
