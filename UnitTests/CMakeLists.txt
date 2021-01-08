@@ -3,7 +3,8 @@ set(Src
     Utilities.cpp
     BasicMaths.cpp
     MathSerialization.cpp
-    StreamFormatter.cpp)
+    StreamFormatterTests.cpp
+    ConversionPatterns.cpp)
 
 add_executable(UnitTests ${Src})
 configure_xle_executable(UnitTests)
