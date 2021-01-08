@@ -32,14 +32,14 @@ namespace Assets
     std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const
     {
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
+        auto chunks = ChunkFile::LoadChunkTable(file);
         
         std::vector<AssetChunkResult> result;
         result.reserve(requests.size());
 
             // First scan through and check to see if we
             // have all of the chunks we need
-        using ChunkHeader = Serialization::ChunkFile::ChunkHeader;
+        using ChunkHeader = ChunkFile::ChunkHeader;
         for (const auto& r:requests) {
             auto i = std::find_if(
                 chunks.begin(), chunks.end(), 
@@ -77,7 +77,7 @@ namespace Assets
 
                 // initialize with the block serializer (if requested)
                 if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
-                    Serialization::Block_Initialize(chunkResult._buffer.get());
+                    Block_Initialize(chunkResult._buffer.get());
             } else if (r._dataType == AssetChunkRequest::DataType::ReopenFunction) {
 				auto offset = i->_fileOffset;
 				auto blobCopy = _blob;

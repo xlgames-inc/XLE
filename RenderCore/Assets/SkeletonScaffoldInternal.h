@@ -9,7 +9,7 @@
 #include "TransformationCommands.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Core/Types.h"

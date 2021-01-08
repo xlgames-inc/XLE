@@ -150,26 +150,26 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		);
 
 	static ::Assets::Blob SerializeSkin(
-		Serialization::NascentBlockSerializer& serializer, 
+		::Assets::NascentBlockSerializer& serializer, 
 		const NascentGeometryObjects& objs)
 	{
 		auto result = std::make_shared<std::vector<uint8>>();
 		{
-			Serialization::NascentBlockSerializer tempBlock;
+			::Assets::NascentBlockSerializer tempBlock;
 			for (auto i = objs._rawGeos.begin(); i!=objs._rawGeos.end(); ++i) {
 				i->second.SerializeWithResourceBlock(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
-			Serialize(serializer, objs._rawGeos.size());
+			SerializationOperator(serializer, objs._rawGeos.size());
 		}
 
 		{
-			Serialization::NascentBlockSerializer tempBlock;
+			::Assets::NascentBlockSerializer tempBlock;
 			for (auto i = objs._skinnedGeos.begin(); i!=objs._skinnedGeos.end(); ++i) {
 				i->second.SerializeWithResourceBlock(tempBlock, *result);
 			}
 			serializer.SerializeSubBlock(tempBlock);
-			Serialize(serializer, objs._skinnedGeos.size());
+			SerializationOperator(serializer, objs._skinnedGeos.size());
 		}
 		return result;
 	}
@@ -231,9 +231,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return result;
     }
 
-	#include "../Utility/ExposeStreamOp.h"
-
-    std::ostream& operator<<(std::ostream& stream, const NascentGeometryObjects& geos)
+    static std::ostream& SerializationOperator(std::ostream& stream, const NascentGeometryObjects& geos)
     {
         using namespace Operators;
 
@@ -258,16 +256,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		stream << cmdStream;
 		stream << std::endl;
 		stream << "============== Transformation Machine ==============" << std::endl;
-		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetDefaultParameters());
+		SerializationOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetDefaultParameters());
 	}
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(const std::string& name, const NascentGeometryObjects& geoObjects, const NascentModelCommandStream& cmdStream, const NascentSkeleton& skeleton)
 	{
-		Serialization::NascentBlockSerializer serializer;
+		::Assets::NascentBlockSerializer serializer;
 
-		Serialize(serializer, cmdStream);
+		SerializationOperator(serializer, cmdStream);
 		auto largeResourcesBlock = SerializeSkin(serializer, geoObjects);
-		Serialize(serializer, skeleton);
+		SerializationOperator(serializer, skeleton);
 
 			// Generate the default transforms and serialize them out
 			// unfortunately this requires we use the run-time types to
@@ -278,14 +276,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			auto defaultPoseData = CalculateDefaultPoseData(skeleton.GetSkeletonMachine(), skeleton.GetDefaultParameters(), cmdStream, geoObjects);
 			serializer.SerializeSubBlock(MakeIteratorRange(defaultPoseData._defaultTransforms));
 			serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
-			Serialize(serializer, defaultPoseData._boundingBox.first);
-			Serialize(serializer, defaultPoseData._boundingBox.second);
+			SerializationOperator(serializer, defaultPoseData._boundingBox.first);
+			SerializationOperator(serializer, defaultPoseData._boundingBox.second);
 		}
 
 		// Find the max LOD value, and serialize that
-		Serialize(serializer, cmdStream.GetMaxLOD());
+		SerializationOperator(serializer, cmdStream.GetMaxLOD());
 
-		// Serialize human-readable metrics information
+		// SerializationOperator human-readable metrics information
 		std::stringstream metricsStream;
 		TraceMetrics(metricsStream, geoObjects, cmdStream, skeleton);
 

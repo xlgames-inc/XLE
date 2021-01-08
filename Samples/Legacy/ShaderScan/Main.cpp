@@ -35,7 +35,7 @@ namespace ShaderScan
     {
         MemoryMappedInputStream stream(cmdLine.begin(), cmdLine.end());
         InputStreamFormatter<char> formatter(stream);
-        Document<InputStreamFormatter<char>> doc(formatter);
+        StreamDOM<InputStreamFormatter<char>> doc(formatter);
 
         auto inputFile = doc.Attribute("i").Value();
         if (inputFile.IsEmpty()) {

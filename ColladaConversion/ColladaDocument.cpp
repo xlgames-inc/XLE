@@ -137,7 +137,7 @@ namespace ColladaConversion
     static bool TryParseAssetDescElement(AssetDesc&desc, Formatter& formatter, Formatter::InteriorSection eleName)
     {
         if (Is(eleName, u("unit"))) {
-            // Utility::Document<Formatter> doc(formatter);
+            // Utility::StreamDOM<Formatter> doc(formatter);
             // _metersPerUnit = doc(u("meter"), _metersPerUnit);
             auto meter = ExtractSingleAttribute(formatter, u("meter"));
             desc._metersPerUnit = Parse(meter, desc._metersPerUnit);

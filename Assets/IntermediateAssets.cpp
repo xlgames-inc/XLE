@@ -326,7 +326,7 @@ namespace Assets { namespace IntermediateAssets
 
                         InputStreamFormatter<utf8> formatter(
                             MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
-                        Document<InputStreamFormatter<utf8>> doc(formatter);
+                        StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
 						auto compareVersion = doc.Attribute(u("VersionString")).Value();
 						if (XlEqString(compareVersion, (const utf8*)_constructorOptions._versionString.c_str())) {

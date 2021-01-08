@@ -31,7 +31,7 @@ namespace Converter
         // We're going to run a simple process that loads a texture file, runs some shader
         // process, and then writes out an output file.
         // This is a command line app; so our instructions should be on the command line.
-        // We're going to use a stream formatter & our "Document" asbtraction to interpret
+        // We're going to use a stream formatter & our "StreamDOM" asbtraction to interpret
         // the command line. 
         // We could replace the formatter with a version specialized for
         // command lines if we wanted a unix style command line syntax (and, actually, some
@@ -42,7 +42,7 @@ namespace Converter
 
         MemoryMappedInputStream stream(cmdLine.begin(), cmdLine.end());
         InputStreamFormatter<char> formatter(stream);
-        Document<InputStreamFormatter<char>> doc(formatter);
+        StreamDOM<InputStreamFormatter<char>> doc(formatter);
 
         auto outputDirectory = doc.Attribute("o").Value().AsString();
         auto inputFile = doc.Attribute("i").Value();
@@ -58,7 +58,7 @@ namespace Converter
 
 		ConsoleRig::CrossModule::GetInstance()._services.Add(
 			ConstHash64<'comp', 'iler', 'cfg'>::Value,
-			[&doc]() -> Document<InputStreamFormatter<char>>& { return doc; });
+			[&doc]() -> StreamDOM<InputStreamFormatter<char>>& { return doc; });
 
 		const utf8* xleResDir = u("game/xleres");
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir)));

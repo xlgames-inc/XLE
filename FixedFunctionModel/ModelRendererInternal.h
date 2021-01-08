@@ -8,7 +8,7 @@
 #include "SharedStateSet.h" // for SharedShaderName, SharedParameterBox, etc
 #include "../RenderCore/Assets/ModelScaffold.h"
 #include "../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../Utility/Streams/Serialization.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/IteratorUtils.h"
 

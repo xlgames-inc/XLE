@@ -13,7 +13,7 @@ namespace Utility
 {
 
     template <typename Formatter>
-        unsigned Document<Formatter>::ParseElement(Formatter& formatter, bool rootElement)
+        unsigned StreamDOM<Formatter>::ParseElement(Formatter& formatter, bool rootElement)
     {
         typename Formatter::InteriorSection section;
         if (!rootElement && !formatter.TryBeginElement(section))
@@ -90,15 +90,15 @@ namespace Utility
     }
 
     template <typename Formatter>
-        Internal::DocElementMarker<Formatter> Document<Formatter>::RootElement() const
+        StreamDOMElement<Formatter> StreamDOM<Formatter>::RootElement() const
     {
         if (_elements.empty())
             return {};
-        return Internal::DocElementMarker<Formatter>{0, *this};
+        return StreamDOMElement<Formatter>{0, *this};
     }
 
     template <typename Formatter>
-        Document<Formatter>::Document(Formatter& formatter)
+        StreamDOM<Formatter>::StreamDOM(Formatter& formatter)
     {
         _elements.reserve(32);
         _attributes.reserve(64);
@@ -110,18 +110,18 @@ namespace Utility
     }
 
     template <typename Formatter>
-        Document<Formatter>::Document() 
+        StreamDOM<Formatter>::StreamDOM() 
     {
     }
 
     template <typename Formatter>
-        Document<Formatter>::~Document()
+        StreamDOM<Formatter>::~StreamDOM()
     {
         assert(_activeMarkerCount==0);
     }
 
     template <typename Formatter>
-        Document<Formatter>::Document(Document&& moveFrom) never_throws
+        StreamDOM<Formatter>::StreamDOM(StreamDOM&& moveFrom) never_throws
     {
         assert(!moveFrom._activeMarkerCount);
         _elements = std::move(moveFrom._elements);
@@ -129,7 +129,7 @@ namespace Utility
     }
 
     template <typename Formatter>
-        auto Document<Formatter>::operator=(Document&& moveFrom) never_throws -> Document&
+        auto StreamDOM<Formatter>::operator=(StreamDOM&& moveFrom) never_throws -> StreamDOM&
     {
         assert(!_activeMarkerCount && !moveFrom._activeMarkerCount);
         _elements = std::move(moveFrom._elements);
@@ -139,169 +139,261 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::Element(StringSection<char_type> name) const -> StreamDOMElement<Formatter>
+    {
+        if (_index == ~0u) return {};
+        auto& ele2 = _doc->_elements[_index];
+
+        for (unsigned e=ele2._firstChild; e!=~0u;) {
+            const auto& ele = _doc->_elements[e];
+            if (XlEqString(ele._name, name))
+                return StreamDOMElement<Formatter>{e, *_doc};
+
+            e=ele._nextSibling;
+        }
+
+        return {};
+    }
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter> StreamDOMElement<Formatter>::Attribute(StringSection<char_type> name) const
+    {
+        if (_index == ~0u) return {};
+        return StreamDOMAttribute<Formatter>{FindAttribute(name), *_doc};
+    }
+
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::begin_children() const -> Internal::DocElementIterator<Formatter>
+    {
+        if (_index == ~0u) return {};
+        auto& ele = _doc->_elements[_index];
+        return Internal::DocElementIterator<Formatter>(
+            StreamDOMElement<Formatter>{ele._firstChild, *_doc});
+    }
+
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::end_children() const -> Internal::DocElementIterator<Formatter>
+    {
+        return {};
+    }
+
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::Name() const -> typename Formatter::InteriorSection
+    {
+        if (_index == ~0u) return {};
+        auto& ele = _doc->_elements[_index];
+        return ele._name;
+    }
+
+    template<typename Formatter>
+        unsigned StreamDOMElement<Formatter>::FindAttribute(StringSection<char_type> name) const
+    {
+        if (_index == ~0u) return ~0u;
+        
+        auto& ele = _doc->_elements[_index];
+        for (unsigned a=ele._firstAttribute; a!=~0u;) {
+            const auto& attrib = _doc->_attributes[a];
+            if (XlEqString(attrib._name, name))
+                return a;
+
+            a=attrib._nextSibling;
+        }
+
+        return ~0u;
+    }
+
+    template<typename Formatter>
+        Internal::DocAttributeIterator<Formatter> StreamDOMElement<Formatter>::begin_attributes() const
+    {
+        if (_index == ~0u) return {};
+        const auto& e = _doc->_elements[_index];
+        return Internal::DocAttributeIterator<Formatter>(
+            StreamDOMAttribute<Formatter>{e._firstAttribute, *_doc});
+    }
+
+    template<typename Formatter>
+        Internal::DocAttributeIterator<Formatter> StreamDOMElement<Formatter>::end_attributes() const
+    {
+        return {};
+    }
+
+    template<typename Formatter>
+        StreamDOMElement<Formatter>::StreamDOMElement(unsigned elementIndex, const StreamDOM<Formatter>& doc)
+    {
+        _doc = &doc;
+        _index = elementIndex;
+        DEBUG_ONLY( ++_doc->_activeMarkerCount; )
+    }
+
+    template<typename Formatter>
+        StreamDOMElement<Formatter>::StreamDOMElement()
+    {
+        _index = ~0u;
+        _doc = nullptr;
+    }
+
+    template<typename Formatter>
+        StreamDOMElement<Formatter>::~StreamDOMElement()
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+    }
+
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::operator=(const StreamDOMElement& cloneFrom) -> StreamDOMElement&
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+        _doc = cloneFrom._doc;
+        _index = cloneFrom._index;
+        #if defined(_DEBUG)
+            if (_doc)
+                ++_doc->_activeMarkerCount;
+        #endif
+        return *this;
+    }
+
+    template<typename Formatter>
+        StreamDOMElement<Formatter>::StreamDOMElement(const StreamDOMElement& cloneFrom)
+    {
+        _doc = cloneFrom._doc;
+        _index = cloneFrom._index;
+        #if defined(_DEBUG)
+            if (_doc)
+                ++_doc->_activeMarkerCount;
+        #endif
+    }
+
+    template<typename Formatter>
+        auto StreamDOMElement<Formatter>::operator=(StreamDOMElement&& moveFrom) never_throws -> StreamDOMElement&
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+        _doc = moveFrom._doc;
+        _index = moveFrom._index;
+        moveFrom._doc = nullptr;
+        moveFrom._index = ~0u;
+        return *this;
+    }
+
+    template<typename Formatter>
+        StreamDOMElement<Formatter>::StreamDOMElement(StreamDOMElement&& moveFrom) never_throws
+    {
+        _doc = moveFrom._doc;
+        _index = moveFrom._index;
+        moveFrom._doc = nullptr;
+        moveFrom._index = ~0u;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Formatter>
+        typename Formatter::InteriorSection StreamDOMAttribute<Formatter>::Name() const
+    {
+        if (_index == ~unsigned(0)) return {};
+        return _doc->_attributes[_index]._name;
+    }
+
+    template<typename Formatter>
+        typename Formatter::InteriorSection StreamDOMAttribute<Formatter>::Value() const
+    {
+        if (_index == ~unsigned(0)) return {};
+        return _doc->_attributes[_index]._value;
+    }
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter>::StreamDOMAttribute(
+            unsigned attributeIndex, 
+            const StreamDOM<Formatter>& doc)
+    : _doc(&doc), _index(attributeIndex)
+    {
+        DEBUG_ONLY( ++_doc->_activeMarkerCount; )
+    }
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter>::StreamDOMAttribute() 
+    : _doc(nullptr), _index(~0u) {}
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter>::~StreamDOMAttribute()
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+    }
+
+    template<typename Formatter>
+        auto StreamDOMAttribute<Formatter>::operator=(const StreamDOMAttribute& cloneFrom) -> StreamDOMAttribute&
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+        _doc = cloneFrom._doc;
+        _index = cloneFrom._index;
+        #if defined(_DEBUG)
+            if (_doc)
+                ++_doc->_activeMarkerCount;
+        #endif
+        return *this;
+    }
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter>::StreamDOMAttribute(const StreamDOMAttribute& cloneFrom)
+    {
+        _doc = cloneFrom._doc;
+        _index = cloneFrom._index;
+        #if defined(_DEBUG)
+            if (_doc)
+                ++_doc->_activeMarkerCount;
+        #endif
+    }
+
+    template<typename Formatter>
+        auto StreamDOMAttribute<Formatter>::operator=(StreamDOMAttribute&& moveFrom) never_throws -> StreamDOMAttribute&
+    {
+        #if defined(_DEBUG)
+            if (_doc) {
+                assert(_doc->_activeMarkerCount > 0);
+                --_doc->_activeMarkerCount;
+            }
+        #endif
+        _doc = moveFrom._doc;
+        _index = moveFrom._index;
+        moveFrom._doc = nullptr;
+        moveFrom._index = ~0u;
+        return *this;
+    }
+
+    template<typename Formatter>
+        StreamDOMAttribute<Formatter>::StreamDOMAttribute(StreamDOMAttribute&& moveFrom) never_throws
+    {
+        _doc = moveFrom._doc;
+        _index = moveFrom._index;
+        moveFrom._doc = nullptr;
+        moveFrom._index = ~0u;
+    }
+
     namespace Internal
     {
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::Element(const char_type name[]) const -> DocElementMarker<Formatter>
-        {
-            if (_index == ~0u) return {};
-            auto& ele2 = _doc->_elements[_index];
-
-            auto expectedNameLen = (ptrdiff_t)XlStringLen(name);
-            for (unsigned e=ele2._firstChild; e!=~0u;) {
-                const auto& ele = _doc->_elements[e];
-                auto nameLen = ele._name._end - ele._name._start;
-                if (nameLen == expectedNameLen && !XlComparePrefix(ele._name._start, name, nameLen))
-                    return DocElementMarker<Formatter>{e, *_doc};
-
-                e=ele._nextSibling;
-            }
-
-            return {};
-        }
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter> DocElementMarker<Formatter>::Attribute(const char_type name[]) const
-        {
-            if (_index == ~0u) return {};
-            return DocAttributeMarker<Formatter>{FindAttribute(name), *_doc};
-        }
-
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::begin_children() const -> DocElementIterator<Formatter>
-        {
-            if (_index == ~0u) return {};
-            auto& ele = _doc->_elements[_index];
-            return DocElementIterator<Formatter>(
-                DocElementMarker<Formatter>{ele._firstChild, *_doc});
-        }
-
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::end_children() const -> DocElementIterator<Formatter>
-        {
-            return {};
-        }
-
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::Name() const -> typename Formatter::InteriorSection
-        {
-            if (_index == ~0u) return {};
-            auto& ele = _doc->_elements[_index];
-            return ele._name;
-        }
-
-        template<typename Formatter>
-            unsigned DocElementMarker<Formatter>::FindAttribute(StringSection<char_type> name) const
-        {
-            if (_index == ~0u) return ~0u;
-            
-            auto& ele = _doc->_elements[_index];
-            for (unsigned a=ele._firstAttribute; a!=~0u;) {
-                const auto& attrib = _doc->_attributes[a];
-                if (XlEqString(attrib._name, name))
-                    return a;
-
-                a=attrib._nextSibling;
-            }
-
-            return ~0u;
-        }
-
-        template<typename Formatter>
-            DocAttributeIterator<Formatter> DocElementMarker<Formatter>::begin_attributes() const
-        {
-            if (_index == ~0u) return {};
-            const auto& e = _doc->_elements[_index];
-            return DocAttributeIterator<Formatter>(
-                DocAttributeMarker<Formatter>{e._firstAttribute, *_doc});
-        }
-
-        template<typename Formatter>
-            DocAttributeIterator<Formatter> DocElementMarker<Formatter>::end_attributes() const
-        {
-            return {};
-        }
-
-        template<typename Formatter>
-            DocElementMarker<Formatter>::DocElementMarker(unsigned elementIndex, const Document<Formatter>& doc)
-        {
-            _doc = &doc;
-            _index = elementIndex;
-            DEBUG_ONLY( ++_doc->_activeMarkerCount; )
-        }
-
-        template<typename Formatter>
-            DocElementMarker<Formatter>::DocElementMarker()
-        {
-            _index = ~0u;
-            _doc = nullptr;
-        }
-
-        template<typename Formatter>
-            DocElementMarker<Formatter>::~DocElementMarker()
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-        }
-
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::operator=(const DocElementMarker& cloneFrom) -> DocElementMarker&
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-            _doc = cloneFrom._doc;
-            _index = cloneFrom._index;
-            #if defined(_DEBUG)
-                if (_doc)
-                    ++_doc->_activeMarkerCount;
-            #endif
-            return *this;
-        }
-
-        template<typename Formatter>
-            DocElementMarker<Formatter>::DocElementMarker(const DocElementMarker& cloneFrom)
-        {
-            _doc = cloneFrom._doc;
-            _index = cloneFrom._index;
-            #if defined(_DEBUG)
-                if (_doc)
-                    ++_doc->_activeMarkerCount;
-            #endif
-        }
-
-        template<typename Formatter>
-            auto DocElementMarker<Formatter>::operator=(DocElementMarker&& moveFrom) never_throws -> DocElementMarker&
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-            _doc = moveFrom._doc;
-            _index = moveFrom._index;
-            moveFrom._doc = nullptr;
-            moveFrom._index = ~0u;
-            return *this;
-        }
-
-        template<typename Formatter>
-            DocElementMarker<Formatter>::DocElementMarker(DocElementMarker&& moveFrom) never_throws
-        {
-            _doc = moveFrom._doc;
-            _index = moveFrom._index;
-            moveFrom._doc = nullptr;
-            moveFrom._index = ~0u;
-        }
-
         template<typename Formatter>
             auto DocElementIterator<Formatter>::operator++() -> DocElementIterator<Formatter>&
         {
@@ -322,99 +414,6 @@ namespace Utility
             return *this;
         }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-        template<typename Formatter>
-            typename Formatter::InteriorSection DocAttributeMarker<Formatter>::Name() const
-        {
-            if (_index == ~unsigned(0)) return {};
-            return _doc->_attributes[_index]._name;
-        }
-
-        template<typename Formatter>
-            typename Formatter::InteriorSection DocAttributeMarker<Formatter>::Value() const
-        {
-            if (_index == ~unsigned(0)) return {};
-            return _doc->_attributes[_index]._value;
-        }
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter>::DocAttributeMarker(
-                unsigned attributeIndex, 
-                const Document<Formatter>& doc)
-        : _doc(&doc), _index(attributeIndex)
-        {
-            DEBUG_ONLY( ++_doc->_activeMarkerCount; )
-        }
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter>::DocAttributeMarker() 
-        : _doc(nullptr), _index(~0u) {}
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter>::~DocAttributeMarker()
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-        }
-
-        template<typename Formatter>
-            auto DocAttributeMarker<Formatter>::operator=(const DocAttributeMarker& cloneFrom) -> DocAttributeMarker&
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-            _doc = cloneFrom._doc;
-            _index = cloneFrom._index;
-            #if defined(_DEBUG)
-                if (_doc)
-                    ++_doc->_activeMarkerCount;
-            #endif
-            return *this;
-        }
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter>::DocAttributeMarker(const DocAttributeMarker& cloneFrom)
-        {
-            _doc = cloneFrom._doc;
-            _index = cloneFrom._index;
-            #if defined(_DEBUG)
-                if (_doc)
-                    ++_doc->_activeMarkerCount;
-            #endif
-        }
-
-        template<typename Formatter>
-            auto DocAttributeMarker<Formatter>::operator=(DocAttributeMarker&& moveFrom) never_throws -> DocAttributeMarker&
-        {
-            #if defined(_DEBUG)
-                if (_doc) {
-                    assert(_doc->_activeMarkerCount > 0);
-                    --_doc->_activeMarkerCount;
-                }
-            #endif
-            _doc = moveFrom._doc;
-            _index = moveFrom._index;
-            moveFrom._doc = nullptr;
-            moveFrom._index = ~0u;
-            return *this;
-        }
-
-        template<typename Formatter>
-            DocAttributeMarker<Formatter>::DocAttributeMarker(DocAttributeMarker&& moveFrom) never_throws
-        {
-            _doc = moveFrom._doc;
-            _index = moveFrom._index;
-            moveFrom._doc = nullptr;
-            moveFrom._index = ~0u;
-        }
 
         template<typename Formatter>
             auto DocAttributeIterator<Formatter>::operator++() -> DocAttributeIterator<Formatter>&
@@ -435,28 +434,27 @@ namespace Utility
             }
             return *this;
         }
-
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template class Document<InputStreamFormatter<utf8>>;
-    template class Document<InputStreamFormatter<ucs2>>;
-    template class Document<InputStreamFormatter<ucs4>>;
-    template class Document<InputStreamFormatter<char>>;
-    template class Document<XmlInputStreamFormatter<utf8>>;
+    template class StreamDOM<InputStreamFormatter<utf8>>;
+    template class StreamDOM<InputStreamFormatter<ucs2>>;
+    template class StreamDOM<InputStreamFormatter<ucs4>>;
+    template class StreamDOM<InputStreamFormatter<char>>;
+    template class StreamDOM<XmlInputStreamFormatter<utf8>>;
 
-    template class Internal::DocElementMarker<InputStreamFormatter<utf8>>;
-    template class Internal::DocElementMarker<InputStreamFormatter<ucs2>>;
-    template class Internal::DocElementMarker<InputStreamFormatter<ucs4>>;
-    template class Internal::DocElementMarker<InputStreamFormatter<char>>;
-    template class Internal::DocElementMarker<XmlInputStreamFormatter<utf8>>;
+    template class StreamDOMElement<InputStreamFormatter<utf8>>;
+    template class StreamDOMElement<InputStreamFormatter<ucs2>>;
+    template class StreamDOMElement<InputStreamFormatter<ucs4>>;
+    template class StreamDOMElement<InputStreamFormatter<char>>;
+    template class StreamDOMElement<XmlInputStreamFormatter<utf8>>;
 
-    template class Internal::DocAttributeMarker<InputStreamFormatter<utf8>>;
-    template class Internal::DocAttributeMarker<InputStreamFormatter<ucs2>>;
-    template class Internal::DocAttributeMarker<InputStreamFormatter<ucs4>>;
-    template class Internal::DocAttributeMarker<InputStreamFormatter<char>>;
-    template class Internal::DocAttributeMarker<XmlInputStreamFormatter<utf8>>;
+    template class StreamDOMAttribute<InputStreamFormatter<utf8>>;
+    template class StreamDOMAttribute<InputStreamFormatter<ucs2>>;
+    template class StreamDOMAttribute<InputStreamFormatter<ucs4>>;
+    template class StreamDOMAttribute<InputStreamFormatter<char>>;
+    template class StreamDOMAttribute<XmlInputStreamFormatter<utf8>>;
     
     template class Internal::DocElementIterator<InputStreamFormatter<utf8>>;
     template class Internal::DocElementIterator<InputStreamFormatter<ucs2>>;

@@ -463,7 +463,7 @@ namespace ColladaConversion
                 continue;
 
             auto ele = formatter.BeginElement(m->_name.AsString());
-            Serialize(formatter, i->second);
+            SerializationOperator(formatter, i->second);
             formatter.EndElement(ele);
         }
     }

@@ -11,7 +11,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StreamUtils.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -136,7 +136,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	#pragma pack(pop)
 
 	template <>
-		void    NascentSkeletonMachine::SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const
+		void    NascentSkeletonMachine::SerializeMethod(::Assets::NascentBlockSerializer& outputSerializer) const
 	{
 		//
 		//		Write the command stream
@@ -182,7 +182,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			boneNames.insert(boneNames.end(), j.second.begin(), j.second.end());
 			boneNames.push_back(0);
 		}
-		Serialize(outputSerializer, boneNames);
+		SerializationOperator(outputSerializer, boneNames);
 	}
 
 	void NascentSkeletonMachine::SetOutputInterface(IteratorRange<const JointTag*> jointNames)
@@ -199,7 +199,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return hashedInterface;
 	}
 
-	std::ostream& StreamOperator(
+	std::ostream& SerializationOperator(
 		std::ostream& stream, 
 		const NascentSkeletonMachine& transMachine, 
 		const TransformationParameterSet& defaultParameters)

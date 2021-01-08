@@ -142,8 +142,8 @@ namespace RenderCore { namespace ColladaConversion
             //
             //      Note that if we need to transpose the matrix input, then it must be done here!
             //
-        DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>> interleavedData(
-            std::unique_ptr<uint8[], Serialization::BlockSerializerDeleter<uint8[]>>(new uint8[elementSize * keyCount]), 
+        DynamicArray<uint8, BlockSerializerDeleter<uint8[]>> interleavedData(
+            std::unique_ptr<uint8[], BlockSerializerDeleter<uint8[]>>(new uint8[elementSize * keyCount]), 
             elementSize * keyCount);
         for (unsigned c=0; c<keyCount; ++c) {
             uint8* destination = PtrAdd(interleavedData.get(), c*elementSize);
@@ -196,7 +196,7 @@ namespace RenderCore { namespace ColladaConversion
             //      Record all of the time markers and position values (for each key in the input)
 
         assert(curve->getInputValues().getValuesCount() == keyCount);
-        std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>> timeMarkers;
+        std::unique_ptr<float[], BlockSerializerDeleter<float[]>> timeMarkers;
         timeMarkers.reset(AsFloats(curve->getInputValues()).release());
 
         return Assets::RawAnimationCurve(

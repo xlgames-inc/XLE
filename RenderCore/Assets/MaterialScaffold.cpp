@@ -25,7 +25,7 @@ namespace RenderCore { namespace Assets
 
 	const MaterialImmutableData& MaterialScaffold::ImmutableData() const
 	{
-		return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+		return *(const MaterialImmutableData*)Block_GetFirstObject(_rawMemoryBlock.get());
 	}
 
 	auto MaterialScaffold::GetMaterial(MaterialGuid guid) const -> const Material*

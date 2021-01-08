@@ -1163,7 +1163,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentChunkArray NascentModel::SerializeSkin() const
     {
-        Serialization::NascentBlockSerializer serializer;
+        NascentBlockSerializer serializer;
         std::vector<uint8> largeResourcesBlock;
 
         const bool traceSkeleton = false;
@@ -1175,10 +1175,10 @@ namespace RenderCore { namespace ColladaConversion
             ConsoleRig::GetWarningStream().Flush();
         }
 
-        Serialization::Serialize(serializer, _visualScene);
+        SerializationOperator(serializer, _visualScene);
         _objects.SerializeSkin(serializer, largeResourcesBlock);
 
-        Serialization::Serialize(serializer, _skeleton);
+        SerializationOperator(serializer, _skeleton);
 
             // Generate the default transforms and serialize them out
             // unfortunately this requires we use the run-time types to
@@ -1189,8 +1189,8 @@ namespace RenderCore { namespace ColladaConversion
             auto tempBlock = serializer.AsMemoryBlock();
             using namespace RenderCore::Assets;
 
-            Serialization::Block_Initialize(tempBlock.get());
-            auto* immData = (const ModelImmutableData*)Serialization::Block_GetFirstObject(tempBlock.get());
+            Block_Initialize(tempBlock.get());
+            auto* immData = (const ModelImmutableData*)Block_GetFirstObject(tempBlock.get());
 
             const auto& transMachine = immData->_embeddedSkeleton;
             auto defTransformCount = transMachine.GetOutputMatrixCount();
@@ -1232,8 +1232,8 @@ namespace RenderCore { namespace ColladaConversion
             auto boundingBox = CalculateBoundingBox(
                 _visualScene, _objects,
                 reordered.get(), &reordered[finalMatrixCount]);
-            Serialization::Serialize(serializer, boundingBox.first);
-            Serialization::Serialize(serializer, boundingBox.second);
+            SerializationOperator(serializer, boundingBox.first);
+            SerializationOperator(serializer, boundingBox.second);
             
             immData->~ModelImmutableData();
         }
@@ -1241,11 +1241,11 @@ namespace RenderCore { namespace ColladaConversion
         ConsoleRig::GetWarningStream().Flush();
 
         auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        size_t size = Block_GetSize(block.get());
 
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+        ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_ModelScaffold, 0, _name.c_str(), unsigned(size));
-        Serialization::ChunkFile::ChunkHeader largeBlockChunk(
+        ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, _name.c_str(), (unsigned)largeResourcesBlock.size());
 
         NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
@@ -1256,16 +1256,16 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentChunkArray NascentModel::SerializeAnimationSet() const
     {
-        Serialization::NascentBlockSerializer serializer;
+        NascentBlockSerializer serializer;
 
-        Serialization::Serialize(serializer, _animationSet);
+        SerializationOperator(serializer, _animationSet);
         _objects.SerializeAnimationSet(serializer);
         ConsoleRig::GetWarningStream().Flush();
 
         auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        size_t size = Block_GetSize(block.get());
 
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+        ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_AnimationSet, 0, _name.c_str(), unsigned(size));
 
         NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
@@ -1275,15 +1275,15 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentChunkArray NascentModel::SerializeSkeleton() const
     {
-        Serialization::NascentBlockSerializer serializer;
+        NascentBlockSerializer serializer;
 
-        Serialization::Serialize(serializer, _skeleton);
+        SerializationOperator(serializer, _skeleton);
         ConsoleRig::GetWarningStream().Flush();
 
         auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        size_t size = Block_GetSize(block.get());
 
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+        ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_Skeleton, 0, _name.c_str(), unsigned(size));
 
         NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
@@ -1315,8 +1315,8 @@ namespace RenderCore { namespace ColladaConversion
 
         auto finalSize = size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin());
 
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
+        ChunkFile::ChunkHeader scaffoldChunk(
+            RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), ChunkFile::SizeType(finalSize));
 
         NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
         result->push_back(NascentChunk(

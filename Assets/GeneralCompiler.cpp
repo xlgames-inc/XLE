@@ -371,7 +371,7 @@ namespace Assets
 				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {
 					auto stream = OpenFileOutput(std::move(file));
 					OutputStreamFormatter formatter(*stream);
-					Serialize(formatter, compileProducts);
+					SerializationOperator(formatter, compileProducts);
 				} else {
 					Throw(::Exceptions::BasicLabel("Failed while attempting to write compile products file in compile operation for (%s)", initializer.AsString().c_str()));
 				}

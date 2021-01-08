@@ -12,12 +12,12 @@
 #include "../Math/Matrix.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/IteratorUtils.h"
-#include "../Utility/Streams/Serialization.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include <vector>
 #include <iterator>
 #include <type_traits>
 
-namespace Serialization
+namespace Assets
 {
 
         ////////////////////////////////////////////////////
@@ -74,11 +74,7 @@ namespace Serialization
             uint64_t                _pointerOffset;
             uint64_t                _subBlockOffset;
             uint64_t                _subBlockSize;
-            #ifndef APPORTABLE
-                uint64_t                _specialBuffer;     // (this is SpecialBuffer::Enum. Made uint64_t to make alignment consistant across all platforms)
-            #else
-                SpecialBuffer::Enum     _specialBuffer;
-            #endif
+            uint64_t                _specialBuffer;     // (this is SpecialBuffer::Enum. Made uint64_t to make alignment consistant across all platforms)
         };
 
         static const size_t PtrFlagBit  = size_t(1)<<(size_t(sizeof(size_t)*8-1));
@@ -122,59 +118,59 @@ namespace Serialization
         };
     }
 
-	template<typename Type, typename std::enable_if<Serialization::Internal::HasSerializeMethod<Type>::Result>::type* = nullptr>
-		void Serialize(NascentBlockSerializer& serializer, const Type& value)
+	template<typename Type, typename std::enable_if<Internal::HasSerializeMethod<Type>::Result>::type* = nullptr>
+		void SerializationOperator(NascentBlockSerializer& serializer, const Type& value)
 			{ value.SerializeMethod(serializer); }
 
-	template <typename Type, typename std::enable_if<Serialization::Internal::IsValueType<Type>::Result>::type* = nullptr>
-		void Serialize(NascentBlockSerializer& serializer, const Type& value)
+	template <typename Type, typename std::enable_if<Internal::IsValueType<Type>::Result>::type* = nullptr>
+		void SerializationOperator(NascentBlockSerializer& serializer, const Type& value)
 			{ serializer.SerializeValue(value); }
 
 	template <typename Type, typename std::enable_if<std::is_same<const bool, decltype(Type::SerializeRaw)>::value && Type::SerializeRaw>::type* = nullptr>
-		void Serialize(NascentBlockSerializer& serializer, const Type& value)
+		void SerializationOperator(NascentBlockSerializer& serializer, const Type& value)
 			{ serializer.SerializeRaw(value); }
 
 	template<typename Type, typename Allocator>
-        void    Serialize  ( NascentBlockSerializer& serializer, const std::vector<Type, Allocator>& value )
+        void    SerializationOperator  ( NascentBlockSerializer& serializer, const std::vector<Type, Allocator>& value )
     {
         serializer.SerializeSubBlock(MakeIteratorRange(value), NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
 	template<typename Type>
-        void    Serialize  ( NascentBlockSerializer& serializer,const SerializableVector<Type>& value )
+        void    SerializationOperator  ( NascentBlockSerializer& serializer,const SerializableVector<Type>& value )
     {
         serializer.SerializeSubBlock(MakeIteratorRange(value), NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
     template<typename Type, typename Deletor>
-        void    Serialize  ( NascentBlockSerializer& serializer,const std::unique_ptr<Type, Deletor>& value, size_t count )
+        void    SerializationOperator  ( NascentBlockSerializer& serializer,const std::unique_ptr<Type, Deletor>& value, size_t count )
     {
         serializer.SerializeSubBlock(MakeIteratorRange(value.get(), &value[count]), NascentBlockSerializer::SpecialBuffer::UniquePtr);
     }
 
 	template<int Dimen, typename Primitive>
-		inline void Serialize(  NascentBlockSerializer& serializer,
+		inline void SerializationOperator(  NascentBlockSerializer& serializer,
 								const cml::vector< Primitive, cml::fixed<Dimen> >& vec)
 	{
 		for (unsigned j=0; j<Dimen; ++j) {
-			Serialize(serializer, vec[j]);
+			SerializationOperator(serializer, vec[j]);
 		}
 	}
     
-	inline void Serialize(  NascentBlockSerializer&  serializer,
+	inline void SerializationOperator(  NascentBlockSerializer&  serializer,
 							const ::XLEMath::Float4x4&              float4x4)
 	{
 		for (unsigned i=0; i<4; ++i)
 			for (unsigned j=0; j<4; ++j) {
-				Serialize(serializer, float4x4(i,j));
+				SerializationOperator(serializer, float4x4(i,j));
 			}
 	}
 
 	template<typename TypeLHS, typename TypeRHS>
-		void Serialize(NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)
+		void SerializationOperator(NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)
 			{ 
-				Serialize(serializer, value.first);
-				Serialize(serializer, value.second);
+				SerializationOperator(serializer, value.first);
+				SerializationOperator(serializer, value.second);
 				const auto padding = sizeof(typename std::pair<TypeLHS, TypeRHS>) - sizeof(TypeLHS) - sizeof(TypeRHS);
 				if (constant_expression<(padding > 0)>::result()) {
 					serializer.AddPadding(padding);
@@ -182,7 +178,7 @@ namespace Serialization
 			}
 
 		// the following has no implementation. Objects that don't match will attempt to use this implementation
-	void Serialize(NascentBlockSerializer& serializer, ...) = delete;
+	void SerializationOperator(NascentBlockSerializer& serializer, ...) = delete;
 
         ////////////////////////////////////////////////////
 
@@ -190,7 +186,7 @@ namespace Serialization
         void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer)
     {
         NascentBlockSerializer temporaryBlock;
-        for (const auto& i:range) Serialize(temporaryBlock, i);
+        for (const auto& i:range) SerializationOperator(temporaryBlock, i);
         SerializeSubBlock(temporaryBlock, specialBuffer);
     }
 
@@ -204,7 +200,7 @@ namespace Serialization
         void    NascentBlockSerializer::SerializeSubBlock(const Type* type)
     {
         NascentBlockSerializer temporaryBlock;
-        Serialize(temporaryBlock, type);
+        SerializationOperator(temporaryBlock, type);
         SerializeSubBlock(temporaryBlock, SpecialBuffer::Unknown);
     }
 
@@ -212,14 +208,14 @@ namespace Serialization
         void    NascentBlockSerializer::SerializeRaw(const std::vector<Type, Allocator>& vector)
     {
             // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
+        SerializeRawSubBlock(MakeIteratorRange(vector), NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
 	template<typename Type>
         void    NascentBlockSerializer::SerializeRaw(const SerializableVector<Type>& vector)
     {
             // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
+        SerializeRawSubBlock(MakeIteratorRange(vector), NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
 	template<typename Type, size_t Count>

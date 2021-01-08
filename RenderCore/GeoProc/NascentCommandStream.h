@@ -12,7 +12,7 @@
 #include <vector>
 #include <string>
 
-namespace Serialization { class NascentBlockSerializer; }
+namespace Assets { class NascentBlockSerializer; }
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
 namespace RenderCore { enum class Format : int; }
 namespace Utility { class OutputStream; }
@@ -66,11 +66,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		IteratorRange<const ConstantDriver*> GetConstantDrivers() const { return MakeIteratorRange(_constantDrivers); }
 		unsigned GetParameterIndex(const std::string& parameterName) const;
 
-		friend std::ostream& StreamOperator(
+		friend std::ostream& SerializationOperator(
 			std::ostream& stream, 
 			const NascentAnimationSet& transMachine);
 
-        void            SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+        void            SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
     private:
         std::vector<AnimationDriver>    _animationDrivers;
         std::vector<ConstantDriver>     _constantDrivers;
@@ -105,7 +105,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		void	WritePushLocalToWorld();
 		void	WritePopLocalToWorld(unsigned popCount=1);
 
-		void	SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+		void	SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
 
     private:
         NascentSkeletonMachine		_skeletonMachine;
@@ -133,7 +133,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail = ~0u;
 
-            void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+            void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
         };
 
             /////   S K I N   C O N T R O L L E R   I N S T A N C E   /////
@@ -145,7 +145,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail = ~0u;
 
-            void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+            void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
         };
 
             /////   C A M E R A   I N S T A N C E   /////
@@ -160,7 +160,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         void Add(SkinControllerInstance&& geoInstance);
 
         bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
-        void SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+        void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
 
         unsigned RegisterInputInterfaceMarker(const std::string& skeletonName, const std::string& name);
 

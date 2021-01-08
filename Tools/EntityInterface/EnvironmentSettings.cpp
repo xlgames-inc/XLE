@@ -161,12 +161,12 @@ namespace EntityInterface
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
             const auto* child = entities.GetEntity(obj._doc, c->second);
             if (child)
-                Serialize<CharType>(formatter, *child, entities);
+                SerializationOperator<CharType>(formatter, *child, entities);
         }
     }
 
     template<typename CharType>
-        void Serialize(
+        void SerializationOperator(
             OutputStreamFormatter& formatter,
             const RetainedEntity& obj,
             const RetainedEntities& entities)

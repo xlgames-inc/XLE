@@ -10,7 +10,7 @@
 #include "UTFUtils.h"
 #include "StringUtils.h"
 #include "IteratorUtils.h"
-#include "Streams/Serialization.h"
+#include "Streams/SerializationUtils.h"
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
@@ -187,7 +187,7 @@ namespace Utility
             const ImpliedTyping::TypeDesc& insertType);
 
 		template<typename Stream>
-			friend void Serialize(Stream& serializer, const ParameterBox& box);
+			friend void SerializationOperator(Stream& serializer, const ParameterBox& box);
     };
 
     #pragma pack(pop)
@@ -207,7 +207,7 @@ namespace Utility
         template<typename Stream>
             void TypeDesc::SerializeMethod(Stream& serializer) const
         {
-            Serialize(serializer, *(uint32_t*)this);
+            SerializationOperator(serializer, *(uint32_t*)this);
         }
     }
 
@@ -272,15 +272,15 @@ namespace Utility
     }
 
     template<typename Stream>
-        void Serialize(Stream& serializer, const ParameterBox& box)
+        void SerializationOperator(Stream& serializer, const ParameterBox& box)
     {
-        Serialize(serializer, box._cachedHash);
-        Serialize(serializer, box._cachedParameterNameHash);
-        Serialize(serializer, box._hashNames);
-        Serialize(serializer, box._offsets);
-        Serialize(serializer, box._names);
-        Serialize(serializer, box._values);
-        Serialize(serializer, box._types);
+        SerializationOperator(serializer, box._cachedHash);
+        SerializationOperator(serializer, box._cachedParameterNameHash);
+        SerializationOperator(serializer, box._hashNames);
+        SerializationOperator(serializer, box._offsets);
+        SerializationOperator(serializer, box._names);
+        SerializationOperator(serializer, box._values);
+        SerializationOperator(serializer, box._types);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

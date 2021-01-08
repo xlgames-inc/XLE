@@ -16,7 +16,7 @@
 namespace Utility { class OutputStream; }
 namespace Assets { class IFileInterface; }
 
-namespace Serialization { namespace ChunkFile
+namespace Assets { namespace ChunkFile
 {
     using TypeIdentifier = uint64_t;
     using SizeType = uint32_t;
@@ -98,7 +98,7 @@ namespace Serialization { namespace ChunkFile
             ~SimpleChunkFileWriterT();
 
             void BeginChunk(
-                Serialization::ChunkFile::TypeIdentifier type,
+                ChunkFile::TypeIdentifier type,
                 unsigned version, const char name[]);
             void FinishCurrentChunk();
 
@@ -109,7 +109,7 @@ namespace Serialization { namespace ChunkFile
 
         protected:
 			Writer _writer;
-            Serialization::ChunkFile::ChunkHeader _activeChunk;
+            ChunkFile::ChunkHeader _activeChunk;
             size_t _activeChunkStart;
             bool _hasActiveChunk;
             unsigned _chunkCount;

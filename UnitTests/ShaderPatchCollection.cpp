@@ -194,7 +194,7 @@ namespace UnitTests
 			// Write out the patch collection again
 			MemoryOutputStream<uint8> strm;
 			OutputStreamFormatter outFmttr(strm);
-			Serialize(outFmttr, patchCollection);
+			SerializationOperator(outFmttr, patchCollection);
 
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();

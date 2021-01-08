@@ -19,7 +19,7 @@ namespace ColladaConversion
 {
     using Formatter = XmlInputStreamFormatter<utf8>;
     using Section = Formatter::InteriorSection;
-    using SubDoc = Utility::Document<Formatter>;
+    using SubDoc = Utility::StreamDOM<Formatter>;
     using String = std::basic_string<Formatter::value_type>;
 
     class Effect;

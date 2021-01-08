@@ -195,7 +195,7 @@ namespace Utility
 	}
 
 	template<typename Type, typename std::enable_if<Internal::HasSerializeMethod<Type>::Result>::type* =nullptr>
-		inline void Serialize(OutputStreamFormatter& formatter, const Type& input)
+		inline void SerializationOperator(OutputStreamFormatter& formatter, const Type& input)
 	{
 		input.SerializeMethod(formatter);
 	}

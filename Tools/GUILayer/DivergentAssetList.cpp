@@ -365,7 +365,7 @@ namespace GUILayer
     {
         for (const auto&m:mats) {
             auto ele = formatter.BeginElement(m.first.c_str());
-            Serialize(formatter, m.second);
+            SerializationOperator(formatter, m.second);
             formatter.EndElement(ele);
         }
     }

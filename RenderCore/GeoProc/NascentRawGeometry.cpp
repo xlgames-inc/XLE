@@ -15,7 +15,7 @@
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
     void NascentRawGeometry::SerializeWithResourceBlock(
-        Serialization::NascentBlockSerializer& outputSerializer, 
+        ::Assets::NascentBlockSerializer& outputSerializer, 
         std::vector<uint8>& largeResourcesBlock) const
     {
             //  We're going to write the index and vertex buffer data to the "large resources block"
@@ -30,23 +30,23 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto ibSize = _indices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawInputAssembly, unsigned(vbOffset), unsigned(vbSize) });
 
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::IndexData 
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
         
-        Serialize(outputSerializer, _mainDrawCalls);
-		Serialize(outputSerializer, _geoSpaceToNodeSpace);
+        SerializationOperator(outputSerializer, _mainDrawCalls);
+		SerializationOperator(outputSerializer, _geoSpaceToNodeSpace);
 
-		Serialize(outputSerializer, _finalVertexIndexToOriginalIndex);
+		SerializationOperator(outputSerializer, _finalVertexIndexToOriginalIndex);
     }
 
-    std::ostream& StreamOperator(std::ostream& stream, const NascentRawGeometry& geo)
+    std::ostream& SerializationOperator(std::ostream& stream, const NascentRawGeometry& geo)
     {
         using namespace RenderCore::Assets::Operators;
         stream << "Vertex bytes: " << ByteCount(geo._vertices.size()) << std::endl;

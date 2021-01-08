@@ -8,10 +8,10 @@
 
 #include "BlockSerializer.h"
 #include "../Utility/MemoryUtils.h"
-#include "../Utility/Streams/Serialization.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include <vector>
 
-namespace Serialization
+namespace Assets
 {
 
         ////////////////////////////////////////////////////////////

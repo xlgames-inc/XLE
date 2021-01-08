@@ -17,7 +17,7 @@ namespace EntityInterface
     }
 
     template<typename CharType>
-        void Serialize(
+        void SerializationOperator(
             OutputStreamFormatter& formatter,
             const RetainedEntity& obj,
             const RetainedEntities& entities)
@@ -30,7 +30,7 @@ namespace EntityInterface
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
             const auto* child = entities.GetEntity(obj._doc, c->second);
             if (child)
-                Serialize<CharType>(formatter, *child, entities);
+                SerializationOperator<CharType>(formatter, *child, entities);
         }
 
         formatter.EndElement(eleId);
@@ -52,7 +52,7 @@ namespace EntityInterface
 
         for (const auto& s : rootFolders)
             if (s->_doc == docId) {
-                Serialize<utf8>(formatter, *s, flexGobInterface);
+                SerializationOperator<utf8>(formatter, *s, flexGobInterface);
                 break;
             }
         

@@ -10,7 +10,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/BlockSerializer.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 
@@ -209,34 +209,34 @@ namespace RenderCore { namespace Assets
 		return *this;
 	}
 
-	inline void Serialize(
-		Serialization::NascentBlockSerializer& outputSerializer,
+	inline void SerializationOperator(
+		::Assets::NascentBlockSerializer& outputSerializer,
 		const RenderCore::Assets::GeoInputAssembly& ia)
 	{
 		outputSerializer.SerializeRaw(ia._elements);
-		Serialize(outputSerializer, ia._vertexStride);
+		SerializationOperator(outputSerializer, ia._vertexStride);
 	}
 
-	inline void Serialize(
-		Serialization::NascentBlockSerializer& outputSerializer,
+	inline void SerializationOperator(
+		::Assets::NascentBlockSerializer& outputSerializer,
 		const RenderCore::Assets::IndexData& indexData)
 	{
-		Serialize(outputSerializer, (unsigned&)indexData._format);
-		Serialize(outputSerializer, indexData._offset);
-		Serialize(outputSerializer, indexData._size);
+		SerializationOperator(outputSerializer, (unsigned&)indexData._format);
+		SerializationOperator(outputSerializer, indexData._offset);
+		SerializationOperator(outputSerializer, indexData._size);
 	}
 
-	inline void Serialize(
-		Serialization::NascentBlockSerializer& outputSerializer,
+	inline void SerializationOperator(
+		::Assets::NascentBlockSerializer& outputSerializer,
 		const RenderCore::Assets::VertexData& vertexData)
 	{
-		Serialize(outputSerializer, vertexData._ia);
-		Serialize(outputSerializer, vertexData._offset);
-		Serialize(outputSerializer, vertexData._size);
+		SerializationOperator(outputSerializer, vertexData._ia);
+		SerializationOperator(outputSerializer, vertexData._offset);
+		SerializationOperator(outputSerializer, vertexData._size);
 	}
 
-	inline void Serialize(
-		Serialization::NascentBlockSerializer& outputSerializer,
+	inline void SerializationOperator(
+		::Assets::NascentBlockSerializer& outputSerializer,
 		const RenderCore::Assets::DrawCallDesc& drawCall)
 	{
 		outputSerializer.SerializeValue(drawCall._firstIndex);

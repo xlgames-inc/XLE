@@ -3,7 +3,7 @@
 #include "../Assets/BlockSerializer.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/PtrUtils.h"
-#include "../Utility/Streams/Serialization.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Prefix.h"
@@ -25,10 +25,10 @@ namespace SceneEngine
             BoundingBox                     _boundary;
 			SerializableVector<unsigned>	_objects;
 
-			void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const 
+			void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const 
 			{ 
-				Serialize(serializer, _boundary);
-				Serialize(serializer, _objects);
+				SerializationOperator(serializer, _boundary);
+				SerializationOperator(serializer, _objects);
 			}
 
             Payload() : _boundary(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX)) {}
@@ -92,11 +92,11 @@ namespace SceneEngine
                 Int2(std::min(resultMax[0], _desc._maxCell[0]), std::min(resultMax[1], _desc._maxCell[1])));
         }
 
-		void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
+		void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const
 		{
-			Serialize(serializer, _payloads);
-            Serialize(serializer, _oversized);
-            Serialize(serializer, _desc);
+			SerializationOperator(serializer, _payloads);
+            SerializationOperator(serializer, _oversized);
+            SerializationOperator(serializer, _desc);
 		}
     };
 #pragma pack(pop)
@@ -162,7 +162,7 @@ namespace SceneEngine
 
 	const GenericGridPartitioning::Pimpl& GenericGridPartitioning::GetPimpl() const
 	{
-		return *(const GenericGridPartitioning::Pimpl*)Serialization::Block_GetFirstObject(_dataBlock.get());
+		return *(const GenericGridPartitioning::Pimpl*)::Assets::Block_GetFirstObject(_dataBlock.get());
 	}
 
     bool GenericGridPartitioning::CalculateVisibleObjects(
@@ -278,8 +278,8 @@ namespace SceneEngine
 
         pimpl->_desc._maxCullResults = pimpl->CalculateMaxResults();
 
-        ::Serialization::NascentBlockSerializer serializer;
-		Serialize(serializer, *pimpl);
+        ::Assets::NascentBlockSerializer serializer;
+		SerializationOperator(serializer, *pimpl);
 		return std::vector<uint8_t>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());

@@ -207,15 +207,15 @@ namespace RenderCore { namespace Assets
     AnimationSet::AnimationSet() {}
     AnimationSet::~AnimationSet() {}
 
-	void AnimationSet::SerializeMethod(Serialization::NascentBlockSerializer& serializer) const
+	void AnimationSet::SerializeMethod(::Assets::NascentBlockSerializer& serializer) const
 	{
-		Serialize(serializer, _animationDrivers);
-		Serialize(serializer, _constantDrivers);
-		Serialize(serializer, _constantData);
-		Serialize(serializer, _animations);
-		Serialize(serializer, _outputInterface);
-		Serialize(serializer, _stringNameBlockOffsets);
-		Serialize(serializer, _stringNameBlock);
+		SerializationOperator(serializer, _animationDrivers);
+		SerializationOperator(serializer, _constantDrivers);
+		SerializationOperator(serializer, _constantData);
+		SerializationOperator(serializer, _animations);
+		SerializationOperator(serializer, _outputInterface);
+		SerializationOperator(serializer, _stringNameBlockOffsets);
+		SerializationOperator(serializer, _stringNameBlock);
 	}
 
     AnimationImmutableData::AnimationImmutableData() {}
@@ -353,7 +353,7 @@ namespace RenderCore { namespace Assets
 
     const SkeletonMachine&   SkeletonScaffold::GetTransformationMachine() const                
     {
-        return *(const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return *(const SkeletonMachine*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
     const ::Assets::AssetChunkRequest SkeletonScaffold::ChunkRequests[]
@@ -390,7 +390,7 @@ namespace RenderCore { namespace Assets
 
     const AnimationImmutableData&   AnimationSetScaffold::ImmutableData() const                
     {
-        return *(const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return *(const AnimationImmutableData*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
     const ::Assets::AssetChunkRequest AnimationSetScaffold::ChunkRequests[]
@@ -494,11 +494,11 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-    void    TransformationParameterSet::SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const
+    void    TransformationParameterSet::SerializeMethod(::Assets::NascentBlockSerializer& outputSerializer) const
     {
-        Serialize(outputSerializer, _float4x4Parameters);
-        Serialize(outputSerializer, _float4Parameters);
-        Serialize(outputSerializer, _float3Parameters);
-        Serialize(outputSerializer, _float1Parameters);
+        SerializationOperator(outputSerializer, _float4x4Parameters);
+        SerializationOperator(outputSerializer, _float4Parameters);
+        SerializationOperator(outputSerializer, _float3Parameters);
+        SerializationOperator(outputSerializer, _float1Parameters);
     }
 }}

@@ -184,7 +184,7 @@ namespace ConsoleRig
 
     auto LogConfigurationSet::LoadConfig(InputStreamFormatter<char>& formatter) -> Config
     {
-        Document<InputStreamFormatter<char>> doc(formatter);
+        StreamDOM<InputStreamFormatter<char>> doc(formatter);
         Config cfg;
         if (doc.RootElement().Attribute("OutputToConsole")) {
             bool outputToConsole = doc.RootElement().Attribute("OutputToConsole", false);

@@ -97,7 +97,7 @@
     <ClInclude Include="..\Streams\XmlStreamFormatter.h">
       <Filter>Streams</Filter>
     </ClInclude>
-    <ClInclude Include="..\Streams\Serialization.h">
+    <ClInclude Include="..\Streams\SerializationUtils.h">
       <Filter>Streams</Filter>
     </ClInclude>
     <ClInclude Include="..\Meta\ClassAccessors.h">
@@ -112,7 +112,6 @@
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\ParameterPackUtils.h" />
     <ClInclude Include="..\StreamUtils.h" />
-    <ClInclude Include="..\ExposeStreamOp.h" />
     <ClInclude Include="..\VariantUtils.h" />
     <ClInclude Include="..\Streams\PreprocessorInterpreter.h">
       <Filter>Streams</Filter>

@@ -52,7 +52,7 @@ namespace RenderCore { namespace Assets
     };
     
     static Blend DeserializeBlend(
-        DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
+        DocElementIterator<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
         if (ele) {
             auto child = ele.Attribute(name);
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
     }
 
     static BlendOp DeserializeBlendOp(
-        DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
+        DocElementIterator<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
         if (ele) {
             auto child = ele.Attribute(name);
@@ -89,7 +89,7 @@ namespace RenderCore { namespace Assets
     {
         RenderStateSet result;
 
-        Document<InputStreamFormatter<utf8>> doc(formatter);
+        StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
         {
             auto child = doc.Attribute(u("DoubleSided")).As<bool>();
@@ -347,7 +347,7 @@ namespace RenderCore { namespace Assets
     {
 		if (!_patchCollection.GetPatches().empty()) {
 			auto ele = formatter.BeginElement(u("Patches"));
-			Serialize(formatter, _patchCollection);
+			SerializationOperator(formatter, _patchCollection);
 			formatter.EndElement(ele);
 		}
 
@@ -443,7 +443,7 @@ namespace RenderCore { namespace Assets
 
         InputStreamFormatter<utf8> formatter(
             MemoryMappedInputStream(MakeIteratorRange(*blob)));
-        Document<decltype(formatter)> doc(formatter);
+        StreamDOM<decltype(formatter)> doc(formatter);
             
         for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
             auto name = config.Name();

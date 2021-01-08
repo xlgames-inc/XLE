@@ -239,7 +239,7 @@ namespace RenderCore { namespace Assets
 	{
 		for (const auto& p:patchCollections) {
 			auto ele = formatter.BeginElement("ShaderPatchCollection");
-			Serialize(formatter, p);
+			SerializationOperator(formatter, p);
 			formatter.EndElement(ele);
 		}
 	}	

@@ -19,26 +19,27 @@ namespace Utility
 {
     class OutputStreamFormatter;
 
+    template<typename Formatter> class StreamDOMElement;
+    template<typename Formatter> class StreamDOMAttribute;
+        
     namespace Internal
     {
-        template<typename Formatter> class DocElementMarker;
-        template<typename Formatter> class DocAttributeMarker;
         template<typename Formatter> class DocElementIterator;
         template<typename Formatter> class DocAttributeIterator;
     }
 
     template <typename Formatter>
-        class Document
+        class StreamDOM
     {
     public:
-        Internal::DocElementMarker<Formatter> RootElement() const;
+        StreamDOMElement<Formatter> RootElement() const;
 
-        Document();
-        Document(Formatter& formatter);
-        ~Document();
+        StreamDOM();
+        StreamDOM(Formatter& formatter);
+        ~StreamDOM();
 
-        Document(Document&& moveFrom) never_throws;
-        Document& operator=(Document&& moveFrom) never_throws;
+        StreamDOM(StreamDOM&& moveFrom) never_throws;
+        StreamDOM& operator=(StreamDOM&& moveFrom) never_throws;
     protected:
         using Section = typename Formatter::InteriorSection;
         struct AttributeDesc
@@ -64,8 +65,8 @@ namespace Utility
 
         unsigned ParseElement(Formatter& formatter, bool rootElement);
 
-        friend class Internal::DocElementMarker<Formatter>;
-        friend class Internal::DocAttributeMarker<Formatter>;
+        friend class StreamDOMElement<Formatter>;
+        friend class StreamDOMAttribute<Formatter>;
         friend class Internal::DocElementIterator<Formatter>;
         friend class Internal::DocAttributeIterator<Formatter>;
     };
@@ -74,84 +75,137 @@ namespace Utility
     {
         template<typename Formatter> class DocElementIterator;
         template<typename Formatter> class DocAttributeIterator;
+    }
 
-        template<typename Formatter>
-            struct DocElementMarker
-        {
-            using char_type = typename Formatter::value_type;
-            using Section = typename Formatter::InteriorSection;
-            
-            Section Name() const;
-
-            // Find children elements
-            DocElementMarker Element(const char_type name[]) const;
-
-            // Find & query attributes
-            DocAttributeMarker<Formatter> Attribute(const char_type name[]) const;
-            template<typename Type>
-                Type Attribute(const char_type name[], const Type& def) const;
-                
-            template<typename Type>
-                Type operator()(const char_type name[], const Type& def) const { return Attribute(name, def); }
-
-            // Iterate over children elements
-            DocElementIterator<Formatter> begin_children() const;
-            DocElementIterator<Formatter> end_children() const;
-
-            IteratorRange<DocElementIterator<Formatter>>
-                children() const { return { begin_children(), end_children() }; }
-
-            // Iterate over attributes
-            DocAttributeIterator<Formatter> begin_attributes() const;
-            DocAttributeIterator<Formatter> end_attributes() const;
-
-            IteratorRange<DocAttributeIterator<Formatter>>
-                attributes() const { return { begin_attributes(), end_attributes() }; }
-
-            operator bool() const { return _index != ~0u; }
-            bool operator!() const { return _index == ~0u; }
-
-            friend bool operator==(const DocElementMarker& lhs, const DocElementMarker& rhs)
-            {
-                if (lhs._index != rhs._index)
-                    return false;
-                if (lhs._index == ~0u)
-                    return true;
-                return lhs._doc == rhs._doc;
-            }
-
-            friend bool operator!=(const DocElementMarker& lhs, const DocElementMarker& rhs)
-            {
-                if (lhs._index != rhs._index)
-                    return true;
-                if (lhs._index == ~0u)
-                    return false;
-                return lhs._doc != rhs._doc;
-            }
-
-            DocElementMarker& operator=(const DocElementMarker&);
-            DocElementMarker(const DocElementMarker&);
-            DocElementMarker& operator=(DocElementMarker&&) never_throws;
-            DocElementMarker(DocElementMarker&&) never_throws;
-            DocElementMarker();
-            ~DocElementMarker();
-
-        protected:
-            DocElementMarker(unsigned elementIndex, const Document<Formatter>& doc);
-
-            unsigned FindAttribute(StringSection<char_type> name) const;
-
-            const Document<Formatter>* _doc;
-            friend class DocElementIterator<Formatter>;
-            friend class Document<Formatter>;
-            unsigned _index;
-        };
+    template<typename Formatter>
+        struct StreamDOMElement
+    {
+        using char_type = typename Formatter::value_type;
+        using Section = typename Formatter::InteriorSection;
         
+        Section Name() const;
+
+        template<typename Type, decltype(DeserializationOperator(std::declval<const StreamDOMElement&>(), std::declval<Type&>()))* =nullptr>
+            Type As() const;
+
+        // Find children elements
+        StreamDOMElement Element(StringSection<char_type> name) const;
+
+        // Find & query attributes
+        StreamDOMAttribute<Formatter> Attribute(StringSection<char_type> name) const;
+        template<typename Type>
+            Type Attribute(StringSection<char_type> name, const Type& def) const;
+
+        // Iterate over children elements
+        Internal::DocElementIterator<Formatter> begin_children() const;
+        Internal::DocElementIterator<Formatter> end_children() const;
+
+        IteratorRange<Internal::DocElementIterator<Formatter>>
+            children() const { return { begin_children(), end_children() }; }
+
+        // Iterate over attributes
+        Internal::DocAttributeIterator<Formatter> begin_attributes() const;
+        Internal::DocAttributeIterator<Formatter> end_attributes() const;
+
+        IteratorRange<Internal::DocAttributeIterator<Formatter>>
+            attributes() const { return { begin_attributes(), end_attributes() }; }
+
+        operator bool() const { return _index != ~0u; }
+        bool operator!() const { return _index == ~0u; }
+
+        friend bool operator==(const StreamDOMElement& lhs, const StreamDOMElement& rhs)
+        {
+            if (lhs._index != rhs._index)
+                return false;
+            if (lhs._index == ~0u)
+                return true;
+            return lhs._doc == rhs._doc;
+        }
+
+        friend bool operator!=(const StreamDOMElement& lhs, const StreamDOMElement& rhs)
+        {
+            if (lhs._index != rhs._index)
+                return true;
+            if (lhs._index == ~0u)
+                return false;
+            return lhs._doc != rhs._doc;
+        }
+
+        StreamDOMElement& operator=(const StreamDOMElement&);
+        StreamDOMElement(const StreamDOMElement&);
+        StreamDOMElement& operator=(StreamDOMElement&&) never_throws;
+        StreamDOMElement(StreamDOMElement&&) never_throws;
+        StreamDOMElement();
+        ~StreamDOMElement();
+
+    protected:
+        StreamDOMElement(unsigned elementIndex, const StreamDOM<Formatter>& doc);
+
+        unsigned FindAttribute(StringSection<char_type> name) const;
+
+        const StreamDOM<Formatter>* _doc;
+        friend class Internal::DocElementIterator<Formatter>;
+        friend class StreamDOM<Formatter>;
+        unsigned _index;
+    };
+
+    template<typename Formatter>
+        class StreamDOMAttribute
+    {
+    public:
+        using char_type = typename Formatter::value_type;
+
+        template<typename Type>
+            std::optional<Type> As() const;
+
+        typename Formatter::InteriorSection Name() const;
+        typename Formatter::InteriorSection Value() const;
+
+        operator bool() const { return _index != ~0u; }
+        bool operator!() const { return _index == ~0u; }
+
+        friend bool operator==(const StreamDOMAttribute& lhs, const StreamDOMAttribute& rhs)
+        {
+            if (lhs._index != rhs._index)
+                return false;
+            if (lhs._index == ~0u)
+                return true;
+            return lhs._doc == rhs._doc;
+        }
+
+        friend bool operator!=(const StreamDOMAttribute& lhs, const StreamDOMAttribute& rhs)
+        {
+            if (lhs._index != rhs._index)
+                return true;
+            if (lhs._index == ~0u)
+                return false;
+            return lhs._doc != rhs._doc;
+        }
+
+        StreamDOMAttribute& operator=(const StreamDOMAttribute&);
+        StreamDOMAttribute(const StreamDOMAttribute&);
+        StreamDOMAttribute& operator=(StreamDOMAttribute&&) never_throws;
+        StreamDOMAttribute(StreamDOMAttribute&&) never_throws;
+        StreamDOMAttribute();
+        ~StreamDOMAttribute();
+
+    protected:
+        const StreamDOM<Formatter>* _doc;
+        unsigned _index;
+
+        StreamDOMAttribute(unsigned attributeIndex, const StreamDOM<Formatter>& doc);
+
+        friend class StreamDOMElement<Formatter>;
+        friend class Internal::DocAttributeIterator<Formatter>;
+    };
+
+    namespace Internal
+    {
         template<typename Formatter>
             class DocElementIterator
         {
         public:
-            using Value = DocElementMarker<Formatter>;
+            using Value = StreamDOMElement<Formatter>;
 
             Value& operator*()                  { return _value; }
             const Value& operator*() const      { return _value; }
@@ -172,64 +226,14 @@ namespace Utility
         private:
             DocElementIterator(const Value& v) : _value(v) {}
             Value _value;
-            friend class DocElementMarker<Formatter>;
-        };
-
-        template<typename Formatter>
-            class DocAttributeMarker
-        {
-        public:
-            using char_type = typename Formatter::value_type;
-
-            template<typename Type>
-                std::optional<Type> As() const;
-
-            typename Formatter::InteriorSection Name() const;
-            typename Formatter::InteriorSection Value() const;
-
-            operator bool() const { return _index != ~0u; }
-            bool operator!() const { return _index == ~0u; }
-
-            friend bool operator==(const DocAttributeMarker& lhs, const DocAttributeMarker& rhs)
-            {
-                if (lhs._index != rhs._index)
-                    return false;
-                if (lhs._index == ~0u)
-                    return true;
-                return lhs._doc == rhs._doc;
-            }
-
-            friend bool operator!=(const DocAttributeMarker& lhs, const DocAttributeMarker& rhs)
-            {
-                if (lhs._index != rhs._index)
-                    return true;
-                if (lhs._index == ~0u)
-                    return false;
-                return lhs._doc != rhs._doc;
-            }
-
-            DocAttributeMarker& operator=(const DocAttributeMarker&);
-            DocAttributeMarker(const DocAttributeMarker&);
-            DocAttributeMarker& operator=(DocAttributeMarker&&) never_throws;
-            DocAttributeMarker(DocAttributeMarker&&) never_throws;
-            DocAttributeMarker();
-            ~DocAttributeMarker();
-
-        protected:
-            const Document<Formatter>* _doc;
-            unsigned _index;
-
-            DocAttributeMarker(unsigned attributeIndex, const Document<Formatter>& doc);
-
-            friend class DocElementMarker<Formatter>;
-            friend class DocAttributeIterator<Formatter>;
+            friend class StreamDOMElement<Formatter>;
         };
 
         template<typename Formatter>
             class DocAttributeIterator
         {
         public:
-            using Value = DocAttributeMarker<Formatter>;
+            using Value = StreamDOMAttribute<Formatter>;
 
             Value& operator*()                  { return _value; }
             const Value& operator*() const      { return _value; }
@@ -250,7 +254,7 @@ namespace Utility
         private:
             DocAttributeIterator(const Value& v) : _value(v) {}
             Value _value;
-            friend class DocElementMarker<Formatter>;
+            friend class StreamDOMElement<Formatter>;
         };
     }
 
@@ -262,31 +266,37 @@ namespace Utility
             std::optional<Type> Parse(const char* expressionBegin, const char* expressionEnd);
     }
     
-    namespace Internal
+    template<typename Formatter>
+        template<typename Type>
+            Type StreamDOMElement<Formatter>::Attribute(StringSection<char_type> name, const Type& def) const
     {
-        template<typename Formatter>
-            template<typename Type>
-                Type DocElementMarker<Formatter>::Attribute(const char_type name[], const Type& def) const
-        {
-            auto temp = Attribute(name).template As<Type>();
-            if (temp.has_value()) return temp.value();
-            return def;
-        }
+        auto temp = Attribute(name).template As<Type>();
+        if (temp.has_value()) return temp.value();
+        return def;
+    }
 
-        template<typename Formatter>
-            template<typename Type>
-                std::optional<Type> DocAttributeMarker<Formatter>::As() const
-        {
-            if (_index == ~unsigned(0)) return {};
-            const auto& attrib = _doc->_attributes[_index];
-            return ImpliedTyping::Parse<Type>(attrib._value);
-        }
+    template<typename Formatter>
+        template<typename Type, decltype(DeserializationOperator(std::declval<const StreamDOMElement<Formatter>&>(), std::declval<Type&>()))*>
+            Type StreamDOMElement<Formatter>::As() const
+    {
+        Type result;
+        DeserializationOperator(*this, result);
+        return result;
+    }
+
+    template<typename Formatter>
+        template<typename Type>
+            std::optional<Type> StreamDOMAttribute<Formatter>::As() const
+    {
+        if (_index == ~unsigned(0)) return {};
+        const auto& attrib = _doc->_attributes[_index];
+        return ImpliedTyping::Parse<Type>(attrib._value);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Type, typename CharType>
-        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
+        inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
     {
         formatter.WriteAttribute(
             name, 
@@ -294,23 +304,23 @@ namespace Utility
     }
 
     template<typename CharType>
-        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
+        inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
     {
         formatter.WriteAttribute(name, str);
     }
 
     template<typename CharType>
-        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const std::basic_string<CharType>& str)
+        inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const std::basic_string<CharType>& str)
     {
         formatter.WriteAttribute(name, str);
     }
 
     template<typename FirstType, typename SecondType, typename CharType>
-        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
+        inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
     {
         auto ele = formatter.BeginElement(name);
-        Serialize(formatter, u("First"), obj.first);
-        Serialize(formatter, u("Second"), obj.second);
+        SerializationOperator(formatter, u("First"), obj.first);
+        SerializationOperator(formatter, u("Second"), obj.second);
         formatter.EndElement(ele);
     }
 

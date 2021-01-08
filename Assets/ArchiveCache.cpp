@@ -128,7 +128,7 @@ namespace Assets
 
     static bool LoadBlockList(const utf8 filename[], std::vector<ArchiveDirectoryBlock>& blocks)
     {
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
         std::unique_ptr<IFileInterface> directoryFile;
         if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
             return false;
@@ -252,7 +252,7 @@ namespace Assets
             //  Note that the table of blocks is stored in order of id (for fast
             //  searches) not in the order that they appear in the file.
 
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
         {
             DirectoryChunk dirHdr;
             std::vector<ArchiveDirectoryBlock> blocks;
@@ -441,7 +441,7 @@ namespace Assets
     
     auto ArchiveCache::GetMetrics() const -> Metrics
     {
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
 
             // We need to open the file and get metrics information
             // for the blocks contained within

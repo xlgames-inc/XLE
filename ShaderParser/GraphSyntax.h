@@ -30,7 +30,7 @@ namespace GraphLanguage
 		std::unordered_map<std::string, AttributeTable> _attributeTables;
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
-	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile);
+	std::ostream& SerializationOperator(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile);
 
 	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,

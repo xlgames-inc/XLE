@@ -22,7 +22,6 @@ set(Headers
     Conversion.h
     Documentation.h
     ExceptionLogging.h
-    ExposeStreamOp.h
     FunctionUtils.h
     HeapUtils.h
     IntrusivePtr.h

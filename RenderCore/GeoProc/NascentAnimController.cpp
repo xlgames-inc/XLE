@@ -891,20 +891,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void Serialize(Serialization::NascentBlockSerializer& outputSerializer, const NascentBoundSkinnedGeometry::Section& section)
+	static void SerializationOperator(::Assets::NascentBlockSerializer& outputSerializer, const NascentBoundSkinnedGeometry::Section& section)
 	{
-		Serialize(outputSerializer, section._bindShapeByInverseBindMatrices);
-		Serialize(outputSerializer, section._preskinningDrawCalls);
+		SerializationOperator(outputSerializer, section._bindShapeByInverseBindMatrices);
+		SerializationOperator(outputSerializer, section._preskinningDrawCalls);
 		outputSerializer.SerializeSubBlock(MakeIteratorRange(section._jointMatrices));
         outputSerializer.SerializeValue(section._jointMatrices.size());
-		Serialize(outputSerializer, section._bindShapeMatrix);
+		SerializationOperator(outputSerializer, section._bindShapeMatrix);
 	}
 
     void NascentBoundSkinnedGeometry::SerializeWithResourceBlock(
-        Serialization::NascentBlockSerializer& outputSerializer, 
+        ::Assets::NascentBlockSerializer& outputSerializer, 
         std::vector<uint8_t>& largeResourcesBlock) const
     {
-        using namespace Serialization;
+        using namespace Assets;
 
         auto vbOffset0 = largeResourcesBlock.size();
         auto vbSize0 = _unanimatedVertexElements.size();
@@ -923,35 +923,35 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
             // first part is just like "NascentRawGeometry::SerializeMethod"
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawUnanimatedIA, unsigned(vbOffset0), unsigned(vbSize0) });
 
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::IndexData 
                 { _indexFormat, unsigned(ibOffset), unsigned(ibSize) });
 
-        Serialize(outputSerializer, _mainDrawCalls);
-		Serialize(outputSerializer, _geoSpaceToNodeSpace);
+        SerializationOperator(outputSerializer, _mainDrawCalls);
+		SerializationOperator(outputSerializer, _geoSpaceToNodeSpace);
 
-		Serialize(outputSerializer, _finalVertexIndexToOriginalIndex);
+		SerializationOperator(outputSerializer, _finalVertexIndexToOriginalIndex);
 
             // append skinning related information
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _mainDrawAnimatedIA, unsigned(vbOffset1), unsigned(vbSize1) });
-        Serialize(
+        SerializationOperator(
             outputSerializer, 
             RenderCore::Assets::VertexData 
                 { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
         
-		Serialize(outputSerializer, _preskinningSections);
+		SerializationOperator(outputSerializer, _preskinningSections);
 
-        Serialize(outputSerializer, _localBoundingBox.first);
-        Serialize(outputSerializer, _localBoundingBox.second);
+        SerializationOperator(outputSerializer, _localBoundingBox.first);
+        SerializationOperator(outputSerializer, _localBoundingBox.second);
     }
 
 
@@ -1058,7 +1058,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return *this;
     }
 
-    std::ostream& StreamOperator(std::ostream& stream, const NascentBoundSkinnedGeometry& geo)
+    std::ostream& SerializationOperator(std::ostream& stream, const NascentBoundSkinnedGeometry& geo)
     {
         using namespace RenderCore::Assets::Operators;
         stream << "   Unanimated VB bytes: " << ByteCount(geo._unanimatedVertexElements.size()) << " (" << geo._unanimatedVertexElements.size() / std::max(1u, geo._mainDrawUnanimatedIA._vertexStride) << "*" << geo._mainDrawUnanimatedIA._vertexStride << ")" << std::endl;

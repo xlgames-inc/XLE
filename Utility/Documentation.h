@@ -35,7 +35,7 @@
             InputStreamFormatter | <i>high performance parser of structured text files</i>
             OutputStreamFormatter | <i>output equivalent to InputStreamFormatter</i>
             XmlInputStreamFormatter | <i>load structured data from xml files</i>
-            Document | <i>exposes a "DOM" like interface for data from InputStreamFormatter or XmlInputStreamFormatter</i>
+            StreamDOM | <i>exposes a "DOM" like interface for data from InputStreamFormatter or XmlInputStreamFormatter</i>
             SplitPath | <i>utility for processing and merging paths</i>
             OutputStream | <i>primitive text-oriented stream interface (similar to std::ostream)</i>
             AttachFileSystemMonitor() | <i>monitor a file for future changes</i>

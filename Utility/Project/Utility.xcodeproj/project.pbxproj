@@ -55,7 +55,6 @@
 		8FD85D5E1EA688D1009BD9B0 /* API.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0C1EA688D1009BD9B0 /* API.h */; };
 		8FD85D5F1EA688D1009BD9B0 /* Documentation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0D1EA688D1009BD9B0 /* Documentation.h */; };
 		8FD85D601EA688D1009BD9B0 /* ExceptionLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */; };
-		8FD85D611EA688D1009BD9B0 /* ExposeStreamOp.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0F1EA688D1009BD9B0 /* ExposeStreamOp.h */; };
 		8FD85D621EA688D1009BD9B0 /* FunctionUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */; };
 		8FD85D631EA688D1009BD9B0 /* FunctionUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */; };
 		8FD85D651EA688D1009BD9B0 /* HashUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */; };
@@ -88,7 +87,7 @@
 		8FD85D801EA688D1009BD9B0 /* FileUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D321EA688D1009BD9B0 /* FileUtils.h */; };
 		8FD85D811EA688D1009BD9B0 /* PathUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */; };
 		8FD85D821EA688D1009BD9B0 /* PathUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D341EA688D1009BD9B0 /* PathUtils.h */; };
-		8FD85D831EA688D1009BD9B0 /* Serialization.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D351EA688D1009BD9B0 /* Serialization.h */; };
+		8FD85D831EA688D1009BD9B0 /* SerializationUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D351EA688D1009BD9B0 /* SerializationUtils.h */; };
 		8FD85D841EA688D1009BD9B0 /* Stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D361EA688D1009BD9B0 /* Stream.cpp */; };
 		8FD85D851EA688D1009BD9B0 /* Stream.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D371EA688D1009BD9B0 /* Stream.h */; };
 		8FD85D861EA688D1009BD9B0 /* StreamDOM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D381EA688D1009BD9B0 /* StreamDOM.cpp */; };
@@ -160,7 +159,6 @@
 		8FD85D0C1EA688D1009BD9B0 /* API.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = API.h; sourceTree = "<group>"; };
 		8FD85D0D1EA688D1009BD9B0 /* Documentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Documentation.h; path = ../Documentation.h; sourceTree = "<group>"; };
 		8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ExceptionLogging.h; path = ../ExceptionLogging.h; sourceTree = "<group>"; };
-		8FD85D0F1EA688D1009BD9B0 /* ExposeStreamOp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ExposeStreamOp.h; path = ../ExposeStreamOp.h; sourceTree = "<group>"; };
 		8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FunctionUtils.cpp; path = ../FunctionUtils.cpp; sourceTree = "<group>"; };
 		8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FunctionUtils.h; path = ../FunctionUtils.h; sourceTree = "<group>"; };
 		8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HashUtils.cpp; path = ../HashUtils.cpp; sourceTree = "<group>"; };
@@ -193,7 +191,7 @@
 		8FD85D321EA688D1009BD9B0 /* FileUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileUtils.h; sourceTree = "<group>"; };
 		8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PathUtils.cpp; sourceTree = "<group>"; };
 		8FD85D341EA688D1009BD9B0 /* PathUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PathUtils.h; sourceTree = "<group>"; };
-		8FD85D351EA688D1009BD9B0 /* Serialization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Serialization.h; sourceTree = "<group>"; };
+		8FD85D351EA688D1009BD9B0 /* SerializationUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SerializationUtils.h; sourceTree = "<group>"; };
 		8FD85D361EA688D1009BD9B0 /* Stream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Stream.cpp; sourceTree = "<group>"; };
 		8FD85D371EA688D1009BD9B0 /* Stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Stream.h; sourceTree = "<group>"; };
 		8FD85D381EA688D1009BD9B0 /* StreamDOM.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StreamDOM.cpp; sourceTree = "<group>"; };
@@ -274,7 +272,6 @@
 				8FD85D0A1EA688D1009BD9B0 /* Conversion.h */,
 				8FD85D0D1EA688D1009BD9B0 /* Documentation.h */,
 				8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */,
-				8FD85D0F1EA688D1009BD9B0 /* ExposeStreamOp.h */,
 				8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */,
 				8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */,
 				8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */,
@@ -375,7 +372,7 @@
 				8FD85D341EA688D1009BD9B0 /* PathUtils.h */,
 				8F4D189022BC1E6400E48517 /* PreprocessorInterpreter.cpp */,
 				8F4D188E22BC1E5000E48517 /* PreprocessorInterpreter.h */,
-				8FD85D351EA688D1009BD9B0 /* Serialization.h */,
+				8FD85D351EA688D1009BD9B0 /* SerializationUtils.h */,
 				8FD85D361EA688D1009BD9B0 /* Stream.cpp */,
 				8FD85D371EA688D1009BD9B0 /* Stream.h */,
 				8FD85D381EA688D1009BD9B0 /* StreamDOM.cpp */,
@@ -436,7 +433,7 @@
 				8FD85D691EA688D1009BD9B0 /* IteratorUtils.h in Headers */,
 				8FD85D5D1EA688D1009BD9B0 /* Conversion.h in Headers */,
 				8FD85D5F1EA688D1009BD9B0 /* Documentation.h in Headers */,
-				8FD85D831EA688D1009BD9B0 /* Serialization.h in Headers */,
+				8FD85D831EA688D1009BD9B0 /* SerializationUtils.h in Headers */,
 				8FD85D8A1EA688D1009BD9B0 /* StreamTypes.h in Headers */,
 				8FD85D761EA688D1009BD9B0 /* ParameterPackUtils.h in Headers */,
 				8F90567F1FA2749D0020DDB5 /* SuppressionProfiler.h in Headers */,
@@ -459,7 +456,6 @@
 				8FD85D6F1EA688D1009BD9B0 /* ClassAccessorsImpl.h in Headers */,
 				8FD85D6C1EA688D1009BD9B0 /* AccessorSerialize.h in Headers */,
 				8FD85D8E1EA688D1009BD9B0 /* XmlStreamFormatter.h in Headers */,
-				8FD85D611EA688D1009BD9B0 /* ExposeStreamOp.h in Headers */,
 				8FD85D891EA688D1009BD9B0 /* StreamFormatter.h in Headers */,
 				8FD85D851EA688D1009BD9B0 /* Stream.h in Headers */,
 				8FD85D7B1EA688D1009BD9B0 /* Data.h in Headers */,

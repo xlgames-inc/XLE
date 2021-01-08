@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,6 +10,18 @@
 #include <vector>
 #include <cstdint>
 #include <algorithm>		// (for std::max)
+
+template<typename Stream, typename Object, decltype(SerializationOperator(std::declval<Stream&>(), std::declval<const Object&>()))* =nullptr>
+	Stream& operator<<(Stream& stream, const Object& obj)
+		{ SerializationOperator(stream, obj); return stream; }
+
+template<typename Stream, typename Object, decltype(DeserializationOperator(std::declval<Stream&>(), std::declval<Object&>()))* =nullptr>
+	Stream& operator>>(Stream& stream, Object& obj)
+		{ DeserializationOperator(stream, obj); return stream; }
+
+template<typename Stream, typename Object, decltype(DeserializationOperator(std::declval<const Stream&>(), std::declval<Object&>()))* =nullptr>
+	const Stream& operator>>(const Stream& stream, Object& obj)
+		{ DeserializationOperator(stream, obj); return stream; }
 
 namespace Utility
 {
@@ -121,10 +131,6 @@ namespace Utility
     };
 
         ////////////////////////////////////////////////////
-
-    // template<typename Type>
-    //    using SerializableVector = std::vector<Type, BlockSerializerAllocator<Type>>;
-
 
 	#pragma push_macro("new")
 	#undef new

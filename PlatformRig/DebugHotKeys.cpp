@@ -51,7 +51,7 @@ namespace PlatformRig
 		const ::Assets::DepValPtr& depVal)
 	: _validationCallback(depVal)
     {
-        Document<InputStreamFormatter<utf8>> doc(formatter);
+        StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
         auto attrib = doc.FirstAttribute();
         while (attrib) {

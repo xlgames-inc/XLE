@@ -27,8 +27,6 @@ namespace RenderCore { namespace Assets
         const std::vector<InputElementDesc>& vertexInputLayout,
         unsigned vertexStride);
     
-    std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia);
-    std::ostream& StreamOperator(std::ostream& stream, const DrawCallDesc& dc);
-
-    #include "../../Utility/ExposeStreamOp.h"
+    std::ostream& SerializationOperator(std::ostream& stream, const GeoInputAssembly& ia);
+    std::ostream& SerializationOperator(std::ostream& stream, const DrawCallDesc& dc);
 }}

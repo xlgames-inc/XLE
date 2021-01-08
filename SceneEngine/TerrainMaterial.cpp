@@ -167,7 +167,7 @@ namespace SceneEngine
         bool)
     : TerrainMaterialConfig()
     {
-        Document<InputStreamFormatter<utf8>> doc(formatter);
+        StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
         for (auto matCfg=doc.FirstChild(); matCfg; matCfg=matCfg.NextSibling()) {
             if (XlEqString(matCfg.Name(), u("StrataMaterial"))) {
@@ -239,13 +239,13 @@ namespace SceneEngine
     }
 
     #if 0
-        Serialize(formatter, u("DiffuseDims"), _diffuseDims);
-        Serialize(formatter, u("NormalDims"), _normalDims);
-        Serialize(formatter, u("ParamDims"), _paramDims);
+        SerializationOperator(formatter, u("DiffuseDims"), _diffuseDims);
+        SerializationOperator(formatter, u("NormalDims"), _normalDims);
+        SerializationOperator(formatter, u("ParamDims"), _paramDims);
 
         for (auto mat=_strataMaterials.cbegin(); mat!=_strataMaterials.cend(); ++mat) {
             auto matEle = formatter.BeginElement(u("StrataMaterial"));
-            Serialize(formatter, "MaterialId", mat->_id);
+            SerializationOperator(formatter, "MaterialId", mat->_id);
 
             auto strataList = formatter.BeginElement(u("Strata"));
             unsigned strataIndex = 0;
@@ -254,8 +254,8 @@ namespace SceneEngine
                 for (unsigned t=0; t<dimof(TextureNames); ++t)
                     formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
 
-                Serialize(formatter, "EndHeight", s->_endHeight);
-                Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
+                SerializationOperator(formatter, "EndHeight", s->_endHeight);
+                SerializationOperator(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
                 formatter.EndElement(strata);
             }
             formatter.EndElement(strataList);
@@ -264,15 +264,15 @@ namespace SceneEngine
 
         for (auto mat=_gradFlagMaterials.cbegin(); mat!=_gradFlagMaterials.cend(); ++mat) {
             auto matEle = formatter.BeginElement(u("GradFlagMaterial"));
-            Serialize(formatter, "MaterialId", mat->_id);
+            SerializationOperator(formatter, "MaterialId", mat->_id);
             
-            Serialize(formatter, "Texture0", mat->_texture[0]);
-            Serialize(formatter, "Texture1", mat->_texture[1]);
-            Serialize(formatter, "Texture2", mat->_texture[2]);
-            Serialize(formatter, "Texture3", mat->_texture[3]);
-            Serialize(formatter, "Texture4", mat->_texture[4]);
+            SerializationOperator(formatter, "Texture0", mat->_texture[0]);
+            SerializationOperator(formatter, "Texture1", mat->_texture[1]);
+            SerializationOperator(formatter, "Texture2", mat->_texture[2]);
+            SerializationOperator(formatter, "Texture3", mat->_texture[3]);
+            SerializationOperator(formatter, "Texture4", mat->_texture[4]);
             using namespace ImpliedTyping;
-            Serialize(formatter, "Mapping", 
+            SerializationOperator(formatter, "Mapping", 
                 AsString(
                     mat->_mappingConstant, sizeof(mat->_mappingConstant),
                     TypeDesc(TypeCat::Float, dimof(mat->_mappingConstant)), true));
@@ -281,11 +281,11 @@ namespace SceneEngine
 
         for (auto mat=_procTextures.cbegin(); mat!=_procTextures.cend(); ++mat) {
             auto matEle = formatter.BeginElement(u("ProcTextureSetting"));
-            Serialize(formatter, "Name", mat->_name);
-            Serialize(formatter, "Texture0", mat->_texture[0]);
-            Serialize(formatter, "Texture1", mat->_texture[1]);
-            Serialize(formatter, "HGrid", mat->_hgrid);
-            Serialize(formatter, "Gain", mat->_gain);
+            SerializationOperator(formatter, "Name", mat->_name);
+            SerializationOperator(formatter, "Texture0", mat->_texture[0]);
+            SerializationOperator(formatter, "Texture1", mat->_texture[1]);
+            SerializationOperator(formatter, "HGrid", mat->_hgrid);
+            SerializationOperator(formatter, "Gain", mat->_gain);
             formatter.EndElement(matEle);
         }
     #endif

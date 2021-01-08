@@ -30,7 +30,7 @@ namespace TextureTransform
     using namespace BufferUploads;
 
     template<typename Formatter>
-        static ParameterBox CreateParameterBox(const DocElementHelper<Formatter>& element)
+        static ParameterBox CreateParameterBox(const DocElementIterator<Formatter>& element)
     {
         ParameterBox result;
         for (auto attr = element.FirstAttribute(); attr; attr = attr.Next())
@@ -61,7 +61,7 @@ namespace TextureTransform
         // We're going to run a simple process that loads a texture file, runs some shader
         // process, and then writes out an output file.
         // This is a command line app; so our instructions should be on the command line.
-        // We're going to use a stream formatter & our "Document" asbtraction to interpret
+        // We're going to use a stream formatter & our "StreamDOM" asbtraction to interpret
         // the command line. 
         // We could replace the formatter with a version specialized for
         // command lines if we wanted a unix style command line syntax (and, actually, some
@@ -72,7 +72,7 @@ namespace TextureTransform
 
         MemoryMappedInputStream stream(cmdLine.begin(), cmdLine.end());
         InputStreamFormatter<char> formatter(stream);
-        Document<InputStreamFormatter<char>> doc(formatter);
+        StreamDOM<InputStreamFormatter<char>> doc(formatter);
 
         auto outputFile = doc.Attribute("o").Value();
         auto shader = doc.Attribute("s").Value();

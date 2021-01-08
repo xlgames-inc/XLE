@@ -14,21 +14,21 @@
 #include <vector>
 #include <memory>
 
-namespace Serialization { class NascentBlockSerializer; }
+namespace Assets { class NascentBlockSerializer; }
 
 namespace Assets
 {
 	class NascentChunk
 	{
 	public:
-		Serialization::ChunkFile::ChunkHeader _hdr;
+		ChunkFile::ChunkHeader _hdr;
 		Blob _data;
 	};
 
 	using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
 	NascentChunkArray MakeNascentChunkArray(const std::initializer_list<NascentChunk>& inits);
 
-	Blob AsBlob(const Serialization::NascentBlockSerializer& serializer);
+	Blob AsBlob(const NascentBlockSerializer& serializer);
 	Blob AsBlob(IteratorRange<const void*>);
 
 	template<typename Char>
@@ -41,8 +41,8 @@ namespace Assets
 	template<typename Type>
 		static Blob SerializeToBlob(const Type& obj)
 	{
-		Serialization::NascentBlockSerializer serializer;
-		Serialize(serializer, obj);
+		NascentBlockSerializer serializer;
+		SerializationOperator(serializer, obj);
 		return AsBlob(serializer);
 	}
 

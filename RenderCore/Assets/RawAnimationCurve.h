@@ -8,7 +8,7 @@
 
 #include "../Types_Forward.h"
 #include "../../Utility/PtrUtils.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
 
@@ -62,12 +62,12 @@ namespace RenderCore { namespace Assets
     template<typename Serializer>
         void        RawAnimationCurve::SerializeMethod(Serializer& outputSerializer) const
     {
-        Serialize(outputSerializer, _timeMarkers);
-        Serialize(outputSerializer, _keyData);
-        Serialize(outputSerializer, _keyDataDesc._flags);
-		Serialize(outputSerializer, _keyDataDesc._elementStride);
-        Serialize(outputSerializer, unsigned(_keyDataDesc._elementFormat));
-		Serialize(outputSerializer, unsigned(_interpolationType));
+        SerializationOperator(outputSerializer, _timeMarkers);
+        SerializationOperator(outputSerializer, _keyData);
+        SerializationOperator(outputSerializer, _keyDataDesc._flags);
+		SerializationOperator(outputSerializer, _keyDataDesc._elementStride);
+        SerializationOperator(outputSerializer, unsigned(_keyDataDesc._elementFormat));
+		SerializationOperator(outputSerializer, unsigned(_interpolationType));
     }
 
 }}

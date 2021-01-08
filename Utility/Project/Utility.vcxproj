@@ -69,7 +69,6 @@
     <ClInclude Include="..\Conversion.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\ExceptionLogging.h" />
-    <ClInclude Include="..\ExposeStreamOp.h" />
     <ClInclude Include="..\FunctionUtils.h" />
     <ClInclude Include="..\HeapUtils.h" />
     <ClInclude Include="..\IteratorUtils.h" />
@@ -92,7 +91,7 @@
     <ClInclude Include="..\Streams\FileSystemMonitor.h" />
     <ClInclude Include="..\Streams\FileUtils.h" />
     <ClInclude Include="..\Streams\PathUtils.h" />
-    <ClInclude Include="..\Streams\Serialization.h" />
+    <ClInclude Include="..\Streams\SerializationUtils.h" />
     <ClInclude Include="..\Streams\Stream.h" />
     <ClInclude Include="..\Streams\StreamDOM.h" />
     <ClInclude Include="..\Streams\StreamFormatter.h" />

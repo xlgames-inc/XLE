@@ -13,7 +13,7 @@
 #include "../Utility/MemoryUtils.h"
 #include <tuple>
 
-namespace Serialization { namespace ChunkFile
+namespace Assets { namespace ChunkFile
 {
     ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[])
     {
@@ -52,13 +52,13 @@ namespace Serialization { namespace ChunkFile
         return result;
     }
 
-    Serialization::ChunkFile::ChunkHeader FindChunk(
+    ChunkFile::ChunkHeader FindChunk(
         const utf8 filename[],
-        std::vector<Serialization::ChunkFile::ChunkHeader>& hdrs,
-        Serialization::ChunkFile::TypeIdentifier chunkType,
+        std::vector<ChunkFile::ChunkHeader>& hdrs,
+        ChunkFile::TypeIdentifier chunkType,
         unsigned expectedVersion)
     {
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk;
+        ChunkFile::ChunkHeader scaffoldChunk;
         for (auto i=hdrs.begin(); i!=hdrs.end(); ++i) {
             if (i->_type == chunkType) {
                 scaffoldChunk = *i;
@@ -79,11 +79,11 @@ namespace Serialization { namespace ChunkFile
 
     std::unique_ptr<uint8[]> RawChunkAsMemoryBlock(
         const utf8 filename[],
-        Serialization::ChunkFile::TypeIdentifier chunkType,
+        ChunkFile::TypeIdentifier chunkType,
         unsigned expectedVersion)
     {
         auto file = Assets::MainFileSystem::OpenFileInterface(filename, "rb");
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
+        auto chunks = ChunkFile::LoadChunkTable(*file);
 
         auto scaffoldChunk = FindChunk(filename, chunks, chunkType, expectedVersion);
         auto rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
@@ -127,7 +127,7 @@ namespace Serialization { namespace ChunkFile
 
         template<typename Writer>
             void SimpleChunkFileWriterT<Writer>::BeginChunk(   
-                Serialization::ChunkFile::TypeIdentifier type,
+                ChunkFile::TypeIdentifier type,
                 unsigned version, const char name[])
         {
             if (_hasActiveChunk) {
@@ -147,7 +147,7 @@ namespace Serialization { namespace ChunkFile
         template<typename Writer>
             void SimpleChunkFileWriterT<Writer>::FinishCurrentChunk()
         {
-            using namespace Serialization::ChunkFile;
+            using namespace Assets::ChunkFile;
             auto oldLoc = _writer.TellP();
             auto chunkHeaderLoc = sizeof(ChunkFileHeader) + _activeChunkIndex * sizeof(ChunkHeader);
             _writer.Seek(chunkHeaderLoc);

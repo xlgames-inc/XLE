@@ -24,10 +24,10 @@ namespace Assets
 		return std::make_shared<std::vector<uint8_t>>((const uint8_t*)copyFrom.begin(), (const uint8_t*)copyFrom.end());
 	}
 
-	Blob AsBlob(const Serialization::NascentBlockSerializer& serializer)
+	Blob AsBlob(const NascentBlockSerializer& serializer)
 	{
 		auto block = serializer.AsMemoryBlock();
-		size_t size = Serialization::Block_GetSize(block.get());
+		size_t size = Block_GetSize(block.get());
 		return AsBlob(MakeIteratorRange(block.get(), PtrAdd(block.get(), size)));
 	}
 
@@ -63,7 +63,7 @@ namespace Assets
             if (!predicate || predicate(c))
                 ++chunksForMainFile;
 
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
         auto header = MakeChunkFileHeader(
             chunksForMainFile, 
             versionInfo._versionString, versionInfo._buildDateString);
@@ -74,7 +74,7 @@ namespace Assets
             if (!predicate || predicate(c)) {
                 auto hdr = c._hdr;
                 hdr._fileOffset = trackingOffset;
-				hdr._size = (Serialization::ChunkFile::SizeType)c._data->size();
+				hdr._size = (ChunkFile::SizeType)c._data->size();
                 file.Write(&hdr, sizeof(hdr), 1);
                 trackingOffset += hdr._size;
             }
@@ -95,7 +95,7 @@ namespace Assets
             if (!predicate || predicate(c))
                 ++chunksForMainFile;
 
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
         auto header = MakeChunkFileHeader(
             chunksForMainFile, 
             versionInfo._versionString, versionInfo._buildDateString);
@@ -104,12 +104,12 @@ namespace Assets
         unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
         for (const auto& c:chunks)
             if (!predicate || predicate(c)) {
-				Serialization::ChunkFile::ChunkHeader hdr;
+				ChunkFile::ChunkHeader hdr;
 				hdr._type = c._type;
 				hdr._chunkVersion = c._version;
 				XlCopyString(hdr._name, c._name);
                 hdr._fileOffset = trackingOffset;
-				hdr._size = (Serialization::ChunkFile::SizeType)c._data->size();
+				hdr._size = (ChunkFile::SizeType)c._data->size();
                 file.Write(&hdr, sizeof(hdr), 1);
                 trackingOffset += hdr._size;
             }

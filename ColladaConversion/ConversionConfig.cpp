@@ -25,7 +25,7 @@ namespace ColladaConversion
             auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-            Document<InputStreamFormatter<utf8>> doc(formatter);
+            StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
             _resourceBindings = BindingConfig(doc.Element(u("Resources")));
             _constantsBindings = BindingConfig(doc.Element(u("Constants")));
@@ -42,7 +42,7 @@ namespace ColladaConversion
     ImportConfiguration::~ImportConfiguration()
     {}
 
-    BindingConfig::BindingConfig(const DocElementHelper<InputStreamFormatter<utf8>>& source)
+    BindingConfig::BindingConfig(const DocElementIterator<InputStreamFormatter<utf8>>& source)
     {
         auto bindingRenames = source.Element(u("Rename"));
         if (bindingRenames) {

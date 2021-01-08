@@ -10,7 +10,7 @@
 #include "../../RenderCore/Types_Forward.h"
 #include <vector>
 
-namespace Serialization { class NascentBlockSerializer; }
+namespace Assets { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -31,10 +31,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::vector<uint32_t>		_finalVertexIndexToOriginalIndex;
 
         void SerializeWithResourceBlock(
-            Serialization::NascentBlockSerializer& outputSerializer, 
+            ::Assets::NascentBlockSerializer& outputSerializer, 
             std::vector<uint8>& largeResourcesBlock) const;
 		
-		friend std::ostream& StreamOperator(std::ostream&, const NascentRawGeometry&);
+		friend std::ostream& SerializationOperator(std::ostream&, const NascentRawGeometry&);
     };
 
 }}}

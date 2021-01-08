@@ -52,7 +52,7 @@ namespace RenderCore { namespace Techniques
 		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
-		Document<InputStreamFormatter<utf8>> dom(input);
+		StreamDOM<InputStreamFormatter<utf8>> dom(input);
 		auto colorSpace = dom.FirstChild().Attribute(u("colorSpace"));
 		if (colorSpace) {
 			if (!XlCompareStringI(colorSpace.Value(), u("srgb"))) { _colorSpace = SourceColorSpace::SRGB; }

@@ -25,7 +25,7 @@ namespace Assets
     {
     public:
 		const char*		_name;		// for debugging purposes, to make it easier to track requests
-        Serialization::ChunkFile::TypeIdentifier _type;
+        ChunkFile::TypeIdentifier _type;
         unsigned        _expectedVersion;
         
         enum class DataType

@@ -146,9 +146,9 @@ namespace RenderCore { namespace Assets
 			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
 
 				// "resolved" is now actually the data we want to write out
-			Serialization::NascentBlockSerializer blockSerializer;
-			Serialize(blockSerializer, resolved);
-			Serialize(blockSerializer, resolvedNames);
+			NascentBlockSerializer blockSerializer;
+			SerializationOperator(blockSerializer, resolved);
+			SerializationOperator(blockSerializer, resolvedNames);
 
 			MemoryOutputStream<utf8> patchCollectionStrm;
 			{
@@ -158,11 +158,11 @@ namespace RenderCore { namespace Assets
 
 			::Assets::NascentChunk chunks[] = {
 				{
-					Serialization::ChunkFile::ChunkHeader{ ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
+					::Assets::ChunkFile::ChunkHeader{ ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
 					::Assets::AsBlob(blockSerializer)
 				},
 				{
-					Serialization::ChunkFile::ChunkHeader{ ChunkType_PatchCollections, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
+					::Assets::ChunkFile::ChunkHeader{ ChunkType_PatchCollections, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial },
 					::Assets::AsBlob(MakeIteratorRange(patchCollectionStrm.GetBuffer().Begin(), patchCollectionStrm.GetBuffer().End()))
 				}
 			};

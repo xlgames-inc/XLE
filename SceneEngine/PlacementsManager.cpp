@@ -116,7 +116,7 @@ namespace SceneEngine
 
     void Placements::Write(const Assets::ResChar destinationFile[]) const
     {
-        using namespace Serialization::ChunkFile;
+        using namespace Assets::ChunkFile;
 		auto libVersion = ConsoleRig::GetLibVersionDesc();
         SimpleChunkFileWriter fileWriter(
 			::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
@@ -2407,7 +2407,7 @@ namespace SceneEngine
 		const ::Assets::DepValPtr& depVal)
     : WorldPlacementsConfig()
     {
-        Document<InputStreamFormatter<utf8>> doc(formatter);
+        StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
         for (auto c=doc.FirstChild(); c; c=c.NextSibling()) {
             Cell cell;
             cell._offset = c(u("Offset"), Float3(0,0,0));

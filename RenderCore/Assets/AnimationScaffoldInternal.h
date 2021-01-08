@@ -10,7 +10,7 @@
 #include "../Format.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -96,7 +96,7 @@ namespace RenderCore { namespace Assets
 		AnimationSet(const AnimationSet&) = delete;
 		AnimationSet& operator=(const AnimationSet&) = delete;
 
-		void            SerializeMethod(Serialization::NascentBlockSerializer& serializer) const;
+		void            SerializeMethod(NascentBlockSerializer& serializer) const;
     protected:
         SerializableVector<AnimationDriver>		_animationDrivers;
         SerializableVector<ConstantDriver>		_constantDrivers;

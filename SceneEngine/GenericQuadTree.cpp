@@ -9,7 +9,7 @@
 #include "../Math/ProjectionMath.h"
 #include "../Assets/BlockSerializer.h"
 #include "../Utility/PtrUtils.h"
-#include "../Utility/Streams/Serialization.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Prefix.h"
@@ -39,9 +39,9 @@ namespace SceneEngine
         public:
 			SerializableVector<unsigned>	_objects;
 
-			void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
+			void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const
 			{
-				Serialize(serializer, _objects);
+				SerializationOperator(serializer, _objects);
 			}
         };
 
@@ -110,11 +110,11 @@ namespace SceneEngine
             return (box.second[2] - box.first[2]) * (box.second[1] - box.first[1]) * (box.second[0] - box.first[0]);
         }
 
-		void SerializeMethod(::Serialization::NascentBlockSerializer& serializer) const
+		void SerializeMethod(::Assets::NascentBlockSerializer& serializer) const
 		{
-			Serialize(serializer, _nodes);
-			Serialize(serializer, _payloads);
-			Serialize(serializer, _maxCullResults);
+			SerializationOperator(serializer, _nodes);
+			SerializationOperator(serializer, _payloads);
+			SerializationOperator(serializer, _maxCullResults);
 		}
     };
 #pragma pack(pop)
@@ -397,7 +397,7 @@ namespace SceneEngine
 
 	const GenericQuadTree::Pimpl& GenericQuadTree::GetPimpl() const
 	{
-		return *(const GenericQuadTree::Pimpl*)Serialization::Block_GetFirstObject(_dataBlock.get());
+		return *(const GenericQuadTree::Pimpl*)::Assets::Block_GetFirstObject(_dataBlock.get());
 	}
 
     bool GenericQuadTree::CalculateVisibleObjects(
@@ -568,8 +568,8 @@ namespace SceneEngine
         pimpl->PushNode(~unsigned(0x0), 0, workingObjects, leafThreshold, orientation);
         pimpl->_maxCullResults = pimpl->CalculateMaxResults();
 
-        ::Serialization::NascentBlockSerializer serializer;
-		Serialize(serializer, *pimpl);
+        ::Assets::NascentBlockSerializer serializer;
+		SerializationOperator(serializer, *pimpl);
 		return std::vector<uint8_t>(
 			serializer.AsMemoryBlock(),
 			serializer.Size());

@@ -130,10 +130,10 @@ namespace SceneEngine
                 // Load the chunks. We should have 2 chunks:
                 //  . cell scaffold
                 //  . height map data
-            auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
+            auto chunks = ::Assets::ChunkFile::LoadChunkTable(*file);
 
-            Serialization::ChunkFile::ChunkHeader scaffoldChunk;
-            Serialization::ChunkFile::ChunkHeader heightDataChunk;
+            ::Assets::ChunkFile::ChunkHeader scaffoldChunk;
+            ::Assets::ChunkFile::ChunkHeader heightDataChunk;
             for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
                 if (i->_type == ChunkType_CoverageScaffold && !scaffoldChunk._fileOffset)   { scaffoldChunk = *i; }
                 if (i->_type == ChunkType_CoverageData && !heightDataChunk._fileOffset)     { heightDataChunk = *i; }
@@ -234,10 +234,10 @@ namespace SceneEngine
                     // Load the chunks. We should have 2 chunks:
                     //  . cell scaffold
                     //  . coverage data
-                auto chunks = Serialization::ChunkFile::LoadChunkTable(*file);
+                auto chunks = ::Assets::ChunkFile::LoadChunkTable(*file);
 
-                Serialization::ChunkFile::ChunkHeader scaffoldChunk;
-                Serialization::ChunkFile::ChunkHeader coverageDataChunk;
+                ::Assets::ChunkFile::ChunkHeader scaffoldChunk;
+                ::Assets::ChunkFile::ChunkHeader coverageDataChunk;
                 for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
                     if (i->_type == ChunkType_CoverageScaffold && !scaffoldChunk._fileOffset) { scaffoldChunk = *i; }
                     if (i->_type == ChunkType_CoverageData && !coverageDataChunk._fileOffset) { coverageDataChunk = *i; }
@@ -540,7 +540,7 @@ namespace SceneEngine
                 const GradientFlagsSettings& gradFlagsSettings,
                 Compression::Enum compression, std::pair<const char*, const char*> versionInfo)
         {
-            using namespace Serialization::ChunkFile;
+            using namespace Assets::ChunkFile;
 
             const unsigned chunkCount = 2;
             SimpleChunkFileWriter outputFile(

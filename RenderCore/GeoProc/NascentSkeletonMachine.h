@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         const std::vector<uint32>&		GetCommandStream() const { return _commandStream; }
 
-        friend std::ostream& StreamOperator(
+        friend std::ostream& SerializationOperator(
 			std::ostream& stream, 
 			const NascentSkeletonMachine& transMachine, 
 			const TransformationParameterSet& defaultParameters);

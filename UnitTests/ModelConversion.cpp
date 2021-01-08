@@ -40,7 +40,7 @@ namespace UnitTests
     {
         for (uint64 c=0; c<iterationCount; ++c) {
             XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(start, end));
-            Document<XmlInputStreamFormatter<utf8>> doc(formatter);
+            StreamDOM<XmlInputStreamFormatter<utf8>> doc(formatter);
             (void) doc;
         }
     }

@@ -115,7 +115,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(DocElementHelper<InputStreamFormatter<char>>& element)
+    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(DocElementIterator<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -161,7 +161,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 	static std::shared_ptr<LegacyRegisterBinding> ReadLegacyRegisterBinding(
-		DocElementHelper<InputStreamFormatter<char>>& element,
+		DocElementIterator<InputStreamFormatter<char>>& element,
 		IteratorRange<const StringSection<>*> descriptorSetNames)
 	{
 		auto result = std::make_shared<LegacyRegisterBinding>();
@@ -223,7 +223,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-    static PushConstantsRangeSigniture ReadPushConstRange(DocElementHelper<InputStreamFormatter<char>>& element)
+    static PushConstantsRangeSigniture ReadPushConstRange(DocElementIterator<InputStreamFormatter<char>>& element)
     {
         PushConstantsRangeSigniture result;
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
@@ -250,7 +250,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-	static RootSignature ReadRootSignature(DocElementHelper<InputStreamFormatter<char>>& element)
+	static RootSignature ReadRootSignature(DocElementIterator<InputStreamFormatter<char>>& element)
     {
 		RootSignature result;
 		result._name = element.Attribute("name").Value().AsString();
@@ -349,7 +349,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			InputStreamFormatter<char> formatter(
 				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
-			Document<InputStreamFormatter<char>> doc(formatter);
+			StreamDOM<InputStreamFormatter<char>> doc(formatter);
 
 			_mainRootSignature = doc.Attribute("MainRootSignature").Value().AsString();
 			if (_mainRootSignature.empty())

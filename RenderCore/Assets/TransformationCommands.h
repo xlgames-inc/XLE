@@ -9,7 +9,7 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Quaternion.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include <vector>
 #include <functional>
@@ -93,7 +93,7 @@ namespace RenderCore { namespace Assets
         TransformationParameterSet(const TransformationParameterSet& copyFrom);
         TransformationParameterSet& operator=(const TransformationParameterSet& copyFrom);
 
-        void    SerializeMethod(Serialization::NascentBlockSerializer& outputSerializer) const;
+        void    SerializeMethod(::Assets::NascentBlockSerializer& outputSerializer) const;
 
     private:
         SerializableVector<Float4x4>    _float4x4Parameters;

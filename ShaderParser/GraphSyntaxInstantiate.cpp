@@ -225,7 +225,7 @@ namespace GraphLanguage
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile)
+	std::ostream& SerializationOperator(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile)
 	{
 		for (auto& i:graphSyntaxFile._imports)
 			str << "import " << i.first << " = \"" << i.second << "\"" << std::endl;

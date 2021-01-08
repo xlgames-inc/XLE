@@ -60,7 +60,7 @@ namespace RenderCore { namespace Assets
 
 	const ModelImmutableData&   ModelScaffold::ImmutableData() const                
     {
-        return *(const ModelImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return *(const ModelImmutableData*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
     const ModelCommandStream&       ModelScaffold::CommandStream() const                { return ImmutableData()._visualScene; }
@@ -108,7 +108,7 @@ namespace RenderCore { namespace Assets
 
     const ModelSupplementImmutableData&   ModelSupplementScaffold::ImmutableData() const                
     {
-        return *(const ModelSupplementImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+        return *(const ModelSupplementImmutableData*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
 	std::shared_ptr<::Assets::IFileInterface>	ModelSupplementScaffold::OpenLargeBlocks() const { return _largeBlocksReopen(); }
@@ -149,7 +149,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia)
+    std::ostream& SerializationOperator(std::ostream& stream, const GeoInputAssembly& ia)
     {
         stream << "Stride: " << ia._vertexStride << ": ";
         for (size_t c=0; c<ia._elements.size(); c++) {

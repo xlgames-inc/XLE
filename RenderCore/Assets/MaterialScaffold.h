@@ -9,7 +9,7 @@
 #include "../../RenderCore/Types.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
-#include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
@@ -206,11 +206,11 @@ namespace RenderCore { namespace Assets
 	template<typename Serializer>
         void MaterialScaffold::Material::SerializeMethod(Serializer& serializer) const
     {
-        Serialize(serializer, _bindings);
-        Serialize(serializer, _matParams);
-        Serialize(serializer, _stateSet.GetHash());
-        Serialize(serializer, _constants);
-		Serialize(serializer, _patchCollection);
+        SerializationOperator(serializer, _bindings);
+        SerializationOperator(serializer, _matParams);
+        SerializationOperator(serializer, _stateSet.GetHash());
+        SerializationOperator(serializer, _constants);
+		SerializationOperator(serializer, _patchCollection);
     }
 		
     inline RenderStateSet::RenderStateSet()
