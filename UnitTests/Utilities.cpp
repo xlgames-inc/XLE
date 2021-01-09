@@ -39,27 +39,27 @@ namespace UnitTests
     {
         ParameterBox test(
             {
-                std::make_pair((const utf8*)"SomeParam", "1u"),
-                std::make_pair((const utf8*)"SomeParam1", ".4f"),
-                std::make_pair((const utf8*)"SomeParam2", "344.f"),
-                std::make_pair((const utf8*)"SomeParam3", ".56f"),
-                std::make_pair((const utf8*)"VectorParam", "{4.5f, 7.5f, 9.5f}v"),
-                std::make_pair((const utf8*)"ColorParam", "{.5f, .5f, .5f}c")
+                std::make_pair("SomeParam", "1u"),
+                std::make_pair("SomeParam1", ".4f"),
+                std::make_pair("SomeParam2", "344.f"),
+                std::make_pair("SomeParam3", ".56f"),
+                std::make_pair("VectorParam", "{4.5f, 7.5f, 9.5f}v"),
+                std::make_pair("ColorParam", "{.5f, .5f, .5f}c")
             });
 
-        REQUIRE( test.GetParameter<unsigned>(MakeStringSection((const utf8*)"SomeParam")).value() == 1u );
-        REQUIRE( test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam1")).value() == .4_a );
-        REQUIRE( test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam2")).value() == 344_a );
-        REQUIRE( test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam3")).value() == .56_a );
+        REQUIRE( test.GetParameter<unsigned>("SomeParam").value() == 1u );
+        REQUIRE( test.GetParameter<float>("SomeParam1").value() == .4_a );
+        REQUIRE( test.GetParameter<float>("SomeParam2").value() == 344_a );
+        REQUIRE( test.GetParameter<float>("SomeParam3").value() == .56_a );
 
-        test.SetParameter((const utf8*)"AParam", false);
-        test.SetParameter((const utf8*)"AParam", 5);
-        test.SetParameter((const utf8*)"AParam", 5.f);
-        test.SetParameter((const utf8*)"AParam", 500.f);
-        REQUIRE( test.GetParameter<float>(MakeStringSection((const utf8*)"AParam")).value() == 500_a );
+        test.SetParameter("AParam", false);
+        test.SetParameter("AParam", 5);
+        test.SetParameter("AParam", 5.f);
+        test.SetParameter("AParam", 500.f);
+        REQUIRE( test.GetParameter<float>("AParam").value() == 500_a );
 
-        test.SetParameter((const utf8*)"ShouldBeTrue", true);
-        REQUIRE( test.GetParameter<bool>(MakeStringSection((const utf8*)"ShouldBeTrue")).value() == true );
+        test.SetParameter("ShouldBeTrue", true);
+        REQUIRE( test.GetParameter<bool>("ShouldBeTrue").value() == true );
 
         std::vector<std::pair<const utf8*, std::string>> stringTable;
         BuildStringTable(stringTable, test);
@@ -80,10 +80,10 @@ namespace UnitTests
     template<typename CharType>
         static void FillStream(StreamBuf<CharType>& stream)
         {
-            stream.WriteChar((utf8)'B');
-            stream.WriteChar((ucs2)L'D');
-            stream.Write((const utf8*)"<<StringB>>");
-            stream.Write((const ucs2*)u"<<StringD>>");
+            stream.WriteChar('B');
+            stream.Write(u8"<<StringB>>");
+            stream.WriteChar('D');
+            stream.Write(u8"<<StringD>>");
         }
 
     TEST_CASE( "Utilities-MemoryStreamTest", "[utility]" )
@@ -91,24 +91,17 @@ namespace UnitTests
         auto memStreamA = std::make_unique<MemoryOutputStream<char>>();
         auto memStreamB = std::make_unique<MemoryOutputStream<utf16>>();
         auto memStreamC = std::make_unique<MemoryOutputStream<utf8>>();
-        auto memStreamD = std::make_unique<MemoryOutputStream<ucs2>>();
-        auto memStreamE = std::make_unique<MemoryOutputStream<ucs4>>();
         FillStream(*memStreamA);
         FillStream(*memStreamB);
         FillStream(*memStreamC);
-        FillStream(*memStreamD);
-        FillStream(*memStreamE);
 
         auto stringA = memStreamA->AsString();
         auto stringB = memStreamB->AsString();
         auto stringC = memStreamC->AsString();
-        auto stringD = memStreamD->AsString();
-        auto stringE = memStreamE->AsString();
 
-        REQUIRE(stringA == "BD<<StringB>><<StringD>>");
-        REQUIRE(stringB == (const utf16*)u"BD<<StringB>><<StringD>>");
-        REQUIRE(stringC == (const utf8*)u8"BD<<StringB>><<StringD>>");
-        REQUIRE(stringD == (const ucs2*)u"BD<<StringB>><<StringD>>");
+        REQUIRE(stringA == "B<<StringB>>D<<StringD>>");
+        REQUIRE(stringB == (const utf16*)u"B<<StringB>>D<<StringD>>");
+        REQUIRE(stringC == u8"B<<StringB>>D<<StringD>>");
     }
         
     TEST_CASE( "Utilities-MakeFunctionTest", "[utility]" )
@@ -199,60 +192,60 @@ namespace UnitTests
         REQUIRE(
             std::string("SomeDir/Source/SourceFile.cpp") ==
             MakeRelativePath(
-                SplitPath<char>("D:\\LM\\Code"), 
-                SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+                MakeSplitPath("D:\\LM\\Code"), 
+                MakeSplitPath("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
 
         REQUIRE(
             std::string("D:/LM/.Source/SourceFile.cpp") ==
-            SplitPath<char>("D:\\LM\\Code\\.././\\SomeDir\\..\\.Source/////\\SourceFile.cpp").Simplify().Rebuild());
+            MakeSplitPath("D:\\LM\\Code\\.././\\SomeDir\\..\\.Source/////\\SourceFile.cpp").Simplify().Rebuild());
 
         REQUIRE(
             std::string("D:/LM/SomeDir/") ==
-            SplitPath<char>("D:\\LM\\Code../..\\SomeDir/").Simplify().Rebuild());
+            MakeSplitPath("D:\\LM\\Code../..\\SomeDir/").Simplify().Rebuild());
 
         REQUIRE(
             std::string("somefile.txt") ==
-            SplitPath<char>(".///somefile.txt").Simplify().Rebuild());
+            MakeSplitPath(".///somefile.txt").Simplify().Rebuild());
 
         REQUIRE(
             std::string("") ==
-            SplitPath<char>(".///").Simplify().Rebuild());
+            MakeSplitPath(".///").Simplify().Rebuild());
 
         REQUIRE(
             std::string("") ==
-            SplitPath<char>(".///somepath//..//A/B/../..///").Simplify().Rebuild());
+            MakeSplitPath(".///somepath//..//A/B/../..///").Simplify().Rebuild());
 
         REQUIRE(
             std::string("SomeObject") ==
-            MakeRelativePath(SplitPath<char>("D:\\LM\\Code"), SplitPath<char>("D:\\LM\\Code\\SomeObject")));
+            MakeRelativePath(MakeSplitPath("D:\\LM\\Code"), MakeSplitPath("D:\\LM\\Code\\SomeObject")));
 
         REQUIRE(
             std::string("SomeObject/") ==
-            MakeRelativePath(SplitPath<char>("D:\\LM\\Code"), SplitPath<char>("D:\\LM\\Code\\SomeObject\\")));
+            MakeRelativePath(MakeSplitPath("D:\\LM\\Code"), MakeSplitPath("D:\\LM\\Code\\SomeObject\\")));
 
         REQUIRE(
             std::string("../../SomeDir/Source/SourceFile.cpp") ==
-            MakeRelativePath(SplitPath<char>("D:\\LM\\Code\\SomeOtherDirectory\\Another\\"), SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+            MakeRelativePath(MakeSplitPath("D:\\LM\\Code\\SomeOtherDirectory\\Another\\"), MakeSplitPath("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
 
         REQUIRE(
             std::string("../../Code/SomeDir/Source/SourceFile.cpp") ==
-            MakeRelativePath(SplitPath<char>("D:\\./LM\\\\Code\\..\\SomeOtherDirectory\\/\\Another\\"), SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+            MakeRelativePath(MakeSplitPath("D:\\./LM\\\\Code\\..\\SomeOtherDirectory\\/\\Another\\"), MakeSplitPath("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
 
         REQUIRE(
             std::string("Source/SourceFile.cpp") ==
-            MakeRelativePath(SplitPath<char>("D:\\LM\\Code\\SomeOtherDirectory\\Another\\../.."), SplitPath<char>("D:\\LM\\Code\\SomeDir\\../.\\Source\\./SourceFile.cpp")));
+            MakeRelativePath(MakeSplitPath("D:\\LM\\Code\\SomeOtherDirectory\\Another\\../.."), MakeSplitPath("D:\\LM\\Code\\SomeDir\\../.\\Source\\./SourceFile.cpp")));
 
         // When all of the path segments do not match, we can either end up with a full path
         // If both paths are absolute, it gets relativitized
         REQUIRE(
             std::string("../../SomePath/Source/SourceFile.cpp") ==
-            MakeRelativePath(SplitPath<char>("D:\\AnotherPath\\Something\\"), SplitPath<char>("D:\\SomePath\\Source\\SourceFile.cpp")));
+            MakeRelativePath(MakeSplitPath("D:\\AnotherPath\\Something\\"), MakeSplitPath("D:\\SomePath\\Source\\SourceFile.cpp")));
 
         // But if both paths are not absolute (ie, relative to the current working directory)
         // then we don't relativitize the path
         REQUIRE(
             std::string("D:SomePath/Source/SourceFile.cpp") ==
-            MakeRelativePath(SplitPath<char>("D:AnotherPath\\Something\\"), SplitPath<char>("D:SomePath\\Source\\SourceFile.cpp")));
+            MakeRelativePath(MakeSplitPath("D:AnotherPath\\Something\\"), MakeSplitPath("D:SomePath\\Source\\SourceFile.cpp")));
     }
 
     TEST_CASE( "Utilities-CaseInsensitivePathHandling", "[utility]" )
@@ -264,12 +257,12 @@ namespace UnitTests
         // ignore case when matching directory names when using case insensitive rules
         REQUIRE(
             std::string("somefolder/someobject") ==
-            MakeRelativePath(SplitPath<char>("D:\\lm\\code"), SplitPath<char>("D:\\LM\\Code\\SomeFolder\\SomeObject"), caseInsensitiveRules));
+            MakeRelativePath(MakeSplitPath("D:\\lm\\code"), MakeSplitPath("D:\\LM\\Code\\SomeFolder\\SomeObject"), caseInsensitiveRules));
 
         // But case is important in directory names when using case sensitive rules
         REQUIRE(
             std::string("../Code/SomeFolder/SomeObject") ==
-            MakeRelativePath(SplitPath<char>("D:\\LM\\code"), SplitPath<char>("D:\\LM\\Code\\SomeFolder\\SomeObject"), caseSensitiveRules));
+            MakeRelativePath(MakeSplitPath("D:\\LM\\code"), MakeSplitPath("D:\\LM\\Code\\SomeFolder\\SomeObject"), caseSensitiveRules));
     }
 
     TEST_CASE( "Utilities-MiscHashTest", "[utility]" )

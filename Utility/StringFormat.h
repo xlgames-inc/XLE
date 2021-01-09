@@ -275,7 +275,7 @@ namespace Utility
     template<typename CharType, int Count>
         Internal::StringMeldInPlace<CharType> StringMeldAppend(CharType (&buffer)[Count])
     {
-        auto len = XlStringLen(buffer);
+        auto len = XlStringCharCount(buffer);
         return Internal::StringMeldInPlace<CharType>(&buffer[len], &buffer[Count]);
     }
 
@@ -288,7 +288,7 @@ namespace Utility
     template<typename CharType>
         Internal::StringMeldInPlace<CharType> StringMeldAppend(CharType *bufferStart, CharType* bufferEnd)
     {
-        auto len = XlStringLen(bufferStart);
+        auto len = XlStringCharCount(bufferStart);
         return Internal::StringMeldInPlace<CharType>(&bufferStart[len], bufferEnd);
     }
 

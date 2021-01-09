@@ -159,7 +159,7 @@ namespace SceneEngine
     template<typename InputType>
         ::Assets::rstring AsRString(StringSection<InputType> input) { return Conversion::Convert<::Assets::rstring>(input.AsString()); }
         
-    static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
+    static const utf8* TextureNames[] = { "Texture0", "Texture1", "Slopes" };
 
     TerrainMaterialConfig::TerrainMaterialConfig(
         InputStreamFormatter<utf8>& formatter,
@@ -170,12 +170,12 @@ namespace SceneEngine
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
         for (auto matCfg=doc.FirstChild(); matCfg; matCfg=matCfg.NextSibling()) {
-            if (XlEqString(matCfg.Name(), u("StrataMaterial"))) {
+            if (XlEqString(matCfg.Name(), "StrataMaterial")) {
 
                 StrataMaterial mat;
-                mat._id = Deserialize(matCfg, u("MaterialId"), 0u);
+                mat._id = Deserialize(matCfg, "MaterialId", 0u);
 
-                auto strata = matCfg.Element(u("Strata"));
+                auto strata = matCfg.Element("Strata");
                 unsigned strataCount = 0;
                 for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
 
@@ -184,12 +184,12 @@ namespace SceneEngine
                     StrataMaterial::Strata newStrata;
                     for (unsigned t=0; t<dimof(TextureNames); ++t) {
                         auto tName = c.Attribute(TextureNames[t]).Value();
-                        if (XlCompareStringI(tName, u("null"))!=0)
+                        if (XlCompareStringI(tName, "null")!=0)
                             newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName.AsString());
                     }
 
-                    newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
-                    auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
+                    newStrata._endHeight = Deserialize(c, "EndHeight", 0.f);
+                    auto mappingConst = Deserialize(c, "Mapping", Float4(1.f, 1.f, 1.f, 1.f));
                     newStrata._mappingConstant[0] = mappingConst[0];
                     newStrata._mappingConstant[1] = mappingConst[1];
                     newStrata._mappingConstant[2] = mappingConst[2];
@@ -199,19 +199,19 @@ namespace SceneEngine
 
                 _strataMaterials.push_back(std::move(mat));
 
-            } else if (XlEqString(matCfg.Name(), u("GradFlagMaterial"))) {
+            } else if (XlEqString(matCfg.Name(), "GradFlagMaterial")) {
 
                 GradFlagMaterial mat;
-                mat._id = Deserialize(matCfg, u("MaterialId"), 0);
+                mat._id = Deserialize(matCfg, "MaterialId", 0);
             
-                mat._texture[0] = AsRString(matCfg.Attribute(u("Texture0")).Value());
-                mat._texture[1] = AsRString(matCfg.Attribute(u("Texture1")).Value());
-                mat._texture[2] = AsRString(matCfg.Attribute(u("Texture2")).Value());
-                mat._texture[3] = AsRString(matCfg.Attribute(u("Texture3")).Value());
-                mat._texture[4] = AsRString(matCfg.Attribute(u("Texture4")).Value());
+                mat._texture[0] = AsRString(matCfg.Attribute("Texture0").Value());
+                mat._texture[1] = AsRString(matCfg.Attribute("Texture1").Value());
+                mat._texture[2] = AsRString(matCfg.Attribute("Texture2").Value());
+                mat._texture[3] = AsRString(matCfg.Attribute("Texture3").Value());
+                mat._texture[4] = AsRString(matCfg.Attribute("Texture4").Value());
 
                 char buffer[512];
-                auto mappingAttr = matCfg.Attribute(u("Mapping")).Value();
+                auto mappingAttr = matCfg.Attribute("Mapping").Value();
                 auto parsedType = ImpliedTyping::Parse(
                     mappingAttr,
                     buffer, sizeof(buffer));
@@ -225,11 +225,11 @@ namespace SceneEngine
             } else if (XlEqString(matCfg.Name(), u("GradFlagMaterial"))) {
 
                 ProcTextureSetting mat;
-                mat._name = AsRString(matCfg.Attribute(u("Name")).Value());
-                mat._texture[0] = AsRString(matCfg.Attribute(u("Texture0")).Value());
-                mat._texture[1] = AsRString(matCfg.Attribute(u("Texture1")).Value());
-                mat._hgrid = Deserialize(matCfg, u("HGrid"), mat._hgrid);
-                mat._gain = Deserialize(matCfg, u("Gain"), mat._gain);
+                mat._name = AsRString(matCfg.Attribute("Name").Value());
+                mat._texture[0] = AsRString(matCfg.Attribute("Texture0").Value());
+                mat._texture[1] = AsRString(matCfg.Attribute("Texture1").Value());
+                mat._hgrid = Deserialize(matCfg, "HGrid", mat._hgrid);
+                mat._gain = Deserialize(matCfg, "Gain", mat._gain);
                 _procTextures.push_back(mat);
 
             }
@@ -239,15 +239,15 @@ namespace SceneEngine
     }
 
     #if 0
-        SerializationOperator(formatter, u("DiffuseDims"), _diffuseDims);
-        SerializationOperator(formatter, u("NormalDims"), _normalDims);
-        SerializationOperator(formatter, u("ParamDims"), _paramDims);
+        SerializationOperator(formatter, "DiffuseDims", _diffuseDims);
+        SerializationOperator(formatter, "NormalDims", _normalDims);
+        SerializationOperator(formatter, "ParamDims", _paramDims);
 
         for (auto mat=_strataMaterials.cbegin(); mat!=_strataMaterials.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("StrataMaterial"));
+            auto matEle = formatter.BeginElement("StrataMaterial");
             SerializationOperator(formatter, "MaterialId", mat->_id);
 
-            auto strataList = formatter.BeginElement(u("Strata"));
+            auto strataList = formatter.BeginElement("Strata");
             unsigned strataIndex = 0;
             for (auto s=mat->_strata.cbegin(); s!=mat->_strata.cend(); ++s, ++strataIndex) {
                 auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
@@ -263,7 +263,7 @@ namespace SceneEngine
         }
 
         for (auto mat=_gradFlagMaterials.cbegin(); mat!=_gradFlagMaterials.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("GradFlagMaterial"));
+            auto matEle = formatter.BeginElement("GradFlagMaterial");
             SerializationOperator(formatter, "MaterialId", mat->_id);
             
             SerializationOperator(formatter, "Texture0", mat->_texture[0]);
@@ -280,7 +280,7 @@ namespace SceneEngine
         }
 
         for (auto mat=_procTextures.cbegin(); mat!=_procTextures.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("ProcTextureSetting"));
+            auto matEle = formatter.BeginElement("ProcTextureSetting");
             SerializationOperator(formatter, "Name", mat->_name);
             SerializationOperator(formatter, "Texture0", mat->_texture[0]);
             SerializationOperator(formatter, "Texture1", mat->_texture[1]);

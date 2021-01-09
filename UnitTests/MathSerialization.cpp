@@ -54,16 +54,16 @@ namespace UnitTests
     {
         // Storing and retrieving with some basic conversion from float to double
         ParameterBox box;
-        box.SetParameter(u("Vector"), Float3{1e5, 23e-3, 16});
-        REQUIRE(Equivalent(box.GetParameter<Double3>(u("Vector")).value(), Double3{1e5, 23e-3, 16}, 1e-6));
+        box.SetParameter("Vector", Float3{1e5, 23e-3, 16});
+        REQUIRE(Equivalent(box.GetParameter<Double3>("Vector").value(), Double3{1e5, 23e-3, 16}, 1e-6));
 
         // Store as string and retrieve as vector type
-        box.SetParameter(u("Vector2"), "{245, 723, .456}");
-        REQUIRE(Equivalent(box.GetParameter<Float3>(u("Vector2")).value(), Float3{245, 723, .456}, 1e-6f));
+        box.SetParameter("Vector2", "{245, 723, .456}");
+        REQUIRE(Equivalent(box.GetParameter<Float3>("Vector2").value(), Float3{245, 723, .456}, 1e-6f));
 
         // Store as vector and retrieve as string
-        box.SetParameter(u("Vector3"), Float3{245, 723, .456});
-        REQUIRE(box.GetParameterAsString(u("Vector3")).value() == "{245, 723, 0.456}v");
+        box.SetParameter("Vector3", Float3{245, 723, .456});
+        REQUIRE(box.GetParameterAsString("Vector3").value() == "{245, 723, 0.456}v");
     }
 
 }

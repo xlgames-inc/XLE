@@ -180,7 +180,7 @@ namespace Sample
 
         // RunPerformanceTest();
 
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
 
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)

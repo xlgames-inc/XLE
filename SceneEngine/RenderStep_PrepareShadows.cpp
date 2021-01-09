@@ -35,8 +35,8 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
-	static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
-    static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
+	static const utf8* StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
+    static const utf8* StringShadowEnableNearCascade = "SHADOW_ENABLE_NEAR_CASCADE";
 
 	class ShadowGenTechniqueDelegateBox
 	{

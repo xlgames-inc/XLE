@@ -118,7 +118,7 @@ static const int NonPreprocessorLine0 = 0;
 		{
                 // Search for all of the shader sources in the xleres directory
 			std::vector<std::string> inputFiles;
-			FindShaderSources(inputFiles, ::Assets::MainFileSystem::BeginWalk(u("xleres")));
+			FindShaderSources(inputFiles, ::Assets::MainFileSystem::BeginWalk("xleres"));
             for (auto& i:inputFiles) {
                 auto memBlock = ::Assets::TryLoadFileAsBlob(MakeStringSection(i));
 
@@ -199,7 +199,7 @@ static const int NonPreprocessorLine0 = 0;
 			{
 				auto filter0 = ShaderSourceParser::FilterSelectors(
 					ParameterBox {
-						std::make_pair(u("THIRD_SELECTOR"), "1"),
+						std::make_pair("THIRD_SELECTOR", "1"),
 					},
 					analysis._selectorRelevance);
 				Assert::AreEqual(filter0.GetCount(), (size_t)0);
@@ -208,8 +208,8 @@ static const int NonPreprocessorLine0 = 0;
 			{
 				auto filter1 = ShaderSourceParser::FilterSelectors(
 					ParameterBox {
-						std::make_pair(u("SOME_SELECTOR"), "1"),
-						std::make_pair(u("THIRD_SELECTOR"), "1"),
+						std::make_pair("SOME_SELECTOR", "1"),
+						std::make_pair("THIRD_SELECTOR", "1"),
 					},
 					analysis._selectorRelevance);
 				Assert::AreEqual(filter1.GetCount(), (size_t)2);
@@ -261,8 +261,8 @@ static const int NonPreprocessorLine0 = 0;
 		{
 			UnitTest_SetWorkingDirectory();
 			_globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-			::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
-			::Assets::MainFileSystem::GetMountingTree()->Mount(u("ut-data"), ::Assets::CreateFileSystem_Memory(s_utData));
+			::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+			::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 			_assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		}
 

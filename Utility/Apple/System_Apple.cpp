@@ -58,7 +58,7 @@ namespace Utility
     static std::string FilePathFromDirectoryNameAndFileName(StringSection<T> directoryName, StringSection<T> filename) {
         std::basic_string<T> filepath = directoryName.begin();
         if (filepath.length() > 0 && filename.size() > 0) {
-            filepath += u("/");
+            filepath += "/";
         }
         filepath += filename.begin();
         const char *cpath = reinterpret_cast<const char *>(filepath.c_str());
@@ -417,11 +417,6 @@ namespace Utility
         if (dim > 0) dst[0] = '\0';
         return false;
     }
-    bool XlGetCurrentDirectory(uint32 dim, ucs2 dst[])
-    {
-        if (dim > 0) dst[0] = '\0';
-        return false;
-    }
     uint64 XlGetCurrentFileTime() { return 0; }
 
     void XlGetProcessPath(utf8 dst[], size_t bufferCount)
@@ -429,13 +424,7 @@ namespace Utility
         if (bufferCount > 0) dst[0] = '\0';
     }
 
-    void XlGetProcessPath(ucs2 dst[], size_t bufferCount)
-    {
-        if (bufferCount > 0) dst[0] = '\0';
-    }
-
     void XlChDir(const utf8 path[]) {}
-    void XlChDir(const ucs2 path[]) {}
 
     const char* XlGetCommandLine() { return ""; }
 

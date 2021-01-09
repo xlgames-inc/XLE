@@ -245,7 +245,7 @@ namespace ConsoleRig
     void Console::Print(const char message[])
     {
         if (!this) return;  // hack!
-        Print(AsUTF16(message, XlStringLen(message)));
+        Print(AsUTF16(message, XlStringCharCount(message)));
     }
 
     void Console::Print(const char* messageStart, const char* messageEnd)

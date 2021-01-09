@@ -319,8 +319,8 @@ namespace Utility
         inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
     {
         auto ele = formatter.BeginElement(name);
-        SerializationOperator(formatter, u("First"), obj.first);
-        SerializationOperator(formatter, u("Second"), obj.second);
+        SerializationOperator(formatter, "First", obj.first);
+        SerializationOperator(formatter, "Second", obj.second);
         formatter.EndElement(ele);
     }
 
@@ -337,8 +337,8 @@ namespace Utility
         auto subEle = ele.Element(name);
         if (!subEle) return def;
         return std::make_pair(
-            Deserialize(subEle, u("First"), def.first),
-            Deserialize(subEle, u("Second"), def.second));
+            Deserialize(subEle, "First", def.first),
+            Deserialize(subEle, "Second", def.second));
     }
 #endif
 

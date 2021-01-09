@@ -204,7 +204,7 @@ namespace Assets
 					StringSection<utf8> name, value;
 					if (!formatter.TryAttribute(name, value))
 						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					if (XlEqString(name, u("Artifact"))) {
+					if (XlEqString(name, "Artifact")) {
 						result._intermediateArtifact = value.Cast<char>().AsString();
 					} else
 						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));

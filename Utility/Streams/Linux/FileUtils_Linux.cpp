@@ -26,7 +26,7 @@ namespace Utility
 			return false;
 		}
 
-		void CreateDirectory_Int(const char* dn)    
+		void CreateDirectory_Int(const utf8* dn)    
 		{ 
 #ifdef __MINGW32__
             auto result = mkdir(dn);
@@ -36,7 +36,6 @@ namespace Utility
 			(void)result;
 			// assert(result == 0);
 		}
-		void CreateDirectory_Int(const utf8* dn)    { CreateDirectory_Int((const char*)dn); }
 		void CreateDirectory_Int(const wchar_t* dn) { assert(0); }
 		void CreateDirectory_Int(const utf16* dn)	{ assert(0); }
 
@@ -57,11 +56,6 @@ namespace Utility
 				CreateDirectory_Int(buffer);
 				std::swap(q, *const_cast<Char*>(section.end()));
 			}
-		}
-
-		void CreateDirectoryRecursive(const StringSection<char> filename)
-		{
-			CreateDirectoryRecursive_Int(filename);
 		}
 
 		void CreateDirectoryRecursive(const StringSection<utf8> filename)

@@ -170,7 +170,7 @@ namespace UnitTests
 			mainPool->SetGlobalSelector("GLOBAL_SEL", 55);
 			auto cfgId = mainPool->CreateSequencerConfig(
 				techniqueDelegate,
-				ParameterBox { std::make_pair(u("SEQUENCER_SEL"), "37") },
+				ParameterBox { std::make_pair("SEQUENCER_SEL", "37") },
 				MakeSimpleFrameBufferDesc());
 
 			RenderCore::Assets::RenderStateSet doubledSidedStateSet;
@@ -183,7 +183,7 @@ namespace UnitTests
 				auto compiledPatches = GetCompiledPatchCollectionFromText(s_exampleTechniqueFragments);
 				auto pipelineAccelerator = mainPool->CreatePipelineAccelerator(
 					compiledPatches,
-					ParameterBox { std::make_pair(u("SIMPLE_BIND"), "1") },
+					ParameterBox { std::make_pair("SIMPLE_BIND", "1") },
 					GlobalInputLayouts::PNT,
 					Topology::TriangleList,
 					doubledSidedStateSet);
@@ -249,7 +249,7 @@ namespace UnitTests
 				UnitTestFBHelper fbHelper(*_device, *threadContext, targetDesc);
 				auto cfgIdWithColor = mainPool->CreateSequencerConfig(
 					techniqueDelegate,
-					ParameterBox { std::make_pair(u("COLOR_RED"), "1") },
+					ParameterBox { std::make_pair("COLOR_RED", "1") },
 					MakeSimpleFrameBufferDesc());
 
 				{
@@ -270,7 +270,7 @@ namespace UnitTests
 				// Change the sequencer config to now set the COLOR_GREEN selector
 				cfgIdWithColor = mainPool->CreateSequencerConfig(
 					techniqueDelegate,
-					ParameterBox { std::make_pair(u("COLOR_GREEN"), "1") },
+					ParameterBox { std::make_pair("COLOR_GREEN", "1") },
 					MakeSimpleFrameBufferDesc());
 
 				{
@@ -298,7 +298,7 @@ namespace UnitTests
 				auto descriptorSetLayout = compiledPatches->GetInterface().GetMaterialDescriptorSet();
 
 				ParameterBox constantBindings;
-				constantBindings.SetParameter(u("DiffuseColor"), Float3{1.0f, 0.5f, 0.2f});
+				constantBindings.SetParameter("DiffuseColor", Float3{1.0f, 0.5f, 0.2f});
 
 				ParameterBox resourceBindings;
 				auto descriptorSetAcceleratorFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
@@ -370,10 +370,10 @@ namespace UnitTests
 				auto descriptorSetLayout = compiledPatches->GetInterface().GetMaterialDescriptorSet();
 
 				ParameterBox constantBindings;
-				constantBindings.SetParameter(u("Multiplier"), Float3{1.0f, 0.5f, 0.0f});
+				constantBindings.SetParameter("Multiplier", Float3{1.0f, 0.5f, 0.0f});
 
 				ParameterBox resourceBindings;
-				resourceBindings.SetParameter(u("BoundTexture"), "xleres/DefaultResources/waternoise.png");
+				resourceBindings.SetParameter("BoundTexture", "xleres/DefaultResources/waternoise.png");
 
 				auto descriptorSetAcceleratorFuture = RenderCore::Techniques::MakeDescriptorSetAccelerator(
 					constantBindings, resourceBindings,
@@ -455,8 +455,8 @@ namespace UnitTests
 		{
 			UnitTest_SetWorkingDirectory();
 			_globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-			::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
-			::Assets::MainFileSystem::GetMountingTree()->Mount(u("ut-data"), ::Assets::CreateFileSystem_Memory(s_utData));
+			::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+			::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 			_assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL

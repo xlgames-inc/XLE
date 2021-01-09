@@ -115,7 +115,7 @@ namespace ColladaConversion { namespace DataFlow
             return _accessorsOverflow[index-dimof(_accessors)].first;
         }
 
-        const Accessor* FindAccessorForTechnique(const utf8 techniqueProfile[] = u("technique_common")) const;
+        const Accessor* FindAccessorForTechnique(const utf8 techniqueProfile[] = "technique_common") const;
 
         const StreamLocation GetLocation() const { return _location; }
 

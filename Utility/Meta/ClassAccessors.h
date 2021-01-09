@@ -43,15 +43,15 @@ namespace Utility
     ///             static bool init = false;
     ///             if (!init) {
     ///                 accessors.Add(
-    ///                     u("TopLeft"), 
+    ///                     "TopLeft", 
     ///                     DefaultGet(Rect2D, _topLeft),
     ///                     DefaultSet(Rect2D, _topLeft));
     ///                 accessors.Add(
-    ///                     u("BottomRight"), 
+    ///                     "BottomRight", 
     ///                     DefaultGet(Rect2D, _bottomRight),
     ///                     DefaultSet(Rect2D, _bottomRight));
     ///                 accessors.Add(
-    ///                     u("Size"), 
+    ///                     "Size", 
     ///                     [](const Rect2D& r) { return UInt2(r._bottomRight - r._topLeft); },
     ///                     nullptr);
     ///                 init = true;

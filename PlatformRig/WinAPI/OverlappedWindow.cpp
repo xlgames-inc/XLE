@@ -158,7 +158,7 @@ namespace PlatformRig
                     break;
 
                 case WM_CHAR:
-                    if (inputTrans) { inputTrans->OnChar(MakeInputContext(hwnd), (ucs2)wparam); }
+                    if (inputTrans) { inputTrans->OnChar(MakeInputContext(hwnd), (wchar_t)wparam); }
                     break;
 
                 case WM_SIZE:

@@ -668,10 +668,10 @@ namespace SceneEngine
         auto captureMarker = sharedStates.CaptureState(
 			context, parserContext.GetRenderStateDelegate(), {});
         auto& state = parserContext.GetSubframeShaderSelectors();
-        state.SetParameter(u("SPAWNED_INSTANCE"), 1);
-        state.SetParameter(u("GEO_INSTANCE_ALIGN_UP"), unsigned(_pimpl->_resources->_alignToTerrainUp));
+        state.SetParameter("SPAWNED_INSTANCE", 1);
+        state.SetParameter("GEO_INSTANCE_ALIGN_UP", unsigned(_pimpl->_resources->_alignToTerrainUp));
         auto cleanup = MakeAutoCleanup(
-            [&state]() { state.SetParameter(u("SPAWNED_INSTANCE"), 0); });
+            [&state]() { state.SetParameter("SPAWNED_INSTANCE", 0); });
 
         auto& resources = *_pimpl->_resources;
         for (unsigned b=0; b<unsigned(_pimpl->_drawCallSets.size()); ++b)

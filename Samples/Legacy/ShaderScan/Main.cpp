@@ -66,7 +66,7 @@ namespace ShaderScan
 
 	static void TestGraphSyntax()
 	{
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
 
 		const char techniqueFragments[] = R"--(
 		~fragment

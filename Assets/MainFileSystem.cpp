@@ -162,7 +162,7 @@ namespace Assets
 	//			with a template. But the C++ method resolution works better when they are explicitly separated
 	//			like this.
 	//		eg, because 
-	//			MainFileSystem::FileOpen(u("SomeFile.txt"),...);
+	//			MainFileSystem::FileOpen("SomeFile.txt",...);
 	//		relies on automatic conversion for StringSection<utf8>, it works in this case, but not in the
 	//		template case.
 	//
@@ -407,7 +407,7 @@ namespace Assets
 				auto& fs = _fileSystems[fsIdx];
 				if (!fs._pendingDirectories.empty()) continue;
 
-				auto foundMarkers = fs._fs->FindFiles(MakeStringSection(fs._internalPoint), u(".*"));
+				auto foundMarkers = fs._fs->FindFiles(MakeStringSection(fs._internalPoint), ".*");
 
 				auto* baseFS = dynamic_cast<IFileSystem*>(fs._fs.get());
 				assert(baseFS);
@@ -532,7 +532,7 @@ namespace Assets
 				nextStep.emplace_back(StartingFS{newPending, fs._internalPoint, fs._fs, fs._fsId});
 			} else {
 				auto newInternalPoint = fs._internalPoint;
-				if (!newInternalPoint.empty()) newInternalPoint += u("/");
+				if (!newInternalPoint.empty()) newInternalPoint += "/";
 				newInternalPoint += subDirectory;
 				nextStep.emplace_back(StartingFS{{}, newInternalPoint, fs._fs, fs._fsId});
 			}

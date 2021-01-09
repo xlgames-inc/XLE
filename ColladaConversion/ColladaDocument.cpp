@@ -123,26 +123,26 @@ namespace ColladaConversion
 
     static std::pair<const utf8*, RootElementParser> s_rootElements[] = 
     {
-        std::make_pair(u("library_effects"), &DocumentScaffold::Parse_LibraryEffects),
-        std::make_pair(u("library_geometries"), &DocumentScaffold::Parse_LibraryGeometries),
-        std::make_pair(u("library_visual_scenes"), &DocumentScaffold::Parse_LibraryVisualScenes),
-        std::make_pair(u("library_controllers"), &DocumentScaffold::Parse_LibraryControllers),
-        std::make_pair(u("library_materials"), &DocumentScaffold::Parse_LibraryMaterials),
-        std::make_pair(u("library_images"), &DocumentScaffold::Parse_LibraryImages),
-        std::make_pair(u("library_animations"), &DocumentScaffold::Parse_LibraryAnimations),
-        std::make_pair(u("scene"), &DocumentScaffold::Parse_Scene)
+        std::make_pair("library_effects", &DocumentScaffold::Parse_LibraryEffects),
+        std::make_pair("library_geometries", &DocumentScaffold::Parse_LibraryGeometries),
+        std::make_pair("library_visual_scenes", &DocumentScaffold::Parse_LibraryVisualScenes),
+        std::make_pair("library_controllers", &DocumentScaffold::Parse_LibraryControllers),
+        std::make_pair("library_materials", &DocumentScaffold::Parse_LibraryMaterials),
+        std::make_pair("library_images", &DocumentScaffold::Parse_LibraryImages),
+        std::make_pair("library_animations", &DocumentScaffold::Parse_LibraryAnimations),
+        std::make_pair("scene", &DocumentScaffold::Parse_Scene)
     };
 
 
     static bool TryParseAssetDescElement(AssetDesc&desc, Formatter& formatter, Formatter::InteriorSection eleName)
     {
-        if (Is(eleName, u("unit"))) {
+        if (Is(eleName, "unit"))) {
             // Utility::StreamDOM<Formatter> doc(formatter);
-            // _metersPerUnit = doc(u("meter"), _metersPerUnit);
-            auto meter = ExtractSingleAttribute(formatter, u("meter"));
+            // _metersPerUnit = doc("meter"), _metersPerUnit);
+            auto meter = ExtractSingleAttribute(formatter, "meter"));
             desc._metersPerUnit = Parse(meter, desc._metersPerUnit);
             return true;
-        } else if (Is(eleName, u("up_axis"))) {
+        } else if (Is(eleName, "up_axis")) {
             if (formatter.TryCharacterData(eleName)) {
                 if ((eleName._end - eleName._start) >= 1) {
                     switch (std::tolower(*eleName._start)) {
@@ -178,7 +178,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse(Formatter& formatter)
     {
         Formatter::InteriorSection rootEle;
-        if (!formatter.TryBeginElement(rootEle) || !Is(rootEle, u("COLLADA")))
+        if (!formatter.TryBeginElement(rootEle) || !Is(rootEle, "COLLADA"))
             Throw(FormatException("Expecting root COLLADA element", formatter.GetLocation()));
         
         for (;;) {
@@ -188,7 +188,7 @@ namespace ColladaConversion
                     Formatter::InteriorSection ele;
                     formatter.TryBeginElement(ele);
 
-                    if (Is(ele, u("asset"))) {
+                    if (Is(ele, "asset")) {
                         _rootAsset = AssetDesc(formatter);
                     } else {
                         bool found = false;
@@ -247,23 +247,23 @@ namespace ColladaConversion
 
     std::pair<SamplerAddress, const utf8*> s_SamplerAddressNames[] = 
     {
-        std::make_pair(SamplerAddress::Wrap, u("WRAP")),
-        std::make_pair(SamplerAddress::Mirror, u("MIRROR")),
-        std::make_pair(SamplerAddress::Clamp, u("CLAMP")),
-        std::make_pair(SamplerAddress::Border, u("BORDER")),
-        std::make_pair(SamplerAddress::MirrorOnce, u("MIRROR_ONE")),
+        std::make_pair(SamplerAddress::Wrap, "WRAP"),
+        std::make_pair(SamplerAddress::Mirror, "MIRROR"),
+        std::make_pair(SamplerAddress::Clamp, "CLAMP"),
+        std::make_pair(SamplerAddress::Border, "BORDER"),
+        std::make_pair(SamplerAddress::MirrorOnce, "MIRROR_ONE"),
 
-        std::make_pair(SamplerAddress::Wrap, u("REPEAT")),
-        std::make_pair(SamplerAddress::Mirror, u("MIRROR_REPEAT"))
+        std::make_pair(SamplerAddress::Wrap, "REPEAT"),
+        std::make_pair(SamplerAddress::Mirror, "MIRROR_REPEAT")
         // CLAMP_TO_EDGE not supported
     };
 
     std::pair<SamplerFilter, const utf8*> s_SamplerFilterNames[] = 
     {
-        std::make_pair(SamplerFilter::Point, u("NONE")),
-        std::make_pair(SamplerFilter::Point, u("NEAREST")),
-        std::make_pair(SamplerFilter::Linear, u("LINEAR")),
-        std::make_pair(SamplerFilter::Anisotropic, u("ANISOTROPIC"))
+        std::make_pair(SamplerFilter::Point, "NONE"),
+        std::make_pair(SamplerFilter::Point, "NEAREST"),
+        std::make_pair(SamplerFilter::Linear, "LINEAR"),
+        std::make_pair(SamplerFilter::Anisotropic, "ANISOTROPIC")
     };
 
     template <typename Enum, unsigned Count>
@@ -281,35 +281,35 @@ namespace ColladaConversion
         _type = inputEleName;
 
         ON_ELEMENT
-            if (Is(eleName, u("instance_image"))) {
+            if (Is(eleName, "instance_image")) {
                 // collada 1.5 uses "instance_image" (Collada 1.4 equivalent is <source>)
-                _instanceImage = ExtractSingleAttribute(formatter, u("url"));
-            } else if (Is(eleName, u("source"))) {
+                _instanceImage = ExtractSingleAttribute(formatter, "url");
+            } else if (Is(eleName, "source")) {
                 // collada 1.4 uses "source" (which cannot have extra data attached)
                 formatter.TryCharacterData(_source);
-            } else if (Is(eleName, u("wrap_s"))) {
+            } else if (Is(eleName, "wrap_s")) {
                 _addressS = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-            } else if (Is(eleName, u("wrap_t"))) {
+            } else if (Is(eleName, "wrap_t")) {
                 _addressT = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-            } else if (Is(eleName, u("wrap_p"))) {
+            } else if (Is(eleName, "wrap_p")) {
                 _addressQ = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-            } else if (Is(eleName, u("minfilter"))) {
+            } else if (Is(eleName, "minfilter")) {
                 _minFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-            } else if (Is(eleName, u("magfilter"))) {
+            } else if (Is(eleName, "magfilter")) {
                 _maxFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-            } else if (Is(eleName, u("mipfilter"))) {
+            } else if (Is(eleName, "mipfilter")) {
                 _mipFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-            } else if (Is(eleName, u("border_color"))) {
+            } else if (Is(eleName, "border_color")) {
                 _borderColor = ReadCDataAsList(formatter, _borderColor);
-            } else if (Is(eleName, u("mip_max_level"))) {
+            } else if (Is(eleName, "mip_max_level")) {
                 _maxMipLevel = ReadCDataAsValue(formatter, _maxMipLevel);
-            } else if (Is(eleName, u("mip_min_level"))) {
+            } else if (Is(eleName, "mip_min_level")) {
                 _minMipLevel = ReadCDataAsValue(formatter, _minMipLevel);
-            } else if (Is(eleName, u("mip_bias"))) {
+            } else if (Is(eleName, "mip_bias")) {
                 _mipMapBias = ReadCDataAsValue(formatter, _mipMapBias);
-            } else if (Is(eleName, u("max_anisotropy"))) {
+            } else if (Is(eleName, "max_anisotropy")) {
                 _maxAnisotrophy = ReadCDataAsValue(formatter, _maxAnisotrophy);
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -336,7 +336,7 @@ namespace ColladaConversion
             // for us.
 
         ON_ELEMENT
-            if (Is(eleName, u("init_from"))) {
+            if (Is(eleName, "init_from")) {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
@@ -354,20 +354,20 @@ namespace ColladaConversion
         Formatter::InteriorSection sid;
 
         ON_ELEMENT
-            if (Is(eleName, u("annotate")) || Is(eleName, u("semantic")) || Is(eleName, u("modifier"))) {
+            if (Is(eleName, "annotate") || Is(eleName, "semantic") || Is(eleName, "modifier")) {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
-                if (BeginsWith(eleName, u("sampler"))) {
+                if (BeginsWith(eleName, "sampler")) {
                     _samplerParameters.emplace_back(SamplerParameter(formatter, sid, eleName));
-                } else if (Is(eleName, u("surface"))) {
+                } else if (Is(eleName, "surface")) {
 
                         // "surface" is depreciated in collada 1.5. But it's a very import
                         // param in Collada 1.4.1, because it's a critical link between a
                         // "sampler" and a "image"
                     _surfaceParameters.push_back(SurfaceParameter(formatter, sid, eleName));
 
-                } else if (Is(eleName, u("array")) || Is(eleName, u("usertype")) || Is(eleName, u("string")) || Is(eleName, u("enum"))) {
+                } else if (Is(eleName, "array") || Is(eleName, "usertype") || Is(eleName, "string") || Is(eleName, "enum")) {
                     Log(Warning) << "<array>, <usertype>, <string> and <enum> params not supported (depreciated in Collada 1.5). At: " << formatter.GetLocation() << std::endl;
                     formatter.SkipElement();
                 } else {
@@ -385,7 +385,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("sid"))) sid = value;
+            if (Is(name, "sid")) sid = value;
                 continue;
         PARSE_END
     }
@@ -412,11 +412,11 @@ namespace ColladaConversion
     : _profileType(profileType)
     {
         ON_ELEMENT
-            if (Is(eleName, u("newparam"))) {
+            if (Is(eleName, "newparam")) {
                 _params.ParseParam(formatter);
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
-            } else if (Is(eleName, u("technique"))) {
+            } else if (Is(eleName, "technique")) {
                 ParseTechnique(formatter);
             } else {
                 // asset
@@ -460,12 +460,12 @@ namespace ColladaConversion
             // to extract the particular properties we want, and transform
             // them into something practical.
 
-            if (Is(eleName, u("extra"))) {
+            if (Is(eleName, "extra")) {
                 _techniqueExtra = SubDoc(formatter);
-            } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
+            } else if (Is(eleName, "asset") || Is(eleName, "annotate") || Is(eleName, "pass")) {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
-            } else if (Is(eleName, u("newparam"))) {
+            } else if (Is(eleName, "newparam")) {
                     // the Collada 1.5 docs don't mention <newparam> inside of <technique>. But some of the
                     // files in the Collada test kit have it. We must skip it, so that it's not interpreted
                     // as a shader type
@@ -479,7 +479,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("sid"))) _techniqueSid = value;
+            if (Is(name, "sid")) _techniqueSid = value;
 
         PARSE_END
     }
@@ -500,7 +500,7 @@ namespace ColladaConversion
         if (!formatter.TryBeginElement(eleName))
             Throw(FormatException("Expecting element for technique value", formatter.GetLocation()));
         
-        if (Is(eleName, u("float"))) {
+        if (Is(eleName, "float")) {
 
                 // skip all attributes (sometimes get "sid" tags)
             SkipAllAttributes(formatter);
@@ -508,7 +508,7 @@ namespace ColladaConversion
             _value[0] = ReadCDataAsValue(formatter, _value[0]);
             _type = Type::Float;
 
-        } else if (Is(eleName, u("color"))) {
+        } else if (Is(eleName, "color")) {
 
                 // skip all attributes (sometimes get "sid" tags)
             SkipAllAttributes(formatter);
@@ -520,7 +520,7 @@ namespace ColladaConversion
             } else
                 Log(Warning) << "no data in color value at " << formatter.GetLocation() << std::endl;
 
-        } else if (Is(eleName, u("texture"))) {
+        } else if (Is(eleName, "texture")) {
 
                 // <texture> can contain <extra> -- so we need
                 // to do a full parse
@@ -541,8 +541,8 @@ namespace ColladaConversion
                     {
                         Formatter::InteriorSection name, value; 
                         formatter.TryAttribute(name, value);
-                        if (Is(name, u("texture"))) _reference = value;
-                        else if (Is(name, u("texcoord"))) _texCoord = value;
+                        if (Is(name, "texture")) _reference = value;
+                        else if (Is(name, "texcoord")) _texCoord = value;
                         else Log(Warning) << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation() << std::endl;
                         continue;
                     }
@@ -553,10 +553,10 @@ namespace ColladaConversion
             }
             _type = Type::Texture;
 
-        } else if (Is(eleName, u("param"))) {
+        } else if (Is(eleName, "param")) {
 
             Formatter::InteriorSection name, value; 
-            if (!formatter.TryAttribute(name, value) || !Is(name, u("ref"))) {
+            if (!formatter.TryAttribute(name, value) || !Is(name, "ref")) {
                 Log(Warning) << "Expecting ref attribute in param technique value at " << formatter.GetLocation() << std::endl;
             } else {
                 _reference = value;
@@ -601,11 +601,11 @@ namespace ColladaConversion
     Effect::Effect(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("newparam"))) {
+            if (Is(eleName, "newparam")) {
                 _params.ParseParam(formatter);
-            } else if (BeginsWith(eleName, u("profile_"))) {
+            } else if (BeginsWith(eleName, "profile_")) {
                 _profiles.push_back(Profile(formatter, String(eleName._start+8, eleName._end)));
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
             } else {
                 // asset, annotate
@@ -614,8 +614,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("name"))) _name = value;
-            else if (Is(name, u("id"))) _id = value;
+            if (Is(name, "name")) _name = value;
+            else if (Is(name, "id")) _id = value;
 
         PARSE_END
     }
@@ -641,7 +641,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryEffects(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("effect"))) {
+            if (Is(eleName, "effect")) {
                 _effects.push_back(Effect(formatter));
             } else {
                     // "annotate", "asset" and "extra" are also valid
@@ -656,7 +656,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryAnimations(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("animation"))) {
+            if (Is(eleName, "animation")) {
                 _animations.push_back(Animation(formatter, *this));
             } else {
                     // "asset" and "extra" are also valid
@@ -672,13 +672,13 @@ namespace ColladaConversion
     {
         std::pair<ArrayType, const utf8*> s_ArrayTypeNames[] = 
         {
-            std::make_pair(ArrayType::Unspecified, u("")),
-            std::make_pair(ArrayType::Int, u("int")),
-            std::make_pair(ArrayType::Float, u("float")),
-            std::make_pair(ArrayType::Name, u("Name")),
-            std::make_pair(ArrayType::Bool, u("bool")),
-            std::make_pair(ArrayType::IdRef, u("IDREF")),
-            std::make_pair(ArrayType::SidRef, u("SIDREF"))
+            std::make_pair(ArrayType::Unspecified, ""),
+            std::make_pair(ArrayType::Int, "int"),
+            std::make_pair(ArrayType::Float, "float"),
+            std::make_pair(ArrayType::Name, "Name"),
+            std::make_pair(ArrayType::Bool, "bool"),
+            std::make_pair(ArrayType::IdRef, "IDREF"),
+            std::make_pair(ArrayType::SidRef, "SIDREF")
         };
 
 
@@ -698,18 +698,18 @@ namespace ColladaConversion
             bool foundStrideAttribute = false;
 
             ON_ELEMENT
-                if (Is(eleName, u("param"))) {
+                if (Is(eleName, "param")) {
                         // <param> should have only attributes.
                     Param newParam;
                     newParam._offset = workingParamOffset++;
 
                     Formatter::InteriorSection name, value;
                     while (formatter.TryAttribute(name, value)) {
-                        if (Is(name, u("name"))) {
+                        if (Is(name, "name")) {
                             newParam._name = value;
-                        } else if (Is(name, u("type"))) {
+                        } else if (Is(name, "type")) {
                             newParam._type = value;
-                        } else if (Is(name, u("semantic"))) {
+                        } else if (Is(name, "semantic")) {
                             newParam._semantic = value;
                         }
                     }
@@ -733,14 +733,14 @@ namespace ColladaConversion
                 }
 
             ON_ATTRIBUTE
-                if (Is(name, u("count"))) {
+                if (Is(name, "count")) {
                     _count = Parse(value, _count);
-                } else if (Is(name, u("stride"))) {
+                } else if (Is(name, "stride")) {
                     _stride = Parse(value, _stride);
                     foundStrideAttribute = true;
-                } else if (Is(name, u("source"))) {
+                } else if (Is(name, "source")) {
                     _source = value;
-                } else if (Is(name, u("offset"))) {
+                } else if (Is(name, "offset")) {
                     _offset = Parse(value, _offset);
                 }
 
@@ -801,7 +801,7 @@ namespace ColladaConversion
             _location = formatter.GetLocation();
 
             ON_ELEMENT
-                if (EndsWith(eleName, u("_array"))) {
+                if (EndsWith(eleName, "_array")) {
 
                         // This is an array of elements, typically with an id and count
                         // we should have only a single array in each source. But it can
@@ -820,9 +820,9 @@ namespace ColladaConversion
                             Section name, value;
                             formatter.TryAttribute(name, value);
 
-                            if (Is(name, u("count"))) {
+                            if (Is(name, "count")) {
                                 _arrayCount = Parse(value, 0u);
-                            } else if (Is(name, u("id"))) {
+                            } else if (Is(name, "id")) {
                                 _arrayId = value;
                             } // "name also valid
                         }
@@ -853,7 +853,7 @@ namespace ColladaConversion
                         Log(Warning) << "Data source contains no data! At: " << formatter.GetLocation() << std::endl;
                     }
 
-                } else if (BeginsWith(eleName, u("technique"))) {
+                } else if (BeginsWith(eleName, "technique")) {
 
                     ParseTechnique(formatter, eleName);
 
@@ -864,7 +864,7 @@ namespace ColladaConversion
                 }
 
             ON_ATTRIBUTE
-                if (Is(name, u("id"))) {
+                if (Is(name, "id")) {
                     _id = value;
                 } // "name" is also valid
             PARSE_END
@@ -873,7 +873,7 @@ namespace ColladaConversion
         void Source::ParseTechnique(Formatter& formatter, Section techniqueProfile)
         {
             ON_ELEMENT
-                if (Is(eleName, u("accessor"))) {
+                if (Is(eleName, "accessor")) {
                     if (_accessorsCount < dimof(_accessors)) {
                         _accessors[_accessorsCount] = std::make_pair(Accessor(formatter), techniqueProfile);
                     } else {
@@ -887,7 +887,7 @@ namespace ColladaConversion
                 }
 
             ON_ATTRIBUTE
-                if (Is(name, u("profile"))) techniqueProfile = value;
+                if (Is(name, "profile")) techniqueProfile = value;
 
             PARSE_END
         }
@@ -937,13 +937,13 @@ namespace ColladaConversion
                 // inputs should have only attributes
             Formatter::InteriorSection name, value;
             while (formatter.TryAttribute(name, value)) {
-                if (Is(name, u("offset"))) {
+                if (Is(name, "offset")) {
                     _indexInPrimitive = Parse(value, _indexInPrimitive);
-                } else if (Is(name, u("semantic"))) {
+                } else if (Is(name, "semantic")) {
                     _semantic = value;
-                } else if (Is(name, u("source"))) {
+                } else if (Is(name, "source")) {
                     _source = value;
-                } else if (Is(name, u("set"))) {
+                } else if (Is(name, "set")) {
                     _semanticIndex = Parse(value, _semanticIndex);
                 }
             }
@@ -956,9 +956,9 @@ namespace ColladaConversion
                 // inputs should have only attributes
             Formatter::InteriorSection name, value;
             while (formatter.TryAttribute(name, value)) {
-                if (Is(name, u("semantic"))) {
+                if (Is(name, "semantic")) {
                     _semantic = value;
-                } else if (Is(name, u("source"))) {
+                } else if (Is(name, "source")) {
                     _source = value;
                 }
             }
@@ -975,7 +975,7 @@ namespace ColladaConversion
         _location = formatter.GetLocation();
 
         ON_ELEMENT
-            if (Is(eleName, u("input"))) {
+            if (Is(eleName, "input")) {
 
                 if (_inputCount < dimof(_inputs)) {
                     _inputs[_inputCount] = DataFlow::Input(formatter);
@@ -984,7 +984,7 @@ namespace ColladaConversion
                 }
                 ++_inputCount;
 
-            } else if (Is(eleName, u("p"))) {
+            } else if (Is(eleName, "p")) {
 
                     // a p element should have only character data, and nothing else
                     // the meaning of this type is defined by the type of geometry
@@ -999,7 +999,7 @@ namespace ColladaConversion
                     ++_primitiveDataCount;
                 }
 
-            } else if (Is(eleName, u("vcount"))) {
+            } else if (Is(eleName, "vcount")) {
 
                 Formatter::InteriorSection cdata;
                 if (formatter.TryCharacterData(cdata)) {
@@ -1013,8 +1013,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("count"))) _primitiveCount = Parse(value, _primitiveCount);
-            else if (Is(name, u("material"))) _materialBinding = value;
+            if (Is(name, "count")) _primitiveCount = Parse(value, _primitiveCount);
+            else if (Is(name, "material")) _materialBinding = value;
 
         PARSE_END
     }
@@ -1059,16 +1059,16 @@ namespace ColladaConversion
     void MeshGeometry::ParseMesh(Formatter& formatter, DocumentScaffold& pub)
     {
         ON_ELEMENT
-            if (Is(eleName, u("source"))) {
+            if (Is(eleName, "source")) {
                 // _sources.push_back(DataFlow::Source(formatter));
                 pub.Add(DataFlow::Source(formatter));
-            } else if (Is(eleName, u("vertices"))) {
+            } else if (Is(eleName, "vertices")) {
                 // must have exactly one <vertices>. But we only refernce it by
                 // it's global "id" value. That means it's position within the element
                 // hierarchy is irrelevant. And it's only by convention that the <vertices>
                 // element appears within the <mesh> element that is it associated with.
                 pub.Add(InputsCollection(formatter));
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
             } else {
                     // anything else must be geometry list (such as polylist, triangles)
@@ -1083,11 +1083,11 @@ namespace ColladaConversion
     : MeshGeometry()
     {
         ON_ELEMENT
-            if (Is(eleName, u("mesh"))) {
+            if (Is(eleName, "mesh")) {
 
                 ParseMesh(formatter, pub);
 
-            } else if (Is(eleName, u("convex_mesh")) || Is(eleName, u("spline")) || Is(eleName, u("brep"))) {
+            } else if (Is(eleName, "convex_mesh") || Is(eleName, "spline") || Is(eleName, "brep")) {
                 Log(Warning) << "convex_mesh, spline and brep geometries are not supported. At: " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
@@ -1097,8 +1097,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
-            else if (Is(name, u("name"))) _name = value;
+            if (Is(name, "id")) _id = value;
+            else if (Is(name, "name")) _name = value;
 
         PARSE_END
     }
@@ -1124,7 +1124,7 @@ namespace ColladaConversion
     InputsCollection::InputsCollection(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("input"))) {
+            if (Is(eleName, "input")) {
                 _vertexInputs.push_back(DataFlow::InputUnshared(formatter));
             } else {
                     // extra is possible
@@ -1133,7 +1133,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
+            if (Is(name, "id")) _id = value;
 
         PARSE_END
     }
@@ -1164,7 +1164,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryGeometries(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("geometry"))) {
+            if (Is(eleName, "geometry")) {
                 _geometries.push_back(MeshGeometry(formatter, *this));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
@@ -1187,16 +1187,16 @@ namespace ColladaConversion
         _location = formatter.GetLocation();
 
         ON_ELEMENT
-            if (Is(eleName, u("bind_shape_matrix"))) {
+            if (Is(eleName, "bind_shape_matrix")) {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_bindShapeMatrix);
-            } else if (Is(eleName, u("source"))) {
+            } else if (Is(eleName, "source")) {
                 pub.Add(DataFlow::Source(formatter));
-            } else if (Is(eleName, u("joints"))) {
+            } else if (Is(eleName, "joints")) {
                 _jointInputs = InputsCollection(formatter);     // should be exactly one in each skin controller
-            } else if (Is(eleName, u("vertex_weights"))) {
+            } else if (Is(eleName, "vertex_weights")) {
                 ParseVertexWeights(formatter);
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1204,20 +1204,20 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("source"))) _baseMesh = value;
+            if (Is(name, "source")) _baseMesh = value;
         PARSE_END
     }
 
     void SkinController::ParseVertexWeights(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("vcount"))) {
+            if (Is(eleName, "vcount")) {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_influenceCountPerVertex);
-            } else if (Is(eleName, u("v"))) {
+            } else if (Is(eleName, "v")) {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_influences);
-            } else if (Is(eleName, u("input"))) {
+            } else if (Is(eleName, "input")) {
                 _influenceInputs.push_back(DataFlow::Input(formatter));
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1225,7 +1225,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("count")))
+            if (Is(name, "count"))
                 _verticesWithWeightsCount = Parse(value, _verticesWithWeightsCount);
 
         PARSE_END
@@ -1290,7 +1290,7 @@ namespace ColladaConversion
                     bool eatEndElement = true;
 
                     if (!inController) {
-                        if (Is(eleName, u("controller"))) {
+                        if (Is(eleName, "controller")) {
                             inController = true;
                             eatEndElement = false;
                         } else {
@@ -1298,9 +1298,9 @@ namespace ColladaConversion
                             formatter.SkipElement();    // <asset> and <extra> possible
                         }
                     } else {
-                        if (Is(eleName, u("skin"))) {
+                        if (Is(eleName, "skin")) {
                             _skinControllers.push_back(SkinController(formatter, controllerId, controllerName, *this));
-                        } else if (Is(eleName, u("morph"))) {
+                        } else if (Is(eleName, "morph")) {
                             Log(Warning) << "<morph> controllers not supported" << std::endl;
                             formatter.SkipElement();
                         } else {
@@ -1327,8 +1327,8 @@ namespace ColladaConversion
                     formatter.TryAttribute(name, value);
 
                     if (inController) {
-                        if (Is(name, u("id"))) controllerId = value;
-                        else if (Is(name, u("name"))) controllerName = value;
+                        if (Is(name, "id")) controllerId = value;
+                        else if (Is(name, "name")) controllerName = value;
                     }
 
                     continue;
@@ -1344,7 +1344,7 @@ namespace ColladaConversion
     Material::Material(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("instance_effect"))) {
+            if (Is(eleName, "instance_effect")) {
                 ParseInstanceEffect(formatter);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1352,15 +1352,15 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
-            else if (Is(name, u("name"))) _name = value;
+            if (Is(name, "id")) _id = value;
+            else if (Is(name, "name")) _name = value;
         PARSE_END
     }
 
     void Material::ParseInstanceEffect(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("setparam")) || Is(eleName, u("technique_hint"))) {
+            if (Is(eleName, "setparam") || Is(eleName, "technique_hint")) {
                 Log(Warning) << "<setparam> and/or <technique_hint> not supported in <instance_effect>. At: " << formatter.GetLocation() << std::endl;
                 formatter.SkipElement();
             } else {
@@ -1369,7 +1369,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("url"))) _effectReference = value;
+            if (Is(name, "url")) _effectReference = value;
                 // sid & name possible
         PARSE_END
     }
@@ -1377,7 +1377,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryMaterials(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("material"))) {
+            if (Is(eleName, "material")) {
                 _materials.push_back(Material(formatter));
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1393,7 +1393,7 @@ namespace ColladaConversion
     Image::Image(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("init_from"))) {
+            if (Is(eleName, "init_from")) {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
@@ -1402,8 +1402,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
-            else if (Is(name, u("name"))) _name = value;
+            if (Is(name, "id")) _id = value;
+            else if (Is(name, "name")) _name = value;
 
         PARSE_END
     }
@@ -1428,7 +1428,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryImages(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("image"))) {
+            if (Is(eleName, "image")) {
                 _images.push_back(Image(formatter));
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1486,7 +1486,7 @@ namespace ColladaConversion
         while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
             Section attribName, attribValue;
             formatter.TryAttribute(attribName, attribValue);
-            if (Is(attribName, u("sid"))) newOp._sid = attribValue;
+            if (Is(attribName, "sid")) newOp._sid = attribValue;
         }
 
         Section cdata;
@@ -1498,34 +1498,34 @@ namespace ColladaConversion
             // a continuous block of cdata... Anything that is interrupted
             // by comments or <CDATA[ type blocks will not work correctly.
 
-        if (Is(elementName, u("lookat"))) {
+        if (Is(elementName, "lookat")) {
             newOp._type = Type::LookAt;
             auto& dst = *(LookAt*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._origin[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._focusPosition[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._upDirection[0], 3, cdata);
-        } else if (Is(elementName, u("matrix"))) {
+        } else if (Is(elementName, "matrix")) {
             newOp._type = Type::Matrix4x4;
             auto& dst = *(Float4x4*)newOp._buffer;
             cdata._start = ParseXMLList(&dst(0,0), 16, cdata);
-        } else if (Is(elementName, u("rotate"))) {
+        } else if (Is(elementName, "rotate")) {
             newOp._type = Type::Rotate;
             auto& dst = *(ArbitraryRotation*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._axis[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._angle, 1, cdata);
             dst._angle = ConvertAngle(dst._angle);
-        } else if (Is(elementName, u("scale"))) {
+        } else if (Is(elementName, "scale")) {
             newOp._type = Type::Scale;
             auto& dst = *(ArbitraryScale*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._scale[0], 3, cdata);
-        } else if (Is(elementName, u("skew"))) {
+        } else if (Is(elementName, "skew")) {
             newOp._type = Type::Skew;
             auto& dst = *(Skew*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._angle, 1, cdata);
             cdata._start = ParseXMLList(&dst._axisA[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._axisB[0], 3, cdata);
             dst._angle = ConvertAngle(dst._angle);
-        } else if (Is(elementName, u("translate"))) {
+        } else if (Is(elementName, "translate")) {
             newOp._type = Type::Translate;
             auto& dst = *(Float3*)newOp._buffer;
             cdata._start = ParseXMLList(&dst[0], 3, cdata);
@@ -1550,9 +1550,9 @@ namespace ColladaConversion
 
     bool TransformationSet::IsTransform(Section section)
     {
-        return  Is(section, u("lookat")) || Is(section, u("matrix"))
-            ||  Is(section, u("rotate")) || Is(section, u("scale"))
-            ||  Is(section, u("skew")) || Is(section, u("translate"));
+        return  Is(section, "lookat") || Is(section, "matrix")
+            ||  Is(section, "rotate") || Is(section, "scale")
+            ||  Is(section, "skew") || Is(section, "translate");
     }
 
     Transformation TransformationSet::Get(unsigned index) const
@@ -1641,7 +1641,7 @@ namespace ColladaConversion
     InstanceGeometry::InstanceGeometry(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("bind_material"))) {
+            if (Is(eleName, "bind_material")) {
                 ParseBindMaterial(formatter);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1649,7 +1649,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("url"))) _reference = value;
+            if (Is(name, "url")) _reference = value;
 
         PARSE_END
     }
@@ -1657,10 +1657,10 @@ namespace ColladaConversion
     void InstanceGeometry::ParseBindMaterial(Formatter& formatter)
     {
         ON_ELEMENT
-            if (BeginsWith(eleName, u("technique"))) {
+            if (BeginsWith(eleName, "technique")) {
                 ParseTechnique(formatter, eleName);
             } else {
-                if (Is(eleName, u("param"))) {
+                if (Is(eleName, "param")) {
                     // support for <param> might be useful for animating material parameters
                     Log(Warning) << "Element " << eleName << " is not currently supported in <instance_geometry>" << std::endl;
                     formatter.SkipElement();
@@ -1680,7 +1680,7 @@ namespace ColladaConversion
     void InstanceGeometry::ParseTechnique(Formatter& formatter, Section techniqueProfile)
     {
         ON_ELEMENT
-            if (Is(eleName, u("instance_material"))) {
+            if (Is(eleName, "instance_material")) {
                 _matBindings.push_back(MaterialBinding(formatter, techniqueProfile));
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1688,7 +1688,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("profile"))) techniqueProfile = value;
+            if (Is(name, "profile")) techniqueProfile = value;
 
         PARSE_END
     }
@@ -1701,7 +1701,7 @@ namespace ColladaConversion
                 // inputs for this material instance. It's an interesting feature, but not supported
                 // currently.
                 // also, <extra> is possible
-            if (Is(eleName, u("bind")) || Is(eleName, u("bind_vertex_input"))) {
+            if (Is(eleName, "bind") || Is(eleName, "bind_vertex_input")) {
                 Log(Warning) << "Element " << eleName << " is not currently supported in <instance_material>" << std::endl;
                 formatter.SkipElement();
             } else {
@@ -1710,8 +1710,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("target"))) _reference = value;
-            else if (Is(name, u("symbol"))) _bindingSymbol = value;
+            if (Is(name, "target")) _reference = value;
+            else if (Is(name, "symbol")) _bindingSymbol = value;
 
         PARSE_END
     }
@@ -1734,9 +1734,9 @@ namespace ColladaConversion
     InstanceController::InstanceController(Formatter& formatter) 
     {
         ON_ELEMENT
-            if (Is(eleName, u("bind_material"))) {
+            if (Is(eleName, "bind_material")) {
                 ParseBindMaterial(formatter);
-            } else if (eleName, u("skeleton")) {
+            } else if (eleName, "skeleton") {
                 SkipAllAttributes(formatter);
                 formatter.TryCharacterData(_skeleton);
             } else {
@@ -1745,7 +1745,7 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("url"))) _reference = value;
+            if (Is(name, "url")) _reference = value;
 
         PARSE_END
     }
@@ -1802,7 +1802,7 @@ namespace ColladaConversion
                     formatter.TryBeginElement(eleName);
 
                     bool eatEndElement = true;
-                    if (Is(eleName, u("node"))) {
+                    if (Is(eleName, "node")) {
 
                             // create a new node, and add it to 
                             // our working tree...
@@ -1832,7 +1832,7 @@ namespace ColladaConversion
                         _nodes.emplace_back(std::move(newNode));
                         eatEndElement = false;
 
-                    } else if (Is(eleName, u("instance_geometry"))) {
+                    } else if (Is(eleName, "instance_geometry")) {
 
                             // <instance_geometry> should contain a reference to the particular geometry
                             // as well as material binding information.
@@ -1840,7 +1840,7 @@ namespace ColladaConversion
                         assert(!workingNodes.empty());
                         _geoInstances.push_back(std::make_pair(workingNodes.top(), InstanceGeometry(formatter)));
 
-                    } else if (Is(eleName, u("instance_controller"))) {
+                    } else if (Is(eleName, "instance_controller")) {
 
                             // <instance_geometry> should contain a reference to the particular geometry
                             // as well as material binding information.
@@ -1855,7 +1855,7 @@ namespace ColladaConversion
                         node._transformChain = _transformSet.ParseTransform(
                             formatter, eleName, node._transformChain);
 
-                    } else if (Is(eleName, u("extra"))) {
+                    } else if (Is(eleName, "extra")) {
 
                         assert(!workingNodes.empty());
                         if (workingNodes.size() > 1) {
@@ -1895,14 +1895,14 @@ namespace ColladaConversion
 
                             // this is actually an attribute inside of a node item
                         auto& node = _nodes[workingNodes.top()];
-                        if (Is(name, u("id"))) node._id = value;
-                        else if (Is(name, u("sid"))) node._sid = value;
-                        else if (Is(name, u("name"))) node._name = value;
+                        if (Is(name, "id")) node._id = value;
+                        else if (Is(name, "sid")) node._sid = value;
+                        else if (Is(name, "name")) node._name = value;
 
                     } else {
                         // visual_scene can have "id" and "name"
-                        if (Is(name, u("id"))) _id = value;
-                        if (Is(name, u("name"))) _name = value;
+                        if (Is(name, "id")) _id = value;
+                        if (Is(name, "name")) _name = value;
                     }
 
                     continue;
@@ -2005,8 +2005,8 @@ namespace ColladaConversion
             Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
             formatter.SkipElement();
         ON_ATTRIBUTE
-            if (Is(name, u("source"))) _source = value;
-            else if (Is(name, u("target"))) _target = value;
+            if (Is(name, "source")) _source = value;
+            else if (Is(name, "target")) _target = value;
         PARSE_END
     }
 
@@ -2014,19 +2014,19 @@ namespace ColladaConversion
 
     std::pair<Sampler::Behaviour, const utf8*> s_SamplerBehaviourNames[] = 
     {
-        std::make_pair(Sampler::Behaviour::Unspecified, u("UNDEFINED")),
-        std::make_pair(Sampler::Behaviour::Constant, u("CONSTANT")),
-        std::make_pair(Sampler::Behaviour::Gradient, u("GRADIENT")),
-        std::make_pair(Sampler::Behaviour::Cycle, u("CYCLE")),
-        std::make_pair(Sampler::Behaviour::Oscillate, u("OSCILLATE")),
-        std::make_pair(Sampler::Behaviour::CycleRelative, u("CYCLE_RELATIVE"))
+        std::make_pair(Sampler::Behaviour::Unspecified, "UNDEFINED"),
+        std::make_pair(Sampler::Behaviour::Constant, "CONSTANT"),
+        std::make_pair(Sampler::Behaviour::Gradient, "GRADIENT"),
+        std::make_pair(Sampler::Behaviour::Cycle, "CYCLE"),
+        std::make_pair(Sampler::Behaviour::Oscillate, "OSCILLATE"),
+        std::make_pair(Sampler::Behaviour::CycleRelative, "CYCLE_RELATIVE")
     };
 
     Sampler::Sampler(Formatter& formatter)
         : Sampler()
     {
         ON_ELEMENT
-            if (Is(eleName, u("input"))) {
+            if (Is(eleName, "input")) {
                 _inputs.Add(DataFlow::InputUnshared(formatter));
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -2034,9 +2034,9 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
-            else if (Is(name, u("pre_behaviour"))) _prebehaviour = ParseEnum(value, s_SamplerBehaviourNames);
-            else if (Is(name, u("post_behaviour"))) _postbehaviour = ParseEnum(value, s_SamplerBehaviourNames);
+            if (Is(name, "id")) _id = value;
+            else if (Is(name, "pre_behaviour")) _prebehaviour = ParseEnum(value, s_SamplerBehaviourNames);
+            else if (Is(name, "post_behaviour")) _postbehaviour = ParseEnum(value, s_SamplerBehaviourNames);
         PARSE_END
     }
 
@@ -2065,15 +2065,15 @@ namespace ColladaConversion
     Animation::Animation(Formatter& formatter, DocumentScaffold& pub)
     {
         ON_ELEMENT
-            if (Is(eleName, u("animation"))) {
+            if (Is(eleName, "animation")) {
                 _subAnimations.emplace_back(Animation(formatter, pub));
-            } else if (Is(eleName, u("source"))) {
+            } else if (Is(eleName, "source")) {
                 pub.Add(DataFlow::Source(formatter));
-            } else if (Is(eleName, u("sampler"))) {
+            } else if (Is(eleName, "sampler")) {
                 pub.Add(Sampler(formatter));
-            } else if (Is(eleName, u("channel"))) {
+            } else if (Is(eleName, "channel")) {
                 _channels.emplace_back(Channel(formatter));
-            } else if (Is(eleName, u("extra"))) {
+            } else if (Is(eleName, "extra")) {
                 _extra = SubDoc(formatter);
             } else {
                 // asset also possible
@@ -2082,8 +2082,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) _id = value;
-            else if (Is(name, u("name"))) _name = value;
+            if (Is(name, "id")) _id = value;
+            else if (Is(name, "name")) _name = value;
         PARSE_END
     }
 
@@ -2110,7 +2110,7 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_LibraryVisualScenes(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("visual_scene"))) {
+            if (Is(eleName, "visual_scene")) {
                 _visualScenes.push_back(VisualScene(formatter));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
@@ -2126,12 +2126,12 @@ namespace ColladaConversion
     void DocumentScaffold::Parse_Scene(Formatter& formatter)
     {
         ON_ELEMENT
-            if (Is(eleName, u("instance_physics_scene"))) {
-                _physicsScene = ExtractSingleAttribute(formatter, u("url"));
-            } else if (Is(eleName, u("instance_visual_scene"))) {
-                _visualScene = ExtractSingleAttribute(formatter, u("url"));
-            } else if (Is(eleName, u("instance_kinematics_scene"))) {
-                _kinematicsScene = ExtractSingleAttribute(formatter, u("url"));
+            if (Is(eleName, "instance_physics_scene")) {
+                _physicsScene = ExtractSingleAttribute(formatter, "url");
+            } else if (Is(eleName, "instance_visual_scene")) {
+                _visualScene = ExtractSingleAttribute(formatter, "url");
+            } else if (Is(eleName, "instance_kinematics_scene")) {
+                _kinematicsScene = ExtractSingleAttribute(formatter, "url");
             } else {
                 // <extra> also possible
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;

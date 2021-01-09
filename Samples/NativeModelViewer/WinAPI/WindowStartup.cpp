@@ -44,7 +44,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     TRY {
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
         Sample::ExecuteSample(std::make_shared<Sample::NativeModelViewerOverlay>());
     } CATCH (const std::exception& e) {
         XlOutputDebugString("Hit top-level exception: ");

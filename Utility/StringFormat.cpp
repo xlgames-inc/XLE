@@ -158,15 +158,6 @@ static int FlagChar(int ch)
     }
 }
 
-inline int xl_snprintf(utf8* buf, int count, const utf8* fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    int n = xl_vsnprintf((char*)buf, count, (const char*)fmt, args);
-    va_end(args);
-    return n;
-}
-
 // [TODO] remove xl_snprintf dependency!
 template<typename T>
     int _PrintFormatV(OutputStream* stream, const T* fmt, va_list args)
@@ -306,33 +297,34 @@ template<typename T>
 
                 if (sizeof(char) != sizeof(T)) {
                     assert(flags == FLAG_NONE);
-                    size_t len = XlStringLen(val.f_string) + 1;
+                    size_t len = XlStringCharCount(val.f_string) + 1;
                     ucs4 tmp[4096];
 
                     if (len > dimof(tmp)) {
                         return 0;
                     }
 
-                    ptrdiff_t fixed_length = utf8_2_ucs4(val.f_string, XlStringLen(val.f_string), tmp, len);
+                    ptrdiff_t fixed_length = utf8_2_ucs4(val.f_string, XlStringCharCount(val.f_string), tmp, len);
                     nchars += std::max<ptrdiff_t>(fixed_length, width);
 
                     fixed_length = width - fixed_length;
 
-                    if (fixed_length <= 0) {
+                    assert(0);  // following no longer supported
+                    /*if (fixed_length <= 0) {
                         stream->Write(tmp);
                     } else if (left) {
                         stream->Write(tmp);
                         while (fixed_length-- > 0) {
-                            stream->WriteChar((ucs4)' ');
+                            stream->WriteChar(' ');
                         }
 
                     } else { // right
                         while (fixed_length-- > 0) {
-                            stream->WriteChar((ucs4)' ');
+                            stream->WriteChar(' ');
                         }
                         stream->Write(tmp);
 
-                    }
+                    }*/
 
                 } else {
 
@@ -349,17 +341,17 @@ template<typename T>
                         } else if (left) {
                             stream->Write(tmp);
                             while (fixed_length-- > 0) {
-                                stream->WriteChar((utf8)' ');
+                                stream->WriteChar(' ');
                             }
                         } else { // right
                             while (fixed_length-- > 0) {
-                                stream->WriteChar((utf8)' ');
+                                stream->WriteChar(' ');
                             }
                             stream->Write(tmp);
                         }
                     } else {
                         stream->Write((const utf8*)"<null>");
-                        nchars += XlStringLen((const utf8*)"<null>");
+                        nchars += XlStringCharCount((const utf8*)"<null>");
                     }
                 }
             } else if (modifier == MOD_LONG || modifier == MOD_LONGLONG) {
@@ -371,28 +363,29 @@ template<typename T>
 
                 if (sizeof(char) != sizeof(T)) {
                     assert(flags == FLAG_NONE);
-                    size_t len = XlStringLen(val.f_wstring) + 1;
+                    size_t len = XlStringCharCount(val.f_wstring) + 1;
                     nchars += std::max<size_t>(len, width);
 
                     auto tmp = val.f_wstring;
 
                     len = width - len;
 
-                    if (len <= 0) {
+                    assert(0);  // following no longer supported
+                    /*if (len <= 0) {
                         stream->Write(tmp);
                     } else if (left) {
                         stream->Write(tmp);
                         while (len-- > 0) {
-                            stream->WriteChar((ucs2)L' ');
+                            stream->WriteChar(' ');
                         }
 
                     } else { // right
                         while (len-- > 0) {
-                            stream->WriteChar((ucs2)L' ');
+                            stream->WriteChar(' ');
                         }
                         stream->Write(tmp);
 
-                    }
+                    }*/
 
                 } else {
 
@@ -400,7 +393,7 @@ template<typename T>
                     if (val.f_wstring) {
 
                         utf8 tmp[4096] = {0};
-                        int len = (int)XlStringLen(val.f_wstring);
+                        int len = (int)XlStringCharCount(val.f_wstring);
                         ucs2_2_utf8(val.f_wstring, len, tmp, dimof(tmp));
                         ptrdiff_t fixed_length = XlStringSize(tmp);
                         nchars += std::max<ptrdiff_t>(fixed_length, width);
@@ -411,17 +404,17 @@ template<typename T>
                         } else if (left) {
                             stream->Write(tmp);
                             while (fixed_length-- > 0) {
-                                stream->WriteChar((utf8)' ');
+                                stream->WriteChar(' ');
                             }
                         } else { // right
                             while (fixed_length-- > 0) {
-                                stream->WriteChar((utf8)' ');
+                                stream->WriteChar(' ');
                             }
                             stream->Write(tmp);
                         }
                     } else {
                         stream->Write((const utf8*)"<null>");
-                        nchars += XlStringLen((const utf8*)"<null>");
+                        nchars += XlStringCharCount((const utf8*)"<null>");
                     }
                 }
             }
@@ -431,8 +424,9 @@ template<typename T>
             val.f_ustring = va_arg(args, const ucs4*);
             // TODO support width!
 
-            stream->Write(val.f_ustring);
-            nchars += XlStringLen(val.f_ustring);
+            assert(0);  // following no longer supported
+            // stream->Write(val.f_ustring);
+            nchars += XlStringCharCount(val.f_ustring);
 
         } else {
             // build format spec and use system provided sprintf
@@ -570,7 +564,7 @@ template<typename T>
             }
 
             stream->Write(buf);
-            nchars += XlStringLen(buf);
+            nchars += XlStringCharCount(buf);
         }
         start = fmt;
     }
@@ -599,7 +593,7 @@ int XlFormatStringV(char* buf, int count, const char* fmt, va_list args) never_t
 {
     FixedMemoryOutputStream<utf8> stream((utf8*)buf, (size_t)count);
     int n = PrintFormatV(&stream, fmt, args);
-    stream.WriteChar(decltype(stream)::CharType(0));
+    stream.WriteChar(0);
     if (n >= count) {
         n = std::max<int>(count - 1, 0);
     }

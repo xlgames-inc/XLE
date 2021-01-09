@@ -57,7 +57,7 @@ namespace Utility
         template<typename CharType>
             const CharType* XlExtension(const CharType* path)
         {
-            auto len = XlStringLen(path);
+            auto len = XlStringCharCount(path);
             if (!len) return nullptr;
             const auto* p = &path[len-1];
             while (p >= path) {
@@ -68,7 +68,6 @@ namespace Utility
             return nullptr;
         }
 
-        template const char* XlExtension(const char* path);
         template const utf8* XlExtension(const utf8* path);
         template const ucs2* XlExtension(const ucs2* path);
         template const ucs4* XlExtension(const ucs4* path);
@@ -544,7 +543,6 @@ namespace Utility
 	}
 
         //  Selectively convert case to lower case on filesystems where it doesn't matter.
-    char ConvertPathChar(char input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
 
@@ -703,13 +701,10 @@ namespace Utility
 
     FilenameRules s_defaultFilenameRules('/', true);
 
-    template class FileNameSplitter<char>;
     template class FileNameSplitter<utf8>;
     template class FileNameSplitter<ucs2>;
-    template class SplitPath<char>;
     template class SplitPath<utf8>;
     template class SplitPath<ucs2>;
-    template std::basic_string<char> MakeRelativePath(const SplitPath<char>&, const SplitPath<char>&, const FilenameRules&);
     template std::basic_string<utf8> MakeRelativePath(const SplitPath<utf8>&, const SplitPath<utf8>&, const FilenameRules&);
     template std::basic_string<ucs2> MakeRelativePath(const SplitPath<ucs2>&, const SplitPath<ucs2>&, const FilenameRules&);
 

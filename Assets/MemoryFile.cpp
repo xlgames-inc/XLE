@@ -85,7 +85,7 @@ namespace Assets
 	{
 		return FileDesc
 			{
-				u("<<in memory>>"), {},
+				"<<in memory>>", {},
 				FileDesc::State::Normal,
 				0, uint64_t(_blob ? _blob->size() : 0)
 			};

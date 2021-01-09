@@ -148,7 +148,7 @@ namespace SceneEngine
     RTShadowsBox::~RTShadowsBox() {}
 
 
-    static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
+    static const utf8* StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
 
     PreparedRTShadowFrustum PrepareRTShadows(
         IThreadContext& threadContext,

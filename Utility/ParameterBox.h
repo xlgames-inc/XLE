@@ -43,15 +43,12 @@ namespace Utility
         public:
             ParameterNameHash _hash;
 
-            ParameterName(StringSection<utf8> name);
-            ParameterName(StringSection<char> name);
+            ParameterName(StringSection<> name);
             ParameterName(ParameterNameHash hash);
-            ParameterName(const utf8 name[]);
             ParameterName(const char name[]);
         };
 
-        static ParameterNameHash    MakeParameterNameHash(StringSection<utf8> name);
-        static ParameterNameHash    MakeParameterNameHash(StringSection<char> name);
+        static ParameterNameHash    MakeParameterNameHash(StringSection<> name);
 
         using TypeDesc = ImpliedTyping::TypeDesc;
 
@@ -211,17 +208,7 @@ namespace Utility
         }
     }
 
-    inline ParameterBox::ParameterName::ParameterName(StringSection<utf8> name)
-    {
-        _hash = ParameterBox::MakeParameterNameHash(name);
-    }
-
-    inline ParameterBox::ParameterName::ParameterName(StringSection<char> name)
-    {
-        _hash = ParameterBox::MakeParameterNameHash(name);
-    }
-
-    inline ParameterBox::ParameterName::ParameterName(const utf8 name[])
+    inline ParameterBox::ParameterName::ParameterName(StringSection<> name)
     {
         _hash = ParameterBox::MakeParameterNameHash(name);
     }

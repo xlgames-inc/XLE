@@ -159,11 +159,6 @@ bool XlGetCurrentDirectory(uint32 nBufferLength, char lpBuffer[])
 	return GetCurrentDirectoryA((DWORD)nBufferLength, lpBuffer) != FALSE;
 }
 
-bool XlGetCurrentDirectory(uint32 nBufferLength, ucs2 lpBuffer[])
-{
-    return GetCurrentDirectoryW((DWORD)nBufferLength, (wchar_t*)lpBuffer) != FALSE;
-}
-
 bool XlCloseSyncObject(XlHandle h)
 {
     BOOL closeResult = CloseHandle(h);
@@ -239,12 +234,12 @@ uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bo
 }
 
 void XlGetProcessPath(utf8 dst[], size_t bufferCount)    { GetModuleFileNameA(NULL, (char*)dst, (DWORD)bufferCount); }
-void XlGetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NULL, (wchar_t*)dst, (DWORD)bufferCount); }
 void XlChDir(const utf8 path[])                          { SetCurrentDirectoryA((const char*)path); }
-void XlChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }
-
 void XlDeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); (void)result; }
-void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); (void)result; }
+
+// void XlGetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NULL, (wchar_t*)dst, (DWORD)bufferCount); }
+// void XlChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }
+// void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); (void)result; }
 
 void XlMoveFile(const utf8 destination[], const utf8 source[])
 {

@@ -24,31 +24,31 @@ namespace RenderCore { namespace Assets
 
     static const std::pair<Blend, const utf8*> s_blendNames[] =
     {
-        std::make_pair(Blend::Zero, u("zero")),
-        std::make_pair(Blend::One, u("one")),
+        std::make_pair(Blend::Zero, "zero"),
+        std::make_pair(Blend::One, "one"),
             
-        std::make_pair(Blend::SrcColor, u("srccolor")),
-        std::make_pair(Blend::InvSrcColor, u("invsrccolor")),
-        std::make_pair(Blend::DestColor, u("destcolor")),
-        std::make_pair(Blend::InvDestColor, u("invdestcolor")),
+        std::make_pair(Blend::SrcColor, "srccolor"),
+        std::make_pair(Blend::InvSrcColor, "invsrccolor"),
+        std::make_pair(Blend::DestColor, "destcolor"),
+        std::make_pair(Blend::InvDestColor, "invdestcolor"),
 
-        std::make_pair(Blend::SrcAlpha, u("srcalpha")),
-        std::make_pair(Blend::InvSrcAlpha, u("invsrcalpha")),
-        std::make_pair(Blend::DestAlpha, u("destalpha")),
-        std::make_pair(Blend::InvDestAlpha, u("invdestalpha")),
+        std::make_pair(Blend::SrcAlpha, "srcalpha"),
+        std::make_pair(Blend::InvSrcAlpha, "invsrcalpha"),
+        std::make_pair(Blend::DestAlpha, "destalpha"),
+        std::make_pair(Blend::InvDestAlpha, "invdestalpha"),
     };
 
     static const std::pair<BlendOp, const utf8*> s_blendOpNames[] =
     {
-        std::make_pair(BlendOp::NoBlending, u("noblending")),
-        std::make_pair(BlendOp::NoBlending, u("none")),
-        std::make_pair(BlendOp::NoBlending, u("false")),
+        std::make_pair(BlendOp::NoBlending, "noblending"),
+        std::make_pair(BlendOp::NoBlending, "none"),
+        std::make_pair(BlendOp::NoBlending, "false"),
 
-        std::make_pair(BlendOp::Add, u("add")),
-        std::make_pair(BlendOp::Subtract, u("subtract")),
-        std::make_pair(BlendOp::RevSubtract, u("revSubtract")),
-        std::make_pair(BlendOp::Min, u("min")),
-        std::make_pair(BlendOp::Max, u("max"))
+        std::make_pair(BlendOp::Add, "add"),
+        std::make_pair(BlendOp::Subtract, "subtract"),
+        std::make_pair(BlendOp::RevSubtract, "revSubtract"),
+        std::make_pair(BlendOp::Min, "min"),
+        std::make_pair(BlendOp::Max, "max")
     };
     
     static Blend DeserializeBlend(
@@ -92,32 +92,32 @@ namespace RenderCore { namespace Assets
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
         {
-            auto child = doc.Attribute(u("DoubleSided")).As<bool>();
+            auto child = doc.Attribute("DoubleSided").As<bool>();
             if (child.first) {
                 result._doubleSided = child.second;
                 result._flag |= RenderStateSet::Flag::DoubleSided;
             }
         }
         {
-            auto child = doc.Attribute(u("Wireframe")).As<bool>();
+            auto child = doc.Attribute("Wireframe").As<bool>();
             if (child.first) {
                 result._wireframe = child.second;
                 result._flag |= RenderStateSet::Flag::Wireframe;
             }
         }
         {
-            auto child = doc.Attribute(u("WriteMask")).As<unsigned>();
+            auto child = doc.Attribute("WriteMask").As<unsigned>();
             if (child.first) {
                 result._writeMask = child.second;
                 result._flag |= RenderStateSet::Flag::WriteMask;
             }
         }
         {
-            auto child = doc.Attribute(u("BlendType"));
+            auto child = doc.Attribute("BlendType");
             if (child) {
-                if (XlEqStringI(child.Value(), u("decal"))) {
+                if (XlEqStringI(child.Value(), "decal")) {
                     result._blendType = RenderStateSet::BlendType::DeferredDecal;
-                } else if (XlEqStringI(child.Value(), u("ordered"))) {
+                } else if (XlEqStringI(child.Value(), "ordered")) {
                     result._blendType = RenderStateSet::BlendType::Ordered;
                 } else {
                     result._blendType = RenderStateSet::BlendType::Basic;
@@ -126,18 +126,18 @@ namespace RenderCore { namespace Assets
             }
         }
         {
-            auto child = doc.Attribute(u("DepthBias")).As<int>();
+            auto child = doc.Attribute("DepthBias").As<int>();
             if (child.first) {
                 result._depthBias = child.second;
                 result._flag |= RenderStateSet::Flag::DepthBias;
             }
         }
         {
-            auto child = doc.Element(u("ForwardBlend"));
+            auto child = doc.Element("ForwardBlend");
             if (child) {
-                result._forwardBlendSrc = DeserializeBlend(child, u("Src"));
-                result._forwardBlendDst = DeserializeBlend(child, u("Dst"));
-                result._forwardBlendOp = DeserializeBlendOp(child, u("Op"));
+                result._forwardBlendSrc = DeserializeBlend(child, "Src");
+                result._forwardBlendDst = DeserializeBlend(child, "Dst");
+                result._forwardBlendOp = DeserializeBlendOp(child, "Op");
                 result._flag |= RenderStateSet::Flag::ForwardBlend;
             }
         }
@@ -147,10 +147,10 @@ namespace RenderCore { namespace Assets
     static const utf8* AsString(RenderStateSet::BlendType blend)
     {
         switch (blend) {
-        case RenderStateSet::BlendType::DeferredDecal: return u("decal");
-        case RenderStateSet::BlendType::Ordered: return u("ordered");
+        case RenderStateSet::BlendType::DeferredDecal: return "decal");
+        case RenderStateSet::BlendType::Ordered: return "ordered");
         default:
-        case RenderStateSet::BlendType::Basic: return u("basic");
+        case RenderStateSet::BlendType::Basic: return "basic");
         }
     }
 
@@ -161,7 +161,7 @@ namespace RenderCore { namespace Assets
                 return s_blendNames[c].second;
             }
         }
-        return u("one");
+        return "one";
     }
 
     static const utf8* AsString(BlendOp input)
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Assets
                 return s_blendOpNames[c].second;
             }
         }
-        return u("noblending");
+        return "noblending";
     }
 
     template<typename Type>
@@ -189,25 +189,25 @@ namespace RenderCore { namespace Assets
     static void SerializeStateSet(OutputStreamFormatter& formatter, const RenderStateSet& stateSet)
     {
         if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
-            formatter.WriteAttribute(u("DoubleSided"), AutoAsString(stateSet._doubleSided));
+            formatter.WriteAttribute("DoubleSided", AutoAsString(stateSet._doubleSided));
 
         if (stateSet._flag & RenderStateSet::Flag::Wireframe)
-            formatter.WriteAttribute(u("Wireframe"), AutoAsString(stateSet._wireframe));
+            formatter.WriteAttribute("Wireframe", AutoAsString(stateSet._wireframe));
 
         if (stateSet._flag & RenderStateSet::Flag::WriteMask)
-            formatter.WriteAttribute(u("WriteMask"), AutoAsString(stateSet._writeMask));
+            formatter.WriteAttribute("WriteMask", AutoAsString(stateSet._writeMask));
 
         if (stateSet._flag & RenderStateSet::Flag::BlendType)
-            formatter.WriteAttribute(u("BlendType"), AsString(stateSet._blendType));
+            formatter.WriteAttribute("BlendType", AsString(stateSet._blendType));
 
         if (stateSet._flag & RenderStateSet::Flag::DepthBias)
-            formatter.WriteAttribute(u("DepthBias"), AutoAsString(stateSet._depthBias));
+            formatter.WriteAttribute("DepthBias", AutoAsString(stateSet._depthBias));
 
         if (stateSet._flag & RenderStateSet::Flag::ForwardBlend) {
-            auto ele = formatter.BeginElement(u("ForwardBlend"));
-            formatter.WriteAttribute(u("Src"), AsString(stateSet._forwardBlendSrc));
-            formatter.WriteAttribute(u("Dst"), AsString(stateSet._forwardBlendDst));
-            formatter.WriteAttribute(u("Op"), AsString(stateSet._forwardBlendOp));
+            auto ele = formatter.BeginElement("ForwardBlend");
+            formatter.WriteAttribute("Src", AsString(stateSet._forwardBlendSrc));
+            formatter.WriteAttribute("Dst", AsString(stateSet._forwardBlendDst));
+            formatter.WriteAttribute("Op", AsString(stateSet._forwardBlendOp));
             formatter.EndElement(ele);
         }
     }
@@ -306,17 +306,17 @@ namespace RenderCore { namespace Assets
                     formatter.TryBeginElement(eleName);
 
                        // first, load inherited settings.
-                    if (XlEqString(eleName, u("Inherit"))) {
+                    if (XlEqString(eleName, "Inherit")) {
                         _inherit = DeserializeInheritList(formatter);
-                    } else if (XlEqString(eleName, u("ShaderParams"))) {
+                    } else if (XlEqString(eleName, "ShaderParams")) {
                         _matParamBox = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, u("Constants"))) {
+                    } else if (XlEqString(eleName, "Constants")) {
                         _constants = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, u("ResourceBindings"))) {
+                    } else if (XlEqString(eleName, "ResourceBindings")) {
                         _resourceBindings = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, u("States"))) {
+                    } else if (XlEqString(eleName, "States")) {
                         _stateSet = DeserializeStateSet(formatter);
-					} else if (XlEqString(eleName, u("Patches"))) {
+					} else if (XlEqString(eleName, "Patches")) {
 						_patchCollection = ShaderPatchCollection(formatter, searchRules, depVal);
                     } else {
                         formatter.SkipElement();
@@ -346,13 +346,13 @@ namespace RenderCore { namespace Assets
     void RawMaterial::SerializeMethod(OutputStreamFormatter& formatter) const
     {
 		if (!_patchCollection.GetPatches().empty()) {
-			auto ele = formatter.BeginElement(u("Patches"));
+			auto ele = formatter.BeginElement("Patches");
 			SerializationOperator(formatter, _patchCollection);
 			formatter.EndElement(ele);
 		}
 
         if (!_inherit.empty()) {
-            auto ele = formatter.BeginElement(u("Inherit"));
+            auto ele = formatter.BeginElement("Inherit");
             for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
                 auto str = Conversion::Convert<std::basic_string<utf8>>(*i);
                 formatter.WriteAttribute(
@@ -363,25 +363,25 @@ namespace RenderCore { namespace Assets
         }
 
         if (_matParamBox.GetCount() > 0) {
-            auto ele = formatter.BeginElement(u("ShaderParams"));
+            auto ele = formatter.BeginElement("ShaderParams");
             _matParamBox.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_constants.GetCount() > 0) {
-            auto ele = formatter.BeginElement(u("Constants"));
+            auto ele = formatter.BeginElement("Constants");
             _constants.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_resourceBindings.GetCount() > 0) {
-            auto ele = formatter.BeginElement(u("ResourceBindings"));
+            auto ele = formatter.BeginElement("ResourceBindings");
             _resourceBindings.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (HasSomethingToSerialize(_stateSet)) {
-            auto ele = formatter.BeginElement(u("States"));
+            auto ele = formatter.BeginElement("States");
             SerializeStateSet(formatter, _stateSet);
             formatter.EndElement(ele);
         }

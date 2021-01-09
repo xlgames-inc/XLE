@@ -23,7 +23,7 @@ namespace Utility
 	// However, we can't use wchar_t because the standard doesn't clearly define the encoding. The Visual Studio documentation
 	// is even unclear about exactly what conversion are performed on L"" literals (maybe it depends on the encoding of the source file?)
 	//
-    using utf8 = uint8;
+    using utf8 = char;          // (could become char8_t in C++20)
 	using utf32 = char32_t;		// like char16_t, this is for UTF-32 type strings
 
 	// We're going to do a hack and define ucs2 and UTF-16 as the same thing. This because most string
@@ -31,7 +31,7 @@ namespace Utility
 	// USC2 and UTF-16 together confusingly.
 	// For Chinese projects, this may be an issue (?), but maybe it won't effect other projects.
 	using utf16 = char16_t;		// char16_t is intended by the standard's body to hold UTF-16 type strings	
-    using ucs2 = char16_t;
+    using ucs2 = uint16_t;
     using ucs4 = uint32;
 
     // convert UTF-8 data to ucs4
@@ -91,9 +91,6 @@ namespace Utility
 
     XL_UTILITY_API size_t utf8_vprintf(const char* fmt, va_list ap);
     XL_UTILITY_API size_t utf8_printf(const char* fmt, ...);
-
-    // inline const utf8* u(const char input[]) { return (const utf8*)input; }
-	#define u(x) (const utf8*)u8 ## x
 }
 
 using namespace Utility;

@@ -27,9 +27,9 @@ namespace ColladaConversion
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
             StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
-            _resourceBindings = BindingConfig(doc.Element(u("Resources")));
-            _constantsBindings = BindingConfig(doc.Element(u("Constants")));
-            _vertexSemanticBindings = BindingConfig(doc.Element(u("VertexSemantics")));
+            _resourceBindings = BindingConfig(doc.Element("Resources"));
+            _constantsBindings = BindingConfig(doc.Element("Constants"));
+            _vertexSemanticBindings = BindingConfig(doc.Element("VertexSemantics"));
 
         } CATCH(...) {
             Log(Warning) << "Problem while loading configuration file (" << filename << "). Using defaults." << std::endl;
@@ -44,7 +44,7 @@ namespace ColladaConversion
 
     BindingConfig::BindingConfig(const DocElementIterator<InputStreamFormatter<utf8>>& source)
     {
-        auto bindingRenames = source.Element(u("Rename"));
+        auto bindingRenames = source.Element("Rename");
         if (bindingRenames) {
             auto child = bindingRenames.FirstAttribute();
             for (; child; child = child.Next())
@@ -53,7 +53,7 @@ namespace ColladaConversion
                         std::make_pair(child.Name().AsString(), child.Value().AsString()));
         }
 
-        auto bindingSuppress = source.Element(u("Suppress"));
+        auto bindingSuppress = source.Element("Suppress");
         if (bindingSuppress) {
             auto child = bindingSuppress.FirstAttribute();
             for (; child; child = child.Next())

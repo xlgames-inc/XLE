@@ -24,12 +24,7 @@ namespace Utility
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
-    {
-        return MakeParameterNameHash(name.Cast<char>());
-    }
-
-    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<char> name)
+    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<> name)
     {
 		// If the variable name has array indexor syntax, we strip off that syntax and use
         // the indexor as a offset for the hash value. This makes it possible to store arrays,
@@ -74,12 +69,6 @@ namespace Utility
 				name, MakeIteratorRange(stringData.begin(), stringData.end()),
                 TypeDesc{TypeCat::UInt8, (uint16_t)(stringData.size()), TypeHint::String});
         }
-    }
-
-	template<>
-        void ParameterBox::SetParameter(StringSection<utf8> name, const char* value)
-    {
-		SetParameter(name, value ? MakeStringSection(value) : StringSection<>{});
     }
 
 	template<>
@@ -502,7 +491,7 @@ namespace Utility
             }
 
             if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
-                auto start = (const ucs2*)value;
+                auto start = (const utf16*)value;
                 tmpBuffer.resize((type._arrayCount*2)+1);
                 auto valueLen = Conversion::Convert(
                     AsPointer(tmpBuffer.begin()), tmpBuffer.size(),
@@ -649,12 +638,7 @@ namespace Utility
     }
 
     template void ParameterBox::SerializeWithCharType<utf8>(OutputStreamFormatter& stream) const;
-    template void ParameterBox::SerializeWithCharType<ucs2>(OutputStreamFormatter& stream) const;
-    template void ParameterBox::SerializeWithCharType<ucs4>(OutputStreamFormatter& stream) const;
-
     template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream, IteratorRange<const void*>, const ImpliedTyping::TypeDesc&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -702,7 +686,7 @@ namespace Utility
             // concatenation process.
         size_t size = 0;
         std::for_each(stringTable.cbegin(), stringTable.cend(), 
-            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringLen(object.first) + object.second.size(); });
+            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringCharCount(object.first) + object.second.size(); });
         combinedStrings.reserve(size+1);
 
         std::for_each(stringTable.cbegin(), stringTable.cend(), 

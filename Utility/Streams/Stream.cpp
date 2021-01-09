@@ -61,13 +61,8 @@ class FileOutputStream : public OutputStream, noncopyable
 public:
     virtual size_type Tell();
     virtual void Write(const void* p, size_type len);
-
-    virtual void WriteChar(utf8 ch);
-    virtual void WriteChar(ucs2 ch);
-    virtual void WriteChar(ucs4 ch);
+    virtual void WriteChar(char ch);
     virtual void Write(StringSection<utf8> s);
-    virtual void Write(StringSection<ucs2> s);
-    virtual void Write(StringSection<ucs4> s);
 
     virtual void Flush();
 
@@ -95,36 +90,11 @@ void FileOutputStream::Write(const void* p, size_type len)
     _file.Write(p, 1, len);
 }
 
-void FileOutputStream::WriteChar(utf8 ch)
+void FileOutputStream::WriteChar(char ch)
 {
     _file.Write(&ch, sizeof(ch), 1);
 }
-
-void FileOutputStream::WriteChar(ucs2 ch)
-{
-    //      DavidJ -- note this used to (intentionally) contain a bug, as such:
-    //  _file.Put(int(ch));     // (as per previous implementation)
-    _file.Write(&ch, sizeof(ch), 1);
-}
-
-void FileOutputStream::WriteChar(ucs4 ch)
-{
-    //      DavidJ -- note this used to (intentionally) contain a bug, as such:
-    //  _file.Put(ucs2(ch));     // (as per previous implementation)
-    _file.Write(&ch, sizeof(ch), 1);
-}
-
 void FileOutputStream::Write(StringSection<utf8> s)
-{
-    _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
-}
-
-void FileOutputStream::Write(StringSection<ucs2> s)
-{
-    _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
-}
-
-void FileOutputStream::Write(StringSection<ucs4> s)
 {
     _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
 }
@@ -193,36 +163,14 @@ template<typename BufferType>
 }
 
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteChar(utf8 ch)
+    void StreamBuf<BufferType>::WriteChar(char ch)
 {
-    typename BufferType::char_type buffer[4];
-    auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
-    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
+    _buffer.sputc((typename BufferType::char_type)ch);
 }
-
-template<typename BufferType>
-    void StreamBuf<BufferType>::WriteChar(ucs2 ch)
-{
-    typename BufferType::char_type buffer[4];
-    auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
-    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
-}
-
-template<typename BufferType>
-    void StreamBuf<BufferType>::WriteChar(ucs4 ch)
-{
-    typename BufferType::char_type buffer[4];
-    auto count = Conversion::Convert(buffer, ch);
-    if (count < 0) _buffer.sputc((typename BufferType::char_type)'?');
-    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
-}
-
 template<typename OutChar, typename InChar> struct CompatibleCharTypes { static const bool compatible = false; };
 template<typename CharType> struct CompatibleCharTypes<CharType, CharType> { static const bool compatible = true; };
 template<> struct CompatibleCharTypes<utf8, char> { static const bool compatible = true; };
-template<> struct CompatibleCharTypes<char, utf8> { static const bool compatible = true; };
+// template<> struct CompatibleCharTypes<char, utf8> { static const bool compatible = true; };
 template<> struct CompatibleCharTypes<wchar_t, ucs2> { static const bool compatible = true; };
 template<> struct CompatibleCharTypes<ucs2, wchar_t> { static const bool compatible = true; };
 
@@ -251,17 +199,6 @@ template<typename BufferType>
 {
     PushString(_buffer, s);
 }
-template<typename BufferType>
-    void StreamBuf<BufferType>::Write(StringSection<ucs2> s)
-{
-    PushString(_buffer, s);
-}
-
-template<typename BufferType>
-    void StreamBuf<BufferType>::Write(StringSection<ucs4> s)
-{
-    PushString(_buffer, s);
-}
 
 template<typename BufferType>
     void StreamBuf<BufferType>::Flush()
@@ -271,15 +208,10 @@ template<typename BufferType> StreamBuf<BufferType>::StreamBuf() {}
 
 template<typename BufferType> StreamBuf<BufferType>::~StreamBuf() {}
 
-template class StreamBuf<Internal::ResizeableMemoryBuffer<char>>;
 template class StreamBuf<Internal::ResizeableMemoryBuffer<utf8>>;
-template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs2>>;
-template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs4>>;
-
-template class StreamBuf<Internal::FixedMemoryBuffer2<char>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<utf8>>;
-template class StreamBuf<Internal::FixedMemoryBuffer2<ucs2>>;
-template class StreamBuf<Internal::FixedMemoryBuffer2<ucs4>>;
+template class StreamBuf<Internal::ResizeableMemoryBuffer<utf16>>;
+template class StreamBuf<Internal::FixedMemoryBuffer2<utf16>>;
 
 }
 

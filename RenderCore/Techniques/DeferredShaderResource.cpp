@@ -53,10 +53,10 @@ namespace RenderCore { namespace Techniques
 	: _depVal(depVal)
 	{
 		StreamDOM<InputStreamFormatter<utf8>> dom(input);
-		auto colorSpace = dom.FirstChild().Attribute(u("colorSpace"));
+		auto colorSpace = dom.FirstChild().Attribute("colorSpace");
 		if (colorSpace) {
-			if (!XlCompareStringI(colorSpace.Value(), u("srgb"))) { _colorSpace = SourceColorSpace::SRGB; }
-            else if (!XlCompareStringI(colorSpace.Value(), u("linear"))) { _colorSpace = SourceColorSpace::Linear; }
+			if (!XlCompareStringI(colorSpace.Value(), "srgb")) { _colorSpace = SourceColorSpace::SRGB; }
+            else if (!XlCompareStringI(colorSpace.Value(), "linear")) { _colorSpace = SourceColorSpace::Linear; }
 		}
 	}
 
@@ -379,10 +379,10 @@ namespace RenderCore { namespace Techniques
 		auto size = entrySize * MaxCachedTextures + sizeof(Header);
 		auto ioResult = ::Assets::MainFileSystem::TryOpen(
 			_cache,
-            u("int/TextureFormatCache.dat"), size,
+            "int/TextureFormatCache.dat", size,
 			"r+", 0u);
 		if (ioResult != ::Assets::IFileSystem::IOReason::Success) {
-			_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile(u("int/TextureFormatCache.dat"), size, "w", 0u);
+			_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile("int/TextureFormatCache.dat", size, "w", 0u);
 			XlClearMemory(_cache.GetData().begin(), size);
 		}
     }

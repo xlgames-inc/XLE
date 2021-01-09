@@ -200,7 +200,7 @@ namespace SceneEngine
                     // if this is our string, then we need to erase the old content and insert
                     // the new
 
-                auto length = XlStringLen(newString);
+                auto length = XlStringCharCount(newString);
                 std::vector<uint8> replacementContent(sizeof(uint64_t) + (length + 1) * sizeof(ResChar), 0);
                 *(uint64_t*)AsPointer(replacementContent.begin()) = newHash;
 
@@ -2410,12 +2410,12 @@ namespace SceneEngine
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
         for (auto c=doc.FirstChild(); c; c=c.NextSibling()) {
             Cell cell;
-            cell._offset = c(u("Offset"), Float3(0,0,0));
-            cell._mins = c(u("Mins"), Float3(0,0,0));
-            cell._maxs = c(u("Maxs"), Float3(0,0,0));
+            cell._offset = c("Offset", Float3(0,0,0));
+            cell._mins = c("Mins", Float3(0,0,0));
+            cell._maxs = c("Maxs", Float3(0,0,0));
 
             auto baseFile = Conversion::Convert<::Assets::rstring>(
-                c.Attribute(u("NativeFile")).Value().AsString());
+                c.Attribute("NativeFile").Value().AsString());
             searchRules.ResolveFile(
                 cell._file, dimof(cell._file),
                 baseFile.c_str());

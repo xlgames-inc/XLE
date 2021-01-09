@@ -614,14 +614,6 @@ namespace Utility
             return TypeDesc{TypeCat::Void};
         }
 
-		template<>
-            TypeDesc Parse(
-                StringSection<utf8> expression,
-                void* dest, size_t destSize)
-		{
-			return Parse(expression.Cast<char>(), dest, destSize);
-		}
-
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
         {
             if (desc._typeHint == TypeHint::String) {
@@ -701,6 +693,7 @@ namespace Utility
             s_parsingChar.reset();
         }
 
+        template TypeDesc Parse(StringSection<utf8> expression, void* dest, size_t destSize);
 
         /*template std::optional<bool> Parse(StringSection<utf8>);
         template std::optional<unsigned> Parse(StringSection<utf8>);

@@ -681,7 +681,7 @@ void Data::Path(char* dst, int count)
     } else {
         parent->Path(dst, count);
         XlCatString(dst, count, ".");
-        size_t len = XlStringLen(dst);
+        size_t len = XlStringCharCount(dst);
         ValuePath(this, dst + len, int(count - len));
     }
 }
@@ -1304,24 +1304,24 @@ static void PrintText(OutputStream& f, const Data* data)
     }
 
     if (needsQuote) {
-        f.WriteChar((utf8)'\"');
+        f.WriteChar('\"');
         const char* p = data->value;
         while (*p) {
             if (IsBreakChar(*p)) {
                 f.Write((const utf8*)"\r\n");
             } else if (*p == '\\') {
                 if (IsEscapeableChar(*(p + 1)))
-                    f.WriteChar((utf8)'\\');
-                f.WriteChar((utf8)*p);
+                    f.WriteChar('\\');
+                f.WriteChar(*p);
             } else if (*p == '\"') {
-                f.WriteChar((utf8)'\\');
-                f.WriteChar((utf8)*p);
+                f.WriteChar('\\');
+                f.WriteChar(*p);
             } else {
-                f.WriteChar((utf8)*p);
+                f.WriteChar(*p);
             }
             ++p;
         }
-        f.WriteChar((utf8)'\"');
+        f.WriteChar('\"');
         return;
     } else if (!data->value[0]) {
         f.Write((const utf8*)"\"\"");
@@ -1382,7 +1382,7 @@ static void PrintSingleLine(OutputStream& f, const Data* data)
         if (data->child->next)
             f.Write((const utf8*)" ( ");
         else
-            f.WriteChar((utf8)' ');
+            f.WriteChar(' ');
 
         PrintSingleLine(f, data->child);
 
@@ -1404,7 +1404,7 @@ static void PrintComment(OutputStream& f, int level, const char* p)
             PrintIndent(f, level);
             ++p;
         } else {
-            f.WriteChar((utf8)*p++);
+            f.WriteChar(*p++);
         }
     }
 }
@@ -1426,7 +1426,7 @@ static void PrettyPrint(OutputStream&f, int level, const Data* data, bool includ
     PrintText(f, data);
 
     if (data->postComment && includeComment) {
-        f.WriteChar((utf8)' ');
+        f.WriteChar(' ');
         f.Write((const utf8*)data->postComment);
     }
 
@@ -1441,7 +1441,7 @@ bool Data::SavePrettyValue(char* s, int* len) const
 {
     FixedMemoryOutputStream<char> stream(s, (size_t)*len);
     PrintText(stream, this);
-    stream.WriteChar(utf8(0));
+    stream.WriteChar(0);
     *len = (int)stream.GetBuffer().Length();
     return true;
 }
@@ -1471,7 +1471,7 @@ bool Data::SaveToBuffer(char* s, int* len) const
 {
     FixedMemoryOutputStream<char> stream(s, (size_t)*len);
     SaveToOutputStream(stream);
-    stream.WriteChar(utf8(0));
+    stream.WriteChar(0);
     return true;
 }
 

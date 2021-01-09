@@ -132,16 +132,16 @@ namespace ColladaConversion
     static ProcessingFlags::BitField GetProcessingFlags(const std::basic_string<utf8>& semantic)
     {
         const auto npos = std::basic_string<utf8>::npos;
-        if (semantic.find(u("TEXCOORD")) != npos || semantic.find(u("texcoord")) != npos) {
+        if (semantic.find("TEXCOORD") != npos || semantic.find("texcoord") != npos) {
             return ProcessingFlags::TexCoordFlip;
         } 
 		const bool renormalize = false;
 		if (renormalize) {
-			if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
+			if (semantic.find("TEXTANGENT") != npos || semantic.find("textangent") != npos) {
 				return ProcessingFlags::Renormalize;
-			} else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
+			} else if (semantic.find("TEXBITANGENT") != npos || semantic.find("texbitangent") != npos) {
 				return ProcessingFlags::Renormalize;
-			} else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
+			} else if (semantic.find("NORMAL") != npos || semantic.find("normal") != npos) {
 				return ProcessingFlags::Renormalize;
 			}
 		}
@@ -307,11 +307,11 @@ namespace ColladaConversion
 
     std::pair<PrimitiveTopology, const utf8*> s_PrimitiveTopologyNames[] = 
     {
-        std::make_pair(PrimitiveTopology::Unknown, u("unknown")),
-        std::make_pair(PrimitiveTopology::Triangles, u("triangles")),
-        std::make_pair(PrimitiveTopology::TriangleStrips, u("tristrips")),
-        std::make_pair(PrimitiveTopology::PolyList, u("polylist")),
-        std::make_pair(PrimitiveTopology::Polygons, u("polygons"))
+        std::make_pair(PrimitiveTopology::Unknown, "unknown"),
+        std::make_pair(PrimitiveTopology::Triangles, "triangles"),
+        std::make_pair(PrimitiveTopology::TriangleStrips, "tristrips"),
+        std::make_pair(PrimitiveTopology::PolyList, "polylist"),
+        std::make_pair(PrimitiveTopology::Polygons, "polygons")
     };
 
     static PrimitiveTopology AsPrimitiveTopology(Section section)
@@ -759,7 +759,7 @@ namespace ColladaConversion
         const URIResolveContext& resolveContext,
 		IteratorRange<const unsigned*> remapping)
     {
-        auto invBindInput = skinController.GetJointInputs().FindInputBySemantic(u("INV_BIND_MATRIX"));
+        auto invBindInput = skinController.GetJointInputs().FindInputBySemantic("INV_BIND_MATRIX");
 		if (!invBindInput) return {};
 
         auto* invBindSource = FindElement(
@@ -774,7 +774,7 @@ namespace ColladaConversion
 		if (!commonAccessor) return {};
 
         if (    commonAccessor->GetParamCount() != 1
-            || !Is(commonAccessor->GetParam(0)._type, u("float4x4"))) {
+            || !Is(commonAccessor->GetParam(0)._type, "float4x4")) {
             Log(Warning) << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation() << std::endl;
 			return {};
         }
@@ -831,7 +831,7 @@ namespace ColladaConversion
             // we're expecting an input called "JOINT" that contains the names of joints
             // These names should match the "sid" of nodes within the hierachy of nodes
             // beneath our "skeleton"
-        auto jointInput = controller.GetJointInputs().FindInputBySemantic(u("JOINT"));
+        auto jointInput = controller.GetJointInputs().FindInputBySemantic("JOINT");
 		if (!jointInput) return {};
 
 		GuidReference jointSourceRef(jointInput->_source);
@@ -1055,17 +1055,17 @@ namespace ColladaConversion
         _weightIndexOffset = ~0u;
         _jointIndexOffset = ~0u;
 
-        auto weightInput = controller.GetInfluenceInputBySemantic(u("WEIGHT"));
+        auto weightInput = controller.GetInfluenceInputBySemantic("WEIGHT");
         if (weightInput) {
             _weightIndexOffset = weightInput->_indexInPrimitive;
             auto weightSource = FindElement(
                 GuidReference(weightInput->_source), resolveContext, 
                 &IDocScopeIdResolver::FindSource);
             if (weightSource)
-                _rawWeights = AsScalarArray<float>(*weightSource, u("WEIGHT"));
+                _rawWeights = AsScalarArray<float>(*weightSource, "WEIGHT");
         }
 
-        auto jointInput = controller.GetInfluenceInputBySemantic(u("JOINT"));
+        auto jointInput = controller.GetInfluenceInputBySemantic("JOINT");
         if (jointInput)
             _jointIndexOffset = jointInput->_indexInPrimitive;
 

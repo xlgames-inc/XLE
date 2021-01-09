@@ -79,7 +79,7 @@ namespace Overlays
     {
             // read the contents of this directory, and fill in the "_entries" vector
         ucs2 queryString[MaxPath];
-        utf8_2_ucs2((const utf8*)inputQuery, XlStringLen(inputQuery), queryString, dimof(queryString));
+        utf8_2_ucs2((const utf8*)inputQuery, XlStringCharCount(inputQuery), queryString, dimof(queryString));
 
         ucs2 baseDirectory[MaxPath];
         XlDirname(baseDirectory, dimof(baseDirectory), queryString);

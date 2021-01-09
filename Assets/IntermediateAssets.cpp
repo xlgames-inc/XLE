@@ -328,7 +328,7 @@ namespace Assets { namespace IntermediateAssets
                             MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
                         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
-						auto compareVersion = doc.Attribute(u("VersionString")).Value();
+						auto compareVersion = doc.Attribute("VersionString").Value();
 						if (XlEqString(compareVersion, (const utf8*)_constructorOptions._versionString.c_str())) {
 							// this branch is already present, and is good... so use it
 							goodBranchDir = _constructorOptions._baseDir + "/" + findData.cFileName;

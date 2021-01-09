@@ -75,7 +75,7 @@ namespace RenderCore { namespace Techniques
 				auto relevanceI = techniqueFiltering._relevanceMap.find(sourceIterator->Name().Cast<char>().AsString());
 				if (relevanceI != techniqueFiltering._relevanceMap.end()) {
 					// Set a key called "value" to the new value we want to set
-					pBoxValue.SetParameter(u("value"), sourceIterator->RawValue(), sourceIterator->Type());
+					pBoxValue.SetParameter("value", sourceIterator->RawValue(), sourceIterator->Type());
 					passesTechniqueRelevanceMap = EvaluatePreprocessorExpression(
 						relevanceI->second,
 						MakeIteratorRange(selectorsWithBaseTechnique));

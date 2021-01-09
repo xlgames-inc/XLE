@@ -399,7 +399,7 @@ namespace Assets
                         //  with the new. This will destroy and re-write the entire debugging file in one go.
                 utf8 debugFilename[MaxPath];
 				XlCopyString(debugFilename, _mainFileName);
-				XlCatString(debugFilename, u(".debug"));
+				XlCatString(debugFilename, ".debug");
                     
                 // try to open an existing file -- but if there are any errors, we can just discard the
                 // old contents
@@ -468,7 +468,7 @@ namespace Assets
             TRY {
                 utf8 debugFilename[MaxPath];
 				XlCopyString(debugFilename, _mainFileName.c_str());
-				XlCatString(debugFilename, u(".debug"));
+				XlCatString(debugFilename, ".debug");
 
                 size_t debugFileSize = 0;
 				auto debugFile = ::Assets::TryLoadFileAsMemoryBlock((char*)debugFilename, &debugFileSize);
@@ -538,7 +538,7 @@ namespace Assets
     , _buildDateString(buildDateString)
     , _cachedBlockListValid(false)
     {
-        _directoryFileName = _mainFileName + u(".dir");
+        _directoryFileName = _mainFileName + ".dir";
 
             // (make sure the directory provided exists)
         RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(_mainFileName).DriveAndPath());

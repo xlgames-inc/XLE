@@ -115,7 +115,7 @@ namespace Sample
             }
 
             ucs4 buffer[1024];
-            utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));
+            utf8_2_ucs4((const utf8*)text, XlStringCharCount(text), buffer, dimof(buffer));
             Quad quad = Quad::MinMax(Float2(0.f, 0.f), Float2(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1])));
 
             auto alignment = AlignText(*res._font, quad, TextAlignment::Center, buffer);

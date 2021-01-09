@@ -27,7 +27,7 @@ namespace PlatformRig
         Coord2          _mousePosition;
         Coord2          _mouseDelta;
         signed          _wheelDelta;
-        Utility::ucs2   _pressedChar;
+        wchar_t         _pressedChar;
 
         struct ActiveButton
         {
@@ -42,7 +42,7 @@ namespace PlatformRig
 
         InputSnapshot() : _mouseButtonsTransition(0), _mouseButtonsDblClk(0), _mouseButtonsDown(0), _wheelDelta(0), _mousePosition(0,0), _mouseDelta(0,0), _pressedChar(0) {}
         InputSnapshot(  unsigned buttonsDown, unsigned buttonsTransition, signed wheelDelta, 
-                        Coord2 mousePosition, Coord2 mouseDelta, Utility::ucs2 pressedChar=0) 
+                        Coord2 mousePosition, Coord2 mouseDelta, wchar_t pressedChar=0) 
             : _mouseButtonsTransition(buttonsTransition), _mouseButtonsDown(buttonsDown)
             , _wheelDelta(wheelDelta), _mousePosition(mousePosition), _mouseDelta(mouseDelta)
             , _pressedChar(pressedChar), _mouseButtonsDblClk(0) {}

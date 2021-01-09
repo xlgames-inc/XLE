@@ -439,33 +439,18 @@ namespace Utility
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template class StreamDOM<InputStreamFormatter<utf8>>;
-    template class StreamDOM<InputStreamFormatter<ucs2>>;
-    template class StreamDOM<InputStreamFormatter<ucs4>>;
-    template class StreamDOM<InputStreamFormatter<char>>;
     template class StreamDOM<XmlInputStreamFormatter<utf8>>;
 
     template class StreamDOMElement<InputStreamFormatter<utf8>>;
-    template class StreamDOMElement<InputStreamFormatter<ucs2>>;
-    template class StreamDOMElement<InputStreamFormatter<ucs4>>;
-    template class StreamDOMElement<InputStreamFormatter<char>>;
     template class StreamDOMElement<XmlInputStreamFormatter<utf8>>;
 
     template class StreamDOMAttribute<InputStreamFormatter<utf8>>;
-    template class StreamDOMAttribute<InputStreamFormatter<ucs2>>;
-    template class StreamDOMAttribute<InputStreamFormatter<ucs4>>;
-    template class StreamDOMAttribute<InputStreamFormatter<char>>;
     template class StreamDOMAttribute<XmlInputStreamFormatter<utf8>>;
     
     template class Internal::DocElementIterator<InputStreamFormatter<utf8>>;
-    template class Internal::DocElementIterator<InputStreamFormatter<ucs2>>;
-    template class Internal::DocElementIterator<InputStreamFormatter<ucs4>>;
-    template class Internal::DocElementIterator<InputStreamFormatter<char>>;
     template class Internal::DocElementIterator<XmlInputStreamFormatter<utf8>>;
 
     template class Internal::DocAttributeIterator<InputStreamFormatter<utf8>>;
-    template class Internal::DocAttributeIterator<InputStreamFormatter<ucs2>>;
-    template class Internal::DocAttributeIterator<InputStreamFormatter<ucs4>>;
-    template class Internal::DocAttributeIterator<InputStreamFormatter<char>>;
     template class Internal::DocAttributeIterator<XmlInputStreamFormatter<utf8>>;
 
 }

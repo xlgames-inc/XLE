@@ -59,10 +59,7 @@ namespace Utility
                 void* dest, size_t destSize);
 
         template <typename Type>
-            std::optional<Type> Parse(StringSection<char> expression);
-
-        template <typename Type>
-            std::optional<Type> Parse(StringSection<utf8> expression);
+            std::optional<Type> Parse(StringSection<> expression);
 
         bool Cast(
             IteratorRange<void*> dest, TypeDesc destType,
@@ -91,13 +88,13 @@ namespace Utility
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int16_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int16}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(uint8_t const*)         { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(int8_t const*)          { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Int8}; }
+        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(char const*)            { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(char16_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt16}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(char32_t const*)        { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(bool const*)            { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Bool}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(float const*)           { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Float}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(double const*)          { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Double}; }
 
-        constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const char* const*)     { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf8* const*)     { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt8, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf16* const*)    { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt16, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
         constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(const utf32* const*)    { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::UInt32, (uint16_t)~uint16_t(0), Utility::ImpliedTyping::TypeHint::String}; }
@@ -112,7 +109,7 @@ namespace Utility
                 return AsString(&type, sizeof(Type), TypeOf<Type>(), strongTyping);
             }
 
-        template <typename Type> std::optional<Type> Parse(StringSection<char> expression) 
+        template <typename Type> std::optional<Type> Parse(StringSection<> expression) 
         {
             char buffer[NativeRepMaxSize];
             auto parseType = Parse(expression, buffer, sizeof(buffer));
@@ -126,12 +123,6 @@ namespace Utility
                 }
             }
             return {};
-        }
-
-        template <typename Type>
-            std::optional<Type> Parse(StringSection<utf8> expression)
-        {
-            return Parse<Type>(expression.Cast<char>());
         }
     }
 }

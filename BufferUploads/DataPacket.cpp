@@ -22,7 +22,7 @@
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 // Important character set note!
-// We're using some "ucs2" conversions in this file. This is because we're using some Windows API functions that take WCHAR strings
+// We're using some "wchar_t" conversions in this file. This is because we're using some Windows API functions that take WCHAR strings
 // (indirectly via the DirectXTex library).
 // However, Windows should technically expect UTF16 (not UCS2) encoding for WCHAR. Maybe in our usage patterns it's not a big
 // deal... But we should be careful!
@@ -378,13 +378,15 @@ namespace BufferUploads
                 }
             } 
         } else {
-			auto ucs2Filename = Conversion::Convert<std::basic_string<ucs2>>(inputFilename.Cast<utf8>());
+            // LoadFromDDSFile, etc, takes LPCWSTR for the filename
+            // this is oriented around the windows long char encoding scheme; and isn't particularly cross platform
+			auto ucs2Filename = Conversion::Convert<std::basic_string<wchar_t>>(inputFilename.Cast<utf8>());
             if (fmt == TexFmt::DDS) {
-                hresult = LoadFromDDSFile((const wchar_t*)ucs2Filename.c_str(), DDS_FLAGS_NONE, &_texMetadata, _image);
+                hresult = LoadFromDDSFile(ucs2Filename.c_str(), DDS_FLAGS_NONE, &_texMetadata, _image);
             } else if (fmt == TexFmt::TGA) {
-                hresult = LoadFromTGAFile((const wchar_t*)ucs2Filename.c_str(), &_texMetadata, _image);
+                hresult = LoadFromTGAFile(ucs2Filename.c_str(), &_texMetadata, _image);
             } else if (fmt == TexFmt::WIC) {
-                hresult = LoadFromWICFile((const wchar_t*)ucs2Filename.c_str(), WIC_FLAGS_NONE, &_texMetadata, _image);
+                hresult = LoadFromWICFile(ucs2Filename.c_str(), WIC_FLAGS_NONE, &_texMetadata, _image);
             } else {
                 Log(Warning) << "Texture format not apparent from filename (" << inputFilename.AsString() << ")" << std::endl;
             }
@@ -558,7 +560,7 @@ namespace BufferUploads
         TexMetadata metadata;
 
         HRESULT hresult = -1;
-		ucs2 wfilename[MaxPath];
+		wchar_t wfilename[MaxPath];
         Conversion::Convert(wfilename, dimof(wfilename), filename.begin(), filename.end());
 
         if (fmt == TexFmt::DDS) {

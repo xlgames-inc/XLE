@@ -90,7 +90,7 @@ namespace PlatformRig { namespace Network
         void    StateBundleEvent::Init(StateBundleId id, const char eventString[])
         {
             _stateBundle = id;
-            _size = std::min((size_t)XlStringLen(eventString), dimof(_buffer)-1);
+            _size = std::min((size_t)XlStringCharCount(eventString), dimof(_buffer)-1);
             XlCopyMemory(_buffer, eventString, _size);
             _buffer[_size] = '\0';
         }

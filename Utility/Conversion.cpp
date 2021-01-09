@@ -9,6 +9,7 @@
 #include "PtrUtils.h"
 #include "../Core/SelectConfiguration.h"
 #include <algorithm>
+#include <cuchar>
 
 namespace Conversion
 {
@@ -103,21 +104,6 @@ namespace Conversion
     template<> uint64_t Convert(const std::basic_string<utf8>& input)     { return Convert<uint64_t>((const char*)input.c_str()); }
     template<> bool Convert(const std::basic_string<utf8>& input)       { return Convert<bool>((const char*)input.c_str()); }
     
-    template<> float Convert(const std::basic_string<char>& input)      { return Convert<float>(input.c_str()); }
-    template<> uint32_t Convert(const std::basic_string<char>& input)     { return Convert<uint32_t>(input.c_str()); }
-    template<> int32_t Convert(const std::basic_string<char>& input)      { return Convert<int32_t>(input.c_str()); }
-    template<> int64_t Convert(const std::basic_string<char>& input)      { return Convert<int64_t>(input.c_str()); }
-    template<> uint64_t Convert(const std::basic_string<char>& input)     { return Convert<uint64_t>(input.c_str()); }
-    template<> bool Convert(const std::basic_string<char>& input)       { return Convert<bool>(input.c_str()); }
-
-    template<> float Convert(StringSection<utf8> input)      { return Convert<float>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-	template<> double Convert(StringSection<utf8> input)	 { return Convert<double>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-    template<> uint32_t Convert(StringSection<utf8> input)     { return Convert<uint32_t>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-    template<> int32_t Convert(StringSection<utf8> input)      { return Convert<int32_t>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-    template<> int64_t Convert(StringSection<utf8> input)      { return Convert<int64_t>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-    template<> uint64_t Convert(StringSection<utf8> input)     { return Convert<uint64_t>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-    template<> bool Convert(StringSection<utf8> input)       { return Convert<bool>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<> std::basic_string<ucs2> Convert(const std::basic_string<utf8>& input)
@@ -139,26 +125,12 @@ namespace Conversion
             AsPointer(result.begin()), result.size());
         return result;
     }
-    
-    template<> std::basic_string<ucs2> Convert(const std::basic_string<char>& input)
+
+    template<> std::basic_string<utf16> Convert(const std::basic_string<utf8>& input)
     {
-        std::basic_string<ucs2> result;
-        result.resize(input.size());
-        utf8_2_ucs2(
-            (const utf8*)AsPointer(input.begin()), input.size(),
-            AsPointer(result.begin()), result.size());
-        return result;
+        return { input.begin(), input.end() };
     }
     
-    template<> std::basic_string<ucs4> Convert(const std::basic_string<char>& input)
-    {
-        std::basic_string<ucs4> result;
-        result.resize(input.size());
-        utf8_2_ucs4(
-            (const utf8*)AsPointer(input.begin()), input.size(),
-            AsPointer(result.begin()), result.size());
-        return result;
-    }
     
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs2>& input)
     {
@@ -177,16 +149,6 @@ namespace Conversion
         ucs2_2_ucs4(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
-        return result;
-    }
-
-    template<> std::basic_string<char> Convert(const std::basic_string<ucs2>& input)
-    {
-        std::basic_string<char> result;
-        result.resize(input.size());
-        ucs2_2_utf8(
-            AsPointer(input.begin()), input.size(),
-            (utf8*)AsPointer(result.begin()), result.size());
         return result;
     }
 
@@ -210,16 +172,6 @@ namespace Conversion
         return result;
     }
 
-    template<> std::basic_string<char> Convert(const std::basic_string<ucs4>& input)
-    {
-        std::basic_string<char> result;
-        result.resize(input.size());
-        ucs4_2_utf8(
-            AsPointer(input.begin()), input.size(),
-            (utf8*)AsPointer(result.begin()), result.size());
-        return result;
-    }
-
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs4>& input)
     {
         assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
@@ -231,19 +183,14 @@ namespace Conversion
         return result;
     }
 
-    template<> std::basic_string<char> Convert(const std::basic_string<utf8>& input)
-    {
-        return reinterpret_cast<const std::basic_string<char>&>(input);
-    }
-    
-    template<> std::basic_string<utf8> Convert(const std::basic_string<char>& input)
-    {
-        return reinterpret_cast<const std::basic_string<utf8>&>(input);
-    }
-
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs2>& input)
     {
         return reinterpret_cast<const std::basic_string<wchar_t>&>(input);
+    }
+
+    template<> std::basic_string<utf8> Convert(const std::basic_string<utf16>& input)
+    {
+        return { input.begin(), input.end() };
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,6 +215,11 @@ namespace Conversion
 		return result;
 	}
 
+    template<> std::basic_string<utf16> Convert(StringSection<utf8> input)
+	{
+		return { input.begin(), input.end() };      // relying on conversion via standard library
+	}
+
 	template<> std::basic_string<utf8> Convert(StringSection<ucs2> input)
 	{
 		std::basic_string<utf8> result;
@@ -288,14 +240,9 @@ namespace Conversion
 		return result;
 	}
 
-	template<> std::basic_string<char> Convert(StringSection<ucs2> input)
+    template<> std::basic_string<utf8> Convert(StringSection<utf16> input)
 	{
-		std::basic_string<char> result;
-		result.resize(input.Length());
-		ucs2_2_utf8(
-			AsPointer(input.begin()), input.Length(),
-			(utf8*)AsPointer(result.begin()), result.size());
-		return result;
+		return { input.begin(), input.end() };      // relying on conversion via standard library
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs4> input)
@@ -315,16 +262,6 @@ namespace Conversion
 		ucs4_2_ucs2(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
-		return result;
-	}
-
-	template<> std::basic_string<char> Convert(StringSection<ucs4> input)
-	{
-		std::basic_string<char> result;
-		result.resize(input.Length());
-		ucs4_2_utf8(
-			AsPointer(input.begin()), input.Length(),
-			(utf8*)AsPointer(result.begin()), result.size());
 		return result;
 	}
 
@@ -356,19 +293,33 @@ namespace Conversion
     }
 
     template<> ptrdiff_t Convert(
-        char output[], size_t outputDim,
-        const utf8* begin, const utf8* end)
-    {
-        XlCopyNString(output, outputDim, (const char*)begin, end-begin);
-        return true;
-    }
-
-    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
         assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return utf8_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
+    }
+
+    template<> ptrdiff_t Convert(
+        utf16 output[], size_t outputDim,
+        const utf8* begin, const utf8* end)
+    {
+        // not implemented
+        // In theory we can use the standard library for this -- 
+        //  https://en.cppreference.com/w/cpp/locale/codecvt/out
+        // but that's deprecated, in favor of potentially safer 
+        // std::string based solutions.
+        assert(0);      
+        return 0;
+    }
+
+    template<> ptrdiff_t Convert(
+        utf8 output[], size_t outputDim,
+        const utf16* begin, const utf16* end)
+    {
+        // not implemented (see comment above)
+        assert(0);      
+        return 0;
     }
 
         //////////      //////////      //////////
@@ -385,13 +336,6 @@ namespace Conversion
         const ucs2* begin, const ucs2* end)
     {
         return ucs2_2_ucs4(begin, end-begin, output, outputDim);
-    }
-
-    template<> ptrdiff_t Convert(
-        char output[], size_t outputDim,
-        const ucs2* begin, const ucs2* end)
-    {
-        return ucs2_2_utf8(begin, end-begin, (utf8*)output, outputDim);
     }
 
     template<> ptrdiff_t Convert(
@@ -420,13 +364,6 @@ namespace Conversion
     }
 
     template<> ptrdiff_t Convert(
-        char output[], size_t outputDim,
-        const ucs4* begin, const ucs4* end)
-    {
-        return ucs4_2_utf8(begin, end-begin, (utf8*)output, outputDim);
-    }
-
-    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
@@ -434,36 +371,6 @@ namespace Conversion
         return ucs4_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
     }
 
-        //////////      //////////      //////////
-
-    template<> ptrdiff_t Convert(
-        utf8 output[], size_t outputDim,
-        const char* begin, const char* end)
-    {
-        return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
-    }
-
-    template<> ptrdiff_t Convert(
-        ucs2 output[], size_t outputDim,
-        const char* begin, const char* end)
-    {
-        return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
-    }
-
-    template<> ptrdiff_t Convert(
-        ucs4 output[], size_t outputDim,
-        const char* begin, const char* end)
-    {
-        return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
-    }
-
-    template<> ptrdiff_t Convert(
-        wchar_t output[], size_t outputDim,
-        const char* begin, const char* end)
-    {
-        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
-        return Convert((ucs2*)output, outputDim, (const utf8*)begin, (const utf8*)end);
-    }
 
             //////////      //////////      //////////
 
@@ -489,14 +396,6 @@ namespace Conversion
     {
         assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
-    }
-
-    template<> ptrdiff_t Convert(
-        char output[], size_t outputDim,
-        const wchar_t* begin, const wchar_t* end)
-    {
-        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
-        return Convert((utf8*)output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
 }

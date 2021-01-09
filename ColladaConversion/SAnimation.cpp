@@ -105,7 +105,7 @@ namespace ColladaConversion
         }
 
         //////////////////
-        const auto* output = _sampler->GetInputsCollection().FindInputBySemantic(u("OUTPUT"));
+        const auto* output = _sampler->GetInputsCollection().FindInputBySemantic("OUTPUT");
         if (!output) {
             Log(Warning) << "Found animation sampler with no output field. Ignoring channel." << std::endl;
             return;
@@ -123,7 +123,7 @@ namespace ColladaConversion
         }
 
         //////////////////
-        const auto* input = _sampler->GetInputsCollection().FindInputBySemantic(u("INPUT"));
+        const auto* input = _sampler->GetInputsCollection().FindInputBySemantic("INPUT");
         if (!input) {
             Log(Warning) << "Found animation sampler with no output field. Ignoring channel." << std::endl;
             return;
@@ -141,7 +141,7 @@ namespace ColladaConversion
         }
 
         //////////////////
-        const auto* inTangent = _sampler->GetInputsCollection().FindInputBySemantic(u("IN_TANGENT"));
+        const auto* inTangent = _sampler->GetInputsCollection().FindInputBySemantic("IN_TANGENT");
         if (inTangent) {
             _inTangentsSource = FindElement(inTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_inTangentsSource) {
@@ -153,7 +153,7 @@ namespace ColladaConversion
         }
 
         //////////////////
-        const auto* outTangent = _sampler->GetInputsCollection().FindInputBySemantic(u("OUT_TANGENT"));
+        const auto* outTangent = _sampler->GetInputsCollection().FindInputBySemantic("OUT_TANGENT");
         if (outTangent) {
             _outTangentsSource = FindElement(outTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_outTangentsSource) {
@@ -165,7 +165,7 @@ namespace ColladaConversion
         }
 
         //////////////////
-        const auto* interpolation = _sampler->GetInputsCollection().FindInputBySemantic(u("INTERPOLATION"));
+        const auto* interpolation = _sampler->GetInputsCollection().FindInputBySemantic("INTERPOLATION");
         if (interpolation) {
             _interpolationSource = FindElement(interpolation->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_interpolationSource) {
@@ -187,26 +187,26 @@ namespace ColladaConversion
 
     std::pair<const utf8*, unsigned> s_FieldNameToOffset[]
     {
-        std::make_pair(u("X"), 0),
-        std::make_pair(u("Y"), 1),
-        std::make_pair(u("Z"), 2),
-        std::make_pair(u("W"), 3),
+        std::make_pair("X", 0),
+        std::make_pair("Y", 1),
+        std::make_pair("Z", 2),
+        std::make_pair("W", 3),
 
-        std::make_pair(u("x"), 0),
-        std::make_pair(u("y"), 1),
-        std::make_pair(u("z"), 2),
-        std::make_pair(u("w"), 3),
+        std::make_pair("x", 0),
+        std::make_pair("y", 1),
+        std::make_pair("z", 2),
+        std::make_pair("w", 3),
 
-        std::make_pair(u("S"), 0),
-        std::make_pair(u("T"), 1),
-        std::make_pair(u("Q"), 2),
+        std::make_pair("S", 0),
+        std::make_pair("T", 1),
+        std::make_pair("Q", 2),
 
-        std::make_pair(u("s"), 0),
-        std::make_pair(u("t"), 1),
-        std::make_pair(u("q"), 2),
+        std::make_pair("s", 0),
+        std::make_pair("t", 1),
+        std::make_pair("q", 2),
 
-        std::make_pair(u("ANGLE"), 3),
-        std::make_pair(u("angle"), 3)
+        std::make_pair("ANGLE", 3),
+        std::make_pair("angle", 3)
     };
 
     static void LoadSource(
@@ -247,8 +247,8 @@ namespace ColladaConversion
             || src.FindAccessorForTechnique()->GetStride() != 1
             || src.FindAccessorForTechnique()->GetParamCount() != 1
             || src.FindAccessorForTechnique()->GetParam(0)._offset != 0
-            || !Is(src.FindAccessorForTechnique()->GetParam(0)._name, u("INTERPOLATION"))
-            || !Is(src.FindAccessorForTechnique()->GetParam(0)._type, u("name"))
+            || !Is(src.FindAccessorForTechnique()->GetParam(0)._name, "INTERPOLATION")
+            || !Is(src.FindAccessorForTechnique()->GetParam(0)._type, "name")
             || src.GetType() != DataFlow::ArrayType::Name) {
 
             Throw(FormatException("Cannot understand interpolation source for animation sampler. Expecting simple list of names (such as BEZIER, LINEAR, etc)", src.GetLocation()));
@@ -270,9 +270,9 @@ namespace ColladaConversion
             type = newSection;
         }
 
-        if (Is(type, u("BEZIER"))) return RenderCore::Assets::CurveInterpolationType::Bezier;
-        if (Is(type, u("HERMITE"))) return RenderCore::Assets::CurveInterpolationType::Hermite;
-        if (Is(type, u("LINEAR"))) return RenderCore::Assets::CurveInterpolationType::Linear;
+        if (Is(type, "BEZIER")) return RenderCore::Assets::CurveInterpolationType::Bezier;
+        if (Is(type, "HERMITE")) return RenderCore::Assets::CurveInterpolationType::Hermite;
+        if (Is(type, "LINEAR")) return RenderCore::Assets::CurveInterpolationType::Linear;
 
         // "BSPLINE" is also part of the "common profile" of collada -- but not supported
         Log(Warning) << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation() << std::endl;

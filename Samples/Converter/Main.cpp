@@ -60,8 +60,8 @@ namespace Converter
 			ConstHash64<'comp', 'iler', 'cfg'>::Value,
 			[&doc]() -> StreamDOM<InputStreamFormatter<char>>& { return doc; });
 
-		const utf8* xleResDir = u("game/xleres");
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir)));
+		const utf8* xleResDir = "game/xleres";
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir)));
 
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });

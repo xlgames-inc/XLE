@@ -946,7 +946,7 @@ int xl_vsnprintf(char* buf, int count, const char* fmt, va_list args)
     {
         if (*fmt != '%')
         {
-            stream.WriteChar((utf8)*fmt);
+            stream.WriteChar(*fmt);
             continue;
         }
 
@@ -1014,18 +1014,18 @@ repeat:
         switch (*fmt)
         {
         case 'c':
-            if (!(flags & LEFT)) while (--field_width > 0) { stream.WriteChar((utf8)' '); }
-            stream.WriteChar((utf8) va_arg(args, int));
-            while (--field_width > 0) { stream.WriteChar((utf8)' '); }
+            if (!(flags & LEFT)) while (--field_width > 0) { stream.WriteChar(' '); }
+            stream.WriteChar((char)va_arg(args, int));
+            while (--field_width > 0) { stream.WriteChar(' '); }
             continue;
 
         case 's':
             s = va_arg(args, char *);
             if (!s) s = null_str;
             len = (int)strnlen(s, precision);
-            if (!(flags & LEFT)) while (len < field_width--) { stream.WriteChar((utf8)' '); }
-            for (i = 0; i < len; ++i) { stream.WriteChar((utf8)*s++); }
-            while (len < field_width--) { stream.WriteChar((utf8)' '); }
+            if (!(flags & LEFT)) while (len < field_width--) { stream.WriteChar(' '); }
+            for (i = 0; i < len; ++i) { stream.WriteChar(*s++); }
+            while (len < field_width--) { stream.WriteChar(' '); }
             continue;
 
         case 'p':
@@ -1097,9 +1097,9 @@ repeat:
             continue;
 
         default:
-            if (*fmt != '%') {stream.WriteChar((utf8)'%'); stream.WriteChar((utf8)'s');}  // stream.WriteChar((char)'%s'); // DavidJ -- bug...?
+            if (*fmt != '%') {stream.WriteChar('%'); stream.WriteChar('s');}  // stream.WriteChar((char)'%s'); // DavidJ -- bug...?
             if (*fmt) {
-                stream.WriteChar((utf8)*fmt);
+                stream.WriteChar(*fmt);
             }
             else
                 --fmt;
@@ -1130,7 +1130,7 @@ repeat:
         stream.Write((const utf8*)numbuf); 
     }
 
-    stream.WriteChar(utf8(0));
+    stream.WriteChar(0);
 
     return (int)stream.Tell();
 }

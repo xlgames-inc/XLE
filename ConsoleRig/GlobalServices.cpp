@@ -45,7 +45,7 @@ namespace ConsoleRig
         utf8 appPath[MaxPath];
         XlGetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
-        return splitter.DriveAndPath().AsString() + u("/../Working");
+        return splitter.DriveAndPath().AsString() + "/../Working";
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

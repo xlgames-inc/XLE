@@ -68,7 +68,7 @@ namespace GUILayer
 			start = end+1;
         }
 
-        result->_matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
+        result->_matParams.SetParameter("SHADER_NODE_EDITOR", MakeStringSection("1"));
 
         /*
 		for each(auto i in doc->ShaderParameters)
@@ -204,7 +204,7 @@ namespace GUILayer
 				auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
 
 				if (pretransformed)
-					material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
+					material->_matParams.SetParameter("GEO_PRETRANSFORMED", MakeStringSection("1"));
 
 				_scene = ToolsRig::MakeScene(_pipelineAcceleratorPool, nativeVisSettings, material);
 			} else {

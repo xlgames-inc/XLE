@@ -36,7 +36,7 @@ static void SetWorkingDirectory()
     utf8 appPath[MaxPath];
     XlGetProcessPath    (appPath, dimof(appPath));
 	auto splitter = MakeFileNameSplitter(appPath);
-	XlChDir((splitter.DriveAndPath().AsString() + u("/../Working")).c_str());
+	XlChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)

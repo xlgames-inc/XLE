@@ -272,7 +272,7 @@ namespace Assets
 		auto split = MakeSplitPath(mountPoint);
 		#if defined(_DEBUG)
 			for (auto i:split.GetSections()) 
-				assert(!XlEqStringI(i, u(".")) && !XlEqStringI(i, u("..")) && !i.IsEmpty());
+				assert(!XlEqStringI(i, ".") && !XlEqStringI(i, "..") && !i.IsEmpty());
 		#endif
 
 		uint64 hash = 0;

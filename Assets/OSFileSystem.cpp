@@ -285,12 +285,12 @@ namespace Assets
 					attribv._lastWriteTime, attribv._size
 				};
 		} else if (type == 2) {
-			std::basic_string<ucs2> str((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2));
+			std::basic_string<utf16> str((const utf16*)PtrAdd(AsPointer(marker.begin()), 2));
 			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
 			if (!attrib)
 				return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
-			std::basic_string<ucs2> mountedName((const ucs2*)PtrAdd(AsPointer(marker.begin()), 2 + 2*_rootUTF16.size()));
+			std::basic_string<utf16> mountedName((const utf16*)PtrAdd(AsPointer(marker.begin()), 2 + 2*_rootUTF16.size()));
 
 			auto attribv = *attrib;
             return FileDesc
@@ -359,7 +359,7 @@ namespace Assets
         for (const auto&t:temp) {
             auto asUTF8 = Conversion::Convert<std::basic_string<utf8>>(t);
 			auto fn = MakeFileNameSplitter(asUTF8).FileAndExtension();
-			if (!XlEqString(fn, u(".")) && !XlEqString(fn, u("..")))
+			if (!XlEqString(fn, ".") && !XlEqString(fn, ".."))
 				res.push_back(fn.AsString());
         }
         return res;

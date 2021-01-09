@@ -132,7 +132,7 @@ namespace ToolsRig
 			Float3 col1 = Float3(0.44f, 0.6f, 0.1f);
 			static float time = 0.f;
 			time += 3.14159f / 3.f / 60.f;
-			ParameterBox p; p.SetParameter(u("MaterialDiffuse"), LinearInterpolate(col0, col1, 0.5f + 0.5f * XlCos(time)));
+			ParameterBox p; p.SetParameter("MaterialDiffuse", LinearInterpolate(col0, col1, 0.5f + 0.5f * XlCos(time)));
 			auto matParams1 = shader._cbLayout->BuildCBDataAsPkt(p, RenderCore::Techniques::GetDefaultShaderLanguage());
 
 			if (_drawCalls.size() >= 2) {
@@ -348,7 +348,7 @@ namespace ToolsRig
 
 			// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
 			auto c = obj._properties.GetParameter(Parameters::Diffuse, ~0u);
-			_matParams.SetParameter(u("MaterialDiffuse"), Float3(((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f));
+			_matParams.SetParameter("MaterialDiffuse", Float3(((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f));
 		}
 	};
 

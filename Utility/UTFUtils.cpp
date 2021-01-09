@@ -93,14 +93,14 @@ int utf8_step(const char* utf8_str)
 
 static bool IsValid(const utf8* src, size_t len) 
 {
-    utf8 a;
+    uint8_t a;
     const utf8* srcptr = src + len;
     switch (len) {
     default: return false;
     // everything else falls through when "true"... 
-    case 4: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return false;
-    case 3: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return false;
-    case 2: if ((a = (*--srcptr)) > 0xBF) return false;
+    case 4: if ((a = (uint8_t)(*--srcptr)) < 0x80 || a > 0xBF) return false;
+    case 3: if ((a = (uint8_t)(*--srcptr)) < 0x80 || a > 0xBF) return false;
+    case 2: if ((a = (uint8_t)(*--srcptr)) > 0xBF) return false;
 
     switch (*src) {
         case 0xE0: if (a < 0xA0) return false; 
@@ -114,9 +114,9 @@ static bool IsValid(const utf8* src, size_t len)
         default:   if (a < 0x80) return false;
     }
 
-    case 1: if (*src >= 0x80 && *src < 0xC2) return false;
+    case 1: if ((uint8_t)*src >= 0x80 && (uint8_t)*src < 0xC2) return false;
     }
-    if (*src > 0xF4) return false;
+    if ((uint8_t)*src > 0xF4) return false;
     return true;
 }
 

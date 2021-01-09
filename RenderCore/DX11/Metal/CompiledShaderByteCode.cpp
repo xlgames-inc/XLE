@@ -180,7 +180,7 @@ namespace RenderCore { namespace Metal_DX11
         IncludeHandler(const utf8 baseDirectory[]) : _baseDirectory(baseDirectory) 
         {
             _searchDirectories.push_back(baseDirectory);
-			_searchDirectories.push_back(u(""));
+			_searchDirectories.push_back("");
         }
         ~IncludeHandler() {}
     private:
@@ -195,7 +195,7 @@ namespace RenderCore { namespace Metal_DX11
         utf8 path[MaxPath], buffer[MaxPath];
         for (auto i2=_searchDirectories.cbegin(); i2!=_searchDirectories.cend(); ++i2) {
             XlCopyString(buffer, MakeStringSection(*i2));
-            if (!i2->empty()) XlCatString(buffer, u("/"));
+            if (!i2->empty()) XlCatString(buffer, "/");
             XlCatString(buffer, (const utf8*)pFileName);
             SplitPath<utf8>(buffer).Simplify().Rebuild(path);
 

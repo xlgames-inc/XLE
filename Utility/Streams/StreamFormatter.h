@@ -60,7 +60,7 @@ namespace Utility
             void WriteAttribute(const CharType* nameNullTerm, const std::basic_string<CharType>& value)
             {
                 WriteAttribute(
-                    nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)],
+                    nameNullTerm, XlStringEnd(nameNullTerm),
                     AsPointer(value.cbegin()), AsPointer(value.cend()));
             }
 

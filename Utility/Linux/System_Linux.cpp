@@ -41,11 +41,6 @@ namespace Utility
         if (dim > 0) dst[0] = '\0';
         return false;
     }
-    bool XlGetCurrentDirectory(uint32 dim, ucs2 dst[])
-    {
-        if (dim > 0) dst[0] = '\0';
-        return false;
-    }
     uint64 XlGetCurrentFileTime() { return 0; }
 
     void XlGetProcessPath(utf8 dst[], size_t bufferCount)
@@ -53,13 +48,7 @@ namespace Utility
         if (bufferCount > 0) dst[0] = '\0';
     }
 
-    void XlGetProcessPath(ucs2 dst[], size_t bufferCount)
-    {
-        if (bufferCount > 0) dst[0] = '\0';
-    }
-
     void XlChDir(const utf8 path[]) {}
-    void XlChDir(const ucs2 path[]) {}
 
     const char* XlGetCommandLine() { return ""; }
 

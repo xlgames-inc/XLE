@@ -190,7 +190,7 @@ namespace RenderCore { namespace Assets
 			} else if ( next == InputStreamFormatter<utf8>::Blob::AttributeName) {
 				InputStreamFormatter<utf8>::InteriorSection name, value;
                 formatter.TryAttribute(name, value);
-				if (XlEqString(name, u("DescriptorSet"))) {
+				if (XlEqString(name, "DescriptorSet")) {
 					if (!_descriptorSet.empty())
 						Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
 					_descriptorSet = value.Cast<char>().AsString();

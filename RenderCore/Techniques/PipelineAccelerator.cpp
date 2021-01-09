@@ -222,10 +222,10 @@ namespace RenderCore { namespace Techniques
 		// require it in this case, because there's no other way to distinquish one vertex from
 		// the next.
 		if (sortedIA.empty()) {
-			_geoSelectors.SetParameter(u("GEO_HAS_VERTEX_ID"), 1);
+			_geoSelectors.SetParameter("GEO_HAS_VERTEX_ID", 1);
 		}
 		if (!foundPosition) {
-			_geoSelectors.SetParameter(u("GEO_NO_POSITION"), 1);
+			_geoSelectors.SetParameter("GEO_NO_POSITION", 1);
 		}
 	}
 

@@ -355,7 +355,7 @@ namespace ToolsRig
     : _materialGenCylinder(
         InputLayout((const InputElementDesc*)nullptr, 0),
         { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
-        ParameterBox({ std::make_pair(u("SHAPE"), "4") }))
+        ParameterBox({ std::make_pair("SHAPE", "4") }))
     {
         _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
@@ -386,8 +386,8 @@ namespace ToolsRig
             if (shader._shader._shaderProgram) {
                 auto& metalContext = *Metal::DeviceContext::Get(threadContext);
                 ParameterBox matParams;
-                matParams.SetParameter(u("MaterialDiffuse"), Float3(0.03f, 0.03f, .33f));
-                matParams.SetParameter(u("Opacity"), 0.125f);
+                matParams.SetParameter("MaterialDiffuse", Float3(0.03f, 0.03f, .33f));
+                matParams.SetParameter("Opacity", 0.125f);
                 auto transformPacket = Techniques::MakeLocalTransformPacket(
                     localToWorld, ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
                 shader._shader.Apply(

@@ -69,7 +69,7 @@ namespace GUILayer
         utf8 appPath[MaxPath];
         XlGetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
-		XlChDir((splitter.DriveAndPath().AsString() + u("/../Working")).c_str());
+		XlChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ namespace GUILayer
         _services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
 		_crossModule = &ConsoleRig::CrossModule::GetInstance();
 
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
@@ -106,7 +106,7 @@ namespace GUILayer
 		_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 
 		// hack for plugin startup -- need to find the resources for the plugin:
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("res"), ::Assets::CreateFileSystem_OS(u("C:/code/XLEExt/res")));
+		::Assets::MainFileSystem::GetMountingTree()->Mount("res", ::Assets::CreateFileSystem_OS("C:/code/XLEExt/res"));
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
 
 		TimerMessageFilter^ messageFilter = gcnew TimerMessageFilter();

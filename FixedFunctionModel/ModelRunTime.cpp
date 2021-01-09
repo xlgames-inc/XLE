@@ -1535,7 +1535,7 @@ namespace FixedFunctionModel
         static char buffer[Size+1];
         auto err = _itoa_s(std::min(input,unsigned(Size*10-1)), buffer, 10);
         if (!err) {
-            auto length = XlStringLen(buffer);
+            auto length = XlStringCharCount(buffer);
             if (length < Size) {
                 auto movement = Size-length;
                 XlMoveMemory(&buffer[movement], buffer, length);

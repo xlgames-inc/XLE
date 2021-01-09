@@ -165,7 +165,6 @@ namespace Utility
             const SplitPath<CharType>& destinationObject,
             const FilenameRules& rules = s_defaultFilenameRules);
 
-    char ConvertPathChar(char input, const FilenameRules& rules = s_defaultFilenameRules);
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules = s_defaultFilenameRules);
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules = s_defaultFilenameRules);
 

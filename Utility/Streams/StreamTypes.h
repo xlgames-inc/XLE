@@ -40,13 +40,8 @@ namespace Utility
     public:
         virtual size_type Tell();
         virtual void Write(const void* p, size_type len);
-
-        virtual void WriteChar(utf8 ch);
-        virtual void WriteChar(ucs2 ch);
-        virtual void WriteChar(ucs4 ch);
+        virtual void WriteChar(char ch);
         virtual void Write(StringSection<utf8>);
-        virtual void Write(StringSection<ucs2>);
-        virtual void Write(StringSection<ucs4>);
 
         virtual void Flush();
 

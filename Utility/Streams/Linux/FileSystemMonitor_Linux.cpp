@@ -193,7 +193,7 @@ namespace Utility
         {
             ScopedLock(MonitoredDirectoriesLock);
             if (directoryName.IsEmpty())
-                directoryName = StringSection<utf8>(u("./"));
+                directoryName = StringSection<utf8>("./");
 
             auto hash = MonitoredDirectory::HashFilename(directoryName);
             auto i = std::lower_bound(

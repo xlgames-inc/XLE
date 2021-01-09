@@ -496,8 +496,8 @@ namespace Sample
 
                         auto model = CreateFromParameters<CharacterInputFiles>(ent->_properties);
                         auto anim = CreateFromParameters<AnimationNames>(ent->_properties);
-                        bool isPlayer = ent->_properties.GetParameter<int>(MakeStringSection(u("CharacterType")), 1) == 0;
-                        auto localToWorld = Transpose(ent->_properties.GetParameter<Float4x4>(MakeStringSection(u("Transform")), Identity<Float4x4>()));
+                        bool isPlayer = ent->_properties.GetParameter<int>(MakeStringSection("CharacterType"), 1) == 0;
+                        auto localToWorld = Transpose(ent->_properties.GetParameter<Float4x4>(MakeStringSection("Transform"), Identity<Float4x4>()));
                         scene->CreateCharacter(id.Object(), model, anim, isPlayer, localToWorld);
                     }
                 });

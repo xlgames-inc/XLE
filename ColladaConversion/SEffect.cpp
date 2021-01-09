@@ -81,23 +81,23 @@ namespace ColladaConversion
         const URIResolveContext& pubEles,
         const ImportConfiguration& cfg, const std::string& effectName)
     {
-        auto extraValues = extra.Element(u("technique"));
+        auto extraValues = extra.Element("technique");
         if (extraValues) {
             auto techValue = extraValues.FirstChild();
             for (;techValue; techValue=techValue.NextSibling()) {
                 auto n = techValue.Name();
                 if (cfg.GetResourceBindings().IsSuppressed(n)) continue;
 
-                auto texture = techValue.Element(u("texture"));
+                auto texture = techValue.Element("texture");
                 if (texture) {
-                    auto samplerRef = texture.Attribute(u("texture")).Value();
+                    auto samplerRef = texture.Attribute("texture").Value();
                     if (!samplerRef.IsEmpty()) {
                         auto binding = cfg.GetResourceBindings().AsNative(n);
                         AddSamplerBinding(
                             matSettings, params, 
                             binding.c_str(), samplerRef, pubEles);
                     }
-                } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
+                } else if (techValue.Element("color") || techValue.Element("float") || techValue.Element("param")) {
                     Log(Warning) << "Color, float and param type technique values not supported in <extra> part in effect (" << effectName << ")" << std::endl;
                 }
             }
@@ -118,7 +118,7 @@ namespace ColladaConversion
             //  the collada data to specialise the settings of specific parts of geometry.
 
             // bind the texture in the "common" effects part
-        auto* profile = effect.FindProfile(u("COMMON"));
+        auto* profile = effect.FindProfile("COMMON");
         if (!profile)
             Throw(::Exceptions::BasicLabel("Missing common profile in effect (%s)", AsString(effect.GetName()).c_str()));
 

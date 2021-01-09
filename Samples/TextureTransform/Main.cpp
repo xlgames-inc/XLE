@@ -89,8 +89,8 @@ namespace TextureTransform
             LogAlwaysError << "This program loads shaders from the $(XLE_DIR)\\Working\\Game\\xleres folder";
             return -1;
         }*/
-		const utf8* xleResDir = u("game/xleres");
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir))); // Conversion::Convert<std::basic_string<utf8>>(xleDir + "/Working/Game/xleres"))));
+		const utf8* xleResDir = "game/xleres";
+		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS(MakeStringSection(xleResDir))); // Conversion::Convert<std::basic_string<utf8>>(xleDir + "/Working/Game/xleres"))));
 
             // we can now construct basic services
         auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });

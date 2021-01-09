@@ -47,39 +47,12 @@ namespace Utility
     };
     
     template<> const utf8 FormatterConstants<utf8>::EndLine[] = { (utf8)'\r', (utf8)'\n' };
-    template<> const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n' };
-    template<> const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n' };
-    template<> const char FormatterConstants<char>::EndLine[] = { (char)'\r', (char)'\n' };
-    
     template<> const utf8 FormatterConstants<utf8>::ProtectedNamePrefix[] = { (utf8)'<', (utf8)':', (utf8)'(' };
-    template<> const ucs2 FormatterConstants<ucs2>::ProtectedNamePrefix[] = { (ucs2)'<', (ucs2)':', (ucs2)'(' };
-    template<> const ucs4 FormatterConstants<ucs4>::ProtectedNamePrefix[] = { (ucs4)'<', (ucs4)':', (ucs4)'(' };
-    template<> const char FormatterConstants<char>::ProtectedNamePrefix[] = { (char)'<', (char)':', (char)'(' };
-    
     template<> const utf8 FormatterConstants<utf8>::ProtectedNamePostfix[] = { (utf8)')', (utf8)':', (utf8)'>' };
-    template<> const ucs2 FormatterConstants<ucs2>::ProtectedNamePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)'>' };
-    template<> const ucs4 FormatterConstants<ucs4>::ProtectedNamePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)'>' };
-    template<> const char FormatterConstants<char>::ProtectedNamePostfix[] = { (char)')', (char)':', (char)'>' };
-    
     template<> const utf8 FormatterConstants<utf8>::CommentPrefix[] = { (utf8)'~', (utf8)'~' };
-    template<> const ucs2 FormatterConstants<ucs2>::CommentPrefix[] = { (ucs2)'~', (ucs2)'~' };
-    template<> const ucs4 FormatterConstants<ucs4>::CommentPrefix[] = { (ucs4)'~', (ucs4)'~' };
-    template<> const char FormatterConstants<char>::CommentPrefix[] = { (char)'~', (char)'~' };
-    
     template<> const utf8 FormatterConstants<utf8>::HeaderPrefix[] = { (utf8)'~', (utf8)'~', (utf8)'!' };
-    template<> const ucs2 FormatterConstants<ucs2>::HeaderPrefix[] = { (ucs2)'~', (ucs2)'~', (ucs2)'!' };
-    template<> const ucs4 FormatterConstants<ucs4>::HeaderPrefix[] = { (ucs4)'~', (ucs4)'~', (ucs4)'!' };
-    template<> const char FormatterConstants<char>::HeaderPrefix[] = { (char)'~', (char)'~', (char)'!' };
-    
     template<> const utf8 FormatterConstants<utf8>::Tab = (utf8)'\t';
-    template<> const ucs2 FormatterConstants<ucs2>::Tab = (ucs2)'\t';
-    template<> const ucs4 FormatterConstants<ucs4>::Tab = (ucs4)'\t';
-    template<> const char FormatterConstants<char>::Tab = (char)'\t';
-    
     template<> const utf8 FormatterConstants<utf8>::ElementPrefix = (utf8)'~';
-    template<> const ucs2 FormatterConstants<ucs2>::ElementPrefix = (ucs2)'~';
-    template<> const ucs4 FormatterConstants<ucs4>::ElementPrefix = (ucs4)'~';
-    template<> const char FormatterConstants<char>::ElementPrefix = (char)'~';
     
     template<typename CharType, int Count> 
         static void WriteConst(OutputStream& stream, const CharType (&cnst)[Count], unsigned& lineLength)
@@ -188,8 +161,8 @@ namespace Utility
         if (forceNewLine) {
             DoNewLine<CharType>();
         } else if (_hotLine) {
-            _stream->WriteChar((CharType)';');
-            _stream->WriteChar((CharType)' ');
+            _stream->WriteChar(';');
+            _stream->WriteChar(' ');
             _currentLineLength += 2;
         }
 
@@ -202,7 +175,7 @@ namespace Utility
         }
 
         if (valueStart) {
-            _stream->WriteChar((CharType)'=');
+            _stream->WriteChar('=');
 
             if (IsSimpleString(valueStart, valueEnd)) {
                 _stream->Write(StringSection<CharType>(valueStart, valueEnd));
@@ -267,14 +240,6 @@ namespace Utility
             (const utf8*)nameStart, (const utf8*)nameEnd,
             (const utf8*)valueStart, (const utf8*)valueEnd);
     }
-
-    template auto OutputStreamFormatter::BeginElement(const utf8* nameStart, const utf8* nameEnd) -> ElementId;
-    template auto OutputStreamFormatter::BeginElement(const ucs2* nameStart, const ucs2* nameEnd) -> ElementId;
-    template auto OutputStreamFormatter::BeginElement(const ucs4* nameStart, const ucs4* nameEnd) -> ElementId;
-    
-    template void OutputStreamFormatter::WriteAttribute(const utf8* nameStart, const utf8* nameEnd, const utf8* valueStart, const utf8* valueEnd);
-    template void OutputStreamFormatter::WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd);
-    template void OutputStreamFormatter::WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd);
 
     
     FormatException::FormatException(const char label[], StreamLocation location)
@@ -724,8 +689,5 @@ namespace Utility
 	}
 
     template class InputStreamFormatter<utf8>;
-    template class InputStreamFormatter<ucs4>;
-    template class InputStreamFormatter<ucs2>;
-    template class InputStreamFormatter<char>;
 }
 

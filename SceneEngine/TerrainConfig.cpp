@@ -103,7 +103,7 @@ namespace SceneEngine
             //  * must end in a slash (unless empty)
         ::Assets::ResChar buffer[MaxPath];
         SplitPath<::Assets::ResChar>(input).Simplify().Rebuild(buffer, dimof(buffer));
-        auto len = XlStringLen(buffer);
+        auto len = XlStringCharCount(buffer);
         assert(&buffer[len] == XlStringEnd(buffer));
 		std::transform(buffer, &buffer[len], buffer, [](char input) { return (char)std::tolower(input); });
         if (len && buffer[len-1] != '/' && (len+1) < dimof(buffer)) {
@@ -145,30 +145,30 @@ namespace SceneEngine
     : TerrainConfig()
     {
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
-        _nodeDimsInElements     = doc(u("NodeDims"), _nodeDimsInElements);
-        _cellTreeDepth          = doc(u("CellTreeDepth"), _cellTreeDepth);
-        _nodeOverlap            = doc(u("NodeOverlap"), _nodeOverlap);
-        _elementSpacing         = doc(u("ElementSpacing"), _elementSpacing);
-        _cellCount              = doc(u("CellCount"), _cellCount);
-        _sunPathAngle           = doc(u("SunPathAngle"), _sunPathAngle);
-        _encodedGradientFlags   = doc(u("EncodedGradientFlags"), _encodedGradientFlags);
+        _nodeDimsInElements     = doc("NodeDims", _nodeDimsInElements);
+        _cellTreeDepth          = doc("CellTreeDepth", _cellTreeDepth);
+        _nodeOverlap            = doc("NodeOverlap", _nodeOverlap);
+        _elementSpacing         = doc("ElementSpacing", _elementSpacing);
+        _cellCount              = doc("CellCount", _cellCount);
+        _sunPathAngle           = doc("SunPathAngle", _sunPathAngle);
+        _encodedGradientFlags   = doc("EncodedGradientFlags", _encodedGradientFlags);
 
-        auto cellsDirectory = Conversion::Convert<::Assets::rstring>(doc.Attribute(u("CellsDirectory")).Value().AsString());
+        auto cellsDirectory = Conversion::Convert<::Assets::rstring>(doc.Attribute("CellsDirectory").Value().AsString());
         searchRules.ResolveDirectory(
             _cellsDirectory, dimof(_cellsDirectory), 
             cellsDirectory.c_str());
 
-        auto coverage = doc.Element(u("Coverage"));
+        auto coverage = doc.Element("Coverage"));
         if (coverage) {
             for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
                 CoverageLayer layer;
                 layer._name             = l.Name().AsString();
-                layer._id               = l(u("Id"), 0);
-                layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
-                layer._overlap          = l(u("Overlap"), 1);
-                layer._typeCat          = l(u("TypeCat"), unsigned(ImpliedTyping::TypeCat::Float));
-                layer._typeCount        = l(u("TypeCount"), 1);
-                layer._shaderNormalizationMode = l(u("ShaderNormMode"), 0);
+                layer._id               = l("Id", 0);
+                layer._nodeDimensions   = l("Dims", UInt2(32, 32));
+                layer._overlap          = l("Overlap", 1);
+                layer._typeCat          = l("TypeCat", unsigned(ImpliedTyping::TypeCat::Float));
+                layer._typeCount        = l("TypeCount", 1);
+                layer._shaderNormalizationMode = l("ShaderNormMode", 0);
                 _coverageLayers.push_back(layer);
             }
         }
@@ -178,25 +178,25 @@ namespace SceneEngine
 
     void TerrainConfig::Write(OutputStreamFormatter& formatter) const
     {
-        SerializationOperator(formatter, u("NodeDims"), _nodeDimsInElements);
-        SerializationOperator(formatter, u("CellTreeDepth"), _cellTreeDepth);
-        SerializationOperator(formatter, u("NodeOverlap"), _nodeOverlap);
-        SerializationOperator(formatter, u("ElementSpacing"), _elementSpacing);
-        SerializationOperator(formatter, u("CellCount"), _cellCount);
-        SerializationOperator(formatter, u("SunPathAngle"), _sunPathAngle);
-        SerializationOperator(formatter, u("EncodedGradientFlags"), _encodedGradientFlags);
-        formatter.WriteAttribute(u("CellsDirectory"), 
+        SerializationOperator(formatter, "NodeDims", _nodeDimsInElements);
+        SerializationOperator(formatter, "CellTreeDepth", _cellTreeDepth);
+        SerializationOperator(formatter, "NodeOverlap", _nodeOverlap);
+        SerializationOperator(formatter, "ElementSpacing", _elementSpacing);
+        SerializationOperator(formatter, "CellCount", _cellCount);
+        SerializationOperator(formatter, "SunPathAngle", _sunPathAngle);
+        SerializationOperator(formatter, "EncodedGradientFlags", _encodedGradientFlags);
+        formatter.WriteAttribute("CellsDirectory", 
             Conversion::Convert<std::basic_string<utf8>>(::Assets::rstring(_cellsDirectory)));
 
-        auto covEle = formatter.BeginElement(u("Coverage"));
+        auto covEle = formatter.BeginElement("Coverage");
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {
             auto ele = formatter.BeginElement(l->_name);
-            SerializationOperator(formatter, u("Id"), l->_id);
-            SerializationOperator(formatter, u("Dims"), l->_nodeDimensions);
-            SerializationOperator(formatter, u("Overlap"), l->_overlap);
-            SerializationOperator(formatter, u("TypeCat"), l->_typeCat);
-            SerializationOperator(formatter, u("TypeCount"), l->_typeCount);
-            SerializationOperator(formatter, u("ShaderNormMode"), l->_shaderNormalizationMode);
+            SerializationOperator(formatter, "Id", l->_id);
+            SerializationOperator(formatter, "Dims", l->_nodeDimensions);
+            SerializationOperator(formatter, "Overlap", l->_overlap);
+            SerializationOperator(formatter, "TypeCat", l->_typeCat);
+            SerializationOperator(formatter, "TypeCount", l->_typeCount);
+            SerializationOperator(formatter, "ShaderNormMode", l->_shaderNormalizationMode);
             formatter.EndElement(ele);
         }
         formatter.EndElement(covEle);
@@ -282,7 +282,7 @@ namespace SceneEngine
     void TerrainCachedData::Write(OutputStream& stream) const
     {
         OutputStreamFormatter formatter(stream);
-        auto heightRange = formatter.BeginElement(u("CellHeightRange"));
+        auto heightRange = formatter.BeginElement("CellHeightRange");
         for (auto l=_cells.cbegin(); l!=_cells.cend(); ++l) {
             auto cell = formatter.BeginElement("Cell");
             SerializationOperator(formatter, "CellIndex", l->_cellIndex);
@@ -302,13 +302,13 @@ namespace SceneEngine
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
-        auto heightRanges = doc.Element(u("CellHeightRange"));
+        auto heightRanges = doc.Element("CellHeightRange");
         if (heightRanges) {
             for (auto child = heightRanges.FirstChild(); child; child=child.NextSibling()) {
                 _cells.push_back(Cell
                     {
-                        Deserialize(child, u("CellIndex"), UInt2(0,0)),
-                        Deserialize(child, u("HeightRange"), std::make_pair(0.f, 0.f))
+                        Deserialize(child, "CellIndex", UInt2(0,0)),
+                        Deserialize(child, "HeightRange", std::make_pair(0.f, 0.f))
                     });
             }
         }

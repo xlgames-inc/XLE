@@ -107,9 +107,9 @@ namespace RenderCore { namespace Techniques
 					if (!source.TryAttribute(filterType, value))
 						Throw(FormatException("Bad attribute in selector filtering section", source.GetLocation()));
 
-					if (XlEqStringI(filterType, u("relevance"))) {
+					if (XlEqStringI(filterType, "relevance")) {
 						dst._relevanceMap[selectorName.Cast<char>().AsString()] = value.Cast<char>().AsString();
-					} else if (XlEqStringI(filterType, u("set"))) {
+					} else if (XlEqStringI(filterType, "set")) {
 						dst._setValues.SetParameter(selectorName, value.Cast<char>());
 					} else {
 						Throw(FormatException("Expecting \"whitelist\", \"blacklist\" or \"set\"", source.GetLocation()));
@@ -207,7 +207,7 @@ namespace RenderCore { namespace Techniques
                     Formatter::InteriorSection settingName;
                     if (!formatter.TryBeginElement(settingName)) break;
 
-					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
+					if (XlEqString(settingName, "Inherit") || XlEqString(settingName, "Technique")) {
 						formatter.SkipElement();
 					} else {
 						auto hash = Hash64(settingName._start, settingName._end);
@@ -322,18 +322,18 @@ namespace RenderCore { namespace Techniques
         const Pair bindingNames[] = 
         {
                 // note -- lexographically sorted!
-            { u("Deferred"),                       unsigned(TechniqueIndex::Deferred) },
-            { u("DepthOnly"),                      unsigned(TechniqueIndex::DepthOnly) },
-            { u("DepthWeightedTransparency"),      unsigned(TechniqueIndex::DepthWeightedTransparency) },
-            { u("Forward"),                        unsigned(TechniqueIndex::Forward) },
-            { u("OrderIndependentTransparency"),   unsigned(TechniqueIndex::OrderIndependentTransparency) },
-            { u("PrepareVegetationSpawn"),         unsigned(TechniqueIndex::PrepareVegetationSpawn) },
-            { u("RayTest"),                        unsigned(TechniqueIndex::RayTest) },
-            { u("ShadowGen"),                      unsigned(TechniqueIndex::ShadowGen) },
-            { u("StochasticTransparency"),         unsigned(TechniqueIndex::StochasticTransparency) },
-            { u("VisNormals"),                     unsigned(TechniqueIndex::VisNormals) },
-            { u("VisWireframe"),                   unsigned(TechniqueIndex::VisWireframe) },
-            { u("WriteTriangleIndex"),             unsigned(TechniqueIndex::WriteTriangleIndex) }
+            { "Deferred",                       unsigned(TechniqueIndex::Deferred) },
+            { "DepthOnly",                      unsigned(TechniqueIndex::DepthOnly) },
+            { "DepthWeightedTransparency",      unsigned(TechniqueIndex::DepthWeightedTransparency) },
+            { "Forward",                        unsigned(TechniqueIndex::Forward) },
+            { "OrderIndependentTransparency",   unsigned(TechniqueIndex::OrderIndependentTransparency) },
+            { "PrepareVegetationSpawn",         unsigned(TechniqueIndex::PrepareVegetationSpawn) },
+            { "RayTest",                        unsigned(TechniqueIndex::RayTest) },
+            { "ShadowGen",                      unsigned(TechniqueIndex::ShadowGen) },
+            { "StochasticTransparency",         unsigned(TechniqueIndex::StochasticTransparency) },
+            { "VisNormals",                     unsigned(TechniqueIndex::VisNormals) },
+            { "VisWireframe",                   unsigned(TechniqueIndex::VisWireframe) },
+            { "WriteTriangleIndex",             unsigned(TechniqueIndex::WriteTriangleIndex) }
         };
 
         auto i = std::lower_bound(bindingNames, ArrayEnd(bindingNames), name, CompareFirstString<Pair>());
@@ -407,7 +407,7 @@ namespace RenderCore { namespace Techniques
                     Formatter::InteriorSection eleName;
                     if (!formatter.TryBeginElement(eleName)) break;
 
-                    if (XlEqString(eleName, u("Inherit"))) {
+                    if (XlEqString(eleName, "Inherit")) {
                         // we should find a list of other technique configuation files to inherit from
                         for (;;) {
                             auto next = formatter.PeekNext();
@@ -432,7 +432,7 @@ namespace RenderCore { namespace Techniques
                                 _entries[c].MergeIn(inheritFrom._entries[c]);
 							_cbLayout = inheritFrom._cbLayout;
                         }
-                    } else if (XlEqString(eleName, u("Technique"))) {
+                    } else if (XlEqString(eleName, "Technique")) {
 						// We should find a list of the actual techniques to use, as attributes
 						// The attribute name defines the how to apply the technique, and the attribute value is
 						// the name of the technique itself
@@ -446,7 +446,7 @@ namespace RenderCore { namespace Techniques
                             if (!formatter.TryAttribute(name, value))
                                 Throw(FormatException("Bad attribute in technique list", formatter.GetLocation()));
 
-							if (XlEqString(name, u("CBLayout"))) {
+							if (XlEqString(name, "CBLayout")) {
 								_cbLayout = RenderCore::Assets::PredefinedCBLayout(MakeStringSection((const char*)value.begin(), (const char*)value.end()), true);
 							} else {
 								auto index = AsTechniqueIndex(name);
@@ -476,7 +476,7 @@ namespace RenderCore { namespace Techniques
 								}
 							}
 						}
-					} else if (XlEqString(eleName, u("*"))) {
+					} else if (XlEqString(eleName, "*")) {
 						// This is an override that applies to all techniques in this file
 						auto overrideTechnique = ParseTechniqueEntry(formatter, {}, searchRules, inheritedAssets);
 						for (unsigned c=0; c<dimof(_entries); ++c) 

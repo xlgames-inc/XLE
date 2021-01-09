@@ -29,9 +29,9 @@ namespace UnitTests
 
     void DeserializationOperator(const StreamDOMElement<InputStreamFormatter<utf8>>& str, TestClass& cls)
     {
-        cls._c1 = str.Attribute(u("c1")).As<int>().value();
-        cls._c2 = str.Attribute(u("c2"), 600);
-        cls._c3 = str.Attribute(u("c3")).As<UInt2>().value();
+        cls._c1 = str.Attribute("c1").As<int>().value();
+        cls._c2 = str.Attribute("c2", 600);
+        cls._c3 = str.Attribute("c3").As<UInt2>().value();
     }
 
     TEST_CASE( "StreamFormatter-BasicDeserialization", "[utility]" )
@@ -183,16 +183,16 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& src,
         ExampleSerializableObject::StrataMaterial& mat)
     {
-        static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
+        static const utf8* TextureNames[] = { "Texture0", "Texture1", "Slopes" };
 
-        mat._id = src.Attribute(u("MaterialId"), 0u);
-        for (const auto& c:src.Element(u("Strata")).children()) {
+        mat._id = src.Attribute("MaterialId", 0u);
+        for (const auto& c:src.Element("Strata").children()) {
             ExampleSerializableObject::StrataMaterial::Strata newStrata;
             for (unsigned t=0; t<dimof(TextureNames); ++t)
                 newStrata._texture[t] = c.Attribute(TextureNames[t]).Value().Cast<char>().AsString();
 
-            newStrata._endHeight = c.Attribute(u("EndHeight"), 0.f);
-            auto mappingConst = c.Attribute(u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
+            newStrata._endHeight = c.Attribute("EndHeight", 0.f);
+            auto mappingConst = c.Attribute("Mapping", Float4(1.f, 1.f, 1.f, 1.f));
             newStrata._mappingConstant[0] = mappingConst[0];
             newStrata._mappingConstant[1] = mappingConst[1];
             newStrata._mappingConstant[2] = mappingConst[2];
@@ -205,19 +205,19 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& src,
         ExampleSerializableObject::GradFlagMaterial& mat)
     {
-        mat._id = src.Attribute(u("MaterialId"), 0);
+        mat._id = src.Attribute("MaterialId", 0);
             
-        mat._texture[0] = src.Attribute(u("Texture0")).Value().Cast<char>().AsString();
-        mat._texture[1] = src.Attribute(u("Texture1")).Value().Cast<char>().AsString();
-        mat._texture[2] = src.Attribute(u("Texture2")).Value().Cast<char>().AsString();
-        mat._texture[3] = src.Attribute(u("Texture3")).Value().Cast<char>().AsString();
-        mat._texture[4] = src.Attribute(u("Texture4")).Value().Cast<char>().AsString();
+        mat._texture[0] = src.Attribute("Texture0").Value().Cast<char>().AsString();
+        mat._texture[1] = src.Attribute("Texture1").Value().Cast<char>().AsString();
+        mat._texture[2] = src.Attribute("Texture2").Value().Cast<char>().AsString();
+        mat._texture[3] = src.Attribute("Texture3").Value().Cast<char>().AsString();
+        mat._texture[4] = src.Attribute("Texture4").Value().Cast<char>().AsString();
 
         // Manually parsing and converting into the array type we want
         // This is sort of a wordy approach to this; normally for vector & matrix types
         // we shouldn't need so many steps
         uint8_t buffer[512];
-        auto mappingAttr = src.Attribute(u("Mapping")).Value();
+        auto mappingAttr = src.Attribute("Mapping").Value();
         auto parsedType = ImpliedTyping::Parse(
             mappingAttr,
             buffer, sizeof(buffer));
@@ -231,11 +231,11 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& src,
         ExampleSerializableObject::ProcTextureSetting& mat)
     {
-        mat._name = src.Attribute(u("Name")).Value().Cast<char>().AsString();
-        mat._texture[0] = src.Attribute(u("Texture0")).Value().Cast<char>().AsString();
-        mat._texture[1] = src.Attribute(u("Texture1")).Value().Cast<char>().AsString();
-        mat._hgrid = src.Attribute(u("HGrid"), mat._hgrid);
-        mat._gain = src.Attribute(u("Gain"), mat._gain);
+        mat._name = src.Attribute("Name").Value().Cast<char>().AsString();
+        mat._texture[0] = src.Attribute("Texture0").Value().Cast<char>().AsString();
+        mat._texture[1] = src.Attribute("Texture1").Value().Cast<char>().AsString();
+        mat._hgrid = src.Attribute("HGrid", mat._hgrid);
+        mat._gain = src.Attribute("Gain", mat._gain);
     }
 
     static void DeserializationOperator(
@@ -243,18 +243,18 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         ExampleSerializableObject& result)
     {
         for (const auto& matCfg:doc.children()) {
-            if (XlEqString(matCfg.Name(), u("StrataMaterial"))) {
+            if (XlEqString(matCfg.Name(), "StrataMaterial")) {
                 result._strataMaterials.push_back(matCfg.As<ExampleSerializableObject::StrataMaterial>());
-            } else if (XlEqString(matCfg.Name(), u("GradFlagMaterial"))) {
+            } else if (XlEqString(matCfg.Name(), "GradFlagMaterial")) {
                 result._gradFlagMaterials.push_back(matCfg.As<ExampleSerializableObject::GradFlagMaterial>());
-            } else if (XlEqString(matCfg.Name(), u("ProcTextureSetting"))) {
+            } else if (XlEqString(matCfg.Name(), "ProcTextureSetting")) {
                 result._procTextures.push_back(matCfg.As<ExampleSerializableObject::ProcTextureSetting>());
             }
         }
 
-        result._diffuseDims = doc.Attribute(u("DiffuseDims"), result._diffuseDims);
-        result._normalDims = doc.Attribute(u("NormalDims"), result._normalDims);
-        result._paramDims = doc.Attribute(u("ParamDims"), result._paramDims);
+        result._diffuseDims = doc.Attribute("DiffuseDims", result._diffuseDims);
+        result._normalDims = doc.Attribute("NormalDims", result._normalDims);
+        result._paramDims = doc.Attribute("ParamDims", result._paramDims);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject::StrataMaterial& result)
     {
-        static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
+        static const utf8* TextureNames[] = { "Texture0", "Texture1", "Slopes" };
         
         for (;;) {
             using Blob = InputStreamFormatter<utf8>::Blob;
@@ -276,7 +276,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (!formatter.TryAttribute(name, value))
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
-                    if (XlEqString(name, u("MaterialId"))) {
+                    if (XlEqString(name, "MaterialId")) {
                         result._id = ImpliedTyping::Parse<decltype(result._id)>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
@@ -289,7 +289,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     InputStreamFormatter<utf8>::InteriorSection eleName;
                     if (!formatter.TryBeginElement(eleName))
                         Throw(FormatException("Error in element declaration", formatter.GetLocation()));
-                    if (!XlEqString(eleName, u("Strata")))
+                    if (!XlEqString(eleName, "Strata"))
                         Throw(FormatException("Unknown element encountered", formatter.GetLocation()));
 
                     while (formatter.PeekNext() == Blob::BeginElement) {
@@ -302,9 +302,9 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                             if (!formatter.TryAttribute(name, value))
                                 Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
-                            if (XlEqString(name, u("EndHeight"))) {
+                            if (XlEqString(name, "EndHeight")) {
                                 newStrata._endHeight = ImpliedTyping::Parse<decltype(newStrata._endHeight)>(value).value();
-                            } else if (XlEqString(name, u("Mapping"))) {
+                            } else if (XlEqString(name, "Mapping")) {
                                 auto mappingConst = ImpliedTyping::Parse<Float4>(value).value();
                                 newStrata._mappingConstant[0] = mappingConst[0];
                                 newStrata._mappingConstant[1] = mappingConst[1];
@@ -357,19 +357,19 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (!formatter.TryAttribute(name, value))
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
-                    if (XlEqString(name, u("MaterialId"))) {
+                    if (XlEqString(name, "MaterialId")) {
                         result._id = ImpliedTyping::Parse<decltype(result._id)>(value).value();
-                    } else if (XlEqString(name, u("Texture0"))) {
+                    } else if (XlEqString(name, "Texture0")) {
                         result._texture[0] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture1"))) {
+                    } else if (XlEqString(name, "Texture1")) {
                         result._texture[1] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture2"))) {
+                    } else if (XlEqString(name, "Texture2")) {
                         result._texture[2] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture3"))) {
+                    } else if (XlEqString(name, "Texture3")) {
                         result._texture[3] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture4"))) {
+                    } else if (XlEqString(name, "Texture4")) {
                         result._texture[4] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Mapping"))) {
+                    } else if (XlEqString(name, "Mapping")) {
                         uint8_t buffer[512];
                         auto parsedType = ImpliedTyping::Parse(
                             value,
@@ -410,15 +410,15 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (!formatter.TryAttribute(name, value))
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
-                    if (XlEqString(name, u("Name"))) {
+                    if (XlEqString(name, "Name")) {
                         result._name = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture0"))) {
+                    } else if (XlEqString(name, "Texture0")) {
                         result._texture[0] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("Texture1"))) {
+                    } else if (XlEqString(name, "Texture1")) {
                         result._texture[1] = value.Cast<char>().AsString();
-                    } else if (XlEqString(name, u("HGrid"))) {
+                    } else if (XlEqString(name, "HGrid")) {
                         result._hgrid = ImpliedTyping::Parse<decltype(result._hgrid)>(value).value();
-                    } else if (XlEqString(name, u("Gain"))) {
+                    } else if (XlEqString(name, "Gain")) {
                         result._gain = ImpliedTyping::Parse<decltype(result._gain)>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
@@ -452,11 +452,11 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (!formatter.TryAttribute(name, value))
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
-                    if (XlEqString(name, u("DiffuseDims"))) {
+                    if (XlEqString(name, "DiffuseDims")) {
                         result._diffuseDims = ImpliedTyping::Parse<UInt2>(value).value();
-                    } else if (XlEqString(name, u("NormalDims"))) {
+                    } else if (XlEqString(name, "NormalDims")) {
                         result._normalDims = ImpliedTyping::Parse<UInt2>(value).value();
-                    } else if (XlEqString(name, u("ParamDims"))) {
+                    } else if (XlEqString(name, "ParamDims")) {
                         result._paramDims = ImpliedTyping::Parse<UInt2>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
@@ -469,15 +469,15 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (!formatter.TryBeginElement(eleName))
                         Throw(FormatException("Error in element begin", formatter.GetLocation()));
 
-                    if (XlEqString(eleName, u("StrataMaterial"))) {
+                    if (XlEqString(eleName, "StrataMaterial")) {
                         ExampleSerializableObject::StrataMaterial newMaterial;
                         formatter >> newMaterial;
                         result._strataMaterials.push_back(std::move(newMaterial));
-                    } else if (XlEqString(eleName, u("GradFlagMaterial"))) {
+                    } else if (XlEqString(eleName, "GradFlagMaterial")) {
                         ExampleSerializableObject::GradFlagMaterial newMaterial;
                         formatter >> newMaterial;
                         result._gradFlagMaterials.push_back(std::move(newMaterial));
-                    } else if (XlEqString(eleName, u("ProcTextureSetting"))) {
+                    } else if (XlEqString(eleName, "ProcTextureSetting")) {
                         ExampleSerializableObject::ProcTextureSetting newMaterial;
                         formatter >> newMaterial;
                         result._procTextures.push_back(std::move(newMaterial));
@@ -584,8 +584,6 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         // Parse stream DOM from an example input using various different
         // character types
         InitStreamDOMForCharacterType<utf8>();
-        InitStreamDOMForCharacterType<ucs2>();
-        InitStreamDOMForCharacterType<ucs4>();
     }
 
     TEST_CASE( "StreamFormatter-ClassPropertiesPerformance", "[utility]" )
@@ -597,7 +595,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         RunPerformanceTest2(testString, iterationCount);
         auto end = __rdtsc();
 
-        std::cout << "InputStreamFormatter based deserialization: " << (middle-start) / iterationCount << " cycles per iteration." << std::endl;
-        std::cout << "StreamDOM based deserialization: " << (end-middle) / iterationCount << " cycles per iteration." << std::endl;
+        std::cout << "InputStreamFormatter based deserialization: " << (middle-start) / iterationCount << " cycles per iteration (" << (middle-start) / iterationCount / testString.size() << " cycles per character)." << std::endl;
+        std::cout << "StreamDOM based deserialization: " << (end-middle) / iterationCount << " cycles per iteration (" << (end-middle) / iterationCount / testString.size() << " cycles per character)." << std::endl;
     }
 }

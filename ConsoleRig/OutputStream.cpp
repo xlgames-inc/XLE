@@ -30,13 +30,8 @@ namespace ConsoleRig
     public:
         virtual size_type   Tell();
         virtual void        Write(const void* p, size_type len);
-        virtual void        WriteChar(utf8 ch);
-        virtual void        WriteChar(ucs2 ch);
-        virtual void        WriteChar(ucs4 ch);
-
+        virtual void        WriteChar(char ch);
         virtual void        Write(StringSection<utf8>);
-        virtual void        Write(StringSection<ucs2>);
-        virtual void        Write(StringSection<ucs4>);
 
         virtual void        Flush();
 
@@ -87,13 +82,8 @@ namespace ConsoleRig
         }
     }
 
-    void    BufferedOutputStream::WriteChar(utf8 ch)             { Write(&ch, sizeof(ch)); }
-    void    BufferedOutputStream::WriteChar(ucs2 ch)             { Write(&ch, sizeof(ch)); }
-    void    BufferedOutputStream::WriteChar(ucs4 ch)             { Write(&ch, sizeof(ch)); }
-
+    void    BufferedOutputStream::WriteChar(char ch)             { Write(&ch, sizeof(ch)); }
     void    BufferedOutputStream::Write(StringSection<utf8> str)     { Write(str.begin(), str.Length()); }
-    void    BufferedOutputStream::Write(StringSection<ucs2> str)     { Write(str.begin(), str.Length()); }
-    void    BufferedOutputStream::Write(StringSection<ucs4> str)     { Write(str.begin(), str.Length()); }
 
     void    BufferedOutputStream::Flush()
     {
@@ -121,13 +111,8 @@ namespace ConsoleRig
     public:
         virtual size_type   Tell();
         virtual void        Write(const void* p, size_type len);
-        virtual void        WriteChar(utf8 ch);
-        virtual void        WriteChar(ucs2 ch);
-        virtual void        WriteChar(ucs4 ch);
-
+        virtual void        WriteChar(char ch);
         virtual void        Write(StringSection<utf8>);
-        virtual void        Write(StringSection<ucs2>);
-        virtual void        Write(StringSection<ucs4>);
 
         virtual void        Flush();
 
@@ -147,13 +132,8 @@ namespace ConsoleRig
         _second->Write(p, len);
     }
 
-    void    ForkOutputStream::WriteChar(utf8 ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
-    void    ForkOutputStream::WriteChar(ucs2 ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
-    void    ForkOutputStream::WriteChar(ucs4 ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
-
+    void    ForkOutputStream::WriteChar(char ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
     void    ForkOutputStream::Write(StringSection<utf8> s)   { _first->Write(s.begin(), s.Length()); _second->Write(s.begin(), s.Length()); }
-    void    ForkOutputStream::Write(StringSection<ucs2> s)   { _first->Write(s.begin(), s.Length()); _second->Write(s.begin(), s.Length()); }
-    void    ForkOutputStream::Write(StringSection<ucs4> s)   { _first->Write(s.begin(), s.Length()); _second->Write(s.begin(), s.Length()); }
 
     void    ForkOutputStream::Flush()
     {
@@ -177,13 +157,8 @@ namespace ConsoleRig
     public:
         virtual size_type   Tell();
         virtual void        Write(const void* p, size_type len);
-        virtual void    WriteChar(utf8 ch);
-        virtual void    WriteChar(ucs2 ch);
-        virtual void    WriteChar(ucs4 ch);
-
+        virtual void    WriteChar(char ch);
         virtual void    Write(StringSection<utf8>);
-        virtual void    Write(StringSection<ucs2>);
-        virtual void    Write(StringSection<ucs4>);
 
         virtual void    Flush();
 
@@ -199,13 +174,8 @@ namespace ConsoleRig
     }
 
         //      Character type conversions not handled correctly!
-    void    ConsoleOutputStream::WriteChar(utf8 ch)             { Console::GetInstance().Print(std::string((char*)&ch, 1)); }
-    void    ConsoleOutputStream::WriteChar(ucs2 ch)             { Console::GetInstance().Print(std::basic_string<ucs2>(&ch, 1)); }
-    void    ConsoleOutputStream::WriteChar(ucs4 ch)             { assert(0); }
-
+    void    ConsoleOutputStream::WriteChar(char ch)             { Console::GetInstance().Print(std::string((char*)&ch, 1)); }
     void    ConsoleOutputStream::Write(StringSection<utf8> str) { Console::GetInstance().Print((const char*)str.begin(), (const char*)str.end()); }
-    void    ConsoleOutputStream::Write(StringSection<ucs2> str) { Console::GetInstance().Print(str.AsString()); }
-    void    ConsoleOutputStream::Write(StringSection<ucs4> str) { assert(0); }
 
     void    ConsoleOutputStream::Flush(){}
 
@@ -225,13 +195,8 @@ namespace ConsoleRig
         public:
             virtual size_type   Tell();
             virtual void        Write(const void* p, size_type len);
-            virtual void    WriteChar(utf8 ch);
-            virtual void    WriteChar(ucs2 ch);
-            virtual void    WriteChar(ucs4 ch);
-
+            virtual void    WriteChar(char ch);
             virtual void    Write(StringSection<utf8>);
-            virtual void    Write(StringSection<ucs2>);
-            virtual void    Write(StringSection<ucs4>);
 
             virtual void    Flush();
 
@@ -264,43 +229,18 @@ namespace ConsoleRig
             }
         }
 
-        void    DebuggerConsoleOutput::WriteChar(utf8 ch)
+        void    DebuggerConsoleOutput::WriteChar(char ch)
         {
-            utf8 buffer[2];
-            buffer[0] = ch;
-            buffer[1] = (utf8)'\0';
-            OutputDebugStringA((const char*)buffer);
-        }
-
-        void    DebuggerConsoleOutput::WriteChar(ucs2 ch)
-        {
-            ucs2 buffer[2];
+            char buffer[2];
             buffer[0] = ch;
             buffer[1] = '\0';
-            OutputDebugStringW((const wchar_t*)buffer);
+            OutputDebugStringA(buffer);
         }
-
-        void    DebuggerConsoleOutput::WriteChar(ucs4 ch)
-        {
-            assert(0);
-        }
-
         void    DebuggerConsoleOutput::Write(StringSection<utf8> str)
         {
                 // some extra overhead required to add the null terminator (because some input strings won't have it!)
             OutputDebugStringA(
                 Conversion::Convert<std::string>(str.AsString()).c_str());
-        }
-
-        void    DebuggerConsoleOutput::Write(StringSection<ucs2> str)
-        {
-            OutputDebugStringW(
-                (const wchar_t*)Conversion::Convert<std::basic_string<utf16>>(str.AsString()).c_str());
-        }
-
-        void    DebuggerConsoleOutput::Write(StringSection<ucs4> str)
-        {
-            assert(0);
         }
 
         void    DebuggerConsoleOutput::Flush()          {}

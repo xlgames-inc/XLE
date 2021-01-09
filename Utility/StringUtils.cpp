@@ -105,38 +105,6 @@ static const uint8 __upper_table[] = {
 };
 
 
-namespace
-{
-    static Locale::Enum     gLocale = Locale::KO;
-    static const char*      localeStr[Locale::Max]       = { "ko", "zh_cn", "en_us", "ja", "zh_tw", "ru", "de", "fr" };
-    static const char*      localeLanguage[Locale::Max]  = { "korean", "chinese-simplified", "english", "japanese", "chinese-simplified", "russian", "german", "french" };
-}
-
-void        XlInitStringUtil(const char locale[])
-{
-    for (size_t i = 0; i < Locale::Max; ++i) {
-        if (XlEqStringI(locale, localeStr[i])) {
-            gLocale = (Locale::Enum)i;
-            setlocale(LC_CTYPE, localeLanguage[i]);
-            break;
-        }
-    }
-}
-
-Locale::Enum XlGetLocale()
-{
-    return gLocale;
-}
-
-const char* XlGetLocaleString(Locale::Enum locale)
-{
-    if (locale < Locale::KO || locale >= Locale::Max) {
-        return localeStr[Locale::KO];
-    }
-
-    return localeStr[locale];
-}
-
 size_t XlStringSizeSafe(const char* str, const char* end)
 {
     const char* p;
@@ -148,7 +116,7 @@ size_t XlStringSizeSafe(const char* str, const char* end)
 
 size_t XlStringSize(const ucs4* str)
 {
-    return XlStringLen(str);
+    return XlStringCharCount(str);
 }
 
 size_t XlStringSizeSafe(const ucs4* str, const ucs4* end)
@@ -174,7 +142,7 @@ inline bool CheckUtfMultibytes(size_t count, const utf8* s)
     return (count == 0);
 }
 
-size_t XlStringLen(const utf8* s)
+size_t XlStringCharCount(const utf8* s)
 {
     size_t l = 0;
 
@@ -194,21 +162,55 @@ size_t XlStringLen(const utf8* s)
     return l;
 }
 
+size_t XlStringCharCount(const utf16* s)
+{
+    // note -- we're assuming the 16 bit characters are encoded in the
+    // byte order of the machine here. Also expecting high surrogates to be
+    // in earlier memory addresses than low surrogates
+    size_t l = 0;
+    while (utf16 c = (utf16)*s) {
+        ++l;
+        if (c >= 0xd800 && c <= 0xdbff) { 
+            // this is a "high surrogate". We're expecting a "low surrogate" to follow
+            assert(*(s+1) >= 0xDC00 && *(s+1) <= 0xDFFF);
+            s += 2;
+        } else {
+            // we should not encounter a "low surrogate" at this point -- they should
+            // only appear immediately after a high surrogate
+            assert(!(*(s+1) >= 0xDC00 && *(s+1) <= 0xDFFF));
+            ++s;
+        }
+    }
+
+    return l;
+}
+
 size_t XlStringSize(const utf8* s)
 {
-    return XlStringSize((const char*)s);
+    // This should return the size in bytes of the string (not the number of
+    // characters)
+    return std::strlen((const char*)s);
+}
+
+size_t XlStringSize(const utf16* str)
+{
+    // string size returns the number of fixed sized "utf16" elements in the string
+	// (even if this is not the same as the number of characters)
+    auto* i = str;
+	while (*i) ++i;
+	return i - str;
 }
 
 size_t XlStringSize(const ucs2* str)
 {
-	// string size returns the number of fixed sized "utf16" elements in the string
+	// string size returns the number of fixed sized "ucs2" elements in the string
 	// (even if this is not the same as the number of characters)
 	auto* i = str;
 	while (*i) ++i;
 	return i - str;
 }
 
-size_t XlStringLen(const ucs4* str)
+size_t XlStringCharCount(const ucs4* str)
 {
     // TODO: enhance
     if (!str)
@@ -221,7 +223,7 @@ size_t XlStringLen(const ucs4* str)
 }
 
 // count is buffer size in char
-void XlCopyString(char* dst, size_t count, const char* src)
+static void XlCopyString_primitive(char* dst, size_t count, const char* src)
 {
 #ifdef _MSC_VER
     StringCbCopyA(dst, count, src);
@@ -239,7 +241,7 @@ void XlCopyString(char* dst, size_t count, const char* src)
 }
 
 // count is buffer size in char
-void XlCopyNString(char* dst, size_t count, const char* src, size_t length)
+void XlCopyNString_primitive(char* dst, size_t count, const char* src, size_t length)
 {
     if (!length) {
         if (count >= 1) dst[0] = '\0';
@@ -256,7 +258,7 @@ void XlCopyNString(char* dst, size_t count, const char* src, size_t length)
 }
 
 #pragma warning(disable:4706)       // warning C4706: assignment within conditional expression
-void XlCopySafeUtf(utf8* dst, size_t size_, const utf8* src)
+void XlCopyString_SafeUtf(utf8* dst, size_t size_, const utf8* src)
 {
     if (!size_)
         return;
@@ -285,7 +287,7 @@ void XlCopySafeUtf(utf8* dst, size_t size_, const utf8* src)
     *dst = 0;
 }
 
-void XlCopySafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32 numSeq)
+void XlCopyString_SafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32 numSeq)
 {
     if (!size_)
         return;
@@ -330,45 +332,25 @@ void XlCopySafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32 numSe
 
 void     XlCopyString        (utf8* dst, size_t size, const utf8* src)
 {
-    XlCopyString((char*)dst, size, (const char*)src);
+    XlCopyString_primitive(dst, size, src);
 }
 
 void     XlCopyNString        (utf8* dst, size_t count, const utf8*src, size_t length)
 {
-    XlCopyNString((char*)dst, count, (const char*)src, length);
+    XlCopyNString_primitive(dst, count, src, length);
 }
 
+static void XlCatString_primitive(char* dst, size_t size, const char* src);
 void     XlCatString(utf8* dst, size_t size, const utf8* src)
 {
-	XlCatString((char*)dst, size, (const char*)src);
+	XlCatString_primitive(dst, size, src);
 }
 
-int      XlCompareString     (const utf8* x, const utf8* y)
-{
-    return XlCompareString((const char*)x, (const char*)y);
-}
-
-int      XlCompareStringI    (const utf8* x, const utf8* y)
-{
-    return XlCompareStringI((const char*)x, (const char*)y);
-}
-
-int      XlComparePrefix     (const utf8* x, const utf8* y, size_t size)
-{
-    return XlComparePrefix((const char*)x, (const char*)y, size);
-}
-
-int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
-{
-    return XlComparePrefixI((const char*)x, (const char*)y, size);
-}
-
+// todo -- a lot of these functions need revision to ensure they will work correctly for
+//      all utf16 strings on all platforms
 #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
 
     #pragma warning(disable: 4995)
-
-	// DavidJ -- note -- I'm not sure if this is correct, because it's not clear if the
-	//	wcscpy_s, etc, functions are going to treat the string as ucs2 or UTF-16
 
     void XlCopyString(wchar_t* dst, size_t size, const wchar_t* src)
     {
@@ -400,14 +382,14 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
         wcsncat_s((wchar_t*)dst, size, (const wchar_t*)src, length);
     }
 
-    size_t XlStringLen(const ucs2* str)
+    size_t XlStringCharCount(const ucs2* str)
     {
-        return wcslen((const wchar_t*)str);
+        return std::wcslen((const wchar_t*)str);
     }
 
     size_t XlCompareString(const ucs2* x, const ucs2* y)
     {
-        return wcscmp((const wchar_t*)x, (const wchar_t*)y);
+        return std::wcscmp((const wchar_t*)x, (const wchar_t*)y);
     }
 
     size_t XlCompareStringI(const ucs2* x, const ucs2* y)
@@ -429,7 +411,7 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
     
     void XlCatNString(ucs2* dst, size_t size, const ucs2* src, size_t length) { assert(0); }
     
-    size_t XlStringLen(const ucs2* str)
+    size_t XlStringCharCount(const ucs2* str)
     {
         assert(0);
         return 0;
@@ -447,9 +429,7 @@ int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
         return 0;
     }
     
-    
 #endif
-
 
 // count is buffer size in ucs4
 void XlCopyString(ucs4* dst, size_t count, const ucs4* src)
@@ -478,7 +458,7 @@ void XlCopyNString(ucs4* dst, size_t count, const ucs4*src, size_t length)
     XlCopyString(dst, length, src);
 }
 
-void XlCatString(char* dst, size_t size, const char* src) 
+static void XlCatString_primitive(char* dst, size_t size, const char* src) 
 {
 #ifdef _MSC_VER
     StringCbCatA(dst, size, src);
@@ -497,7 +477,7 @@ void XlCatString(char* dst, size_t size, const char* src)
 #endif
 }
 
-void XlCatNString(char* dst, size_t size, const char* src, size_t length)
+void XlCatNString(utf8* dst, size_t size, const utf8* src, size_t length)
 {
     for (size_t i = 0; i < size - 1; ++i) {
         if (dst[i] == 0) {
@@ -518,27 +498,10 @@ void XlCatSafeUtf(utf8* dst, size_t size, const utf8* src)
 {
     for (size_t i = 0; i < size - 1; ++i) {
         if (dst[i] == 0) {
-            XlCopySafeUtf(dst + i, size - i, src);
+            XlCopyString_SafeUtf(dst + i, size - i, src);
             break;
         }
     }
-}
-
-void     XlCombineString(char dst[], size_t size, const char zero[], const char one[])
-{
-    if (!size) return;
-
-    auto* dstEnd = &dst[size-1];
-    while (*zero && dst < dstEnd) {
-        *dst = *zero;
-        ++dst; ++zero;
-    }
-    while (*one && dst < dstEnd) {
-        *dst = *one;
-        ++dst; ++one;
-    }
-    assert(dst <= dstEnd);  // it's ok to equal dstEnd here
-    *dst = '\0';
 }
 
 void XlCatString(ucs4* dst, size_t count, const ucs4* src)
@@ -556,46 +519,13 @@ void XlCatString(ucs4* dst, size_t count, const ucs4* src)
     dst[count - 1] = 0;
 }
 
-void XlCatString(char* dst, size_t size, char src) 
-{
-    for (size_t i = 0; i < size - 1; ++i) {
-        if (dst[i] == 0) {
-            dst[i] = src;
-            dst[i+1] = 0;
-            return;
-        }
-    }
-}
 
-void XlCatString(ucs2* dst, size_t size, ucs2 src)
-{
-    for (size_t i = 0; i < size - 1; ++i) {
-        if (dst[i] == 0) {
-            dst[i] = src;
-            dst[i+1] = 0;
-            return;
-        }
-    }
-}
-
-void XlCatString(ucs4* dst, size_t count, ucs4 src)
-{
-    for (size_t i = 0; i < count - 1; ++i) {
-        if (dst[i] == 0) {
-            dst[i] = src;
-            dst[i+1] = 0;
-            return;
-        }
-    }
-}
-
-
-int XlComparePrefix(const char* s1, const char* s2, size_t size)
+int XlComparePrefix(const utf8* s1, const utf8* s2, size_t size)
 {
     return strncmp(s1, s2, size);
 }
 
-int XlComparePrefixI(const char* s1, const char* s2, size_t size)
+int XlComparePrefixI(const utf8* s1, const utf8* s2, size_t size)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
         return _strnicmp(s1, s2, size);
@@ -656,34 +586,12 @@ int XlComparePrefixI(const ucs4* x, const ucs4* y, size_t len)
     return (int)(XlToLower(*x) - XlToLower(*y));
 }
 
-uint32 XlHashString(const char* x)
-{
-    // case sensitive string hash
-    const char* s = x;
-    uint32 hash = 0;
-    while (char c = *s++) {
-        hash = (hash * 31) + c;
-    }
-    return hash;
-}
-
-uint32 XlHashString(const ucs4* x)
-{
-    // case sensitive string hash
-    const ucs4* s = x;
-    uint32 hash = 0;
-    while (ucs4 c = *s++) {
-        hash = (hash * 31) + c;
-    }
-    return hash;
-}
-
-int XlCompareString(const char* x, const char* y)
+int XlCompareString(const utf8* x, const utf8* y)
 {
     return strcmp(x, y);
 }
 
-int XlCompareStringI(const char* x, const char* y)
+int XlCompareStringI(const utf8* x, const utf8* y)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
         return _stricmp(x, y);
@@ -858,8 +766,8 @@ const ucs4* XlFindStringI(const ucs4* s, const ucs4* x)
     if (!*x) 
         return s;
 
-    size_t sn = XlStringLen(s);
-    size_t xn = XlStringLen(x);
+    size_t sn = XlStringCharCount(s);
+    size_t xn = XlStringCharCount(x);
     if (sn < xn) return 0;
 
     for (size_t i = 0; i <= sn - xn; ++i) {
@@ -875,7 +783,7 @@ const ucs4* XlFindStringSafe(const ucs4* s, const ucs4* x, size_t len)
     if (!*x) 
         return s;
 
-    size_t xn = XlStringLen(x);
+    size_t xn = XlStringCharCount(x);
 
     for (size_t i = 0; s[i] && i < len - xn; ++i) {
         if (XlComparePrefixI(s + i, x, xn) == 0) {
@@ -890,7 +798,7 @@ size_t tokenize_string(T* buf, size_t count, const T* delimiters, T** tokens, si
 {
     assert(numMaxToken > 1);
 
-    size_t numDelimeters = XlStringLen(delimiters);
+    size_t numDelimeters = XlStringCharCount(delimiters);
     size_t numToken = 0;
 
     tokens[numToken++] = buf;
@@ -915,11 +823,6 @@ size_t tokenize_string(T* buf, size_t count, const T* delimiters, T** tokens, si
 size_t XlTokenizeString(char* buf, size_t count, const char* delimiters, char** tokens, size_t numMaxToken)
 {
     return tokenize_string<char>(buf, count, delimiters, tokens, numMaxToken);
-}
-
-size_t XlTokenizeString(ucs2* buf, size_t count, const ucs2* delimiters, ucs2** tokens, size_t numMaxToken)
-{
-    return tokenize_string<ucs2>(buf, count, delimiters, tokens, numMaxToken);
 }
 
 char* XlStrTok(char* token, const char* delimit, char** context)
@@ -1172,65 +1075,6 @@ size_t XlGetOffset(const char* s, size_t index)
     return l;
 }
 
-ucs4 XlGetChar(const char* str, size_t* size)
-{
-    const uint8* s = (const uint8*)str;
-    ucs4 c = 0;
-
-    if (*s < 0x80) {
-        c = *s;
-        *size = 1;
-    } else if (*s < 0xe0) {
-        c = ((*s & 0x1f) << 6) | (*(s+1) & 0x3f);
-        *size = 2;
-    } else if (*s < 0xf0) {
-        c = ((*s & 0x0f) << 12) | ((*(s+1) & 0x3f) << 6) | (*(s+2) & 0x3f);
-        *size = 3;
-    } else if (*s < 0xf8) {
-        c = ((*s & 0x0f) << 18) | ((*(s+1) & 0x3f) << 12) | ((*(s+2) & 0x3f) << 6) | (*(s+3) & 0x3f);
-        *size = 4;
-    //} else if (*s < 0xfc) {
-    //    c = ((*s & 0x0f) << 24) | ((*(s+1) & 0x3f) << 18) | ((*(s+2) & 0x3f) << 12) | ((*(s+3) & 0x3f) << 6) | (*(s+4) & 0x3f);
-    //    *size = 5;
-    //} else if (*s < 0xfe) {
-    //    c = ((*s & 0x0f) << 28) | ((*(s+1) & 0x3f) << 24) | ((*(s+2) & 0x3f) << 18) | ((*(s+3) & 0x3f) << 12) | ((*(s+4) & 0x3f) << 6) | (*(s+5) & 0x3f);
-    //    *size = 6;
-    } else {
-        assert(0);
-        c = 0;
-        *size = 0;
-    }
-
-    return c;
-}
-
-void XlGetChar(char* output, size_t count, const ucs4* uniStr, size_t* size)
-{
-    const ucs4 uniChar = *uniStr;
-    if (count < sizeof(ucs4)) {
-        *size = 0;
-        return;
-    }
-
-    if (uniChar < 0x80) {
-        *output = (char)uniChar;
-
-    } else if (uniChar < 0x800) {
-        *output++ = 0xc0 | ((uniChar >> 6) & 0x1f);
-        *output = 0x80 | (uniChar & 0x3f);
-
-    } else if (uniChar < 0x10000) {
-        *output++ = 0xe0 | ((uniChar >> 12) & 0x0f);
-        *output++ = 0x80 | ((uniChar >> 6) & 0x3f);
-        *output = 0x80 | (uniChar & 0x3f);
-
-    } else if (uniChar < 0x110000) {
-        *output++ = 0xf0 | ((uniChar >> 18) & 0x07);
-        *output++ = 0x80 | ((uniChar >> 12) & 0x3f);
-        *output++ = 0x80 | ((uniChar >> 6) & 0x3f);
-        *output = 0x80 | (uniChar & 0x3f);
-    }
-}
 
 // casing (null terminated string)
 const char* XlLowerCase(char* str)
@@ -1345,14 +1189,9 @@ bool XlIsAlNumSpace(char c)
     return (__alphanum_table[(uint8)c] != 0x00) || (c == ' ');
 }
 
-bool XlIsDigit(char c)
-{
-	return __alphanum_table[(uint8)c] == 0x01;
-}
-
 bool XlIsDigit(utf8 c)
 {
-    return __alphanum_table[c] == 0x01;
+	return __alphanum_table[(uint8)c] == 0x01;
 }
 
 bool XlIsHex(char c)
@@ -1380,14 +1219,14 @@ bool XlIsSpace(char c)
     return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f';
 }
 
-char XlToLower(char c)
+utf8 XlToLower(utf8 c)
 {
-	return (char)__lower_table[(uint8)c];
+	return (utf8)__lower_table[(uint8)c];
 }
 
-char XlToUpper(char c)
+utf8 XlToUpper(utf8 c)
 {
-	return (char)__upper_table[(uint8)c];
+	return (utf8)__upper_table[(uint8)c];
 }
 
 wchar_t XlToLower(wchar_t c) { return std::tolower(c, std::locale()); }
@@ -1625,7 +1464,7 @@ bool XlAtoBool(const char* str, const char** end_ptr)
 		return false;
 	} else {
 		if (end_ptr) {
-			*end_ptr += XlStringLen(str);
+			*end_ptr += XlStringCharCount(str);
 		}
 		return false;
 	}

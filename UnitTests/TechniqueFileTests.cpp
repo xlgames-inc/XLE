@@ -70,8 +70,8 @@ namespace UnitTests
 				auto test0 = Filter(
 					*entry,
 					{
-						std::make_pair(u("SELECTOR_0"), "2"),
-						std::make_pair(u("SKIP_MATERIAL_DIFFUSE"), "0")
+						std::make_pair("SELECTOR_0", "2"),
+						std::make_pair("SKIP_MATERIAL_DIFFUSE", "0")
 					});
 				Assert::AreEqual(std::string{"SELECTOR_0=2;"}, test0);
 
@@ -81,8 +81,8 @@ namespace UnitTests
 				auto test1 = Filter(
 					*entry,
 					{
-						std::make_pair(u("SKIP_MATERIAL_DIFFUSE"), "3"),
-						std::make_pair(u("CLASSIFY_NORMAL_MAP"), "5")
+						std::make_pair("SKIP_MATERIAL_DIFFUSE", "3"),
+						std::make_pair("CLASSIFY_NORMAL_MAP", "5")
 					});
 				Assert::AreEqual(std::string{"SELECTOR_0=1;CLASSIFY_NORMAL_MAP=5;SKIP_MATERIAL_DIFFUSE=3;"}, test1);
 			}
@@ -115,8 +115,8 @@ namespace UnitTests
 				auto test0 = Filter(
 					*entry,
 					{
-						std::make_pair(u("SELECTOR_0"), "0"),
-						std::make_pair(u("UNKNOWN_SELECTOR"), "6")
+						std::make_pair("SELECTOR_0", "0"),
+						std::make_pair("UNKNOWN_SELECTOR", "6")
 					});
 				Assert::AreEqual(std::string{"SELECTOR_2=4;SELECTOR_0=0;SELECTOR_1=3;"}, test0);
 
@@ -125,7 +125,7 @@ namespace UnitTests
 				auto test1 = Filter(
 					*entry,
 					{
-						std::make_pair(u("SELECTOR_2"), "5")
+						std::make_pair("SELECTOR_2", "5")
 					});
 				Assert::AreEqual(std::string{"SELECTOR_1=3;"}, test1);
 			}

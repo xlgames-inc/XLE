@@ -233,7 +233,7 @@ namespace SceneEngine
             ucs4 _buffer[Count];
             UCS4Buffer(const char input[])
             {
-                utf8_2_ucs4((const utf8*)input, XlStringLen(input), _buffer, dimof(_buffer)-1);
+                utf8_2_ucs4((const utf8*)input, XlStringCharCount(input), _buffer, dimof(_buffer)-1);
             }
             UCS4Buffer(const char* start, const char* end)
             {

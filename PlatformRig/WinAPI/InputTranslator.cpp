@@ -111,7 +111,7 @@ namespace PlatformRig
         Publish(context, snapShot);
     }
 
-    void            InputTranslator::OnChar(const InputContext& context, ucs2 chr)
+    void            InputTranslator::OnChar(const InputContext& context, wchar_t chr)
     {
         using namespace RenderOverlays::DebuggingDisplay;
         InputSnapshot snapShot(GetMouseButtonState(), 0, 0, _pimpl->_currentMousePosition, Int2(0,0), chr);
