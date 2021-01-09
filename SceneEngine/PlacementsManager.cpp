@@ -200,7 +200,7 @@ namespace SceneEngine
                     // if this is our string, then we need to erase the old content and insert
                     // the new
 
-                auto length = XlStringCharCount(newString);
+                auto length = XlStringSize(newString);
                 std::vector<uint8> replacementContent(sizeof(uint64_t) + (length + 1) * sizeof(ResChar), 0);
                 *(uint64_t*)AsPointer(replacementContent.begin()) = newHash;
 

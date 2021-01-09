@@ -686,7 +686,7 @@ namespace Utility
             // concatenation process.
         size_t size = 0;
         std::for_each(stringTable.cbegin(), stringTable.cend(), 
-            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringCharCount(object.first) + object.second.size(); });
+            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringSize(object.first) + object.second.size(); });
         combinedStrings.reserve(size+1);
 
         std::for_each(stringTable.cbegin(), stringTable.cend(), 

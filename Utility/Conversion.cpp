@@ -128,14 +128,14 @@ namespace Conversion
 
     template<> std::basic_string<utf16> Convert(const std::basic_string<utf8>& input)
     {
-        return { input.begin(), input.end() };
+        assert(0);      // not implemented
+        return {};
     }
-    
     
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs2>& input)
     {
         std::basic_string<utf8> result;
-        result.resize(input.size());
+        result.resize(input.size());      // todo -- ucs2_2_utf8 might need to expand the result
         ucs2_2_utf8(
             AsPointer(input.begin()), input.size(),
             AsPointer(result.begin()), result.size());
@@ -185,12 +185,14 @@ namespace Conversion
 
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs2>& input)
     {
+        assert(sizeof(wchar_t) == sizeof(ucs2));        // todo -- making assumptions about the size of wchar_t here
         return reinterpret_cast<const std::basic_string<wchar_t>&>(input);
     }
 
     template<> std::basic_string<utf8> Convert(const std::basic_string<utf16>& input)
     {
-        return { input.begin(), input.end() };
+        assert(0);      // not implemented
+        return {};
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -217,13 +219,14 @@ namespace Conversion
 
     template<> std::basic_string<utf16> Convert(StringSection<utf8> input)
 	{
-		return { input.begin(), input.end() };      // relying on conversion via standard library
+		assert(0);      // not implemented
+        return {};
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs2> input)
 	{
 		std::basic_string<utf8> result;
-		result.resize(input.Length());
+		result.resize(input.Length());      // todo -- ucs2_2_utf8 might need to expand the result
 		ucs2_2_utf8(
 			AsPointer(input.begin()), input.Length(),
 			AsPointer(result.begin()), result.size());
@@ -242,7 +245,8 @@ namespace Conversion
 
     template<> std::basic_string<utf8> Convert(StringSection<utf16> input)
 	{
-		return { input.begin(), input.end() };      // relying on conversion via standard library
+		assert(0);      // not implemented
+        return {};
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs4> input)

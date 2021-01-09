@@ -695,26 +695,6 @@ namespace Utility
 
         template TypeDesc Parse(StringSection<utf8> expression, void* dest, size_t destSize);
 
-        /*template std::optional<bool> Parse(StringSection<utf8>);
-        template std::optional<unsigned> Parse(StringSection<utf8>);
-        template std::optional<signed> Parse(StringSection<utf8>);
-        template std::optional<uint64_t> Parse(StringSection<utf8>);
-        template std::optional<int64_t> Parse(StringSection<utf8>);
-        template std::optional<float> Parse(StringSection<utf8>);
-		template std::optional<double> Parse(StringSection<utf8>);
-        template std::optional<Float2> Parse(StringSection<utf8>);
-        template std::optional<Float3> Parse(StringSection<utf8>);
-        template std::optional<Float4> Parse(StringSection<utf8>);
-        template std::optional<Float3x3> Parse(StringSection<utf8>);
-        template std::optional<Float3x4> Parse(StringSection<utf8>);
-        template std::optional<Float4x4> Parse(StringSection<utf8>);
-        template std::optional<UInt2> Parse(StringSection<utf8>);
-        template std::optional<UInt3> Parse(StringSection<utf8>);
-        template std::optional<UInt4> Parse(StringSection<utf8>);
-        template std::optional<Int2> Parse(StringSection<utf8>);
-        template std::optional<Int3> Parse(StringSection<utf8>);
-        template std::optional<Int4> Parse(StringSection<utf8>);*/
-
     }
 }
 

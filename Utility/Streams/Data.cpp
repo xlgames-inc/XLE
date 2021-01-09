@@ -681,7 +681,7 @@ void Data::Path(char* dst, int count)
     } else {
         parent->Path(dst, count);
         XlCatString(dst, count, ".");
-        size_t len = XlStringCharCount(dst);
+        size_t len = XlStringSize(dst);
         ValuePath(this, dst + len, int(count - len));
     }
 }

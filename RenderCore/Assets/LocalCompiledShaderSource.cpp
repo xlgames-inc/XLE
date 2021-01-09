@@ -142,7 +142,7 @@ namespace RenderCore { namespace Assets
 
         char baseDir[MaxPath];
         _intermediateStore->MakeIntermediateName(baseDir, dimof(baseDir), MakeStringSection(_baseFolderName));
-        auto baseDirLen = XlStringCharCount(baseDir);
+        auto baseDirLen = XlStringSize(baseDir);
         assert(&baseDir[baseDirLen] == XlStringEnd(baseDir));
         std::deque<std::string> dirs;
         dirs.push_back(std::string(baseDir));

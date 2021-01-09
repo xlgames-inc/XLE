@@ -103,7 +103,7 @@ namespace SceneEngine
             //  * must end in a slash (unless empty)
         ::Assets::ResChar buffer[MaxPath];
         SplitPath<::Assets::ResChar>(input).Simplify().Rebuild(buffer, dimof(buffer));
-        auto len = XlStringCharCount(buffer);
+        auto len = XlStringSize(buffer);
         assert(&buffer[len] == XlStringEnd(buffer));
 		std::transform(buffer, &buffer[len], buffer, [](char input) { return (char)std::tolower(input); });
         if (len && buffer[len-1] != '/' && (len+1) < dimof(buffer)) {

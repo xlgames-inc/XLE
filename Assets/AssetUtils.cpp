@@ -303,7 +303,7 @@ namespace Assets
                 if (DoesFileExist(workingBuffer)) {
                     SplitPath<ResChar>(workingBuffer).Simplify().Rebuild(workingBuffer, workingBufferSize);
                     if (workingBuffer != destination) {
-                        auto workingBufferLen = std::min((ptrdiff_t)XlStringCharCount(workingBuffer), ptrdiff_t(destinationCount) - 1);
+                        auto workingBufferLen = std::min((ptrdiff_t)XlStringSize(workingBuffer), ptrdiff_t(destinationCount) - 1);
                         auto colonLen = (ptrdiff_t)splitter.ParametersWithDivider().Length();
                         auto colonCopy = std::min(ptrdiff_t(destinationCount) - workingBufferLen - 1, colonLen);
                         assert((workingBufferLen + colonCopy) < ptrdiff_t(destinationCount));

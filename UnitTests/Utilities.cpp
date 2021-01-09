@@ -13,6 +13,7 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
+#include "../Utility/Conversion.h"
 #include <stdexcept>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
@@ -89,19 +90,64 @@ namespace UnitTests
     TEST_CASE( "Utilities-MemoryStreamTest", "[utility]" )
     {
         auto memStreamA = std::make_unique<MemoryOutputStream<char>>();
-        auto memStreamB = std::make_unique<MemoryOutputStream<utf16>>();
+        // auto memStreamB = std::make_unique<MemoryOutputStream<utf16>>();
         auto memStreamC = std::make_unique<MemoryOutputStream<utf8>>();
         FillStream(*memStreamA);
-        FillStream(*memStreamB);
+        // FillStream(*memStreamB);
         FillStream(*memStreamC);
 
         auto stringA = memStreamA->AsString();
-        auto stringB = memStreamB->AsString();
+        // auto stringB = memStreamB->AsString();
         auto stringC = memStreamC->AsString();
 
         REQUIRE(stringA == "B<<StringB>>D<<StringD>>");
-        REQUIRE(stringB == (const utf16*)u"B<<StringB>>D<<StringD>>");
+        // REQUIRE(stringB == (const utf16*)u"B<<StringB>>D<<StringD>>");
         REQUIRE(stringC == u8"B<<StringB>>D<<StringD>>");
+    }
+
+    TEST_CASE( "Utilities-GlyphCount", "[utility]" )
+    {
+        // const utf8* utf8InputLiteral = u8"z\u00df\u6c34\U0001f34c"; // L"zß水🍌"
+        // This is just an odd unicode string with characters of different byte sizes. There are glyphs from different languages, as well as some emojis in there
+        // There are 65 separate characters
+        const utf8* utf8InputLiteral = u8"\u8272\u306f\u5302\u3078\u3069\U0001f534\x20\U0001f959\u6563\u308a\u306c\u308b\u3092\U0001f34e\x0a\uc6b0\ub9ac\ub098\ub77c\uc758\U0001f4c5\x20\ub300\ud45c\U0001f3f4\uc801\uc778\x20\uace0\uc591\uc774\uc0c1\x20\U0001f4bb\uc5ec\ubc30\uc6b0\ub77c\uace0\x20\ud558\uba74\x20\ub204\uad6c\ub098\x20\ube60\uc9d0\uc5c6\uc774\x20\ub5a0\uc624\U0001f4fd\ub974\ub294\x20\ubc30\uc6b0\U0001f6e1\uac00\x20\uc788\uc8e0";
+        const utf16* utf16InputLiteral = u"\u8272\u306f\u5302\u3078\u3069\U0001f534\x20\U0001f959\u6563\u308a\u306c\u308b\u3092\U0001f34e\x0a\uc6b0\ub9ac\ub098\ub77c\uc758\U0001f4c5\x20\ub300\ud45c\U0001f3f4\uc801\uc778\x20\uace0\uc591\uc774\uc0c1\x20\U0001f4bb\uc5ec\ubc30\uc6b0\ub77c\uace0\x20\ud558\uba74\x20\ub204\uad6c\ub098\x20\ube60\uc9d0\uc5c6\uc774\x20\ub5a0\uc624\U0001f4fd\ub974\ub294\x20\ubc30\uc6b0\U0001f6e1\uac00\x20\uc788\uc8e0";
+        const wchar_t* wcharInputLiteral = L"\u8272\u306f\u5302\u3078\u3069\U0001f534\x20\U0001f959\u6563\u308a\u306c\u308b\u3092\U0001f34e\x0a\uc6b0\ub9ac\ub098\ub77c\uc758\U0001f4c5\x20\ub300\ud45c\U0001f3f4\uc801\uc778\x20\uace0\uc591\uc774\uc0c1\x20\U0001f4bb\uc5ec\ubc30\uc6b0\ub77c\uace0\x20\ud558\uba74\x20\ub204\uad6c\ub098\x20\ube60\uc9d0\uc5c6\uc774\x20\ub5a0\uc624\U0001f4fd\ub974\ub294\x20\ubc30\uc6b0\U0001f6e1\uac00\x20\uc788\uc8e0";
+
+        auto utf8String = std::basic_string<utf8>(utf8InputLiteral);
+        auto* utf8NullTerminated = utf8String.c_str();
+        auto utf16String = std::basic_string<utf16>(utf16InputLiteral);
+        auto* utf16NullTerminated = utf16String.c_str();
+        auto wcharString = std::basic_string<wchar_t>(wcharInputLiteral);
+        auto* wcharNullTerminated = wcharString.c_str();
+
+        // XlStringSize() and StringSection::Length return the number of character primitives
+        // used by the string (ie, the number of bytes is XlStringSize() * sizeof(CharType))
+        // This is also the same as std::string::size()
+        auto countInCharPrimitives1 = XlStringSize(utf8NullTerminated);
+        auto countInCharPrimitives2 = XlStringSize(utf16NullTerminated);
+        auto countInCharPrimitives1a = utf8String.size();
+        auto countInCharPrimitives2a = utf16String.size();
+        auto countInCharPrimitives1b = MakeStringSection(utf8String).Length();
+        auto countInCharPrimitives2b = MakeStringSection(utf16String).Length();
+        REQUIRE( countInCharPrimitives1 == countInCharPrimitives1a );
+        REQUIRE( countInCharPrimitives1 == countInCharPrimitives1b );
+        REQUIRE( countInCharPrimitives2 == countInCharPrimitives2a );
+        REQUIRE( countInCharPrimitives2 == countInCharPrimitives2b );
+
+        // The number of character primitives in this utf16 is less that 
+        // the utf8 version for this particular string
+        REQUIRE( countInCharPrimitives1 > countInCharPrimitives2 );
+        // Also, the number of bytes for the utf16 version is less (but again that might be specific to this string)
+        REQUIRE( (countInCharPrimitives1 * sizeof(utf8)) > (countInCharPrimitives2 * sizeof(utf16)) );
+
+        // XlGlyphCount returns the number of glyphs in the string, regardless of
+        // how they are stored
+        auto characterCount1 = XlGlyphCount(utf8NullTerminated);
+        auto characterCount2 = XlGlyphCount(utf16NullTerminated);
+        REQUIRE( characterCount1 == characterCount2 );
+        REQUIRE( characterCount1 < countInCharPrimitives1 );
+        REQUIRE( characterCount2 < countInCharPrimitives2 );
     }
         
     TEST_CASE( "Utilities-MakeFunctionTest", "[utility]" )

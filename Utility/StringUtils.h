@@ -33,7 +33,7 @@ namespace Utility
     
         ////////////   U T F 8   O V E R R I D E S   ////////////
     XL_UTILITY_API size_t   XlStringSize        (const utf8* str);
-    XL_UTILITY_API size_t   XlStringCharCount   (const utf8* str);
+    XL_UTILITY_API size_t   XlGlyphCount        (const utf8* str);
     XL_UTILITY_API void     XlCopyString        (utf8* dst, size_t size, const utf8* src);
     XL_UTILITY_API void     XlCopyNString       (utf8* dst, size_t count, const utf8*src, size_t length);
 	XL_UTILITY_API void     XlCatString			(utf8* dst, size_t size, const utf8* src);
@@ -48,13 +48,13 @@ namespace Utility
 	// XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length);
 	// XL_UTILITY_API size_t   XlStringSize(const utf16* str);
     XL_UTILITY_API size_t   XlStringSize        (const utf16* str);
-    XL_UTILITY_API size_t   XlStringCharCount   (const utf16* str);
+    XL_UTILITY_API size_t   XlGlyphCount        (const utf16* str);
     XL_UTILITY_API void     XlCopyString        (utf16* dst, size_t size, const utf16* src);
     XL_UTILITY_API void     XlCopyNString       (utf16* dst, size_t count, const utf16*src, size_t length);
 
         ////////////   U C S 2   O V E R R I D E S   ////////////
     XL_UTILITY_API size_t   XlStringSize        (const ucs2* str);
-    XL_UTILITY_API size_t   XlStringCharCount   (const ucs2* str);
+    XL_UTILITY_API size_t   XlGlyphCount        (const ucs2* str);
     XL_UTILITY_API void     XlCopyString        (ucs2* dst, size_t size, const ucs2* src);
     XL_UTILITY_API void     XlCopyNString       (ucs2* dst, size_t count, const ucs2*src, size_t length);
     XL_UTILITY_API void     XlCatString         (ucs2* dst, size_t size, const ucs2* src);
@@ -67,7 +67,7 @@ namespace Utility
         ////////////   U C S 4   O V E R R I D E S   ////////////
     XL_UTILITY_API size_t   XlStringSize        (const ucs4* str);
     XL_UTILITY_API size_t   XlStringSizeSafe    (const ucs4* str, const ucs4* end);
-    XL_UTILITY_API size_t   XlStringCharCount   (const ucs4* str);
+    XL_UTILITY_API size_t   XlGlyphCount        (const ucs4* str);
     XL_UTILITY_API void     XlCopyString        (ucs4* dst, size_t count, const ucs4* src);
     XL_UTILITY_API void     XlCopyNString       (ucs4* dst, size_t count, const ucs4*src, size_t length);
     XL_UTILITY_API void     XlCatString         (ucs4* dst, size_t count, const ucs4* src);
@@ -78,7 +78,7 @@ namespace Utility
 
         ////////////   w c h a r _ t   O V E R R I D E S   ////////////
     XL_UTILITY_API size_t   XlStringSize        (const wchar_t* str);
-    XL_UTILITY_API size_t   XlStringCharCount   (const wchar_t* str);
+    XL_UTILITY_API size_t   XlGlyphCount        (const wchar_t* str);
     XL_UTILITY_API void     XlCopyString        (wchar_t* dst, size_t size, const wchar_t* src);
     XL_UTILITY_API void     XlCopyNString       (wchar_t* dst, size_t count, const wchar_t*src, size_t length);
 
@@ -447,7 +447,7 @@ namespace Utility
         int XlCompareString(const StringSection<T>& a, const T* b)
         {
             auto alen = a.Length();
-            auto blen = XlStringCharCount(b);
+            auto blen = XlStringSize(b);
             auto cmp = XlComparePrefix(a.begin(), b, std::min(alen, blen));
             if (cmp != 0) return cmp;
 
@@ -464,7 +464,7 @@ namespace Utility
     template<typename T>
         int XlCompareString(const T* a, const StringSection<T>& b)
         {
-            auto alen = XlStringCharCount(a);
+            auto alen = XlStringSize(a);
             auto blen = b.Length();
             auto cmp = XlComparePrefix(a, b.begin(), std::min(alen, blen));
             if (cmp != 0) return cmp;
@@ -500,7 +500,7 @@ namespace Utility
         int XlCompareStringI(const StringSection<T>& a, const T* b)
         {
             auto alen = a.Length();
-            auto blen = XlStringCharCount(b);
+            auto blen = XlStringSize(b);
             auto cmp = XlComparePrefixI(a.begin(), b, std::min(alen, blen));
             if (cmp != 0) return cmp;
 
@@ -517,7 +517,7 @@ namespace Utility
     template<typename T>
         int XlCompareStringI(const T* a, const StringSection<T>& b)
         {
-            auto alen = XlStringCharCount(a);
+            auto alen = XlStringSize(a);
             auto blen = b.Length();
             auto cmp = XlComparePrefixI(a, b.begin(), std::min(alen, blen));
             if (cmp != 0) return cmp;

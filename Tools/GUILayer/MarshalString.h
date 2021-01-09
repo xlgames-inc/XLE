@@ -13,7 +13,7 @@
 #pragma once
 
 #include "../../Utility/PtrUtils.h"         // (needed for AsPointer)
-#include "../../Utility/StringUtils.h"      // (needed for XlStringCharCount)
+#include "../../Utility/StringUtils.h"      // (needed for XlStringEnd)
 #include <string>
 #include <vcclr.h>
 

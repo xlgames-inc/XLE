@@ -116,7 +116,9 @@ size_t XlStringSizeSafe(const char* str, const char* end)
 
 size_t XlStringSize(const ucs4* str)
 {
-    return XlStringCharCount(str);
+    auto* i = str;
+	while (*i) ++i;
+	return i - str;
 }
 
 size_t XlStringSizeSafe(const ucs4* str, const ucs4* end)
@@ -142,27 +144,12 @@ inline bool CheckUtfMultibytes(size_t count, const utf8* s)
     return (count == 0);
 }
 
-size_t XlStringCharCount(const utf8* s)
+size_t XlGlyphCount(const utf8* s)
 {
-    size_t l = 0;
-
-    while (uint8 c = (uint8)*s) {
-        int seq = XlCountUtfSequence(c);
-        if (seq == 0) {
-            break;
-        }
-        if (CheckUtfMultibytes(seq - 1, s + 1)) {
-            ++l;
-            s += seq;
-        } else {
-            break;
-        }
-    }
-
-    return l;
+    return utf8_strlen(s);
 }
 
-size_t XlStringCharCount(const utf16* s)
+size_t XlGlyphCount(const utf16* s)
 {
     // note -- we're assuming the 16 bit characters are encoded in the
     // byte order of the machine here. Also expecting high surrogates to be
@@ -210,7 +197,7 @@ size_t XlStringSize(const ucs2* str)
 	return i - str;
 }
 
-size_t XlStringCharCount(const ucs4* str)
+size_t XlGlyphCount(const ucs4* str)
 {
     // TODO: enhance
     if (!str)
@@ -382,7 +369,7 @@ void     XlCatString(utf8* dst, size_t size, const utf8* src)
         wcsncat_s((wchar_t*)dst, size, (const wchar_t*)src, length);
     }
 
-    size_t XlStringCharCount(const ucs2* str)
+    size_t XlGlyphCount(const ucs2* str)
     {
         return std::wcslen((const wchar_t*)str);
     }
@@ -411,7 +398,7 @@ void     XlCatString(utf8* dst, size_t size, const utf8* src)
     
     void XlCatNString(ucs2* dst, size_t size, const ucs2* src, size_t length) { assert(0); }
     
-    size_t XlStringCharCount(const ucs2* str)
+    size_t XlGlyphCount(const ucs2* str)
     {
         assert(0);
         return 0;
@@ -766,8 +753,8 @@ const ucs4* XlFindStringI(const ucs4* s, const ucs4* x)
     if (!*x) 
         return s;
 
-    size_t sn = XlStringCharCount(s);
-    size_t xn = XlStringCharCount(x);
+    size_t sn = XlStringSize(s);
+    size_t xn = XlStringSize(x);
     if (sn < xn) return 0;
 
     for (size_t i = 0; i <= sn - xn; ++i) {
@@ -783,7 +770,7 @@ const ucs4* XlFindStringSafe(const ucs4* s, const ucs4* x, size_t len)
     if (!*x) 
         return s;
 
-    size_t xn = XlStringCharCount(x);
+    size_t xn = XlStringSize(x);
 
     for (size_t i = 0; s[i] && i < len - xn; ++i) {
         if (XlComparePrefixI(s + i, x, xn) == 0) {
@@ -798,7 +785,7 @@ size_t tokenize_string(T* buf, size_t count, const T* delimiters, T** tokens, si
 {
     assert(numMaxToken > 1);
 
-    size_t numDelimeters = XlStringCharCount(delimiters);
+    size_t numDelimeters = XlStringSize(delimiters);
     size_t numToken = 0;
 
     tokens[numToken++] = buf;
@@ -1464,7 +1451,7 @@ bool XlAtoBool(const char* str, const char** end_ptr)
 		return false;
 	} else {
 		if (end_ptr) {
-			*end_ptr += XlStringCharCount(str);
+			*end_ptr += XlStringSize(str);
 		}
 		return false;
 	}

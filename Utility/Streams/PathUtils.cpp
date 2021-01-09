@@ -57,7 +57,7 @@ namespace Utility
         template<typename CharType>
             const CharType* XlExtension(const CharType* path)
         {
-            auto len = XlStringCharCount(path);
+            auto len = XlStringSize(path);
             if (!len) return nullptr;
             const auto* p = &path[len-1];
             while (p >= path) {

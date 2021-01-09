@@ -57,7 +57,7 @@ namespace UnitTests
     __declspec(noinline) static void XlStrLenPerformanceTest(const utf8*start, uint64 iterationCount)
     {
         for (uint64 c=0; c<iterationCount; ++c) {
-            GlobalHack += XlStringCharCount(start);
+            GlobalHack += XlGlyphCount(start);
         }
     }
 
@@ -188,7 +188,7 @@ namespace UnitTests
                 Log(Warning) << "Ran " << iterationCount << " iterations." << std::endl;
                 Log(Warning) << "XML parser: " << (middleSample-startXML) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample-startXML) << ") total" << std::endl;
                 Log(Warning) << "std::strlen: " << (middleSample2-middleSample) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample2-middleSample) << ") total" << std::endl;
-                Log(Warning) << "XlStringCharCount: " << (endStrLen-middleSample2) / (iterationCount*uint64(size)) << " cycles per byte. (" << (endStrLen-middleSample2) << ") total" << std::endl;
+                Log(Warning) << "XlGlyphCount: " << (endStrLen-middleSample2) / (iterationCount*uint64(size)) << " cycles per byte. (" << (endStrLen-middleSample2) << ") total" << std::endl;
             }
         }
 
