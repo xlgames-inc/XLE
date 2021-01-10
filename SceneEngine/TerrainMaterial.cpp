@@ -222,7 +222,7 @@ namespace SceneEngine
                 
                 _gradFlagMaterials.push_back(mat);
 
-            } else if (XlEqString(matCfg.Name(), u("GradFlagMaterial"))) {
+            } else if (XlEqString(matCfg.Name(), "ProcTextureSetting")) {
 
                 ProcTextureSetting mat;
                 mat._name = AsRString(matCfg.Attribute("Name").Value());
