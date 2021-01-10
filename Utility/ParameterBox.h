@@ -227,8 +227,6 @@ namespace Utility
         void ParameterBox::SetParameter(StringSection<utf8> name, Type value)
     {
         const auto insertType = ImpliedTyping::TypeOf<Type>();
-        auto size = insertType.GetSize();
-        assert(size == sizeof(Type)); (void)size;
         SetParameter(name, AsOpaqueIteratorRange(value), insertType);
     }
     
@@ -244,7 +242,7 @@ namespace Utility
             auto offset = _offsets[index];
 
             if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
-                return *(Type*)&_values[offset._valueBegin];
+                return *(Type*)ValueTableOffset(_values, offset._valueBegin);
             } else {
                 Type result;
                 if (ImpliedTyping::Cast(
