@@ -323,7 +323,7 @@ namespace Utility
 		~SerializableVector()
 		{
 			for (auto i=_begin; i!=_end; ++i) i->~Element();
-			if (OwnsHeapBlock()) delete (uint8_t*)_begin;
+			if (OwnsHeapBlock()) delete[] (uint8_t*)_begin;
 		}
 
 		SerializableVector(SerializableVector&& moveFrom) never_throws : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
