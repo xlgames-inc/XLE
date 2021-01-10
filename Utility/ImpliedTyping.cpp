@@ -4,9 +4,10 @@
 
 #include "ImpliedTyping.h"
 #include "Conversion.h"
-// #include "../Math/Vector.h"
-// #include "../Math/Matrix.h"
+#include "FastParseValue.h"
+#include "../Core/Types.h"
 #include <regex>
+#include <charconv>
 
 namespace Utility
 {
@@ -377,6 +378,7 @@ namespace Utility
             return isWidening ? CastType::Widening : CastType::Narrowing;
         }
         
+#if 1
         template<typename CharType>
             class ParsingRegex
         {
@@ -402,7 +404,14 @@ namespace Utility
         };
         
         static std::unique_ptr<ParsingRegex<char>> s_parsingChar;
-        
+
+        void Cleanup()
+		{
+            s_parsingChar.reset();
+        }
+#endif
+
+#if 0
         template<typename CharType>
             TypeDesc Parse(
                 StringSection<CharType> expression,
@@ -411,7 +420,7 @@ namespace Utility
             if (!s_parsingChar) {
                 s_parsingChar = std::make_unique<ParsingRegex<char>>();
             }
-                // parse string expression into _tnative types.
+                // parse string expression into native types.
                 // We'll write the native object into _tthe buffer and return a type desc
             if (std::regex_match(expression.begin(), expression.end(), s_parsingChar->s_booleanTrue)) {
                 assert(destSize >= sizeof(bool));
@@ -613,6 +622,306 @@ namespace Utility
 
             return TypeDesc{TypeCat::Void};
         }
+#else
+        template<typename CharType>
+            TypeDesc Parse(
+                StringSection<CharType> expression,
+                void* dest, size_t destSize)
+        {
+            if (expression.IsEmpty())
+                return {TypeCat::Void};
+
+            unsigned integerBase = 10;
+            auto* begin = expression.begin();
+            auto firstChar = *begin;
+            bool negate = false;
+            switch (firstChar) {
+            case 't':
+            case 'T':
+            case 'y':
+            case 'Y':
+                if (XlEqString(expression, "true") || XlEqString(expression, "True") || XlEqString(expression, "TRUE")
+                    || XlEqString(expression, "yes") || XlEqString(expression, "Yes") || XlEqString(expression, "YES")
+                    || XlEqString(expression, "y") || XlEqString(expression, "Y")) {
+                    assert(destSize >= sizeof(bool));
+                    *(bool*)dest = true;
+                    return TypeDesc{TypeCat::Bool};
+                }
+                break;
+
+            case 'f':
+            case 'F':
+            case 'n':
+            case 'N':
+                if (XlEqString(expression, "false") || XlEqString(expression, "False") || XlEqString(expression, "FALSE")
+                    || XlEqString(expression, "no") || XlEqString(expression, "No") || XlEqString(expression, "NO")
+                    || XlEqString(expression, "n") || XlEqString(expression, "N")) {
+                    assert(destSize >= sizeof(bool));
+                    *(bool*)dest = false;
+                    return TypeDesc{TypeCat::Bool};
+                }
+                break;
+
+            case '-':
+                ++begin;
+                negate = true;
+                
+            case '0':
+                if ((begin+1) < expression.end() && *(begin+1) == 'x') {
+                    integerBase = 16;
+                    begin += 2;
+                }
+                // intentional fall-through to below
+
+            case '.':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                {
+                    uint64_t value = 0;
+                    auto fcr = std::from_chars(begin, expression.end(), value, integerBase);
+                    if (fcr.ec == std::errc{}) {
+                        if (fcr.ptr == expression.end()) {
+                            // no precision specifier, just default to 32 bits
+                            assert(destSize >= sizeof(uint32_t));
+                            *(uint32_t*)dest = (uint32_t)value;
+                            return TypeDesc{TypeCat::UInt32};
+                        }
+
+                        // due to two's complement, everything should work out regardless of the precision and whether the 
+                        // final result is signed or unsigned
+                        if (negate) 
+                            *(uint64_t*)dest = -*(uint64_t*)dest;
+                        if (    *fcr.ptr == 'u' || *fcr.ptr == 'U'
+                            ||  *fcr.ptr == 'i' || *fcr.ptr == 'I') {
+
+                            bool isUnsigned = true;
+                            if (*fcr.ptr == 'u' || *fcr.ptr == 'U') {
+                                assert(!negate);        // little odd to negate an unsigned value; but still we'll do it
+                                isUnsigned = true;
+                            } else 
+                                isUnsigned = false;
+
+                            unsigned precision = 32;
+                            fcr = std::from_chars(fcr.ptr, expression.end(), precision);
+                            if (precision == 8) {
+                                assert(destSize >= sizeof(uint8_t));
+                                *(uint8_t*)dest = (uint8_t)value;
+                                return TypeDesc{isUnsigned ? TypeCat::UInt8 : TypeCat::Int8};
+                            } else if (precision == 16) {
+                                assert(destSize >= sizeof(uint16_t));
+                                *(uint16_t*)dest = (uint16_t)value;
+                                return TypeDesc{isUnsigned ? TypeCat::UInt16 : TypeCat::Int16};
+                            } else if (precision == 32) {
+                                assert(destSize >= sizeof(uint32_t));
+                                *(uint32_t*)dest = (uint32_t)value;
+                                return TypeDesc{isUnsigned ? TypeCat::UInt32 : TypeCat::Int32};
+                            } else if (precision == 64) {
+                                assert(destSize >= sizeof(uint64_t));
+                                *(uint64_t*)dest = (uint64_t)value;
+                                return TypeDesc{isUnsigned ? TypeCat::UInt64 : TypeCat::Int64};
+                            } else {
+                                assert(0);  // unknown precision, even though the integer itself parsed correctly
+                                return {TypeCat::Void};
+                            }
+
+                        }
+                    }
+                    
+                    if (fcr.ptr < expression.end() && (*fcr.ptr == '.' || *fcr.ptr == 'e' || *fcr.ptr == 'f' || *fcr.ptr == 'F')) {
+                        // this might be a floating point number
+                        // scan forward to try to find a precision specifier
+                        unsigned precision = 32;
+                        while (fcr.ptr < expression.end() && ((*fcr.ptr >= '0' && *fcr.ptr <= '9') || *fcr.ptr == 'e' || *fcr.ptr == 'E' || *fcr.ptr == '+' || *fcr.ptr == '-' || *fcr.ptr == '.'))
+                            ++fcr.ptr;
+
+                        auto* endOfNumber = fcr.ptr;
+                        if (fcr.ptr != expression.end() && (*fcr.ptr == 'f' || *fcr.ptr == 'F')) {
+                            ++fcr.ptr;
+                            if (fcr.ptr != expression.end()) {
+                                fcr = std::from_chars(fcr.ptr, expression.end(), precision);
+                                if (fcr.ec != std::errc{} || fcr.ptr != expression.end() || precision != 32 || precision != 64) {
+                                    assert(0);  // unknown precision
+                                    return {TypeCat::Void};
+                                }
+                            }
+                        }
+
+                        // Note that we reset back to the start of expression for the from_chars() below -- potentially meaning
+                        // parsing over the same ground again
+                        if (precision == 32) {
+                            assert(destSize >= sizeof(f32));
+                            /*fcr = std::from_chars(expression.begin(), endOfNumber, *(f32*)dest);
+                            if (fcr.ec == std::errc{} || fcr.ptr != endOfNumber)
+                                return {TypeCat::Void};*/
+                            auto a = FastParseValue(MakeStringSection(expression.begin(), endOfNumber), *(f32*)dest);
+                            if (a != endOfNumber)
+                                return {TypeCat::Void};
+                            return TypeDesc{TypeCat::Float};
+                        } else {
+                            assert(precision == 64);
+                            assert(destSize >= sizeof(f64));
+                            /*fcr = std::from_chars(expression.begin(), endOfNumber, *(f64*)dest);
+                            if (fcr.ec == std::errc{} || fcr.ptr != endOfNumber)
+                                return {TypeCat::Void};*/
+                            assert(0);
+                            return TypeDesc{TypeCat::Double};
+                        }
+                    }
+                }
+                break;
+
+            case '{':
+                {
+                    auto i = begin;
+                    ++i; // past '{'
+                    while (i < expression.end() && (*i == ' '|| *i == '\t')) ++i;
+
+                    struct Element
+                    {
+                        StringSection<CharType> _section;
+                        IteratorRange<const void*> _valueInDest;
+                        TypeCat _type;
+                    };
+                    std::vector<Element> elements;
+                    elements.reserve(8);
+                    bool needCastPass = false;
+                    TypeCat widestArrayType = TypeCat::Void;
+
+                    auto dstIterator = dest;
+                    auto dstIteratorSize = ptrdiff_t(destSize);
+
+                    // we need to parse through until we hit either a comma, } or end of input
+                    auto currentElementBegin = i;
+                    auto pastLastNonWhitespace = currentElementBegin;
+                    for (;;) {
+                        if (i == expression.end()) {
+                            // hit the end of the array without a proper terminator
+                            return TypeDesc{TypeCat::Void};
+                        }
+
+                        if (*i == ',' || *i == '}') {
+                            // end of an element or the array. We 
+                            Element newElement;
+                            assert(currentElementBegin != pastLastNonWhitespace);       // (this would be an empty element)
+                            newElement._section = MakeStringSection(currentElementBegin, pastLastNonWhitespace);
+                            
+                            // Unfortunately we have to do some backtracking here. We've already jumped over
+                            // these characters to find the ',' -- now we go back and parse them fully
+                            // We could avoid this backtracking if the parse function was built to eat only
+                            // as many character as it can understand (as opposed to expecting to read the entire input)
+                            auto subType = Parse(newElement._section, dstIterator, dstIteratorSize);
+
+                            assert(subType._arrayCount <= 1);
+                            assert(subType._type != TypeCat::Void);
+
+                            auto size = subType.GetSize();
+                            newElement._valueInDest = MakeIteratorRange(dstIterator, PtrAdd(dstIterator, size));
+                            newElement._type = subType._type;
+
+                            if (widestArrayType != TypeCat::Void) {
+                                auto castType = CalculateCastType(subType._type, widestArrayType);
+                                if (castType == CastType::Widening) {
+                                    // We know we will have to widen this type. 
+                                    // If we haven't already scheduled a full cast of the entire array,
+                                    // let's just go ahead and widen it now.
+                                    // Otherwise, if we are going to do a cast pass; it doesn't matter,
+                                    // it's going to be fixed up at the end either way
+                                    if (!needCastPass) {
+                                        // note cast in place here!
+                                        auto newSize = TypeDesc{widestArrayType}.GetSize();
+                                        assert(dstIteratorSize >= newSize);
+                                        bool castSuccess = Cast(
+                                            { dstIterator, PtrAdd(dstIterator, std::min((ptrdiff_t)newSize, dstIteratorSize)) }, TypeDesc{widestArrayType}, 
+                                            { dstIterator, PtrAdd(dstIterator, size) }, subType);
+                                        assert(castSuccess);
+                                        (void)castSuccess;
+
+                                        newElement._type = widestArrayType;
+                                        size = newSize;
+                                    }
+                                } else if (castType == CastType::Narrowing) {
+                                    widestArrayType = subType._type;
+                                    needCastPass = true;
+                                } else {
+                                    assert(TypeDesc{subType._type}.GetSize() >= TypeDesc{widestArrayType}.GetSize());
+                                }
+                            } else {
+                                widestArrayType = subType._type;
+                            }
+
+                            elements.push_back(newElement);
+                            dstIterator = PtrAdd(dstIterator, size);
+                            dstIteratorSize -= size;
+
+                            if (*i == '}') {
+                                // end of the array entirely
+                                ++i;
+                                break;
+                            } else {
+                                ++i;
+                                while (i < expression.end() && (*i == ' '|| *i == '\t')) ++i;
+                                currentElementBegin = pastLastNonWhitespace = i;
+                            }
+                        } else {
+                            if (*i != ' ' && *i != '\t')
+                                pastLastNonWhitespace = i+1;
+                            ++i;
+                        }
+                    }
+
+                    // Since all of the elements of an array must be the same type, we can't be sure 
+                    // what type that will be until we've discovered the types of all of the elements
+                    // Essentially we will try to promote each type until we find the type which is the
+                    // "most promoted" or "widest", and that will become the type for all elements in
+                    // the array. 
+                    // However it means we need to do another pass right now to ensure that all of the
+                    // elements get promoted to our final type
+                    if (needCastPass) {
+                        auto finalElementSize = TypeDesc{widestArrayType}.GetSize();
+                        const size_t cpySize = size_t(dstIterator) - ptrdiff_t(dest);
+                        std::unique_ptr<uint8_t[]> tempCpy = std::make_unique<uint8_t[]>(cpySize);
+                        std::memcpy(tempCpy.get(), dest, cpySize);
+                        
+                        dstIterator = dest;
+                        dstIteratorSize = ptrdiff_t(destSize);
+                        for (const auto&e:elements) {
+                            auto srcInCpyArray = MakeIteratorRange(
+                                tempCpy.get() + (ptrdiff_t)e._valueInDest.begin() - (ptrdiff_t)dest,
+                                tempCpy.get() + (ptrdiff_t)e._valueInDest.end() - (ptrdiff_t)dest);
+                            bool castSuccess = Cast(
+                                { dstIterator, PtrAdd(dstIterator, finalElementSize) }, TypeDesc{widestArrayType}, 
+                                srcInCpyArray, TypeDesc{e._type});
+                            assert(castSuccess);
+                            (void)castSuccess;
+                            
+                            dstIterator = PtrAdd(dstIterator, finalElementSize);
+                            dstIteratorSize -= finalElementSize;
+                        }
+                    }
+
+                    // check for trailing 'v' or 'c'
+                    auto hint = TypeHint::None;
+                    if (i != expression.end() && *i == 'v') hint = TypeHint::Vector;
+                    else if (i != expression.end() && *i == 'c') hint = TypeHint::Color;
+
+                    return TypeDesc{widestArrayType, uint16_t(elements.size()), hint};
+                }
+                break;
+
+            default:
+                break;
+            }
+
+            return {TypeCat::Void};
+        }
+#endif
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
         {
@@ -687,11 +996,6 @@ namespace Utility
         {
             return AsString(data.begin(), data.size(), type, strongTyping);
 		}
-
-		void Cleanup()
-		{
-            s_parsingChar.reset();
-        }
 
         template TypeDesc Parse(StringSection<utf8> expression, void* dest, size_t destSize);
 

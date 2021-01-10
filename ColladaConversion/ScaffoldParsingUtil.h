@@ -8,6 +8,7 @@
 
 #include "../Utility/Streams/XmlStreamFormatter.h"
 #include "../Utility/Conversion.h"
+#include "../Utility/FastParseValue.h"
 
 namespace ColladaConversion
 {
@@ -31,11 +32,6 @@ namespace ColladaConversion
     }
 
     template<typename CharType> bool IsWhitespace(CharType chr);
-    template<typename CharType> const CharType* FastParseElement(uint32& dst, const CharType* start, const CharType* end);
-    template<typename CharType> const CharType* FastParseElement(int64& dst, const CharType* start, const CharType* end);
-    template<typename CharType> const CharType* FastParseElement(uint64& dst, const CharType* start, const CharType* end);
-    template<typename CharType> const CharType* FastParseElement(float& dst, const CharType* start, const CharType* end);
-
     template<typename Type>
         auto ParseXMLList(Type dest[], unsigned destCount, XmlInputStreamFormatter<utf8>::InteriorSection section, unsigned* outEleCount = nullptr) 
             -> decltype(XmlInputStreamFormatter<utf8>::InteriorSection::_start)
@@ -48,7 +44,7 @@ namespace ColladaConversion
         while (elementCount < destCount) {
             while (eleStart < section._end && IsWhitespace(*eleStart)) ++eleStart;
 
-            auto* eleEnd = FastParseElement(dest[elementCount], eleStart, section._end);
+            auto* eleEnd = FastParseValue(MakeStringSection(eleStart, section._end), dest[elementCount]);
             if (eleStart == eleEnd) {
                 if (outEleCount) *outEleCount = elementCount;
                 return eleEnd;
@@ -68,7 +64,7 @@ namespace ColladaConversion
             Type temp;
             while (elementCount < destCount) {
                 while (countingIterator < section._end && IsWhitespace(*countingIterator)) ++countingIterator;
-                auto* eleEnd = FastParseElement(temp, countingIterator, section._end);
+                auto* eleEnd = FastParseValue(MakeStringSection(countingIterator, section._end), temp);
                 if (countingIterator == eleEnd) break;
                 ++elementCount;
                 countingIterator = eleEnd;
@@ -97,7 +93,7 @@ namespace ColladaConversion
         // return d.second;
 
         Type result;
-        auto temp = FastParseElement(result, section._start, section._end);
+        auto temp = FastParseValue(MakeStringSection(section._start, section._end), result);
         if (temp > section._start) return result;
         return def;
     }

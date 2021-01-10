@@ -22,7 +22,7 @@
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
-#include "../Utility/ExceptionLogging.h"
+#include "../Utility/StreamUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/PathUtils.h"

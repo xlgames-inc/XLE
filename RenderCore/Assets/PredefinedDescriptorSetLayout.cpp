@@ -8,6 +8,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/FastParseValue.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/PreprocessorInterpreter.h"
 #include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
@@ -78,10 +79,9 @@ namespace RenderCore { namespace Assets
 			if (XlEqString(countToken._value, "]"))
 				Throw(FormatException("Expecting expecting array count, but apparently empty array brackets", token._start));
 
-			auto inte = ParseInteger<unsigned>(countToken._value);
-			if (!inte.has_value())
+			auto* parseEnd = FastParseValue(countToken._value, result._arrayElementCount);
+			if (parseEnd != countToken._value.end())
 				Throw(FormatException(StringMeld<256>() << "Expecting unsigned integer value for array count, but got " << countToken._value, token._start));
-			result._arrayElementCount = inte.value();
 
 			auto closeBracket = iterator.GetNextToken();
 			if (!XlEqString(closeBracket._value, "]"))
@@ -115,10 +115,9 @@ namespace RenderCore { namespace Assets
 			if (XlEqString(countToken._value, "]"))
 				Throw(FormatException("Expecting expecting array count, but apparently empty array brackets", token._start));
 
-			auto inte = ParseInteger<unsigned>(countToken._value);
-			if (!inte.has_value())
+			auto* parseEnd = FastParseValue(countToken._value, result._arrayElementCount);
+			if (parseEnd != countToken._value.end())
 				Throw(FormatException(StringMeld<256>() << "Expecting unsigned integer value for array count, but got " << countToken._value, token._start));
-			result._arrayElementCount = inte.value();
 
 			auto closeBracket = iterator.GetNextToken();
 			if (!XlEqString(closeBracket._value, "]"))

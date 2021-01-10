@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderLangUtil.h"
-#include "../Utility/StringUtils.h"
+#include "../Utility/FastParseValue.h"
 #include <algorithm>
 
 namespace RenderCore
@@ -37,20 +37,20 @@ namespace RenderCore
                 auto matrixMarker = hlslTypeName.begin() + len;
                 while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;
                 if (matrixMarker != hlslTypeName.end()) {
-                    auto count0 = ParseInteger<unsigned>(MakeStringSection(&hlslTypeName[len], matrixMarker));
-                    auto count1 = ParseInteger<unsigned>(MakeStringSection(matrixMarker+1, hlslTypeName.end()));
-					assert(count0.has_value() && count1.has_value());
-
+                    unsigned count0 = 1, count1 = 1;
+                    auto* endCount0 = FastParseValue(MakeStringSection(&hlslTypeName[len], matrixMarker), count0);
+                    auto* endCount1 = FastParseValue(MakeStringSection(matrixMarker+1, hlslTypeName.end()), count1);
+					assert(endCount0 == matrixMarker && endCount1 == hlslTypeName.end());
 
                     TypeDesc result;
-                    result._arrayCount = (uint16)std::max(1u, count0.value() * count1.value());
+                    result._arrayCount = (uint16)std::max(1u, count0 * count1);
                     result._type = s_baseTypes[c].second;
                     result._typeHint = TypeHint::Matrix;
                     return result;
                 } else {
-                    auto countOpt = ParseInteger<unsigned>(MakeStringSection(hlslTypeName.begin() + len, hlslTypeName.end()));
-					assert(countOpt.has_value());
-					auto count = countOpt.value();
+                    unsigned count = 1;
+                    auto* endCountOpt = FastParseValue(MakeStringSection(hlslTypeName.begin() + len, hlslTypeName.end()), count);
+					assert(endCountOpt == hlslTypeName.end());
                     if (count == 0 || count > 4) count = 1;
                     TypeDesc result;
                     result._arrayCount = (uint16)count;

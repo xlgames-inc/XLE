@@ -54,7 +54,6 @@
 		8FD85D5D1EA688D1009BD9B0 /* Conversion.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0A1EA688D1009BD9B0 /* Conversion.h */; };
 		8FD85D5E1EA688D1009BD9B0 /* API.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0C1EA688D1009BD9B0 /* API.h */; };
 		8FD85D5F1EA688D1009BD9B0 /* Documentation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0D1EA688D1009BD9B0 /* Documentation.h */; };
-		8FD85D601EA688D1009BD9B0 /* ExceptionLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */; };
 		8FD85D621EA688D1009BD9B0 /* FunctionUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */; };
 		8FD85D631EA688D1009BD9B0 /* FunctionUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */; };
 		8FD85D651EA688D1009BD9B0 /* HashUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */; };
@@ -158,7 +157,6 @@
 		8FD85D0A1EA688D1009BD9B0 /* Conversion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Conversion.h; path = ../Conversion.h; sourceTree = "<group>"; };
 		8FD85D0C1EA688D1009BD9B0 /* API.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = API.h; sourceTree = "<group>"; };
 		8FD85D0D1EA688D1009BD9B0 /* Documentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Documentation.h; path = ../Documentation.h; sourceTree = "<group>"; };
-		8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ExceptionLogging.h; path = ../ExceptionLogging.h; sourceTree = "<group>"; };
 		8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FunctionUtils.cpp; path = ../FunctionUtils.cpp; sourceTree = "<group>"; };
 		8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FunctionUtils.h; path = ../FunctionUtils.h; sourceTree = "<group>"; };
 		8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HashUtils.cpp; path = ../HashUtils.cpp; sourceTree = "<group>"; };
@@ -271,7 +269,6 @@
 				8FD85D091EA688D1009BD9B0 /* Conversion.cpp */,
 				8FD85D0A1EA688D1009BD9B0 /* Conversion.h */,
 				8FD85D0D1EA688D1009BD9B0 /* Documentation.h */,
-				8FD85D0E1EA688D1009BD9B0 /* ExceptionLogging.h */,
 				8FD85D101EA688D1009BD9B0 /* FunctionUtils.cpp */,
 				8FD85D111EA688D1009BD9B0 /* FunctionUtils.h */,
 				8FD85D141EA688D1009BD9B0 /* HashUtils.cpp */,
@@ -437,7 +434,6 @@
 				8FD85D8A1EA688D1009BD9B0 /* StreamTypes.h in Headers */,
 				8FD85D761EA688D1009BD9B0 /* ParameterPackUtils.h in Headers */,
 				8F90567F1FA2749D0020DDB5 /* SuppressionProfiler.h in Headers */,
-				8FD85D601EA688D1009BD9B0 /* ExceptionLogging.h in Headers */,
 				8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */,
 				8FD85D591EA688D1009BD9B0 /* BitHeap.h in Headers */,
 				8FD85D991EA688D1009BD9B0 /* Mutex.h in Headers */,

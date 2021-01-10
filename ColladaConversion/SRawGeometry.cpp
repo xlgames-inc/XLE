@@ -950,7 +950,7 @@ namespace ColladaConversion
                 // we only actually need to parse the floating point number if
                 // it's one we're interested in...
             if (elementIndex >= offset && (elementIndex-offset)%stride == 0) {
-                i = FastParseElement(result[(elementIndex - offset) / stride], elementStart, end);
+                i = FastParseValue(MakeStringSection(elementStart, end), result[(elementIndex - offset) / stride]);
                 lastWrittenPlusOne = ((elementIndex - offset) / stride)+1;
             } else {
                 while (i < end && !IsWhitespace(*i)) ++i;
@@ -1003,7 +1003,7 @@ namespace ColladaConversion
         if (_vcountI == _vcount._end) return 0;
 
         unsigned result = 0u;
-        _vcountI = FastParseElement(result, _vcountI, _vcount._end);
+        _vcountI = FastParseValue(MakeStringSection(_vcountI, _vcount._end), result);
         return result;
     }
 
@@ -1013,7 +1013,7 @@ namespace ColladaConversion
         if (_vI == _v._end) return 0;
 
         unsigned result = 0u;
-        _vI = FastParseElement(result, _vI, _v._end);
+        _vI = FastParseValue(MakeStringSection(_vI, _v._end), result);
         return result;
     }
 

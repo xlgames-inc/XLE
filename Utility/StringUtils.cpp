@@ -1499,6 +1499,8 @@ static inline T tpl_atoi(const char* buffer, const char** end_ptr, int radix)
 	return (neg) ? -result : result;
 }
 
+#if 0       // deprecated in favour of FastParseValue / std::from_chars (where available)
+
 template<typename Type>
 	std::optional<Type> ParseInteger(StringSection<> input, int radix)
 {
@@ -1550,6 +1552,8 @@ template std::optional<int8_t> ParseInteger(StringSection<> input, int radix);
 template std::optional<int16_t> ParseInteger(StringSection<> input, int radix);
 template std::optional<int32_t> ParseInteger(StringSection<> input, int radix);
 template std::optional<int64_t> ParseInteger(StringSection<> input, int radix);
+
+#endif
 
 int XlAtoI32(const char* str, const char** end_ptr, int radix)
 {

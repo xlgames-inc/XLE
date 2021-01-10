@@ -25,6 +25,7 @@
 #include <sstream>
 #include <regex>
 #include <cctype>
+#include <charconv>
 
 namespace RenderCore { namespace Techniques
 {
@@ -129,8 +130,9 @@ namespace RenderCore { namespace Techniques
 			if (!std::regex_match(filename.begin(), filename.end(), matches, filenameExp) || matches.size() < 3)
 				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
 
-			auto patchCollectionGuid = ParseInteger<uint64_t>(MakeStringSection(matches[2].first, matches[2].second), 16);
-			if (!patchCollectionGuid.has_value())
+			uint64_t patchCollectionGuid = 0;
+			auto fromCharsResult = std::from_chars(matches[2].first, matches[2].second, patchCollectionGuid, 16);
+			if (fromCharsResult.ec != std::errc{} || fromCharsResult.ptr != matches[2].second)
 				return AssembleDirectFromFile(filename);
 
 			auto i = LowerBound(_registry, patchCollectionGuid.value());
@@ -144,8 +146,13 @@ namespace RenderCore { namespace Techniques
 			std::vector<uint64_t> redirectedPatchFunctions;
 			redirectedPatchFunctions.reserve(matches.size() - 3);
 			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
-				if (m->matched)
-					redirectedPatchFunctions.push_back(ParseInteger<uint64_t>(MakeStringSection(m->first, m->second), 16).value());
+				if (m->matched) {
+					uint64_t guid = 0;
+					fromCharsResult = std::from_chars(m->first, m->second, guid, 16);
+					if (fromCharsResult.ec != std::errc{} || fromCharsResult.ptr != matches[2].second)
+						Throw(std::runtime_error("Integer parsing failure"));
+					redirectedPatchFunctions.push_back(guid);
+				}
 
 			auto result = AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), definesTable);
 

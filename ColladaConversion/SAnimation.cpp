@@ -222,7 +222,7 @@ namespace ColladaConversion
             if (i == end) break;
 
             dest[c*outputStride+fieldIterator] = 0.f;
-            i = FastParseElement(dest[c*outputStride+fieldIterator], i, end);
+            i = FastParseValue(MakeStringSection(i, end), dest[c*outputStride+fieldIterator]);
             ++fieldIterator;
             if (fieldIterator >= outputFields) { ++c; fieldIterator=0; };
             

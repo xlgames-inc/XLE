@@ -83,7 +83,6 @@
       <Filter>Profiling</Filter>
     </ClInclude>
     <ClInclude Include="..\ParameterBox.h" />
-    <ClInclude Include="..\ExceptionLogging.h" />
     <ClInclude Include="..\Threading\CompletionThreadPool.h">
       <Filter>Threading</Filter>
     </ClInclude>

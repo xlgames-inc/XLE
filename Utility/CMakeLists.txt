@@ -3,6 +3,7 @@ set(Src
     ArithmeticUtils.cpp
     BitUtils.cpp
     Conversion.cpp
+    FastParseValue.cpp
     FunctionUtils.cpp
     HashUtils.cpp
     HeapUtils.cpp
@@ -21,7 +22,7 @@ set(Headers
     BitUtils.h
     Conversion.h
     Documentation.h
-    ExceptionLogging.h
+    FastParseValue.h
     FunctionUtils.h
     HeapUtils.h
     IntrusivePtr.h
