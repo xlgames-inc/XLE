@@ -574,6 +574,30 @@ namespace Utility
                 && XlEqStringI(StringSection<T>(a.begin(), a.begin() + b.Length()), b);
         }
 
+    template<typename T>
+        bool XlBeginsWith(const StringSection<T>& a, const T* b)
+        {
+            const auto *ai = a.begin(), *bi = b;
+            for (;;) {
+                if (!*bi) return true;
+                if (ai == a.end()) return false;
+                if (*ai != *bi) return false;
+                ++ai; ++bi;
+            }
+        }
+
+    template<typename T>
+        bool XlBeginsWithI(const StringSection<T>& a, const T* b)
+        {
+            const auto *ai = a.begin(), *bi = b;
+            for (;;) {
+                if (!*bi) return true;
+                if (ai == a.end()) return false;
+                if (XlToLower(*ai) != XlToLower(*bi)) return false;
+                ++ai; ++bi;
+            }
+        }
+
 	template<typename T>
         bool XlEndsWith(const StringSection<T>& a, const StringSection<T>& b)
         {

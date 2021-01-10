@@ -20,7 +20,7 @@ namespace UnitTests
     TEST_CASE( "ConversionPatterns-ImpliedTyping", "[utility]" )
     {
         // Conversion from string into basic value types via the ImpliedTyping system
-        REQUIRE( ImpliedTyping::Parse<unsigned>("123u") == 123u );
+        REQUIRE( ImpliedTyping::ParseFullMatch<unsigned>("123u") == 123u );
 
         // Conversion into strings from basic value types via the ImpliedTyping system
         REQUIRE( ImpliedTyping::AsString(UInt3(1, 2, 3)) == "{1, 2, 3}v" );

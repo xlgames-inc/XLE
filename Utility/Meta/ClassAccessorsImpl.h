@@ -259,7 +259,7 @@ namespace Utility
                 auto destType = ImpliedTyping::TypeOf<PassToSetter>();
                 if (srcStringForm) {
                     char buffer2[ParseBufferSize];
-                    auto parsedType = ImpliedTyping::Parse(
+                    auto parsedType = ImpliedTyping::ParseFullMatch(
                         MakeStringSection((const char*)src, (const char*)PtrAdd(src, srcType.GetSize())),
                         buffer2, sizeof(buffer2));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
@@ -313,7 +313,7 @@ namespace Utility
                 auto destType = ImpliedTyping::TypeOf<PassToSetter>();
                 if (srcStringForm) {
                     char buffer2[ParseBufferSize];
-                    auto parsedType = ImpliedTyping::Parse(
+                    auto parsedType = ImpliedTyping::ParseFullMatch(
                         MakeStringSection((const char*)src, (const char*)PtrAdd(src, srcType.GetSize())),
                         buffer2, sizeof(buffer2));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
@@ -380,7 +380,7 @@ namespace Utility
                 return true;
             } else {
                 char parseBuffer[ParseBufferSize];
-                auto parseType = ImpliedTyping::Parse(
+                auto parseType = ImpliedTyping::ParseFullMatch(
                     MakeStringSection(src),
                     parseBuffer, sizeof(parseBuffer));
                 if (parseType._type == ImpliedTyping::TypeCat::Void) return false;

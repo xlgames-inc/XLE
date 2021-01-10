@@ -602,7 +602,7 @@ namespace EntityInterface
 
                         // parse the value and add it as a property initializer
                     char intermediateBuffer[64];
-                    auto type = ImpliedTyping::Parse(
+                    auto type = ImpliedTyping::ParseFullMatch(
                         value,
                         intermediateBuffer, dimof(intermediateBuffer));
 

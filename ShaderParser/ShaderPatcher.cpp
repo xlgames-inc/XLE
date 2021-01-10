@@ -168,7 +168,7 @@ namespace ShaderSourceParser
 		//			a way to convert that into a string typename. Different languages will use
 		//			different names for basic types, and the rest of the code doesn't currently
 		//			make many assumptions about what kinds of type names are used.
-		// auto type = ImpliedTyping::Parse(constantValue);
+		// auto type = ImpliedTyping::ParseFullMatch(constantValue);
 		return {};
 	}
 

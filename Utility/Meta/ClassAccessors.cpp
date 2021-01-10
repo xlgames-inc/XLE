@@ -28,7 +28,7 @@ namespace Utility
                     // element individually.
                 char buffer[256];
                 if (stringForm) {
-                    auto parsedType = ImpliedTyping::Parse(
+                    auto parsedType = ImpliedTyping::ParseFullMatch(
                         MakeStringSection((const char*)src.begin(), (const char*)src.end()),
                         buffer, sizeof(buffer));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;

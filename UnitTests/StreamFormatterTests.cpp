@@ -15,6 +15,7 @@
 #include <string>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <x86intrin.h>
 
 using namespace Catch::literals;
 
@@ -218,7 +219,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         // we shouldn't need so many steps
         uint8_t buffer[512];
         auto mappingAttr = src.Attribute("Mapping").Value();
-        auto parsedType = ImpliedTyping::Parse(
+        auto parsedType = ImpliedTyping::ParseFullMatch(
             mappingAttr,
             buffer, sizeof(buffer));
         ImpliedTyping::Cast(
@@ -277,7 +278,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
                     if (XlEqString(name, "MaterialId")) {
-                        result._id = ImpliedTyping::Parse<decltype(result._id)>(value).value();
+                        result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
                     break;
@@ -303,9 +304,9 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                                 Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
                             if (XlEqString(name, "EndHeight")) {
-                                newStrata._endHeight = ImpliedTyping::Parse<decltype(newStrata._endHeight)>(value).value();
+                                newStrata._endHeight = ImpliedTyping::ParseFullMatch<decltype(newStrata._endHeight)>(value).value();
                             } else if (XlEqString(name, "Mapping")) {
-                                auto mappingConst = ImpliedTyping::Parse<Float4>(value).value();
+                                auto mappingConst = ImpliedTyping::ParseFullMatch<Float4>(value).value();
                                 newStrata._mappingConstant[0] = mappingConst[0];
                                 newStrata._mappingConstant[1] = mappingConst[1];
                                 newStrata._mappingConstant[2] = mappingConst[2];
@@ -358,7 +359,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
                     if (XlEqString(name, "MaterialId")) {
-                        result._id = ImpliedTyping::Parse<decltype(result._id)>(value).value();
+                        result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
                     } else if (XlEqString(name, "Texture0")) {
                         result._texture[0] = value.Cast<char>().AsString();
                     } else if (XlEqString(name, "Texture1")) {
@@ -371,7 +372,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                         result._texture[4] = value.Cast<char>().AsString();
                     } else if (XlEqString(name, "Mapping")) {
                         uint8_t buffer[512];
-                        auto parsedType = ImpliedTyping::Parse(
+                        auto parsedType = ImpliedTyping::ParseFullMatch(
                             value,
                             buffer, sizeof(buffer));
                         ImpliedTyping::Cast(
@@ -417,9 +418,9 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     } else if (XlEqString(name, "Texture1")) {
                         result._texture[1] = value.Cast<char>().AsString();
                     } else if (XlEqString(name, "HGrid")) {
-                        result._hgrid = ImpliedTyping::Parse<decltype(result._hgrid)>(value).value();
+                        result._hgrid = ImpliedTyping::ParseFullMatch<decltype(result._hgrid)>(value).value();
                     } else if (XlEqString(name, "Gain")) {
-                        result._gain = ImpliedTyping::Parse<decltype(result._gain)>(value).value();
+                        result._gain = ImpliedTyping::ParseFullMatch<decltype(result._gain)>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
                     break;
@@ -453,11 +454,11 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
                     if (XlEqString(name, "DiffuseDims")) {
-                        result._diffuseDims = ImpliedTyping::Parse<UInt2>(value).value();
+                        result._diffuseDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
                     } else if (XlEqString(name, "NormalDims")) {
-                        result._normalDims = ImpliedTyping::Parse<UInt2>(value).value();
+                        result._normalDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
                     } else if (XlEqString(name, "ParamDims")) {
-                        result._paramDims = ImpliedTyping::Parse<UInt2>(value).value();
+                        result._paramDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
                     } else
                         Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
                     break;
@@ -588,12 +589,17 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
 
     TEST_CASE( "StreamFormatter-ClassPropertiesPerformance", "[utility]" )
     {
-        const unsigned iterationCount = 64 * 128;
-        auto start = __rdtsc();
+        #if defined(_DEBUG)
+            const unsigned iterationCount = 64 * 128;
+        #else
+            const unsigned iterationCount = 64 * 1024;
+        #endif
+        unsigned auxBegin = 0, auxMiddle = 0, auxEnd = 0;
+        auto start = __builtin_ia32_rdtscp(&auxBegin);
         RunPerformanceTest1(testString, iterationCount);
-        auto middle = __rdtsc();
+        auto middle = __builtin_ia32_rdtscp(&auxMiddle);
         RunPerformanceTest2(testString, iterationCount);
-        auto end = __rdtsc();
+        auto end = __builtin_ia32_rdtscp(&auxEnd);
 
         std::cout << "InputStreamFormatter based deserialization: " << (middle-start) / iterationCount << " cycles per iteration (" << (middle-start) / iterationCount / testString.size() << " cycles per character)." << std::endl;
         std::cout << "StreamDOM based deserialization: " << (end-middle) / iterationCount << " cycles per iteration (" << (end-middle) / iterationCount / testString.size() << " cycles per character)." << std::endl;

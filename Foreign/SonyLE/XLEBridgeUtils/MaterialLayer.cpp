@@ -53,7 +53,7 @@ namespace XLEBridgeUtils
                             //  this problem using TypeConverter classes... So let's
                             //  just do it with a special case here...
                         if (type == Boolean::typeid) {
-                            auto parsed = ImpliedTyping::Parse<bool>(
+                            auto parsed = ImpliedTyping::ParseFullMatch<bool>(
                                 clix::marshalString<clix::E_UTF8>(v->Value).c_str());
                             if (parsed.first) {
                                 result = gcnew Boolean(parsed.second);

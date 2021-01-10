@@ -44,6 +44,7 @@ namespace UnitTests
                 std::make_pair("SomeParam1", ".4f"),
                 std::make_pair("SomeParam2", "344.f"),
                 std::make_pair("SomeParam3", ".56f"),
+                std::make_pair("SomeParam4", "78f"),
                 std::make_pair("VectorParam", "{4.5f, 7.5f, 9.5f}v"),
                 std::make_pair("ColorParam", "{.5f, .5f, .5f}c")
             });
@@ -74,8 +75,39 @@ namespace UnitTests
 
     TEST_CASE( "Utilities-ImpliedTypingTest", "[utility]" )
     {
-        REQUIRE(ImpliedTyping::Parse<signed>("true").value() == 1);
-        REQUIRE(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").value() == 1);
+        char tempBuffer[256];
+        REQUIRE(ImpliedTyping::ParseFullMatch<signed>("true").value() == 1);
+        REQUIRE(ImpliedTyping::ParseFullMatch<signed>("{true, 60, 1.f}").value() == 1);
+        REQUIRE(ImpliedTyping::ParseFullMatch<signed>("{32}").value() == 32);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{}", tempBuffer, sizeof(tempBuffer))._arrayCount == 0);
+        REQUIRE(ImpliedTyping::ParseFullMatch<unsigned>("0x5a").value() == 0x5a);
+        REQUIRE(ImpliedTyping::ParseFullMatch<unsigned>("-32u").value() == -32u);
+        REQUIRE(ImpliedTyping::ParseFullMatch<signed>("-0x7b").value() == -0x7b);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{3u, 3u, 4.f}", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Float);
+        REQUIRE((((float*)tempBuffer)[0] == 3.0_a && ((float*)tempBuffer)[1] == 3.0_a && ((float*)tempBuffer)[2] == 4.0_a));
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{3u, 4.f, 3u}", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Float);
+        REQUIRE((((float*)tempBuffer)[0] == 3.0_a && ((float*)tempBuffer)[1] == 4.0_a && ((float*)tempBuffer)[2] == 3.0_a));
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{4.f, 3u, 3u}", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Float);
+        REQUIRE((((float*)tempBuffer)[0] == 4.0_a && ((float*)tempBuffer)[1] == 3.0_a && ((float*)tempBuffer)[2] == 3.0_a));
+        
+        // The following are all poorly formed
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("0x0x5a", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("0x-5a", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("5a", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("truefalse", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("3, 4, 5", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("32u-2", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("32i23", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("897unsigned", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("--54", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("-+54", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("+-54", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("+54", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("++54", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("0.0.0f32", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{ 43 23, 545, 5 }", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{ 1, 2, 3,", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
+        REQUIRE(ImpliedTyping::ParseFullMatch<char>("{ 1, 2, 3,}", tempBuffer, sizeof(tempBuffer))._type == ImpliedTyping::TypeCat::Void);
     }
 
     template<typename CharType>

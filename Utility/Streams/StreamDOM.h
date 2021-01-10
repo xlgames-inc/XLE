@@ -290,7 +290,7 @@ namespace Utility
     {
         if (_index == ~unsigned(0)) return {};
         const auto& attrib = _doc->_attributes[_index];
-        return ImpliedTyping::Parse<Type>(attrib._value);
+        return ImpliedTyping::ParseFullMatch<Type>(attrib._value);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

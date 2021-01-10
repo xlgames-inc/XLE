@@ -13,11 +13,8 @@
 #include "StringFormat.h"
 #include "Conversion.h"
 #include "Streams/StreamFormatter.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
 #include <algorithm>
 #include <utility>
-#include <regex>
 #include <sstream>
 
 namespace Utility
@@ -48,7 +45,7 @@ namespace Utility
 
         return Hash64(name.begin(), name.end());
     }
-
+    
     void ParameterBox::SetParameter(StringSection<utf8> name, StringSection<char> stringData)
     {
         using namespace ImpliedTyping;
@@ -60,7 +57,7 @@ namespace Utility
 
         uint8_t buffer[NativeRepMaxSize];
 		assert(stringData.size() < NativeRepMaxSize);
-        auto typeDesc = Parse(stringData, buffer, sizeof(buffer));
+        auto typeDesc = ParseFullMatch(stringData, buffer, sizeof(buffer));
         if (typeDesc._type != TypeCat::Void) {
 			SetParameter(name, {buffer, PtrAdd(buffer, std::min(sizeof(buffer), (size_t)typeDesc.GetSize()))}, typeDesc);
         } else {
@@ -74,7 +71,7 @@ namespace Utility
 	template<>
         void ParameterBox::SetParameter(StringSection<utf8> name, const utf8* value)
     {
-        SetParameter(name, MakeStringSection((const char*)value));
+        SetParameter(name, MakeStringSection(value));
     }
 
     uint8_t* ValueTableOffset(SerializableVector<uint8_t>& values, size_t offset)
@@ -575,7 +572,7 @@ namespace Utility
             TypeDesc nativeType{TypeCat::Void};
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
 
-                nativeType = Parse(
+                nativeType = ParseFullMatch(
                     MakeStringSection((const char*)value._start, (const char*)value._end),
                     nativeTypeBuffer, sizeof(nativeTypeBuffer));
 
@@ -588,7 +585,7 @@ namespace Utility
 
                 // a failed conversion here is valid, but it means we must treat the value as a string
                 if (valueLen>=0) {
-                    nativeType = Parse(
+                    nativeType = ParseFullMatch(
                         MakeStringSection(AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen),
                         nativeTypeBuffer, sizeof(nativeTypeBuffer));
                 }

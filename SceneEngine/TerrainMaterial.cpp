@@ -212,7 +212,7 @@ namespace SceneEngine
 
                 char buffer[512];
                 auto mappingAttr = matCfg.Attribute("Mapping").Value();
-                auto parsedType = ImpliedTyping::Parse(
+                auto parsedType = ImpliedTyping::ParseFullMatch(
                     mappingAttr,
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(

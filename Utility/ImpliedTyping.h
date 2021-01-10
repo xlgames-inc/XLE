@@ -54,7 +54,19 @@ namespace Utility
         // "template<typename Type> TypeDesc TypeOf()" is declared below
 
         template<typename CharType>
-            TypeDesc Parse(
+            struct ParseResult
+        {
+            const CharType*     _end = nullptr;
+            TypeDesc            _type = {TypeCat::Void};
+        };
+        
+        template<typename CharType>
+            ParseResult<CharType> Parse(
+                StringSection<CharType> expression,
+                void* dest, size_t destSize);
+                
+        template<typename CharType>
+            TypeDesc ParseFullMatch(
                 StringSection<CharType> expression,
                 void* dest, size_t destSize);
 
@@ -109,10 +121,10 @@ namespace Utility
                 return AsString(&type, sizeof(Type), TypeOf<Type>(), strongTyping);
             }
 
-        template <typename Type> std::optional<Type> Parse(StringSection<> expression) 
+        template <typename Type> std::optional<Type> ParseFullMatch(StringSection<> expression) 
         {
             char buffer[NativeRepMaxSize];
-            auto parseType = Parse(expression, buffer, sizeof(buffer));
+            auto parseType = ParseFullMatch(expression, buffer, sizeof(buffer));
             if (parseType == TypeOf<Type>()) {
                 return *(Type*)buffer;
             } else {
