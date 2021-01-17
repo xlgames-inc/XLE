@@ -72,7 +72,7 @@ namespace RenderCore { namespace Techniques
 		const auto insertType = ImpliedTyping::TypeOf<Type>();
         auto size = insertType.GetSize();
         assert(size == sizeof(Type)); (void)size;
-        SetGlobalSelector(name, AsOpaqueIteratorRange(value), insertType);
+        SetGlobalSelector(name, MakeOpaqueIteratorRange(value), insertType);
 	}
 
 	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool();

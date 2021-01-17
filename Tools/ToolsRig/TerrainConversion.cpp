@@ -501,7 +501,7 @@ namespace ToolsRig
             auto midway = float(double(input[c]) * scale + offset);
             ImpliedTyping::Cast(
                 { PtrAdd(dest, c*dstSize), PtrAdd(dest, c*dstSize+dstSize) }, dstType,
-                AsOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
+                MakeOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
         }
     }
 
@@ -519,7 +519,7 @@ namespace ToolsRig
             auto midway = float(double(Float16AsFloat32(input[c])) * scale + offset);
             ImpliedTyping::Cast(
                 { PtrAdd(dest, c*dstSize), PtrAdd(dest, c*dstSize+dstSize) }, dstType,
-                AsOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
+                MakeOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
         }
     }
     
@@ -735,7 +735,7 @@ namespace ToolsRig
                     ImpliedTyping::Cast(
                         { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
                         ImpliedTyping::TypeDesc{dstType},
-                        AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
+                        MakeOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
                     
             }
         }
@@ -745,7 +745,7 @@ namespace ToolsRig
                 ImpliedTyping::Cast(
                     { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
                     ImpliedTyping::TypeDesc{dstType},
-                    AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
+                    MakeOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
         }
     }
 

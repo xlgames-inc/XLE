@@ -227,7 +227,7 @@ namespace Utility
         void ParameterBox::SetParameter(StringSection<utf8> name, Type value)
     {
         const auto insertType = ImpliedTyping::TypeOf<Type>();
-        SetParameter(name, AsOpaqueIteratorRange(value), insertType);
+        SetParameter(name, MakeOpaqueIteratorRange(value), insertType);
     }
     
     uint8_t* ValueTableOffset(SerializableVector<uint8_t>& values, size_t offset);
@@ -246,7 +246,7 @@ namespace Utility
             } else {
                 Type result;
                 if (ImpliedTyping::Cast(
-                    AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
+                    MakeOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
                     { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
                     _types[index])) {
 					return result;

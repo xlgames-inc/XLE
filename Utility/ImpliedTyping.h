@@ -129,7 +129,7 @@ namespace Utility
                 return *(Type*)buffer;
             } else {
                 Type casted;
-                if (Cast(AsOpaqueIteratorRange(casted), TypeOf<Type>(),
+                if (Cast(MakeOpaqueIteratorRange(casted), TypeOf<Type>(),
                     MakeIteratorRange(buffer), parseType)) {
                     return casted;
                 }

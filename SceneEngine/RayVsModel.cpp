@@ -206,7 +206,7 @@ namespace SceneEngine
 		unsigned hitEventsWritten = 0;
 		if (_pimpl->_queryId != ~0u) {
 			Metal::QueryPool::QueryResult_StreamOutput out;
-			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, AsOpaqueIteratorRange(out));
+			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, MakeOpaqueIteratorRange(out));
 			_pimpl->_queryId = ~0u;
 			hitEventsWritten = out._primitivesWritten;
 		}
@@ -383,7 +383,7 @@ namespace SceneEngine
 
 		if (_pimpl->_queryId != ~0u) {
 			Metal::QueryPool::QueryResult_StreamOutput out;
-			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, AsOpaqueIteratorRange(out));
+			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, MakeOpaqueIteratorRange(out));
 			_pimpl->_queryId = ~0u;
 		}
     }

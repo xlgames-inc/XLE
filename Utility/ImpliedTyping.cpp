@@ -328,7 +328,7 @@ namespace Utility { namespace ImpliedTyping
                         //  element 3 is 1, but others are 0
                     unsigned value = (c==3)?1:0;
                     if (!Cast(destIterator, TypeDesc{destType._type},
-                        AsOpaqueIteratorRange(value), TypeDesc{TypeCat::UInt32})) {
+                        MakeOpaqueIteratorRange(value), TypeDesc{TypeCat::UInt32})) {
                         return false;
                     }
                     destIterator.first = PtrAdd(destIterator.first, TypeDesc{destType._type}.GetSize());

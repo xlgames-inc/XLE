@@ -243,7 +243,7 @@ namespace Utility
 							|| type._type == ImpliedTyping::TypeCat::Int32) {
 						int dest;
 						ImpliedTyping::Cast(
-							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32},
+							MakeOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int32},
 							i.RawValue(), ImpliedTyping::TypeDesc{type._type});
 						vars[name] = packToken(dest);
 						continue;
@@ -252,7 +252,7 @@ namespace Utility
 							|| type._type == ImpliedTyping::TypeCat::UInt64) {
 						int64_t dest;
 						ImpliedTyping::Cast(
-							AsOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int64},
+							MakeOpaqueIteratorRange(dest), ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Int64},
 							i.RawValue(), ImpliedTyping::TypeDesc{type._type});
 						vars[name] = packToken(dest);
 						continue;
