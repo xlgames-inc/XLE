@@ -1281,7 +1281,7 @@ namespace SceneEngine
 }
 
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Settings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::CloudsForm2D::Settings>()
 {
     using Obj = SceneEngine::CloudsForm2D::Settings;
     static ClassAccessors props(typeid(Obj).hash_code());

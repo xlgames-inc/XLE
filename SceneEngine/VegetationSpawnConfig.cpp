@@ -9,7 +9,7 @@
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::VegetationSpawnConfig>()
 {
     using Obj = SceneEngine::VegetationSpawnConfig;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -38,7 +38,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig::ObjectType>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::VegetationSpawnConfig::ObjectType>()
 {
     using Obj = SceneEngine::VegetationSpawnConfig::ObjectType;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -51,7 +51,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig::Bucket>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::VegetationSpawnConfig::Bucket>()
 {
     using Obj = SceneEngine::VegetationSpawnConfig::Bucket;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -65,7 +65,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::VegetationSpawnConfig::Material>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::VegetationSpawnConfig::Material>()
 {
     using Obj = SceneEngine::VegetationSpawnConfig::Material;
     static ClassAccessors props(typeid(Obj).hash_code());

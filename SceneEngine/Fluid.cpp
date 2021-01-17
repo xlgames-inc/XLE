@@ -675,7 +675,7 @@ namespace SceneEngine
 
 
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::ReferenceFluidSolver2D::Settings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ReferenceFluidSolver2D::Settings>()
 {
     using Obj = SceneEngine::ReferenceFluidSolver2D::Settings;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -689,7 +689,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ReferenceFluidSolver2
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::FluidSolver2D::Settings>()
 {
     using Obj = SceneEngine::FluidSolver2D::Settings;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -713,7 +713,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver3D::Settings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::FluidSolver3D::Settings>()
 {
     using Obj = SceneEngine::FluidSolver3D::Settings;
     static ClassAccessors props(typeid(Obj).hash_code());

@@ -1070,7 +1070,7 @@ namespace SceneEngine
 
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::ToneMapSettings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ToneMapSettings>()
 {
     using Obj = SceneEngine::ToneMapSettings;
     static ClassAccessors props(typeid(Obj).hash_code());

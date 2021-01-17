@@ -429,7 +429,7 @@ namespace SceneEngine
 }
 
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::ErosionSimulation::Settings>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ErosionSimulation::Settings>()
 {
     using Obj = SceneEngine::ErosionSimulation::Settings;
     static ClassAccessors props(typeid(Obj).hash_code());

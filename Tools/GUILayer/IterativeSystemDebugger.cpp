@@ -184,7 +184,7 @@ namespace GUILayer
         ClassAccessors_GetAndSet::ClassAccessors_GetAndSet(std::shared_ptr<Type> type)
         : _type(type)
     {
-        _accessors = &GetAccessors<Type>();
+        _accessors = &Legacy_GetAccessors<Type>();
     }
 
     ClassAccessors_GetAndSet::!ClassAccessors_GetAndSet() { _type.reset(); }

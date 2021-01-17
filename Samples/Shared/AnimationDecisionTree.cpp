@@ -283,7 +283,7 @@ namespace Sample
 #include "../../Utility/Meta/ClassAccessors.h"
 #include "../../Utility/Meta/ClassAccessorsImpl.h"
 
-template<> const ClassAccessors& GetAccessors<Sample::AnimationNames>()
+template<> const ClassAccessors& Legacy_GetAccessors<Sample::AnimationNames>()
 {
     using Obj = Sample::AnimationNames;
     static ClassAccessors props(typeid(Obj).hash_code());

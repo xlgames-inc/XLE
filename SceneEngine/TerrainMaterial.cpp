@@ -8,7 +8,7 @@
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::TerrainMaterialConfig>()
 {
     using Obj = SceneEngine::TerrainMaterialConfig;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -42,7 +42,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig::GradFlagMaterial>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::TerrainMaterialConfig::GradFlagMaterial>()
 {
     using Obj = SceneEngine::TerrainMaterialConfig::GradFlagMaterial;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -72,7 +72,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::TerrainMaterialConfig::ProcTextureSetting>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::TerrainMaterialConfig::ProcTextureSetting>()
 {
     using Obj = SceneEngine::TerrainMaterialConfig::ProcTextureSetting;
     static ClassAccessors props(typeid(Obj).hash_code());

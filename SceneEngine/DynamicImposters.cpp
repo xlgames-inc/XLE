@@ -1042,7 +1042,7 @@ namespace SceneEngine
 }
 
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Config>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::DynamicImposters::Config>()
 {
     using Obj = SceneEngine::DynamicImposters::Config;
     static ClassAccessors props(typeid(Obj).hash_code());

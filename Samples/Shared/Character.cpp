@@ -450,7 +450,7 @@ namespace Sample
 #include "../../Utility/Meta/ClassAccessors.h"
 #include "../../Utility/Meta/ClassAccessorsImpl.h"
 
-template<> const ClassAccessors& GetAccessors<Sample::CharacterInputFiles>()
+template<> const ClassAccessors& Legacy_GetAccessors<Sample::CharacterInputFiles>()
 {
     using Obj = Sample::CharacterInputFiles;
     static ClassAccessors props(typeid(Obj).hash_code());

@@ -104,7 +104,7 @@ namespace PlatformRig
 #include "../Utility/Meta/ClassAccessors.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
-template<> const ClassAccessors& GetAccessors<PlatformRig::DefaultShadowFrustumSettings>()
+template<> const ClassAccessors& Legacy_GetAccessors<PlatformRig::DefaultShadowFrustumSettings>()
 {
     using Obj = PlatformRig::DefaultShadowFrustumSettings;
     static ClassAccessors props(typeid(Obj).hash_code());

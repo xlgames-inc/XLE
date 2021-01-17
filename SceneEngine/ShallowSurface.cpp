@@ -642,7 +642,7 @@ namespace SceneEngine
 
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Config>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ShallowSurface::Config>()
 {
     using Obj = SceneEngine::ShallowSurface::Config;
     static ClassAccessors props(typeid(Obj).hash_code());
@@ -666,7 +666,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Confi
     return props;
 }
 
-template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::LightingConfig>()
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ShallowSurface::LightingConfig>()
 {
     using Obj = SceneEngine::ShallowSurface::LightingConfig;
     static ClassAccessors props(typeid(Obj).hash_code());

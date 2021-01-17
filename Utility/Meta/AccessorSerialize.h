@@ -15,7 +15,7 @@ namespace Utility
     class ParameterBox;
 }
 
-template<typename Type> const Utility::ClassAccessors& GetAccessors();
+template<typename Type> const Utility::ClassAccessors& Legacy_GetAccessors();
 
 namespace Utility
 {
@@ -34,7 +34,7 @@ namespace Utility
 
     /// <summary>Deserializes a type with attached ClassAccessors</summary>
     /// Class accesses must be registed for the given type (by implementing
-    /// GetAccessors<>). The system will deserialize all properties with a set
+    /// Legacy_GetAccessors<>). The system will deserialize all properties with a set
     /// accessor, and a create children in child lists, where necessary.
     ///
     /// Type parsing and conversion is handled automatically. Properties 
@@ -49,13 +49,13 @@ namespace Utility
             Formatter& formatter,
             Type& obj)
         {
-            const auto& props = GetAccessors<Type>();
+            const auto& props = Legacy_GetAccessors<Type>();
             AccessorDeserialize(formatter, &obj, props);
         }
 
     /// <summary>Serializes a type with attached ClassAccessors</summary>
     /// Class accesses must be registed for the given type (by implementing
-    /// GetAccessors<>). The system will serialize all properties with a get
+    /// Legacy_GetAccessors<>). The system will serialize all properties with a get
     /// accessor, and all objects in child lists.
     ///
     /// Type conversions are handled automatically.
@@ -68,7 +68,7 @@ namespace Utility
             OutputStreamFormatter& formatter,
             const Type& obj)
         {
-            const auto& props = GetAccessors<Type>();
+            const auto& props = Legacy_GetAccessors<Type>();
             AccessorSerialize(formatter, &obj, props);
         }
 
@@ -76,7 +76,7 @@ namespace Utility
         Type CreateFromParameters(const ParameterBox& paramBox)
         {
             Type result;
-            SetParameters(&result, GetAccessors<Type>(), paramBox);
+            SetParameters(&result, Legacy_GetAccessors<Type>(), paramBox);
             return std::move(result);
         }
 
