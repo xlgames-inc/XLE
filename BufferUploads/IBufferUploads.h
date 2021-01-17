@@ -13,7 +13,6 @@
 #include "../RenderCore/ResourceDesc.h"
 
 #include "../Utility/IntrusivePtr.h"
-#include "../Utility/Mixins.h"
 #include "../Core/Types.h"
 #include <memory>
 

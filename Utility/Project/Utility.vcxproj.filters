@@ -26,7 +26,6 @@
   <ItemGroup>
     <ClInclude Include="..\BitUtils.h" />
     <ClInclude Include="..\MemoryUtils.h" />
-    <ClInclude Include="..\Mixins.h" />
     <ClInclude Include="..\PtrUtils.h" />
     <ClInclude Include="..\StringFormat.h" />
     <ClInclude Include="..\StringUtils.h" />

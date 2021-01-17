@@ -5,7 +5,6 @@
 #include "../IThreadContext.h"
 #include "../ResourceDesc.h"
 #include "Metal/ObjectFactory.h"
-#include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
 

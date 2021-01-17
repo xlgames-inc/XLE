@@ -12,7 +12,6 @@ typedef std::string string;
 #include "../xlnet/net.h"
 #include "../xlnet/p_base.h"
 #include "../Utility/Threading/ThreadingUtils.h"
-#include "../Utility/Mixins.h"
 #include "../Math/Vector.h"
 #include <memory>
 

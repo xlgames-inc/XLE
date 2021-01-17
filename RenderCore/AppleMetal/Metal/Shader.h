@@ -5,7 +5,6 @@
 #pragma once
 
 #include "../../../Assets/AssetsCore.h"
-#include "../../../Utility/Mixins.h"
 #include "../../ShaderService.h"
 #include "../../../Externals/Misc/OCPtr.h"
 

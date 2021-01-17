@@ -70,7 +70,6 @@
 		8FD85D701EA688D1009BD9B0 /* MiniHeap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D201EA688D1009BD9B0 /* MiniHeap.cpp */; };
 		8FD85D711EA688D1009BD9B0 /* MiniHeap.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D211EA688D1009BD9B0 /* MiniHeap.h */; };
 		8FD85D721EA688D1009BD9B0 /* MiscImplementation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */; };
-		8FD85D731EA688D1009BD9B0 /* Mixins.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D231EA688D1009BD9B0 /* Mixins.h */; };
 		8FD85D741EA688D1009BD9B0 /* ParameterBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */; };
 		8FD85D751EA688D1009BD9B0 /* ParameterBox.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D251EA688D1009BD9B0 /* ParameterBox.h */; };
 		8FD85D761EA688D1009BD9B0 /* ParameterPackUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D261EA688D1009BD9B0 /* ParameterPackUtils.h */; };
@@ -173,7 +172,6 @@
 		8FD85D201EA688D1009BD9B0 /* MiniHeap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MiniHeap.cpp; path = ../MiniHeap.cpp; sourceTree = "<group>"; };
 		8FD85D211EA688D1009BD9B0 /* MiniHeap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MiniHeap.h; path = ../MiniHeap.h; sourceTree = "<group>"; };
 		8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MiscImplementation.cpp; path = ../MiscImplementation.cpp; sourceTree = "<group>"; };
-		8FD85D231EA688D1009BD9B0 /* Mixins.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Mixins.h; path = ../Mixins.h; sourceTree = "<group>"; };
 		8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ParameterBox.cpp; path = ../ParameterBox.cpp; sourceTree = "<group>"; };
 		8FD85D251EA688D1009BD9B0 /* ParameterBox.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ParameterBox.h; path = ../ParameterBox.h; sourceTree = "<group>"; };
 		8FD85D261EA688D1009BD9B0 /* ParameterPackUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ParameterPackUtils.h; path = ../ParameterPackUtils.h; sourceTree = "<group>"; };
@@ -280,7 +278,6 @@
 				8FD85D201EA688D1009BD9B0 /* MiniHeap.cpp */,
 				8FD85D211EA688D1009BD9B0 /* MiniHeap.h */,
 				8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */,
-				8FD85D231EA688D1009BD9B0 /* Mixins.h */,
 				AF4C599022123F7600FC8444 /* Optional.h */,
 				8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */,
 				8FD85D251EA688D1009BD9B0 /* ParameterBox.h */,
@@ -442,7 +439,6 @@
 				8FD85D9C1EA688D1009BD9B0 /* ThreadObject.h in Headers */,
 				8FD85D671EA688D1009BD9B0 /* HeapUtils.h in Headers */,
 				8FD85D6A1EA688D1009BD9B0 /* MemoryUtils.h in Headers */,
-				8FD85D731EA688D1009BD9B0 /* Mixins.h in Headers */,
 				8FD85D911EA688D1009BD9B0 /* StringFormat.h in Headers */,
 				8FD85D981EA688D1009BD9B0 /* LockFree.h in Headers */,
 				8FD85D821EA688D1009BD9B0 /* PathUtils.h in Headers */,

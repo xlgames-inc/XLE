@@ -76,7 +76,6 @@
     <ClInclude Include="..\Meta\ClassAccessors.h" />
     <ClInclude Include="..\Meta\ClassAccessorsImpl.h" />
     <ClInclude Include="..\MiniHeap.h" />
-    <ClInclude Include="..\Mixins.h" />
     <ClInclude Include="..\Streams\ConditionalPreprocessingTokenizer.h" />
     <ClInclude Include="..\Streams\PreprocessorInterpreter.h" />
     <ClInclude Include="..\StreamUtils.h" />

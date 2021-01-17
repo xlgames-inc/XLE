@@ -19,13 +19,12 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
-#include "../../Utility/Mixins.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace Sample
 {
-    class StateBin : noncopyable
+    class StateBin
     {
     public:
         const CharacterModel*       _model;

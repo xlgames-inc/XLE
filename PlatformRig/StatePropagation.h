@@ -8,7 +8,6 @@
 
 #include "MeshNode.h"
 #include "../Utility/Threading/ThreadingUtils.h"
-#include "../Utility/Mixins.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
 #include <map>

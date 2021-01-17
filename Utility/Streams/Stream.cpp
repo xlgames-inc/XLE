@@ -9,7 +9,6 @@
 #include "FileUtils.h"
 #include "../MemoryUtils.h"
 #include "../StringUtils.h"
-#include "../Mixins.h"
 #include "../PtrUtils.h"
 #include "../Conversion.h"
 #include <stdio.h>
@@ -23,12 +22,15 @@ namespace Utility
 // --------------------------------------------------------------------------
 // File Input
 // --------------------------------------------------------------------------
-class FileInputStream : public InputStream, noncopyable
+class FileInputStream : public InputStream
 {
 public:
     FileInputStream(const char filename[], const char openMode[]);
     virtual int Read(void* p, int len);
     virtual bool Seek(StreamSeekType type, int64 offset);
+    
+    FileInputStream(FileInputStream&&) = default;
+    FileInputStream& operator=(FileInputStream&&) = default;
 private:
     RawFS::BasicFile _file;
 };
@@ -56,7 +58,7 @@ bool FileInputStream::Seek(StreamSeekType type, int64 offset)
 // File Output
 // --------------------------------------------------------------------------
 
-class FileOutputStream : public OutputStream, noncopyable
+class FileOutputStream : public OutputStream
 {
 public:
     virtual size_type Tell();
@@ -68,6 +70,9 @@ public:
 
     FileOutputStream(const char filename[], const char openMode[]);
     FileOutputStream(BasicFile&& moveFrom);
+
+    FileOutputStream(FileOutputStream&&) = default;
+    FileOutputStream& operator=(FileOutputStream&&) = default;
 private:
     BasicFile _file;
 };

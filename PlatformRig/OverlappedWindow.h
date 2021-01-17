@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../Math/Vector.h"
-#include "../Utility/Mixins.h"
 #include <memory>       // for unique_ptr
 #include <functional>
 
@@ -61,7 +60,7 @@ namespace PlatformRig
     ///     \endcode</code>
     /// </example>
     ///  
-    class OverlappedWindow : noncopyable
+    class OverlappedWindow
     {
     public:
         const void* GetUnderlyingHandle() const;
@@ -76,6 +75,9 @@ namespace PlatformRig
 
         OverlappedWindow();
         ~OverlappedWindow();
+
+        OverlappedWindow(OverlappedWindow&&) = default;
+        OverlappedWindow& operator=(OverlappedWindow&&) = default;
 
         class Pimpl;
     protected:

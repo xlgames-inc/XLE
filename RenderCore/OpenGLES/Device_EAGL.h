@@ -4,7 +4,6 @@
 #include "../IThreadContext.h"
 #include "IDeviceOpenGLES.h"
 #include "ObjectFactory.h"
-#include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include <memory>
