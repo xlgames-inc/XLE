@@ -12,8 +12,10 @@
 #include "../StringUtils.h"
 #include "../MemoryUtils.h" // for Hash64
 
-    //  This file contains functions that are useful when implementing GetAccessors<>.
+    //  This file contains functions that are useful when implementing Legacy_GetAccessors<>.
     //  However, to use the ClassAccessors interface, just include "ClassAccessors.h"
+
+template<typename Type> const Utility::ClassAccessors& Legacy_GetAccessors();
 
 namespace Utility
 {
@@ -147,7 +149,7 @@ namespace Utility
             {
                 const auto& vec = (t.*ptrToMember);
                 using ValueType = typename std::remove_reference<typename PtrToMemberTarget<InType, PtrToMember>::Type>::type::value_type;
-                const auto& props = GetAccessors<ValueType>();
+                const auto& props = Legacy_GetAccessors<ValueType>();
                 static const auto KeyHash = Hash64("Key");
                 for (const auto&i:vec) {
                     uint64 ckey;
@@ -366,7 +368,7 @@ namespace Utility
             } else {
                 return ImpliedTyping::Cast(
                     { dst, PtrAdd(dst, dstSize) }, dstType, 
-                    AsOpaqueIteratorRange(src), ImpliedTyping::TypeOf<SrcType>());
+                    MakeOpaqueIteratorRange(src), ImpliedTyping::TypeOf<SrcType>());
             }
         }
 
@@ -411,6 +413,7 @@ namespace Utility
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //   A D D I N G   C A S T I N G   F U N C T I O N S
 
+#if 0
         class ClassAccessorsHelper
         {
         public:
@@ -465,60 +468,163 @@ namespace Utility
                 using namespace std::placeholders;
                 accessors.PropertyForId(id)._castToArray = std::bind(&DefaultArrayCastTo<GetSig>, _1, _2, _3, _4, _5, _6, std::move(getter));
             }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+        template<
+            typename GetFn,
+            typename std::enable_if<FunctionTraits<GetFn>::arity == 1>::type* =nullptr>
+            ClassAccessors::Property::GetterFn WrapGetFunction(GetFn&& getFn)
+        {
+            return [capGetFn=std::move(getFn)](const void* object, IteratorRange<void*> destination, ImpliedTyping::TypeDesc requestedType) {
+                using ResultOfGetFnType = typename FunctionTraits<GetFn>::ReturnType;
+                using ExpectedObjectType = std::decay_t<std::tuple_element_t<0, typename FunctionTraits<GetFn>::ArgumentTuple>>;
+                ResultOfGetFnType resultOfGetFn = capGetFn(*(const ExpectedObjectType*)object);
+                return ImpliedTyping::Cast(
+                    destination, requestedType,
+                    MakeOpaqueIteratorRange(resultOfGetFn), ImpliedTyping::TypeOf<std::decay_t<ResultOfGetFnType>>());
+            };
+        }
+
+        template<
+            typename GetFn,
+            std::invoke_result_t<GetFn, const void*, IteratorRange<void*>, ImpliedTyping::TypeDesc>* =nullptr>
+            GetFn&& WrapGetFunction(GetFn&& getFn)
+        {
+            return std::move(getFn);
+        }
+
+        template<typename ObjectType, typename ResultOfGetFnType>
+            ClassAccessors::Property::GetterFn WrapGetFunction(ResultOfGetFnType (ObjectType::*fn)() const)
+        {
+            return [fn](const void* object, IteratorRange<void*> destination, ImpliedTyping::TypeDesc requestedType) {
+                ResultOfGetFnType resultOfGetFn = (((const ObjectType*)object)->*fn)();
+                return ImpliedTyping::Cast(
+                    destination, requestedType,
+                    MakeOpaqueIteratorRange(resultOfGetFn), ImpliedTyping::TypeOf<std::decay_t<ResultOfGetFnType>>());
+            };
+        }
+
+        template<typename ObjectType>
+            ClassAccessors::Property::GetterFn WrapGetFunction(bool (ObjectType::*fn)(IteratorRange<void*>, ImpliedTyping::TypeDesc) const)
+        {
+            return [fn](const void* object, IteratorRange<void*> destination, ImpliedTyping::TypeDesc requestedType) {
+                return (((const ObjectType*)object)->*fn)(destination, requestedType);
+            };
+        }
+
+        template<
+            typename SetFn,
+            typename std::enable_if<FunctionTraits<SetFn>::arity == 2>::type* =nullptr>
+            ClassAccessors::Property::SetterFn WrapSetFunction(SetFn&& setFn)
+        {
+            return [capSetFn=std::move(setFn)](void* object, IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) {
+                using MidwayObjectType = std::decay_t<std::tuple_element_t<1, typename FunctionTraits<SetFn>::ArgumentTuple>>;
+                using ExpectedObjectType = std::decay_t<std::tuple_element_t<0, typename FunctionTraits<SetFn>::ArgumentTuple>>;
+                MidwayObjectType midwayObject;
+                bool castSuccess = ImpliedTyping::Cast(
+                    MakeOpaqueIteratorRange(midwayObject), ImpliedTyping::TypeOf<MidwayObjectType>(),
+                    src, srcType);
+                if (!castSuccess)
+                    return false;
+                capSetFn(*(ExpectedObjectType*)object, midwayObject);
+                return true;
+            };
+        }
+
+        template<
+            typename SetFn,
+            std::invoke_result_t<SetFn, void*, IteratorRange<const void*>, ImpliedTyping::TypeDesc>* =nullptr>
+            SetFn&& WrapSetFunction(SetFn&& setFn)
+        {
+            return std::move(setFn);
+        }
+
+        template<typename ObjectType, typename NewValueType>
+            ClassAccessors::Property::SetterFn WrapSetFunction(void (ObjectType::*fn)(NewValueType))
+        {
+            return [fn](void* object, IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) {
+                std::decay_t<NewValueType> midwayObject;
+                bool castSuccess = ImpliedTyping::Cast(
+                    MakeOpaqueIteratorRange(midwayObject), ImpliedTyping::TypeOf<std::decay_t<NewValueType>>(),
+                    src, srcType);
+                if (!castSuccess)
+                    return false;
+                (((ObjectType*)object)->*fn)(midwayObject);
+                return true;
+            };
+        }
+
+        template<typename ObjectType>
+            ClassAccessors::Property::SetterFn WrapSetFunction(bool (ObjectType::*fn)(IteratorRange<const void*>, ImpliedTyping::TypeDesc))
+        {
+            return [fn](void* object, IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) {
+                return (((ObjectType*)object)->*fn)(src, srcType);
+            };
+        }
     }
 
     template<typename GetFn, typename SetFn>
         void ClassAccessors::Add(
-            const char name[],
+            StringSection<> name,
             GetFn&& getter, SetFn&& setter,
-            const ImpliedTyping::TypeDesc& naturalType,
-            size_t fixedArrayLength)
+            const std::optional<ImpliedTyping::TypeDesc>& naturalType)
         {
-            auto g = MakeFunction(std::move(getter));
-            auto s = MakeFunction(std::move(setter));
-            auto scopy = s;
-            auto gcopy = g;
-            auto id = Hash64((const char*)name);
-            _getters.Add(id, std::move(g));
-            _setters.Add(id, std::move(s));
-
+            auto id = PropertyName(name)._hash;
             auto& p = PropertyForId(id);
-            p._name = name;
+            p._name = name.AsString();
             p._naturalType = naturalType;
-            p._fixedArrayLength = fixedArrayLength;
-
-                // Generate casting functions
-                // Casting functions always have the same signature
-                //      --  this makes it easier to iterate through them
-                //          during serialization (etc)
-            
-            Internal::ClassAccessorsHelper::MaybeAddCasterForSet(*this, id, std::move(scopy));
-            Internal::ClassAccessorsHelper::MaybeAddCasterForGet(*this, id, std::move(gcopy));
+            p._getter = Internal::WrapGetFunction(std::move(getter));
+            p._setter = Internal::WrapSetFunction(std::move(setter));
         }
 
-    template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
-        void ClassAccessors::AddChildList(
-            const char name[],
-            CreateFn&& createFn, GetCountFn&& getCountFn, GetByIndexFn&& getByIndexFn, GetByKeyFn&& getByKeyFn)
+    template<typename ObjectType, typename MemberType>
+        void ClassAccessors::Add(
+            StringSection<> name, 
+            MemberType ObjectType::*ptrToMember)
         {
-            auto id = Hash64((const char*)name);
-            auto c = MakeFunction(std::move(createFn));
-            auto gc = MakeFunction(std::move(getCountFn));
-            auto gi = MakeFunction(std::move(getByIndexFn));
-            auto gk = MakeFunction(std::move(getByKeyFn));
-
-            ChildList child;
-            child._name = name;
-            child._childProps = &GetAccessors<ChildType>();
-            child._createFn = std::move(c);
-            child._getCount = std::move(gc);
-            child._getByIndex = std::move(gi);
-            child._getByKeyFn = std::move(gk);
-            auto i = LowerBound(_childLists, id);
-            _childLists.insert(i, std::make_pair(id, std::move(child)));
+            auto id = PropertyName(name)._hash;
+            auto& p = PropertyForId(id);
+            p._name = name.AsString();
+            p._naturalType = ImpliedTyping::TypeOf<std::decay_t<MemberType>>();
+            p._getter = [ptrToMember](const void* object, IteratorRange<void*> destination, ImpliedTyping::TypeDesc requestedType) {
+                const auto& member = ((const ObjectType*)object)->*ptrToMember;
+                return ImpliedTyping::Cast(
+                    destination, requestedType,
+                    MakeOpaqueIteratorRange(member), ImpliedTyping::TypeOf<std::decay_t<MemberType>>());
+            };
+            p._setter = [ptrToMember](void* object, IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) {
+                auto& member = ((ObjectType*)object)->*ptrToMember;
+                return ImpliedTyping::Cast(
+                    MakeOpaqueIteratorRange(member), ImpliedTyping::TypeOf<std::decay_t<MemberType>>(),
+                    src, srcType);
+            };
         }
+
+    namespace Legacy
+    {
+        template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
+            void ClassAccessorsWithChildLists::AddChildList(
+                const char name[],
+                CreateFn&& createFn, GetCountFn&& getCountFn, GetByIndexFn&& getByIndexFn, GetByKeyFn&& getByKeyFn)
+            {
+                auto id = Hash64((const char*)name);
+                auto c = MakeFunction(std::move(createFn));
+                auto gc = MakeFunction(std::move(getCountFn));
+                auto gi = MakeFunction(std::move(getByIndexFn));
+                auto gk = MakeFunction(std::move(getByKeyFn));
+
+                ChildList child;
+                child._name = name;
+                child._childProps = &Legacy_GetAccessors<ChildType>();
+                child._createFn = std::move(c);
+                child._getCount = std::move(gc);
+                child._getByIndex = std::move(gi);
+                child._getByKeyFn = std::move(gk);
+                auto i = LowerBound(_childLists, id);
+                _childLists.insert(i, std::make_pair(id, std::move(child)));
+            }
+    }
 }
 
