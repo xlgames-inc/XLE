@@ -33,6 +33,27 @@ namespace Utility
         return false;
     }
 
+    std::optional<std::string> ClassAccessors::GetAsString(const void* srcObject, PropertyName id, bool strongTyping) const
+    {
+        auto i = LowerBound(_properties, id._hash);
+        if (i!=_properties.end() && i->first == id._hash)
+            if (i->second._getAsString)
+                return i->second._getAsString(srcObject, strongTyping);
+        return {};
+    }
+
+    bool ClassAccessors::SetFromString(
+        void* dstObject, PropertyName id,
+        StringSection<> src) const
+    {
+        uint8_t parseBuffer[256];
+        auto parseType = ImpliedTyping::ParseFullMatch(src, parseBuffer, sizeof(parseBuffer));
+        assert(parseType.GetSize() < sizeof(parseBuffer));
+        return Set(
+            dstObject, id,
+            MakeIteratorRange(parseBuffer, PtrAdd(parseBuffer, parseType.GetSize())), parseType);
+    }
+
     std::optional<ImpliedTyping::TypeDesc> ClassAccessors::GetNaturalType(PropertyName id) const
     {
         auto i = LowerBound(_properties, id._hash);

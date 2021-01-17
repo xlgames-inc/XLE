@@ -4,6 +4,9 @@
 
 #include "../Utility/Meta/ClassAccessors.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
+#include "../Utility/Meta/AccessorSerialize.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/StreamTypes.h"
 #include "../Math/Vector.h"
 #include "../Math/MathSerialization.h"
 #include <stdexcept>
@@ -204,6 +207,83 @@ namespace UnitTests
             accessors.Set(ex, "VectorPtrToMember", 67 );
             REQUIRE( ex._vectorMember == Float4{67, 0, 0, 1} );
 
+        }
+
+        SECTION("StringInterface") {
+
+            TestClass ex{};
+            REQUIRE( accessors.GetAsString(ex, "VectorPtrToMember").value() == std::string("{1, 2, 3, 4}v") );
+            REQUIRE( accessors.GetAsString(ex, "VectorPtrToMember", true).value() == std::string("{1f, 2f, 3f, 4f}v") );
+
+            REQUIRE( accessors.SetFromString(ex, "VectorPtrToMember", "{34, 56, 23}") == true );
+            REQUIRE( ex._vectorMember == Float4{34, 56, 23, 1} );
+
+        }
+
+        SECTION("FailureCases") {
+
+            TestClass ex{};
+            REQUIRE( accessors.Get<int>(ex, "missing").has_value() == false );
+            REQUIRE( accessors.GetAsString(ex, "missing").has_value() == false );
+
+            int temp;
+            REQUIRE( accessors.Get(MakeOpaqueIteratorRange(temp), ImpliedTyping::TypeOf<int>(), &ex, "missing") == false );
+
+            REQUIRE( accessors.Set(ex, "missing", 5) == false );
+            REQUIRE( accessors.SetFromString(ex, "missing", "5") == false );
+            REQUIRE( accessors.Set(&ex, "missing", MakeOpaqueIteratorRange(temp), ImpliedTyping::TypeOf<int>()) == false );
+
+        }
+
+        accessors.Add(
+            "GetWithNoSet",
+            [](const void* cls, IteratorRange<void*> dest, ImpliedTyping::TypeDesc destType) { 
+                return ImpliedTyping::Cast(
+                    dest, destType,
+                    MakeOpaqueIteratorRange(((TestClass*)cls)->_vectorMember), ImpliedTyping::TypeOf<Float4>());
+            },
+            nullptr);
+
+        accessors.Add(
+            "SetWithNoGet",
+            nullptr,
+            [](void* cls, IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) { 
+                return ImpliedTyping::Cast(
+                    MakeOpaqueIteratorRange(((TestClass*)cls)->_vectorMember), ImpliedTyping::TypeOf<Float4>(),
+                    src, srcType);
+            });
+
+    }
+
+    TEST_CASE( "ClassAccessors-AccessorSerialize", "[utility]" )
+    {
+        ClassAccessors accessors(typeid(TestClass).hash_code());
+        accessors.Add("IntMember", &TestClass::_intMember);
+        accessors.Add("VectorMember", &TestClass::_vectorMember);
+
+        SECTION("Serialize") {
+            MemoryOutputStream<char> stream;
+            {
+                OutputStreamFormatter formatter(stream);
+
+                TestClass ex{};
+                ex._intMember = 30;
+                ex._vectorMember = {5, 7, 6, 5};
+                AccessorSerialize(formatter, &ex, accessors);
+            }
+
+            auto serializedString = stream.AsString();
+            REQUIRE(serializedString == "~~!Format=1; Tab=4\r\nIntMember=30; VectorMember={5, 7, 6, 5}v");
+        }
+
+        SECTION("Deserialize") {
+            std::string input{"IntMember = -342i; VectorMember = {30, 31, 32, 33}"};
+            InputStreamFormatter<char> formatter(MakeIteratorRange(AsPointer(input.begin()), AsPointer(input.end())));
+            TestClass ex{};
+            AccessorDeserialize(formatter, &ex, accessors);
+
+            REQUIRE(ex._intMember == -342);
+            REQUIRE(ex._vectorMember == Float4{30, 31, 32, 33});
         }
     }
 

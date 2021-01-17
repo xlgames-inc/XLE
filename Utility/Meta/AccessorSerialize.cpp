@@ -15,6 +15,8 @@
 #include "../MemoryUtils.h"
 #include "../Conversion.h"
 
+#include <iostream>
+
 // #define SUPPORT_POLYMORPHIC_EXTENSIONS
 
 namespace Utility
@@ -39,7 +41,7 @@ namespace Utility
                         Throw(FormatException("Error in begin element", formatter.GetLocation()));
                     
                     if (!props.SetFromString( obj, name, value)) {
-                        Log(Warning) << "Failure while assigning property during deserialization -- " <<
+                        std::cout << "Failure while assigning property during deserialization -- " <<
                             Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end)) << std::endl;
                     }
                 }
@@ -67,7 +69,7 @@ namespace Utility
                         if (created.first) {
                             AccessorDeserialize(formatter, created.first, *created.second);
                         } else {
-                            Log(Warning) << "Couldn't find a match for element name during deserialization -- " <<
+                            std::cout << "Couldn't find a match for element name during deserialization -- " <<
                                 Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end)) << std::endl;
                             formatter.SkipElement();
                         }

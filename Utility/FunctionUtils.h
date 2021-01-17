@@ -39,8 +39,10 @@ namespace Utility
       : public FunctionTraits<decltype(&std::remove_reference<T>::type::operator())>
     {};
 
-    template<>
-        struct FunctionTraits<std::nullptr_t> {};
+    template<> struct FunctionTraits<std::nullptr_t> {};
+    template<> struct FunctionTraits<std::nullptr_t&> {};
+    template<> struct FunctionTraits<const std::nullptr_t&> {};
+    template<> struct FunctionTraits<std::nullptr_t&&> {};
  
     // for pointers to member function
     template <typename ClassType, typename ReturnType_, typename... Args>

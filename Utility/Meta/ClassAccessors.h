@@ -58,10 +58,12 @@ namespace Utility
         public:
             using SetterFn      = std::function<bool(void*, IteratorRange<const void*>, ImpliedTyping::TypeDesc)>;
             using GetterFn      = std::function<bool(const void*, IteratorRange<void*>, ImpliedTyping::TypeDesc)>;
+            using GetAsStringFn = std::function<std::string(const void*, bool)>;
 
             std::string                 _name;
             SetterFn                    _setter;
             GetterFn                    _getter;
+            GetAsStringFn               _getAsString;
 
             std::optional<ImpliedTyping::TypeDesc>     _naturalType;
         };
@@ -73,18 +75,22 @@ namespace Utility
 
         template<typename ResultType, typename ObjectType>
             std::optional<ResultType> Get(const ObjectType& srcObject, PropertyName id) const;
-        template<typename ObjectType>
-            std::optional<std::string> GetAsString(const ObjectType& srcObject, PropertyName id) const;
         template<typename ValueType, typename ObjectType>
             bool Set(ObjectType& dstObject, PropertyName id, const ValueType& valueSrc) const;
 
         bool Get(
             IteratorRange<void*> dst, ImpliedTyping::TypeDesc dstType,
             const void* srcObject, PropertyName id) const;
-        std::optional<std::string> GetAsString(const void* srcObject, PropertyName id) const;
         bool Set(
             void* dstObject, PropertyName id,
             IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType) const;
+
+        template<typename ObjectType>
+            std::optional<std::string> GetAsString(const ObjectType& srcObject, PropertyName id, bool strongTyping = false) const;
+        template<typename ObjectType>
+            bool SetFromString(ObjectType& srcObject, PropertyName id, StringSection<> src) const;
+        
+        std::optional<std::string> GetAsString(const void* srcObject, PropertyName id, bool strongTyping = false) const;
         bool SetFromString(
             void* dstObject, PropertyName id,
             StringSection<> src) const;
@@ -175,6 +181,7 @@ namespace Utility
     template<typename ResultType, typename ObjectType>
         std::optional<ResultType> ClassAccessors::Get(const ObjectType& srcObject, PropertyName id) const
     {
+        assert(typeid(ObjectType).hash_code() == _associatedType);
         ResultType res;
         if (Get(MakeOpaqueIteratorRange(res), ImpliedTyping::TypeOf<std::decay_t<ResultType>>(), &srcObject, id))
             return res;
@@ -184,7 +191,22 @@ namespace Utility
     template<typename ValueType, typename ObjectType>
         bool ClassAccessors::Set(ObjectType& dstObject, PropertyName id, const ValueType& valueSrc) const
     {
+        assert(typeid(ObjectType).hash_code() == _associatedType);
         return Set(&dstObject, id, MakeOpaqueIteratorRange(valueSrc), ImpliedTyping::TypeOf<std::decay_t<ValueType>>());
+    }
+
+    template<typename ObjectType>
+        std::optional<std::string> ClassAccessors::GetAsString(const ObjectType& srcObject, PropertyName id, bool strongTyping) const
+    {
+        assert(typeid(ObjectType).hash_code() == _associatedType);
+        return GetAsString((const void*)&srcObject, id, strongTyping);
+    }
+
+    template<typename ObjectType>
+        bool ClassAccessors::SetFromString(ObjectType& srcObject, PropertyName id, StringSection<> src) const
+    {
+        assert(typeid(ObjectType).hash_code() == _associatedType);
+        return SetFromString((void*)&srcObject, id, src);
     }
 }
 

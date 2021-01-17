@@ -514,6 +514,11 @@ namespace Utility
             };
         }
 
+        inline ClassAccessors::Property::GetterFn WrapGetFunction(std::nullptr_t)
+        {
+            return {};
+        }
+
         template<
             typename SetFn,
             typename std::enable_if<FunctionTraits<SetFn>::arity == 2>::type* =nullptr>
@@ -563,6 +568,58 @@ namespace Utility
                 return (((ObjectType*)object)->*fn)(src, srcType);
             };
         }
+
+        inline ClassAccessors::Property::SetterFn WrapSetFunction(std::nullptr_t)
+        {
+            return {};
+        }
+
+        template<
+            typename GetFn,
+            typename std::enable_if<FunctionTraits<GetFn>::arity == 1>::type* =nullptr>
+            ClassAccessors::Property::GetAsStringFn WrapGetAsStringFunction(GetFn&& getFn)
+        {
+            return [getFn](const void* object, bool strongTyping) {
+                using ResultOfGetFnType = typename FunctionTraits<GetFn>::ReturnType;
+                using ExpectedObjectType = std::decay_t<std::tuple_element_t<0, typename FunctionTraits<GetFn>::ArgumentTuple>>;
+                ResultOfGetFnType resultOfGetFn = getFn(*(const ExpectedObjectType*)object);
+                return ImpliedTyping::AsString(
+                    MakeOpaqueIteratorRange(resultOfGetFn), ImpliedTyping::TypeOf<std::decay_t<ResultOfGetFnType>>(), strongTyping);
+            };
+        }
+
+        template<
+            typename GetFn,
+            std::invoke_result_t<GetFn, const void*, IteratorRange<void*>, ImpliedTyping::TypeDesc>* =nullptr>
+            ClassAccessors::Property::GetAsStringFn WrapGetAsStringFunction(GetFn&& getFn)
+        {
+            // todo -- if a "naturalType" is passed to the Add() function, we could potentially use that here
+            // Throw(std::runtime_error("Could not extract string value from this property because the natural type is not known"))
+            return nullptr;
+        }
+
+        template<typename ObjectType, typename ResultOfGetFnType>
+            ClassAccessors::Property::GetAsStringFn WrapGetAsStringFunction(ResultOfGetFnType (ObjectType::*fn)() const)
+        {
+            return [fn](const void* object, bool strongTyping) {
+                ResultOfGetFnType resultOfGetFn = (((const ObjectType*)object)->*fn)();
+                return ImpliedTyping::AsString(
+                    MakeOpaqueIteratorRange(resultOfGetFn), ImpliedTyping::TypeOf<std::decay_t<ResultOfGetFnType>>(), strongTyping);
+            };
+        }
+
+        template<typename ObjectType>
+            ClassAccessors::Property::GetAsStringFn WrapGetAsStringFunction(bool (ObjectType::*fn)(IteratorRange<void*>, ImpliedTyping::TypeDesc) const)
+        {
+            // todo -- if a "naturalType" is passed to the Add() function, we could potentially use that here
+            // Throw(std::runtime_error("Could not extract string value from this property because the natural type is not known"))
+            return nullptr;
+        }
+
+        inline ClassAccessors::Property::GetAsStringFn WrapGetAsStringFunction(std::nullptr_t)
+        {
+            return {};
+        }
     }
 
     template<typename GetFn, typename SetFn>
@@ -575,6 +632,7 @@ namespace Utility
             auto& p = PropertyForId(id);
             p._name = name.AsString();
             p._naturalType = naturalType;
+            p._getAsString = Internal::WrapGetAsStringFunction(getter);     // may invoke a copy of "getter" here
             p._getter = Internal::WrapGetFunction(std::move(getter));
             p._setter = Internal::WrapSetFunction(std::move(setter));
         }
@@ -599,6 +657,11 @@ namespace Utility
                 return ImpliedTyping::Cast(
                     MakeOpaqueIteratorRange(member), ImpliedTyping::TypeOf<std::decay_t<MemberType>>(),
                     src, srcType);
+            };
+            p._getAsString = [ptrToMember](const void* object, bool strongTyping) {
+                auto& member = ((ObjectType*)object)->*ptrToMember;
+                return ImpliedTyping::AsString(
+                    MakeOpaqueIteratorRange(member), ImpliedTyping::TypeOf<std::decay_t<MemberType>>(), strongTyping);
             };
         }
 
