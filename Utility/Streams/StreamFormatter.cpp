@@ -74,22 +74,22 @@ namespace Utility
     }
 
     template<typename CharType> 
-        static bool IsSimpleString(const CharType* start, const CharType* end)
+        static bool IsSimpleString(StringSection<CharType> str)
     {
             // if there are formatting chars anywhere in the string, it's not simple
-        if (std::find_if(start, end, FormattingChar<CharType>) != end) return false;
+        if (std::find_if(str.begin(), str.end(), FormattingChar<CharType>) != str.end()) return false;
 
             // If the string beings or ends with whitespace, it is also not simple.
             // This is because the parser will strip off leading and trailing whitespace.
             // (note that this test will also consider an empty string to be "not simple"
-        if (start == end) return false;
-        if (WhitespaceChar(*start) || WhitespaceChar(*(end-1))) return false;
-        if (*start == FormatterConstants<CharType>::ProtectedNamePrefix[0]) return false;
+        if (str.IsEmpty()) return false;
+        if (WhitespaceChar(*str.begin()) || WhitespaceChar(*(str.end()-1))) return false;
+        if (*str.begin() == FormatterConstants<CharType>::ProtectedNamePrefix[0]) return false;
         return true;
     }
 
     template<typename CharType>
-        auto OutputStreamFormatter::BeginElement(const CharType* nameStart, const CharType* nameEnd) -> ElementId
+        auto OutputStreamFormatter::BeginElement(StringSection<CharType> name) -> ElementId
     {
         DoNewLine<CharType>();
 
@@ -99,16 +99,16 @@ namespace Utility
 
             // in simple cases, we just write the name without extra formatting 
             //  (otherwise we have to write a string prefix and string postfix
-        if (IsSimpleString(nameStart, nameEnd)) {
-            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
+        if (IsSimpleString(name)) {
+            _stream->Write(name);
         } else {
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
+            _stream->Write(name);
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
         _hotLine = true;
-        _currentLineLength += unsigned(nameEnd - nameStart + 1);
+        _currentLineLength += unsigned(name.size() + 1);
         ++_currentIndentLevel;
 		_indentLevelAtStartOfLine = _currentIndentLevel;
 
@@ -149,12 +149,12 @@ namespace Utility
 
     template<typename CharType> 
         void OutputStreamFormatter::WriteAttribute(
-            const CharType* nameStart, const CharType* nameEnd,
-            const CharType* valueStart, const CharType* valueEnd)
+            StringSection<CharType> name,
+            StringSection<CharType> value)
     {
         const unsigned idealLineLength = 100;
         bool forceNewLine = 
-            (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength
+            (_currentLineLength + value.size() + name.size() + 3) > idealLineLength
             || _pendingHeader
 			|| _currentIndentLevel < _indentLevelAtStartOfLine;
 
@@ -166,27 +166,27 @@ namespace Utility
             _currentLineLength += 2;
         }
 
-        if (IsSimpleString(nameStart, nameEnd)) {
-            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
+        if (IsSimpleString(name)) {
+            _stream->Write(name);
         } else {
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
+            _stream->Write(name);
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
-        if (valueStart) {
+        if (!value.IsEmpty()) {
             _stream->WriteChar('=');
 
-            if (IsSimpleString(valueStart, valueEnd)) {
-                _stream->Write(StringSection<CharType>(valueStart, valueEnd));
+            if (IsSimpleString(value)) {
+                _stream->Write(value);
             } else {
                 WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-                _stream->Write(StringSection<CharType>(valueStart, valueEnd));
+                _stream->Write(value);
                 WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
             }
         }
 
-        _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart) + 1);
+        _currentLineLength += unsigned(value.size() + name.size() + 1);
         _hotLine = true;
     }
 
@@ -229,17 +229,8 @@ namespace Utility
     OutputStreamFormatter::~OutputStreamFormatter()
     {}
 
-    template<> auto OutputStreamFormatter::BeginElement(const char* nameStart, const char* nameEnd) -> ElementId
-    {
-        return BeginElement((const utf8*)nameStart, (const utf8*)nameEnd);
-    }
-
-    template<> void OutputStreamFormatter::WriteAttribute(const char* nameStart, const char* nameEnd, const char* valueStart, const char* valueEnd)
-    {
-        WriteAttribute(
-            (const utf8*)nameStart, (const utf8*)nameEnd,
-            (const utf8*)valueStart, (const utf8*)valueEnd);
-    }
+    template auto OutputStreamFormatter::BeginElement(StringSection<char> name) -> ElementId;
+    template void OutputStreamFormatter::WriteAttribute(StringSection<char> name, StringSection<char> value);
 
     
     FormatException::FormatException(const char label[], StreamLocation location)
