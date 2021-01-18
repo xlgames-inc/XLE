@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Utility/Streams/FileSystemMonitor.h"       // (for OnChangeCallback base class)
+#include "../OSServices/FileSystemMonitor.h"       // (for OnChangeCallback base class)
 
 namespace Assets
 {
@@ -41,7 +41,7 @@ namespace Assets
     /// </example>
     /// <seealso cref="RegisterFileDependency" />
     /// <seealso cref="RegisterResourceDependency" />
-    class DependencyValidation : public Utility::OnChangeCallback, public std::enable_shared_from_this<DependencyValidation>
+    class DependencyValidation : public OSServices::OnChangeCallback, public std::enable_shared_from_this<DependencyValidation>
     {
     public:
         virtual void    OnChange();

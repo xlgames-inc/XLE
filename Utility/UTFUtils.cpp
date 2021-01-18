@@ -582,6 +582,8 @@ size_t utf8_offset_ord(const utf8* s, size_t offset)
 
 ucs4 utf8_nextchar(const utf8* s, size_t* i)
 {
+    if (!s[(*i)]) return 0;
+
     ucs4 ch = 0;
     size_t l = 0;
 

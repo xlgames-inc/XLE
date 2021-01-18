@@ -3,6 +3,7 @@ if (NOT ${XLE_MAIN_CMAKE_DIR})
 endif ()
 
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Utility Utility)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../OSServices OSServices)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Math Math)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Assets Assets)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../PlatformRig PlatformRig)

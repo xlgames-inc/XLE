@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CPUProfiler.h"
+#include "../../OSServices/TimeUtils.h"
 #include "../MemoryUtils.h"
 #include "../PtrUtils.h"
 #include <algorithm>
@@ -291,7 +292,7 @@ namespace Utility
         assert(_aeStackI==0);
         static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
 
-        _frameMarkers[_frameMarkerNext] = GetPerformanceCounter();
+        _frameMarkers[_frameMarkerNext] = OSServices::GetPerformanceCounter();
         _frameMarkerCount = std::min(_frameMarkerCount+1, (unsigned)dimof(_frameMarkers));
         _frameMarkerNext = (_frameMarkerNext+1) % (unsigned)dimof(_frameMarkers);
 

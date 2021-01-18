@@ -24,7 +24,7 @@
 #include "../Assets/MountingTree.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/SystemUtils.h"
+#include "../OSServices/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include <CppUnitTest.h>
 

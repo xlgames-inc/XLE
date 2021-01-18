@@ -8,7 +8,7 @@
 #include <time.h>
 #endif
 
-namespace Utility
+namespace OSServices
 {
     uint32 XlGetCurrentThreadId()
     {

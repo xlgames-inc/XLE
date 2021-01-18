@@ -24,7 +24,7 @@
 #include <utility>
 #include <algorithm>
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 
 #pragma warning(disable:4127)       // conditional expression is constant
 #pragma warning(disable:4018)       // signed/unsigned mismatch

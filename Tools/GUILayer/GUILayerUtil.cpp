@@ -18,7 +18,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
-#include "../../Utility/Streams/FileSystemMonitor.h"
+#include "../../OSServices/FileSystemMonitor.h"
 #include <msclr/auto_gcroot.h>
 
 namespace GUILayer

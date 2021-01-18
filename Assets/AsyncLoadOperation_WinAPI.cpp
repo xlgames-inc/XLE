@@ -14,7 +14,7 @@
     #error AsyncLoadOperation.cpp only implemented for Windows (or Microsoft API targets)
 #endif
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 
 namespace Assets
 {

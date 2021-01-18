@@ -9,7 +9,7 @@
 #include "../ShaderParser/Exceptions.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/FileSystemMonitor.h"
+#include "../../OSServices/FileSystemMonitor.h"
 #include "../../Utility/StringUtils.h"
 
 using namespace System::Collections::Generic;

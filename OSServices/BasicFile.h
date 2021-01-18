@@ -6,19 +6,18 @@
 
 #pragma once
 
-#include "../Detail/API.h"
-#include "../../Core/Exceptions.h"
-#include "../../Core/Types.h"
-#include "../StringUtils.h" // for StringSection
-#include "../Optional.h"
-#include "../IteratorUtils.h"
+#include "../Core/Exceptions.h"
+#include "../Core/Types.h"
+#include "../Utility/StringUtils.h" // for StringSection
+#include "../Utility/Optional.h"
+#include "../Utility/IteratorUtils.h"
 #include <memory>       // for std::unique_ptr
 
 #include <vector>
 #include <string>
 #include <functional>
 
-namespace Utility 
+namespace OSServices 
 {
     namespace Exceptions
     {
@@ -59,7 +58,6 @@ namespace Utility
         //
         //  "BasicFile" --  C++ wrapper for file interactions.
         //                  Prefer using BasicFile, instead of C-style interface functions 
-        //                  (XlFileOpen, etc)
         //
         //      Cannot be copied, but can be moved.
         //      Constructor will throw on file-system errors
@@ -77,6 +75,11 @@ namespace Utility
         uint64      GetSize() const never_throws;
 		bool		IsGood() const never_throws;
 		FileTime	GetFileTime() const never_throws;
+
+		Exceptions::IOException::Reason TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
+		Exceptions::IOException::Reason TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
+		BasicFile(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode);
+		BasicFile(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode);
 
         BasicFile(BasicFile&& moveFrom) never_throws;
         BasicFile& operator=(BasicFile&& moveFrom) never_throws;
@@ -99,6 +102,17 @@ namespace Utility
 
 		using CloseFn = std::function<void(IteratorRange<const void*>)>;
 
+		Exceptions::IOException::Reason TryOpen(const utf8 filename[], uint64 size, const char openMode[], FileShareMode::BitField shareMode) never_throws;
+		Exceptions::IOException::Reason TryOpen(const utf16 filename[], uint64 size, const char openMode[], FileShareMode::BitField shareMode) never_throws;
+		MemoryMappedFile(
+			const utf8 filename[], uint64 size, 
+			const char openMode[],
+			FileShareMode::BitField shareMode);
+		MemoryMappedFile(
+			const utf16 filename[], uint64 size, 
+			const char openMode[],
+			FileShareMode::BitField shareMode);
+
         MemoryMappedFile();
 		MemoryMappedFile(IteratorRange<void*> data, CloseFn&& close);
         MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws;
@@ -110,65 +124,34 @@ namespace Utility
 		CloseFn _closeFn;
     };
 
-	namespace RawFS
+	class FileAttributes
 	{
-		class BasicFile : public ::Utility::BasicFile
+	public:
+		uint64_t _size;
+		uint64_t _lastWriteTime;
+		uint64_t _lastAccessTime;
+	};
+
+	bool DoesFileExist(StringSection<char> filename);
+	bool DoesDirectoryExist(StringSection<char> filename);
+
+	std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
+	std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
+
+	void CreateDirectoryRecursive(StringSection<char> filename);
+	void CreateDirectoryRecursive(StringSection<utf8> filename);
+	void CreateDirectoryRecursive(StringSection<utf16> filename);
+
+	namespace FindFilesFilter
+	{
+		enum Enum 
 		{
-		public:
-			Exceptions::IOException::Reason TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
-			Exceptions::IOException::Reason TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
-			BasicFile(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode);
-			BasicFile(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode);
-			BasicFile();
+			File = 1<<0,
+			Directory = 1<<1,
+			All =  0xfffffffful
 		};
-
-		class MemoryMappedFile : public ::Utility::MemoryMappedFile
-		{
-		public:
-			Exceptions::IOException::Reason TryOpen(const utf8 filename[], uint64 size, const char openMode[], FileShareMode::BitField shareMode) never_throws;
-			Exceptions::IOException::Reason TryOpen(const utf16 filename[], uint64 size, const char openMode[], FileShareMode::BitField shareMode) never_throws;
-			MemoryMappedFile(
-				const utf8 filename[], uint64 size, 
-				const char openMode[],
-				FileShareMode::BitField shareMode);
-			MemoryMappedFile(
-				const utf16 filename[], uint64 size, 
-				const char openMode[],
-				FileShareMode::BitField shareMode);
-			MemoryMappedFile();
-		};
-
-		class FileAttributes
-		{
-		public:
-			uint64_t _size;
-			uint64_t _lastWriteTime;
-			uint64_t _lastAccessTime;
-		};
-
-		XL_UTILITY_API bool DoesFileExist(StringSection<char> filename);
-		XL_UTILITY_API bool DoesDirectoryExist(StringSection<char> filename);
-
-        XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
-        XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
-
-		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<char> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf8> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf16> filename);
-
-		namespace FindFilesFilter
-		{
-			enum Enum 
-			{
-				File = 1<<0,
-				Directory = 1<<1,
-				All =  0xfffffffful
-			};
-			typedef unsigned BitField;
-		}
-		XL_UTILITY_API std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
-		XL_UTILITY_API std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter = FindFilesFilter::All);
+		typedef unsigned BitField;
 	}
+	std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
+	std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter = FindFilesFilter::All);
 }
-
-using namespace Utility;

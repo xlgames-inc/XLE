@@ -16,7 +16,7 @@
     // include windows in a controlled manner (before d3d11 includes it!)
     // (try to limit including DX11.h to just this place)
 
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
 #if DX_VERSION == DX_VERSION_11_1
     #include <d3d11_1.h>

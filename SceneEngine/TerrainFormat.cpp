@@ -19,7 +19,7 @@
 #include <stack>
 #include <assert.h>
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 
 namespace SceneEngine
 {

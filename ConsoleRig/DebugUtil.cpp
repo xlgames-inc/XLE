@@ -7,14 +7,14 @@
 #include "GlobalServices.h"
 #include "AttachablePtr.h"
 #include "../Utility/MemoryUtils.h"
-#include "../Utility/SystemUtils.h"
+#include "../OSServices/SystemUtils.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Core/Exceptions.h"
 
 #include <iostream>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(__MINGW32__)
-    #include "../Core/WinAPI/IncludeWindows.h"
+    #include "../OSServices/WinAPI/IncludeWindows.h"
     #include "../Foreign/StackWalker/StackWalker.h"
 #endif
 
@@ -105,11 +105,11 @@ namespace ConsoleRig
             // object to a c++ std::stream_buf
         #if defined(REDIRECT_COUT)
 
-            auto currentModule = GetCurrentModuleId();
+            auto currentModule = OSServices::GetCurrentModuleId();
             auto& serv = CrossModule::GetInstance()._services;
             
             bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
-            if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
+            if (doRedirect && !serv.Has<OSServices::ModuleId()>(Fn_CoutRedirectModule)) {
                 auto redirect = GetSharedDebuggerWarningStream();
                 if (redirect) {
                     s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
@@ -140,10 +140,10 @@ namespace ConsoleRig
     {
         #if defined(REDIRECT_COUT)
             auto& serv = CrossModule::GetInstance()._services;
-            auto currentModule = GetCurrentModuleId();
+            auto currentModule = OSServices::GetCurrentModuleId();
 
-            ModuleId testModule = 0;
-            if (serv.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
+            OSServices::ModuleId testModule = 0;
+            if (serv.TryCall<OSServices::ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
                 if (s_oldCoutStreamBuf)
                     std::cout.rdbuf(s_oldCoutStreamBuf);
                 serv.Remove(Fn_CoutRedirectModule);

@@ -19,7 +19,8 @@ namespace Assets
 	class IFileInterface;
 }
 
-namespace Utility { class OutputStream; class BasicFile; }
+namespace Utility { class OutputStream; }
+namespace OSServices { class BasicFile; }
 
 namespace Assets { namespace IntermediateAssets
 {

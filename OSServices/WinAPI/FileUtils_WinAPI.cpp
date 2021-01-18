@@ -12,9 +12,9 @@
 #include <utility>
 // #include <optional>
 
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
-namespace Utility 
+namespace OSServices 
 {
     static unsigned AsUnderlyingShareMode(FileShareMode::BitField shareMode)
     {

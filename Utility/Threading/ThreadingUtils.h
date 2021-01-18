@@ -170,7 +170,7 @@
 #if THREAD_LIBRARY == THREAD_LIBRARY_TBB
 
     #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-        #include "../../Core/WinAPI/IncludeWindows.h"
+        #include "../../OSServices/WinAPI/IncludeWindows.h"
     #endif
     #include <tbb/tbb_machine.h>        // (maybe includes <windows.h>?)
 

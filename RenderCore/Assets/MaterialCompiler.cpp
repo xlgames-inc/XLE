@@ -174,7 +174,7 @@ namespace RenderCore { namespace Assets
 				*mainFile, MakeIteratorRange(chunks),
 				ConsoleRig::GetLibVersionDesc());
 
-			::RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
+			::OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
 
 			{
 				auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");

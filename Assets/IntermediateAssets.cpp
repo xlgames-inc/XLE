@@ -28,7 +28,7 @@
 #include "../Utility/Streams/PathUtils.h"
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-    #include "../Core/WinAPI/IncludeWindows.h"
+    #include "../OSServices/WinAPI/IncludeWindows.h"
 #endif
 #include <memory>
 
@@ -273,7 +273,7 @@ namespace Assets { namespace IntermediateAssets
             // first, create the directory if we need to
         char dirName[MaxPath];
         XlDirname(dirName, dimof(dirName), buffer);
-        RawFS::CreateDirectoryRecursive(dirName);
+        OSServices::CreateDirectoryRecursive(dirName);
 
             // now, write -- 
 		BasicFile file;
@@ -355,7 +355,7 @@ namespace Assets { namespace IntermediateAssets
 					continue;
 				}
 
-				RawFS::CreateDirectoryRecursive(buffer);
+				OSServices::CreateDirectoryRecursive(buffer);
 				goodBranchDir = buffer;
 
 				_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str(), d);

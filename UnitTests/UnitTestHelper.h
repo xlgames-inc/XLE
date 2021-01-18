@@ -9,7 +9,7 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/SystemUtils.h"
+#include "../OSServices/SystemUtils.h"
 
 #pragma warning(disable:4505)		// 'UnitTests::GetStartupConfig': unreferenced local function has been removed
 

@@ -8,7 +8,7 @@
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
-#include "../../../Utility/SystemUtils.h"
+#include "../../../OSServices/SystemUtils.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
@@ -18,7 +18,7 @@
     //          This helps prevent name conflicts with 
     //          windows #defines and so forth...
     //  (this is only actually required for the "WinMain" signature)
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
 namespace Sample
 {
@@ -49,9 +49,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     auto finalsDirectory = lpCmdLine;
     if (!finalsDirectory[0]
-        || RawFS::FindFiles(
+        || OSServices::FindFiles(
             std::string(finalsDirectory) + "/*.*", 
-			RawFS::FindFilesFilter::File).empty()) {
+			OSServices::FindFilesFilter::File).empty()) {
         MessageBox(0, "Expecting the same of a directory on the command line. This should be the 'finals' directory exported from the level editor.", "Environment Sample", MB_OK);
     }
 

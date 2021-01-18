@@ -30,7 +30,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/FileUtils.h"
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 #include "../Foreign/half-1.9.2/include/half.hpp"
 #include "../RenderCore/DX11/Metal/Format.h"

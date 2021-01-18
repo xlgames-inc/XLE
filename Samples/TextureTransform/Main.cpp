@@ -23,7 +23,7 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Conversion.h"
 
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
 namespace TextureTransform
 {

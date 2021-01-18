@@ -10,7 +10,7 @@
 #include "../MemoryUtils.h"
 #include "../PtrUtils.h"
 #include "../StringFormat.h"
-#include "FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "Stream.h"
 #include "StreamTypes.h"
 #include <vector>
@@ -730,7 +730,7 @@ public:
     DataParser(Data* root);
     ~DataParser();
 
-    bool InitFromFile(BasicFile& file);
+    bool InitFromFile(OSServices::BasicFile& file);
     void InitFromString(const char* str, int len);
 
     int Space();
@@ -824,7 +824,7 @@ void DataParser::Init()
     NextChar();
 }
 
-bool DataParser::InitFromFile(BasicFile& file)
+bool DataParser::InitFromFile(OSServices::BasicFile& file)
 {
     // MemoryMap* mm = XlOpenMemoryMap(filename);
     // if (!mm) {
@@ -844,7 +844,7 @@ bool DataParser::InitFromFile(BasicFile& file)
     size_t size = 0;
     {
         auto start = file.TellP();
-		file.Seek(0, FileSeekAnchor::End);
+		file.Seek(0, OSServices::FileSeekAnchor::End);
         size = file.TellP() - start;
         file.Seek(start);
 
@@ -1262,7 +1262,7 @@ bool Data::Load(const char* ptr, int len)
     return !parser.Error();
 }
 
-bool Data::LoadFromFile(BasicFile& src)
+bool Data::LoadFromFile(OSServices::BasicFile& src)
 {
     DataParser parser(this);
     if (!parser.InitFromFile(src)) 

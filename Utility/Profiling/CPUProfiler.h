@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../TimeUtils.h"
+#include "../../OSServices/TimeUtils.h"
 #include "../IteratorUtils.h"
 #include "../Threading/Mutex.h"
 #include "../Threading/ThreadingUtils.h"
@@ -160,7 +160,7 @@ namespace Utility
                 // function call
             QueryPerformanceCounter((LARGE_INTEGER*)&time);
         #else
-            time = GetPerformanceCounter();
+            time = OSServices::GetPerformanceCounter();
         #endif
             //  We use the very top bit to distinguish between a begin event, and an end event.
             //  This means the results will not be correct if the profile event straddles a time
@@ -182,7 +182,7 @@ namespace Utility
         #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
             QueryPerformanceCounter((LARGE_INTEGER*)&time);
         #else
-            time = GetPerformanceCounter();
+            time = OSServices::GetPerformanceCounter();
         #endif
         #if !defined(NDEBUG)
             assert(_aeStackI > 0);

@@ -36,16 +36,12 @@ set(Headers
     StreamUtils.h
     StringFormat.h
     StringUtils.h
-    SystemUtils.h
-    TimeUtils.h
     UTFUtils.h
     VariantUtils.h)
-set(NetworkingSrc Networking/Socket.cpp)
 set(StreamsSrc 
     Streams/ConditionalPreprocessingTokenizer.cpp
     Streams/Data.cpp
     Streams/DataSerialize.cpp
-    Streams/FileUtils.cpp
     Streams/PathUtils.cpp
     Streams/PreprocessorInterpreter.cpp
     Streams/Stream.cpp
@@ -56,13 +52,7 @@ set(ThreadingSrc Threading/CompletionThreadPool.cpp)
 set(ProfilingSrc Profiling/CPUProfiler.cpp Profiling/SuppressionProfiler.cpp)
 set(MetaSrc Meta/AccessorSerialize.cpp Meta/ClassAccessors.cpp)
 
-if (WIN32)
-    set(WinAPISrc WinAPI/System_WinAPI.cpp Streams/WinAPI/FileSystemMonitor_WinAPI.cpp Streams/WinAPI/FileUtils_WinAPI.cpp Threading/WinAPI/ThreadObject_WinAPI.cpp)
-elseif (NOT APPLE)
-    set(LinuxSrc Linux/System_Linux.cpp Streams/Linux/FileSystemMonitor_Linux.cpp Streams/Linux/FileUtils_Linux.cpp Streams/Linux/FileUtils_stdio.cpp)
-endif()
-
-add_library(Utility STATIC ${Src} ${Headers} ${NetworkingSrc} ${StreamsSrc} ${ThreadingSrc} ${WinAPISrc} ${ProfilingSrc} ${MetaSrc} ${LinuxSrc})
+add_library(Utility STATIC ${Src} ${Headers} ${StreamsSrc} ${ThreadingSrc} ${ProfilingSrc} ${MetaSrc})
 configure_xle_library(Utility)
 target_link_libraries(Utility PRIVATE ForeignMisc)
 

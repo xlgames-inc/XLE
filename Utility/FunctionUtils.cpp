@@ -118,7 +118,7 @@ namespace Utility
 
 	void VariantFunctions::InvalidateCurrentModule()
 	{
-		InvalidateModule(GetCurrentModuleId());
+		InvalidateModule(OSServices::GetCurrentModuleId());
 	}
 
 	void VariantFunctions::InvalidateModule(size_t moduleId)

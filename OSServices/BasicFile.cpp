@@ -4,11 +4,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "FileUtils.h"
-#include "../PtrUtils.h"
+#include "BasicFile.h"
+#include "../Utility/PtrUtils.h"
 #include <stdio.h>
 
-namespace Utility
+namespace OSServices
 {
 	namespace Exceptions
 	{

@@ -52,7 +52,7 @@
 // #define GEN_AO_DEBUG
 #if defined(GEN_AO_DEBUG)
     #include "../../Utility/Conversion.h"
-    #include "../../Core/WinAPI/IncludeWindows.h"
+    #include "../../OSServices/WinAPI/IncludeWindows.h"
     #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
     #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 

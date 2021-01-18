@@ -5,6 +5,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "Socket.h"
+#include "SystemUtils.h"
 
 #include <stdlib.h>
 #include <exception>
@@ -12,7 +13,7 @@
 #pragma clang diagnostic ignored "-Winvalid-token-paste"
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-    #include "../../Core/WinAPI/IncludeWindows.h"
+    #include "../../OSServices/WinAPI/IncludeWindows.h"
     #include <winsock2.h>
     #include <ws2tcpip.h>
     typedef long suseconds_t;
@@ -23,71 +24,70 @@
     #include <sys/socket.h>
 #endif
 
-#include "../../ConsoleRig/Log.h"
-#include "../../Utility/SystemUtils.h"
-#include "../../Core/Exceptions.h"
+#include "../ConsoleRig/Log.h"
+#include "../Core/Exceptions.h"
 
-namespace
+namespace OSServices
 {
-    struct sockaddr_in CreateSocketAddress(const char *address, const uint16_t port)
-    {
-        struct sockaddr_in serverAddr;
-        memset(&serverAddr, '0', sizeof(serverAddr));
-        serverAddr.sin_family = AF_INET;
-        serverAddr.sin_port = htons(port);
-        // Convert IPv4 and IPv6 addresses from text to binary form
-        if (inet_pton(AF_INET, address, &serverAddr.sin_addr) <= 0) {
-            int errnoValue = errno;
-            Throw(Networking::SocketException(Networking::SocketException::ErrorCode::invalid_address, errnoValue));
-        }
-        return serverAddr;
-    }
 
-    void EnsureNetworkingInitialized()
+    namespace
     {
-        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-            static bool s_WSAInitialized = false;
-            if (!s_WSAInitialized) {
-                WSADATA wsaData;
-                int error = WSAStartup(MAKEWORD(2,2), &wsaData);
-                if (error != 0) {
-                    int errnoValue = errno;
-                    Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_creation, errnoValue));
+        struct sockaddr_in CreateSocketAddress(const char *address, const uint16_t port)
+        {
+            struct sockaddr_in serverAddr;
+            memset(&serverAddr, '0', sizeof(serverAddr));
+            serverAddr.sin_family = AF_INET;
+            serverAddr.sin_port = htons(port);
+            // Convert IPv4 and IPv6 addresses from text to binary form
+            if (inet_pton(AF_INET, address, &serverAddr.sin_addr) <= 0) {
+                int errnoValue = errno;
+                Throw(SocketException(SocketException::ErrorCode::invalid_address, errnoValue));
+            }
+            return serverAddr;
+        }
+
+        void EnsureNetworkingInitialized()
+        {
+            #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+                static bool s_WSAInitialized = false;
+                if (!s_WSAInitialized) {
+                    WSADATA wsaData;
+                    int error = WSAStartup(MAKEWORD(2,2), &wsaData);
+                    if (error != 0) {
+                        int errnoValue = errno;
+                        Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));
+                    }
+                    s_WSAInitialized = true;
                 }
-                s_WSAInitialized = true;
-            }
-        #endif
-    }
+            #endif
+        }
 
-    void HandleTimeout(int fd, uint16_t port, const std::chrono::milliseconds timeout)
-    {
-        using namespace std::chrono_literals;
-        if (timeout > 0ms) {
-            fd_set rfds;
-            FD_ZERO(&rfds);
-            FD_SET(fd, &rfds);
+        void HandleTimeout(int fd, uint16_t port, const std::chrono::milliseconds timeout)
+        {
+            using namespace std::chrono_literals;
+            if (timeout > 0ms) {
+                fd_set rfds;
+                FD_ZERO(&rfds);
+                FD_SET(fd, &rfds);
 
-            struct timeval timeout_value;
-            timeout_value.tv_sec = (suseconds_t)timeout.count() / 1000; // milliseconds to seconds
-            timeout_value.tv_usec = ((suseconds_t)timeout.count() % 1000) * 1000; // milliseconds (minus whole seconds) to microseconds
+                struct timeval timeout_value;
+                timeout_value.tv_sec = (suseconds_t)timeout.count() / 1000; // milliseconds to seconds
+                timeout_value.tv_usec = ((suseconds_t)timeout.count() % 1000) * 1000; // milliseconds (minus whole seconds) to microseconds
 
-            int timeoutResult = select(fd + 1, &rfds, nullptr, nullptr, &timeout_value);
-            if (timeoutResult < 0) {
-                int errnoValue = errno;
-                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::bad_connection, errnoValue));
-            }
-            if (timeoutResult == 0) {
-                Log(Debug) << "Connection timed out on port " << port << std::endl;
-                int errnoValue = errno;
-                Throw(Networking::SocketException(Networking::SocketException::ErrorCode::timeout, errnoValue));
+                int timeoutResult = select(fd + 1, &rfds, nullptr, nullptr, &timeout_value);
+                if (timeoutResult < 0) {
+                    int errnoValue = errno;
+                    Throw(SocketException(SocketException::ErrorCode::bad_connection, errnoValue));
+                }
+                if (timeoutResult == 0) {
+                    Log(Debug) << "Connection timed out on port " << port << std::endl;
+                    int errnoValue = errno;
+                    Throw(SocketException(SocketException::ErrorCode::timeout, errnoValue));
+                }
             }
         }
     }
-}
 
-
-namespace Utility { namespace Networking
-{
     #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
         void closesocket(int fd)
         {
@@ -268,4 +268,4 @@ namespace Utility { namespace Networking
         return _message.data();
     }
 
-}}
+}

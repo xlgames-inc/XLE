@@ -7,8 +7,8 @@
 #include "AttachableLibrary.h"
 #include "GlobalServices.h"
 #include "AttachablePtr.h"
-#include "../Utility/SystemUtils.h"
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/SystemUtils.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 #include <string>
 #include <sstream>
 #include <assert.h>

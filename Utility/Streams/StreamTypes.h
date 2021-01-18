@@ -15,22 +15,6 @@ namespace Utility
 {
 
     // --------------------------------------------------------------------------
-    // Memory Input
-    // --------------------------------------------------------------------------
-
-    class XL_UTILITY_API MemoryInputStream : public InputStream 
-    {
-    public:
-        const uint8* _ptr;
-        const uint8* _begin;
-        const uint8* _end;
-
-        MemoryInputStream(const void* s, int len);
-        virtual int Read(void* p, int len);
-        virtual bool Seek(StreamSeekType type, int64 offset);
-    };
-
-    // --------------------------------------------------------------------------
     // Memory Output
     // --------------------------------------------------------------------------
 

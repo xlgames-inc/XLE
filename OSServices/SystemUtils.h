@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "UTFUtils.h"
+#include "../Utility/UTFUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <string>
 
-namespace Utility
+namespace OSServices
 {
     bool XlGetCurrentDirectory(uint32 dim, char dst[]);
     uint64 XlGetCurrentFileTime();

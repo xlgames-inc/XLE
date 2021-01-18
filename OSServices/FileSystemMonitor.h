@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../StringUtils.h" // for StringSection
+#include "../Utility/StringUtils.h" // for StringSection
 #include <memory>
 
-namespace Utility
+namespace OSServices
 {
     class OnChangeCallback
     {

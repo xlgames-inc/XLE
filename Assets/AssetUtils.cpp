@@ -23,7 +23,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/SystemUtils.h"     // for XlGetCurrentDirectory
+#include "../OSServices/SystemUtils.h"     // for XlGetCurrentDirectory
 #include <vector>
 #include <algorithm>
 #include <sstream>
@@ -256,9 +256,9 @@ namespace Assets
 
 	static std::vector<std::basic_string<ResChar>> FindFiles(
 		StringSection<ResChar> searchPath, 
-		RawFS::FindFilesFilter::BitField filter)
+		OSServices::FindFilesFilter::BitField filter)
 	{
-		return RawFS::FindFiles(searchPath.AsString(), filter);
+		return OSServices::FindFiles(searchPath.AsString(), filter);
 	}
 
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, StringSection<ResChar> baseName) const
@@ -334,7 +334,7 @@ namespace Assets
             //  there is some ambiguity. Let's prefer to use the first
             //  registered path for simple relative paths like this.
         bool useBaseName = 
-            (baseName[0] != '.' && RawFS::DoesDirectoryExist(baseName));
+            (baseName[0] != '.' && OSServices::DoesDirectoryExist(baseName));
 
         if (!useBaseName) {
             const ResChar* b = _buffer;
@@ -349,7 +349,7 @@ namespace Assets
 
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName.begin(), baseName.end());
-                if (RawFS::DoesDirectoryExist(workingBuffer)) {
+                if (OSServices::DoesDirectoryExist(workingBuffer)) {
                     if (workingBuffer != destination)
                         XlCopyString(destination, destinationCount, workingBuffer);
                     return;
@@ -387,7 +387,7 @@ namespace Assets
 
 		for (unsigned c=0; c<_startPointCount; ++c) {
 			XlConcatPath(workingBuffer, dimof(workingBuffer), &b[_startOffsets[c]], wildcardSearch.begin(), wildcardSearch.end());
-			auto partialRes = Assets::FindFiles(workingBuffer, RawFS::FindFilesFilter::File);
+			auto partialRes = Assets::FindFiles(workingBuffer, OSServices::FindFilesFilter::File);
 			result.insert(result.end(), partialRes.begin(), partialRes.end());
 		}
 		

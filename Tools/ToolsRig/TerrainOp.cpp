@@ -10,7 +10,7 @@
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Utility/SystemUtils.h"
+#include "../../OSServices/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include <thread>

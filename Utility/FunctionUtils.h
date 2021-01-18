@@ -8,7 +8,7 @@
 
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
-#include "SystemUtils.h"
+#include "../OSServices/SystemUtils.h"
 #include "../Core/Exceptions.h"
 #include "../Core/SelectConfiguration.h"
 #include <functional>
@@ -233,7 +233,7 @@ namespace Utility
             void (*_destructor)(void*);
             void (*_moveConstructor)(void*, void*);
 
-			ModuleId _moduleId;
+			OSServices::ModuleId _moduleId;
         };
         std::vector<uint8_t> _buffer;
         std::vector<std::pair<Id, StoredFunction>> _fns;
@@ -291,7 +291,7 @@ namespace Utility
         sfn._destructor = &Internal::Destructor<std::function<Fn>>;
         sfn._moveConstructor = &Internal::MoveConstructor<std::function<Fn>>;
         sfn._typeHashCode = typeid(std::function<Fn>).hash_code();
-		sfn._moduleId = GetCurrentModuleId();
+		sfn._moduleId = OSServices::GetCurrentModuleId();
         
         if ((_buffer.size() + sfn._size) > _buffer.capacity())
             ExpandBuffer((_buffer.size() + sfn._size) * 2);

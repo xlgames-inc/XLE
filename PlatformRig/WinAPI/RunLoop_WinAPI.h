@@ -5,7 +5,7 @@
 #pragma once
 
 #include "../OverlappedWindow.h"
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 #include <vector>
 
 namespace PlatformRig

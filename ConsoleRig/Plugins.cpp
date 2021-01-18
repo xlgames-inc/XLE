@@ -6,8 +6,8 @@
 #include "AttachablePtr.h"
 #include "AttachableLibrary.h"
 #include "Log.h"
-#include "../Utility/Streams/FileUtils.h"
-#include "../Utility/SystemUtils.h"
+#include "../OSServices/BasicFile.h"
+#include "../OSServices/SystemUtils.h"
 #include <vector>
 
 namespace ConsoleRig
@@ -24,11 +24,11 @@ namespace ConsoleRig
 		_pimpl = std::make_unique<Pimpl>();
 
 		char processPath[MaxPath], cwd[MaxPath];
-		XlGetProcessPath((utf8*)processPath, dimof(processPath));
-    	XlGetCurrentDirectory(dimof(cwd), cwd);
+		OSServices::XlGetProcessPath((utf8*)processPath, dimof(processPath));
+    	OSServices::XlGetCurrentDirectory(dimof(cwd), cwd);
 
-		auto group0 = RawFS::FindFiles(std::string(processPath) + "/*Plugin.dll");
-		auto group1 = RawFS::FindFiles(std::string(cwd) + "/*Plugin.dll");
+		auto group0 = OSServices::FindFiles(std::string(processPath) + "/*Plugin.dll");
+		auto group1 = OSServices::FindFiles(std::string(cwd) + "/*Plugin.dll");
 
 		std::vector<std::string> candidatePlugins = group0;
 		candidatePlugins.insert(candidatePlugins.end(), group1.begin(), group1.end());

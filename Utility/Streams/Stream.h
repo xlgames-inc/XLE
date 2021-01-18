@@ -8,7 +8,6 @@
 
 #include "../../Core/Types.h"
 #include "../StringUtils.h"
-#include "../Detail/API.h"
 #include "../UTFUtils.h"
 #include "../StringUtils.h"
 #include <memory>
@@ -16,21 +15,6 @@
 
 namespace Utility
 {
-    class BasicFile;
-
-    enum StreamSeekType {
-        SST_CUR
-    };
-
-    class XL_UTILITY_API InputStream 
-    {
-    public:
-        virtual int Read(void* p, int len) = 0;
-        virtual bool Seek(StreamSeekType type, int64 offset) = 0;
-        virtual ~InputStream() {}
-    };
-
-
     class XL_UTILITY_API OutputStream 
     {
     public:
@@ -41,11 +25,8 @@ namespace Utility
         virtual void        WriteChar(char ch) = 0;             // note -- this is always a single byte character (ie, use the string version if you want to write multibyte characters)
         virtual void        Flush() = 0;
 
-        virtual ~OutputStream() {}
+        virtual ~OutputStream() = default;
     };
-
-    std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
-    std::unique_ptr<OutputStream>   OpenFileOutput(BasicFile&&);
 
 }
 

@@ -62,7 +62,7 @@ namespace ToolsRig
             cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layer._id);
             if (!DoesFileExist(cellFile) || overwriteExisting) {
                 XlDirname(path, dimof(path), cellFile);
-                RawFS::CreateDirectoryRecursive(path);
+                OSServices::CreateDirectoryRecursive(path);
 
                 TRY {
                     ioFormat.WriteCell(
@@ -141,7 +141,7 @@ namespace ToolsRig
                     if (overwriteExisting || !DoesFileExist(heightMapFile)) {
                         char path[MaxPath];
                         XlDirname(path, dimof(path), heightMapFile);
-                        RawFS::CreateDirectoryRecursive(path);
+                        OSServices::CreateDirectoryRecursive(path);
                         TRY {
                             outputIOFormat->WriteCell(
                                 heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
@@ -276,7 +276,7 @@ namespace ToolsRig
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress)
     {
-        RawFS::CreateDirectoryRecursive(uberSurfaceDir);
+        OSServices::CreateDirectoryRecursive(uberSurfaceDir);
 
         auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount(), true) : nullptr;
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
@@ -551,7 +551,7 @@ namespace ToolsRig
         UInt2 importOffset =  op._importMins;
         UInt2 finalDims = ClampImportDims(op._importMaxs - op._importMins, destNodeDims, destCellTreeDepth);
 
-        RawFS::CreateDirectoryRecursive(outputDir);
+        OSServices::CreateDirectoryRecursive(outputDir);
 
         auto dstSampleSize = ImpliedTyping::TypeDesc{dstType}.GetSize();
         uint64 resultSize = 
@@ -759,7 +759,7 @@ namespace ToolsRig
             // Export a uber surface file to tiff format.
         ::Assets::ResChar dirName[MaxPath];
         XlDirname(dirName, dimof(dirName), dstFile);
-        RawFS::CreateDirectoryRecursive(dirName);
+        OSServices::CreateDirectoryRecursive(dirName);
 
         ::Assets::ResChar srcFN[MaxPath];
         srcCfg.GetUberSurfaceFilename(srcFN, dimof(srcFN), srcDir, coverageId);
@@ -829,7 +829,7 @@ namespace ToolsRig
         unsigned destNodeDims, unsigned destCellTreeDepth,
         ConsoleRig::IProgress* progress)
     {
-        RawFS::CreateDirectoryRecursive(outputDir);
+        OSServices::CreateDirectoryRecursive(outputDir);
 
         UInt2 finalDims(
             cellCountX * destNodeDims * (1<<(destCellTreeDepth-1)),

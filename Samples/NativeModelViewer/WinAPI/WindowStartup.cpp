@@ -14,7 +14,7 @@
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
-#include "../../../Utility/SystemUtils.h"
+#include "../../../OSServices/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 
     // Note --  when you need to include <windows.h>, generally
@@ -22,7 +22,7 @@
     //          This helps prevent name conflicts with 
     //          windows #defines and so forth...
     //  (this is only actually required for the "WinMain" signature)
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {

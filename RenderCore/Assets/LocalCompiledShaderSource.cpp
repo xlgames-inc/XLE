@@ -152,10 +152,10 @@ namespace RenderCore { namespace Assets
             auto dir = dirs.back();
             dirs.pop_back();
 
-            auto files = RawFS::FindFiles(dir + "*.dir", RawFS::FindFilesFilter::File);
+            auto files = OSServices::FindFiles(dir + "*.dir", OSServices::FindFilesFilter::File);
             allArchives.insert(allArchives.end(), files.begin(), files.end());
 
-            auto subDirs = RawFS::FindFiles(dir + "*.*", RawFS::FindFilesFilter::Directory);
+            auto subDirs = OSServices::FindFiles(dir + "*.*", OSServices::FindFilesFilter::Directory);
             for (auto d=subDirs.cbegin(); d!=subDirs.cend(); ++d) {
                 if (!d->empty() && d->at(d->size()-1) != '.') {
                     dirs.push_back(*d + "/");
@@ -456,7 +456,7 @@ namespace RenderCore { namespace Assets
                 logFileName << "shader_error/ShaderCompileError_" << splitter.File().AsString() << "_" << splitter.Extension().AsString() << "_" << std::hex << hash << ".txt";
                 char finalLogFileName[MaxPath];
                 c->_shaderCacheSet->MakeIntermediateName(finalLogFileName, dimof(finalLogFileName), logFileName.AsStringSection());
-                RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(finalLogFileName).DriveAndPath());
+                OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(finalLogFileName).DriveAndPath());
                 std::unique_ptr<::Assets::IFileInterface> file;
 				if (::Assets::MainFileSystem::TryOpen(file, finalLogFileName, "wb") == ::Assets::MainFileSystem::IOReason::Success) {
 					file->Write(errors->data(), errors->size());

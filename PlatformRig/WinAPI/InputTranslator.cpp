@@ -8,7 +8,7 @@
 #include "../RenderOverlays/DebuggingDisplay.h"
 #include "../Utility/PtrUtils.h"
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 
 namespace PlatformRig
 {

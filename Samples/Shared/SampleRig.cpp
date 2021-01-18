@@ -37,7 +37,7 @@
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
-#include "../../Utility/Streams/FileSystemMonitor.h"
+#include "../../OSServices/FileSystemMonitor.h"
 #include "../../Utility/StringFormat.h"
 
 #include <functional>

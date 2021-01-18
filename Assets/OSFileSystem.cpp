@@ -8,7 +8,7 @@
 #include "IFileSystem.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileSystemMonitor.h"
+#include "../OSServices/FileSystemMonitor.h"
 #include "../Utility/Conversion.h"
 #include "../Core/Exceptions.h"
 #include <sstream>
@@ -17,7 +17,7 @@
 
 namespace Assets
 {
-	using IOReason = Utility::Exceptions::IOException::Reason;
+	using IOReason = OSServices::Exceptions::IOException::Reason;
 
 	/// <summary>Provides access to the underlying OS file system</summary>
 	/// This type of file is a layer over the OS filesystem. The rules and behaviour are
@@ -27,15 +27,15 @@ namespace Assets
 	public:
 		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
 		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor) never_throws override;
 		size_t      TellP() const never_throws override;
 		void        Flush() const never_throws;
 
 		size_t		GetSize() const never_throws override;
 		FileDesc	GetDesc() const never_throws override;
 
-		IOReason TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
-		IOReason TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws;
+		IOReason TryOpen(const utf8 filename[], const char openMode[], OSServices::FileShareMode::BitField shareMode) never_throws;
+		IOReason TryOpen(const utf16 filename[], const char openMode[], OSServices::FileShareMode::BitField shareMode) never_throws;
 
 		File_OS();
 		~File_OS();
@@ -45,22 +45,22 @@ namespace Assets
 		File_OS(const File_OS& copyFrom) = default;
 		File_OS& operator=(const File_OS& copyFrom) = default;
 	private:
-		RawFS::BasicFile _file;
+		OSServices::BasicFile _file;
 		std::basic_string<utf8> _fn;
 	};
 
 	size_t      File_OS::Read(void *buffer, size_t size, size_t count) const never_throws { return _file.Read(buffer, size, count); }
 	size_t      File_OS::Write(const void *buffer, size_t size, size_t count) never_throws { return _file.Write(buffer, size, count); }
-	ptrdiff_t	File_OS::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws { return _file.Seek(seekOffset, anchor); }
+	ptrdiff_t	File_OS::Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor anchor) never_throws { return _file.Seek(seekOffset, anchor); }
 	size_t      File_OS::TellP() const never_throws { return _file.TellP(); }
 	void        File_OS::Flush() const never_throws { _file.Flush(); }
 
 	size_t		File_OS::GetSize() const never_throws 
 	{
 		auto originalPos = _file.TellP();
-		const_cast<RawFS::BasicFile&>(_file).Seek(0, FileSeekAnchor::End);
+		const_cast<OSServices::BasicFile&>(_file).Seek(0, OSServices::FileSeekAnchor::End);
 		auto result = _file.TellP();
-		const_cast<RawFS::BasicFile&>(_file).Seek(originalPos);
+		const_cast<OSServices::BasicFile&>(_file).Seek(originalPos);
 		return result;
 	}
 
@@ -79,19 +79,19 @@ namespace Assets
 		};
 	}
 
-	IOReason File_OS::TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
+	IOReason File_OS::TryOpen(const utf8 filename[], const char openMode[], OSServices::FileShareMode::BitField shareMode) never_throws
 	{
 		auto res = _file.TryOpen(filename, openMode, shareMode);
-        if (res == Utility::Exceptions::IOException::Reason::Success) {
+        if (res == OSServices::Exceptions::IOException::Reason::Success) {
             _fn = filename;
         }
         return res;
 	}
 
-	IOReason File_OS::TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws
+	IOReason File_OS::TryOpen(const utf16 filename[], const char openMode[], OSServices::FileShareMode::BitField shareMode) never_throws
 	{
         auto res = _file.TryOpen(filename, openMode, shareMode);
-        if (res == Utility::Exceptions::IOException::Reason::Success) {
+        if (res == OSServices::Exceptions::IOException::Reason::Success) {
             _fn = Conversion::Convert<std::basic_string<utf8>>(MakeStringSection(filename));
         }
         return res;
@@ -109,8 +109,8 @@ namespace Assets
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf16> filename);
 
 		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
-		virtual IOReason	TryOpen(BasicFile& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
-		virtual IOReason	TryOpen(MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
@@ -183,7 +183,7 @@ namespace Assets
 		return TranslateResult::Success;
 	}
 
-	auto FileSystem_OS::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_OS::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
 		if (marker.size() <= 2) return IOReason::FileNotFound;
 
@@ -205,33 +205,33 @@ namespace Assets
 		return IOReason::FileNotFound;
 	}
 
-	auto FileSystem_OS::TryOpen(BasicFile& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_OS::TryOpen(OSServices::BasicFile& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = BasicFile();
+		result = OSServices::BasicFile();
 		if (marker.size() <= 2) return IOReason::FileNotFound;
 
 		// "marker" always contains a null terminated string (important, because the underlying API requires
 		// a null terminated string, not a begin/end pair)
 		auto type = *(uint16*)AsPointer(marker.cbegin());
 		if (type == 1) {
-			return ((RawFS::BasicFile&)result).TryOpen((const utf8*)PtrAdd(AsPointer(marker.begin()), 2), openMode, shareMode);
+			return ((OSServices::BasicFile&)result).TryOpen((const utf8*)PtrAdd(AsPointer(marker.begin()), 2), openMode, shareMode);
 		} else if (type == 2) {
-			return ((RawFS::BasicFile&)result).TryOpen((const utf16*)PtrAdd(AsPointer(marker.begin()), 2), openMode, shareMode);
+			return ((OSServices::BasicFile&)result).TryOpen((const utf16*)PtrAdd(AsPointer(marker.begin()), 2), openMode, shareMode);
 		}
 
 		return IOReason::FileNotFound;
 	}
 
-	auto FileSystem_OS::TryOpen(MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_OS::TryOpen(OSServices::MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
-		result = MemoryMappedFile();
+		result = OSServices::MemoryMappedFile();
 		if (marker.size() <= 2) return IOReason::FileNotFound;
 
 		auto type = *(uint16*)AsPointer(marker.cbegin());
 		if (type == 1) {
-			return ((RawFS::MemoryMappedFile&)result).TryOpen((const utf8*)PtrAdd(AsPointer(marker.begin()), 2), size, openMode, shareMode);
+			return ((OSServices::MemoryMappedFile&)result).TryOpen((const utf8*)PtrAdd(AsPointer(marker.begin()), 2), size, openMode, shareMode);
 		} else if (type == 2) {
-			return ((RawFS::MemoryMappedFile&)result).TryOpen((const utf16*)PtrAdd(AsPointer(marker.begin()), 2), size, openMode, shareMode);
+			return ((OSServices::MemoryMappedFile&)result).TryOpen((const utf16*)PtrAdd(AsPointer(marker.begin()), 2), size, openMode, shareMode);
 		}
 
 		return IOReason::FileNotFound;
@@ -249,7 +249,7 @@ namespace Assets
 			auto split = MakeFileNameSplitter(fn);
 			utf8 directoryName[MaxPath];
 			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-			AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
+			OSServices::AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
 			return IOReason::Success;
 		} else if (type == 2) {
 			auto fn = MakeStringSection(
@@ -258,7 +258,7 @@ namespace Assets
 			auto split = MakeFileNameSplitter(fn);
 			utf16 directoryName[MaxPath];
 			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-			AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
+			OSServices::AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
 			return IOReason::Success;
 		}
 		return IOReason::Complex;
@@ -272,7 +272,7 @@ namespace Assets
 		auto type = *(uint16*)AsPointer(marker.cbegin());
 		if (type == 1) {
 			std::basic_string<utf8> str((const utf8*)PtrAdd(AsPointer(marker.begin()), 2));
-			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
+			auto attrib = OSServices::TryGetFileAttributes(str.c_str());
 			if (!attrib)
 				return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
@@ -286,7 +286,7 @@ namespace Assets
 				};
 		} else if (type == 2) {
 			std::basic_string<utf16> str((const utf16*)PtrAdd(AsPointer(marker.begin()), 2));
-			auto attrib = RawFS::TryGetFileAttributes(str.c_str());
+			auto attrib = OSServices::TryGetFileAttributes(str.c_str());
 			if (!attrib)
 				return FileDesc { std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 
@@ -318,7 +318,7 @@ namespace Assets
 			dir = Conversion::Convert<std::string>(_rootUTF8);
 		}
 		dir += "*";
-        auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::File);
+        auto temp = OSServices::FindFiles(dir, OSServices::FindFilesFilter::File);
         std::vector<IFileSystem::Marker> res;
         res.reserve(temp.size());
         std::regex r(regexMatchPattern.Cast<char>().AsString());
@@ -352,7 +352,7 @@ namespace Assets
 			dir = Conversion::Convert<std::string>(_rootUTF8);
 		}
 		dir += "*";
-        auto temp = RawFS::FindFiles(dir, RawFS::FindFilesFilter::Directory);
+        auto temp = OSServices::FindFiles(dir, OSServices::FindFilesFilter::Directory);
         std::vector<std::basic_string<utf8>> res;
         res.reserve(temp.size());
         auto rootSplit = MakeSplitPath(_rootUTF8);

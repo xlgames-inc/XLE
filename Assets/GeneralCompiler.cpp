@@ -22,7 +22,7 @@
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/Stream.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Utility/SystemUtils.h"
+#include "../../OSServices/SystemUtils.h"
 #include "../../Utility/Conversion.h"
 #include <regex>
 #include <set>
@@ -63,7 +63,7 @@ namespace Assets
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
             // Create the directory if we need to...
-        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
+        OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
 
             // We need to separate out chunks that will be written to
             // the main output file from chunks that will be written to

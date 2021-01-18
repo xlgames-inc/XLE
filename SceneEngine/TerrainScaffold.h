@@ -13,7 +13,7 @@
 #include <string>
 #include <memory>
 
-namespace Utility       { class BasicFile; }
+namespace OSServices    { class BasicFile; }
 namespace Assets        { class DependencyValidation; }
 
 namespace SceneEngine

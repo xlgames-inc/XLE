@@ -25,7 +25,7 @@
 #include <thread>
 #endif
 
-namespace Utility
+namespace OSServices
 {
     uint64 GetPerformanceCounter()
     {
@@ -44,7 +44,7 @@ namespace Utility
 #include "FileUtils.h"
 #include "../StringUtils.h"
 
-namespace Utility
+namespace OSServices
 {
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
     struct MonitorEntry {
@@ -384,7 +384,7 @@ namespace Utility
 
 #else
 
-namespace Utility
+namespace OSServices
 {
     static const auto NSEC_PER_SEC = 1000000000ull;
 
@@ -403,7 +403,7 @@ namespace Utility
 
 #endif
 
-namespace Utility
+namespace OSServices
 {
     XlHandle XlCreateEvent(bool manualReset) { return 0; }
     bool XlResetEvent(XlHandle event) { return false; }

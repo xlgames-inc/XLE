@@ -8,9 +8,9 @@
 #include <memory>
 #include <string>
 
-#include "../IteratorUtils.h"
+#include "../Utility/IteratorUtils.h"
 
-namespace Utility { namespace Networking
+namespace OSServices
 {
     using bytes = std::vector<char>;
 
@@ -78,5 +78,5 @@ namespace Utility { namespace Networking
         const ErrorCode _code;
         const int _errno;
     };
-}}
-using namespace Utility;
+}
+

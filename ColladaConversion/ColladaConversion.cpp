@@ -604,7 +604,7 @@ namespace ColladaConversion
 		// Search the given directory for all .dae files. We'll merge them all together as a single animation set
 		std::vector<std::pair<std::string, std::string>> sourceFiles;
 		if (folderSearch) {
-			auto rawFiles = RawFS::FindFiles(identifier.AsString() + "/*.dae", RawFS::FindFilesFilter::File);
+			auto rawFiles = OSServices::FindFiles(identifier.AsString() + "/*.dae", OSServices::FindFilesFilter::File);
 			for (const auto&filePath:rawFiles)
 				sourceFiles.push_back(std::make_pair(filePath, MakeFileNameSplitter(filePath).File().AsString()));
 		} else {

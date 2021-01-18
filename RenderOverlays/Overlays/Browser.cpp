@@ -51,7 +51,7 @@
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 
 #pragma warning(disable:4505) //  'Overlays::Copy2DTexture' : unreferenced local function has been removed
 

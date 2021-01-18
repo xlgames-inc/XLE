@@ -11,7 +11,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/ResourceDesc.h"
 #include "../../Utility/PtrUtils.h"
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"

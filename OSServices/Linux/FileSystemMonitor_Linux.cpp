@@ -2,14 +2,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../PathUtils.h"
 #include "../FileSystemMonitor.h"
-#include "../../Threading/Mutex.h"
-#include "../../Threading/LockFree.h"
-#include "../../MemoryUtils.h"
-#include "../../UTFUtils.h"
-#include "../../IteratorUtils.h"
-#include "../../Conversion.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Threading/Mutex.h"
+#include "../../Utility/Threading/LockFree.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/UTFUtils.h"
+#include "../../Utility/IteratorUtils.h"
+#include "../../Utility/Conversion.h"
 #include <vector>
 #include <memory>
 #include <cctype>
@@ -23,7 +23,7 @@
 
 #if defined(ENABLE_FILESYSTEM_MONITORING)
 
-namespace Utility
+namespace OSServices
 {
     class MonitoredDirectory
     {
@@ -232,7 +232,7 @@ namespace Utility
 
 #else
 
-namespace Utility
+namespace OSServices
 {
     void AttachFileSystemMonitor(StringSection<utf16> directoryName,
                                  StringSection<utf16> filename,

@@ -7,7 +7,7 @@
 #include "CompletionThreadPool.h"
 #include "ThreadLocalPtr.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../Utility/SystemUtils.h"
+#include "../../OSServices/SystemUtils.h"
 #include "../../Core/Exceptions.h"
 #include <functional>
 

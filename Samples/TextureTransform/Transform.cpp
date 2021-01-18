@@ -29,7 +29,7 @@
 #include <map>
 #include <fstream>
 
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 namespace TextureTransform

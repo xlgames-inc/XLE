@@ -13,7 +13,7 @@
 
     // Vulkan includes <windows.h> -- so we must include it first to get our
     // framework of compatibility macros!
-    #include "../../../Core/WinAPI/IncludeWindows.h"
+    #include "../../../OSServices/WinAPI/IncludeWindows.h"
 #endif
 
 #pragma push_macro("new")

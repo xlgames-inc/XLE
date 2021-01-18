@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Utility/ParameterBox.h"
-#include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamTypes.h"

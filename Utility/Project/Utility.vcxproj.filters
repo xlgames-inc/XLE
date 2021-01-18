@@ -69,9 +69,6 @@
     <ClInclude Include="..\Streams\DataSerialize.h">
       <Filter>Streams</Filter>
     </ClInclude>
-    <ClInclude Include="..\Streams\FileSystemMonitor.h">
-      <Filter>Streams</Filter>
-    </ClInclude>
     <ClInclude Include="..\WinAPI\WinAPIWrapper.h">
       <Filter>WinAPI</Filter>
     </ClInclude>

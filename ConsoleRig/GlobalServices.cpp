@@ -15,10 +15,10 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
+#include "../OSServices/FileSystemMonitor.h"
+#include "../OSServices/SystemUtils.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileSystemMonitor.h"
-#include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -43,7 +43,7 @@ namespace ConsoleRig
             //              (relative to the application path)
             //
         utf8 appPath[MaxPath];
-        XlGetProcessPath(appPath, dimof(appPath));
+        OSServices::XlGetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
         return splitter.DriveAndPath().AsString() + "/../Working";
     }
@@ -78,7 +78,7 @@ namespace ConsoleRig
 
 		auto assetRoot = GetAssetRoot();
         if (cfg._setWorkingDir)
-			XlChDir(assetRoot.c_str());
+			OSServices::XlChDir(assetRoot.c_str());
 
 		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
 
@@ -90,7 +90,7 @@ namespace ConsoleRig
             //      git and it contains only temporary data).
             //      Note that we overwrite the log file every time, destroying previous data.
             //
-        RawFS::CreateDirectoryRecursive("int");
+        OSServices::CreateDirectoryRecursive("int");
     }
 
     static void MainRig_Attach()
@@ -99,9 +99,9 @@ namespace ConsoleRig
 
 		DebugUtil_Startup();
 
-        if (!serv.Has<ModuleId()>(Fn_ConsoleMainModule)) {
+        if (!serv.Has<OSServices::ModuleId()>(Fn_ConsoleMainModule)) {
             auto console = std::make_shared<Console>();
-            auto currentModule = GetCurrentModuleId();
+            auto currentModule = OSServices::GetCurrentModuleId();
             serv.Add(
                 Fn_GetConsole, 
                 [console]() { return console.get(); });
@@ -136,8 +136,8 @@ namespace ConsoleRig
             // this will throw an exception if no module has successfully initialised
             // logging
         auto& serv = CrossModule::GetInstance()._services;
-		ModuleId mainModuleId = 0;
-        if (serv.TryCall(Fn_ConsoleMainModule, mainModuleId) && mainModuleId == GetCurrentModuleId()) {
+		OSServices::ModuleId mainModuleId = 0;
+        if (serv.TryCall(Fn_ConsoleMainModule, mainModuleId) && mainModuleId == OSServices::GetCurrentModuleId()) {
             serv.Remove(Fn_GetConsole);
             serv.Remove(Fn_ConsoleMainModule);
         }
@@ -149,7 +149,7 @@ namespace ConsoleRig
 		ResourceBoxes_Shutdown();
 		DebugUtil_Shutdown();
         ::Assets::MainFileSystem::Shutdown();
-		TerminateFileSystemMonitoring();
+		OSServices::TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ namespace ConsoleRig
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
-        const auto* cmdLine = XlGetCommandLine();
+        const auto* cmdLine = OSServices::XlGetCommandLine();
         if (cmdLine && XlFindString(cmdLine, "-nsight"))
             CrossModule::GetInstance()._services.Add(Hash64("nsight"), []() { return true; });
     }

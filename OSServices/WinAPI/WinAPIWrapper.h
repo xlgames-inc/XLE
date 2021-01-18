@@ -10,9 +10,9 @@
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 
-namespace Utility { namespace Windows
+namespace OSServices { namespace Windows
 {
         //
         //      Redirection to help with unicode support
@@ -30,5 +30,3 @@ namespace Utility { namespace Windows
 }}
 
 #endif
-
-using namespace Utility;

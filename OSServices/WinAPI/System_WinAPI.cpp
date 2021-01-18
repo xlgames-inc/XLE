@@ -11,7 +11,7 @@
 #include "../StringFormat.h"
 #include "../SystemUtils.h"
 #include "../TimeUtils.h"
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 #include <process.h>
 #include <share.h>
 #include <time.h>
@@ -19,7 +19,7 @@
 #include <psapi.h>
 #include <shellapi.h>
 
-namespace Utility
+namespace OSServices
 {
 
 //////////////////////////////////////////////////////////////////////////

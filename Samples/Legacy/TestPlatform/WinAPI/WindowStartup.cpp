@@ -7,7 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
-#include "../../../Utility/SystemUtils.h"
+#include "../../../OSServices/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
 
@@ -16,7 +16,7 @@
     //          This helps prevent name conflicts with 
     //          windows #defines and so forth...
     //  (this is only actually required for the "WinMain" signature)
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 
 namespace Sample
 {

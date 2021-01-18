@@ -6,7 +6,7 @@
 
 #include "../Utility/UTFUtils.h"			// for utf8, utf16
 #include "../Utility/StringUtils.h"			// for StringSection
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Core/Types.h"
 #include "../Core/Exceptions.h"
 #include <string>
@@ -24,7 +24,7 @@ namespace Assets
 	using FileSystemId = unsigned;
 	static const FileSystemId FileSystemId_Invalid = ~0u;
 
-	static const FileShareMode::BitField FileShareMode_Default = FileShareMode::Read;
+	static const OSServices::FileShareMode::BitField FileShareMode_Default = OSServices::FileShareMode::Read;
 
 	/// <summary>Interface for interacting with a file</summary>
 	/// A file can be a physical file on disk, or any logical object that behaves like a file.
@@ -38,7 +38,7 @@ namespace Assets
 	public:
 		virtual size_t			Write(const void * source, size_t size, size_t count = 1) never_throws = 0;
 		virtual size_t			Read(void * destination, size_t size, size_t count = 1) const never_throws = 0;
-		virtual ptrdiff_t		Seek(ptrdiff_t seekOffset, FileSeekAnchor = FileSeekAnchor::Start) never_throws = 0;
+		virtual ptrdiff_t		Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor = OSServices::FileSeekAnchor::Start) never_throws = 0;
 		virtual size_t			TellP() const never_throws = 0;
 
 		virtual size_t			GetSize() const never_throws = 0;
@@ -69,11 +69,11 @@ namespace Assets
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf8> filename) = 0;
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf16> filename) = 0;
 
-		using IOReason = Utility::Exceptions::IOException::Reason;
+		using IOReason = OSServices::Exceptions::IOException::Reason;
 
-		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
-		virtual IOReason	TryOpen(BasicFile& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
-		virtual IOReason	TryOpen(MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
+		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
+		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
+		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
 
 		virtual	IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) = 0;
 		virtual	FileDesc	TryGetDesc(const Marker& marker) = 0;
@@ -214,7 +214,7 @@ namespace Assets
 		std::basic_string<utf8>	_naturalName;
 		std::basic_string<utf8>	_mountedName;
 		State					_state;
-		FileTime				_modificationTime;
+		OSServices::FileTime	_modificationTime;
 		uint64					_size;
 	};
 
@@ -231,19 +231,19 @@ namespace Assets
 	public:
 		using IOReason = IFileSystem::IOReason;
 
-		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static IOReason	TryOpen(BasicFile& result, StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static IOReason	TryOpen(MemoryMappedFile& result, StringSection<utf8> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(OSServices::BasicFile& result, StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(OSServices::MemoryMappedFile& result, StringSection<utf8> filename, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryMonitor(StringSection<utf8> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf8> filename);
 
-		static BasicFile OpenBasicFile(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static MemoryMappedFile OpenMemoryMappedFile(StringSection<utf8> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static std::unique_ptr<IFileInterface> OpenFileInterface(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
+		static OSServices::BasicFile OpenBasicFile(StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static OSServices::MemoryMappedFile OpenMemoryMappedFile(StringSection<utf8> filename, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static std::unique_ptr<IFileInterface> OpenFileInterface(StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 
-		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static IOReason	TryOpen(BasicFile& result, StringSection<utf16> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-		static IOReason	TryOpen(MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<utf16> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(OSServices::BasicFile& result, StringSection<utf16> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+		static IOReason	TryOpen(OSServices::MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
@@ -257,8 +257,8 @@ namespace Assets
         static void Shutdown();
 	};
 
-	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
-	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
+	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
+	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 	T1(CharType) IFileSystem::IOReason TryMonitor(IFileSystem& fs, StringSection<CharType> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
 	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);

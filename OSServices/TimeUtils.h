@@ -8,7 +8,7 @@
 
 #include "../Core/Types.h"
 
-namespace Utility
+namespace OSServices
 {
     typedef uint32 Millisecond;     // 1/1000 of a second
     typedef uint64 Microsecond;     // 1/1000000 of a second
@@ -19,6 +19,3 @@ namespace Utility
     uint64          GetPerformanceCounter();
     uint64          GetPerformanceCounterFrequency();
 }
-
-using namespace Utility;
-

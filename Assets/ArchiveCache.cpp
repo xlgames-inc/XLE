@@ -541,7 +541,7 @@ namespace Assets
         _directoryFileName = _mainFileName + ".dir";
 
             // (make sure the directory provided exists)
-        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(_mainFileName).DriveAndPath());
+        OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(_mainFileName).DriveAndPath());
     }
 
     ArchiveCache::~ArchiveCache() 

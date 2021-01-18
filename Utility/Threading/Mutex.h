@@ -83,7 +83,7 @@
 #if THREAD_LIBRARY == THREAD_LIBRARY_TBB
 
     #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
-        #include "../../Core/WinAPI/IncludeWindows.h"      // (TBB brings in windows.h, so let's make sure our defines are set)
+        #include "../../OSServices/WinAPI/IncludeWindows.h"      // (TBB brings in windows.h, so let's make sure our defines are set)
     #endif
 
         //  "Intel Threading Building Blocks" is being excluded because

@@ -246,7 +246,7 @@ namespace GUILayer
 
     static void PrepareDirectoryForFile(std::string& destinationFile)
     {
-        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
+        OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
     }
 
     ref class TextPendingExport : public EditorSceneManager::PendingExport

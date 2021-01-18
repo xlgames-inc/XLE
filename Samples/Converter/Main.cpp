@@ -18,11 +18,11 @@
 #include "../../Assets/GeneralCompiler.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
-#include "../../Utility/Streams/FileSystemMonitor.h"
+#include "../../OSServices/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/SystemUtils.h"
+#include "../../OSServices/SystemUtils.h"
 
-#include "../../Core/WinAPI/IncludeWindows.h"
+#include "../../OSServices/WinAPI/IncludeWindows.h"
 
 namespace Converter
 {
@@ -82,9 +82,9 @@ namespace Converter
 
 		if (finalState == ::Assets::AssetState::Ready) {
 			// write out artifacts to output directory... But first, find all of the existing files.
-			auto filesToDelete = RawFS::FindFiles(outputDirectory + "/" + MakeFileNameSplitter(outputDirectory).File().AsString() + "[*]", RawFS::FindFilesFilter::File);
+			auto filesToDelete = OSServices::FindFiles(outputDirectory + "/" + MakeFileNameSplitter(outputDirectory).File().AsString() + "[*]", OSServices::FindFilesFilter::File);
 			
-			RawFS::CreateDirectoryRecursive(outputDirectory);
+			OSServices::CreateDirectoryRecursive(outputDirectory);
 			for (const auto&a:pendingCompile->GetArtifacts()) {
 				auto outputName = outputDirectory + "/" + MakeFileNameSplitter(outputDirectory).File().AsString() + "[" + a.first + "]";
 				auto file = ::Assets::MainFileSystem::OpenFileInterface(MakeStringSection(outputName), "wb");

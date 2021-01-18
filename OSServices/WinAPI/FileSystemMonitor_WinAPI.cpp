@@ -8,7 +8,7 @@
 #include "../../../Core/Prefix.h"
 #include "../FileSystemMonitor.h"
 #include "../../../Core/Types.h"
-#include "../../../Core/WinAPI/IncludeWindows.h"
+#include "../../../OSServices/WinAPI/IncludeWindows.h"
 #include "../../Threading/Mutex.h"
 #include "../../Threading/LockFree.h"
 #include "../../MemoryUtils.h"

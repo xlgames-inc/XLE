@@ -36,7 +36,7 @@
 
 #include <stack>
 
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/IncludeWindows.h"
 
 namespace SceneEngine
 {
