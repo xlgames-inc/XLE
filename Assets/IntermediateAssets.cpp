@@ -13,7 +13,7 @@
 #include "AssetUtils.h"
 
 #include "../ConsoleRig/Log.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"

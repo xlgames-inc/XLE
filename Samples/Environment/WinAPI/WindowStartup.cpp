@@ -8,8 +8,8 @@
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
-#include "../../../OSServices/SystemUtils.h"
-#include "../../../OSServices/BasicFile.h"
+#include "../../../OSServices/RawFS.h"
+#include "../../../OSServices/RawFS.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
 
@@ -58,13 +58,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     TRY {
         Sample::ExecuteSample(lpCmdLine);
     } CATCH (const std::exception& e) {
-        XlOutputDebugString("Hit top-level exception: ");
-        XlOutputDebugString(e.what());
-        XlOutputDebugString("\n");
-
         Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
         Log(Error) << e.what() << std::endl;
-        XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 
     return 0;

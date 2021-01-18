@@ -97,7 +97,7 @@
     <ClInclude Include="..\Streams\XmlStreamFormatter.h" />
     <ClInclude Include="..\StringFormat.h" />
     <ClInclude Include="..\StringUtils.h" />
-    <ClInclude Include="..\SystemUtils.h" />
+    <ClInclude Include="..\RawFS.h" />
     <ClInclude Include="..\Threading\CompletionThreadPool.h" />
     <ClInclude Include="..\Threading\LockFree.h" />
     <ClInclude Include="..\Threading\Mutex.h" />

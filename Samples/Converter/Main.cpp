@@ -20,7 +20,7 @@
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../OSServices/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/SystemUtils.h"
+#include "../../OSServices/RawFS.h"
 
 #include "../../OSServices/WinAPI/IncludeWindows.h"
 
@@ -100,7 +100,7 @@ namespace Converter
 
 			// Delete any files that were there originally, but haven't been overwritten
 			for (const auto&f:filesToDelete)
-				XlDeleteFile((const utf8*)f.c_str());
+				DeleteFile((const utf8*)f.c_str());
 		}
 		
         return 0;

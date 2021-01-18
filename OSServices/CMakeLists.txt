@@ -1,17 +1,17 @@
 
 set(Src
     Socket.cpp
-    BasicFile.cpp
+    RawFS.cpp
     )
 set(Headers
-    SystemUtils.h
+    RawFS.h
     TimeUtils.h
     )
 
 if (WIN32)
-    set(WinAPISrc WinAPI/System_WinAPI.cpp WinAPI/FileSystemMonitor_WinAPI.cpp WinAPI/BasicFile_WinAPI.cpp)
+    set(WinAPISrc WinAPI/System_WinAPI.cpp WinAPI/FileSystemMonitor_WinAPI.cpp WinAPI/RawFS_WinAPI.cpp)
 elseif (NOT APPLE)
-    set(LinuxSrc Linux/System_Linux.cpp Linux/FileSystemMonitor_Linux.cpp Linux/BasicFile_Linux.cpp Linux/BasicFile_stdio.cpp)
+    set(LinuxSrc Linux/System_Linux.cpp Linux/FileSystemMonitor_Linux.cpp Linux/RawFS_Linux.cpp RawFS_stdio.cpp)
 endif()
 
 add_library(OSServices STATIC ${Src} ${Headers} ${WinAPISrc} ${LinuxSrc})

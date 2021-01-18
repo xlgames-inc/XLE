@@ -101,7 +101,6 @@
 		8FD85D921EA688D1009BD9B0 /* StringFormatTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D451EA688D1009BD9B0 /* StringFormatTime.cpp */; };
 		8FD85D931EA688D1009BD9B0 /* StringUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D461EA688D1009BD9B0 /* StringUtils.cpp */; };
 		8FD85D941EA688D1009BD9B0 /* StringUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D471EA688D1009BD9B0 /* StringUtils.h */; };
-		8FD85D951EA688D1009BD9B0 /* SystemUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D481EA688D1009BD9B0 /* SystemUtils.h */; };
 		8FD85D961EA688D1009BD9B0 /* CompletionThreadPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D4A1EA688D1009BD9B0 /* CompletionThreadPool.cpp */; };
 		8FD85D971EA688D1009BD9B0 /* CompletionThreadPool.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D4B1EA688D1009BD9B0 /* CompletionThreadPool.h */; };
 		8FD85D981EA688D1009BD9B0 /* LockFree.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D4C1EA688D1009BD9B0 /* LockFree.h */; };
@@ -202,7 +201,6 @@
 		8FD85D451EA688D1009BD9B0 /* StringFormatTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StringFormatTime.cpp; path = ../StringFormatTime.cpp; sourceTree = "<group>"; };
 		8FD85D461EA688D1009BD9B0 /* StringUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StringUtils.cpp; path = ../StringUtils.cpp; sourceTree = "<group>"; };
 		8FD85D471EA688D1009BD9B0 /* StringUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StringUtils.h; path = ../StringUtils.h; sourceTree = "<group>"; };
-		8FD85D481EA688D1009BD9B0 /* SystemUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SystemUtils.h; path = ../SystemUtils.h; sourceTree = "<group>"; };
 		8FD85D4A1EA688D1009BD9B0 /* CompletionThreadPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CompletionThreadPool.cpp; sourceTree = "<group>"; };
 		8FD85D4B1EA688D1009BD9B0 /* CompletionThreadPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CompletionThreadPool.h; sourceTree = "<group>"; };
 		8FD85D4C1EA688D1009BD9B0 /* LockFree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LockFree.h; sourceTree = "<group>"; };
@@ -287,7 +285,6 @@
 				8FD85D451EA688D1009BD9B0 /* StringFormatTime.cpp */,
 				8FD85D461EA688D1009BD9B0 /* StringUtils.cpp */,
 				8FD85D471EA688D1009BD9B0 /* StringUtils.h */,
-				8FD85D481EA688D1009BD9B0 /* SystemUtils.h */,
 				8FD85D531EA688D1009BD9B0 /* TimeUtils.h */,
 				8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */,
 				8FD85D551EA688D1009BD9B0 /* UTFUtils.h */,
@@ -450,7 +447,6 @@
 				8FD85D751EA688D1009BD9B0 /* ParameterBox.h in Headers */,
 				8FD85D791EA688D1009BD9B0 /* PtrUtils.h in Headers */,
 				8FD85D581EA688D1009BD9B0 /* ArithmeticUtils.h in Headers */,
-				8FD85D951EA688D1009BD9B0 /* SystemUtils.h in Headers */,
 				8FD85D7E1EA688D1009BD9B0 /* FileSystemMonitor.h in Headers */,
 				8FD85D781EA688D1009BD9B0 /* CPUProfiler.h in Headers */,
 				8FD85D801EA688D1009BD9B0 /* FileUtils.h in Headers */,

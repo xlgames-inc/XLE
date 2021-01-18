@@ -55,7 +55,7 @@
       <Filter>Streams</Filter>
     </ClInclude>
     <ClInclude Include="..\ArithmeticUtils.h" />
-    <ClInclude Include="..\SystemUtils.h" />
+    <ClInclude Include="..\RawFS.h" />
     <ClInclude Include="..\TimeUtils.h" />
     <ClInclude Include="..\BitHeap.h" />
     <ClInclude Include="..\HeapUtils.h" />

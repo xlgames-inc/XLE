@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "BasicFile.h"
+#include "RawFS.h"
 #include "../Utility/PtrUtils.h"
 #include <stdio.h>
 

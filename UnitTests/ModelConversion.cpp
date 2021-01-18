@@ -20,7 +20,7 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachableLibrary.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
@@ -98,7 +98,7 @@ namespace UnitTests
 					asyncMan.GetIntermediateStore()->MakeIntermediateName(
 						intermediateFile,
 						(StringMeld<MaxPath, ResChar>() << sampleAsset << "-skin").AsStringSection());
-					XlDeleteFile((utf8*)intermediateFile);
+					DeleteFile((utf8*)intermediateFile);
 				}
 
 				auto startTime = Millisecond_Now();
@@ -200,7 +200,7 @@ namespace UnitTests
             // Load all of the .dae files from a hierarchy of folders, look for errors
             // and exceptions from the scaffold parsing. This is intended to be used with
             // large test suites of .dae files (like the collada implementor's test kit)
-            auto inputFiles = OSServices::FindFilesHierarchical("../../work/ColladaImplementors/StandardDataSets", "*.dae", OSServices::FindFilesFilter::File);
+            // auto inputFiles = OSServices::FindFilesHierarchical("../../work/ColladaImplementors/StandardDataSets", "*.dae", OSServices::FindFilesFilter::File);
 
             {
                 #if defined(_DEBUG)

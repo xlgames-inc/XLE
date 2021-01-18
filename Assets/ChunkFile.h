@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/Types.h"
 #include "../Core/SelectConfiguration.h"

@@ -15,7 +15,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"

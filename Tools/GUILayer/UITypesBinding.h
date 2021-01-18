@@ -11,7 +11,7 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/DivergentAsset.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/SystemUtils.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/ParameterBox.h"
 
 using namespace System::ComponentModel;

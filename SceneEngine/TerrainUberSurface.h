@@ -12,7 +12,7 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
 #include "../Utility/PtrUtils.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Assets/AssetsCore.h"
 #include "../Math/Vector.h"
 #include "../Utility/IntrusivePtr.h"

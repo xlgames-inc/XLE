@@ -16,8 +16,8 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
+#include "../OSServices/RawFS.h"
 #include <CppUnitTest.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;

@@ -82,7 +82,7 @@
             PrintFormat() | <i>printf-style formatted output to a OutputStream</i>
 
         The utility library also provides a layer over many standard library functions (eg, XlCopyMemory),
-        as well as layers over common OS functions (like XlGetCommandLine and FindFiles).
+        as well as layers over common OS functions (like GetCommandLine and FindFiles).
 
 */
 namespace Utility {}

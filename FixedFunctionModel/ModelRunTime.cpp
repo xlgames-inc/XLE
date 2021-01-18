@@ -30,7 +30,7 @@
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
 #include "../Utility/PtrUtils.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Math/Transformations.h"

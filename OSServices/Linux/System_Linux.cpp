@@ -1,5 +1,5 @@
 
-#include "../SystemUtils.h"
+#include "../RawFS.h"
 #include "../../Core/SelectConfiguration.h"
 #include "../../Core/Types.h"
 #include <sys/time.h>
@@ -10,11 +10,6 @@
 
 namespace OSServices
 {
-    uint32 XlGetCurrentThreadId()
-    {
-        return 0;
-    }
-
     static const auto NSEC_PER_SEC = 1000000000ull;
 
     uint64 GetPerformanceCounter()
@@ -36,21 +31,20 @@ namespace OSServices
     uint32 XlWaitForSyncObject(XlHandle object, uint32 waitTime) { return 0; }
     uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable) { return 0; }
 
-    bool XlGetCurrentDirectory(uint32 dim, char dst[])
+    bool GetCurrentDirectory(uint32 dim, char dst[])
     {
         if (dim > 0) dst[0] = '\0';
         return false;
     }
-    uint64 XlGetCurrentFileTime() { return 0; }
 
-    void XlGetProcessPath(utf8 dst[], size_t bufferCount)
+    void GetProcessPath(utf8 dst[], size_t bufferCount)
     {
         if (bufferCount > 0) dst[0] = '\0';
     }
 
-    void XlChDir(const utf8 path[]) {}
+    void ChDir(const utf8 path[]) {}
 
-    const char* XlGetCommandLine() { return ""; }
+    const char* GetCommandLine() { return ""; }
 
     ModuleId GetCurrentModuleId() { return 0; }
 

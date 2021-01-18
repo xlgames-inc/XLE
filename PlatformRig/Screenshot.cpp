@@ -28,7 +28,7 @@
 #include "../Utility/Conversion.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 
 #include "../OSServices/WinAPI/IncludeWindows.h"
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"

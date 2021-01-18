@@ -8,8 +8,8 @@
 
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
+#include "../OSServices/RawFS.h"
 
 #pragma warning(disable:4505)		// 'UnitTests::GetStartupConfig': unreferenced local function has been removed
 
@@ -41,8 +41,8 @@ namespace UnitTests
             //      that.
     	    //
     	char appDir[MaxPath];
-    	XlGetCurrentDirectory(dimof(appDir), appDir);
-    	XlChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
+    	GetCurrentDirectory(dimof(appDir), appDir);
+    	ChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
     }
     
 }

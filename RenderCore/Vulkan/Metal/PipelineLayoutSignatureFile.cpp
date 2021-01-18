@@ -9,7 +9,7 @@
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
-#include "../../../OSServices/BasicFile.h"
+#include "../../../OSServices/RawFS.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {

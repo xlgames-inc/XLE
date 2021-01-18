@@ -14,7 +14,7 @@
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
-#include "../../../OSServices/SystemUtils.h"
+#include "../../../OSServices/RawFS.h"
 #include "../../../Core/Exceptions.h"
 
     // Note --  when you need to include <windows.h>, generally
@@ -47,13 +47,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
         Sample::ExecuteSample(std::make_shared<Sample::NativeModelViewerOverlay>());
     } CATCH (const std::exception& e) {
-        XlOutputDebugString("Hit top-level exception: ");
-        XlOutputDebugString(e.what());
-        XlOutputDebugString("\n");
-
         Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
         Log(Error) << e.what() << std::endl;
-        XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 
     return 0;

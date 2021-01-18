@@ -1,4 +1,4 @@
-#include "../BasicFile.h"
+#include "../RawFS.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include <sys/stat.h>
 #include <unistd.h>
@@ -73,7 +73,7 @@ namespace OSServices
 
 	std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
 	{
-			struct stat fdata;
+		struct stat fdata;
 		auto result = stat((const char*)filename, &fdata);
 		if (result!=0) return {};
 		return AsFileAttributes(fdata);
@@ -82,7 +82,7 @@ namespace OSServices
 	std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
 	{
 		assert(0);
-			return {};
+		return {};
 	}
 
 	std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
@@ -109,46 +109,6 @@ namespace OSServices
 		}
 
 		return fileList;
-	}
-
-	static std::vector<std::string> FindAllDirectories(const std::string& rootDirectory)
-	{
-			assert(0);
-			return {};
-	}
-
-	std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter)
-	{
-		std::vector<std::string> searchPaths = {rootDirectory};
-		std::vector<std::string> retval;
-		while (!searchPaths.empty()) {
-			const std::string searchPath = searchPaths.back();
-			searchPaths.pop_back();
-			DIR *dir = dir = opendir(searchPath.c_str());
-			if (dir != NULL) {
-				struct dirent *entry;
-				while ((entry = readdir(dir)) != NULL) {
-					auto full_path = searchPath + "/" + entry->d_name;
-					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-						continue;
-					}
-					if (entry->d_type == DT_DIR) {
-						searchPaths.push_back(full_path);
-					} else if (entry->d_type == DT_REG) {
-						retval.push_back(full_path);
-					}
-				}
-				closedir(dir);
-			} else {
-				struct stat st;
-				if (stat(searchPath.c_str(), &st)) {
-					assert(false); // TODO throw exception
-				}
-				assert(st.st_mode & S_IFREG); // TODO throw exception
-				retval.push_back(searchPath);
-			}
-		}
-		return retval;
 	}
 }
 

@@ -20,7 +20,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include <regex>
 #include <CppUnitTest.h>
 

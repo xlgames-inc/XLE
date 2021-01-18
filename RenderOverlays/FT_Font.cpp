@@ -12,7 +12,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Conversion.h"
 #include <set>

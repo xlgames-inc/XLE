@@ -21,7 +21,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Utility/StringFormat.h"
 

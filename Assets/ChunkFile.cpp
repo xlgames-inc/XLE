@@ -7,7 +7,7 @@
 #include "ChunkFile.h"
 #include "AssetsCore.h"
 #include "IFileSystem.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"

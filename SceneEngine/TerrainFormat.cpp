@@ -12,7 +12,7 @@
 #include "../Assets/Assets.h"
 #include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/PtrUtils.h"
 #include "../Core/Types.h"
 

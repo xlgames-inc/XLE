@@ -9,8 +9,8 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/WinAPI/WinAPIWrapper.h"
 #include <CppUnitTest.h>

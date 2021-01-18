@@ -14,7 +14,7 @@
 #include "../Math/Transformations.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Conversion.h"

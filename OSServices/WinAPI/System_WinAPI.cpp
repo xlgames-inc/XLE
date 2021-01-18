@@ -9,7 +9,7 @@
 #include "../Threading/LockFree.h"
 #include "../StringUtils.h"
 #include "../StringFormat.h"
-#include "../SystemUtils.h"
+#include "../RawFS.h"
 #include "../TimeUtils.h"
 #include "../../OSServices/WinAPI/IncludeWindows.h"
 #include <process.h>
@@ -65,11 +65,6 @@ uint64 XlMakeFileTime(struct tm* local)
     return _mktime64(local);
 }
 
-uint64 XlGetCurrentFileTime()
-{
-    return _time64(0);
-}
-
 double XlDiffTime(uint64 endTime, uint64 beginTime)
 {
     return _difftime64(endTime, beginTime);
@@ -98,15 +93,10 @@ ModuleId GetCurrentModuleId()
 
 
 //////////////////////////////////////////////////////////////////////////
-size_t XlGetCurrentThreadId()
-{
-    return GetCurrentThreadId();
-}
-
 bool XlIsCriticalSectionLocked(void* cs) 
 {
     CRITICAL_SECTION* csPtr = reinterpret_cast<CRITICAL_SECTION*>(cs);
-    return csPtr->RecursionCount > 0 && csPtr->OwningThread == (HANDLE)XlGetCurrentThreadId();
+    return csPtr->RecursionCount > 0 && csPtr->OwningThread == (HANDLE)GetCurrentThreadId();
 }
 
 static uint32 FromWinWaitResult(uint32 winResult)
@@ -154,7 +144,7 @@ uint32 XlGetCurrentProcessId()
     return GetCurrentProcessId();
 }
 
-bool XlGetCurrentDirectory(uint32 nBufferLength, char lpBuffer[])
+bool GetCurrentDirectory(uint32 nBufferLength, char lpBuffer[])
 {
 	return GetCurrentDirectoryA((DWORD)nBufferLength, lpBuffer) != FALSE;
 }
@@ -182,11 +172,6 @@ XlHandle XlCreateSemaphore(int maxCount)
         return NULL;
     }
     return h;
-}
-
-uint32 XlSignalAndWait(XlHandle hSig, XlHandle hWait, uint32 waitTime)
-{
-    return FromWinWaitResult(SignalObjectAndWait(hSig, hWait, waitTime, FALSE));
 }
 
 bool XlReleaseSemaphore(XlHandle h, int releaseCount, int* previousCount)
@@ -218,35 +203,25 @@ bool XlPulseEvent(XlHandle h)
     return PulseEvent(h) != FALSE;
 }
 
-void XlOutputDebugString(const char* format)
-{
-    ::OutputDebugStringA(format);
-}
-
-void XlMessageBox(const char* content, const char* title)
-{
-    ::MessageBoxA(nullptr, content, title, MB_OK);
-}
-
 uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable)
 {
     return FromWinWaitResult(WaitForMultipleObjectsEx(waitCount, waitObjects, waitAll ? TRUE : FALSE, waitTime, alterable));
 }
 
-void XlGetProcessPath(utf8 dst[], size_t bufferCount)    { GetModuleFileNameA(NULL, (char*)dst, (DWORD)bufferCount); }
-void XlChDir(const utf8 path[])                          { SetCurrentDirectoryA((const char*)path); }
-void XlDeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); (void)result; }
+void GetProcessPath(utf8 dst[], size_t bufferCount)    { GetModuleFileNameA(NULL, (char*)dst, (DWORD)bufferCount); }
+void ChDir(const utf8 path[])                          { SetCurrentDirectoryA((const char*)path); }
+void DeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); (void)result; }
 
-// void XlGetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NULL, (wchar_t*)dst, (DWORD)bufferCount); }
-// void XlChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }
-// void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); (void)result; }
+// void GetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NULL, (wchar_t*)dst, (DWORD)bufferCount); }
+// void ChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }
+// void DeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); (void)result; }
 
-void XlMoveFile(const utf8 destination[], const utf8 source[])
+void MoveFile(const utf8 destination[], const utf8 source[])
 {
     MoveFileA((const char*)source, (const char*)destination);
 }
 
-const char* XlGetCommandLine()
+const char* GetCommandLine()
 {
     return GetCommandLineA();
 }

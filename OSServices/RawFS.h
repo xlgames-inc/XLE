@@ -138,7 +138,6 @@ namespace OSServices
 	std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
 	std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
 
-	void CreateDirectoryRecursive(StringSection<char> filename);
 	void CreateDirectoryRecursive(StringSection<utf8> filename);
 	void CreateDirectoryRecursive(StringSection<utf16> filename);
 
@@ -153,5 +152,17 @@ namespace OSServices
 		typedef unsigned BitField;
 	}
 	std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
-	std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter = FindFilesFilter::All);
+
+    bool GetCurrentDirectory(uint32 dim, char dst[]);
+    void ChDir(const utf8 path[]);
+
+    void GetProcessPath(utf8 dst[], size_t bufferCount);
+	const char* GetCommandLine();
+    using ModuleId = size_t;
+    ModuleId GetCurrentModuleId();
+    
+    void DeleteFile(const utf8 path[]);
+    void MoveFile(const utf8 destination[], const utf8 source[]);
+
+    std::string SystemErrorCodeAsString(int errorCode);
 }

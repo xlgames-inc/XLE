@@ -10,7 +10,7 @@
 #include "../MemoryUtils.h"
 #include "../PtrUtils.h"
 #include "../StringFormat.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "Stream.h"
 #include "StreamTypes.h"
 #include <vector>

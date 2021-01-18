@@ -18,11 +18,11 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/LockFree.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/StringFormat.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Conversion.h"
 #include <regex>
 #include <set>
@@ -558,12 +558,12 @@ namespace Assets
 		// In some cases (eg, for unit tests where the process path points to an internal visual studio path), 
 		// we have to include extra paths
 		char processPath[MaxPath];
-		OSServices::XlGetProcessPath((utf8*)processPath, dimof(processPath));
+		OSServices::GetProcessPath((utf8*)processPath, dimof(processPath));
 		result.AddSearchDirectory(
 			MakeFileNameSplitter(processPath).DriveAndPath());
 		
 		char appDir[MaxPath];
-    	OSServices::XlGetCurrentDirectory(dimof(appDir), appDir);
+    	OSServices::GetCurrentDirectory(dimof(appDir), appDir);
 		result.AddSearchDirectory(appDir);
 		return result;
 	}

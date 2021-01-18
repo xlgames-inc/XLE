@@ -23,8 +23,8 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/StringFormat.h"
 #include <CppUnitTest.h>
 

@@ -30,7 +30,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../xleres/FileList.h"

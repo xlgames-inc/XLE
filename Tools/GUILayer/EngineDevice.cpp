@@ -34,8 +34,8 @@
 #include "../../Assets/MountingTree.h"
 #include "../../Assets/OSFileSystem.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/BasicFile.h"
-#include "../../OSServices/SystemUtils.h"
+#include "../../OSServices/RawFS.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/StringFormat.h"
 
 #include "../../Tools/ToolsRig/GenerateAO.h"
@@ -67,9 +67,9 @@ namespace GUILayer
     void EngineDevice::SetDefaultWorkingDirectory()
     {
         utf8 appPath[MaxPath];
-        XlGetProcessPath(appPath, dimof(appPath));
+        GetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
-		XlChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
+		ChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

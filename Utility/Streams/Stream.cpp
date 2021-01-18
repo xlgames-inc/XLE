@@ -6,7 +6,7 @@
 
 #include "Stream.h"
 #include "StreamTypes.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../MemoryUtils.h"
 #include "../StringUtils.h"
 #include "../PtrUtils.h"

@@ -15,9 +15,9 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../OSServices/FileSystemMonitor.h"
-#include "../OSServices/SystemUtils.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
@@ -43,7 +43,7 @@ namespace ConsoleRig
             //              (relative to the application path)
             //
         utf8 appPath[MaxPath];
-        OSServices::XlGetProcessPath(appPath, dimof(appPath));
+        OSServices::GetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
         return splitter.DriveAndPath().AsString() + "/../Working";
     }
@@ -78,7 +78,7 @@ namespace ConsoleRig
 
 		auto assetRoot = GetAssetRoot();
         if (cfg._setWorkingDir)
-			OSServices::XlChDir(assetRoot.c_str());
+			OSServices::ChDir(assetRoot.c_str());
 
 		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
 
@@ -178,7 +178,7 @@ namespace ConsoleRig
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
-        const auto* cmdLine = OSServices::XlGetCommandLine();
+        const auto* cmdLine = OSServices::GetCommandLine();
         if (cmdLine && XlFindString(cmdLine, "-nsight"))
             CrossModule::GetInstance()._services.Add(Hash64("nsight"), []() { return true; });
     }

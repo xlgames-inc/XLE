@@ -25,7 +25,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/IArtifact.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Core/Exceptions.h"

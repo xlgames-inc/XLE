@@ -2,9 +2,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../BasicFile.h"
-#include "../../Utility/Conversion.h"
-#include "../../Core/Exceptions.h"
+#include "RawFS.h"
+#include "../Utility/Conversion.h"
+#include "../Core/Exceptions.h"
 #include <stdio.h>
 
 namespace OSServices

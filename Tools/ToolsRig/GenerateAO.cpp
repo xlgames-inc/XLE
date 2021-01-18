@@ -35,7 +35,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/IntermediateAssets.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"

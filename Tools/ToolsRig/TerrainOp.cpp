@@ -8,9 +8,9 @@
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/IProgress.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/StringFormat.h"
-#include "../../OSServices/SystemUtils.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include <thread>
@@ -146,8 +146,8 @@ namespace ToolsRig
             }
         }
 
-        XlDeleteFile((const utf8*)destinationFile);
-        XlMoveFile((const utf8*)destinationFile, (const utf8*)tempFile.get());
+        DeleteFile((const utf8*)destinationFile);
+        MoveFile((const utf8*)destinationFile, (const utf8*)tempFile.get());
     }
 
 

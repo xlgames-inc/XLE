@@ -8,7 +8,7 @@
 #include "../../Assets/Assets.h"       // (for RegisterFileDependency)
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/StringFormat.h"

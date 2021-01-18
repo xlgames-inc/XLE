@@ -16,10 +16,9 @@
 
 #include <sys/inotify.h>
 #include <poll.h>
+#include <unistd.h>
 
-// #include <iostream>
-
-// #define ENABLE_FILESYSTEM_MONITORING
+#define ENABLE_FILESYSTEM_MONITORING
 
 #if defined(ENABLE_FILESYSTEM_MONITORING)
 
@@ -34,7 +33,6 @@ namespace OSServices
 
         static uint64_t HashFilename(StringSection<utf16> filename);
         static uint64_t HashFilename(StringSection<utf8> filename);
-        static uint64_t HashFilename(StringSection<> filename);
 
         MonitoredDirectory(const std::string& directoryName, int wd);
         ~MonitoredDirectory();
@@ -65,7 +63,6 @@ namespace OSServices
 
 	uint64_t MonitoredDirectory::HashFilename(StringSection<utf16> filename)  { return Utility::HashFilename(filename); }
     uint64_t MonitoredDirectory::HashFilename(StringSection<utf8> filename) { return Utility::HashFilename(filename); }
-    uint64_t MonitoredDirectory::HashFilename(StringSection<> filename) { return Utility::HashFilename(MakeStringSection((utf8*)filename.begin(), (utf8*)filename.end())); }
 
     void MonitoredDirectory::AttachCallback(
         uint64 filenameHash,

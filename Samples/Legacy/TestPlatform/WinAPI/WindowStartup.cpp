@@ -7,7 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
-#include "../../../OSServices/SystemUtils.h"
+#include "../../../OSServices/RawFS.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
 
@@ -48,13 +48,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     TRY {
         Sample::ExecuteSample();
     } CATCH (const std::exception& e) {
-        XlOutputDebugString("Hit top-level exception: ");
-        XlOutputDebugString(e.what());
-        XlOutputDebugString("\n");
-
         Log(Error) << "Hit top level exception. Aborting program!";
         Log(Error) << e.what();
-        XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 
     return 0;

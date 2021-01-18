@@ -15,9 +15,9 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/StringFormat.h"
-#include "../../OSServices/SystemUtils.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/PtrUtils.h"
 #include <regex>
 
@@ -34,9 +34,9 @@ static void SetWorkingDirectory()
         //              (relative to the application path)
         //
     utf8 appPath[MaxPath];
-    XlGetProcessPath    (appPath, dimof(appPath));
+    GetProcessPath    (appPath, dimof(appPath));
 	auto splitter = MakeFileNameSplitter(appPath);
-	XlChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
+	ChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)

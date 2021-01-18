@@ -453,11 +453,6 @@ namespace OSServices
 			}
 		}
 
-		void CreateDirectoryRecursive(StringSection<char> filename)
-		{
-			CreateDirectoryRecursive_Int(filename);
-		}
-
 		void CreateDirectoryRecursive(StringSection<utf8> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
@@ -516,45 +511,6 @@ namespace OSServices
 					}
 				} while (FindNextFileA(findHandle, &findData));
 				FindClose(findHandle);
-			}
-
-			return std::move(result);
-		}
-
-		static std::vector<std::string> FindAllDirectories(const std::string& rootDirectory)
-		{
-			std::string basePath = rootDirectory;
-			if (!basePath.empty() && basePath[basePath.size()-1]!='/' && basePath[basePath.size()-1]!='\\') {
-				basePath += "/";
-			}
-			std::vector<std::string> result;
-			result.push_back(basePath);
-
-			WIN32_FIND_DATAA findData;
-			memset(&findData, 0, sizeof(findData));
-			HANDLE findHandle = FindFirstFileA((basePath + "*").c_str(), &findData);
-			if (findHandle != INVALID_HANDLE_VALUE) {
-				do {
-					if (    (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-						&&  (findData.cFileName[0] != '.')) {
-						auto sub = FindAllDirectories(basePath + findData.cFileName);
-						result.insert(result.end(), sub.begin(), sub.end());
-					}
-				} while (FindNextFileA(findHandle, &findData));
-				FindClose(findHandle);
-			}
-
-			return std::move(result);
-		}
-
-		std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter)
-		{
-			auto dirs = FindAllDirectories(rootDirectory);
-
-			std::vector<std::string> result;
-			for(const auto&d:dirs) {
-				auto files = FindFiles(d + filePattern, filter);
-				result.insert(result.end(), files.begin(), files.end());
 			}
 
 			return std::move(result);

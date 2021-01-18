@@ -21,7 +21,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Threading/ThreadingUtils.h"

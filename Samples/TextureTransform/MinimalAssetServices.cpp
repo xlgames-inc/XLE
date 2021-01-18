@@ -12,7 +12,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachablePtr.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 

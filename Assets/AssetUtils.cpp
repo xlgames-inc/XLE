@@ -22,8 +22,8 @@
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/BasicFile.h"
-#include "../OSServices/SystemUtils.h"     // for XlGetCurrentDirectory
+#include "../OSServices/RawFS.h"
+#include "../OSServices/RawFS.h"     // for GetCurrentDirectory
 #include <vector>
 #include <algorithm>
 #include <sstream>
@@ -653,7 +653,7 @@ namespace Assets
     static const SplitPath<ResChar>& BaseDir()
     {
             // hack -- find the base directory we'll use to build relative names from 
-            //  Note that this is going to call XlGetCurrentDirectory at some unpredictable
+            //  Note that this is going to call GetCurrentDirectory at some unpredictable
             //  time; so we're assuming that the current directory is set at app start, and
             //  remains constant
         static ResolvedAssetFile buffer;
@@ -662,7 +662,7 @@ namespace Assets
         if (!init) {
 			static Threading::Mutex lock;
 			ScopedLock(lock);
-            OSServices::XlGetCurrentDirectory(dimof(buffer._fn), buffer._fn);
+            OSServices::GetCurrentDirectory(dimof(buffer._fn), buffer._fn);
             SplitPath<ResChar>(buffer._fn).Rebuild(buffer._fn, dimof(buffer._fn));
             result = SplitPath<ResChar>(buffer._fn);
             init = true;

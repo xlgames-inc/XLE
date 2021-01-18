@@ -42,7 +42,7 @@
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/BasicFile.h"
+#include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Conversion.h"
 #include <memory>

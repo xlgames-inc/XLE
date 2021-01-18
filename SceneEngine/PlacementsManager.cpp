@@ -35,7 +35,7 @@
 #include "../Utility/HeapUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringFormat.h"
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"

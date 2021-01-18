@@ -8,7 +8,7 @@
 #include "TerrainScaffold.h"
 #include "TerrainUberSurface.h"
 
-#include "../OSServices/BasicFile.h"
+#include "../OSServices/RawFS.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 
