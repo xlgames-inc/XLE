@@ -41,7 +41,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include "../../Utility/StringUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/VariantUtils.h"
 #include "../../xleres/FileList.h"

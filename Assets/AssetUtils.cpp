@@ -22,7 +22,7 @@
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../OSServices/SystemUtils.h"     // for XlGetCurrentDirectory
 #include <vector>
 #include <algorithm>
@@ -31,7 +31,7 @@
 namespace Assets
 {
     static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
-    static std::vector<std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;
+    static std::vector<std::pair<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;
     static unsigned ResourceDepsChangeId = 0;
 
     void Dependencies_Shutdown()
@@ -47,7 +47,7 @@ namespace Assets
 
         auto range = std::equal_range(
             ResourceDependencies.begin(), ResourceDependencies.end(), 
-            this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+            this, CompareFirst<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
 
         unsigned changeIdStart = ResourceDepsChangeId;
 
@@ -68,7 +68,7 @@ namespace Assets
 
                     range = std::equal_range(
                         ResourceDependencies.begin(), ResourceDependencies.end(), 
-                        this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+                        this, CompareFirst<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
 
                     for (i=range.first;; ++i) {
                         assert(i!=range.second);
@@ -87,7 +87,7 @@ namespace Assets
                 // that have expired are untouched)
             ResourceDependencies.erase(
                 std::remove_if(range.first, range.second, 
-                    [](std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>& i)
+                    [](std::pair<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>& i)
                     { return i.second.expired(); }),
                 range.second);
             ++ResourceDepsChangeId; // signal to callers that this has changed
@@ -102,7 +102,7 @@ namespace Assets
 		{
 			ScopedLock(ResourceDependenciesLock);
 			hasInvalidationAtStart = dependency->GetValidationIndex() != 0;
-			auto i = LowerBound(ResourceDependencies, (const OnChangeCallback*)dependency.get());
+			auto i = LowerBound(ResourceDependencies, (const OSServices::OnChangeCallback*)dependency.get());
 			ResourceDependencies.insert(i, std::make_pair(dependency.get(), shared_from_this()));
 		}
 
@@ -298,7 +298,7 @@ namespace Assets
             unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], 
+                Legacy::XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], 
                     splitter.AllExceptParameters().begin(), splitter.AllExceptParameters().end());
                 if (DoesFileExist(workingBuffer)) {
                     SplitPath<ResChar>(workingBuffer).Simplify().Rebuild(workingBuffer, workingBufferSize);
@@ -348,7 +348,7 @@ namespace Assets
             unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName.begin(), baseName.end());
+                Legacy::XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName.begin(), baseName.end());
                 if (OSServices::DoesDirectoryExist(workingBuffer)) {
                     if (workingBuffer != destination)
                         XlCopyString(destination, destinationCount, workingBuffer);
@@ -386,7 +386,7 @@ namespace Assets
 		std::vector<std::basic_string<ResChar>> result;
 
 		for (unsigned c=0; c<_startPointCount; ++c) {
-			XlConcatPath(workingBuffer, dimof(workingBuffer), &b[_startOffsets[c]], wildcardSearch.begin(), wildcardSearch.end());
+			Legacy::XlConcatPath(workingBuffer, dimof(workingBuffer), &b[_startOffsets[c]], wildcardSearch.begin(), wildcardSearch.end());
 			auto partialRes = Assets::FindFiles(workingBuffer, OSServices::FindFilesFilter::File);
 			result.insert(result.end(), partialRes.begin(), partialRes.end());
 		}
@@ -662,7 +662,7 @@ namespace Assets
         if (!init) {
 			static Threading::Mutex lock;
 			ScopedLock(lock);
-            XlGetCurrentDirectory(dimof(buffer._fn), buffer._fn);
+            OSServices::XlGetCurrentDirectory(dimof(buffer._fn), buffer._fn);
             SplitPath<ResChar>(buffer._fn).Rebuild(buffer._fn, dimof(buffer._fn));
             result = SplitPath<ResChar>(buffer._fn);
             init = true;
@@ -697,15 +697,6 @@ namespace Assets
         }
 
         *std::min(i, iend-1) = '\0';
-    }
-
-    void MakeAssetName(ResolvedAssetFile& dest, StringSection<utf8> src)
-    {
-        MakeAssetName(
-            dest, 
-            StringSection<ResChar>(
-                (const ::Assets::ResChar*)src.begin(),
-                (const ::Assets::ResChar*)src.end()));
     }
 
 	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps)

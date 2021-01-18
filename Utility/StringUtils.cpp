@@ -1236,6 +1236,22 @@ ucs2 XlToUpper(ucs2 c)
     return c;
 }
 
+utf16 XlToLower(utf16 c)
+{
+    if (c <= 0x7F) {
+        return (utf16)__lower_table[(uint8)c];
+    } 
+    return c;
+}
+
+utf16 XlToUpper(utf16 c)
+{
+    if (c <= 0x7F) {
+        return (utf16)__upper_table[(uint8)c];
+    }
+    return c;
+}
+
 char* XlTrimRight(char* str)
 {
     size_t len = XlStringSize(str);

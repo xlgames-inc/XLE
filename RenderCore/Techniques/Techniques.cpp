@@ -13,7 +13,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/StreamFormatter.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Conversion.h"

@@ -11,7 +11,7 @@
 #include "../../../Assets/Assets.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../ConsoleRig/Log.h"
-#include "../../../Utility/Streams/FileUtils.h"
+#include "../../../OSServices/BasicFile.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/Conversion.h"

@@ -9,7 +9,7 @@
 #include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/CompilationThread.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/IteratorUtils.h"
 

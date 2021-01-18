@@ -73,7 +73,7 @@ namespace Assets { namespace IntermediateAssets
 
 	protected:
 		mutable std::string _resolvedBaseDirectory;
-		mutable std::unique_ptr<BasicFile> _markerFile;
+		mutable std::unique_ptr<OSServices::BasicFile> _markerFile;
 
 		struct ConstructorOptions
 		{

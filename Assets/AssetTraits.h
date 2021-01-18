@@ -227,7 +227,7 @@ namespace Assets
 		RegisterFileDependency(depVal, initializer);
 		TRY { 
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
-			file->Seek(0, FileSeekAnchor::End);
+			file->Seek(0, OSServices::FileSeekAnchor::End);
 			auto size = file->TellP();
 			auto block = std::make_unique<char[]>(size);
 			file->Seek(0);

@@ -3,27 +3,27 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GeneralCompiler.h"
-#include "../../Assets/CompilationThread.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Assets/AssetServices.h"
-#include "../../Assets/NascentChunk.h"
-#include "../../Assets/ICompileOperation.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/MemoryFile.h"
-#include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/DepVal.h"
-#include "../../Assets/IntermediateAssets.h"
-#include "../../ConsoleRig/AttachableLibrary.h"
-#include "../../ConsoleRig/Log.h"
-#include "../../ConsoleRig/GlobalServices.h"
-#include "../../Utility/Threading/LockFree.h"
-#include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/Streams/StreamFormatter.h"
-#include "../../Utility/Streams/Stream.h"
-#include "../../Utility/StringFormat.h"
-#include "../../OSServices/SystemUtils.h"
-#include "../../Utility/Conversion.h"
+#include "CompilationThread.h"
+#include "AssetUtils.h"
+#include "AssetServices.h"
+#include "NascentChunk.h"
+#include "ICompileOperation.h"
+#include "IFileSystem.h"
+#include "MemoryFile.h"
+#include "CompileAndAsyncManager.h"
+#include "DepVal.h"
+#include "IntermediateAssets.h"
+#include "../ConsoleRig/AttachableLibrary.h"
+#include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
+#include "../Utility/Threading/LockFree.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../OSServices/BasicFile.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/Stream.h"
+#include "../Utility/StringFormat.h"
+#include "../OSServices/SystemUtils.h"
+#include "../Utility/Conversion.h"
 #include <regex>
 #include <set>
 
@@ -245,7 +245,7 @@ namespace Assets
 				Throw(Utility::FormatException("Unexpected attribute in CompileProductsFile", formatter.GetLocation()));
 
 			default:
-				/* intentional fall-through... */
+				break;
 			}
 			break;
 		}
@@ -366,9 +366,9 @@ namespace Assets
 					compileProductsFile, dimof(compileProductsFile),
 					initializer,  "compileprod",
 					*destinationStore);
-				BasicFile file;
+				OSServices::BasicFile file;
 				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {
-					auto stream = OpenFileOutput(std::move(file));
+					auto stream = Legacy::OpenFileOutput(std::move(file));
 					OutputStreamFormatter formatter(*stream);
 					SerializationOperator(formatter, compileProducts);
 				} else {
@@ -558,12 +558,12 @@ namespace Assets
 		// In some cases (eg, for unit tests where the process path points to an internal visual studio path), 
 		// we have to include extra paths
 		char processPath[MaxPath];
-		XlGetProcessPath((utf8*)processPath, dimof(processPath));
+		OSServices::XlGetProcessPath((utf8*)processPath, dimof(processPath));
 		result.AddSearchDirectory(
 			MakeFileNameSplitter(processPath).DriveAndPath());
 		
 		char appDir[MaxPath];
-    	XlGetCurrentDirectory(dimof(appDir), appDir);
+    	OSServices::XlGetCurrentDirectory(dimof(appDir), appDir);
 		result.AddSearchDirectory(appDir);
 		return result;
 	}

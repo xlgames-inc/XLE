@@ -13,14 +13,14 @@ namespace Assets
 	std::unique_ptr<IFileInterface> CreateMemoryFile(const Blob&);
 
 	std::unique_ptr<IFileInterface> CreateSubFile(
-		const std::shared_ptr<MemoryMappedFile>& archiveFile,
+		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange);
 
 	/// Pass 0 to fixedWindowSize for a non-fixed-window-size compressed block
 	/// (in other words, there's expected to be a header that contains the window size)
 	/// "15" seems to be a common default for the fixedWindowSize
 	std::unique_ptr<IFileInterface> CreateDecompressOnReadFile(
-		const std::shared_ptr<MemoryMappedFile>& archiveFile,
+		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
 		size_t decompressedSize,
 		unsigned fixedWindowSize = 0);

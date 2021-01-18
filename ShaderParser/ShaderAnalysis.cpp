@@ -230,7 +230,7 @@ namespace ShaderSourceParser
 						char resolvedFN[MaxPath];
 						searchRules.ResolveFile(resolvedFN, includeFile);
 						auto subFile = ::Assets::MainFileSystem::OpenFileInterface(resolvedFN, "rb");
-						subFile->Seek(0, FileSeekAnchor::End);
+						subFile->Seek(0, OSServices::FileSeekAnchor::End);
 						auto subFileLength = subFile->TellP();
 						subFile->Seek(0);
 

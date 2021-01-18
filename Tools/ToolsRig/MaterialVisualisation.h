@@ -18,7 +18,7 @@ namespace RenderCore { namespace Techniques { class ITechniqueDelegate; class IP
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace GraphLanguage { class INodeGraphProvider; class NodeGraph; class NodeGraphSignature; }
 namespace ShaderSourceParser { class PreviewOptions; }
-namespace Utility { class OnChangeCallback; }
+namespace OSServices { class OnChangeCallback; }
 
 namespace ToolsRig
 {

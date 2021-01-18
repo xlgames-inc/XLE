@@ -561,7 +561,7 @@ namespace ColladaConversion
 		result->_dependencies.push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
 
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
-		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
+		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", OSServices::FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
 			MemoryMappedInputStream(result->_fileData.GetData()));
 		formatter._allowCharacterData = true;
@@ -608,7 +608,7 @@ namespace ColladaConversion
 			for (const auto&filePath:rawFiles)
 				sourceFiles.push_back(std::make_pair(filePath, MakeFileNameSplitter(filePath).File().AsString()));
 		} else {
-			auto cfgFileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(identifier, 0, "r", FileShareMode::Read);
+			auto cfgFileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(identifier, 0, "r", OSServices::FileShareMode::Read);
 			InputStreamFormatter<utf8> formatter { MemoryMappedInputStream{cfgFileData.GetData()} };
 			auto searchRules = ::Assets::DefaultDirectorySearchRules(identifier);
 			for (;;) {
@@ -640,7 +640,7 @@ namespace ColladaConversion
 
 			ColladaCompileOp subResult;
 			subResult._cfg = cfg;
-			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath.first), 0, "r", FileShareMode::Read);
+			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath.first), 0, "r", OSServices::FileShareMode::Read);
 			XmlInputStreamFormatter<utf8> formatter(
 				MemoryMappedInputStream(subResult._fileData.GetData()));
 			formatter._allowCharacterData = true;

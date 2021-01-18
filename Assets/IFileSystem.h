@@ -12,14 +12,14 @@
 #include <string>
 #include <memory>
 
-namespace Utility { class OnChangeCallback; }
+namespace OSServices { class OnChangeCallback; }
 
 namespace Assets
 {
 	class FileDesc;
 	class MountingTree;
 	class IFileInterface;
-	using IFileMonitor = Utility::OnChangeCallback;
+	using IFileMonitor = OSServices::OnChangeCallback;
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 	using FileSystemId = unsigned;
 	static const FileSystemId FileSystemId_Invalid = ~0u;

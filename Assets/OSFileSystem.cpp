@@ -108,9 +108,9 @@ namespace Assets
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf8> filename);
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf16> filename);
 
-		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
-		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
@@ -369,7 +369,7 @@ namespace Assets
 	: _ignorePaths(ignorePaths)
 	{
 		if (!root.IsEmpty()) {
-			_rootUTF8 = root.AsString() + u("/");
+			_rootUTF8 = root.AsString() + "/";
 
 			// primitive utf8 -> utf16 conversion
 			// todo -- better implementation

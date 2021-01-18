@@ -9,7 +9,7 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../OSServices/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/WinAPI/WinAPIWrapper.h"

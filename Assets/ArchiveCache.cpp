@@ -8,7 +8,7 @@
 #include "ChunkFile.h"
 #include "IFileSystem.h"
 #include "../ConsoleRig/Log.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
@@ -182,7 +182,7 @@ namespace Assets
                 // we maintain the blocks array sorted by id to make this check faster...
             auto bi = std::lower_bound(blocks->begin(), blocks->end(), id, DirectoryChunk::CompareBlock());
             if (bi != blocks->end() && bi->_id == id) {
-                BasicFile dataFile;
+                OSServices::BasicFile dataFile;
                 if (MainFileSystem::TryOpen(dataFile, _mainFileName.c_str(), "rb") == MainFileSystem::IOReason::Success) {
                     dataFile.Seek(bi->_start);
                     auto result = std::make_shared<std::vector<uint8>>(bi->_size);
@@ -350,7 +350,7 @@ namespace Assets
             std::sort(_pendingBlocks.begin(), _pendingBlocks.end(), 
                 [](const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._pendingCommitPtr < rhs._pendingCommitPtr; });
             {
-                BasicFile dataFile;
+                OSServices::BasicFile dataFile;
                 bool good = MainFileSystem::TryOpen(dataFile, _mainFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success;
                 if (!good)
                     dataFile = MainFileSystem::OpenBasicFile(_mainFileName.c_str(), "wb");
@@ -419,7 +419,7 @@ namespace Assets
 
                         // write the new debugging file
                 TRY {
-					auto outputFile = OpenFileOutput((const char*)debugFilename, "wb");
+					auto outputFile = Legacy::OpenFileOutput((const char*)debugFilename, "wb");
 					if (outputFile) {
 						OutputStreamFormatter formatter(*outputFile);
 						for (const auto&i:attachedStrings)

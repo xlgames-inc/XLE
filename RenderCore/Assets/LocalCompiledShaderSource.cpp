@@ -21,7 +21,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Utility/StringFormat.h"
 
@@ -399,8 +399,8 @@ namespace RenderCore { namespace Assets
 					// Don't use TryLoadFileAsMemoryBlock here, because we want exceptions to propagate upwards
 					// Also, allow read & write sharing, because we want to support rapid reloading of shaders that
 					// might be open in an external editor
-					auto file = ::Assets::MainFileSystem::OpenFileInterface(resId._filename, "rb" , FileShareMode::Read | FileShareMode::Write);
-					file->Seek(0, FileSeekAnchor::End);
+					auto file = ::Assets::MainFileSystem::OpenFileInterface(resId._filename, "rb" , OSServices::FileShareMode::Read | OSServices::FileShareMode::Write);
+					file->Seek(0, OSServices::FileSeekAnchor::End);
 					auto fileSize = file->TellP();
 					file->Seek(0);
 

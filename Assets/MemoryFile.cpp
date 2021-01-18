@@ -16,7 +16,7 @@ namespace Assets
 	public:
 		size_t			Write(const void * source, size_t size, size_t count) never_throws override;
 		size_t			Read(void * destination, size_t size, size_t count) const never_throws override;
-		ptrdiff_t		Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		ptrdiff_t		Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor) never_throws override;
 		size_t			TellP() const never_throws override;
 
 		size_t			GetSize() const never_throws override;
@@ -55,13 +55,13 @@ namespace Assets
 		return finalCount;
 	}
 
-	ptrdiff_t		MemoryFile::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws
+	ptrdiff_t		MemoryFile::Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor anchor) never_throws
 	{
 		ptrdiff_t newPtr = 0;
 		switch (anchor) {
-		case FileSeekAnchor::Start:		newPtr = seekOffset; break;
-		case FileSeekAnchor::Current:	newPtr = _ptr + seekOffset; break;
-		case FileSeekAnchor::End:		newPtr = (_blob ? _blob->size() : 0) + seekOffset; break;
+		case OSServices::FileSeekAnchor::Start:		newPtr = seekOffset; break;
+		case OSServices::FileSeekAnchor::Current:	newPtr = _ptr + seekOffset; break;
+		case OSServices::FileSeekAnchor::End:		newPtr = (_blob ? _blob->size() : 0) + seekOffset; break;
 		default:
 			assert(0);
 		}
@@ -112,18 +112,18 @@ namespace Assets
 	public:
 		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
 		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor) never_throws override;
 		size_t      TellP() const never_throws override;
 
 		size_t				GetSize() const never_throws override;
 		::Assets::FileDesc	GetDesc() const never_throws override;
 
 		ArchiveSubFile(
-			const std::shared_ptr<MemoryMappedFile>& archiveFile,
+			const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 			const IteratorRange<const void*> memoryRange);
 		~ArchiveSubFile();
 	protected:
-		std::shared_ptr<MemoryMappedFile> _archiveFile;
+		std::shared_ptr<OSServices::MemoryMappedFile> _archiveFile;
 		const void*			_dataStart;
 		const void*			_dataEnd;
 		mutable const void*	_tellp;
@@ -143,13 +143,13 @@ namespace Assets
 		Throw(::Exceptions::BasicLabel("BSAFile::Write() unimplemented"));
 	}
 
-	ptrdiff_t	ArchiveSubFile::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws 
+	ptrdiff_t	ArchiveSubFile::Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor anchor) never_throws 
 	{
 		ptrdiff_t result = ptrdiff_t(_tellp) - ptrdiff_t(_dataStart);
 		switch (anchor) {
-		case FileSeekAnchor::Start: _tellp = PtrAdd(_dataStart, seekOffset); break;
-		case FileSeekAnchor::Current: _tellp = PtrAdd(_tellp, seekOffset); break;
-		case FileSeekAnchor::End: _tellp = PtrAdd(_dataEnd, -ptrdiff_t(seekOffset)); break;
+		case OSServices::FileSeekAnchor::Start: _tellp = PtrAdd(_dataStart, seekOffset); break;
+		case OSServices::FileSeekAnchor::Current: _tellp = PtrAdd(_tellp, seekOffset); break;
+		case OSServices::FileSeekAnchor::End: _tellp = PtrAdd(_dataEnd, -ptrdiff_t(seekOffset)); break;
 		default:
 			Throw(::Exceptions::BasicLabel("Unknown seek anchor in BSAFile::Seek(). Only Start/Current/End supported"));
 		}
@@ -171,7 +171,7 @@ namespace Assets
 		Throw(::Exceptions::BasicLabel("BSAFile::GetDesc() unimplemented"));
 	}
 
-	ArchiveSubFile::ArchiveSubFile(const std::shared_ptr<MemoryMappedFile>& archiveFile, const IteratorRange<const void*> memoryRange)
+	ArchiveSubFile::ArchiveSubFile(const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile, const IteratorRange<const void*> memoryRange)
 	: _archiveFile(archiveFile)
 	{
 		_dataStart = memoryRange.begin();
@@ -182,7 +182,7 @@ namespace Assets
 	ArchiveSubFile::~ArchiveSubFile() {}
 
 	std::unique_ptr<IFileInterface> CreateSubFile(
-		const std::shared_ptr<MemoryMappedFile>& archiveFile,
+		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange)
 	{
 		return std::make_unique<ArchiveSubFile>(archiveFile, memoryRange);
@@ -195,20 +195,20 @@ namespace Assets
 	public:
 		size_t      Read(void *buffer, size_t size, size_t count) const never_throws override;
 		size_t      Write(const void *buffer, size_t size, size_t count) never_throws override;
-		ptrdiff_t	Seek(ptrdiff_t seekOffset, FileSeekAnchor) never_throws override;
+		ptrdiff_t	Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor) never_throws override;
 		size_t      TellP() const never_throws override;
 
 		size_t				GetSize() const never_throws override;
 		::Assets::FileDesc	GetDesc() const never_throws override;
 
 		FileDecompressOnRead(
-			const std::shared_ptr<MemoryMappedFile>& archiveFile,
+			const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 			const IteratorRange<const void*> memoryRange,
 			size_t decompressedSize,
 			unsigned fixedWindowSize);
 		~FileDecompressOnRead();
 	protected:
-		std::shared_ptr<MemoryMappedFile> _archiveFile;
+		std::shared_ptr<OSServices::MemoryMappedFile> _archiveFile;
 		#if !defined(EXCLUDE_Z_LIB)
             mutable z_stream	_stream;
         #endif
@@ -221,17 +221,17 @@ namespace Assets
 		Throw(::Exceptions::BasicLabel("BSAFileDecompressOnRead::Seek() unimplemented"));
 	}
 
-	ptrdiff_t	FileDecompressOnRead::Seek(ptrdiff_t seekOffset, FileSeekAnchor anchor) never_throws
+	ptrdiff_t	FileDecompressOnRead::Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor anchor) never_throws
 	{
 		// We can't easily seek, because the underlying stream is compressed. Seeking would require
 		// decompressing the buffer as we go along.
 		auto offset = seekOffset;
-		if (anchor == FileSeekAnchor::Current) {
+		if (anchor == OSServices::FileSeekAnchor::Current) {
 			offset += _tellp;
-		} else if (anchor == FileSeekAnchor::End) {
+		} else if (anchor == OSServices::FileSeekAnchor::End) {
 			offset = _decompressedSize - seekOffset;
 		} else {
-			assert(anchor == FileSeekAnchor::Start);
+			assert(anchor == OSServices::FileSeekAnchor::Start);
 		}
 		if (offset == (ptrdiff_t)_tellp)
 			return _tellp;
@@ -280,7 +280,7 @@ namespace Assets
 	}
 
 	FileDecompressOnRead::FileDecompressOnRead(
-		const std::shared_ptr<MemoryMappedFile>& archiveFile,
+		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
 		size_t decompressedSize,
 		unsigned fixedWindowSize)
@@ -320,7 +320,7 @@ namespace Assets
 	}
 
 	std::unique_ptr<IFileInterface> CreateDecompressOnReadFile(
-		const std::shared_ptr<MemoryMappedFile>& archiveFile,
+		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
 		const IteratorRange<const void*> memoryRange,
 		size_t decompressedSize,
 		unsigned fixedWindowSize)
@@ -336,9 +336,9 @@ namespace Assets
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf8> filename);
 		virtual TranslateResult		TryTranslate(Marker& result, StringSection<utf16> filename);
 
-		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
-		virtual IOReason	TryOpen(BasicFile& result, const Marker& uri, const char openMode[], FileShareMode::BitField shareMode);
-		virtual IOReason	TryOpen(MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
+		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
@@ -379,7 +379,7 @@ namespace Assets
 		return TryTranslate(result, MakeStringSection(converted));
 	}
 
-	auto FileSystem_Memory::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_Memory::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
@@ -393,13 +393,13 @@ namespace Assets
 		return IOReason::Success;
 	}
 
-	auto FileSystem_Memory::TryOpen(BasicFile& result, const Marker& marker, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_Memory::TryOpen(OSServices::BasicFile& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
 		// Cannot open memory files in this way
 		return IOReason::Invalid;
 	}
 
-	auto FileSystem_Memory::TryOpen(MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], FileShareMode::BitField shareMode) -> IOReason
+	auto FileSystem_Memory::TryOpen(OSServices::MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
 	{
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
@@ -409,7 +409,7 @@ namespace Assets
 
 		auto i = _filesAndContents.begin();
 		std::advance(i, m._fileIdx);
-		result = MemoryMappedFile(MakeIteratorRange(*i->second), MemoryMappedFile::CloseFn{});
+		result = OSServices::MemoryMappedFile(MakeIteratorRange(*i->second), OSServices::MemoryMappedFile::CloseFn{});
 		return IOReason::Success;
 	}
 

@@ -12,7 +12,7 @@
 #include "../Assets/Assets.h"
 #include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/PtrUtils.h"
 #include "../Core/Types.h"
 
@@ -181,9 +181,9 @@ namespace SceneEngine
                             if (loadInfo._hdr._compressionDataSize) {
                                 if (loadInfo._hdr._compressionType == Compression::QuantRange && loadInfo._hdr._compressionDataSize >= (sizeof(float)*2)) {
                                     file->Read(compressionData, sizeof(float), 2);
-                                    file->Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, FileSeekAnchor::Current);
+                                    file->Seek(loadInfo._hdr._compressionDataSize - sizeof(float)*2, OSServices::FileSeekAnchor::Current);
                                 } else {
-                                    file->Seek(loadInfo._hdr._compressionDataSize, FileSeekAnchor::Current);
+                                    file->Seek(loadInfo._hdr._compressionDataSize, OSServices::FileSeekAnchor::Current);
                                 }
                             }
 
@@ -544,7 +544,7 @@ namespace SceneEngine
 
             const unsigned chunkCount = 2;
             SimpleChunkFileWriter outputFile(
-				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", FileShareMode::Read),
+				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", OSServices::FileShareMode::Read),
                 chunkCount, versionInfo.first, versionInfo.second);
 
                 //  write an area of the uber surface to our native terrain format
@@ -570,7 +570,7 @@ namespace SceneEngine
 
                 // Skip over the node header array for now
             auto nodeHeaderArray = outputFile.TellP();
-            outputFile.Seek(nodeHeaders.size(), FileSeekAnchor::Current);
+            outputFile.Seek(nodeHeaders.size(), OSServices::FileSeekAnchor::Current);
 
                 //  Now write the header for the height data part
                 //  At the moment each node has the same amount of height data...

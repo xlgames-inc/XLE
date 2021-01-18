@@ -13,6 +13,8 @@
 #include <memory>
 #include <assert.h>
 
+namespace OSServices { class BasicFile; }
+
 namespace Utility
 {
     class XL_UTILITY_API OutputStream 
@@ -25,9 +27,14 @@ namespace Utility
         virtual void        WriteChar(char ch) = 0;             // note -- this is always a single byte character (ie, use the string version if you want to write multibyte characters)
         virtual void        Flush() = 0;
 
-        virtual ~OutputStream() = default;
+        virtual ~OutputStream() {}
     };
 
+    namespace Legacy
+    {
+        std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
+        std::unique_ptr<OutputStream>   OpenFileOutput(OSServices::BasicFile&&);
+    }
 }
 
 using namespace Utility;

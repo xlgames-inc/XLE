@@ -65,8 +65,8 @@ namespace Assets
 
             // store a fixed number of dependencies (with room to grow)
             // this is just to avoid extra allocation where possible
-        std::shared_ptr<Utility::OnChangeCallback> _dependencies[4];
-        std::vector<std::shared_ptr<Utility::OnChangeCallback>> _dependenciesOverflow;
+        std::shared_ptr<OSServices::OnChangeCallback> _dependencies[4];
+        std::vector<std::shared_ptr<OSServices::OnChangeCallback>> _dependenciesOverflow;
     };
 
     /// <summary>Registers a dependency on a file on disk</summary>

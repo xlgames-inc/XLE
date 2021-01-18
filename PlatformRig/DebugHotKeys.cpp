@@ -9,7 +9,7 @@
 #include "../Assets/ConfigFileContainer.h"
 #include "../Assets/AssetUtils.h"
 #include "../ConsoleRig/Console.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/PtrUtils.h"

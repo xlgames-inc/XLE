@@ -13,7 +13,7 @@
 #include "AssetUtils.h"
 
 #include "../ConsoleRig/Log.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
@@ -162,7 +162,7 @@ namespace Assets { namespace IntermediateAssets
         FileNameSplitter<utf8> splitter(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
         SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         
-        FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
+        OSServices::FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
 
         record->OnChange();
     }
@@ -183,7 +183,7 @@ namespace Assets { namespace IntermediateAssets
         if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
-		BasicFile file;
+		OSServices::BasicFile file;
 		if (MainFileSystem::TryOpen(file, buffer, "rb") != IFileSystem::IOReason::Success)
 			return nullptr;
 		data.LoadFromFile(file);
@@ -201,7 +201,7 @@ namespace Assets { namespace IntermediateAssets
                     
                 std::shared_ptr<RetainedFileRecord> record;
                 if (basePath && basePath[0]) {
-                    XlConcatPath(buffer, dimof(buffer), basePath, depName, XlStringEnd(depName));
+                    Legacy::XlConcatPath(buffer, dimof(buffer), basePath, depName, XlStringEnd(depName));
                     record = GetRetainedFileRecord(buffer);
                 } else
                     record = GetRetainedFileRecord(depName);
@@ -272,14 +272,14 @@ namespace Assets { namespace IntermediateAssets
 
             // first, create the directory if we need to
         char dirName[MaxPath];
-        XlDirname(dirName, dimof(dirName), buffer);
+        Legacy::XlDirname(dirName, dimof(dirName), buffer);
         OSServices::CreateDirectoryRecursive(dirName);
 
             // now, write -- 
-		BasicFile file;
+		OSServices::BasicFile file;
 		if (MainFileSystem::TryOpen(file, buffer, "wb") != IFileSystem::IOReason::Success)
 			return nullptr;
-		auto stream = OpenFileOutput(std::move(file));
+		auto stream = Legacy::OpenFileOutput(std::move(file));
         data.SaveToOutputStream(*stream);
 
         return result;
@@ -314,7 +314,7 @@ namespace Assets { namespace IntermediateAssets
 						//          same app from using the same intermediate assets store.
 						//          We can do this by use a "non-shareable" file mode when
 						//          we load these files. 
-					BasicFile markerFile;
+					OSServices::BasicFile markerFile;
 					auto ioReason = MainFileSystem::TryOpen(markerFile, buffer, "rb", 0);
 					if (ioReason != IFileSystem::IOReason::Success)
 						continue;
@@ -332,7 +332,7 @@ namespace Assets { namespace IntermediateAssets
 						if (XlEqString(compareVersion, (const utf8*)_constructorOptions._versionString.c_str())) {
 							// this branch is already present, and is good... so use it
 							goodBranchDir = _constructorOptions._baseDir + "/" + findData.cFileName;
-                            _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
+                            _markerFile = std::make_unique<OSServices::BasicFile>(std::move(markerFile));
 							break;
 						}
 
@@ -362,7 +362,7 @@ namespace Assets { namespace IntermediateAssets
 
                     // Opening without sharing to prevent other instances of XLE apps from using
                     // the same directory.
-                _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+                _markerFile = std::make_unique<OSServices::BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
 					
 				auto outStr = std::string("VersionString=") + _constructorOptions._versionString + "\n";
 				_markerFile->Write(outStr.data(), 1, outStr.size());

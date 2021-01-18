@@ -35,7 +35,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class InvalidatePropertyGrid : public OnChangeCallback
+    class InvalidatePropertyGrid : public OSServices::OnChangeCallback
     {
     public:
         void    OnChange();
@@ -167,7 +167,7 @@ namespace GUILayer
     void VisMouseOver::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(
-            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
+            std::shared_ptr<OSServices::OnChangeCallback>(new InvalidatePropertyGrid(callback)));
     }
 
     VisMouseOver::VisMouseOver(
@@ -252,7 +252,7 @@ namespace GUILayer
 		}
 	}
 
-	class DelegateChangeEvent : public OnChangeCallback
+	class DelegateChangeEvent : public OSServices::OnChangeCallback
 	{
 	public:
 		void    OnChange()

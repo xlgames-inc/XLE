@@ -23,7 +23,7 @@
 #include "Utility/StringUtils.h"
 #include "Utility/Streams/StreamFormatter.h"
 #include "Utility/Streams/StreamDOM.h"
-#include "Utility/Streams/FileUtils.h"
+#include "OSServices/BasicFile.h"
 #include "Utility/Streams/PathUtils.h"
 #include "Utility/ParameterBox.h"
 #include <iostream>

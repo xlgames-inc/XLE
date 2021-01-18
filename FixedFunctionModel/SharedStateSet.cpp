@@ -19,7 +19,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringUtils.h"

@@ -15,7 +15,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/StringUtils.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include <queue>
 #include <thread>
 

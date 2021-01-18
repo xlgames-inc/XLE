@@ -30,7 +30,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../xleres/FileList.h"
@@ -65,7 +65,7 @@ namespace SceneEngine
             //  Load the file as a Win32 "mapped file"
             //  the format is very simple.. it's just a basic header, and then
             //  a huge 2D array of height values
-        auto mappedFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(filename, 0, "r+", FileShareMode::Read);
+        auto mappedFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(filename, 0, "r+", OSServices::FileShareMode::Read);
         
         auto& hdr = *(TerrainUberHeader*)mappedFile.GetData().begin();
         if (hdr._magic != TerrainUberHeader::Magic)

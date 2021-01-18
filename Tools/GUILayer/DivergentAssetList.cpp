@@ -15,7 +15,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"
@@ -292,7 +292,7 @@ namespace GUILayer
 		TRY{
 			auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
 
-			file->Seek(0, FileSeekAnchor::End);
+			file->Seek(0, OSServices::FileSeekAnchor::End);
 			size_t size = file->TellP();
 			file->Seek(0);
 

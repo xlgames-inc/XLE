@@ -7,7 +7,7 @@
 #include "ChunkFile.h"
 #include "AssetsCore.h"
 #include "IFileSystem.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -165,7 +165,7 @@ namespace Assets { namespace ChunkFile
 		}
 
 		template<typename Writer>
-			size_t SimpleChunkFileWriterT<Writer>::Seek(size_t offset, FileSeekAnchor anchor) never_throws
+			size_t SimpleChunkFileWriterT<Writer>::Seek(size_t offset, OSServices::FileSeekAnchor anchor) never_throws
 		{
 			return _writer.Seek(offset, anchor);
 		}
@@ -184,7 +184,7 @@ namespace Assets { namespace ChunkFile
         
     }
 
-    template class Internal::SimpleChunkFileWriterT<BasicFile>;
+    template class Internal::SimpleChunkFileWriterT<OSServices::BasicFile>;
 
 }}
 

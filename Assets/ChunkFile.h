@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/Types.h"
 #include "../Core/SelectConfiguration.h"
@@ -103,7 +103,7 @@ namespace Assets { namespace ChunkFile
             void FinishCurrentChunk();
 
 			size_t Write(const void *buffer, size_t size, size_t count) never_throws;
-			size_t Seek(size_t offset, FileSeekAnchor anchor = FileSeekAnchor::Start) never_throws;
+			size_t Seek(size_t offset, OSServices::FileSeekAnchor anchor = OSServices::FileSeekAnchor::Start) never_throws;
 			size_t TellP() const never_throws;
 			void Flush() never_throws;
 
@@ -117,7 +117,7 @@ namespace Assets { namespace ChunkFile
         };
     }
 
-    using SimpleChunkFileWriter = Internal::SimpleChunkFileWriterT<BasicFile>;
+    using SimpleChunkFileWriter = Internal::SimpleChunkFileWriterT<OSServices::BasicFile>;
 
 }}
 

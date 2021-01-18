@@ -8,7 +8,7 @@
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/IProgress.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/StringFormat.h"
 #include "../../OSServices/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"

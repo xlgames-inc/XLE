@@ -235,6 +235,9 @@ namespace Utility
     XL_UTILITY_API wchar_t  XlToLower(wchar_t c);
     XL_UTILITY_API wchar_t  XlToUpper(wchar_t c);
 
+    XL_UTILITY_API utf16    XlToLower(utf16 c);
+    XL_UTILITY_API utf16    XlToUpper(utf16 c);
+    
     XL_UTILITY_API ucs2     XlToLower(ucs2 c);
     XL_UTILITY_API ucs2     XlToUpper(ucs2 c);
 

@@ -11,7 +11,7 @@
 #include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Log.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../Utility/HeapUtils.h"
 #include <memory>
 

@@ -158,8 +158,6 @@ namespace OSServices
         Conversion::ConvertNullTerminated(buffer, dimof(buffer), filename);
         *this = MemoryMappedFile(buffer, size, openMode, shareMode);
     }
-    
-    MemoryMappedFile::MemoryMappedFile() {}
 }
 
 

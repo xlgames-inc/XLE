@@ -43,7 +43,7 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
 
-#include "../Utility/Streams/FileUtils.h"        // (for materials stuff)
+#include "../OSServices/BasicFile.h"        // (for materials stuff)
 #include "../Utility/Streams/Data.h"             // (for materials stuff)
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/PathUtils.h"

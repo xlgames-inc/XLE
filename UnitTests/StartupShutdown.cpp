@@ -16,7 +16,7 @@
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../OSServices/BasicFile.h"
 #include "../OSServices/SystemUtils.h"
 #include <CppUnitTest.h>
 

@@ -21,7 +21,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Utility/Streams/FileUtils.h"
+#include "../../OSServices/BasicFile.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
@@ -865,7 +865,7 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     static UInt2 GetUberSurfaceDimensions(const ::Assets::ResChar fn[])
     {
-        auto file = ::Assets::MainFileSystem::OpenBasicFile(fn, "rb", FileShareMode::Read|FileShareMode::Write);
+        auto file = ::Assets::MainFileSystem::OpenBasicFile(fn, "rb", OSServices::FileShareMode::Read|OSServices::FileShareMode::Write);
         TerrainUberHeader hdr;
         if ((file.Read(&hdr, sizeof(hdr), 1) != 1) || (hdr._magic != TerrainUberHeader::Magic))
             Throw(::Exceptions::BasicLabel("Error while reading from: (%s)", fn));
@@ -909,7 +909,7 @@ namespace ToolsRig
         if (node._heightMapFileSize) {
             auto count = node._heightMapFileSize/sizeof(uint16);
             if (count == expectedCount) {
-                BasicFile file(sourceFileName, "rb");
+                OSServices::BasicFile file(sourceFileName, "rb");
                 rawData = std::make_unique<uint16[]>(count);
                 file.Seek(node._heightMapFileOffset, SEEK_SET);
                 file.Read(rawData.get(), sizeof(uint16), count);
@@ -917,7 +917,7 @@ namespace ToolsRig
         } else if (node._secondaryCacheSize) {
             auto count = node._secondaryCacheSize/sizeof(uint16);
             if (count == expectedCount) {
-                BasicFile file(secondaryCacheName, "rb");
+                OSServices::BasicFile file(secondaryCacheName, "rb");
                 rawData = std::make_unique<uint16[]>(count);
                 file.Seek(node._secondaryCacheOffset, SEEK_SET);
                 file.Read(rawData.get(), sizeof(uint16), count);

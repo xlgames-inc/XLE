@@ -22,7 +22,7 @@ namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
 namespace RenderOverlays { class IOverlayContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { struct Rect; }}
-namespace Utility { class OnChangeCallback; }
+namespace OSServices { class OnChangeCallback; }
 namespace SceneEngine { class IScene; class IRenderStep; }
 
 namespace ToolsRig
