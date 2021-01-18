@@ -18,10 +18,6 @@
 #include <poll.h>
 #include <unistd.h>
 
-#define ENABLE_FILESYSTEM_MONITORING
-
-#if defined(ENABLE_FILESYSTEM_MONITORING)
-
 namespace OSServices
 {
     class MonitoredDirectory
@@ -217,46 +213,12 @@ namespace OSServices
 
     void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
     {
+        assert(0);      // not implemented
     }
 
 	void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename)
 	{
+        assert(0);      // not implemented
 	}
 
-
-    OnChangeCallback::~OnChangeCallback() {}
 }
-
-#else
-
-namespace OSServices
-{
-    void AttachFileSystemMonitor(StringSection<utf16> directoryName,
-                                 StringSection<utf16> filename,
-                                 std::shared_ptr<OnChangeCallback> callback) {
-
-    }
-
-    void AttachFileSystemMonitor(StringSection<utf8> directoryName,
-                                 StringSection<utf8> filename,
-                                 std::shared_ptr<OnChangeCallback> callback) {
-
-    }
-
-    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename) {
-
-    }
-
-    void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename) {
-
-    }
-
-    void TerminateFileSystemMonitoring() {
-
-    }
-
-    OnChangeCallback::~OnChangeCallback() {}
-}
-
-#endif
-

@@ -15,7 +15,7 @@ namespace OSServices
     {
     public:
         virtual void    OnChange() = 0;
-        virtual ~OnChangeCallback();
+        virtual ~OnChangeCallback() = default;
     };
 
     /// <summary>Monitor a file for changes</summary>

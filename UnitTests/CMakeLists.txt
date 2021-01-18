@@ -5,7 +5,8 @@ set(Src
     MathSerialization.cpp
     StreamFormatterTests.cpp
     ConversionPatterns.cpp
-    ClassAccessorsTests.cpp)
+    ClassAccessorsTests.cpp
+    OSServicesAsync.cpp)
 
 add_executable(UnitTests ${Src})
 configure_xle_executable(UnitTests)
