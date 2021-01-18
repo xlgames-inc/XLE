@@ -9,7 +9,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/StringUtils.h"

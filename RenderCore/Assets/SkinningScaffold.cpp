@@ -12,7 +12,7 @@
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/DeferredConstruction.h"
 #include "../../Math/Quaternion.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 
 namespace RenderCore { namespace Assets
 {

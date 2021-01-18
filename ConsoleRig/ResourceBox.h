@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Log.h"
+#include "../OSServices/Log.h"
 #include "../Core/Types.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"

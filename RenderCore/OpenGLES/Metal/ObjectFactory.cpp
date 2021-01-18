@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <map>
 
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "GLWrappers.h"
 
 namespace RenderCore { namespace Metal_OpenGLES

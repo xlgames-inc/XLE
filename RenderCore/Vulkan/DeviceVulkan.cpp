@@ -14,7 +14,7 @@
 #include "Metal/PipelineLayout.h"
 #include "Metal/Shader.h"
 #include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/MemoryUtils.h"

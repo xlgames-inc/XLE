@@ -18,7 +18,7 @@
 
 #include "../RenderCore/Assets/MaterialScaffold.h"  // for MakeMaterialGuid
 #include "../RenderCore/Format.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
 #include <string>

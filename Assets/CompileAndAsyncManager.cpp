@@ -6,7 +6,7 @@
 
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/StringUtils.h"

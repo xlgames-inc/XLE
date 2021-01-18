@@ -17,7 +17,7 @@
 #include "../../RenderCore/Format.h"      // (for BitsPerPixel)
 #include "../../Math/Vector.h"
 #include "../../ConsoleRig/IProgress.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"

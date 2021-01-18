@@ -21,7 +21,7 @@
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Conversion.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Foreign/plustache/template.hpp"
 
 #include <regex> // used for parsing parameter definition

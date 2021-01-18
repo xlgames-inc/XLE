@@ -8,7 +8,7 @@
 #include "ClassAccessors.h"
 #include "ClassAccessorsImpl.h"
 
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../Streams/StreamFormatter.h"
 #include "../StringFormat.h"
 #include "../ParameterBox.h"

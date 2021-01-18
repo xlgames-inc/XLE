@@ -6,7 +6,7 @@
 
 #include "UnitTestHelper.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../OSServices/RawFS.h"

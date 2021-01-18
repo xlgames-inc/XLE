@@ -9,7 +9,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/Threading/Mutex.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 
 #if 0
 namespace std 

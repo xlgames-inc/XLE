@@ -28,8 +28,6 @@ namespace ConsoleRig
         StartupConfig(const char applicationName[]);
     };
 
-    class LogCentralConfiguration;
-
     class GlobalServices
     {
     public:

@@ -7,7 +7,7 @@
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/IteratorUtils.h"
 
 namespace ColladaConversion

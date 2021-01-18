@@ -11,7 +11,7 @@
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IFileSystem.h"

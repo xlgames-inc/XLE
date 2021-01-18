@@ -12,7 +12,7 @@
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/ConfigFileContainer.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../OSServices/RawFS.h"

@@ -3,7 +3,7 @@
 #include "Format.h"
 #include "DeviceContext.h"
 #include "../../ResourceUtils.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/BitUtils.h"
 #include "IncludeGLES.h"
 #include <sstream>

@@ -14,7 +14,7 @@
 #include "../../ResourceUtils.h"
 #include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Core/Exceptions.h"
 #include <sstream>
 

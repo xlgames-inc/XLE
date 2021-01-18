@@ -14,7 +14,8 @@
 #include "DepVal.h"
 #include "IntermediateAssets.h"
 #include "../ConsoleRig/AttachableLibrary.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
+#include "../OSServices/LegacyFileStreams.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/LockFree.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -368,7 +369,7 @@ namespace Assets
 					*destinationStore);
 				OSServices::BasicFile file;
 				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {
-					auto stream = Legacy::OpenFileOutput(std::move(file));
+					auto stream = OSServices::Legacy::OpenFileOutput(std::move(file));
 					OutputStreamFormatter formatter(*stream);
 					SerializationOperator(formatter, compileProducts);
 				} else {

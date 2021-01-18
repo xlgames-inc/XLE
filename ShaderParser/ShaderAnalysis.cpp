@@ -5,7 +5,7 @@
 #include "ShaderAnalysis.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/PreprocessorInterpreter.h"
 #include "../Utility/StringFormat.h"

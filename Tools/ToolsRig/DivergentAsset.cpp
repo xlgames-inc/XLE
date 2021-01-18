@@ -143,7 +143,7 @@ namespace ToolsRig
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/AssetHeap.h"
 #include "../../Assets/ConfigFileContainer.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/StringFormat.h"
 
 namespace ToolsRig

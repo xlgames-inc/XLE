@@ -9,7 +9,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../Assets/IFileSystem.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"

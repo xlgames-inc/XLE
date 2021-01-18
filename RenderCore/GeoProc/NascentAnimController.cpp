@@ -15,7 +15,7 @@
 #include "../Types.h"
 #include "../VertexUtil.h"
 #include "../../Assets/BlockSerializer.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"

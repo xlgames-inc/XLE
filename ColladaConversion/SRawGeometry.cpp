@@ -19,7 +19,7 @@
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Types.h"      // for Topology...!
 #include "../RenderCore/Format.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <map>

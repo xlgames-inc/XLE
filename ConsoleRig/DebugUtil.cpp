@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Log.h"
+#include "../OSServices/Log.h"
 #include "OutputStream.h"
 #include "GlobalServices.h"
 #include "AttachablePtr.h"

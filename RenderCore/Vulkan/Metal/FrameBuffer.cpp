@@ -12,7 +12,7 @@
 #include "ObjectFactory.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan

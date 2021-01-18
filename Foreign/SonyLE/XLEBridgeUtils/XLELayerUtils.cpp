@@ -19,6 +19,37 @@
 using namespace Sce::Atf;
 using namespace Sce::Atf::Applications;
 
+#if 0       // legacy definition; used to be used below
+    namespace ConsoleRig
+    {
+        enum class LogLevel
+        {
+            Fatal,
+            Error,
+            Warning,
+            Info,
+            Verbose
+        };
+
+        /// <summary>Base class from which custom log handles can be derived</summary>
+        /// The callback is initialised in a disabled state. Use Enable() to install
+        /// the callback and start receiving events.
+        class LogCallback : std::enable_shared_from_this<LogCallback>
+        {
+        public:
+            virtual void OnDispatch(LogLevel, const std::string&) = 0;
+
+            void Enable();
+            void Disable();
+            LogCallback();
+            virtual ~LogCallback();
+
+        private:
+            uint64 _guid;
+        };
+    }
+#endif
+
 namespace XLEBridgeUtils
 {
     public interface class INativeDocumentAdapter

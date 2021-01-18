@@ -10,7 +10,7 @@
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
 #include "../../../Assets/MountingTree.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Assets/CompileAndAsyncManager.h"

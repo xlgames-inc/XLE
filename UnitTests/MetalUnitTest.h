@@ -22,7 +22,7 @@
 #include "../RenderCore/ResourceUtils.h"
 #include "../Assets/AssetServices.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include <memory>
 #include <map>

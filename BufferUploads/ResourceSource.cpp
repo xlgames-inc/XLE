@@ -6,7 +6,7 @@
 
 #include "ResourceSource.h"
 #include "../RenderCore/ResourceUtils.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"

@@ -7,7 +7,7 @@
 #include "UnitTestHelper.h"
 #include "../RenderCore/Assets/TransformationCommands.h"
 #include "../Math/Geometry.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include <CppUnitTest.h>
 #include <vector>
 #include <random>

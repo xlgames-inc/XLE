@@ -23,7 +23,7 @@
 
 #include "../RenderCore/RenderUtils.h"
 
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Math/Matrix.h"

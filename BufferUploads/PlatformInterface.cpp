@@ -7,7 +7,7 @@
 #include "PlatformInterface.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
 #include <assert.h>

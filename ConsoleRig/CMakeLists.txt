@@ -3,7 +3,6 @@ set(Src
     Console.cpp
     DebugUtil.cpp
     GlobalServices.cpp
-    Log.cpp
     OutputStream.cpp
     Plugins.cpp
     ${CMAKE_BINARY_DIR}/ConsoleRig/Version.cpp)

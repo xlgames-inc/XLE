@@ -18,7 +18,7 @@
 #include "Metal/ObjectFactory.h"
 #include "Metal/Shader.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachablePtr.h"

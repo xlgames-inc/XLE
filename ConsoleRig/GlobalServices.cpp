@@ -6,7 +6,7 @@
 
 #include "GlobalServices.h"
 #include "AttachablePtr.h"
-#include "Log.h"
+#include "../OSServices/Log.h"
 #include "Console.h"
 #include "ResourceBox.h"
 #include "IProgress.h"
@@ -14,11 +14,13 @@
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
+#include "../Assets/DepVal.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/FileSystemMonitor.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -47,6 +49,30 @@ namespace ConsoleRig
 		auto splitter = MakeFileNameSplitter(appPath);
         return splitter.DriveAndPath().AsString() + "/../Working";
     }
+
+    /// <summary>Manages configuration settings for logging</summary>
+    /// Can be shared between multiple different modules.
+    class LogCentralConfiguration
+    {
+    public:
+        void Set(StringSection<>, OSServices::MessageTargetConfiguration& cfg);
+        void CheckHotReload();
+
+        static LogCentralConfiguration& GetInstance() { assert(s_instance); return *s_instance; }
+        void AttachCurrentModule();
+        void DetachCurrentModule();
+
+        LogCentralConfiguration(const std::string& logCfgFile);
+        ~LogCentralConfiguration();
+    private:
+        std::shared_ptr<OSServices::LogConfigurationSet> _cfgSet;
+        std::shared_ptr<::Assets::DependencyValidation> _cfgSetDepVal;
+        std::string _logCfgFile;
+        std::weak_ptr<OSServices::LogCentral> _attachedLogCentral;
+
+        static LogCentralConfiguration* s_instance;
+        void Apply();
+    };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -287,5 +313,91 @@ namespace ConsoleRig
 	{
 		return LibVersionDesc { ConsoleRig_VersionString, ConsoleRig_BuildDateString };
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::pair<std::shared_ptr<OSServices::LogConfigurationSet>, std::shared_ptr<::Assets::DependencyValidation>> LoadConfigSet(StringSection<> fn)
+    {
+        size_t fileSize = 0;
+        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize);
+        if (!file.get() || !fileSize)
+            return std::make_pair(nullptr, nullptr);
+        
+        InputStreamFormatter<char> fmtr(MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
+        auto depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(depVal, fn);
+        return std::make_pair(
+            std::make_shared<OSServices::LogConfigurationSet>(fmtr),
+            depVal);
+    }
+
+    void LogCentralConfiguration::Set(StringSection<> id, OSServices::MessageTargetConfiguration& cfg)
+    {
+        #if defined(OSSERVICES_ENABLE_LOG)
+            _cfgSet->Set(id, cfg);
+
+            // Reapply all configurations to the LogCentral in the local module
+            auto logCentral = _attachedLogCentral.lock();
+            if (logCentral)
+                logCentral->SetConfiguration(_cfgSet);
+            /*
+            auto& central = LogCentral::GetInstance();
+            auto hash = Hash64(id);
+            auto i = LowerBound(central._pimpl->_activeTargets, hash);
+            if (i!=central._pimpl->_activeTargets.end() && i->first == hash)
+                i->second._target->SetConfiguration(cfg);
+            */
+        #endif
+    }
+
+    void LogCentralConfiguration::CheckHotReload()
+    {
+        #if defined(OSSERVICES_ENABLE_LOG)
+            if (!_cfgSet || !_cfgSetDepVal || _cfgSetDepVal->GetValidationIndex() > 0) {
+                std::tie(_cfgSet, _cfgSetDepVal) = LoadConfigSet(_logCfgFile);
+                auto logCentral = _attachedLogCentral.lock();
+                if (logCentral)
+                    logCentral->SetConfiguration(_cfgSet);
+            }
+        #endif
+    }
+
+    void LogCentralConfiguration::AttachCurrentModule()
+    {
+        assert(s_instance == nullptr);
+		s_instance = this;
+
+		auto logCentral = OSServices::LogCentral::GetInstance();
+		if (logCentral)
+			logCentral->SetConfiguration(_cfgSet);
+
+		if (!_attachedLogCentral.lock() && logCentral)
+			_attachedLogCentral = logCentral;
+    }
+
+    void LogCentralConfiguration::DetachCurrentModule()
+    {
+        assert(s_instance == this);
+        s_instance = nullptr;
+
+		auto logCentral = _attachedLogCentral.lock();
+        if (logCentral)
+            logCentral->SetConfiguration(nullptr);
+        _attachedLogCentral.reset();
+    }
+
+    LogCentralConfiguration* LogCentralConfiguration::s_instance = nullptr;
+
+    LogCentralConfiguration::LogCentralConfiguration(const std::string& logCfgFile)
+    {
+        #if defined(OSSERVICES_ENABLE_LOG)
+            _logCfgFile = logCfgFile;
+            std::tie(_cfgSet, _cfgSetDepVal) = LoadConfigSet(_logCfgFile);
+        #endif
+    }
+
+    LogCentralConfiguration::~LogCentralConfiguration() 
+    {
+    }
 
 }

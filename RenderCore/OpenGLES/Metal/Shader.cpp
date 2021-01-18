@@ -10,7 +10,7 @@
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Assets/DepVal.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../OSServices/RawFS.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/StringUtils.h"

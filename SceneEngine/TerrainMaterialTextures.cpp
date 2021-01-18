@@ -18,7 +18,7 @@
 #include "../Assets/AssetServices.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/Assets.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../xleres/FileList.h"

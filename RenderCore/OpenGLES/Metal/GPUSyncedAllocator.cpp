@@ -5,7 +5,7 @@
 #include "GPUSyncedAllocator.h"
 #include "QueryPool.h"
 #include "DeviceContext.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/BitUtils.h"
 

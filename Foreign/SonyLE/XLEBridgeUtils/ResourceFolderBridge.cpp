@@ -9,7 +9,7 @@
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Conversion.h"
 

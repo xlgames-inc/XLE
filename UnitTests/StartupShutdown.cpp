@@ -13,7 +13,7 @@
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../OSServices/RawFS.h"

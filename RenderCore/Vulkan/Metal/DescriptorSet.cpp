@@ -9,7 +9,7 @@
 #include "PipelineLayoutSignatureFile.h"
 #include "ShaderReflection.h"
 #include "../../ShaderService.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include "../../../Utility/StreamUtils.h"

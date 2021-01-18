@@ -13,7 +13,7 @@
 #include "Resource.h"
 #include "ObjectFactory.h"
 #include "../../BufferView.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/MemoryUtils.h"
 

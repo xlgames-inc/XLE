@@ -17,7 +17,7 @@
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../OSServices/RawFS.h"

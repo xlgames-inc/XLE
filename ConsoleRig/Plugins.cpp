@@ -5,7 +5,7 @@
 #include "Plugins.h"
 #include "AttachablePtr.h"
 #include "AttachableLibrary.h"
-#include "Log.h"
+#include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/RawFS.h"
 #include <vector>

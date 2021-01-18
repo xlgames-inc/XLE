@@ -13,7 +13,7 @@
 #include "../../IThreadContext.h"
 #include "../../Types.h"
 #include "../../FrameBufferDesc.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../ConsoleRig/LogUtil.h"
 #include "../../../Externals/Misc/OCPtr.h"
 #include "../../../Utility/MemoryUtils.h"

@@ -10,7 +10,7 @@
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 
 namespace ColladaConversion
 {

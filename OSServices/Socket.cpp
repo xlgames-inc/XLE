@@ -24,7 +24,7 @@
     #include <sys/socket.h>
 #endif
 
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Core/Exceptions.h"
 
 namespace OSServices

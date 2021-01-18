@@ -11,7 +11,7 @@
 #include "../Types.h"
 #include "../../Math/Geometry.h"
 #include "../../Math/Transformations.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/ArithmeticUtils.h"

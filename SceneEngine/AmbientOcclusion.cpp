@@ -17,7 +17,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/PtrUtils.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"

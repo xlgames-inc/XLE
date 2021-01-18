@@ -14,7 +14,7 @@
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"		// (used in BeginCompileOperation)
 #include "IArtifact.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"

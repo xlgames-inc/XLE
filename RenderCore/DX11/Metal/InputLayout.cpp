@@ -20,7 +20,7 @@
 #include "../../RenderUtils.h"
 #include "../../ShaderService.h"
 #include "../../UniformsStream.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ParameterBox.h"

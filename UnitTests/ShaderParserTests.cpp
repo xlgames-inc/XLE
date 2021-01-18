@@ -17,7 +17,7 @@
 #include "../Assets/MemoryFile.h"
 #include "../Assets/AssetTraits.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"

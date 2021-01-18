@@ -29,12 +29,6 @@ namespace Utility
 
         virtual ~OutputStream() {}
     };
-
-    namespace Legacy
-    {
-        std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
-        std::unique_ptr<OutputStream>   OpenFileOutput(OSServices::BasicFile&&);
-    }
 }
 
 using namespace Utility;

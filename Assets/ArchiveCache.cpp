@@ -7,8 +7,9 @@
 #include "ArchiveCache.h"
 #include "ChunkFile.h"
 #include "IFileSystem.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
+#include "../OSServices/LegacyFileStreams.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
@@ -419,7 +420,7 @@ namespace Assets
 
                         // write the new debugging file
                 TRY {
-					auto outputFile = Legacy::OpenFileOutput((const char*)debugFilename, "wb");
+					auto outputFile = OSServices::Legacy::OpenFileOutput((const char*)debugFilename, "wb");
 					if (outputFile) {
 						OutputStreamFormatter formatter(*outputFile);
 						for (const auto&i:attachedStrings)

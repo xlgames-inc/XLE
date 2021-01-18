@@ -8,7 +8,7 @@
 #include "DX11.h"
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Core/Exceptions.h"

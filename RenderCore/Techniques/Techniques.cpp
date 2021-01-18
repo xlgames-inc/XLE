@@ -11,7 +11,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/DepVal.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/IteratorUtils.h"

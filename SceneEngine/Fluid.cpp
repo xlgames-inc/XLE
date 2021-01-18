@@ -12,7 +12,7 @@
 #include "FluidHelper.h"
 #include "../Math/RegularNumberField.h"
 #include "../Math/PoissonSolver.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
 extern "C" void dens_step ( int N, float * x, float * x0, float * u, float * v, float diff, float dt );

@@ -37,7 +37,7 @@
 #include "../../Assets/OSFileSystem.h"
 #include "../../Assets/MountingTree.h"
 
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"

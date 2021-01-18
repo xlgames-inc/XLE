@@ -41,7 +41,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 
 #include "../OSServices/RawFS.h"        // (for materials stuff)
 #include "../Utility/Streams/Data.h"             // (for materials stuff)

@@ -50,7 +50,7 @@
 
 #include "../../Tools/ToolsRig/GenerateAO.h"
 
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"

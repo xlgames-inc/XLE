@@ -7,7 +7,7 @@
 #include "Metal/QueryPool.h"
 #include "Metal/Shader.h"
 #include "../Init.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/FunctionUtils.h"

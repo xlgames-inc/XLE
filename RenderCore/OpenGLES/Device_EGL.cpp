@@ -10,7 +10,7 @@
 #include "../Init.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Optional.h"
 #include "../../Utility/FunctionUtils.h"

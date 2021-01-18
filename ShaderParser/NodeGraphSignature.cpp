@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NodeGraphSignature.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 
 namespace GraphLanguage
 {

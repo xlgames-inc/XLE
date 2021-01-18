@@ -8,7 +8,7 @@
 #include "StatePropagation.h"       // todo -- work on the physical design here!
 #include "../xlnet/xlnet.h"
 #include "../xlnet/io_buffer.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Core/Exceptions.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"

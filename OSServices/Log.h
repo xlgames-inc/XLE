@@ -1,3 +1,6 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
@@ -7,11 +10,17 @@
 #include <memory>
 #include <functional>
 
-#if defined(_DEBUG) || PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-    #define CONSOLERIG_ENABLE_LOG
+#if defined(_DEBUG)
+    #define OSSERVICES_ENABLE_LOG
 #endif
 
-namespace ConsoleRig
+namespace Utility
+{
+    template<typename CharType>
+        class InputStreamFormatter;
+}
+
+namespace OSServices
 {
     class SourceLocation
     {
@@ -101,28 +110,32 @@ namespace ConsoleRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    /// <summary>Manages configuration settings for logging</summary>
-    /// Can be shared between multiple different modules.
-    class LogCentralConfiguration
+    class LogConfigurationSet
     {
     public:
-        void Set(StringSection<>, MessageTargetConfiguration& cfg);
-        void CheckHotReload();
+        MessageTargetConfiguration ResolveConfig(StringSection<> name) const;
+        void Set(StringSection<> id, MessageTargetConfiguration& cfg);
 
-        static LogCentralConfiguration& GetInstance() { assert(s_instance); return *s_instance; }
-        void AttachCurrentModule();
-        void DetachCurrentModule();
-
-        LogCentralConfiguration(const std::string& logCfgFile);
-        ~LogCentralConfiguration();
+        LogConfigurationSet();
+        LogConfigurationSet(InputStreamFormatter<char>& formatter);
+        ~LogConfigurationSet();
     private:
-        std::shared_ptr<LogConfigurationSet> _cfgSet;
-        std::string _logCfgFile;
-        std::weak_ptr<LogCentral> _attachedLogCentral;
+        class Config
+        {
+        public:
+            std::vector<std::string> _inherit;
+            MessageTargetConfiguration _cfg;
+        };
 
-        static LogCentralConfiguration* s_instance;
-        void Apply();
+        std::vector<std::pair<std::string, Config>> _configs;
+
+        Config LoadConfig(InputStreamFormatter<char>& formatter);
     };
+
+    inline void DeserializationOperator(InputStreamFormatter<char>& str, LogConfigurationSet& cls)
+    {
+        cls = LogConfigurationSet(str);
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -130,7 +143,7 @@ namespace ConsoleRig
         MessageTarget<CharType, CharTraits>::MessageTarget(StringSection<> id, std::basic_streambuf<CharType, CharTraits>& chain)
     : _chain(&chain)
     {
-        #if defined(CONSOLERIG_ENABLE_LOG)
+        #if defined(OSSERVICES_ENABLE_LOG)
             auto logCentral = LogCentral::GetInstance();
             if (logCentral) {
                 logCentral->Register(*this, id);
@@ -143,7 +156,7 @@ namespace ConsoleRig
         MessageTarget<CharType, CharTraits>::~MessageTarget()
     {
         _chain->pubsync();
-        #if defined(CONSOLERIG_ENABLE_LOG)
+        #if defined(OSSERVICES_ENABLE_LOG)
             // DavidJ --
             //      For global MessageTargets objects, the LogCentral instance can be destroyed
             //      first. So we can't access the singleton GetInstance() method from here. We
@@ -176,11 +189,11 @@ namespace ConsoleRig
         }
     }
 
-#if defined(CONSOLERIG_ENABLE_LOG)
+#if defined(OSSERVICES_ENABLE_LOG)
 	#if defined(__PRETTY_FUNCTION__)
-		#define MakeSourceLocation (::ConsoleRig::SourceLocation {::ConsoleRig::Internal::JustFilename(__FILE__), __LINE__, __PRETTY_FUNCTION__})
+		#define MakeSourceLocation (::OSServices::SourceLocation {::OSServices::Internal::JustFilename(__FILE__), __LINE__, __PRETTY_FUNCTION__})
 	#else
-		#define MakeSourceLocation (::ConsoleRig::SourceLocation {::ConsoleRig::Internal::JustFilename(__FILE__), __LINE__, __FUNCTION__})
+		#define MakeSourceLocation (::OSServices::SourceLocation {::OSServices::Internal::JustFilename(__FILE__), __LINE__, __FUNCTION__})
 	#endif
     #define Log(X) ::std::basic_ostream<typename std::remove_reference<decltype(X)>::type::char_type, typename std::remove_reference<decltype(X)>::type::traits_type>(&X) << MakeSourceLocation
 #else
@@ -188,13 +201,12 @@ namespace ConsoleRig
     //      unfortunately, it has to be done globally because this evaluates to a macro
     #pragma GCC diagnostic ignored "-Wdangling-else"
     extern std::ostream* g_fakeOStream;
-    #define Log(X) if (true) {} else (*::ConsoleRig::g_fakeOStream)
+    #define Log(X) if (true) {} else (*::OSServices::g_fakeOStream)
 #endif
 
 }
 
-extern ConsoleRig::MessageTarget<> Error;
-extern ConsoleRig::MessageTarget<> Warning;
-extern ConsoleRig::MessageTarget<> Debug;
-extern ConsoleRig::MessageTarget<> Verbose;
-
+extern OSServices::MessageTarget<> Error;
+extern OSServices::MessageTarget<> Warning;
+extern OSServices::MessageTarget<> Debug;
+extern OSServices::MessageTarget<> Verbose;

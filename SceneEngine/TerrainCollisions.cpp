@@ -10,7 +10,7 @@
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/HeapUtils.h"
 #include <memory>

@@ -43,6 +43,7 @@
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../OSServices/RawFS.h"
+#include "../../OSServices/LegacyFileStreams.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Conversion.h"
 #include <memory>
@@ -261,7 +262,7 @@ namespace GUILayer
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);
                 PrepareDirectoryForFile(nativeDestFile);
 
-                auto output = Legacy::OpenFileOutput(nativeDestFile.c_str(), "wb");
+                auto output = OSServices::Legacy::OpenFileOutput(nativeDestFile.c_str(), "wb");
                 // pin_ptr<const wchar_t> p = ::PtrToStringChars(_preview);
                 // output->Write(p, _preview->Length * sizeof(wchar_t));
                     // we need to use clix::marshalString in order to convert to UTF8 characters
@@ -391,7 +392,7 @@ namespace GUILayer
                     // write metrics file as well
                 {
                     auto metrics = _placements->GetMetricsString(_doc);
-                    auto output = Legacy::OpenFileOutput((nativeDestFile + ".metrics").c_str(), "wb");
+                    auto output = OSServices::Legacy::OpenFileOutput((nativeDestFile + ".metrics").c_str(), "wb");
                     output->Write(MakeStringSection(Conversion::Convert<std::basic_string<utf8>>(metrics)));
                 }
 

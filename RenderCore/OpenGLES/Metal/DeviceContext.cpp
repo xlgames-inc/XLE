@@ -11,7 +11,7 @@
 #include "Buffer.h"
 #include "Format.h"
 #include "../../IThreadContext.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 
 #include "IncludeGLES.h"
 #include <assert.h>

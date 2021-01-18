@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TransformationCommands.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include <sstream>
 
 #pragma warning(disable:4127)

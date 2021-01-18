@@ -4,7 +4,7 @@
 
 #include "IFileSystem.h"
 #include "MountingTree.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"

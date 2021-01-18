@@ -6,7 +6,7 @@
 
 #include "CompletionThreadPool.h"
 #include "ThreadLocalPtr.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Core/Exceptions.h"
 #include <functional>

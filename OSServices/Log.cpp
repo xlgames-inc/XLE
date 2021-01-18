@@ -1,3 +1,7 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
 #include "Log.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
@@ -10,7 +14,7 @@
 #include "../Foreign/fmt/format.h"
 #include <iostream>
 
-namespace ConsoleRig
+namespace OSServices
 {
     template<typename CharType, typename CharTraits>
         std::streamsize MessageTarget<CharType, CharTraits>::FormatAndOutput(
@@ -82,35 +86,9 @@ namespace ConsoleRig
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(CONSOLERIG_ENABLE_LOG)
+#if defined(OSSERVICES_ENABLE_LOG)
 
-    class LogConfigurationSet
-    {
-    public:
-        MessageTargetConfiguration ResolveConfig(StringSection<> name) const;
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
-        
-        void Set(StringSection<> id, MessageTargetConfiguration& cfg);
-
-        LogConfigurationSet();
-        LogConfigurationSet(
-            InputStreamFormatter<char>& formatter,
-            const ::Assets::DirectorySearchRules&,
-			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
-        ~LogConfigurationSet();
-    private:
-        class Config
-        {
-        public:
-            std::vector<std::string> _inherit;
-            MessageTargetConfiguration _cfg;
-        };
-
-        std::vector<std::pair<std::string, Config>> _configs;
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
-
-        Config LoadConfig(InputStreamFormatter<char>& formatter);
-    };
+    
 
     static void MergeIn(MessageTargetConfiguration& dst, const MessageTargetConfiguration& src)
     {
@@ -148,11 +126,7 @@ namespace ConsoleRig
     }
 
     LogConfigurationSet::LogConfigurationSet() {}
-    LogConfigurationSet::LogConfigurationSet(
-        InputStreamFormatter<char>& formatter,
-        const ::Assets::DirectorySearchRules&,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
-    : _depVal(depVal)
+    LogConfigurationSet::LogConfigurationSet(InputStreamFormatter<char>& formatter)
     {
         for (;;) {
             using Blob = InputStreamFormatter<char>::Blob;
@@ -201,21 +175,6 @@ namespace ConsoleRig
 
     LogConfigurationSet::~LogConfigurationSet() {}
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static std::shared_ptr<LogConfigurationSet> LoadConfigSet(StringSection<> fn)
-    {
-        size_t fileSize = 0;
-        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize);
-        if (!file.get() || !fileSize)
-            return nullptr;
-        
-        InputStreamFormatter<char> fmtr(MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
-        auto depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(depVal, fn);
-        return std::make_shared<LogConfigurationSet>(fmtr, ::Assets::DirectorySearchRules(), depVal);
-    }
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +189,7 @@ namespace ConsoleRig
         };
         std::vector<std::pair<uint64_t, Target>> _activeTargets;
 
-        #if defined(CONSOLERIG_ENABLE_LOG)
+        #if defined(OSSERVICES_ENABLE_LOG)
             std::shared_ptr<LogConfigurationSet> _activeCfgSet;
         #endif
     };
@@ -268,7 +227,7 @@ namespace ConsoleRig
 
         _pimpl->_activeTargets.insert(i, std::make_pair(hash, Pimpl::Target{id.AsString(), &target}));
 
-        #if defined(CONSOLERIG_ENABLE_LOG)
+        #if defined(OSSERVICES_ENABLE_LOG)
             // Set the initial configuration
             if (_pimpl->_activeCfgSet)
                 target.SetConfiguration(_pimpl->_activeCfgSet->ResolveConfig(id));
@@ -285,7 +244,7 @@ namespace ConsoleRig
 
     void LogCentral::SetConfiguration(const std::shared_ptr<LogConfigurationSet>& cfgs)
     {
-        #if defined(CONSOLERIG_ENABLE_LOG)
+        #if defined(OSSERVICES_ENABLE_LOG)
             _pimpl->_activeCfgSet = cfgs;
             if (cfgs) {
                 for (const auto&t:_pimpl->_activeTargets)
@@ -310,84 +269,10 @@ namespace ConsoleRig
     {
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void LogCentralConfiguration::Set(StringSection<> id, MessageTargetConfiguration& cfg)
-    {
-        #if defined(CONSOLERIG_ENABLE_LOG)
-            _cfgSet->Set(id, cfg);
-
-            // Reapply all configurations to the LogCentral in the local module
-            auto logCentral = _attachedLogCentral.lock();
-            if (logCentral)
-                logCentral->SetConfiguration(_cfgSet);
-            /*
-            auto& central = LogCentral::GetInstance();
-            auto hash = Hash64(id);
-            auto i = LowerBound(central._pimpl->_activeTargets, hash);
-            if (i!=central._pimpl->_activeTargets.end() && i->first == hash)
-                i->second._target->SetConfiguration(cfg);
-            */
-        #endif
-    }
-
-    void LogCentralConfiguration::CheckHotReload()
-    {
-        #if defined(CONSOLERIG_ENABLE_LOG)
-            if (!_cfgSet || !_cfgSet->GetDependencyValidation() || _cfgSet->GetDependencyValidation()->GetValidationIndex() > 0) {
-                _cfgSet = LoadConfigSet(_logCfgFile);
-                auto logCentral = _attachedLogCentral.lock();
-                if (logCentral)
-                    logCentral->SetConfiguration(_cfgSet);
-            }
-        #endif
-    }
-
-    void LogCentralConfiguration::AttachCurrentModule()
-    {
-        assert(s_instance == nullptr);
-		s_instance = this;
-
-		auto logCentral = LogCentral::GetInstance();
-		if (logCentral)
-			logCentral->SetConfiguration(_cfgSet);
-
-		if (!_attachedLogCentral.lock() && logCentral)
-			_attachedLogCentral = logCentral;
-    }
-
-    void LogCentralConfiguration::DetachCurrentModule()
-    {
-        assert(s_instance == this);
-        s_instance = nullptr;
-
-		auto logCentral = _attachedLogCentral.lock();
-        if (logCentral)
-            logCentral->SetConfiguration(nullptr);
-        _attachedLogCentral.reset();
-    }
-
-    LogCentralConfiguration* LogCentralConfiguration::s_instance = nullptr;
-
-    LogCentralConfiguration::LogCentralConfiguration(const std::string& logCfgFile)
-    {
-        #if defined(CONSOLERIG_ENABLE_LOG)
-            _logCfgFile = logCfgFile;
-            _cfgSet = LoadConfigSet(_logCfgFile);
-        #endif
-    }
-
-    LogCentralConfiguration::~LogCentralConfiguration() 
-    {
-    }
-
     std::ostream* g_fakeOStream = nullptr;
 }
 
-ConsoleRig::MessageTarget<> Error("Error");
-ConsoleRig::MessageTarget<> Warning("Warning");
-ConsoleRig::MessageTarget<> Debug("Debug");
-ConsoleRig::MessageTarget<> Verbose("Verbose");
-
-
-
+OSServices::MessageTarget<> Error("Error");
+OSServices::MessageTarget<> Warning("Warning");
+OSServices::MessageTarget<> Debug("Debug");
+OSServices::MessageTarget<> Verbose("Verbose");

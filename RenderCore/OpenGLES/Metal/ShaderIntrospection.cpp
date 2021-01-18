@@ -3,7 +3,7 @@
 #include "Shader.h"
 #include "Format.h"
 #include "../../UniformsStream.h"        // (for ConstantBufferElementDesc)
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 

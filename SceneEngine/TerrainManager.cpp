@@ -28,7 +28,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
 #include "../Assets/Assets.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IProgress.h"
 #include "../Utility/StringFormat.h"

@@ -32,7 +32,7 @@
 #include "../../Assets/AssetSetManager.h"
 
 #include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../ConsoleRig/ResourceBox.h"

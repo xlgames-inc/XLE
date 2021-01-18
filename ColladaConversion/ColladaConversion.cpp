@@ -23,7 +23,7 @@
 #include "../Assets/ICompileOperation.h"
 #include "../Assets/IFileSystem.h"
 
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/PtrUtils.h"

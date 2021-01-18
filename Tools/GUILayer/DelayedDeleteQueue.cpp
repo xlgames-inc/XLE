@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DelayedDeleteQueue.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include <msclr/lock.h>
 #include <msclr/auto_gcroot.h>
 

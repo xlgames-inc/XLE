@@ -23,7 +23,7 @@
 #include "../RenderCore/BufferView.h"
 #include "../RenderCore/UniformsStream.h"
 #include "../Assets/Assets.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"

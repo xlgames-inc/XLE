@@ -12,8 +12,9 @@
 #include "DepVal.h"
 #include "AssetUtils.h"
 
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
+#include "../OSServices/LegacyFileStreams.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
@@ -279,7 +280,7 @@ namespace Assets { namespace IntermediateAssets
 		OSServices::BasicFile file;
 		if (MainFileSystem::TryOpen(file, buffer, "wb") != IFileSystem::IOReason::Success)
 			return nullptr;
-		auto stream = Legacy::OpenFileOutput(std::move(file));
+		auto stream = OSServices::Legacy::OpenFileOutput(std::move(file));
         data.SaveToOutputStream(*stream);
 
         return result;

@@ -13,7 +13,7 @@
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../ConsoleRig/LogUtil.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"

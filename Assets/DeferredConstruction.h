@@ -8,7 +8,7 @@
 #include "AssetFuture.h"
 #include "AssetTraits.h"
 #include "IArtifact.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include <memory>
 
 namespace Assets

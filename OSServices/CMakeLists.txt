@@ -2,6 +2,8 @@
 set(Src
     Socket.cpp
     RawFS.cpp
+    Log.cpp
+    LegacyFileStreams.cpp
     )
 set(Headers
     RawFS.h

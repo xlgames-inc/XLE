@@ -8,7 +8,7 @@
 #include "../Device.h"
 #include "../../IThreadContext.h"
 #include "../../ResourceUtils.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 
 #include "IncludeAppleMetal.h"
 

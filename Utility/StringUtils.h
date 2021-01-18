@@ -44,9 +44,8 @@ namespace Utility
     XL_UTILITY_API int      XlCompareStringI    (const utf8* x, const utf8* y);
 
 		////////////   U T F 1 6   O V E R R I D E S   ////////////
-	// XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src);
-	// XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length);
-	// XL_UTILITY_API size_t   XlStringSize(const utf16* str);
+	XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src);
+	XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length);
     XL_UTILITY_API size_t   XlStringSize        (const utf16* str);
     XL_UTILITY_API size_t   XlGlyphCount        (const utf16* str);
     XL_UTILITY_API void     XlCopyString        (utf16* dst, size_t size, const utf16* src);

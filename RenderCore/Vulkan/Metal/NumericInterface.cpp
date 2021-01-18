@@ -9,7 +9,7 @@
 #include "ObjectFactory.h"
 #include "Pools.h"
 #include "DescriptorSet.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 

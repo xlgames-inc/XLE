@@ -16,7 +16,7 @@
 #include "../../Types.h"
 #include "../../BufferView.h"
 #include "../../UniformsStream.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include "../../../Utility/StringFormat.h"

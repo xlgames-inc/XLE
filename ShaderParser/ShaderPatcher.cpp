@@ -14,7 +14,7 @@
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"

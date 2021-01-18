@@ -544,6 +544,7 @@ namespace Utility
 
         //  Selectively convert case to lower case on filesystems where it doesn't matter.
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
+	utf16 ConvertPathChar(utf16 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
 
 	static const uint64 s_FNV_init64 =  0xcbf29ce484222325ULL;
@@ -702,10 +703,13 @@ namespace Utility
     FilenameRules s_defaultFilenameRules('/', true);
 
     template class FileNameSplitter<utf8>;
+	template class FileNameSplitter<utf16>;
     template class FileNameSplitter<ucs2>;
     template class SplitPath<utf8>;
+	template class SplitPath<utf16>;
     template class SplitPath<ucs2>;
     template std::basic_string<utf8> MakeRelativePath(const SplitPath<utf8>&, const SplitPath<utf8>&, const FilenameRules&);
+	template std::basic_string<utf16> MakeRelativePath(const SplitPath<utf16>&, const SplitPath<utf16>&, const FilenameRules&);
     template std::basic_string<ucs2> MakeRelativePath(const SplitPath<ucs2>&, const SplitPath<ucs2>&, const FilenameRules&);
 
 }

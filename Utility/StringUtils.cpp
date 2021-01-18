@@ -415,6 +415,15 @@ void     XlCatString(utf8* dst, size_t size, const utf8* src)
         assert(0);
         return 0;
     }
+
+    XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src)
+    {
+        assert(0);
+    }
+	XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length)
+    {
+        assert(0);
+    }
     
 #endif
 

@@ -21,7 +21,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/ShaderService.h"
 #include "../../RenderCore/MinimalShaderSource.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/IArtifact.h"

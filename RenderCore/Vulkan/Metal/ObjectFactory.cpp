@@ -7,7 +7,7 @@
 #include "ObjectFactory.h"
 #include "Resource.h"
 #include "IncludeVulkan.h"
-#include "../../../ConsoleRig/Log.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Core/Prefix.h"
 #include "../../../Utility/HeapUtils.h"
 #include <queue>

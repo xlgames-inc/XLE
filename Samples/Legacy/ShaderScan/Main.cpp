@@ -18,7 +18,7 @@
 #include "Assets/MountingTree.h"
 #include "Assets/Assets.h"
 #include "ConsoleRig/GlobalServices.h"
-#include "ConsoleRig/Log.h"
+#include "OSServices/Log.h"
 #include "ConsoleRig/AttachablePtr.h"
 #include "Utility/StringUtils.h"
 #include "Utility/Streams/StreamFormatter.h"

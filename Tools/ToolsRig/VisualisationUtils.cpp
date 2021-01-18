@@ -33,7 +33,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/FunctionUtils.h"
 #include <iomanip>

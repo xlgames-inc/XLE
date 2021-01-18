@@ -8,7 +8,7 @@
 #include "../ConversionUtil.h"
 // #include "../NascentAnimController.h"
 #include "../../RenderCore/Assets/NascentTransformationMachine.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"

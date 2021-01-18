@@ -9,7 +9,7 @@
 #include "OCMisc.h"
 #include "../NascentAnimController.h"
 #include "../../Assets/AssetsCore.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/MemoryUtils.h"
 
 #pragma warning(push)

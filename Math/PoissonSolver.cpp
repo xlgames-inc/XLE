@@ -11,7 +11,7 @@
 #include "RegularNumberField.h"
 #include "XLEMath.h"
 #include "Vector.h"
-// #include "../ConsoleRig/Log.h"
+// #include "../OSServices/Log.h"
 #include "../Utility/PtrUtils.h"
 #include <vector>
 #include <assert.h>

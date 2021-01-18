@@ -31,7 +31,7 @@
 #include "../Assets/AssetSetManager.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../xleres/FileList.h"
 #include <map>

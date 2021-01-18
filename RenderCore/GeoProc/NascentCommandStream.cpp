@@ -10,7 +10,7 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../ConsoleRig/OutputStream.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/IteratorUtils.h"

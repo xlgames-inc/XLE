@@ -18,7 +18,7 @@
 #include "ShaderReflection.h"
 #include "../IDeviceVulkan.h"
 #include "../../Format.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
 #include "../../xleres/FileList.h"

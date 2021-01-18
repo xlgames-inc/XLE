@@ -8,7 +8,7 @@
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "../../Format.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/BitUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan

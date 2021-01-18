@@ -34,7 +34,7 @@
 #include "../Utility/Profiling/CPUProfiler.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Types.h"
 

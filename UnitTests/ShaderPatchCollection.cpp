@@ -16,7 +16,7 @@
 #include "../Assets/MemoryFile.h"
 #include "../Assets/DepVal.h"
 #include "../ConsoleRig/Console.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamTypes.h"

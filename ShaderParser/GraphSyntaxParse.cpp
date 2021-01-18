@@ -17,7 +17,7 @@
 #include "../Assets/Assets.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include <unordered_map>
 #include <stack>
 

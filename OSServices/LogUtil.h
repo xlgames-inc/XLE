@@ -25,13 +25,13 @@
 
 using namespace fmt::literals;
 
-#if defined(CORESERVICES_ENABLELOG)
-    inline void LogLine(ConsoleRig::MessageTarget<>& target, const char *format, fmt::ArgList args)
+#if defined(OSSERVICES_ENABLE_LOG)
+    inline void LogLine(OSServices::MessageTarget<>& target, const char *format, fmt::ArgList args)
     {
         Log(target) << fmt::format(format, args) << std::endl;
     }
 
-    FMT_VARIADIC(void, LogLine, ConsoleRig::MessageTarget<>&, const char *);
+    FMT_VARIADIC(void, LogLine, OSServices::MessageTarget<>&, const char *);
 #else
     #define LogLine(...)
 #endif

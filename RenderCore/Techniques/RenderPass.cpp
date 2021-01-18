@@ -14,7 +14,7 @@
 #include "../Format.h"
 #include "../ResourceUtils.h"
 #include "../IThreadContext.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Utility/ArithmeticUtils.h"
 #include "../../Utility/StreamUtils.h"
 #include <cmath>

@@ -14,7 +14,7 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include <queue>
 #include <cctype>
 

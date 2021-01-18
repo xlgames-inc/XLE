@@ -8,7 +8,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/IteratorUtils.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include "../../Core/Types.h"
 #include <vector>
 

@@ -10,7 +10,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/CommonUtils.h"
 #include "../Assets/Assets.h"
-#include "../ConsoleRig/Log.h"
+#include "../OSServices/Log.h"
 #include "../xleres/FileList.h"
 
 namespace SceneEngine

@@ -10,7 +10,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../OSServices/Log.h"
 #include <type_traits>
 #include <iostream>
 #include <assert.h>
