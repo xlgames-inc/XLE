@@ -17,7 +17,6 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Threading/LockFree.h"
-#include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"

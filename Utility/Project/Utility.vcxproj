@@ -103,7 +103,6 @@
     <ClInclude Include="..\Threading\Mutex.h" />
     <ClInclude Include="..\Threading\ThreadingUtils.h" />
     <ClInclude Include="..\Threading\ThreadLibrary.h" />
-    <ClInclude Include="..\Threading\ThreadObject.h" />
     <ClInclude Include="..\TimeUtils.h" />
     <ClInclude Include="..\UTFUtils.h" />
     <ClInclude Include="..\VariantUtils.h" />

@@ -2528,12 +2528,6 @@ namespace BufferUploads
         }
     }
 
-    uint32 Manager::BackgroundThreadFunction(void* parameter)
-    {
-        Manager* manager = (Manager*)parameter;
-        return manager->DoBackgroundThread();
-    }
-
     uint32 Manager::DoBackgroundThread()
     {
         if (_backgroundContext) {
@@ -2633,7 +2627,7 @@ namespace BufferUploads
             _backgroundStepMask = 0;
         }
         if (_backgroundStepMask) {
-            _backgroundThread = std::make_unique<Threading::Thread>(&BackgroundThreadFunction, this);
+            _backgroundThread = std::make_unique<std::thread>([this](){ return DoBackgroundThread(); });
         }
     }
 

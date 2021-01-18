@@ -10,7 +10,6 @@
 #include "../../../Core/Types.h"
 #include "../../../Core/WinAPI/IncludeWindows.h"
 #include "../../Threading/Mutex.h"
-#include "../../Threading/ThreadObject.h"
 #include "../../Threading/LockFree.h"
 #include "../../MemoryUtils.h"
 #include "../../UTFUtils.h"
@@ -19,6 +18,7 @@
 #include <vector>
 #include <memory>
 #include <cctype>
+#include <thread>
 
 // Character set note -- we're using utf16 characters in this file. We're going to
 // assume that Windows is working with utf16 as well (as opposed to ucs2). This windows documentation
@@ -67,7 +67,7 @@ namespace Utility
     static unsigned CreationOrderId_Background = 0;
 
     static XlHandle                                     RestartMonitoringEvent = INVALID_HANDLE_VALUE;
-    static std::unique_ptr<Utility::Threading::Thread>  MonitoringThread;
+    static std::unique_ptr<std::thread>                 MonitoringThread;
     static Utility::Threading::Mutex                    MonitoringThreadLock;
     static bool                                         MonitoringQuit = false;
 
@@ -211,7 +211,7 @@ namespace Utility
         /*assert(hresult);*/ (void)hresult;
     }
 
-    unsigned int xl_thread_call MonitoringEntryPoint(void*)
+    unsigned int MonitoringEntryPoint)
     {
         while (!MonitoringQuit) {
             {
@@ -240,7 +240,7 @@ namespace Utility
         ScopedLock(MonitoringThreadLock);
         if (!MonitoringThread) {
             RestartMonitoringEvent = XlCreateEvent(false);
-            MonitoringThread = std::make_unique<Utility::Threading::Thread>(MonitoringEntryPoint, nullptr);
+            MonitoringThread = std::make_unique<std::thread>(MonitoringEntryPoint);
         }
         XlSetEvent(RestartMonitoringEvent);
     }

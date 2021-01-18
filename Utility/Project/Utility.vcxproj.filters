@@ -33,9 +33,6 @@
     <ClInclude Include="..\Threading\ThreadingUtils.h">
       <Filter>Threading</Filter>
     </ClInclude>
-    <ClInclude Include="..\Threading\ThreadObject.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
     <ClInclude Include="..\Threading\LockFree.h">
       <Filter>Threading</Filter>
     </ClInclude>

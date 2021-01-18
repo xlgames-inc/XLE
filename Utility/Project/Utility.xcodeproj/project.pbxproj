@@ -108,7 +108,6 @@
 		8FD85D991EA688D1009BD9B0 /* Mutex.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D4D1EA688D1009BD9B0 /* Mutex.h */; };
 		8FD85D9A1EA688D1009BD9B0 /* ThreadingUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D4E1EA688D1009BD9B0 /* ThreadingUtils.h */; };
 		8FD85D9B1EA688D1009BD9B0 /* ThreadLibrary.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D4F1EA688D1009BD9B0 /* ThreadLibrary.h */; };
-		8FD85D9C1EA688D1009BD9B0 /* ThreadObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D501EA688D1009BD9B0 /* ThreadObject.h */; };
 		8FD85D9E1EA688D1009BD9B0 /* TimeUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D531EA688D1009BD9B0 /* TimeUtils.h */; };
 		8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
 		8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D551EA688D1009BD9B0 /* UTFUtils.h */; };
@@ -210,7 +209,6 @@
 		8FD85D4D1EA688D1009BD9B0 /* Mutex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Mutex.h; sourceTree = "<group>"; };
 		8FD85D4E1EA688D1009BD9B0 /* ThreadingUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadingUtils.h; sourceTree = "<group>"; };
 		8FD85D4F1EA688D1009BD9B0 /* ThreadLibrary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadLibrary.h; sourceTree = "<group>"; };
-		8FD85D501EA688D1009BD9B0 /* ThreadObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadObject.h; sourceTree = "<group>"; };
 		8FD85D531EA688D1009BD9B0 /* TimeUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeUtils.h; path = ../TimeUtils.h; sourceTree = "<group>"; };
 		8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UTFUtils.cpp; path = ../UTFUtils.cpp; sourceTree = "<group>"; };
 		8FD85D551EA688D1009BD9B0 /* UTFUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UTFUtils.h; path = ../UTFUtils.h; sourceTree = "<group>"; };
@@ -390,7 +388,6 @@
 				8FD85D4D1EA688D1009BD9B0 /* Mutex.h */,
 				8FD85D4E1EA688D1009BD9B0 /* ThreadingUtils.h */,
 				8FD85D4F1EA688D1009BD9B0 /* ThreadLibrary.h */,
-				8FD85D501EA688D1009BD9B0 /* ThreadObject.h */,
 				8F305C6E21F137450036BE2B /* ThreadLocalPtr.h */,
 			);
 			name = Threading;
@@ -436,7 +433,6 @@
 				8FD85D991EA688D1009BD9B0 /* Mutex.h in Headers */,
 				8FD85D9E1EA688D1009BD9B0 /* TimeUtils.h in Headers */,
 				8FD85D711EA688D1009BD9B0 /* MiniHeap.h in Headers */,
-				8FD85D9C1EA688D1009BD9B0 /* ThreadObject.h in Headers */,
 				8FD85D671EA688D1009BD9B0 /* HeapUtils.h in Headers */,
 				8FD85D6A1EA688D1009BD9B0 /* MemoryUtils.h in Headers */,
 				8FD85D911EA688D1009BD9B0 /* StringFormat.h in Headers */,

@@ -9,10 +9,10 @@
 #define FLEX_CONTEXT_Manager             FLEX_CONTEXT_CONCRETE
 
 #include "IBufferUploads.h"
-#include "../Utility/Threading/ThreadObject.h"
 #include "../Core/Prefix.h"
 
 #include <utility>
+#include <thread>
 
 namespace BufferUploads
 {
@@ -64,7 +64,7 @@ namespace BufferUploads
         std::unique_ptr<AssemblyLine> _assemblyLine;
         unsigned _foregroundStepMask, _backgroundStepMask;
 
-        std::unique_ptr<Threading::Thread> _backgroundThread;
+        std::unique_ptr<std::thread> _backgroundThread;
         std::unique_ptr<ThreadContext> _backgroundContext;
         std::unique_ptr<ThreadContext> _foregroundContext;
         std::unique_ptr<PlatformInterface::GPUEventStack> _gpuEventStack;
@@ -73,7 +73,6 @@ namespace BufferUploads
         XlHandle _assemblyLineWakeUpEvent, _waitingForDeviceResetEvent;
         bool _handlingLostDevice;
 
-        static uint32 xl_thread_call BackgroundThreadFunction(void *);
         uint32 DoBackgroundThread();
 
         ThreadContext* MainContext();
