@@ -354,9 +354,9 @@ namespace ShaderSourceParser
 
             auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
             if (i!=instantiationParameters._parameterBindings.end()) {
-				result._finalArchiveName = i->second._archiveName;
-				result._instantiationParameters = i->second;
-				result._customProvider = i->second._customProvider;
+				result._finalArchiveName = i->second->_archiveName;
+				result._instantiationParameters = *i->second;
+				result._customProvider = i->second->_customProvider;
             } else {
 				result._finalArchiveName = restriction.AsString();
             }
@@ -441,9 +441,12 @@ namespace ShaderSourceParser
             //  for those parameters, we must select a specific instantiation of the function
             //
         InstantiationRequest callInstantiation;
-		callInstantiation._parameterBindings.insert(
-			sigRes._instantiationParameters._parameterBindings.begin(),
-			sigRes._instantiationParameters._parameterBindings.end());
+		for (const auto&param:sigRes._instantiationParameters._parameterBindings)
+			callInstantiation._parameterBindings.insert(
+				std::make_pair(
+					param.first,
+					std::make_unique<InstantiationRequest>(*param.second)));
+
 		// the node graph can override any instantiation parameters
         for (const auto& tp:sig.GetTemplateParameters()) {
             auto connection = std::find_if(
@@ -459,7 +462,8 @@ namespace ShaderSourceParser
 				// There can be values attached as inputs to the instantiation node; they act like curried parameters.
 				auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
 				assert(instantiationNode);
-				auto param = InstantiationRequest { instantiationNode->ArchiveName() };
+				auto param = std::make_unique<InstantiationRequest>();
+				param->_archiveName = instantiationNode->ArchiveName();
 
 				// Any input parameters to this node that aren't part of the restriction signature should become curried
 				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
@@ -481,12 +485,12 @@ namespace ShaderSourceParser
 							isPartOfRestriction = i != restrictionSignature.value()._signature.GetParameters().end();
 						}
 						if (!isPartOfRestriction) {
-							param._parametersToCurry.push_back(paramName);
+							param->_parametersToCurry.push_back(paramName);
 						}
 					}
 				}
 
-				callInstantiation._parameterBindings.insert({tp._name, param});
+				callInstantiation._parameterBindings.insert({tp._name, std::move(param)});
             }
         }
 
@@ -495,8 +499,8 @@ namespace ShaderSourceParser
         auto callInstHash = callInstantiation.CalculateInstanceHash();
         if (!callInstantiation._parameterBindings.empty()) {
             for (const auto& c:callInstantiation._parameterBindings) {
-                result << "\t// Instantiating " << functionName << " with " << c.first << " set to " << c.second._archiveName << std::endl;
-				for (const auto& p:c.second._parametersToCurry)
+                result << "\t// Instantiating " << functionName << " with " << c.first << " set to " << c.second->_archiveName << std::endl;
+				for (const auto& p:c.second->_parametersToCurry)
 					result << "\t//     Curried parameter: " << p << std::endl;
 			}
             functionName += "_" + std::to_string(callInstHash);
@@ -523,11 +527,7 @@ namespace ShaderSourceParser
         }
 
 		auto n = RemoveTemplateRestrictions(node.ArchiveName());
-		auto parameterBindingsForThisNode = std::find_if(
-			instantiationParameters._parameterBindings.begin(), instantiationParameters._parameterBindings.end(),
-			[n](const std::pair<std::string, InstantiationRequest>&p) {
-				return XlEqString(MakeStringSection(p.first), n);
-			});
+		auto parameterBindingsForThisNode = instantiationParameters._parameterBindings.find(n);
 
         bool pendingComma = false;
         for (auto p=sig.GetParameters().cbegin(); p!=sig.GetParameters().cend(); ++p) {
@@ -548,10 +548,10 @@ namespace ShaderSourceParser
 				// When this happens, the value must be passed through the interface from the caller
 				if (parameterBindingsForThisNode != instantiationParameters._parameterBindings.end()) {
 					auto i = std::find_if(
-						parameterBindingsForThisNode->second._parametersToCurry.begin(),
-						parameterBindingsForThisNode->second._parametersToCurry.end(),
+						parameterBindingsForThisNode->second->_parametersToCurry.begin(),
+						parameterBindingsForThisNode->second->_parametersToCurry.end(),
 						[p](const std::string& str) { return XlEqString(MakeStringSection(str), p->_name);});
-					if (i != parameterBindingsForThisNode->second._parametersToCurry.end()) {
+					if (i != parameterBindingsForThisNode->second->_parametersToCurry.end()) {
 						interfContext._curriedParameters.push_back({n, *p});
 						result << "curried_" << n << "_" << p->_name;
 						continue;
@@ -565,7 +565,7 @@ namespace ShaderSourceParser
 		// If the call instantiation itself has curried parameters, they won't appear in the 
 		// signature returned from ResolveFunction. We must append their values here
 		for (const auto& tp:callInstantiation._parameterBindings) {
-			if (tp.second._parametersToCurry.empty()) continue;
+			if (tp.second->_parametersToCurry.empty()) continue;
 
 			// First, find the instantiation node
 			auto connection = std::find_if(
@@ -580,7 +580,7 @@ namespace ShaderSourceParser
 				assert(instantiationNode);
 
 				// Now generate the syntax as if we're passing the parameter into the instantiation node
-				for (const auto& c:tp.second._parametersToCurry) {
+				for (const auto& c:tp.second->_parametersToCurry) {
 					if (pendingComma) result << ", ";
 					pendingComma = true;
 

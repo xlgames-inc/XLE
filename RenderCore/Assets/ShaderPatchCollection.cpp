@@ -91,7 +91,7 @@ namespace RenderCore { namespace Assets
 
 		for (const auto&p:instRequest._parameterBindings) {
 			auto ele = formatter.BeginElement(p.first);
-			SerializeInstantiationRequest(formatter, p.second);
+			SerializeInstantiationRequest(formatter, *p.second);
 			formatter.EndElement(ele);
 		}
 	}
@@ -150,7 +150,7 @@ namespace RenderCore { namespace Assets
 					result._parameterBindings.emplace(
 						std::make_pair(
 							name.Cast<char>().AsString(),
-							DeserializeInstantiationRequest(formatter, searchRules)));
+							std::make_unique<ShaderSourceParser::InstantiationRequest>(DeserializeInstantiationRequest(formatter, searchRules))));
 
 					if (!formatter.TryEndElement())
 						Throw(FormatException("Expecting end element", formatter.GetLocation()));
@@ -244,7 +244,7 @@ namespace RenderCore { namespace Assets
 		}
 	}	
 
-	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection)
+	std::ostream& SerializationOperator(std::ostream& str, const ShaderPatchCollection& patchCollection)
 	{
 		str << "PatchCollection[" << patchCollection.GetHash() << "]";
 		return str;

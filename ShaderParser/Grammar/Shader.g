@@ -72,6 +72,12 @@ tokens
 {
 	#include "../../Core/Prefix.h"
 
+	#if (COMPILER_ACTIVE == COMPILER_TYPE_GCC) || (COMPILER_ACTIVE == COMPILER_TYPE_CLANG)
+		#if !(__has_feature(c_thread_local) || __has_extension(c_thread_local))
+			#error The _Thread_local feature is not enabled in the compiler for C code. This is a C11 feature. You may need to ensure the -std=c11 compiler command line flag is set
+		#endif
+	#endif
+
 	typedef void ExceptionHandler(void*, const ANTLR3_EXCEPTION*, const ANTLR3_UINT8**);
 	typedef struct { ExceptionHandler* _callback; void* _userData; } ExceptionHandlerAndUserData;
 	thread_local ExceptionHandler* g_ShaderParserExceptionHandler = NULL;
@@ -121,7 +127,7 @@ tokens
 
 @parser::apifuncs 
 {
-	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
+	RECOGNIZER->displayRecognitionError = (void (*)(struct ANTLR3_BASE_RECOGNIZER_struct *, pANTLR3_UINT8 *))&CustomDisplayRecognitionError;
 }
 
 storage_class : 'extern' | 'nointerpolation' | 'precise' | 'shared' | 'groupshared' | 'static' | 'uniform' | 'volatile';

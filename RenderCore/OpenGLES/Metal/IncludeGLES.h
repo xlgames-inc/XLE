@@ -10,6 +10,14 @@
 	// Emulate GLES using desktop GL
 	#include <OpenGL/gl.h>
     #include <OpenGL/glext.h>
+#elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
+	// For linux we could choose to emulate using desktop GL, or use
+	// an implementation of GLES (either via Mesa or Angle)
+	#define GL_GLEXT_PROTOTYPES 1
+	#include <GLES2/gl2.h>
+	#include <GLES2/gl2ext.h>
+	#include <GLES3/gl3.h>
+	#undef None		// (macro pulled in from X11 headers)
 #elif PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	// Project Angle emulation layer
 	#define GL_GLEXT_PROTOTYPES 1

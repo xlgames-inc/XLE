@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     template<typename BindingInfo>
         void    DescriptorSetBuilder::WriteBinding(
-			unsigned bindingPoint, VkDescriptorType type, const BindingInfo& bindingInfo, bool reallocateBufferInfo
+			unsigned bindingPoint, VkDescriptorType_ type, const BindingInfo& bindingInfo, bool reallocateBufferInfo
 			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& description))
     {
             // (we're limited by the number of bits in _sinceLastFlush)

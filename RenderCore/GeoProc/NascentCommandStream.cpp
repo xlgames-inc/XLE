@@ -100,7 +100,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      Merge the animation drivers in the given input animation, and give 
             //      them the supplied name
             //
-        float minTime = FLT_MAX, maxTime = -FLT_MAX;
+        float minTime = std::numeric_limits<float>::max(), maxTime = -std::numeric_limits<float>::max();
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
         for (auto i=copyFrom._animationDrivers.cbegin(); i!=copyFrom._animationDrivers.end(); ++i) {
@@ -200,7 +200,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	{
 		// Make an Animation record that covers all of the curves registered.
 		// This is intended for cases where there's only a single animation within the NascentAnimationSet
-		float minTime = FLT_MAX, maxTime = -FLT_MAX;
+		float minTime = std::numeric_limits<float>::max(), maxTime = -std::numeric_limits<float>::max();
 		for (auto i=_animationDrivers.cbegin(); i!=_animationDrivers.end(); ++i) {
             if (i->_curveIndex >= _curves.size()) continue;
             const auto* animCurve = &_curves[i->_curveIndex];
@@ -468,7 +468,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return maxLOD;
     }
 
-    std::ostream& operator<<(std::ostream& stream, const NascentModelCommandStream& cmdStream)
+    std::ostream& SerializationOperator(std::ostream& stream, const NascentModelCommandStream& cmdStream)
     {
         stream << " --- Geometry instances:" << std::endl;
         unsigned c=0;

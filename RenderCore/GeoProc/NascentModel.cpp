@@ -12,6 +12,7 @@
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ModelImmutableData.h"
 #include "../../Assets/NascentChunk.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include "../../Core/Exceptions.h"
 #include <sstream>
 
@@ -233,8 +234,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     static std::ostream& SerializationOperator(std::ostream& stream, const NascentGeometryObjects& geos)
     {
-        using namespace Operators;
-
         stream << " --- Geos:" << std::endl;
         unsigned c=0;
         for (const auto& g:geos._rawGeos)
@@ -476,8 +475,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			}
 		}
 
-		assert(!isinf(result.first[0]) && !isinf(result.first[1]) && !isinf(result.first[2]));
-		assert(!isinf(result.second[0]) && !isinf(result.second[1]) && !isinf(result.second[2]));
+		assert(!std::isinf(result.first[0]) && !std::isinf(result.first[1]) && !std::isinf(result.first[2]));
+		assert(!std::isinf(result.second[0]) && !std::isinf(result.second[1]) && !std::isinf(result.second[2]));
 
 		return result;
 	}

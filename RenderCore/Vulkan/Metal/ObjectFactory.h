@@ -120,13 +120,13 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanUniquePtr<VkSampler> CreateSampler(const VkSamplerCreateInfo& createInfo) const;
 
 		VulkanUniquePtr<VkQueryPool> CreateQueryPool(
-			VkQueryType type, unsigned count, 
+			VkQueryType_ type, unsigned count, 
 			VkQueryPipelineStatisticFlags pipelineStats = 0) const;
 
 		unsigned FindMemoryType(
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;
-		VkFormatProperties GetFormatProperties(VkFormat fmt) const;
+		VkFormatProperties GetFormatProperties(VkFormat_ fmt) const;
 
 		std::shared_ptr<IDestructionQueue> CreateMarkerTrackingDestroyer(const std::shared_ptr<IAsyncTracker>&);
 

@@ -9,6 +9,7 @@
 #include "Format.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include <algorithm>
 
 namespace RenderCore
@@ -291,7 +292,7 @@ namespace RenderCore
         return "<<undefined>>";
     }
 
-    std::ostream& operator<<(std::ostream& strm, const TextureDesc& textureDesc)
+    std::ostream& SerializationOperator(std::ostream& strm, const TextureDesc& textureDesc)
     {
         strm << textureDesc._width << " x " << textureDesc._height << " x " << textureDesc._depth;
         strm << ", " << AsString(textureDesc._format);
@@ -300,7 +301,7 @@ namespace RenderCore
         return strm;
     }
 
-    std::ostream& operator<<(std::ostream& strm, const ResourceDesc& resDesc)
+    std::ostream& SerializationOperator(std::ostream& strm, const ResourceDesc& resDesc)
     {
         if (resDesc._type == ResourceDesc::Type::LinearBuffer) {
             strm << "LinearBuffer (" << resDesc._name << ") size: " << resDesc._linearBufferDesc._sizeInBytes / 1024.f << "KiB";

@@ -31,7 +31,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class VulkanAPIFailure : public ::Exceptions::BasicLabel
     {
     public:
-        VulkanAPIFailure(VkResult res, const char message[]);
+        VulkanAPIFailure(VkResult_ res, const char message[]);
     };
 }}
 

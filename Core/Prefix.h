@@ -39,6 +39,10 @@
         #define dll_import      __attribute__(( dllimport ))
     #endif
 
+    #if !defined(__cplusplus) && !defined(thread_local)
+		#define thread_local    _Thread_local
+	#endif
+
 #endif
 
 #pragma warning(disable:4481)   //  warning C4481: nonstandard extension used: override specifier 'override'

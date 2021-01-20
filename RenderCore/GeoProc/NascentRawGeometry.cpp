@@ -11,6 +11,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StreamUtils.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -48,7 +49,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     std::ostream& SerializationOperator(std::ostream& stream, const NascentRawGeometry& geo)
     {
-        using namespace RenderCore::Assets::Operators;
         stream << "Vertex bytes: " << ByteCount(geo._vertices.size()) << std::endl;
         stream << "Index bytes: " << ByteCount(geo._indices.size()) << std::endl;
         stream << "IA: " << geo._mainDrawInputAssembly << std::endl;

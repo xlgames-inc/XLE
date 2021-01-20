@@ -118,5 +118,5 @@ namespace RenderCore
         return Metrics { (unsigned)_views.size() };
     }
 
-    std::ostream& operator<<(std::ostream& strm, const ResourceDesc&);
+    std::ostream& SerializationOperator(std::ostream& strm, const ResourceDesc&);
 }

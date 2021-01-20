@@ -10,7 +10,7 @@
 
 extern "C" 
 {
-    typedef enum VkResult VkResult;
+    using VkResult_ = uint32_t;
 
     #define VK_DEFINE_HANDLE(object) typedef struct object##_T* object;
 
@@ -84,8 +84,8 @@ extern "C"
     typedef struct VkPhysicalDeviceMemoryProperties VkPhysicalDeviceMemoryProperties;
     typedef struct VkAllocationCallbacks VkAllocationCallbacks;
 
-    typedef enum VkFormat VkFormat;
-    typedef enum VkDescriptorType VkDescriptorType;
-	typedef enum VkQueryType VkQueryType;
+    using VkFormat_ = uint32_t;
+    using VkDescriptorType_ = uint32_t;
+	using VkQueryType_ = uint32_t;
 }
 

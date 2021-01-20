@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkPhysicalDevice physDev,
 		const PipelineLayoutSignatureFile& signatureFile);
 
-    VkDescriptorType AsVkDescriptorType(DescriptorType type)
+    VkDescriptorType_ AsVkDescriptorType(DescriptorType type)
     {
         switch (type) {
         case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;

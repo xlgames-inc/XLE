@@ -171,7 +171,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<CameraInstance>                 _cameraInstances;
         std::vector<SkinControllerInstance>         _skinControllerInstances;
 
-        friend std::ostream& operator<<(std::ostream&, const NascentModelCommandStream&);
+        friend std::ostream& SerializationOperator(std::ostream&, const NascentModelCommandStream&);
 
     private:
         std::vector<std::pair<std::string, std::string>>	_inputInterfaceNames;

@@ -11,7 +11,6 @@
 #include <utility>
 #include <iosfwd>
 
-namespace ShaderSourceParser { class InstantiationRequest; }
 namespace Utility { template<typename Char> class InputStreamFormatter; class OutputStreamFormatter; }
 
 namespace RenderCore { namespace Assets
@@ -50,6 +49,6 @@ namespace RenderCore { namespace Assets
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
 
-	std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection& patchCollection);
+	std::ostream& SerializationOperator(std::ostream& str, const ShaderPatchCollection& patchCollection);
 }}
 

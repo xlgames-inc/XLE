@@ -163,7 +163,7 @@ namespace ShaderSourceParser
 			if (inst._useScaffoldFunction) {
 				auto scaffoldSignature = inst._graph._signature;
 				for (const auto&tp:inst._instantiationParams._parameterBindings) {
-					for (const auto&c:tp.second._parametersToCurry) {
+					for (const auto&c:tp.second->_parametersToCurry) {
 						auto name = "curried_" + tp.first + "_" + c;
 						auto instP = std::find_if(
 							instFn._entryPoint._signature.GetParameters().begin(), instFn._entryPoint._signature.GetParameters().end(),
@@ -347,7 +347,7 @@ namespace ShaderSourceParser
 		uint64_t result = Hash64(dep._archiveName);
 		// todo -- ordering of parameters matters to the hash here
 		for (const auto& d:dep._parameterBindings)
-			result = Hash64(d.first, CalculateDepHash(d.second, result));
+			result = Hash64(d.first, CalculateDepHash(*d.second, result));
 		return result;
 	}
 
@@ -357,10 +357,33 @@ namespace ShaderSourceParser
         uint64 result = DefaultSeed64;
 		// todo -- ordering of parameters matters to the hash here
         for (const auto&p:_parameterBindings) {
-            result = Hash64(p.first, CalculateDepHash(p.second, result));
-			for (const auto&pc:p.second._parametersToCurry)
+            result = Hash64(p.first, CalculateDepHash(*p.second, result));
+			for (const auto&pc:p.second->_parametersToCurry)
 				result = Hash64(pc, result);
 		}
         return result;
     }
+
+	InstantiationRequest::InstantiationRequest(const InstantiationRequest& copyFrom)
+	: _archiveName(copyFrom._archiveName)
+	, _customProvider(copyFrom._customProvider)
+	, _parametersToCurry(copyFrom._parametersToCurry)
+	{
+		for (const auto&src:copyFrom._parameterBindings)
+			_parameterBindings.insert(std::make_pair(src.first, std::make_unique<InstantiationRequest>(*src.second)));
+	}
+
+	InstantiationRequest& InstantiationRequest::operator=(const InstantiationRequest& copyFrom)
+	{
+		_archiveName = copyFrom._archiveName;
+		_customProvider = copyFrom._customProvider;
+		_parametersToCurry = copyFrom._parametersToCurry;
+		_parameterBindings.clear();
+		for (const auto&src:copyFrom._parameterBindings)
+			_parameterBindings.insert(std::make_pair(src.first, std::make_unique<InstantiationRequest>(*src.second)));
+		return *this;
+	}
+
+	InstantiationRequest::InstantiationRequest(const std::string& archiveName) : _archiveName(archiveName) {}
+	InstantiationRequest::~InstantiationRequest() {}
 }

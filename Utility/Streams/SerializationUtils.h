@@ -10,16 +10,17 @@
 #include <vector>
 #include <cstdint>
 #include <algorithm>		// (for std::max)
+#include <type_traits>
 
-template<typename Stream, typename Object, decltype(SerializationOperator(std::declval<Stream&>(), std::declval<const Object&>()))* =nullptr>
+template<typename Stream, typename Object, std::remove_reference_t<decltype(SerializationOperator(std::declval<Stream&>(), std::declval<const Object&>()))>* =nullptr>
 	Stream& operator<<(Stream& stream, const Object& obj)
 		{ SerializationOperator(stream, obj); return stream; }
 
-template<typename Stream, typename Object, decltype(DeserializationOperator(std::declval<Stream&>(), std::declval<Object&>()))* =nullptr>
+template<typename Stream, typename Object, std::remove_reference_t<decltype(DeserializationOperator(std::declval<Stream&>(), std::declval<Object&>()))>* =nullptr>
 	Stream& operator>>(Stream& stream, Object& obj)
 		{ DeserializationOperator(stream, obj); return stream; }
 
-template<typename Stream, typename Object, decltype(DeserializationOperator(std::declval<const Stream&>(), std::declval<Object&>()))* =nullptr>
+template<typename Stream, typename Object, std::remove_reference_t<decltype(DeserializationOperator(std::declval<const Stream&>(), std::declval<Object&>()))>* =nullptr>
 	const Stream& operator>>(const Stream& stream, Object& obj)
 		{ DeserializationOperator(stream, obj); return stream; }
 

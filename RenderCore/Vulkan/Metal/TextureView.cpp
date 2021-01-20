@@ -61,7 +61,7 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.pNext = nullptr;
         view_info.image = image;
         view_info.viewType = AsImageViewType(window._dimensionality, isArray);
-        view_info.format = AsVkFormat(window._format._explicitFormat);
+        view_info.format = (VkFormat)AsVkFormat(window._format._explicitFormat);
         view_info.components.r = VK_COMPONENT_SWIZZLE_R;
         view_info.components.g = VK_COMPONENT_SWIZZLE_G;
         view_info.components.b = VK_COMPONENT_SWIZZLE_B;

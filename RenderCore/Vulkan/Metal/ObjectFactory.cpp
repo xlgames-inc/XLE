@@ -336,7 +336,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 	VulkanUniquePtr<VkQueryPool> ObjectFactory::CreateQueryPool(
-		VkQueryType type, unsigned count,
+		VkQueryType_ type, unsigned count,
 		VkQueryPipelineStatisticFlags pipelineStats) const
 	{
 		VkQueryPoolCreateInfo createInfo = {};
@@ -372,7 +372,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return ~0x0u;
     }
 
-	VkFormatProperties ObjectFactory::GetFormatProperties(VkFormat fmt) const
+	VkFormatProperties ObjectFactory::GetFormatProperties(VkFormat_ fmt) const
 	{
 		VkFormatProperties formatProps;
 		vkGetPhysicalDeviceFormatProperties(_physDev, fmt, &formatProps);
@@ -744,7 +744,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    VulkanAPIFailure::VulkanAPIFailure(VkResult res, const char message[])
+    VulkanAPIFailure::VulkanAPIFailure(VkResult_ res, const char message[])
         : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
 }}
 

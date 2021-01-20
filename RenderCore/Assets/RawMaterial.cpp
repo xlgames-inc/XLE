@@ -52,7 +52,7 @@ namespace RenderCore { namespace Assets
     };
     
     static Blend DeserializeBlend(
-        DocElementIterator<InputStreamFormatter<utf8>> ele, const utf8 name[])
+        const StreamDOMElement<InputStreamFormatter<utf8>>& ele, const utf8 name[])
     {
         if (ele) {
             auto child = ele.Attribute(name);
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
     }
 
     static BlendOp DeserializeBlendOp(
-        DocElementIterator<InputStreamFormatter<utf8>> ele, const utf8 name[])
+        const StreamDOMElement<InputStreamFormatter<utf8>>& ele, const utf8 name[])
     {
         if (ele) {
             auto child = ele.Attribute(name);
@@ -90,30 +90,31 @@ namespace RenderCore { namespace Assets
         RenderStateSet result;
 
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
+        auto rootElement = doc.RootElement();
 
         {
-            auto child = doc.Attribute("DoubleSided").As<bool>();
-            if (child.first) {
-                result._doubleSided = child.second;
+            auto child = rootElement.Attribute("DoubleSided").As<bool>();
+            if (child.has_value()) {
+                result._doubleSided = child.value();
                 result._flag |= RenderStateSet::Flag::DoubleSided;
             }
         }
         {
-            auto child = doc.Attribute("Wireframe").As<bool>();
-            if (child.first) {
-                result._wireframe = child.second;
+            auto child = rootElement.Attribute("Wireframe").As<bool>();
+            if (child.has_value()) {
+                result._wireframe = child.value();
                 result._flag |= RenderStateSet::Flag::Wireframe;
             }
         }
         {
-            auto child = doc.Attribute("WriteMask").As<unsigned>();
-            if (child.first) {
-                result._writeMask = child.second;
+            auto child = rootElement.Attribute("WriteMask").As<unsigned>();
+            if (child.has_value()) {
+                result._writeMask = child.value();
                 result._flag |= RenderStateSet::Flag::WriteMask;
             }
         }
         {
-            auto child = doc.Attribute("BlendType");
+            auto child = rootElement.Attribute("BlendType");
             if (child) {
                 if (XlEqStringI(child.Value(), "decal")) {
                     result._blendType = RenderStateSet::BlendType::DeferredDecal;
@@ -126,14 +127,14 @@ namespace RenderCore { namespace Assets
             }
         }
         {
-            auto child = doc.Attribute("DepthBias").As<int>();
-            if (child.first) {
-                result._depthBias = child.second;
+            auto child = rootElement.Attribute("DepthBias").As<int>();
+            if (child.has_value()) {
+                result._depthBias = child.value();
                 result._flag |= RenderStateSet::Flag::DepthBias;
             }
         }
         {
-            auto child = doc.Element("ForwardBlend");
+            auto child = rootElement.Element("ForwardBlend");
             if (child) {
                 result._forwardBlendSrc = DeserializeBlend(child, "Src");
                 result._forwardBlendDst = DeserializeBlend(child, "Dst");
@@ -147,10 +148,10 @@ namespace RenderCore { namespace Assets
     static const utf8* AsString(RenderStateSet::BlendType blend)
     {
         switch (blend) {
-        case RenderStateSet::BlendType::DeferredDecal: return "decal");
-        case RenderStateSet::BlendType::Ordered: return "ordered");
+        case RenderStateSet::BlendType::DeferredDecal: return "decal";
+        case RenderStateSet::BlendType::Ordered: return "ordered";
         default:
-        case RenderStateSet::BlendType::Basic: return "basic");
+        case RenderStateSet::BlendType::Basic: return "basic";
         }
     }
 
@@ -445,7 +446,7 @@ namespace RenderCore { namespace Assets
             MemoryMappedInputStream(MakeIteratorRange(*blob)));
         StreamDOM<decltype(formatter)> doc(formatter);
             
-        for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
+        for (auto config:doc.RootElement().children()) {
             auto name = config.Name();
             if (name.IsEmpty()) continue;
             _configurations.push_back(name.AsString());

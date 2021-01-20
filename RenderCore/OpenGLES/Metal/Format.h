@@ -9,6 +9,7 @@
 #include "Forward.h"
 #include "../../Format.h"
 #include "../../Types.h"
+#include "../../StateDesc.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_OpenGLES

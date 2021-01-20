@@ -10,6 +10,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <set>
 #include <unordered_map>
+#include <iostream>
 
 namespace ShaderSourceParser
 {

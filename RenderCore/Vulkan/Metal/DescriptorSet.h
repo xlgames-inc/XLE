@@ -28,7 +28,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		public:
 			struct BindingDescription
 			{
-				VkDescriptorType _descriptorType = (VkDescriptorType)~0u;
+				VkDescriptorType_ _descriptorType = (VkDescriptorType_)~0u;
 				std::string _description;
 			};
 			std::vector<BindingDescription> _bindingDescriptions;
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		template<typename BindingInfo> 
 			void WriteBinding(
-				unsigned bindingPoint, VkDescriptorType type, const BindingInfo& bindingInfo, bool reallocateBufferInfo
+				unsigned bindingPoint, VkDescriptorType_ type, const BindingInfo& bindingInfo, bool reallocateBufferInfo
 				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& description));
 		template<typename BindingInfo>
 			BindingInfo& AllocateInfo(const BindingInfo& init);

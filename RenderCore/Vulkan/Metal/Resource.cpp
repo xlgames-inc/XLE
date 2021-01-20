@@ -92,13 +92,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	static VkImageLayout AsVkImageLayout(ImageLayout input) { return (VkImageLayout)input; }
 
-	VkSampleCountFlagBits AsSampleCountFlagBits(TextureSamples samples)
+	VkSampleCountFlagBits_ AsSampleCountFlagBits(TextureSamples samples)
 	{
         // we just want to isolate the most significant bit. If it's already a power
         // of two, then we can just return as is.
         assert(IsPowerOfTwo(samples._sampleCount));
         assert(samples._sampleCount > 0);
-        return (VkSampleCountFlagBits)samples._sampleCount;
+        return (VkSampleCountFlagBits_)samples._sampleCount;
 	}
 
 	static VkImageType AsImageType(TextureDesc::Dimensionality dims)

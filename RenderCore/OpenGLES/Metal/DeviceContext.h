@@ -30,10 +30,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgram;
     class BlendState;
 
-    class RasterizationDesc;
-    class DepthStencilDesc;
-    class AttachmentBlendDesc;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class CommandList : public RefCountedObject

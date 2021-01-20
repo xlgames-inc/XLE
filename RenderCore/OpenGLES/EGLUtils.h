@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <EGL/egl.h>
+#undef None
 
 namespace RenderCore { namespace ImplOpenGLES
 {

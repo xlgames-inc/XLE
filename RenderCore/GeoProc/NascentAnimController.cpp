@@ -16,12 +16,13 @@
 #include "../VertexUtil.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../OSServices/Log.h"
-#include "../../ConsoleRig/LogUtil.h"
+#include "../../OSServices/LogUtil.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StreamUtils.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -51,7 +52,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		BuckettedSkinController(const UnboundSkinController& src);
 	};
 
-	template <int WeightCount>
+	template <unsigned WeightCount>
         class VertexWeightAttachment
     {
     public:
@@ -64,7 +65,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
     };
 
-    template <int WeightCount>
+    template <unsigned WeightCount>
         class VertexWeightAttachmentBucket
     {
     public:
@@ -93,7 +94,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 #pragma warning(pop)
 
-    template<> inline VertexWeightAttachment<0> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
+    template<> VertexWeightAttachment<0> BuildWeightAttachment(const uint8_t weights[], const unsigned joints[], unsigned jointCount)
     {
         return VertexWeightAttachment<0>();
     }
@@ -1060,7 +1061,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     std::ostream& SerializationOperator(std::ostream& stream, const NascentBoundSkinnedGeometry& geo)
     {
-        using namespace RenderCore::Assets::Operators;
         stream << "   Unanimated VB bytes: " << ByteCount(geo._unanimatedVertexElements.size()) << " (" << geo._unanimatedVertexElements.size() / std::max(1u, geo._mainDrawUnanimatedIA._vertexStride) << "*" << geo._mainDrawUnanimatedIA._vertexStride << ")" << std::endl;
         stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexElements.size()) << " (" << geo._animatedVertexElements.size() / std::max(1u, geo._mainDrawAnimatedIA._vertexStride) << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
         stream << "Skele binding VB bytes: " << ByteCount(geo._skeletonBinding.size()) << " (" << geo._skeletonBinding.size() / std::max(1u, geo._skeletonBindingVertexStride) << "*" << geo._skeletonBindingVertexStride << ")" << std::endl;

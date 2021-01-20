@@ -67,7 +67,7 @@ namespace RenderCore
             return TypeDesc { ImpliedTyping::TypeCat::Float, 9, ImpliedTyping::TypeHint::Matrix };
         }
 
-        return TypeDesc(TypeCat::Void, 0);
+        return TypeDesc{TypeCat::Void, 0};
     }
 
     std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type)

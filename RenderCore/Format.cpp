@@ -708,56 +708,56 @@ namespace RenderCore
 	{
 		using namespace ImpliedTyping;
 		switch (fmt) {
-		case Format::R32_FLOAT: return TypeDesc(TypeCat::Float, 1);
-		case Format::R32G32_FLOAT: return TypeDesc(TypeCat::Float, 2);
-		case Format::R32G32B32_FLOAT: return TypeDesc(TypeCat::Float, 3);
-		case Format::R32G32B32A32_FLOAT: return TypeDesc(TypeCat::Float, 4);
+		case Format::R32_FLOAT: return TypeDesc{TypeCat::Float, 1};
+		case Format::R32G32_FLOAT: return TypeDesc{TypeCat::Float, 2};
+		case Format::R32G32B32_FLOAT: return TypeDesc{TypeCat::Float, 3};
+		case Format::R32G32B32A32_FLOAT: return TypeDesc{TypeCat::Float, 4};
 
-		case Format::R8_SINT: return TypeDesc(TypeCat::Int8, 1);
-		case Format::R8G8_SINT: return TypeDesc(TypeCat::Int8, 2);
-        case Format::R8G8B8_SINT: return TypeDesc(TypeCat::Int8, 3);
-		case Format::R8G8B8A8_SINT: return TypeDesc(TypeCat::Int8, 4);
-		case Format::R8_UINT: return TypeDesc(TypeCat::UInt8, 1);
-		case Format::R8G8_UINT: return TypeDesc(TypeCat::UInt8, 2);
-        case Format::R8G8B8_UINT: return TypeDesc(TypeCat::UInt8, 3);
-		case Format::R8G8B8A8_UINT: return TypeDesc(TypeCat::UInt8, 4);
-		case Format::R16_SINT: return TypeDesc(TypeCat::Int16, 1);
-		case Format::R16G16_SINT: return TypeDesc(TypeCat::Int16, 2);
-		case Format::R16G16B16A16_SINT: return TypeDesc(TypeCat::Int16, 4);
-		case Format::R16_UINT: return TypeDesc(TypeCat::UInt16, 1);
-		case Format::R16G16_UINT: return TypeDesc(TypeCat::UInt16, 2);
-		case Format::R16G16B16A16_UINT: return TypeDesc(TypeCat::UInt16, 4);
-		case Format::R32_SINT: return TypeDesc(TypeCat::Int32, 1);
-		case Format::R32G32_SINT: return TypeDesc(TypeCat::Int32, 2);
-		case Format::R32G32B32_SINT: return TypeDesc(TypeCat::Int32, 3);
-		case Format::R32G32B32A32_SINT: return TypeDesc(TypeCat::Int32, 4);
-		case Format::R32_UINT: return TypeDesc(TypeCat::UInt32, 1);
-		case Format::R32G32_UINT: return TypeDesc(TypeCat::UInt32, 2);
-		case Format::R32G32B32_UINT: return TypeDesc(TypeCat::UInt32, 3);
-		case Format::R32G32B32A32_UINT: return TypeDesc(TypeCat::UInt32, 4);
+		case Format::R8_SINT: return TypeDesc{TypeCat::Int8, 1};
+		case Format::R8G8_SINT: return TypeDesc{TypeCat::Int8, 2};
+        case Format::R8G8B8_SINT: return TypeDesc{TypeCat::Int8, 3};
+		case Format::R8G8B8A8_SINT: return TypeDesc{TypeCat::Int8, 4};
+		case Format::R8_UINT: return TypeDesc{TypeCat::UInt8, 1};
+		case Format::R8G8_UINT: return TypeDesc{TypeCat::UInt8, 2};
+        case Format::R8G8B8_UINT: return TypeDesc{TypeCat::UInt8, 3};
+		case Format::R8G8B8A8_UINT: return TypeDesc{TypeCat::UInt8, 4};
+		case Format::R16_SINT: return TypeDesc{TypeCat::Int16, 1};
+		case Format::R16G16_SINT: return TypeDesc{TypeCat::Int16, 2};
+		case Format::R16G16B16A16_SINT: return TypeDesc{TypeCat::Int16, 4};
+		case Format::R16_UINT: return TypeDesc{TypeCat::UInt16, 1};
+		case Format::R16G16_UINT: return TypeDesc{TypeCat::UInt16, 2};
+		case Format::R16G16B16A16_UINT: return TypeDesc{TypeCat::UInt16, 4};
+		case Format::R32_SINT: return TypeDesc{TypeCat::Int32, 1};
+		case Format::R32G32_SINT: return TypeDesc{TypeCat::Int32, 2};
+		case Format::R32G32B32_SINT: return TypeDesc{TypeCat::Int32, 3};
+		case Format::R32G32B32A32_SINT: return TypeDesc{TypeCat::Int32, 4};
+		case Format::R32_UINT: return TypeDesc{TypeCat::UInt32, 1};
+		case Format::R32G32_UINT: return TypeDesc{TypeCat::UInt32, 2};
+		case Format::R32G32B32_UINT: return TypeDesc{TypeCat::UInt32, 3};
+		case Format::R32G32B32A32_UINT: return TypeDesc{TypeCat::UInt32, 4};
 
-		case Format::R8G8_SNORM: return TypeDesc(TypeCat::Int8, 2);
-        case Format::R8G8B8_SNORM: return TypeDesc(TypeCat::Int8, 3);
-		case Format::R8G8B8A8_SNORM: return TypeDesc(TypeCat::Int8, 4);
-		case Format::R8_UNORM: return TypeDesc(TypeCat::UInt8, 1);
-		case Format::R8G8_UNORM: return TypeDesc(TypeCat::UInt8, 2);
-        case Format::R8G8B8_UNORM: return TypeDesc(TypeCat::UInt8, 3);
-		case Format::R8G8B8A8_UNORM: return TypeDesc(TypeCat::UInt8, 4);
-		case Format::R16_SNORM: return TypeDesc(TypeCat::Int16, 1);
-		case Format::R16G16_SNORM: return TypeDesc(TypeCat::Int16, 2);
-		case Format::R16G16B16A16_SNORM: return TypeDesc(TypeCat::Int16, 4);
-		case Format::R16_UNORM: return TypeDesc(TypeCat::UInt8, 1);
-		case Format::R16G16_UNORM: return TypeDesc(TypeCat::UInt8, 2);
-		case Format::R16G16B16A16_UNORM: return TypeDesc(TypeCat::UInt8, 4);
+		case Format::R8G8_SNORM: return TypeDesc{TypeCat::Int8, 2};
+        case Format::R8G8B8_SNORM: return TypeDesc{TypeCat::Int8, 3};
+		case Format::R8G8B8A8_SNORM: return TypeDesc{TypeCat::Int8, 4};
+		case Format::R8_UNORM: return TypeDesc{TypeCat::UInt8, 1};
+		case Format::R8G8_UNORM: return TypeDesc{TypeCat::UInt8, 2};
+        case Format::R8G8B8_UNORM: return TypeDesc{TypeCat::UInt8, 3};
+		case Format::R8G8B8A8_UNORM: return TypeDesc{TypeCat::UInt8, 4};
+		case Format::R16_SNORM: return TypeDesc{TypeCat::Int16, 1};
+		case Format::R16G16_SNORM: return TypeDesc{TypeCat::Int16, 2};
+		case Format::R16G16B16A16_SNORM: return TypeDesc{TypeCat::Int16, 4};
+		case Format::R16_UNORM: return TypeDesc{TypeCat::UInt8, 1};
+		case Format::R16G16_UNORM: return TypeDesc{TypeCat::UInt8, 2};
+		case Format::R16G16B16A16_UNORM: return TypeDesc{TypeCat::UInt8, 4};
 
-		case Format::R16_FLOAT: return TypeDesc(TypeCat::UInt16, 1);
-		case Format::R16G16_FLOAT: return TypeDesc(TypeCat::UInt16, 2);
-		case Format::R16G16B16A16_FLOAT: return TypeDesc(TypeCat::UInt16, 4);
+		case Format::R16_FLOAT: return TypeDesc{TypeCat::UInt16, 1};
+		case Format::R16G16_FLOAT: return TypeDesc{TypeCat::UInt16, 2};
+		case Format::R16G16B16A16_FLOAT: return TypeDesc{TypeCat::UInt16, 4};
 
-        case Format::Matrix4x4: return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix);
-        case Format::Matrix3x4: return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix);
+        case Format::Matrix4x4: return TypeDesc{TypeCat::Float, 16, TypeHint::Matrix};
+        case Format::Matrix3x4: return TypeDesc{TypeCat::Float, 12, TypeHint::Matrix};
 		}
-		return TypeCat::Void;
+		return TypeDesc{TypeCat::Void};
 	}
 
 	#define STRINGIZE(X) #X

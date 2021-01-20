@@ -5,14 +5,18 @@
 #pragma once
 
 #include "NodeGraphProvider.h"
+#include "NodeGraphSignature.h"
+#include "../Assets/AssetsCore.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
 #include <set>
 #include <unordered_map>
+#include <memory>
 
 namespace RenderCore { namespace Assets { class PredefinedCBLayout; class PredefinedDescriptorSetLayout; } }
+namespace GraphLanguage { class INodeGraphProvider; class NodeGraph; }
 
 namespace ShaderSourceParser
 {
@@ -26,12 +30,19 @@ namespace ShaderSourceParser
 	class InstantiationRequest
 	{
 	public:
-		std::string												_archiveName;
-		std::shared_ptr<GraphLanguage::INodeGraphProvider>		_customProvider;
-		std::unordered_map<std::string, InstantiationRequest>	_parameterBindings;
-		std::vector<std::string>								_parametersToCurry;
+		std::string																_archiveName;
+		std::shared_ptr<GraphLanguage::INodeGraphProvider>						_customProvider;
+		std::unordered_map<std::string, std::unique_ptr<InstantiationRequest>>	_parameterBindings;
+		std::vector<std::string>												_parametersToCurry;
 
 		uint64_t CalculateInstanceHash() const; ///< Calculate hash value for the parameter bindings (& curried parameters) in the request
+
+		InstantiationRequest(InstantiationRequest&&) = default;
+		InstantiationRequest& operator=(InstantiationRequest&&) = default;
+		InstantiationRequest(const InstantiationRequest&);
+		InstantiationRequest& operator=(const InstantiationRequest&);
+		InstantiationRequest(const std::string& archiveName = std::string{});
+		~InstantiationRequest();
 	};
 
 	class ShaderEntryPoint

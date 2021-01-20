@@ -859,7 +859,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         for (unsigned q=0; q<dimof(ave); ++q)
             ave[q] /= float(count);
 
-        float closestDifference = FLT_MAX;
+        float closestDifference = std::numeric_limits<float>::max();
         auto bestIndex = ~0u;
         for (auto c=chainStart; c!=chainEnd; ++c) {
             float b[4];

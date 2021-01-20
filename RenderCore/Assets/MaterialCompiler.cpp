@@ -146,7 +146,7 @@ namespace RenderCore { namespace Assets
 			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
 
 				// "resolved" is now actually the data we want to write out
-			NascentBlockSerializer blockSerializer;
+			::Assets::NascentBlockSerializer blockSerializer;
 			SerializationOperator(blockSerializer, resolved);
 			SerializationOperator(blockSerializer, resolvedNames);
 

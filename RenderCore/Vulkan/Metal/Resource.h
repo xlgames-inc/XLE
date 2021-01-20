@@ -12,7 +12,7 @@
 #include "../../Types.h"
 #include "../../../Utility/IteratorUtils.h"
 
-typedef enum VkSampleCountFlagBits VkSampleCountFlagBits;
+using VkSampleCountFlagBits_ = uint32_t;
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -213,6 +213,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 
-    VkSampleCountFlagBits   AsSampleCountFlagBits(TextureSamples samples);
+    VkSampleCountFlagBits_	AsSampleCountFlagBits(TextureSamples samples);
     VkImageAspectFlags      AsImageAspectMask(Format fmt);
 }}

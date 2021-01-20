@@ -8,12 +8,12 @@
 
 #include "../../Types_Forward.h"
 
-extern "C" { typedef enum VkFormat VkFormat; }
+using VkFormat_ = uint32_t;
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    VkFormat AsVkFormat(Format);
-	Format AsFormat(VkFormat);
+    VkFormat_ AsVkFormat(Format);
+	Format AsFormat(VkFormat_);
     void InitFormatConversionTables();
 }}
 

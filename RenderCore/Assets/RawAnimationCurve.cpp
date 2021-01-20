@@ -13,6 +13,7 @@
 #include "../../Math/Interpolation.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Exceptions.h"
+#include <cmath>
 
 namespace RenderCore { namespace Assets
 {
@@ -111,7 +112,7 @@ namespace RenderCore { namespace Assets
 		float t = a*a + b*b + c*c;
 		assert(t<=1.0f);
 		t = std::min(t, 1.0f);
-		float reconstructed = std::sqrtf(1.0f - t);
+		float reconstructed = std::sqrt(1.0f - t);
 
 		// We have one bit to represent the sign of the reconstructed element.
 		// But could we not just negate the other elements so that the reconstructed
@@ -202,8 +203,8 @@ namespace RenderCore { namespace Assets
 			if (_dequantBlock->_elementFlags & (1<<0)) result[0] = LinearInterpolate(_dequantBlock->_mins[0], _dequantBlock->_maxs[0], float(*v++)/float(0xffff));
 			if (_dequantBlock->_elementFlags & (1<<1)) result[1] = LinearInterpolate(_dequantBlock->_mins[1], _dequantBlock->_maxs[1], float(*v++)/float(0xffff));
 			if (_dequantBlock->_elementFlags & (1<<2)) result[2] = LinearInterpolate(_dequantBlock->_mins[2], _dequantBlock->_maxs[2], float(*v++)/float(0xffff));
-			assert(isfinite(result[0]) && isfinite(result[1]) && isfinite(result[2]));
-			assert(!isnan(result[0]) && !isnan(result[1]) && !isnan(result[2]));
+			assert(std::isfinite(result[0]) && std::isfinite(result[1]) && std::isfinite(result[2]));
+			assert(!std::isnan(result[0]) && !std::isnan(result[1]) && !std::isnan(result[2]));
 			assert(result[0] == result[0] && result[1] == result[1] && result[2] == result[2]);
 			return result;
 		}
@@ -218,8 +219,8 @@ namespace RenderCore { namespace Assets
 			if (_dequantBlock->_elementFlags & (1<<1)) result[1] = LinearInterpolate(_dequantBlock->_mins[1], _dequantBlock->_maxs[1], float(*v++)/float(0xffff));
 			if (_dequantBlock->_elementFlags & (1<<2)) result[2] = LinearInterpolate(_dequantBlock->_mins[2], _dequantBlock->_maxs[2], float(*v++)/float(0xffff));
 			if (_dequantBlock->_elementFlags & (1<<3)) result[3] = LinearInterpolate(_dequantBlock->_mins[3], _dequantBlock->_maxs[3], float(*v++)/float(0xffff));
-			assert(isfinite(result[0]) && isfinite(result[1]) && isfinite(result[2]) && isfinite(result[3]));
-			assert(!isnan(result[0]) && !isnan(result[1]) && !isnan(result[2]) && !isnan(result[3]));
+			assert(std::isfinite(result[0]) && std::isfinite(result[1]) && std::isfinite(result[2]) && std::isfinite(result[3]));
+			assert(!std::isnan(result[0]) && !std::isnan(result[1]) && !std::isnan(result[2]) && !std::isnan(result[3]));
 			assert(result[0] == result[0] && result[1] == result[1] && result[2] == result[2] && result[3] == result[3]);
 			return result;
 		}
@@ -351,13 +352,13 @@ namespace RenderCore { namespace Assets
 
     float       RawAnimationCurve::StartTime() const
     {
-        if (_timeMarkers.empty()) { return FLT_MAX; }
+        if (_timeMarkers.empty()) { return std::numeric_limits<float>::max(); }
         return _timeMarkers[0];
     }
 
     float       RawAnimationCurve::EndTime() const
     {
-        if (_timeMarkers.empty()) return -FLT_MAX;
+        if (_timeMarkers.empty()) return -std::numeric_limits<float>::max();
         return _timeMarkers[_timeMarkers.size()-1];
     }
 

@@ -22,7 +22,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using UnderlyingType = OpenGL::ShaderProgram*;
         UnderlyingType GetUnderlying() const { return _underlying.get(); }
-        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
         #if defined(_DEBUG)
             std::string SourceIdentifiers() const { return _sourceIdentifiers; };

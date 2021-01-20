@@ -147,6 +147,8 @@ namespace RenderCore
 		PatchList16 = 48    // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
 	};
 
+    const char* AsString(Topology);
+
 	unsigned CalculatePrimitiveCount(Topology topology, unsigned vertexCount, unsigned drawCallCount = 1);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

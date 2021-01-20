@@ -64,7 +64,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	struct RegisterRange
 	{
-		unsigned _begin = 0, _end = 0;
+		unsigned long _begin = 0, _end = 0;
 		LegacyRegisterBinding::RegisterQualifier _qualifier;
 	};
 
@@ -115,7 +115,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(DocElementIterator<InputStreamFormatter<char>>& element)
+    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -161,7 +161,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 	static std::shared_ptr<LegacyRegisterBinding> ReadLegacyRegisterBinding(
-		DocElementIterator<InputStreamFormatter<char>>& element,
+		StreamDOMElement<InputStreamFormatter<char>>& element,
 		IteratorRange<const StringSection<>*> descriptorSetNames)
 	{
 		auto result = std::make_shared<LegacyRegisterBinding>();
@@ -223,7 +223,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-    static PushConstantsRangeSigniture ReadPushConstRange(DocElementIterator<InputStreamFormatter<char>>& element)
+    static PushConstantsRangeSigniture ReadPushConstRange(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
         PushConstantsRangeSigniture result;
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
@@ -250,7 +250,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-	static RootSignature ReadRootSignature(DocElementIterator<InputStreamFormatter<char>>& element)
+	static RootSignature ReadRootSignature(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
 		RootSignature result;
 		result._name = element.Attribute("name").Value().AsString();

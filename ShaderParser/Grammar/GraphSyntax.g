@@ -52,7 +52,7 @@ tokens
 
 @parser::apifuncs 
 {
-	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
+	RECOGNIZER->displayRecognitionError = (void (*)(struct ANTLR3_BASE_RECOGNIZER_struct *, pANTLR3_UINT8 *))&CustomDisplayRecognitionError;
 }
 
 @lexer::header
@@ -63,7 +63,7 @@ tokens
 
 @lexer::apifuncs
 {
-	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
+	RECOGNIZER->displayRecognitionError = (void (*)(struct ANTLR3_BASE_RECOGNIZER_struct *, pANTLR3_UINT8 *))&CustomDisplayRecognitionError;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -439,7 +439,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool};
 
         case GL_BOOL_VEC2:
-            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 2, ImpliedTyping::TypeHint::Vector}
+            return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 2, ImpliedTyping::TypeHint::Vector};
 
         case GL_BOOL_VEC3:
             return ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Bool, 3, ImpliedTyping::TypeHint::Vector};

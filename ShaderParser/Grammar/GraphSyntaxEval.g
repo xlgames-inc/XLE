@@ -9,6 +9,8 @@ options
 
 @header
 {
+	#include <string.h>
+
 	#pragma warning(disable:4068)	// unknown pragma
 	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
 
@@ -65,12 +67,21 @@ options
 
 	void Captures_Register(const void*, GraphId, const char name[], GraphSignatureId params, const char attributeTableName[]);
 
+	char* StringDupe(const char* input)
+	{
+		size_t len = strlen(input);
+		char* res = malloc(len+1);
+		if (!res) return res;
+		strcpy(res, input);
+		return res;
+	}
+
 	char* StripQuotesBrackets(const char* input)
 	{
 		if (!input || !input[0]) return NULL;
-		if (input[0] != '"') return strdup(input);
+		if (input[0] != '"') return StringDupe(input);
 
-		char* result = strdup(input+1);
+		char* result = StringDupe(input+1);
 		size_t len = strlen(result);
 		if (len && result[len-1] == '"') result[len-1] = '\0';
 		return result;
@@ -84,7 +95,7 @@ options
 
 /*@apifuncs
 {
-	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
+	RECOGNIZER->displayRecognitionError = (void (*)(struct ANTLR3_BASE_RECOGNIZER_struct *, pANTLR3_UINT8 *))&CustomDisplayRecognitionError;
 }*/
 
 //------------------------------------------------------------------------------------------------

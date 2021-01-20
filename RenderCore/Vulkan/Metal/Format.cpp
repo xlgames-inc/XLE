@@ -13,10 +13,10 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
     static Format s_vkToGenericTable[VK_FORMAT_END_RANGE];
-    static VkFormat s_genericToVkTable[Format::Max];
+    static VkFormat_ s_genericToVkTable[(int)Format::Max];
     static bool s_lookupTablesInitialized = false;
 
-    static void BindFormat2(Format lhs, VkFormat rhs)
+    static void BindFormat2(Format lhs, VkFormat_ rhs)
     {
         assert(unsigned(lhs) < dimof(s_genericToVkTable));
         assert(unsigned(rhs) < dimof(s_vkToGenericTable));
@@ -24,13 +24,13 @@ namespace RenderCore { namespace Metal_Vulkan
         s_vkToGenericTable[unsigned(rhs)] = lhs;
     }
 
-    static void BindFormat1(Format lhs, VkFormat rhs)
+    static void BindFormat1(Format lhs, VkFormat_ rhs)
     {
         assert(unsigned(rhs) < dimof(s_vkToGenericTable));
         s_vkToGenericTable[unsigned(rhs)] = lhs;
     }
 
-    static void BindFormatTypeless(Format lhs, VkFormat rhs)
+    static void BindFormatTypeless(Format lhs, VkFormat_ rhs)
     {
         assert(unsigned(lhs) < dimof(s_genericToVkTable));
         s_genericToVkTable[unsigned(lhs)] = rhs;
@@ -257,7 +257,7 @@ namespace RenderCore { namespace Metal_Vulkan
         s_lookupTablesInitialized = true;
     }
 
-    VkFormat AsVkFormat(Format input)
+    VkFormat_ AsVkFormat(Format input)
     {
         assert(s_lookupTablesInitialized);
         // Assuming NativeFormat::Enum and VkFormat are not the same thing, there's
@@ -268,7 +268,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return s_genericToVkTable[unsigned(input)];
     }
 
-	Format AsFormat(VkFormat input)
+	Format AsFormat(VkFormat_ input)
 	{
 		assert(s_lookupTablesInitialized);
 		// Assuming NativeFormat::Enum and VkFormat are not the same thing, there's

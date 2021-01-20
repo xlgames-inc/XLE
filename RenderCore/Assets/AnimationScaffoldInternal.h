@@ -96,7 +96,7 @@ namespace RenderCore { namespace Assets
 		AnimationSet(const AnimationSet&) = delete;
 		AnimationSet& operator=(const AnimationSet&) = delete;
 
-		void            SerializeMethod(NascentBlockSerializer& serializer) const;
+		void            SerializeMethod(::Assets::NascentBlockSerializer& serializer) const;
     protected:
         SerializableVector<AnimationDriver>		_animationDrivers;
         SerializableVector<ConstantDriver>		_constantDrivers;

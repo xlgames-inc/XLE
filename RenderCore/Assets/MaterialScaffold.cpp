@@ -25,7 +25,7 @@ namespace RenderCore { namespace Assets
 
 	const MaterialImmutableData& MaterialScaffold::ImmutableData() const
 	{
-		return *(const MaterialImmutableData*)Block_GetFirstObject(_rawMemoryBlock.get());
+		return *(const MaterialImmutableData*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
 	}
 
 	auto MaterialScaffold::GetMaterial(MaterialGuid guid) const -> const Material*
@@ -73,7 +73,7 @@ namespace RenderCore { namespace Assets
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
 
 		InputStreamFormatter<utf8> formatter(
-			StringSection<utf8>{chunks[1]._buffer.get(), PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
+			StringSection<utf8>{(const utf8*)chunks[1]._buffer.get(), (const utf8*)PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
 		_patchCollections = DeserializeShaderPatchCollectionSet(formatter, {}, depVal);
 	}
 

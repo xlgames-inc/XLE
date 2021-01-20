@@ -134,7 +134,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned descriptorSetIndex, bool isBound);
 	#endif
 
-	VkDescriptorType AsVkDescriptorType(DescriptorType type);
+	VkDescriptorType_ AsVkDescriptorType(DescriptorType type);
 	const char* AsString(DescriptorType type);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -135,11 +135,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 			auto& sp = _subpasses[c];
-			sp._rtvCount = (unsigned)std::min(spDesc._output.size(), dimof(Subpass::_rtvs));
+			sp._rtvCount = (unsigned)std::min(spDesc.GetOutputs().size(), dimof(Subpass::_rtvs));
             sp._resolveFlags = 0;
             sp._resolveWidth = sp._resolveHeight = 0;
 			for (unsigned r = 0; r<sp._rtvCount; ++r) {
-				const auto& attachmentView = spDesc._output[r];
+				const auto& attachmentView = spDesc.GetOutputs()[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
@@ -166,13 +166,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             sp._dsvHasDepth = sp._dsvHasStencil = false;
 
-			if (spDesc._depthStencil._resourceName != ~0u) {
-				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
+			if (spDesc.GetDepthStencil()._resourceName != ~0u) {
+				auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
 
-                sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
-				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
+                sp._dsv = *dsvPool.GetView(resource, spDesc.GetDepthStencil()._window);
+				sp._dsvLoad = spDesc.GetDepthStencil()._loadFromPreviousPhase;
 				sp._dsvClearValue = HasClear(sp._dsvLoad) ? (clearValueIterator++) : ~0u;
                 auto resolvedFormat = ResolveFormat(sp._dsv.GetResource()->GetDesc()._textureDesc._format, sp._dsv._window._format, FormatUsage::DSV);
                 auto components = GetComponents(resolvedFormat);
@@ -269,12 +269,12 @@ namespace RenderCore { namespace Metal_OpenGLES
             #endif
 
             // Construct the "resolve" frame buffer
-            if (!spDesc._resolve.empty() || spDesc._depthStencilResolve._resourceName != ~0u) {
+            if (!spDesc.GetResolveOutputs().empty() || spDesc.GetResolveDepthStencil()._resourceName != ~0u) {
                 sp._resolveTarget = factory.CreateFrameBuffer();
                 glBindFramebuffer(GL_FRAMEBUFFER, sp._resolveTarget->AsRawGLHandle());
 
-                for (unsigned c=0; c<spDesc._resolve.size(); ++c) {
-                    const auto& attachmentView = spDesc._resolve[c];
+                for (unsigned c=0; c<spDesc.GetResolveOutputs().size(); ++c) {
+                    const auto& attachmentView = spDesc.GetResolveOutputs()[c];
                     auto resource = namedResources.GetResource(attachmentView._resourceName);
                     if (!resource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
@@ -292,11 +292,11 @@ namespace RenderCore { namespace Metal_OpenGLES
                     sp._resolveHeight = desc._textureDesc._height;
                 }
                 if (factory.GetFeatureSet() & FeatureSet::GLES300) {
-                    glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers); // glDrawBuffers enters the API in GLES3.0
+                    glDrawBuffers((unsigned)spDesc.GetResolveOutputs().size(), drawBuffers); // glDrawBuffers enters the API in GLES3.0
                 }
 
-                if (spDesc._depthStencilResolve._resourceName != ~0) {
-                    const auto& attachmentView = spDesc._depthStencilResolve;
+                if (spDesc.GetResolveDepthStencil()._resourceName != ~0) {
+                    const auto& attachmentView = spDesc.GetResolveDepthStencil();
                     auto resource = namedResources.GetResource(attachmentView._resourceName);
                     if (!resource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
@@ -381,7 +381,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             context.BeginSubpass(width, height);
 
             Viewport viewports[1];
-            viewports[0] = Viewport{0.f, 0.f, width, height};
+            viewports[0] = Viewport{0.f, 0.f, (float)width, (float)height};
             // origin of viewport doesn't matter because it is full-size
             ScissorRect scissorRects[1];
             scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};

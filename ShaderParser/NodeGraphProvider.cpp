@@ -106,7 +106,7 @@ namespace GraphLanguage
         if (existing == _pimpl->_cache.end() || existing->second->GetDependencyValidation() > 0) {
 			char resolvedFile[MaxPath];
 			_pimpl->_searchRules.ResolveFile(resolvedFile, name);
-			if (!resolvedFile)
+			if (!resolvedFile[0])
 				return {};
 
 			std::shared_ptr<ShaderFragment> fragment = ::Assets::AutoConstructAsset<ShaderFragment>(resolvedFile);

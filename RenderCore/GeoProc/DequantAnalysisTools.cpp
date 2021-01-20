@@ -7,6 +7,7 @@
 #include "../../Utility/IteratorUtils.h"
 #include <iomanip>
 #include <utility>
+#include <cmath>
 
 #pragma warning(disable:4505) // unreferenced local function has been removed
 
@@ -35,7 +36,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		IteratorRange<const unsigned*> keyframes,
 		IteratorRange<const float*> values)
 	{
-		float minV = FLT_MAX, maxV = -FLT_MAX;
+		float minV = std::numeric_limits<float>::max(), maxV = -std::numeric_limits<float>::max();
 		for (auto f:values) {
 			minV = std::min(minV, f);
 			maxV = std::max(maxV, f);
@@ -75,7 +76,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		IteratorRange<const signed*> values,
 		unsigned bitCount)
 	{
-		signed minV = INT_MAX, maxV = INT_MIN;
+		signed minV = std::numeric_limits<signed>::max(), maxV = std::numeric_limits<signed>::min();
 		for (auto f:values) {
 			minV = std::min(minV, f);
 			maxV = std::max(maxV, f);
