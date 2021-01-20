@@ -6,6 +6,7 @@
 
 #include "CompilationThread.h"
 #include "../OSServices/Log.h"
+#include "../OSServices/WinAPI/System_WinAPI.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 
@@ -15,7 +16,7 @@ namespace Assets
     {
         if (!_workerQuit) {
             _workerQuit = true;
-            XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
+            OSServices::XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
             _thread.join();
         }
     }
@@ -26,7 +27,7 @@ namespace Assets
     {
         if (!_workerQuit) {
 			_queue.push_overflow(Element{future, std::move(operation)});
-            XlSetEvent(_events[0]);
+            OSServices::XlSetEvent(_events[0]);
         }
     }
 
@@ -111,17 +112,17 @@ namespace Assets
                 CATCH_END
 
             } else {
-                XlWaitForMultipleSyncObjects(
+                OSServices::XlWaitForMultipleSyncObjects(
                     2, this->_events,
-                    false, XL_INFINITE, true);
+                    false, OSServices::XL_INFINITE, true);
             }
         }
     }
 
     CompilationThread::CompilationThread()
     {
-        _events[0] = XlCreateEvent(false);
-        _events[1] = XlCreateEvent(true);
+        _events[0] = OSServices::XlCreateEvent(false);
+        _events[1] = OSServices::XlCreateEvent(true);
         _workerQuit = false;
 
         _thread = std::thread(std::bind(&CompilationThread::ThreadFunction, this));
@@ -130,8 +131,8 @@ namespace Assets
     CompilationThread::~CompilationThread()
     {
         StallOnPendingOperations(true);
-        XlCloseSyncObject(_events[0]);
-        XlCloseSyncObject(_events[1]);
+        OSServices::XlCloseSyncObject(_events[0]);
+        OSServices::XlCloseSyncObject(_events[1]);
     }
 
 	void QueueCompileOperation(

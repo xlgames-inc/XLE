@@ -9,6 +9,7 @@
 #include "../../RenderCore/DX11/Metal/Format.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../BufferUploads/DataPacket.h"
+#include "../../OSServices/WinAPI/System_WinAPI.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringUtils.h"

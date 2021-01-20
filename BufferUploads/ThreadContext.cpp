@@ -7,6 +7,7 @@
 #include "ThreadContext.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../OSServices/WinAPI/System_WinAPI.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"

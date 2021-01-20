@@ -14,6 +14,7 @@
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../OSServices/Log.h"
+#include "../OSServices/WinAPI/System_WinAPI.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Threading/ThreadingUtils.h"
@@ -73,9 +74,9 @@ namespace BufferUploads
     template<typename Entry, int EntryCount>
         struct LockFreeQueue {
             #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
-                typedef LockFree::FixedSizeQueue_Waitable< Entry, EntryCount >  ResolvedType;
+                typedef LockFreeFixedSizeQueue_Waitable< Entry, EntryCount >  ResolvedType;
             #else
-                typedef LockFree::FixedSizeQueue< Entry, EntryCount >           ResolvedType;
+                typedef LockFreeFixedSizeQueue< Entry, EntryCount >           ResolvedType;
             #endif
         };
 

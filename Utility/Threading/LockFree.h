@@ -16,28 +16,8 @@
 namespace Utility
 {
 
-// XL utility functions
-static const uint32 XL_WAIT_OBJECT_0 = 0;
-static const uint32 XL_WAIT_ABANDONED = 1000;
-static const uint32 XL_WAIT_TIMEOUT = 10000;
-static const uint32 XL_INFINITE = 0xFFFFFFFF;
-
-static const uint32 XL_MAX_WAIT_OBJECTS = 64;
-static const uint32 XL_CRITICALSECTION_SPIN_COUNT = 1000;
-
-XlHandle XlCreateEvent(bool manualReset);
-bool XlResetEvent(XlHandle event);
-bool XlSetEvent(XlHandle event);
-bool XlCloseSyncObject(XlHandle object);
-uint32 XlWaitForSyncObject(XlHandle object, uint32 waitTime);
-uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable);
-
-static const XlHandle XlHandle_Invalid = XlHandle(~size_t(0x0));
-
-namespace LockFree
-{
     template<typename Type, int Count>
-        class FixedSizeQueue
+        class LockFreeFixedSizeQueue
     {
     public:
 
@@ -69,8 +49,8 @@ namespace LockFree
 
         void compress_overflow();
 
-        FixedSizeQueue();
-        ~FixedSizeQueue();
+        LockFreeFixedSizeQueue();
+        ~LockFreeFixedSizeQueue();
 
     private:
         uint8 _buffer[sizeof(Type)*Count];
@@ -83,11 +63,11 @@ namespace LockFree
         Interlocked::Pointer<Type> _pushPtr;
         Interlocked::Pointer<Type> _pushAllocatePtr;
 
-        FixedSizeQueue(const FixedSizeQueue<Type,Count>&);
-        const FixedSizeQueue<Type,Count>& operator=(const FixedSizeQueue<Type,Count>&);
+        LockFreeFixedSizeQueue(const LockFreeFixedSizeQueue<Type,Count>&);
+        const LockFreeFixedSizeQueue<Type,Count>& operator=(const LockFreeFixedSizeQueue<Type,Count>&);
 
-        bool _overflowQueue_isEmpty;
-        bool _overflowQueue_needsCompression;
+        std::atomic<bool> _overflowQueue_isEmpty;
+        std::atomic<bool> _overflowQueue_needsCompression;
         mutable bool _popNextFromOverflow;
         mutable Threading::Mutex _overflowQueue_Lock;
         std::queue<Type> _overflowQueue;
@@ -95,7 +75,7 @@ namespace LockFree
 
             
     template<typename Type, int Count>
-        FixedSizeQueue<Type,Count>::FixedSizeQueue()
+        LockFreeFixedSizeQueue<Type,Count>::LockFreeFixedSizeQueue()
         {
             _popPtr = (Type*)_buffer;
             Interlocked::ExchangePointer(&_pushPtr, (Type*)_buffer);
@@ -113,7 +93,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        FixedSizeQueue<Type,Count>::~FixedSizeQueue()
+        LockFreeFixedSizeQueue<Type,Count>::~LockFreeFixedSizeQueue()
         {
             Type*t = 0;
             while (try_front(t)) {pop();}   // pop everything to make sure the destructors are called on all remaining things
@@ -122,7 +102,7 @@ namespace LockFree
     #undef new 
 
     template<typename Type, int Count>
-        bool FixedSizeQueue<Type,Count>::push(const Type&newItem)
+        bool LockFreeFixedSizeQueue<Type,Count>::push(const Type&newItem)
         {
                 //  In a tight loop, use Interlocked::CompareExchangePointer to do a 
                 //  interlocked add
@@ -167,7 +147,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        bool FixedSizeQueue<Type,Count>::push(Type&& newItem)
+        bool LockFreeFixedSizeQueue<Type,Count>::push(Type&& newItem)
         {
                 //  In a tight loop, use Interlocked::CompareExchangePointer to do a 
                 //  interlocked add
@@ -216,7 +196,7 @@ namespace LockFree
     #endif
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::push_stall(const Type&newItem)
+        void LockFreeFixedSizeQueue<Type,Count>::push_stall(const Type&newItem)
         {
             if (!push(newItem)) {
                 //HPC startTime = GetHPC();
@@ -232,7 +212,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::push_stall(Type&&newItem)
+        void LockFreeFixedSizeQueue<Type,Count>::push_stall(Type&&newItem)
         {
             while (!push(std::forward<Type>(newItem))) {
                 Threading::YieldTimeSlice();
@@ -240,7 +220,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::push_overflow(const Type&newItem)
+        void LockFreeFixedSizeQueue<Type,Count>::push_overflow(const Type&newItem)
         {
             if (!push(newItem)) {
                 ScopedLock(_overflowQueue_Lock);
@@ -251,7 +231,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::push_overflow(Type&& newItem)
+        void LockFreeFixedSizeQueue<Type,Count>::push_overflow(Type&& newItem)
         {
             if (!push(std::forward<Type>(newItem))) {
                 ScopedLock(_overflowQueue_Lock);
@@ -262,7 +242,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        bool FixedSizeQueue<Type,Count>::try_front(Type*&result) const
+        bool LockFreeFixedSizeQueue<Type,Count>::try_front(Type*&result) const
         {
                 //  This is safe, so long as only this thread is doing "pop"
             Type* currentPushPtr = (Type*)Interlocked::LoadPointer(&_pushPtr);
@@ -284,7 +264,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::pop()
+        void LockFreeFixedSizeQueue<Type,Count>::pop()
         {
                 // Only one thread pops, so no special code (just make sure we only modify _popPtr once)
             if (!_popNextFromOverflow) {
@@ -301,7 +281,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        size_t FixedSizeQueue<Type,Count>::size() const
+        size_t LockFreeFixedSizeQueue<Type,Count>::size() const
         {
                 // because of threading, this can only be an approximate result
                 //  we should load the pushptr first to avoid threading problems 
@@ -316,7 +296,7 @@ namespace LockFree
         }
 
     template<typename Type, int Count>
-        void FixedSizeQueue<Type,Count>::compress_overflow()
+        void LockFreeFixedSizeQueue<Type,Count>::compress_overflow()
     {
         if (_overflowQueue_isEmpty && _overflowQueue_needsCompression) {
             ScopedLock(_overflowQueue_Lock);
@@ -325,8 +305,10 @@ namespace LockFree
         }
     }
 
+#if 0
+
     template<typename Type, int Count>
-        class FixedSizeQueue_Waitable : public FixedSizeQueue<Type,Count>
+        class FixedSizeQueue_Waitable : public LockFreeFixedSizeQueue<Type,Count>
     {
     public:
         bool push(const Type&);
@@ -341,7 +323,7 @@ namespace LockFree
     template<typename Type, int Count>
         bool FixedSizeQueue_Waitable<Type,Count>::push(const Type&newItem)
         {
-            bool result = FixedSizeQueue<Type,Count>::push(newItem);
+            bool result = LockFreeFixedSizeQueue<Type,Count>::push(newItem);
             if (result) {
                 XlSetEvent(_event);
             }
@@ -382,7 +364,7 @@ namespace LockFree
         {
             return _event;
         }
-}
+#endif
 
 }
 

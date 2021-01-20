@@ -139,7 +139,7 @@ namespace BufferUploads
 
         void                    OnLostDevice();
 
-        LockFree::FixedSizeQueue<unsigned, 4> _pendingFramePriority_CommandLists;
+        LockFreeFixedSizeQueue<unsigned, 4> _pendingFramePriority_CommandLists;
 
         ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext);
         ~ThreadContext();
@@ -147,9 +147,9 @@ namespace BufferUploads
         std::shared_ptr<RenderCore::IThreadContext> _underlyingContext;
         CommandListMetrics _commandListUnderConstruction;
         CommitStep _commitStepUnderConstruction;
-        LockFree::FixedSizeQueue<CommandList, 32> _queuedCommandLists;
+        LockFreeFixedSizeQueue<CommandList, 32> _queuedCommandLists;
         #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
-            LockFree::FixedSizeQueue<CommandListMetrics, 32> _recentRetirements;
+            LockFreeFixedSizeQueue<CommandListMetrics, 32> _recentRetirements;
         #endif
         PlatformInterface::UnderlyingDeviceContext _deviceContext;
 

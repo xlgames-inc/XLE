@@ -53,7 +53,7 @@ namespace UnitTests
 
             std::atomic<signed> eventsInFlight(0);
             std::vector<int> events;
-            LockFree::FixedSizeQueue<int, 500> eventPool;
+            LockFreeFixedSizeQueue<int, 500> eventPool;
             std::vector<Threading::ContinuationFuture<unsigned>> futures;
             events.reserve(500);
             for (unsigned c=0; c<500; ++c) {

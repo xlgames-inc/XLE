@@ -9,6 +9,7 @@
 #include "AssetsCore.h"
 #include "IArtifact.h"
 #include "../Utility/Threading/LockFree.h"
+#include "../OSServices/WinAPI/System_WinAPI.h"
 #include <memory>
 #include <thread>
 #include <functional>
@@ -30,14 +31,14 @@ namespace Assets
         ~CompilationThread();
     protected:
         std::thread _thread;
-        XlHandle _events[2];
+        OSServices::XlHandle _events[2];
         volatile bool _workerQuit;
 		struct Element
 		{
 			std::weak_ptr<::Assets::ArtifactFuture> _future;
 			std::function<void(::Assets::ArtifactFuture&)> _operation;
 		};
-        using Queue = LockFree::FixedSizeQueue<Element, 256>;
+        using Queue = LockFreeFixedSizeQueue<Element, 256>;
         Queue _queue;
         Queue _delayedQueue;
 

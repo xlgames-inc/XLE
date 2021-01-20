@@ -4,17 +4,18 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../PathUtils.h"
-#include "../../../Core/Prefix.h"
+#include "System_WinAPI.h"
+#include "IncludeWindows.h"
 #include "../FileSystemMonitor.h"
-#include "../../../Core/Types.h"
-#include "../../../OSServices/WinAPI/IncludeWindows.h"
-#include "../../Threading/Mutex.h"
-#include "../../Threading/LockFree.h"
-#include "../../MemoryUtils.h"
-#include "../../UTFUtils.h"
-#include "../../IteratorUtils.h"
-#include "../../Conversion.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Core/Prefix.h"
+#include "../../Core/Types.h"
+#include "../../Utility/Threading/Mutex.h"
+#include "../../Utility/Threading/LockFree.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/UTFUtils.h"
+#include "../../Utility/IteratorUtils.h"
+#include "../../Utility/Conversion.h"
 #include <vector>
 #include <memory>
 #include <cctype>

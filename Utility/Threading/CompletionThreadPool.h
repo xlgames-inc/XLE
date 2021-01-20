@@ -8,6 +8,7 @@
 
 #include "Mutex.h"
 #include "LockFree.h"
+#include "../../OSServices/WinAPI/System_WinAPI.h"
 #include <vector>
 #include <thread>
 #include <functional>
@@ -57,9 +58,9 @@ namespace Utility
         
         Threading::Mutex _pendingsTaskLock;
         typedef std::function<void()> PendingTask;
-        LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
+        LockFreeFixedSizeQueue<PendingTask, 256> _pendingTasks;
 
-        XlHandle _events[2];
+        OSServices::XlHandle _events[2];
         volatile bool _workerQuit;
     };
 
@@ -97,7 +98,7 @@ namespace Utility
         Threading::Conditional _pendingTaskVariable;
         Threading::Mutex _pendingTaskLock;
         typedef std::function<void()> PendingTask;
-        LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
+        LockFreeFixedSizeQueue<PendingTask, 256> _pendingTasks;
 
         volatile bool _workerQuit;
     };

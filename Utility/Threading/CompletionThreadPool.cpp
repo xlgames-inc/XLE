@@ -6,6 +6,7 @@
 
 #include "CompletionThreadPool.h"
 #include "ThreadLocalPtr.h"
+#include "../../OSServices/WinAPI/System_WinAPI.h"
 #include "../../OSServices/Log.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Core/Exceptions.h"
@@ -20,15 +21,15 @@ namespace Utility
 
             // set event should wake one thread -- and that thread should
             // then take over and execute the task
-        XlSetEvent(_events[0]);
+        OSServices::XlSetEvent(_events[0]);
     }
 
     CompletionThreadPool::CompletionThreadPool(unsigned threadCount)
     {
             // once event is an "auto-reset" event, which should wake a single thread
             // another event is a "manual-reset" event. This should 
-        _events[0] = XlCreateEvent(false);
-        _events[1] = XlCreateEvent(true);
+        _events[0] = OSServices::XlCreateEvent(false);
+        _events[1] = OSServices::XlCreateEvent(true);
         _workerQuit = false;
 
         for (unsigned i = 0; i<threadCount; ++i)
@@ -51,7 +52,7 @@ namespace Utility
 
                         // Attempt a short wait if we didn't get a task
                         if (!gotTask) {
-                            XlWaitForMultipleSyncObjects(
+                            OSServices::XlWaitForMultipleSyncObjects(
                                 2, this->_events,
                                 false, 1, true);
 
@@ -124,9 +125,9 @@ namespace Utility
                             // note -- this is why we can't use std::condition_variable
                             //      (because threads waiting on a condition variable won't
                             //      be woken to execute completion routines)
-                        XlWaitForMultipleSyncObjects(
+                        OSServices::XlWaitForMultipleSyncObjects(
                             2, this->_events,
-                            false, XL_INFINITE, true);
+                            false, OSServices::XL_INFINITE, true);
                     }
 
                     SetYieldToPoolFunction(nullptr);
@@ -137,11 +138,11 @@ namespace Utility
     CompletionThreadPool::~CompletionThreadPool()
     {
         _workerQuit = true;
-        XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
+        OSServices::XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
         for (auto&t : _workerThreads) t.join();
 
-        XlCloseSyncObject(_events[0]);
-        XlCloseSyncObject(_events[1]);
+        OSServices::XlCloseSyncObject(_events[0]);
+        OSServices::XlCloseSyncObject(_events[1]);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

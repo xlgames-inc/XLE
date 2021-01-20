@@ -67,8 +67,6 @@ static const unsigned MaxExtension    = 256;    /* max. length of extension comp
 //     #define c_assert(expr)  typedef char __assertarray__[(expr) ? 1 : -1]; 
 // #endif
 
-typedef void* XlHandle;
-
 #if COMPILER_ACTIVE == COMPILER_TYPE_GCC
 
         // useful!

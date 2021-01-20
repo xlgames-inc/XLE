@@ -65,7 +65,7 @@ namespace BufferUploads
                 UnderlyingResourcePtr  _underlying;
                 unsigned            _returnFrameID;
             };
-            LockFree::FixedSizeQueue<Entry, 512> _allocableResources;
+            LockFreeFixedSizeQueue<Entry, 512> _allocableResources;
             Desc                        _desc;
             mutable unsigned            _peakSize;
             mutable Interlocked::Value  _recentDeviceCreateCount, _recentPoolCreateCount, _recentReleaseCount;
@@ -267,9 +267,9 @@ namespace BufferUploads
 		RenderCore::IDevice*                _underlyingDevice;
 
         #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
-            LockFree::FixedSizeQueue_Waitable<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
+            LockFreeFixedSizeQueue_Waitable<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
         #else
-            LockFree::FixedSizeQueue<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
+            LockFreeFixedSizeQueue<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
         #endif
 
         inline bool UsePooling(const BufferDesc& input)     { return (input._type == BufferDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }

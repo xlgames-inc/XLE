@@ -24,13 +24,6 @@ namespace OSServices
         return NSEC_PER_SEC;
     }
 
-    XlHandle XlCreateEvent(bool manualReset) { return 0; }
-    bool XlResetEvent(XlHandle event) { return false; }
-    bool XlSetEvent(XlHandle event) { return false; }
-    bool XlCloseSyncObject(XlHandle object) { return false; }
-    uint32 XlWaitForSyncObject(XlHandle object, uint32 waitTime) { return 0; }
-    uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable) { return 0; }
-
     bool GetCurrentDirectory(uint32 dim, char dst[])
     {
         if (dim > 0) dst[0] = '\0';
