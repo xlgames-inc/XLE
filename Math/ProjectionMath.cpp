@@ -736,7 +736,7 @@ namespace XLEMath
             std::make_pair(0, 4), std::make_pair(1, 5), std::make_pair(2, 6), std::make_pair(3, 7)
         };
 
-        Float2 minIntersection(FLT_MAX, FLT_MAX), maxIntersection(-FLT_MAX, -FLT_MAX);
+        Float2 minIntersection(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), maxIntersection(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         float intersectionPts[dimof(edges)];
         for (unsigned c=0; c<dimof(edges); ++c) {
             intersectionPts[c] = RayVsPlane(cameraAbsFrustumCorners[edges[c].first], cameraAbsFrustumCorners[edges[c].second], plane);
@@ -757,16 +757,16 @@ namespace XLEMath
             return true;
         }
         
-        float min1 = FLT_MAX;
-        float max1 = -FLT_MAX;
+        float min1 = std::numeric_limits<float>::max();
+        float max1 = -std::numeric_limits<float>::max();
         for (const Float3 &p : obj1) {
             float dist = Dot(p, axis);
             min1 = std::min(min1, dist);
             max1 = std::max(max1, dist);
         }
         
-        float min2 = FLT_MAX;
-        float max2 = -FLT_MAX;
+        float min2 = std::numeric_limits<float>::max();
+        float max2 = -std::numeric_limits<float>::max();
         for (const Float3 &p : obj2) {
             float dist = Dot(p, axis);
             min2 = std::min(min2, dist);

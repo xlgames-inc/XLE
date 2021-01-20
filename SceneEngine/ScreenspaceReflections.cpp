@@ -158,7 +158,7 @@ namespace SceneEngine
 
                     //  Find the 4 closest samples
                 const unsigned samplesToFind = 8;
-                float closestDistanceSq[samplesToFind]     = { FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX };
+                float closestDistanceSq[samplesToFind]     = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
                 signed closestSampleIndex[samplesToFind]   = { -1, -1, -1, -1, -1, -1, -1, -1 };
                 unsigned writtenSamples = 0;
                 for (unsigned s=0; s<samplesPerBlock; ++s) {

@@ -1682,7 +1682,7 @@ namespace SceneEngine
         auto model = _editorPimpl->_modelCache->GetModelScaffold(filename);
         auto state = model->StallWhilePending();
         if (state != ::Assets::AssetState::Ready) {
-            result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            result = std::make_pair(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()));
             return false;
         }
 
@@ -1705,7 +1705,7 @@ namespace SceneEngine
         auto* cell = _editorPimpl->GetCell(guid.first);
         if (cell)
             placements = GetPlacements(*cell, *_editorPimpl->_cellSet, *_editorPimpl->_placementsCache);
-        if (!placements) return std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+        if (!placements) return std::make_pair(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()));
 
         auto count = placements->GetObjectReferenceCount();
         auto* objects = placements->GetObjectReferences();
@@ -1981,7 +1981,7 @@ namespace SceneEngine
                 cellSpaceBoundary = TransformBoundingBox(localToCell, boundingBox);
             } else {
                 Log(Warning) << "Cannot get bounding box for model (" << newState._model << ") while updating placement object." << std::endl;
-                cellSpaceBoundary = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+                cellSpaceBoundary = std::make_pair(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()));
             }
         }
 
@@ -2245,7 +2245,7 @@ namespace SceneEngine
     {
             // Find the given cell within our list, and calculate the true boundary
             // of all the placements within it
-        std::pair<Float3, Float3> result(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+        std::pair<Float3, Float3> result(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()));
         const Placements* p = nullptr;
         for (auto i = _pimpl->_dynPlacements.begin(); i!=_pimpl->_dynPlacements.end(); ++i)
             if (i->first == cellId) { p = i->second.get(); break; }
@@ -2367,7 +2367,7 @@ namespace SceneEngine
         Placements::BoundingBox boundingBox;
         auto assetState = TryGetBoundingBox(boundingBox, *_pimpl->_modelCache, modelName, 0, true);
         if (assetState != ::Assets::AssetState::Ready)
-            return std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            return std::make_pair(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()));
 
         return boundingBox;
     }

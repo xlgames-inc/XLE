@@ -541,7 +541,7 @@ namespace ToolsRig
 
                     // find the final sample points
                 std::vector<Float3> samplePoints;
-                samplePoints.resize(pStream.GetSourceData()->GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+                samplePoints.resize(pStream.GetSourceData()->GetCount(), Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()));
 
                 for (auto p=pn.cbegin(); p!=pn.cend();) {
                     auto p2 = p+1;

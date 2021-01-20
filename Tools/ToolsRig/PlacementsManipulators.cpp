@@ -425,7 +425,7 @@ namespace ToolsRig
                     unsigned objCount = _transaction->GetObjectCount();
                     if (objCount) {
                         if (constant_expression<anchorMethod == Centre>::result()) {
-                            Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+                            Float3 totalMins(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), totalMaxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
                             for (unsigned c=0; c<objCount; ++c) {
                                 auto obj = _transaction->GetObject(c);
                                 auto localBoundingBox = _transaction->GetLocalBoundingBox(c);

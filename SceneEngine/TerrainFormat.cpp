@@ -430,8 +430,8 @@ namespace SceneEngine
                 unsigned startx, unsigned starty, signed downsample, unsigned dimensionsInElements,
                 const GradientFlagsSettings& gradFlagsSettings, Compression::Enum compression)
         {
-            float minValue =  FLT_MAX;
-            float maxValue = -FLT_MAX;
+            float minValue =  std::numeric_limits<float>::max();
+            float maxValue = -std::numeric_limits<float>::max();
             auto sampledValues = std::make_unique<Element[]>(dimensionsInElements*dimensionsInElements);
             XlSetMemory(sampledValues.get(), 0, dimensionsInElements*dimensionsInElements*sizeof(Element));
 

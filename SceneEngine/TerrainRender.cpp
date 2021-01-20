@@ -714,7 +714,7 @@ namespace SceneEngine
                             newNodes[c]._screenSpaceEdgeLength = CalculateScreenSpaceEdgeLength(
                                 localToProjection, renderingContext._currentViewport.Width, renderingContext._currentViewport.Height);
                         } else {
-                            newNodes[c]._screenSpaceEdgeLength = FLT_MAX;
+                            newNodes[c]._screenSpaceEdgeLength = std::numeric_limits<float>::max();
                         }
                     }
 
@@ -908,7 +908,7 @@ namespace SceneEngine
         std::vector<AABBIntersection::Enum> cullResults;
         std::vector<float> screenSpaceEdgeLengths;
         cullResults.resize(field._nodeEnd - field._nodeBegin);
-        screenSpaceEdgeLengths.resize(field._nodeEnd - field._nodeBegin, FLT_MAX);
+        screenSpaceEdgeLengths.resize(field._nodeEnd - field._nodeBegin, std::numeric_limits<float>::max());
 
         const unsigned compressedHeightMask = CompressedHeightMask(terrainContext._encodedGradientFlags);
 

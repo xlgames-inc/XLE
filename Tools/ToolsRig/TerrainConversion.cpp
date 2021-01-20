@@ -377,7 +377,7 @@ namespace ToolsRig
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
 
             result._sourceFormat = TerrainImportOp::SourceFormat::AbsoluteFloats;
-            result._sourceHeightRange = Float2(FLT_MAX, -FLT_MAX);
+            result._sourceHeightRange = Float2(std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 
             ::Assets::ResChar inputFile[MaxPath];
             XlCopyString(inputFile, input);

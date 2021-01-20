@@ -284,7 +284,7 @@ namespace SceneEngine
             bool _lodPromoted;
             float _screenSpaceEdgeLength;
             NodeID _neighbours[Neighbours::Count];
-            explicit Node(NodeID id) : _id(id), _entirelyWithinFrustum(false), _lodPromoted(false), _screenSpaceEdgeLength(FLT_MAX) {}
+            explicit Node(NodeID id) : _id(id), _entirelyWithinFrustum(false), _lodPromoted(false), _screenSpaceEdgeLength(std::numeric_limits<float>::max()) {}
         };
 
         std::vector<Node> _activeNodes[MaxLODLevels];

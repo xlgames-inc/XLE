@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     class ShaderProgram
     {
     public:
-        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
         #if defined(_DEBUG)
             std::string SourceIdentifiers() const { return _sourceIdentifiers; };

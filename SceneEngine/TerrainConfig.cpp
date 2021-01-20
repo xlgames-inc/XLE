@@ -268,7 +268,7 @@ namespace SceneEngine
             //  somewhere, to avoid having to load the scaffold for every cell on
             //  startup
         auto& heights = ioFormat.LoadHeights(heightMapFilename);
-        float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
+        float minHeight = std::numeric_limits<float>::max(), maxHeight = -std::numeric_limits<float>::max();
         for (auto i=heights._nodes.cbegin(); i!=heights._nodes.cend(); ++i) {
             float zScale = (*i)->_localToCell(2, 2);
             float zOffset = (*i)->_localToCell(2, 3);

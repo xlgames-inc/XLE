@@ -42,7 +42,7 @@ namespace ToolsRig
             _bestResult = BranchlessMax(grad, _bestResult);
         }
 
-        ShadowingAngleOperator(TerrainUberHeightsSurface* surface, Float3 samplePt) { _bestResult = -FLT_MAX; _surface = surface; _samplePt = samplePt; }
+        ShadowingAngleOperator(TerrainUberHeightsSurface* surface, Float3 samplePt) { _bestResult = -std::numeric_limits<float>::max(); _surface = surface; _samplePt = samplePt; }
 
         float _bestResult;
     protected:

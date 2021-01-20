@@ -186,8 +186,8 @@ namespace SceneEngine
             //      surface wasn't reasonably flat)
             //
 
-        Float2 mins(FLT_MAX, FLT_MAX);
-        Float2 maxs(-FLT_MAX, -FLT_MAX);
+        Float2 mins(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+        Float2 maxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         for (size_t c=0; c<ptCount; ++c) {
             auto pt = *PtrAdd(triangleList, stride*c);
             mins[0] = std::min(pt[0], mins[0]);

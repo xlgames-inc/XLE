@@ -31,7 +31,7 @@ namespace SceneEngine
 				SerializationOperator(serializer, _objects);
 			}
 
-            Payload() : _boundary(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX)) {}
+            Payload() : _boundary(Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max())) {}
         };
 
         struct Desc
@@ -231,7 +231,7 @@ namespace SceneEngine
     {
         // First; find the maximum extents we'll require
         Int2 mins(INT_MAX, INT_MAX), maxs(INT_MIN, INT_MIN);
-        float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
+        float minHeight = std::numeric_limits<float>::max(), maxHeight = -std::numeric_limits<float>::max();
         unsigned heightIndex = (orientation == Orientation::YUp)?1:2;
         for (unsigned c=0; c<objCount; ++c) {
             const auto& objBoundary = *PtrAdd(objCellSpaceBoundingBoxes, c * objStride);

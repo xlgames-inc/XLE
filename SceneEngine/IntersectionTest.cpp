@@ -179,7 +179,7 @@ namespace SceneEngine
                         bool gotGoodResult = false;
                         unsigned drawCallIndex = 0;
                         uint64 materialGuid = 0;
-                        float intersectionDistance = FLT_MAX;
+                        float intersectionDistance = std::numeric_limits<float>::max();
                         for (auto i=results.cbegin(); i!=results.cend(); ++i) {
                             if (i->_intersectionDepth < intersectionDistance) {
                                 intersectionDistance = i->_intersectionDepth;

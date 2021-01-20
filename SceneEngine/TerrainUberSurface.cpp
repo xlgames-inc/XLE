@@ -425,7 +425,7 @@ namespace SceneEngine
 		Metal::BoundUniforms _uniforms;
 		bool _needsInputHash;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
 		ApplyToolResources(const Desc& desc);
 		~ApplyToolResources();
@@ -1008,6 +1008,6 @@ namespace Utility { namespace ImpliedTyping
     template<>
         TypeDesc TypeOf<SceneEngine::ShadowSample>()
         {
-            return TypeDesc(TypeCat::UInt16, 2);
+            return TypeDesc{TypeCat::UInt16, 2};
         }
 }}

@@ -367,8 +367,8 @@ namespace SceneEngine
                 cell._coverageToUber[q]._maxs = c->_coverageUber[q].second;
             }
 
-            cell._aabbMin = Float3(FLT_MAX, FLT_MAX, FLT_MAX);
-            cell._aabbMax = Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            cell._aabbMin = Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+            cell._aabbMax = Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 
                 // attempt to load the bounding box from our cached data
             auto i = std::find_if(cachedData._cells.cbegin(), cachedData._cells.cend(),

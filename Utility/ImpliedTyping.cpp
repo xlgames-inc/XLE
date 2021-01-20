@@ -54,7 +54,7 @@ namespace Utility { namespace ImpliedTyping
     {
             // not implemented
         assert(0);
-        return TypeDesc();
+        return TypeDesc{};
     }
 
     bool Cast(

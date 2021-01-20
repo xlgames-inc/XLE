@@ -72,8 +72,8 @@ namespace SceneEngine
         static BoundingBox CalculateBoundary(const std::vector<WorkingObject>& workingObjects)
         {
             BoundingBox result;
-            result.first  = Float3( FLT_MAX,  FLT_MAX,  FLT_MAX);
-            result.second = Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            result.first  = Float3( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+            result.second = Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
             for (auto i=workingObjects.cbegin(); i!=workingObjects.cend(); ++i) {
                 assert(i->_boundary.first[0] <= i->_boundary.second[0]);
                 assert(i->_boundary.first[1] <= i->_boundary.second[1]);

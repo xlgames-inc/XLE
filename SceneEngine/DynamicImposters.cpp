@@ -576,7 +576,7 @@ namespace SceneEngine
             cfg._calibrationFov, pixelRatio,
             0.05f, 2000.f, GeometricCoordinateSpace::RightHanded,
             Techniques::GetDefaultClipSpaceType());
-        Float2 screenSpaceMin(FLT_MAX, FLT_MAX), screenSpaceMax(-FLT_MAX, -FLT_MAX);
+        Float2 screenSpaceMin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), screenSpaceMax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         for (unsigned c=0; c<dimof(corners); ++c) {
             Float4 proj = virtualProj * worldToCam * Expand(corners[c], 1.f);
             Float2 d(proj[0] / proj[3], proj[1] / proj[3]);

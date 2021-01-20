@@ -57,7 +57,7 @@ namespace Sample
             DualContourMesh _mesh;
             std::unique_ptr<DualContourRenderer> _renderer;
 
-            const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() { return _dependencyValidation; }
+            const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
 
             DualContourTest(const Desc& desc);
             ~DualContourTest();

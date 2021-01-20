@@ -570,7 +570,7 @@ namespace RenderCore { namespace Metal_DX11
 			StringSection<> identifier,
             const char shaderModel[]);
 
-		const ::Assets::DepValPtr& GetDependencyValidation() { return _dependencyValidation; }
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _dependencyValidation; }
 
         using Section = StringSection<char>;
         FunctionLinkingGraph(Section script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules);

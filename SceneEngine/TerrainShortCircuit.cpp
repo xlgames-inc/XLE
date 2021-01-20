@@ -57,7 +57,7 @@ namespace SceneEngine
         const Metal::ComputeShader* _cs2;
         Metal::BoundUniforms _boundLayout;
 
-        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
         ShortCircuitResources(const Desc& desc);
     private:
@@ -161,7 +161,7 @@ namespace SceneEngine
 
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-            float temp = FLT_MAX;
+            float temp = std::numeric_limits<float>::max();
             struct TileCoords
             {
                 float minHeight, heightScale;

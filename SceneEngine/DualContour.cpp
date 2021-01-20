@@ -75,7 +75,7 @@ namespace SceneEngine
             //      really multiple intersections).
 
         float x0 = 0.f, x1 = 1.f;
-        float x = 1.f, d = FLT_MAX;
+        float x = 1.f, d = std::numeric_limits<float>::max();
         unsigned maxImprovementSteps = 6;
         for (unsigned c=0; ; ++c) {
             float prevD = d; float prevX = x;

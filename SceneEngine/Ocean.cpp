@@ -385,8 +385,8 @@ namespace SceneEngine
 
         auto worldToView = InvertOrthonormalTransform(viewToWorldTransform);
 
-        float minX = FLT_MAX, minY = FLT_MAX;
-        float maxX = -FLT_MAX, maxY = -FLT_MAX;
+        float minX = std::numeric_limits<float>::max(), minY = std::numeric_limits<float>::max();
+        float maxX = -std::numeric_limits<float>::max(), maxY = -std::numeric_limits<float>::max();
 
         float maxXYDisplacement = Tweakable("OceanMaxDisplacementXY", 10.f);
         float maxZDisplacement = Tweakable("OceanMaxDisplacementZ", 15.f);

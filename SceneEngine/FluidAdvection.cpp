@@ -89,9 +89,9 @@ namespace SceneEngine
         }
 
     template<typename Type> static Type MaxValue();
-    template<> float MaxValue()         { return FLT_MAX; }
-    template<> Float2 MaxValue()        { return Float2(FLT_MAX, FLT_MAX); }
-    template<> Float3 MaxValue()        { return Float3(FLT_MAX, FLT_MAX, FLT_MAX); }
+    template<> float MaxValue()         { return std::numeric_limits<float>::max(); }
+    template<> Float2 MaxValue()        { return Float2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()); }
+    template<> Float3 MaxValue()        { return Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()); }
     static float   MinAcross(float lhs, float rhs)   { return std::min(lhs, rhs); }
     static Float2  MinAcross(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
     static Float3  MinAcross(Float3 lhs, Float3 rhs) { return Float3(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1]), std::min(lhs[2], rhs[2])); }

@@ -222,7 +222,7 @@ namespace XLEMath
             corners[c] = TransformPoint(transformation, corners[c]);
         }
 
-        Float3 mins(FLT_MAX, FLT_MAX, FLT_MAX), maxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        Float3 mins(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()), maxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
         for (unsigned c=0; c<dimof(corners); ++c) {
             mins[0] = std::min(mins[0], corners[c][0]);
             mins[1] = std::min(mins[1], corners[c][1]);
