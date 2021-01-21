@@ -166,7 +166,9 @@ namespace RenderCore { namespace ImplOpenGLES
     }
 
     static std::optional<std::pair<EGLConfig, EGLConfig>> TryGetEGLSurfaceConfig(
-        EGLDisplay display, const PresentationChainDesc& desc)
+        EGLDisplay display, 
+        Format format, TextureSamples samples,
+        bool presentationChainBased)
     {
         // Try to select the right configuration to use, based on some basic configuration
         // guidelines passed in, and the preferred features of the device.
@@ -198,8 +200,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // example when we want to return a 565 buffer, because the driver will almost always
         // prioritize that lower than a 888/8888 buffer).
 
-        auto requestedPrecision = GetComponentPrecision(desc._format);
-        auto components = GetComponents(desc._format);
+        auto requestedPrecision = GetComponentPrecision(format);
+        auto components = GetComponents(format);
         if (components != FormatComponents::RGB && components != FormatComponents::RGBAlpha) {
             Log(Warning) << "Presentation chain format was not a RGB or RGBA format. Treating as if a RGB format as requested." << std::endl;
         }
@@ -241,8 +243,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // target format with the right number of MSAA samples; even if there is a matching color
         // format with non-matching MSAA samples.
         std::vector<GLint> sampleCounts;
-        if (desc._samples._sampleCount > 1) {
-            sampleCounts = { desc._samples._sampleCount, 0 };
+        if (samples._sampleCount > 1) {
+            sampleCounts = { samples._sampleCount, 0 };
         } else {
             sampleCounts = { 0 };
         }
@@ -250,37 +252,59 @@ namespace RenderCore { namespace ImplOpenGLES
         // Always prefer ES3 if we can get it
         std::vector<GLint> renderableTypes = { EGL_OPENGL_ES3_BIT, EGL_OPENGL_ES2_BIT };
 
-        for (auto renderableType:renderableTypes) {
-            for (auto s:sampleCounts) {
-                for (const auto&d:depthStencilFallbackOrder) {
-                    for (const auto&t:targetFallbackOrder) {
+        if (presentationChainBased) {
+            for (auto renderableType:renderableTypes) {
+                for (auto s:sampleCounts) {
+                    for (const auto&d:depthStencilFallbackOrder) {
+                        for (const auto&t:targetFallbackOrder) {
 
-                        auto filteredConfigs = GetFilteredConfigs(
-                            display, renderableType, EGL_WINDOW_BIT,
-                            t, d, s);
-                        if (filteredConfigs.empty())
-                            continue;
+                            auto filteredConfigs = GetFilteredConfigs(
+                                display, renderableType, EGL_WINDOW_BIT,
+                                t, d, s);
+                            if (filteredConfigs.empty())
+                                continue;
 
-                        // Select our preferred option from the filtered list
-                        auto windowSurfaceCfg = PickBestFromFilteredList(display, MakeIteratorRange(filteredConfigs), desc._format, desc._samples);
+                            // Select our preferred option from the filtered list
+                            auto windowSurfaceCfg = PickBestFromFilteredList(display, MakeIteratorRange(filteredConfigs), format, samples);
 
-                        // Try to match it with a "pbuffer" configuration that is an similar as possible
-                        auto deferredCfg = windowSurfaceCfg;
-                        GLint surfaceTypes = 0;
-                        if (eglGetConfigAttrib(display, deferredCfg, EGL_SURFACE_TYPE, &surfaceTypes)
-                            && !(surfaceTypes & EGL_PBUFFER_BIT)) {
+                            // Try to match it with a "pbuffer" configuration that is an similar as possible
+                            auto deferredCfg = windowSurfaceCfg;
+                            GLint surfaceTypes = 0;
+                            if (eglGetConfigAttrib(display, deferredCfg, EGL_SURFACE_TYPE, &surfaceTypes)
+                                && !(surfaceTypes & EGL_PBUFFER_BIT)) {
 
+                                auto pbufferConfigs = GetFilteredConfigs(
+                                    display, renderableType, EGL_PBUFFER_BIT,
+                                    t, d, 0);
+
+                                if (pbufferConfigs.empty())
+                                    continue;
+
+                                deferredCfg = PickBestFromFilteredList(display, MakeIteratorRange(pbufferConfigs), format, TextureSamples::Create(0,1));
+                            }
+
+                            return std::make_pair(windowSurfaceCfg, deferredCfg);
+                        }
+                    }
+                }
+            }
+        } else {
+            // in this mode, we're not expecting to create a presentation chain at all
+            // We only care about the pbuffer configs.
+            for (auto renderableType:renderableTypes) {
+                for (auto s:sampleCounts) {
+                    for (const auto&d:depthStencilFallbackOrder) {
+                        for (const auto&t:targetFallbackOrder) {
                             auto pbufferConfigs = GetFilteredConfigs(
                                 display, renderableType, EGL_PBUFFER_BIT,
-                                t, d, 0);
+                                t, d, s);
 
                             if (pbufferConfigs.empty())
                                 continue;
 
-                            deferredCfg = PickBestFromFilteredList(display, MakeIteratorRange(pbufferConfigs), desc._format, TextureSamples::Create(0,1));
+                            auto deferredCfg = PickBestFromFilteredList(display, MakeIteratorRange(pbufferConfigs), format, samples);
+                            return std::make_pair(deferredCfg, deferredCfg);
                         }
-
-                        return std::make_pair(windowSurfaceCfg, deferredCfg);
                     }
                 }
             }
@@ -320,51 +344,68 @@ namespace RenderCore { namespace ImplOpenGLES
         }
     }
 
+    void Device::InitializeRootContext(EGLConfig presentationCfg, EGLConfig deferredCfg)
+    {
+        if (_rootContext) {
+            if (presentationCfg != _rootContextConfig
+                || deferredCfg != _deferredContextConfig)
+                Throw(std::runtime_error("Root context has already been configured and is not compatible with the given parameters"));
+            return;
+        }
+
+        #if defined(_DEBUG)
+            Log(Verbose) << "Root context selected configs:" << std::endl;
+            StreamConfigShort(Log(Verbose), _display, presentationCfg) << std::endl;
+            StreamConfigShort(Log(Verbose), _display, deferredCfg) << std::endl;
+        #endif
+
+        _rootContextConfig = presentationCfg;
+        _deferredContextConfig = deferredCfg;
+        _glesVersion = GetGLESVersionFromConfig(_display, _rootContextConfig);
+        _rootContext = std::make_shared<ThreadContext>(_display, _rootContextConfig, EGL_NO_CONTEXT, 0, shared_from_this());
+
+        #if defined(_DEBUG)
+            Log(Verbose) << "Root context:" << std::endl;
+            StreamContext(Log(Verbose), _display, _rootContext->GetUnderlying());
+        #endif
+
+        // Finally, set this context & surface current, so we have at least something current to
+        // start calling opengl commands.
+        if (!eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _rootContext->GetUnderlying()))
+            Throw(::Exceptions::BasicLabel("Failure while setting EGL root context current (%s)", ErrorToName(eglGetError())));
+
+        // We can only construct the object factory after the first presentation chain is created. This is because
+        // we can't call eglMakeCurrent until at least one presentation chain has been constructed; and we can't
+        // call any opengl functions until we call eglMakeCurrent. In particular, we can't call glGetString(), which is
+        // required to calculate the feature set used to construct the object factory.
+        auto featureSet = AsGLESFeatureSet(_glesVersion);
+        assert(!_objectFactory);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
+        _rootContext->SetFeatureSet(featureSet);
+    }
+
+    void Device::InitializeRootContextForPresentation(const PresentationChainDesc& desc)
+    {
+        auto config = TryGetEGLSurfaceConfig(_display, desc._format, desc._samples, true);
+        if (!config)
+            Throw(::Exceptions::BasicLabel("Cannot select root context configuration"));
+
+        InitializeRootContext(config.value().first, config.value().second);
+    }
+
+    void Device::InitializeRootContextHeadless(Format pbufferFmt, TextureSamples samples)
+    {
+        auto config = TryGetEGLSurfaceConfig(_display, pbufferFmt, samples, false);
+        if (!config)
+            Throw(::Exceptions::BasicLabel("Cannot select root context configuration"));
+
+        InitializeRootContext(config.value().first, config.value().second);
+    }
+
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc)
     {
-        if (!_rootContext) {
-            auto config = TryGetEGLSurfaceConfig(_display, desc);
-            if (!config)
-                Throw(::Exceptions::BasicLabel("Cannot select root context configuration"));
-
-            #if defined(_DEBUG)
-                Log(Verbose) << "Root context selected configs:" << std::endl;
-                StreamConfigShort(Log(Verbose), _display, config.value().first) << std::endl;
-                StreamConfigShort(Log(Verbose), _display, config.value().second) << std::endl;
-            #endif
-
-            _rootContextConfig = config.value().first;
-            _deferredContextConfig = config.value().second;
-            _glesVersion = GetGLESVersionFromConfig(_display, _rootContextConfig);
-            _rootContext = std::make_shared<ThreadContext>(_display, _rootContextConfig, EGL_NO_CONTEXT, 0, shared_from_this());
-
-            #if defined(_DEBUG)
-                Log(Verbose) << "Root context:" << std::endl;
-                StreamContext(Log(Verbose), _display, _rootContext->GetUnderlying());
-            #endif
-
-            auto result = std::make_unique<PresentationChain>(_display, _rootContextConfig, platformWindowHandle, desc);
-
-            // Finally, set this context & surface current, so we have at least something current to
-            // start calling opengl commands.
-            if (!eglMakeCurrent(_display, result->GetSurface(), result->GetSurface(), _rootContext->GetUnderlying()))
-                Throw(::Exceptions::BasicLabel("Failure while setting EGL root context current (%s)", ErrorToName(eglGetError())));
-
-            // We can only construct the object factory after the first presentation chain is created. This is because
-            // we can't call eglMakeCurrent until at least one presentation chain has been constructed; and we can't
-            // call any opengl functions until we call eglMakeCurrent. In particular, we can't call glGetString(), which is
-            // required to calculate the feature set used to construct the object factory.
-            auto featureSet = AsGLESFeatureSet(_glesVersion);
-            assert(!_objectFactory);
-            _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
-            _rootContext->SetFeatureSet(featureSet);
-            return result;
-        } else {
-            // Ensure that the requested parameters are compatible with the root config that has
-            // already been created.
-            // If they match, we can just return a new presentation chain
-            return std::make_unique<PresentationChain>(_display, _rootContextConfig, platformWindowHandle, desc);
-        }
+        InitializeRootContextForPresentation(desc);
+        return std::make_unique<PresentationChain>(_display, _rootContextConfig, platformWindowHandle, desc);
     }
 
     std::shared_ptr<Metal_OpenGLES::ObjectFactory> Device::GetObjectFactory()
@@ -407,6 +448,8 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         if (guid == typeid(Device).hash_code()) {
             return (Device*)this;
+        } else if (guid == typeid(IDeviceOpenGLES).hash_code()) {
+            return (IDeviceOpenGLES*)this;
         }
         return nullptr;
     }
@@ -427,22 +470,12 @@ namespace RenderCore { namespace ImplOpenGLES
         glFinish();
     }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
-    Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
+    Metal_OpenGLES::FeatureSet::BitField Device::GetFeatureSet()
     {
         return GetObjectFactory()->GetFeatureSet();
     }
 
-    void* DeviceOpenGLES::QueryInterface(size_t guid)
-    {
-        if (guid == typeid(IDeviceOpenGLES).hash_code()) {
-            return (IDeviceOpenGLES*)this;
-        }
-        return Device::QueryInterface(guid);
-    }
-
-    unsigned DeviceOpenGLES::GetNativeFormatCode()
+    unsigned Device::GetNativeFormatCode()
     {
         EGLint format = 0;
         if (!eglGetConfigAttrib(_display, _rootContextConfig, EGL_NATIVE_VISUAL_ID, &format)) {
@@ -452,14 +485,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return format;
     }
 
-    DeviceOpenGLES::DeviceOpenGLES() {}
-    DeviceOpenGLES::~DeviceOpenGLES() {}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     static unsigned s_nextPresentationChainGUID = 1;
 
-    PresentationChain::PresentationChain(EGLDisplay display, EGLConfig sharedContextCfg, const void* platformValue, const PresentationChainDesc& desc)
+    PresentationChain::PresentationChain(EGLDisplay display, EGLConfig contextCfg, const void* platformValue, const PresentationChainDesc& desc)
     {
         _guid = s_nextPresentationChainGUID++;
         _desc = std::make_shared<PresentationChainDesc>(desc);
@@ -471,14 +501,14 @@ namespace RenderCore { namespace ImplOpenGLES
                 EGL_WIDTH, 1, EGL_HEIGHT, 1,
                 EGL_NONE, EGL_NONE
             };
-            _surface = eglCreatePbufferSurface(display, sharedContextCfg, pbufferAttribsList);
+            _surface = eglCreatePbufferSurface(display, contextCfg, pbufferAttribsList);
             if (_surface == EGL_NO_SURFACE)
                 Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
         } else {
             // Create the main output surface
             // This must be tied to the window in Win32 -- so we can't begin construction of this until we build the presentation chain.
             const EGLint surfaceAttribList[] = { EGL_RENDER_BUFFER, EGL_BACK_BUFFER, EGL_NONE, EGL_NONE };
-            _surface = eglCreateWindowSurface(display, sharedContextCfg, EGLNativeWindowType(platformValue), surfaceAttribList);
+            _surface = eglCreateWindowSurface(display, contextCfg, EGLNativeWindowType(platformValue), surfaceAttribList);
             if (_surface == EGL_NO_SURFACE)
                 Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
 
@@ -658,6 +688,7 @@ namespace RenderCore { namespace ImplOpenGLES
     bool ThreadContext::BindToCurrentThread()
     {
         if (_context != EGL_NO_CONTEXT) {
+            _currentPresentationChainGUID = 0;
             // Ensure that the IDevice is still alive. If you hit this assert, it means that the device
             // may have been destroyed before this call was made. Since the device cleans up _display
             // in its destructor, it will turn the subsequent eglMakeCurrent into an invalid call
@@ -671,6 +702,7 @@ namespace RenderCore { namespace ImplOpenGLES
     void ThreadContext::UnbindFromCurrentThread()
     {
         assert(IsBoundToCurrentThread());
+        _currentPresentationChainGUID = 0;
         glFlush();
         eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
@@ -763,7 +795,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
-        return std::make_shared<DeviceOpenGLES>();
+        return std::make_shared<Device>();
     }
 
     void RegisterCreation()
@@ -780,3 +812,4 @@ namespace RenderCore
     IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
     void *IThreadContext::QueryInterface(size_t guid) { return nullptr; }
 }
+

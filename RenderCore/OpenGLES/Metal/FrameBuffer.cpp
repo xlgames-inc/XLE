@@ -445,7 +445,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             float depthClear = 1.0f; GLint stencilClear = 0;
             if (clearDepth && clearStencil) {
 				glDepthMask(GL_TRUE);
-                glStencilMask(GL_TRUE);
+                glStencilMask(0xFF);
                 if (s._dsvClearValue < clearValues.size()) {
                     depthClear = clearValues[s._dsvClearValue]._depthStencil._depth;
                     stencilClear = clearValues[s._dsvClearValue]._depthStencil._stencil;
@@ -455,7 +455,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 				glDepthMask(GL_TRUE);
                 glClearBufferfv(GL_DEPTH, 0, &depthClear);
             } else if (clearStencil)  {
-				glStencilMask(GL_TRUE);
+				glStencilMask(0xFF);
                 glClearBufferiv(GL_STENCIL, 0, &stencilClear);
             }
         } else {
@@ -481,7 +481,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 clearBits |= GL_DEPTH_BUFFER_BIT;
             }
             if (clearStencil) {
-				glStencilMask(GL_TRUE);
+				glStencilMask(0xFF);
                 unsigned clear = 0;
                 if (s._dsvClearValue < clearValues.size())
                     clear = clearValues[s._dsvClearValue]._depthStencil._stencil;

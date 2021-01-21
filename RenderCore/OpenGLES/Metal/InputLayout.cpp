@@ -14,6 +14,7 @@
 #include "Resource.h"
 #include "DeviceContext.h"
 #include "GPUSyncedAllocator.h"
+#include "ExtensionFunctions.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -435,7 +436,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             #if GL_APPLE_vertex_array_object
                 glBindVertexArrayAPPLE(vao);
             #else
-                glBindVertexArrayOES(vao);
+                assert(OpenGL::g_bindVertexArray);
+                (*OpenGL::g_bindVertexArray)(vao);
             #endif
         }
     }
@@ -476,14 +478,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 #if GL_APPLE_vertex_array_object
                     assert(glIsVertexArrayAPPLE(_vao->AsRawGLHandle()));
                 #else
-                    assert(glIsVertexArrayOES(_vao->AsRawGLHandle()));
+                    assert(OpenGL::g_isVertexArray);
+                    assert((*OpenGL::g_isVertexArray)(_vao->AsRawGLHandle()));
                 #endif
             }
             UnderlyingBindVAO(devContext, _vao->AsRawGLHandle());
 
             for (unsigned c=0; c<_maxVertexAttributes; ++c) {
                 GLint isEnabled = 0;
-                glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &isEnabled);
+            glGetVertexAttribiv(c, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &isEnabled);
                 assert(!!(_attributeState & (1<<c)) == isEnabled);
                 if (!isEnabled) continue;
 

@@ -10,14 +10,14 @@ namespace UnitTests
             #endif
 
             #if __VERSION__ >= 300
-                #define ATTRIBUTE in     /** legacy **/
+                #define ATTRIBUTE in
                 #if defined(FRAGMENT_SHADER)
                     #define VARYING in
                 #else
                     #define VARYING out
                 #endif
             #else
-                #define ATTRIBUTE attribute     /** legacy **/
+                #define ATTRIBUTE attribute
                 #define VARYING varying
             #endif
 
@@ -114,6 +114,7 @@ namespace UnitTests
     static const char vsText_FullViewport[] =
         GLSLPrefix
         VaryingsT
+        VaryingsC
         R"(
             void main()
             {
@@ -125,32 +126,35 @@ namespace UnitTests
                 #endif
 
                 a_texCoord = vec2(
-                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0f :  1.0f,
-                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0f :  1.0f);
+                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0 :  1.0,
+                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0 :  1.0);
                 gl_Position = vec4(
-                    a_texCoord.x *  2.0f - 1.0f,
-                    a_texCoord.y *  2.0f - 1.0f,
+                    a_texCoord.x *  2.0 - 1.0,
+                    a_texCoord.y *  2.0 - 1.0,
                     0.0, 1.0
                 );
+                a_color = vec4(1,1,1,1);
             }
         )";
 
     static const char vsText_FullViewport2[] =
         GLSLPrefix
         VaryingsT
+        VaryingsC
         R"(
             ATTRIBUTE float vertexID;
             void main()
             {
                 int in_vertexID = int(vertexID);
                 a_texCoord = vec2(
-                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0f :  1.0f,
-                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0f :  1.0f);
+                    (fakeMod(in_vertexID, 2) == 1)     ? 0.0 :  1.0,
+                    (fakeMod(in_vertexID/2, 2) == 1) ? 0.0 :  1.0);
                 gl_Position = vec4(
-                    a_texCoord.x *  2.0f - 1.0f,
-                    a_texCoord.y *  2.0f - 1.0f,
+                    a_texCoord.x *  2.0 - 1.0,
+                    a_texCoord.y *  2.0 - 1.0,
                     0.0, 1.0
                 );
+                a_color = vec4(1,1,1,1);
             }
         )";
 
@@ -165,6 +169,7 @@ namespace UnitTests
         )";
 
     static const char psText_Uniforms[] =
+        GLSLPrefix
         VaryingsBasic
         R"(
             uniform struct

@@ -79,9 +79,9 @@ typedef struct glWrappersTag
 
 glWrappers* GetGLWrappers();
 
-#if !defined(_WIN32) && !defined(ENABLE_GL_WRAPPERS)
-    #define ENABLE_GL_WRAPPERS 1
-#endif
+//#if !defined(ENABLE_GL_WRAPPERS)
+//    #define ENABLE_GL_WRAPPERS 1
+//#endif
 
 #if ENABLE_GL_WRAPPERS
     #define GL_WRAP(X) (GetGLWrappers()->X)

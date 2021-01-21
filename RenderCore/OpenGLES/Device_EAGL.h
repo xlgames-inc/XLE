@@ -16,7 +16,7 @@ namespace RenderCore { namespace ImplOpenGLES
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PresentationChain : public Base_PresentationChain
+    class PresentationChain : public IPresentationChain
     {
     public:
         virtual void Resize(unsigned newWidth, unsigned newHeight) override;
@@ -38,7 +38,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     class Device;
 
-    class ThreadContext : public Base_ThreadContext
+    class ThreadContext : public IThreadContext
     {
     public:
         virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
@@ -71,7 +71,7 @@ namespace RenderCore { namespace ImplOpenGLES
         intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
 
-    class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
+    class ThreadContextOpenGLES : public ThreadContext, public IThreadContextOpenGLES
     {
     public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext() override { return _deviceContext; }
@@ -92,7 +92,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     class BoundContextVerification;
 
-    class Device : public Base_Device, public std::enable_shared_from_this<Device>
+    class Device : public IDevice, public std::enable_shared_from_this<Device>
     {
     public:
         virtual std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc) override;
@@ -123,7 +123,7 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
     };
 
-    class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
+    class DeviceOpenGLES : public Device, public IDeviceOpenGLES
     {
     public:
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;

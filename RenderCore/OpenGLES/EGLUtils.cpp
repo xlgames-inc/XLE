@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "EGLUtils.h"
+#include "Metal/ExtensionFunctions.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <sstream>
@@ -228,6 +229,21 @@ namespace RenderCore { namespace ImplOpenGLES
         bool res = eglQueryContext(display, context, EGL_CONTEXT_CLIENT_VERSION, &clientVersion);
         assert(res); (void)res;
         return clientVersion * 100;
+    }
+
+    void BindExtensionFunctions()
+    {
+        OpenGL::g_labelObject = (PFNGLLABELOBJECTEXTPROC)eglGetProcAddress("glLabelObjectEXT");
+        OpenGL::g_drawArraysInstanced = (PFNGLDRAWARRAYSINSTANCEDEXTPROC)eglGetProcAddress("glDrawArraysInstancedEXT");
+        OpenGL::g_drawElementsInstanced = (PFNGLDRAWELEMENTSINSTANCEDEXTPROC)eglGetProcAddress("glDrawElementsInstancedEXT");
+
+        OpenGL::g_pushGroupMarker = (PFNGLPUSHGROUPMARKEREXTPROC)eglGetProcAddress("glPushGroupMarkerEXT");
+        OpenGL::g_popGroupMarker = (PFNGLPOPGROUPMARKEREXTPROC)eglGetProcAddress("glPopGroupMarkerEXT");
+
+        OpenGL::g_bindVertexArray = (PFNGLBINDVERTEXARRAYOESPROC)eglGetProcAddress("glBindVertexArrayOES");
+        OpenGL::g_deleteVertexArrays = (PFNGLDELETEVERTEXARRAYSOESPROC)eglGetProcAddress("glDeleteVertexArraysOES");
+        OpenGL::g_genVertexArrays = (PFNGLGENVERTEXARRAYSOESPROC)eglGetProcAddress("glGenVertexArraysOES");
+        OpenGL::g_isVertexArray = (PFNGLISVERTEXARRAYOESPROC)eglGetProcAddress("glIsVertexArrayOES");
     }
 
 }}

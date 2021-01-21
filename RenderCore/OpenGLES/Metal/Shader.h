@@ -28,7 +28,18 @@ namespace RenderCore { namespace Metal_OpenGLES
             std::string SourceIdentifiers() const { return _sourceIdentifiers; };
         #endif
 
-        ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
+        ShaderProgram(
+            ObjectFactory& factory,
+            const CompiledShaderByteCode& vs,
+            const CompiledShaderByteCode& fs);
+
+        ShaderProgram(	
+            ObjectFactory& factory, 
+            const CompiledShaderByteCode& vs,
+            const CompiledShaderByteCode& gs,
+            const CompiledShaderByteCode& ps,
+            StreamOutputInitializers so = {});
+
         ~ShaderProgram();
 
         mutable std::shared_ptr<ShaderProgramCapturedState> _capturedState;

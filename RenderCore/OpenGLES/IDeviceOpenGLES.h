@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../ResourceDesc.h"
 #include "Metal/Format.h"
 #include <memory>
 
@@ -24,6 +25,11 @@ namespace RenderCore
     public:
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() = 0;
         virtual unsigned GetNativeFormatCode() = 0;
+
+        virtual void InitializeRootContextForPresentation(const PresentationChainDesc&) = 0;
+        virtual void InitializeRootContextHeadless(
+            Format pbufferFmt = Format(0),
+            TextureSamples samples = TextureSamples::Create()) = 0;
         virtual ~IDeviceOpenGLES();
     };
 
@@ -40,8 +46,5 @@ namespace RenderCore
 
         virtual ~IThreadContextOpenGLES();
     };
-
-    using Base_DeviceOpenGLES = IDeviceOpenGLES;
-    using Base_ThreadContextOpenGLES = IThreadContextOpenGLES;
 
 }

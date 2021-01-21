@@ -1,21 +1,18 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "UnitTestHelper.h"
-#include "../RenderCore/Assets/TransformationCommands.h"
-#include "../Math/Geometry.h"
-#include "../OSServices/Log.h"
-#include <CppUnitTest.h>
+#include "../../../RenderCore/Assets/TransformationCommands.h"
+#include "../../../Math/Geometry.h"
+#include "../../../OSServices/Log.h"
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <vector>
 #include <random>
 #include <iostream>
 #include <sstream>
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-
+using namespace Catch::literals;
 namespace UnitTests
 {
     static Float3 RandomUnitVector(std::mt19937& rng)
@@ -152,67 +149,60 @@ namespace UnitTests
         return true;
     }
 
-    TEST_CLASS(TransformationMachineOpt)
-	{
-	public:
-        TEST_METHOD(TransformationSimplification)
-		{
-            using namespace RenderCore::Assets;
+    TEST_CASE( "TransformationMachineOpt-TransformationSimplification", "[rendercore_assets]" )
+    {
+        using namespace RenderCore::Assets;
 
-            UnitTest_SetWorkingDirectory();
-            ConsoleRig::GlobalServices services(GetStartupConfig());
+        std::mt19937 rng(std::random_device().operator()());
+        const auto testCount = 1000u;
 
-            std::mt19937 rng(std::random_device().operator()());
-            const auto testCount = 1000u;
+        {
+            auto initialMat = AsFloat4x4(ScaleRotationTranslationM(
+                RandomScaleVector(rng), 
+                MakeRotationMatrix(RandomUnitVector(rng), Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng))),
+                RandomTranslationVector(rng)));
 
-            {
-                auto initialMat = AsFloat4x4(ScaleRotationTranslationM(
-                    RandomScaleVector(rng), 
-                    MakeRotationMatrix(RandomUnitVector(rng), Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng))),
-                    RandomTranslationVector(rng)));
+            ScaleRotationTranslationM temp(
+                RandomScaleVector(rng), Identity<Float3x3>(), RandomTranslationVector(rng));
+            auto tMat = Combine(AsFloat4x4(temp), initialMat);
 
-                ScaleRotationTranslationM temp(
-                    RandomScaleVector(rng), Identity<Float3x3>(), RandomTranslationVector(rng));
-                auto tMat = Combine(AsFloat4x4(temp), initialMat);
+            auto cMat = initialMat;
+            Combine_IntoRHS(temp._translation, cMat);
+            Combine_IntoRHS(ArbitraryScale(temp._scale), cMat);
+            // cMat = Combine(AsFloat4x4(ArbitraryScale(temp._scale)), cMat);
+            const float tolerance = 1e-3f;
+            REQUIRE(Equivalent(cMat, tMat, tolerance));
+        }
 
-                auto cMat = initialMat;
-                Combine_IntoRHS(temp._translation, cMat);
-                Combine_IntoRHS(ArbitraryScale(temp._scale), cMat);
-                // cMat = Combine(AsFloat4x4(ArbitraryScale(temp._scale)), cMat);
-                const float tolerance = 1e-3f;
-                Assert::IsTrue(Equivalent(cMat, tMat, tolerance), L"Scale/translate order problem");
-            }
+            // Do this twice... once with comments; once without.
+            // Without comments the machine will be collapsed down to
+            // a single matrix. With comments, each individual transform
+            // will be simplified down to it's most basic form.
+        for (auto i=0u; i<2; ++i) {
+            for (auto c=0u; c<testCount; ++c) {
+                    // We will build a transformation machine, and then optimize it
+                    // Then we will verify that the output is the same each time.
+                std::vector<uint32> machine;
+                InsertRandomTransforms(machine, rng, 40, i==0);
 
-                // Do this twice... once with comments; once without.
-                // Without comments the machine will be collapsed down to
-                // a single matrix. With comments, each individual transform
-                // will be simplified down to it's most basic form.
-            for (auto i=0u; i<2; ++i) {
-                for (auto c=0u; c<testCount; ++c) {
-                        // We will build a transformation machine, and then optimize it
-                        // Then we will verify that the output is the same each time.
-                    std::vector<uint32> machine;
-                    InsertRandomTransforms(machine, rng, 40, i==0);
+                    // write out a single output matrix:
+                machine.push_back((uint32)TransformStackCommand::WriteOutputMatrix);
+                machine.push_back(0);
 
-                        // write out a single output matrix:
-                    machine.push_back((uint32)TransformStackCommand::WriteOutputMatrix);
-                    machine.push_back(0);
+                Optimizer opt;
+                auto optimized = OptimizeTransformationMachine(MakeIteratorRange(machine), opt);
+                LogTransMachines(MakeIteratorRange(machine), MakeIteratorRange(optimized), c);
 
-                    Optimizer opt;
-                    auto optimized = OptimizeTransformationMachine(MakeIteratorRange(machine), opt);
-                    LogTransMachines(MakeIteratorRange(machine), MakeIteratorRange(optimized), c);
+                Float4x4 resultUnOpt, resultOpt;
+                GenerateOutputTransforms(MakeIteratorRange(&resultUnOpt, &resultUnOpt+1), nullptr, MakeIteratorRange(machine));
+                GenerateOutputTransforms(MakeIteratorRange(&resultOpt, &resultOpt+1), nullptr, MakeIteratorRange(optimized));
 
-                    Float4x4 resultUnOpt, resultOpt;
-                    GenerateOutputTransforms(MakeIteratorRange(&resultUnOpt, &resultUnOpt+1), nullptr, MakeIteratorRange(machine));
-                    GenerateOutputTransforms(MakeIteratorRange(&resultOpt, &resultOpt+1), nullptr, MakeIteratorRange(optimized));
-
-                    const float tolerance = 3e-2f;
-                    if (!RelativeEquivalent(resultUnOpt, resultOpt, tolerance)) {
-                        assert(0);
-                    }
-                    Assert::IsTrue(RelativeEquivalent(resultUnOpt, resultOpt, tolerance), L"Transformation machine matrices do not match");
+                const float tolerance = 3e-2f;
+                if (!RelativeEquivalent(resultUnOpt, resultOpt, tolerance)) {
+                    assert(0);
                 }
+                REQUIRE(RelativeEquivalent(resultUnOpt, resultOpt, tolerance));
             }
         }
-    };
+    }
 }

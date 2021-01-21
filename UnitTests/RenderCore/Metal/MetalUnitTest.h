@@ -5,25 +5,25 @@
 
 #pragma once
 
-#include "../RenderCore/IDevice.h"
-#include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Assets/Services.h"
-#include "../RenderCore/MinimalShaderSource.h"
-#include "../RenderCore/ShaderService.h"
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/PipelineLayout.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Techniques/RenderPass.h"
-#include "../RenderCore/Techniques/RenderPassUtils.h"
-#include "../RenderCore/ResourceUtils.h"
-#include "../Assets/AssetServices.h"
-#include "../ConsoleRig/Console.h"
-#include "../OSServices/Log.h"
-#include "../ConsoleRig/AttachablePtr.h"
+#include "../../../RenderCore/IDevice.h"
+#include "../../../RenderCore/IThreadContext.h"
+#include "../../../RenderCore/Assets/Services.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
+#include "../../../RenderCore/ShaderService.h"
+#include "../../../RenderCore/Metal/Shader.h"
+#include "../../../RenderCore/Metal/InputLayout.h"
+#include "../../../RenderCore/Metal/State.h"
+#include "../../../RenderCore/Metal/PipelineLayout.h"
+#include "../../../RenderCore/Metal/DeviceContext.h"
+#include "../../../RenderCore/Techniques/Techniques.h"
+#include "../../../RenderCore/Techniques/ParsingContext.h"
+#include "../../../RenderCore/Techniques/RenderPass.h"
+#include "../../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../../RenderCore/ResourceUtils.h"
+#include "../../../Assets/AssetServices.h"
+#include "../../../ConsoleRig/Console.h"
+#include "../../../OSServices/Log.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include <memory>
 #include <map>
 
@@ -34,8 +34,8 @@ namespace UnitTests
     public:
         RenderCore::CompiledShaderByteCode MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines = {});
 
-        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
-		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
+        // ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
+		// ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
 		std::shared_ptr<RenderCore::IDevice> _device;
 		std::unique_ptr<RenderCore::ShaderService> _shaderService;
 		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;

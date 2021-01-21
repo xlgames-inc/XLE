@@ -33,6 +33,12 @@ macro(xle_internal_configure_compiler TargetName)
     target_compile_features(${TargetName} PUBLIC cxx_std_17)
     set_property(TARGET ${TargetName} PROPERTY CXX_EXTENSIONS OFF)
 
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_definitions(${TargetName} PUBLIC XL_DEBUG _DEBUG)
+    elseif ( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        target_compile_definitions(${TargetName} PUBLIC XL_RELEASE NDEBUG)
+    endif ()
+
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         # We must use -fPIC to enable relocation for any code that might be linked into a shared library
         # In theory, this might only need to be done for the code that ends up in a shared library. But in
@@ -64,21 +70,15 @@ macro(xle_internal_configure_compiler TargetName)
     endif()
 endmacro()
 
-macro(configure_xle_library LibName)
+macro(xle_configure_library LibName)
     if (MSVC)
         set_target_properties(${LibName} PROPERTIES VS_USER_PROPS "${XLE_MAIN_CMAKE_DIR}/Main.props")
     endif ()
     target_include_directories(${LibName} PRIVATE ${XLE_DIR})
     xle_internal_configure_compiler(${LibName})
-
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(${LibName} PUBLIC -DXL_DEBUG -D_DEBUG)
-    elseif ( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-        target_compile_definitions(${LibName} PUBLIC -DXL_RELEASE -DNDEBUG)
-    endif ()
 endmacro()
 
-macro(configure_xle_executable ExeName)
+macro(xle_configure_executable ExeName)
     if (MSVC)
         # The CMake Visual Studio generator has a hack that disables the LinkLibraryDependencies setting in
         # the output project (see cmGlobalVisualStudio8Generator::NeedLinkLibraryDependencies) unless there are
@@ -99,15 +99,9 @@ macro(configure_xle_executable ExeName)
             target_link_options(${ExeName} PRIVATE -Wl,--unresolved-symbols=report-all)
         endif()
     endif()
-
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(${ExeName} PUBLIC -DXL_DEBUG -D_DEBUG)
-    elseif ( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-        target_compile_definitions(${ExeName} PUBLIC -DXL_RELEASE -DNDEBUG)
-    endif ()
 endmacro()
 
-macro(configure_xle_dll DllName)
+macro(xle_configure_dll DllName)
     if (MSVC)
         # The CMake Visual Studio generator has a hack that disables the LinkLibraryDependencies setting in
         # the output project (see cmGlobalVisualStudio8Generator::NeedLinkLibraryDependencies) unless there are
@@ -128,13 +122,28 @@ macro(configure_xle_dll DllName)
             target_link_options(${DllName} PRIVATE -Wl,--unresolved-symbols=report-all)
         endif ()
     endif ()
-
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(${DllName} PUBLIC -DXL_DEBUG -D_DEBUG)
-    elseif ( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-        target_compile_definitions(${DllName} PUBLIC -DXL_RELEASE -DNDEBUG)
-    endif ()
 endmacro()
+
+macro(xle_select_default_rendercore_metal TargetName)
+    if (WIN32)
+        target_compile_definitions(${TargetName} PUBLIC SELECT_DX)
+    else()
+        target_compile_definitions(${TargetName} PUBLIC SELECT_OPENGL)
+    endif()
+endmacro()
+
+list(APPEND MetalSelectMacros SELECT_OPENGL SELECT_VULKAN)
+list(APPEND MetalSelectName OpenGLES Vulkan)
+
+if (WIN32)
+    list(APPEND MetalSelectMacros SELECT_DX)
+    list(APPEND MetalSelectName DX11)
+endif()
+
+if (APPLE)
+    list(APPEND MetalSelectMacros SELECT_APPLEMETAL)
+    list(APPEND MetalSelectName AppleMetal)
+endif()
 
 macro (FindProjectFiles retVal)
     file(GLOB prefilteredFiles *.cpp *.h)

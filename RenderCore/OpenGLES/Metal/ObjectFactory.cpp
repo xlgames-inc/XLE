@@ -5,6 +5,7 @@
 #include "ObjectFactory.h"
 #include "Resource.h"       // (for DescribeUnknownObject)
 #include "GPUSyncedAllocator.h"
+#include "ExtensionFunctions.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../IDeviceOpenGLES.h"
@@ -131,7 +132,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             #if GL_APPLE_vertex_array_object
                 glGenVertexArraysAPPLE(1, &result);
             #else
-                glGenVertexArraysOES(1, &result);
+                assert(OpenGL::g_genVertexArrays);
+                (*OpenGL::g_genVertexArrays)(1, &result);
             #endif
             OnResourceAllocation(GlObject_Type::VAO, 1, &result);
             auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
@@ -207,7 +209,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 #if GL_APPLE_vertex_array_object
                     glDeleteVertexArraysAPPLE(1, &object);
                 #else
-                    glDeleteVertexArraysOES(1, &object);
+                    assert(OpenGL::g_deleteVertexArrays);
+                    (*OpenGL::g_deleteVertexArrays)(1, &object);
                 #endif
             }
         }
@@ -488,3 +491,17 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 }}
 
+namespace OpenGL
+{
+    PFNGLLABELOBJECTEXTPROC g_labelObject = nullptr;
+    PFNGLDRAWARRAYSINSTANCEDEXTPROC g_drawArraysInstanced = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDEXTPROC g_drawElementsInstanced = nullptr;
+
+    PFNGLPUSHGROUPMARKEREXTPROC g_pushGroupMarker = nullptr;
+    PFNGLPOPGROUPMARKEREXTPROC g_popGroupMarker = nullptr;
+
+    PFNGLBINDVERTEXARRAYOESPROC g_bindVertexArray = nullptr;
+    PFNGLDELETEVERTEXARRAYSOESPROC g_deleteVertexArrays = nullptr;
+    PFNGLGENVERTEXARRAYSOESPROC g_genVertexArrays = nullptr;
+    PFNGLISVERTEXARRAYOESPROC g_isVertexArray = nullptr;
+}

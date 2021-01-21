@@ -10,6 +10,7 @@
 #include "InputLayout.h"
 #include "Buffer.h"
 #include "Format.h"
+#include "ExtensionFunctions.h"
 #include "../../IThreadContext.h"
 #include "../../../OSServices/Log.h"
 
@@ -66,7 +67,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             #if GL_APPLE_vertex_array_object
                 glBindVertexArrayAPPLE(0);
             #else
-                glBindVertexArrayOES(0);
+                assert(OpenGL::g_bindVertexArray);
+                (*OpenGL::g_bindVertexArray)(0);
             #endif
         }
         if (_capturedStates)
@@ -315,8 +317,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                     startVertexLocation, vertexCount,
                     instanceCount);
             } else {
-                #if GL_EXT_draw_instanced && (PLATFORMOS_TARGET != PLATFORMOS_WINDOWS) // Some distributions of Angle for Win32s declare but don't implement this function
-                    glDrawArraysInstancedEXT(
+                #if GL_EXT_draw_instanced
+                    assert(OpenGL::g_drawArraysInstanced);
+                    (*OpenGL::g_drawArraysInstanced)(
                         GLenum(_nativeTopology),
                         startVertexLocation, vertexCount,
                         instanceCount);
@@ -346,8 +349,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                     (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
                     instanceCount);
             } else {
-                #if GL_EXT_draw_instanced && (PLATFORMOS_TARGET != PLATFORMOS_WINDOWS) // Some distributions of Angle for Win32s declare but don't implement this function
-                    glDrawElementsInstancedEXT(
+                #if GL_EXT_draw_instanced
+                    assert(OpenGL::g_drawElementsInstanced);
+                    (*OpenGL::g_drawElementsInstanced)(
                         GLenum(_nativeTopology), GLsizei(indexCount),
                         GLenum(_indicesFormat),
                         (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),

@@ -19,5 +19,9 @@ set(Src
     Metal/TextureView.cpp)
 
 add_library(RenderCore_OpenGLES STATIC ${Src} ${Headers})
-configure_xle_library(RenderCore_OpenGLES)
-target_link_libraries(RenderCore_OpenGLES PRIVATE ForeignMisc)
+xle_configure_library(RenderCore_OpenGLES)
+target_link_libraries(RenderCore_OpenGLES PUBLIC RenderCore Utility ForeignMisc)
+
+if (UNIX)
+    target_link_libraries(RenderCore_OpenGLES PUBLIC GLESv2 EGL)
+endif ()

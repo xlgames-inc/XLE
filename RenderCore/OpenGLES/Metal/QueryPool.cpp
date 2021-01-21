@@ -5,6 +5,7 @@
 #include "QueryPool.h"
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
+#include "ExtensionFunctions.h"
 #include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -84,14 +85,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         void GPUAnnotation::Begin(DeviceContext& context, const char annotationName[])
         {
             #if GL_EXT_debug_marker
-                glPushGroupMarkerEXT(0, annotationName);
+                (OpenGL::g_pushGroupMarker)(0, annotationName);
             #endif
         }
 
         void GPUAnnotation::End(DeviceContext& context)
         {
             #if GL_EXT_debug_marker
-                glPopGroupMarkerEXT();
+                (OpenGL::g_popGroupMarker)();
             #endif
         }
 

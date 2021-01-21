@@ -5,31 +5,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../ReusableDataFiles.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../ShaderParser/ShaderSignatureParser.h"
-#include "../../ShaderParser/NodeGraphSignature.h"
-#include "../../ShaderParser/ShaderAnalysis.h"
-#include "../../Assets/AssetServices.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/OSFileSystem.h"
-#include "../../Assets/MountingTree.h"
-#include "../../Assets/MemoryFile.h"
-#include "../../Assets/AssetTraits.h"
-#include "../../ConsoleRig/Console.h"
-#include "../../OSServices/Log.h"
-#include "../../ConsoleRig/AttachablePtr.h"
-#include "../../OSServices/RawFS.h"
-#include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Conversion.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../ShaderParser/ShaderSignatureParser.h"
+#include "../../../ShaderParser/NodeGraphSignature.h"
+#include "../../../ShaderParser/ShaderAnalysis.h"
+#include "../../../Assets/AssetServices.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/OSFileSystem.h"
+#include "../../../Assets/MountingTree.h"
+#include "../../../Assets/MemoryFile.h"
+#include "../../../Assets/AssetTraits.h"
+#include "../../../ConsoleRig/Console.h"
+#include "../../../OSServices/Log.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
+#include "../../../OSServices/RawFS.h"
+#include "../../../Utility/Streams/PathUtils.h"
+#include "../../../Utility/Conversion.h"
 #include <cctype>
 #include <sstream>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Assets/LocalCompiledShaderSource.h"
-#include "../../ShaderParser/ShaderInstantiation.h"
-#include "../../ShaderParser/GraphSyntax.h"
+#include "../../../RenderCore/Techniques/Techniques.h"
+#include "../../../RenderCore/Assets/LocalCompiledShaderSource.h"
+#include "../../../ShaderParser/ShaderInstantiation.h"
+#include "../../../ShaderParser/GraphSyntax.h"
 
 using namespace Catch::literals;
 namespace UnitTests

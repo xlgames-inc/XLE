@@ -2,6 +2,7 @@
 #include "Resource.h"
 #include "Format.h"
 #include "DeviceContext.h"
+#include "ExtensionFunctions.h"
 #include "../../ResourceUtils.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/BitUtils.h"
@@ -58,7 +59,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         if (cpuAccess == 0) {
             return GL_STATIC_DRAW;
-        } else if (cpuAccess & CPUAccess::WriteDynamic) {
+        } else if ((cpuAccess & CPUAccess::WriteDynamic) == CPUAccess::WriteDynamic) {
             if (cpuAccess & CPUAccess::Read) return GL_DYNAMIC_READ;
             else return GL_DYNAMIC_DRAW;
         } else if (cpuAccess & CPUAccess::Write) {
@@ -278,8 +279,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
                 GL_WRAP(BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
 
-                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0])
-                    glLabelObjectEXT(GL_BUFFER_OBJECT_EXT, _underlyingBuffer->AsRawGLHandle(), 0, desc._name);
+                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0] && OpenGL::g_labelObject)
+                    (*OpenGL::g_labelObject)(GL_BUFFER_OBJECT_EXT, _underlyingBuffer->AsRawGLHandle(), 0, desc._name);
             }
 
             CheckGLError("Creating linear buffer resource");
@@ -395,8 +396,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     // glBindTexture(bindTarget, prevTexture);
                 }
 
-                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0])
-                    glLabelObjectEXT(GL_TEXTURE, _underlyingTexture->AsRawGLHandle(), 0, desc._name);
+                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0] && OpenGL::g_labelObject)
+                    (*OpenGL::g_labelObject)(GL_TEXTURE, _underlyingTexture->AsRawGLHandle(), 0, desc._name);
 
                 CheckGLError("Creating texture resource");
             } else {
@@ -419,8 +420,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     GL_WRAP(RenderbufferStorage)(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                 }
 
-                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0])
-                    glLabelObjectEXT(GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle(), 0, desc._name);
+                if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0] && OpenGL::g_labelObject)
+                    (*OpenGL::g_labelObject)(GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle(), 0, desc._name);
 
                 CheckGLError("Creating render buffer resource");
             }

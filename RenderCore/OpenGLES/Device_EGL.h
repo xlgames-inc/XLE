@@ -18,7 +18,7 @@ namespace RenderCore { namespace ImplOpenGLES
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PresentationChain : public Base_PresentationChain
+    class PresentationChain : public IPresentationChain
     {
     public:
         virtual void Resize(unsigned newWidth, unsigned newHeight) override;
@@ -96,7 +96,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device : public Base_Device, public std::enable_shared_from_this<Device>
+    class Device : public IDevice, public IDeviceOpenGLES, public std::enable_shared_from_this<Device>
     {
     public:
         virtual std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc) override;
@@ -120,6 +120,12 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLConfig GetRootContextConfig() const { return _rootContextConfig; }
         unsigned GetGLESVersion() const;
 
+        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
+        virtual unsigned GetNativeFormatCode() override;
+
+        virtual void InitializeRootContextForPresentation(const PresentationChainDesc& desc) override;
+        virtual void InitializeRootContextHeadless(Format pbufferFmt, TextureSamples samples) override;
+
         Device();
         ~Device();
 
@@ -133,17 +139,8 @@ namespace RenderCore { namespace ImplOpenGLES
         unsigned _glesVersion = 0;
 
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> GetObjectFactory();
-    };
 
-    class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
-    {
-    public:
-        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
-        virtual void* QueryInterface(size_t guid) override;
-        virtual unsigned GetNativeFormatCode() override;
-
-        DeviceOpenGLES();
-        ~DeviceOpenGLES();
+        void InitializeRootContext(EGLConfig presentationCfg, EGLConfig deferredCfg);
     };
 
 ////////////////////////////////////////////////////////////////////////////////

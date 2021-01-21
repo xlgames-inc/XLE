@@ -139,6 +139,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             DrawIndexedInstances(indexCount, instanceCount, startIndexLocation);
         }
 
+        void    DrawAuto(
+            const GraphicsPipeline& pipeline)
+        {
+            // todo -- not implemented
+            assert(0);
+        }
+
         CapturedStates* GetCapturedStates() { return _capturedStates; }
         void        BeginStateCapture(CapturedStates& capturedStates);
         void        EndStateCapture();

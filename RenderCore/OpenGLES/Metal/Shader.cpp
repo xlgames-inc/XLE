@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Shader.h"
+#include "ExtensionFunctions.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include "../../Types.h"
@@ -182,11 +183,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
 
-        bool supportsGLES300 = strstr((const char*)sourceCode, "SUPPORT_GLSL300");
         bool objectFactorySupportsGLES300 = !!(objectFactory.GetFeatureSet() & FeatureSet::GLES300);
 
-        #if PLATFORMOS_TARGET == PLATFORMOS_OSX
-            // hack for version string for OSX
+        #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+            // We're emulating GLES via desktop OpenGL. Use a shader language version that is
+            // as similar as possible to the GLES feature set
             const GLchar* versionDecl = isFragmentShader
                 ? "#version 120\n#define FRAGMENT_SHADER 1\n"
                 : "#version 120\n";
@@ -194,7 +195,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             (void)objectFactorySupportsGLES300;
         #else
             const GLchar* versionDecl;
-            if (supportsGLES300 && objectFactorySupportsGLES300) {
+            if (objectFactorySupportsGLES300) {
                 versionDecl = isFragmentShader
                     ? "#version 300 es\n#define FRAGMENT_SHADER 1\n"
                     : "#version 300 es\n";
@@ -213,8 +214,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
 
-        if (ObjectFactory::WriteObjectLabels() && (objectFactory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && shaderPath._filename[0])
-            glLabelObjectEXT(GL_SHADER_OBJECT_EXT, newShader->AsRawGLHandle(), 0, shaderPath._filename);
+        if (ObjectFactory::WriteObjectLabels() && (objectFactory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && shaderPath._filename[0] && OpenGL::g_labelObject)
+            (*OpenGL::g_labelObject)(GL_SHADER_OBJECT_EXT, newShader->AsRawGLHandle(), 0, shaderPath._filename);
 
         GLint compileStatus = 0;
         glGetShaderiv   (newShader->AsRawGLHandle(), GL_COMPILE_STATUS, &compileStatus);
@@ -382,8 +383,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         str << "[VS:" << vertexShader.GetIdentifier() << "][FS:" << fragmentShader.GetIdentifier() << "]";
         auto sourceIdentifiers = str.str();
 
-        if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject))
-            glLabelObjectEXT(GL_PROGRAM_OBJECT_EXT, newProgramIndex->AsRawGLHandle(), (GLsizei)sourceIdentifiers.length(), (const GLchar*)sourceIdentifiers.data());
+        if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && OpenGL::g_labelObject)
+            (*OpenGL::g_labelObject)(GL_PROGRAM_OBJECT_EXT, newProgramIndex->AsRawGLHandle(), (GLsizei)sourceIdentifiers.length(), (const GLchar*)sourceIdentifiers.data());
 
         if (!linkStatus) {
             ::Assets::Blob errorsLog;
@@ -426,6 +427,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         _underlying = std::move(newProgramIndex);
 
         _guid = g_nextShaderProgramGUID++;
+    }
+
+    ShaderProgram::ShaderProgram(	
+        ObjectFactory& factory, 
+        const CompiledShaderByteCode& vs,
+        const CompiledShaderByteCode& gs,
+        const CompiledShaderByteCode& ps,
+        StreamOutputInitializers so)
+    {
+        // todo -- not supported
+        assert(0);
     }
 
     ShaderProgram::~ShaderProgram()

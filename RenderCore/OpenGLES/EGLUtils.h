@@ -26,6 +26,8 @@ namespace RenderCore { namespace ImplOpenGLES
     unsigned GetGLESVersionFromConfig(EGLDisplay display, EGLConfig config);
     unsigned GetGLESVersionFromContext(EGLDisplay display, EGLContext context);
 
+    void BindExtensionFunctions();
+
     namespace Conv
     {
         std::string IntToString(EGLint i);
