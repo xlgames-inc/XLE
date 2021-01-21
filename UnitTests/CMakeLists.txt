@@ -1,13 +1,14 @@
 
 set(Src
-    Utilities.cpp
-    BasicMaths.cpp
-    MathSerialization.cpp
-    StreamFormatterTests.cpp
-    ConversionPatterns.cpp
-    ClassAccessorsTests.cpp
-    OSServicesAsync.cpp
-    ShaderParserTests.cpp)
+    Utility/Utilities.cpp
+    Utility/StreamFormatterTests.cpp
+    Utility/ConversionPatterns.cpp
+    Utility/ClassAccessorsTests.cpp
+    Math/BasicMaths.cpp
+    Math/MathSerialization.cpp
+    OSServices/OSServicesAsync.cpp
+    Assets/MountingTreeTests.cpp
+    RenderCore/ShaderParserTests.cpp)
 
 add_executable(UnitTests ${Src})
 configure_xle_executable(UnitTests)

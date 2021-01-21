@@ -2,11 +2,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Math/MathSerialization.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
-#include "../Utility/ImpliedTyping.h"
-#include "../Utility/ParameterBox.h"
+#include "../../Math/MathSerialization.h"
+#include "../../Math/Vector.h"
+#include "../../Math/Matrix.h"
+#include "../../Utility/ImpliedTyping.h"
+#include "../../Utility/ParameterBox.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 

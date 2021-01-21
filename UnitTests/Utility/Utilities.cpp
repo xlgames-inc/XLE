@@ -4,15 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Utility/ParameterBox.h"
-#include "../Utility/StringFormat.h"
-#include "../Utility/Streams/Stream.h"
-#include "../Utility/Streams/StreamTypes.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/FunctionUtils.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
-#include "../Utility/Conversion.h"
+#include "../../Utility/ParameterBox.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Utility/Streams/Stream.h"
+#include "../../Utility/Streams/StreamTypes.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/FunctionUtils.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
+#include "../../Utility/Conversion.h"
 #include <stdexcept>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>

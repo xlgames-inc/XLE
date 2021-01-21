@@ -2,11 +2,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Math/Vector.h"
-#include "../Math/MathSerialization.h"
-#include "../Utility/Conversion.h"
-#include "../Utility/ImpliedTyping.h"
-#include "../Utility/Streams/SerializationUtils.h"
+#include "../../Math/Vector.h"
+#include "../../Math/MathSerialization.h"
+#include "../../Utility/Conversion.h"
+#include "../../Utility/ImpliedTyping.h"
+#include "../../Utility/Streams/SerializationUtils.h"
 #include <string>
 #include <sstream>
 #include <catch2/catch_test_macros.hpp>
@@ -56,7 +56,7 @@ namespace UnitTests
         REQUIRE( str.str() == "1, 2 3");
 
         std::istringstream istr("1 2 3");
-        TestClass deserialized;
+        TestClass deserialized{};
         istr >> deserialized;
         REQUIRE( deserialized._c == 1 );
         REQUIRE( deserialized._c2 == UInt2{2, 3} );
@@ -66,8 +66,6 @@ namespace UnitTests
     // StreamOperator
     // Serialize() Deserialize
     // Conversion::Convert<>
-    // ParseInteger<>
-    // floating point number parser
     // .As() method in SteamDOM classes
     //
     // object -> ParmeterBox

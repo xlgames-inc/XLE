@@ -2,13 +2,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Utility/Meta/ClassAccessors.h"
-#include "../Utility/Meta/ClassAccessorsImpl.h"
-#include "../Utility/Meta/AccessorSerialize.h"
-#include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/StreamTypes.h"
-#include "../Math/Vector.h"
-#include "../Math/MathSerialization.h"
+#include "../../Utility/Meta/ClassAccessors.h"
+#include "../../Utility/Meta/ClassAccessorsImpl.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamTypes.h"
+#include "../../Math/Vector.h"
+#include "../../Math/MathSerialization.h"
 #include <stdexcept>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>

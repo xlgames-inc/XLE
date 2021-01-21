@@ -4,32 +4,32 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ReusableDataFiles.h"
-#include "../Assets/IFileSystem.h"
-#include "../ShaderParser/ShaderSignatureParser.h"
-#include "../ShaderParser/NodeGraphSignature.h"
-#include "../ShaderParser/ShaderAnalysis.h"
-#include "../Assets/AssetServices.h"
-#include "../Assets/IFileSystem.h"
-#include "../Assets/OSFileSystem.h"
-#include "../Assets/MountingTree.h"
-#include "../Assets/MemoryFile.h"
-#include "../Assets/AssetTraits.h"
-#include "../ConsoleRig/Console.h"
-#include "../OSServices/Log.h"
-#include "../ConsoleRig/AttachablePtr.h"
-#include "../OSServices/RawFS.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Conversion.h"
+#include "../ReusableDataFiles.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../ShaderParser/ShaderSignatureParser.h"
+#include "../../ShaderParser/NodeGraphSignature.h"
+#include "../../ShaderParser/ShaderAnalysis.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/OSFileSystem.h"
+#include "../../Assets/MountingTree.h"
+#include "../../Assets/MemoryFile.h"
+#include "../../Assets/AssetTraits.h"
+#include "../../ConsoleRig/Console.h"
+#include "../../OSServices/Log.h"
+#include "../../ConsoleRig/AttachablePtr.h"
+#include "../../OSServices/RawFS.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Conversion.h"
 #include <cctype>
 #include <sstream>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Assets/LocalCompiledShaderSource.h"
-#include "../ShaderParser/ShaderInstantiation.h"
-#include "../ShaderParser/GraphSyntax.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Assets/LocalCompiledShaderSource.h"
+#include "../../ShaderParser/ShaderInstantiation.h"
+#include "../../ShaderParser/GraphSyntax.h"
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -114,24 +114,22 @@ static const int NonPreprocessorLine0 = 0;
 	class LocalHelper
 	{
 	public:
-		// ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
-		// ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
+		std::shared_ptr<::Assets::MountingTree> _mountingTree;
 		::Assets::MountingTree::MountID _utDataMount;
 
 		LocalHelper()
 		{
-			// UnitTest_SetWorkingDirectory();
-			// _globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-			// ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
-			_utDataMount = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
-			// _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+			_mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
+			_utDataMount = _mountingTree->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+			// _mountingTree->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+			::Assets::MainFileSystem::Init(_mountingTree, nullptr);
 		}
 
 		~LocalHelper()
 		{
-			::Assets::MainFileSystem::GetMountingTree()->Unmount(_utDataMount);
-			// _assetServices.reset();
-			// _globalServices.reset();
+			::Assets::MainFileSystem::Shutdown();
+			_mountingTree->Unmount(_utDataMount);			
+			_mountingTree.reset();
 		}
 	};
 
@@ -242,13 +240,17 @@ static const int NonPreprocessorLine0 = 0;
 	TEST_CASE( "ShaderParser-BindShaderToTechnique", "[shader_parser]" )
 	{
 		LocalHelper localHelper;
+		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		// Given some shader (either straight-up shader code, or something generated from a shader graph)
 		// bind it to a technique, and produce both the final shader text and required meta-data
 
+		/*
+			todo -- this requires RenderCore::Techniques linked in. Maybe better off in a different unit test
 		auto tech = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>("ut-data/example.tech");
 		const auto* entry = tech->FindEntry(Hash64("PerPixel"));
 		REQUIRE(entry != nullptr);
+		*/
 
 		const std::string exampleGraphFN = "ut-data/example.graph";
 		ShaderSourceParser::InstantiationRequest instRequests[] {

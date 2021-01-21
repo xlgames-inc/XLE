@@ -9,7 +9,6 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../OSServices/RawFS.h"
-#include "../OSServices/RawFS.h"
 
 #pragma warning(disable:4505)		// 'UnitTests::GetStartupConfig': unreferenced local function has been removed
 
@@ -20,7 +19,7 @@ namespace UnitTests
         ConsoleRig::StartupConfig cfg = "unittest";
             // we can't set the working in this way when run from the 
             // visual studio test explorer
-        cfg._setWorkingDir = false; 
+        cfg._setWorkingDir = false;
         return cfg;
     }
 
@@ -41,8 +40,8 @@ namespace UnitTests
             //      that.
     	    //
     	char appDir[MaxPath];
-    	GetCurrentDirectory(dimof(appDir), appDir);
-    	ChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
+    	OSServices::GetCurrentDirectory(dimof(appDir), appDir);
+    	OSServices::ChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
     }
     
 }

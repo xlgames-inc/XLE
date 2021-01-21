@@ -2,9 +2,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../OSServices/Linux/PollingThread.h"
-#include "../Utility/Threading/ThreadingUtils.h"
-#include "../Utility/Threading/LockFree.h"
+#include "../../OSServices/Linux/PollingThread.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
+#include "../../Utility/Threading/LockFree.h"
 #include <stdexcept>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>

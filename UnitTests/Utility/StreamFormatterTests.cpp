@@ -4,14 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Math/Vector.h"
-#include "../Math/MathSerialization.h"
-#include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/StreamDOM.h"
-#include "../Utility/Streams/SerializationUtils.h"
-#include "../Utility/Conversion.h"
-#include "../Utility/StringFormat.h"
-#include "../Utility/ImpliedTyping.h"
+#include "../../Math/Vector.h"
+#include "../../Math/MathSerialization.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamDOM.h"
+#include "../../Utility/Streams/SerializationUtils.h"
+#include "../../Utility/Conversion.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Utility/ImpliedTyping.h"
 #include <string>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
