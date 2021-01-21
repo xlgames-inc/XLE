@@ -14,6 +14,7 @@
 
 namespace Utility
 {
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
         assert(IsGood());
@@ -144,6 +145,7 @@ namespace Utility
         OSServices::XlCloseSyncObject(_events[0]);
         OSServices::XlCloseSyncObject(_events[1]);
     }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

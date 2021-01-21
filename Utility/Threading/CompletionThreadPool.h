@@ -36,6 +36,7 @@ namespace Utility
     void YieldToPool();
     void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction);
 
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     class CompletionThreadPool
     {
     public:
@@ -74,6 +75,7 @@ namespace Utility
 			// because of the fake/unnamed type given with lamdbas by the compile)
 			EnqueueBasic(std::bind(std::move(fn), std::forward<Args>(args)...));
         }
+#endif
 
     class ThreadPool
     {

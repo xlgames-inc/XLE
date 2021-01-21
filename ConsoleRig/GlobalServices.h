@@ -10,7 +10,7 @@
 #include <memory>
 #include <assert.h>
 
-namespace Utility { class CompletionThreadPool; }
+namespace Utility { class ThreadPool; }
 
 namespace ConsoleRig
 {
@@ -31,8 +31,8 @@ namespace ConsoleRig
     class GlobalServices
     {
     public:
-        Utility::CompletionThreadPool& GetShortTaskThreadPool();
-        Utility::CompletionThreadPool& GetLongTaskThreadPool();
+        Utility::ThreadPool& GetShortTaskThreadPool();
+        Utility::ThreadPool& GetLongTaskThreadPool();
 
         static GlobalServices& GetInstance() { assert(s_instance); return *s_instance; }
 

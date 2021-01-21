@@ -7,17 +7,20 @@ set(Src
     Plugins.cpp
     ${CMAKE_BINARY_DIR}/ConsoleRig/Version.cpp)
 
-set(WINDOWS_SRC AttachableLibrary_WinAPI.cpp)
-set(STUB_SRC AttachableLibrary_Stub.cpp)
 if (WIN32)
-    list(APPEND Src ${WINDOWS_SRC})
-elseif(ANDROID)
-    list(APPEND Src ${STUB_SRC})
+    list(APPEND Src AttachableLibrary_WinAPI.cpp)
+else()
+    list(APPEND Src AttachableLibrary_Posix.cpp)
 endif()
 add_library(ConsoleRig STATIC ${Src})
 configure_xle_library(ConsoleRig)
 
 target_link_libraries(ConsoleRig PRIVATE ForeignMisc)
+
+# Posix platforms should link in "dl", which is used for interacting with shared libraries
+if (NOT WIN32)
+  target_link_libraries(ConsoleRig PRIVATE dl)
+endif ()
 
 ##################################################################################################################################
 

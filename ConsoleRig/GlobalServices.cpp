@@ -184,8 +184,8 @@ namespace ConsoleRig
 	{
 	public:
 		AttachablePtr<LogCentralConfiguration> _logCfg;
-        std::unique_ptr<CompletionThreadPool> _shortTaskPool;
-        std::unique_ptr<CompletionThreadPool> _longTaskPool;
+        std::unique_ptr<ThreadPool> _shortTaskPool;
+        std::unique_ptr<ThreadPool> _longTaskPool;
 		StartupConfig _cfg;
 		std::unique_ptr<PluginSet> _pluginSet;
 	};
@@ -195,8 +195,8 @@ namespace ConsoleRig
     GlobalServices::GlobalServices(const StartupConfig& cfg)
     {
 		_pimpl = std::make_unique<Pimpl>();
-        _pimpl->_shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
-        _pimpl->_longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+        _pimpl->_shortTaskPool = std::make_unique<ThreadPool>(cfg._shortTaskThreadPoolCount);
+        _pimpl->_longTaskPool = std::make_unique<ThreadPool>(cfg._longTaskThreadPoolCount);
 		_pimpl->_cfg = cfg;
 
         MainRig_Startup(cfg);
@@ -242,8 +242,8 @@ namespace ConsoleRig
         s_instance = nullptr;
     }
 
-	CompletionThreadPool& GlobalServices::GetShortTaskThreadPool() { return *_pimpl->_shortTaskPool; }
-    CompletionThreadPool& GlobalServices::GetLongTaskThreadPool() { return *_pimpl->_longTaskPool; }
+	ThreadPool& GlobalServices::GetShortTaskThreadPool() { return *_pimpl->_shortTaskPool; }
+    ThreadPool& GlobalServices::GetLongTaskThreadPool() { return *_pimpl->_longTaskPool; }
 
 	CrossModule* CrossModule::s_instance = nullptr;
 
