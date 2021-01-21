@@ -8,7 +8,6 @@
 
 #include "../DebuggingDisplay.h"
 #include "../../RenderCore/Metal/Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
 namespace Overlays

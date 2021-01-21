@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"        // for CameraDesc
 #include "../Assets/AssetsCore.h"   // for rstring
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; class IPipelineAcceleratorPool; }}
 namespace RenderCore { class PresentationChainDesc; }
 

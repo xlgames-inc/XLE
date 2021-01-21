@@ -11,7 +11,6 @@
 #include "PlatformInterface.h"
 #include "Metrics.h"
 #include "ResourceLocator.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/DeviceContext.h"		// for command list ptr
 #include "../Utility/Threading/LockFree.h"

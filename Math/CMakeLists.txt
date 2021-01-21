@@ -28,6 +28,6 @@ set(Headers
     XLEMath.h)
 
 add_library(Math STATIC ${Src} ${Headers})
-configure_xle_library(Math)
+xle_configure_library(Math)
 
 target_link_libraries(Math PRIVATE ForeignMisc)

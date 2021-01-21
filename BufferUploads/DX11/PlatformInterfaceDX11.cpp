@@ -7,7 +7,7 @@
 #include "../../Core/Prefix.h"
 #include "../../RenderCore/Metal/Metal.h"
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
 
     #include "../PlatformInterface.h"
     #include "../DataPacket.h"

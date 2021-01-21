@@ -16,7 +16,6 @@
 #include "../../FrameBufferDesc.h"
 #include "../../IDevice_Forward.h"
 #include "../../Types_Forward.h"
-#include "../../IThreadContext_Forward.h"
 #include "../../Types_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>

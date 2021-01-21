@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include "IThreadContext_Forward.h"
 #include "IDevice_Forward.h"
-#include "IAnnotator_Forward.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
@@ -21,6 +19,7 @@ namespace RenderCore
         unsigned _frameId;
     };
 
+    class IAnnotator;
 
     ///
     /// <summary>Represents the context state of a particular thread while rendering</summary>

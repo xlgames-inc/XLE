@@ -160,7 +160,7 @@ namespace SceneEngine
             auto& box = ConsoleRig::FindCachedBoxDep2<ShortCircuitResources>(format, filterType, _gradientFlagsSettings._enable);
 
             const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             float temp = std::numeric_limits<float>::max();
             struct TileCoords
             {

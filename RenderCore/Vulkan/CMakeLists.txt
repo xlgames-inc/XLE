@@ -22,5 +22,5 @@ set(Src
     Metal/TextureView.cpp)
 
 add_library(RenderCore_Vulkan STATIC ${Src} ${Headers})
-configure_xle_library(RenderCore_Vulkan)
+xle_configure_library(RenderCore_Vulkan)
 target_link_libraries(RenderCore_Vulkan PRIVATE ForeignMisc)

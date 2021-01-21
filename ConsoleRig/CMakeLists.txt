@@ -13,9 +13,9 @@ else()
     list(APPEND Src AttachableLibrary_Posix.cpp)
 endif()
 add_library(ConsoleRig STATIC ${Src})
-configure_xle_library(ConsoleRig)
+xle_configure_library(ConsoleRig)
 
-target_link_libraries(ConsoleRig PRIVATE ForeignMisc)
+target_link_libraries(ConsoleRig PUBLIC OSServices Utility ForeignMisc)
 
 # Posix platforms should link in "dl", which is used for interacting with shared libraries
 if (NOT WIN32)

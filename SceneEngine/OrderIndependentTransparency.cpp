@@ -96,7 +96,7 @@ namespace SceneEngine
         TransparencyTargetsBox& transparencyTargets, 
         const RenderCore::Metal::ShaderResourceView& depthBufferDupe)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         SavedTargets prevTargets(metalContext);
 
         ID3D::UnorderedAccessView* uavs[] = {
@@ -169,7 +169,7 @@ namespace SceneEngine
         const Metal::ShaderResourceView& originalDepthStencilSRV,
 		MetricsBox& metricsBox)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         SavedTargets savedTargets(metalContext);
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 

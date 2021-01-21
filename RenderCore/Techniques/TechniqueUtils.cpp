@@ -7,6 +7,7 @@
 #include "TechniqueUtils.h"
 #include "DrawableDelegates.h"
 #include "../../RenderCore/Types.h"
+#include "../../RenderCore/Metal/Metal.h"       // for GFXAPI_TARGET define used below
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 #include "../../Utility/ParameterBox.h"
@@ -37,9 +38,9 @@ namespace RenderCore { namespace Techniques
     ClipSpaceType GetDefaultClipSpaceType()
     {
             // (todo -- this condition could be a runtime test)
-        #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9) || (GFXAPI_ACTIVE == GFXAPI_APPLEMETAL)
+        #if (GFXAPI_TARGET == GFXAPI_DX11) || (GFXAPI_TARGET == GFXAPI_DX9) || (GFXAPI_TARGET == GFXAPI_APPLEMETAL)
             return ClipSpaceType::Positive;
-        #elif (GFXAPI_ACTIVE == GFXAPI_VULKAN)
+        #elif (GFXAPI_TARGET == GFXAPI_VULKAN)
             return ClipSpaceType::PositiveRightHanded;
         #else
             return ClipSpaceType::StraddlingZero;
@@ -48,14 +49,16 @@ namespace RenderCore { namespace Techniques
 
 	ShaderLanguage GetDefaultShaderLanguage()
 	{
-		#if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
+		#if (GFXAPI_TARGET == GFXAPI_DX11) || (GFXAPI_TARGET == GFXAPI_DX9)
             return ShaderLanguage::HLSL;
-        #elif (GFXAPI_ACTIVE == GFXAPI_VULKAN)
+        #elif (GFXAPI_TARGET == GFXAPI_VULKAN)
             return ShaderLanguage::HLSL;		// by default, we use HLSL for Vulkan; but of course GLSL could work as well
-		#elif (GFXAPI_ACTIVE == SELECT_OPENGL)
+		#elif (GFXAPI_TARGET == GFXAPI_OPENGLES)
 			return ShaderLanguage::GLSL;
-		#elif (GFXAPI_ACTIVE == GFXAPI_APPLEMETAL)
+		#elif (GFXAPI_TARGET == GFXAPI_APPLEMETAL)
             return ShaderLanguage::MetalShaderLanguage;
+        #else
+            #error No GFX API selected
         #endif
 	}
 

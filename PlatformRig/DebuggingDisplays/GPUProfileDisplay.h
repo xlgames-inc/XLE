@@ -9,7 +9,8 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
-#include "../../RenderCore/IAnnotator_Forward.h"
+
+namespace RenderCore { class IAnnotator; }
 
 namespace PlatformRig { namespace Overlays
 {

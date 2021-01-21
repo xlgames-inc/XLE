@@ -237,7 +237,7 @@ namespace SceneEngine
                         // add dummy light
                     lights.push_back(LightStruct(Float3(0.f, 0.f, 0.f), 0.f, Float3(0.f, 0.f, 0.f), 0.f));
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                     D3D11_MAPPED_SUBRESOURCE mappedRes;
                     HRESULT hresult = context->GetUnderlying()->Map(
                         Metal::AsID3DResource(*lightBufferResource->GetUnderlying()), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedRes);
@@ -330,7 +330,7 @@ namespace SceneEngine
 
     Metal::ConstantBuffer DuplicateResource(Metal::DeviceContext* context, Metal::ConstantBuffer& inputResource)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         return Metal::ConstantBuffer(
             ::RenderCore::Metal_DX11::DuplicateResource(context->GetUnderlying(), inputResource.GetUnderlying()));
 #else

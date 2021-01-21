@@ -12,7 +12,7 @@
 #include "../Utility/TimeUtils.h"
 #include <assert.h>
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
     #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 #endif
 
@@ -49,7 +49,7 @@ namespace BufferUploads { namespace PlatformInterface
         //////////////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
-    #if GFXAPI_ACTIVE == GFXAPI_DX11
+    #if GFXAPI_TARGET == GFXAPI_DX11
         intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& factory);
         bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query);
         void    Query_End(ID3D::DeviceContext* context, ID3D::Query* query);
@@ -60,7 +60,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     void  GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
             //
             //      Look for a query in the query stack that isn't being used...
             //      this will become our.
@@ -100,7 +100,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
             //
             //      Look for completed queries, and update our current ID as they complete (also return the 
             //      query to the pool)
@@ -119,7 +119,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     void        GPUEventStack::OnLostDevice()
     {
-#if GFXAPI_ACTIVE != GFXAPI_OPENGLES
+#if GFXAPI_TARGET != GFXAPI_OPENGLES
             // On device lost, we must consider all queries triggered, and then un-allocate them
         for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
             i->_query.reset();
@@ -161,7 +161,7 @@ namespace BufferUploads { namespace PlatformInterface
 
     GPUEventStack::Query::Query()
     {
-#if GFXAPI_ACTIVE != GFXAPI_OPENGLES
+#if GFXAPI_TARGET != GFXAPI_OPENGLES
         _query = nullptr;
 #endif
         _assignedID = EventID_Unallocated;

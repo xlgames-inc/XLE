@@ -207,7 +207,7 @@ namespace SceneEngine
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
             SavedTargets oldTargets(context);
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
@@ -360,7 +360,7 @@ namespace SceneEngine
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
 			SavedTargets oldTargets(context);
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }

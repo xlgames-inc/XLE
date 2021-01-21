@@ -48,12 +48,10 @@
     <ClInclude Include="..\Format.h" />
     <ClInclude Include="..\FrameBufferDesc.h" />
     <ClInclude Include="..\IAnnotator.h" />
-    <ClInclude Include="..\IAnnotator_Forward.h" />
     <ClInclude Include="..\IDevice.h" />
     <ClInclude Include="..\IDevice_Forward.h" />
     <ClInclude Include="..\Init.h" />
     <ClInclude Include="..\IThreadContext.h" />
-    <ClInclude Include="..\IThreadContext_Forward.h" />
     <ClInclude Include="..\Metal\Buffer.h" />
     <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h" />
     <ClInclude Include="..\Metal\DeviceContext.h" />

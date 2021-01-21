@@ -38,7 +38,7 @@
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
     #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #endif
 
@@ -941,7 +941,7 @@ namespace SceneEngine
             context.Bind(resources._noBlending);
             SetupVertexGeneratorShader(context);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
             Metal::ShaderResourceView depthsSRV(Metal::AsResourcePtr(std::move(depths)), {{TextureViewDesc::Aspect::Depth}});
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
@@ -983,7 +983,7 @@ namespace SceneEngine
             context.Bind(savedViewport);
             context.Bind(MakeResourceList(Metal::RenderTargetView(savedTargets.GetRenderTargets()[0])), nullptr);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             if (!savedTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("No depth stencil buffer bound using atmospheric blur render"));
             }

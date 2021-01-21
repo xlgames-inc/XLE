@@ -134,5 +134,5 @@ set(Headers
 	CommonTechniqueDelegates.h)
 
 add_library(SceneEngine STATIC ${Src} ${Headers})
-configure_xle_library(SceneEngine)
+xle_configure_library(SceneEngine)
 target_link_libraries(SceneEngine PRIVATE ForeignMisc)

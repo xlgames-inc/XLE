@@ -13,7 +13,7 @@
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../FixedFunctionModel/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
 	#include "../RenderCore/DX11/Metal/DX11.h"
     #include "../RenderCore/Metal/State.h"      // (for ViewportDesc)
     #include "../RenderCore/Metal/InputLayout.h"
@@ -37,7 +37,7 @@ namespace SceneEngine
     void ReturnToSteadyState(RenderCore::Metal::DeviceContext& context);
 
         // todo -- avoid D3D11 specific types here
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
     class SavedTargets
     {
     public:
@@ -261,7 +261,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* _context;
         States::BitField    _states;
         
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
             SavedTargets        _targets;
 
 			RenderCore::Metal::DepthStencilState    _depthStencilState;

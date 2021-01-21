@@ -9,7 +9,6 @@
 #include "Erosion.h"
 #include "TerrainCoverageId.h"
 #include "TerrainShortCircuit.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
 #include "../Utility/PtrUtils.h"
 #include "../OSServices/RawFS.h"
@@ -23,6 +22,7 @@
 namespace Utility { class MemoryMappedFile; }
 namespace ConsoleRig { class IProgress; }
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine

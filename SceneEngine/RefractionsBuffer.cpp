@@ -70,7 +70,7 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext, 
         float standardDeviationForBlur)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         CATCH_ASSETS_BEGIN
 
                 // Build a refractions texture
@@ -200,7 +200,7 @@ namespace SceneEngine
 
                 //  Resolve into the new buffer
             auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
-			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+			#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
 				context->GetUnderlying()->ResolveSubresource(
 					Metal::AsResource(*box._resource->GetUnderlying()).GetUnderlying().get(), 0, 
 					Metal::AsResource(sourceDepthBuffer).GetUnderlying().get(), 0,

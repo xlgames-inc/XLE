@@ -13,7 +13,7 @@ set(StamSimpleFluidSrc StamSimpleFluid/solver.c)
 set(CParseSource cparse/containers.cpp cparse/functions.cpp cparse/packToken.cpp cparse/shunting-yard.cpp)
 
 add_library(ForeignMisc STATIC ${LuaSrc} ${HashSrc} ${FmtSrc} ${StackWalkerSrc} ${PlustacheSrc} ${StamSimpleFluidSrc} ${ZLibSrc} ${AntlrSrc} ${CParseSource})
-configure_xle_library(ForeignMisc)
+xle_configure_library(ForeignMisc)
 
 # Ensure we export the necessary include folders from this target
 # Most other targets list this target as a dependency, so they should inherit these include folders

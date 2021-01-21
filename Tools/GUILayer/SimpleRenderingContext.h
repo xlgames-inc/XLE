@@ -5,11 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CLIXAutoPtr.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Core/Types.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace GUILayer

@@ -29,7 +29,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PresentationChain : public Base_PresentationChain
+    class PresentationChain : public IPresentationChain
     {
     public:
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;

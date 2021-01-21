@@ -7,8 +7,8 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../BufferUploads/IBufferUploads_Forward.h"
 
+namespace RenderCore { class IThreadContext; }
 namespace Assets { class Services; }
 namespace ConsoleRig { class Console; }

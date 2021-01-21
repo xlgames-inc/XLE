@@ -7,10 +7,10 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 #include <functional>
 
+namespace RenderCore { class IThreadContext; }
 namespace PlatformRig { class FrameRig; class IWindowHandler; }
 
 namespace GUILayer

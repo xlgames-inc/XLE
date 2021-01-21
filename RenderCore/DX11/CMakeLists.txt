@@ -18,5 +18,5 @@ set(Src
     "Metal/PipelineLayout.cpp")
 
 add_library(RenderCore_DX11 STATIC ${Src} ${Headers})
-configure_xle_library(RenderCore_DX11)
+xle_configure_library(RenderCore_DX11)
 target_link_libraries(RenderCore_DX11 PRIVATE ForeignMisc)

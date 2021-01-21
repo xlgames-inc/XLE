@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../../Math/Vector.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -20,6 +19,7 @@ namespace FixedFunctionModel
     class MeshToModel;
 }
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Assets
 { 
 	class ModelScaffold; class MaterialScaffold;

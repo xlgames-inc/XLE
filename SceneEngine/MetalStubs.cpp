@@ -9,13 +9,13 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/IDevice.h"
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
 	namespace RenderCore { namespace Metal_DX11
 	{
 		extern StreamOutputInitializers g_defaultStreamOutputInitializers;
 	}}
 	#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+#elif GFXAPI_TARGET == GFXAPI_VULKAN
 	#include "../RenderCore/Vulkan/Metal/IncludeVulkan.h"
 	#include "../RenderCore/Vulkan/IDeviceVulkan.h"
 #endif
@@ -24,14 +24,14 @@ namespace SceneEngine { namespace MetalStubs
 {
 	void SetDefaultStreamOutputInitializers(const RenderCore::StreamOutputInitializers& so)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			RenderCore::Metal_DX11::g_defaultStreamOutputInitializers = so;
 		#endif
 	}
 
 	RenderCore::StreamOutputInitializers GetDefaultStreamOutputInitializers()
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			return RenderCore::Metal_DX11::g_defaultStreamOutputInitializers;
 		#else
 			return RenderCore::StreamOutputInitializers{};
@@ -40,7 +40,7 @@ namespace SceneEngine { namespace MetalStubs
 
 	void UnbindTessellationShaders(RenderCore::Metal::DeviceContext& devContext)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			devContext.GetUnderlying()->HSSetShader(nullptr, nullptr, 0);
 			devContext.GetUnderlying()->DSSetShader(nullptr, nullptr, 0);
 		#endif
@@ -48,21 +48,21 @@ namespace SceneEngine { namespace MetalStubs
 
 	void UnbindGeometryShader(RenderCore::Metal::DeviceContext& devContext)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			devContext.GetUnderlying()->GSSetShader(nullptr, nullptr, 0);
 		#endif
 	}
 
 	void UnbindComputeShader(RenderCore::Metal::DeviceContext& devContext)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			devContext.GetUnderlying()->CSSetShader(nullptr, nullptr, 0);
 		#endif
 	}
 
 	void UnbindRenderTargets(RenderCore::Metal::DeviceContext& devContext)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			devContext.GetUnderlying()->OMSetRenderTargets(0, nullptr, nullptr);
 		#endif
 	}
@@ -74,11 +74,11 @@ namespace SceneEngine { namespace MetalStubs
 
 	void BindSO(RenderCore::Metal::DeviceContext& metalContext, RenderCore::IResource& res, unsigned offset)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			auto* metalResource = (RenderCore::Metal::Resource*)res.QueryInterface(typeid(RenderCore::Metal::Resource).hash_code());
 			ID3D::Buffer* underlying = (ID3D::Buffer*)metalResource->GetUnderlying().get();
 			metalContext.GetUnderlying()->SOSetTargets(1, &underlying, &offset);
-		#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+		#elif GFXAPI_TARGET == GFXAPI_VULKAN
 
 			auto deviceVulkan = (RenderCore::IDeviceVulkan*)RenderCore::Techniques::GetThreadContext()->GetDevice()->QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 			VkInstance instance = deviceVulkan->GetVulkanInstance();
@@ -102,9 +102,9 @@ namespace SceneEngine { namespace MetalStubs
 
 	void UnbindSO(RenderCore::Metal::DeviceContext& metalContext)
 	{
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			metalContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
-		#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+		#elif GFXAPI_TARGET == GFXAPI_VULKAN
 
 			auto deviceVulkan = (RenderCore::IDeviceVulkan*)RenderCore::Techniques::GetThreadContext()->GetDevice()->QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 			VkInstance instance = deviceVulkan->GetVulkanInstance();

@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../Math/Vector.h"
 
 namespace Utility { class ParameterBox; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 

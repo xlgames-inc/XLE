@@ -17,7 +17,7 @@ elseif (NOT APPLE)
 endif()
 
 add_library(OSServices STATIC ${Src} ${Headers} ${WinAPISrc} ${LinuxSrc})
-configure_xle_library(OSServices)
+xle_configure_library(OSServices)
 target_link_libraries(OSServices PRIVATE ForeignMisc Utility)
 
 if (WIN32)

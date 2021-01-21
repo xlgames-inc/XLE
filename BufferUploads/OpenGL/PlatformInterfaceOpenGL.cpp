@@ -7,7 +7,7 @@
 #include "../../Core/Prefix.h"
 #include "../../RenderCore/Metal/Metal.h"
 
-#if GFXAPI_ACTIVE == GFXAPI_OPENGLES
+#if GFXAPI_TARGET == GFXAPI_OPENGLES
 
     #include "../PlatformInterface.h"
     #include "../../RenderCore/Metal/Format.h"

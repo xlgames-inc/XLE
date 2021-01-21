@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <string>
 
@@ -17,6 +16,7 @@ namespace SceneEngine
 }
 
 namespace PlatformRig { class InputSnapshot; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace ToolsRig

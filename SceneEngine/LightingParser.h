@@ -7,7 +7,6 @@
 #pragma once
 
 #include "LightDesc.h"		// (required for ShadowGeneratorDesc in SceneTechniqueDesc)
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"		// for some ShaderResourceViews in LightingResolveContext
@@ -26,7 +25,7 @@ namespace RenderCore { namespace Techniques {
 	class IPipelineAcceleratorPool; 
 }}
 
-namespace RenderCore { class AttachmentDesc; class FrameBufferProperties; }
+namespace RenderCore { class IThreadContext; class AttachmentDesc; class FrameBufferProperties; }
 
 namespace Assets { class IAsyncMarker; }
 

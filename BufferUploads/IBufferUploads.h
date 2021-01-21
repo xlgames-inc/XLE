@@ -9,7 +9,6 @@
 #include "IBufferUploads_Forward.h"
 
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/ResourceDesc.h"
 
 #include "../Utility/IntrusivePtr.h"

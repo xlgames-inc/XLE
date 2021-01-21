@@ -6,8 +6,11 @@
 
 #include "RenderStateResolver.h"
 #include "CommonResources.h"
-#include "CompiledRenderStateSet.h"
-#include "../Metal/State.h"
+#if GFXAPI_TARGET == GFXAPI_DX11
+    #include "CompiledRenderStateSet.h"
+    #include "../Metal/State.h"
+#endif
+#include "../Assets/MaterialScaffold.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -39,6 +42,7 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
+#if GFXAPI_TARGET == GFXAPI_DX11
 	Metal::RasterizerState BuildDefaultRastizerState(const RenderCore::Assets::RenderStateSet& states)
 	{
 		return BuildDefaultRastizerDesc(states);
@@ -155,6 +159,16 @@ namespace RenderCore { namespace Techniques
         return std::make_shared<StateSetResolver_DepthOnly>(
             singleSidedBias, doubleSidedBias, cullMode); 
     }
+#else
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Default()     { return nullptr; }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Forward()     { return nullptr; }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Deferred()    { return nullptr; }
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_DepthOnly(
+        const RSDepthBias& singleSidedBias, const RSDepthBias& doubleSidedBias, CullMode cullMode)
+    { 
+        return nullptr; 
+    }
+#endif
 
 }}
 

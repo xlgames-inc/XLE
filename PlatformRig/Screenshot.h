@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
 
 namespace SceneEngine
@@ -15,6 +14,7 @@ namespace SceneEngine
     class CompiledSceneTechnique;
 }
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; class CameraDesc; } }
 
 namespace PlatformRig

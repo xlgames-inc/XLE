@@ -8,9 +8,9 @@
 
 #include "RenderStep.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/Drawables.h"
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine

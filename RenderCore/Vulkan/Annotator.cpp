@@ -19,7 +19,7 @@ namespace RenderCore { namespace ImplVulkan
 {
 	namespace Metal = RenderCore::Metal_Vulkan;
 
-	class AnnotatorImpl : public Base_Annotator
+	class AnnotatorImpl : public IAnnotator
 	{
 	public:
 		void    Event(IThreadContext& context, const char name[], EventTypes::BitField types);

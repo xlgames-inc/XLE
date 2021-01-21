@@ -49,9 +49,15 @@
 		#define GFXAPI_TARGET   GFXAPI_OPENGLES
 	#endif
 
-#endif
+#elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
 
-#define GFXAPI_ACTIVE GFXAPI_TARGET
+    #if defined(SELECT_OPENGL)
+		#define GFXAPI_TARGET   GFXAPI_OPENGLES
+	#else
+        #define GFXAPI_TARGET   GFXAPI_VULKAN
+	#endif
+
+#endif
 
 // #define _PSTE(X,Y) X##Y
 #define __STRIZE(X) #X

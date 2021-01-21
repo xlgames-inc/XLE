@@ -70,8 +70,11 @@ namespace RenderCore
         return TypeDesc{TypeCat::Void, 0};
     }
 
-    std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type)
+    std::string AsShaderLangTypeName(const ImpliedTyping::TypeDesc& type, ShaderLanguage language)
     {
+        // only HLSL style names supported currently
+        assert(language == ShaderLanguage::HLSL);
+
         const char* baseName = nullptr;
         using namespace ImpliedTyping;
         switch (type._type) {

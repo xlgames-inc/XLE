@@ -60,18 +60,18 @@ namespace RenderCore { namespace Techniques
 			auto hashName = Hash64(layout._resources[c]._name);
 			if (layout._resources[c]._arrayElementCount) {
 				for (unsigned arrayIndex=0; arrayIndex<layout._resources[c]._arrayElementCount; ++arrayIndex) {
-					auto boundResourceName = resourceBindings.GetString<char>(hashName+arrayIndex);
-					if (!boundResourceName.empty()) {
-						pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName)));
+					auto boundResourceName = resourceBindings.GetParameterAsString(hashName+arrayIndex);
+					if (boundResourceName.has_value() && !boundResourceName.value().empty()) {
+						pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName.value())));
 					} else {
 						pendingSRVs.push_back({});
 					}
 					usi.BindShaderResource(unsigned(pendingSRVs.size()-1), hashName+arrayIndex);
 				}
 			} else {
-				auto boundResourceName = resourceBindings.GetString<char>(hashName);
-				if (!boundResourceName.empty()) {
-					pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName)));
+				auto boundResourceName = resourceBindings.GetParameterAsString(hashName);
+				if (boundResourceName.has_value() && !boundResourceName.value().empty()) {
+					pendingSRVs.push_back(::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResourceName.value())));
 				} else {
 					pendingSRVs.push_back({});
 				}

@@ -222,7 +222,7 @@ namespace SceneEngine
 
             // unbind the depth buffer, and create a shader resource view for the depth buffer
                 //  it doesn't need to be duplicated for this case
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             context->GetUnderlying()->OMSetRenderTargets(1, prevTargets.GetRenderTargets(), nullptr);
             if (prevTargets.GetDepthStencilView()) {
                 duplicatedDepthBuffer = Metal::ShaderResourceView(

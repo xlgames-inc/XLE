@@ -3,9 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GeneralCompiler.h"
-#include "CompilationThread.h"
 #include "AssetUtils.h"
 #include "AssetServices.h"
+#include "AssetsCore.h"
 #include "NascentChunk.h"
 #include "ICompileOperation.h"
 #include "IFileSystem.h"
@@ -13,6 +13,8 @@
 #include "CompileAndAsyncManager.h"
 #include "DepVal.h"
 #include "IntermediateAssets.h"
+#include "CompilationThread.h"
+#include "IArtifact.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../OSServices/Log.h"
 #include "../OSServices/LegacyFileStreams.h"
@@ -36,17 +38,7 @@ namespace Assets
 		std::vector<std::shared_ptr<ExtensionAndDelegate>> _delegates;
 
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
-        std::unique_ptr<CompilationThread>	_thread;
-
 		std::shared_ptr<IntermediateAssets::Store> _store;
-
-		CompilationThread& GetThread()
-		{
-			ScopedLock(_threadLock);
-			if (!_thread)
-				_thread = std::make_unique<CompilationThread>();
-			return *_thread;
-		}
 
 		Pimpl() {}
 		Pimpl(const Pimpl&) = delete;
@@ -406,7 +398,7 @@ namespace Assets
 		auto typeCode = _typeCode;
 		std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
 		std::weak_ptr<IntermediateAssets::Store> weakStore = c->_pimpl->_store;
-		c->_pimpl->GetThread().Push(
+		QueueCompileOperation(
 			backgroundOp,
 			[weakDelegate, weakStore, typeCode, requestName](ArtifactFuture& op) {
 			auto d = weakDelegate.lock();
@@ -483,11 +475,8 @@ namespace Assets
 
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
     {
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread) return;
-        }
-        _pimpl->_thread->StallOnPendingOperations(cancelAll);
+		// todo -- must reimplement, because compilation operations now occur on the main thread pool, rather than a custom thread
+		assert(0);
     }
 
 	GeneralCompiler::GeneralCompiler(

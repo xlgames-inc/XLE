@@ -7,12 +7,12 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Types.h"
 #include <memory>
 
 namespace PlatformRig { class IInputListener; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class TechniqueContext; } }
 
 namespace SceneEngine

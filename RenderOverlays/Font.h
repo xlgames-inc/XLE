@@ -7,7 +7,6 @@
 #pragma once
 
 #include "OverlayPrimitives.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"

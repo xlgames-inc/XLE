@@ -164,7 +164,7 @@ namespace SceneEngine
             instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
         }
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query = D3D11_QUERY_SO_STATISTICS;
         queryDesc.MiscFlags = 0;
@@ -276,7 +276,7 @@ namespace SceneEngine
 
             metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(5, MakeMetalCB(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             const bool needQuery = false;
             if (constant_expression<needQuery>::result()) {
                 begunQuery = res._streamOutputCountsQuery.get();
@@ -343,7 +343,7 @@ namespace SceneEngine
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
             static const unsigned MaxOutputBinCount = 8;
             ID3D::UnorderedAccessView* outputBins[MaxOutputBinCount];
             unsigned initialCounts[MaxOutputBinCount];
@@ -406,7 +406,7 @@ namespace SceneEngine
                 shaderParams.get()));
             metalContext->Dispatch(StreamOutputMaxCount / 256);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                 // unbind all of the UAVs again
             MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*metalContext, 0, outputBinCount);
             MetalStubs::UnbindCS<Metal::ShaderResourceView>(*metalContext, 0, 2);
@@ -416,7 +416,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_END(parserContext)
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         if (begunQuery)
             metalContext->GetUnderlying()->End(begunQuery);
 #endif
@@ -431,7 +431,7 @@ namespace SceneEngine
 
     static unsigned GetSOPrimitives(Metal::DeviceContext* context, ID3D::Query* query)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         auto querySize = query->GetDataSize();
         uint8 soStatsBuffer[256];
         assert(querySize <= sizeof(soStatsBuffer));
@@ -742,7 +742,7 @@ namespace SceneEngine
 
 namespace SceneEngine
 {
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
     void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext)
     {
 		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();

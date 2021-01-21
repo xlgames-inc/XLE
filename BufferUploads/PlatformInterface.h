@@ -86,7 +86,7 @@ namespace BufferUploads { namespace PlatformInterface
         RenderCore::IThreadContext& GetUnderlying() { return *_renderCoreContext; }
         // RenderCore::Metal::DeviceContext& GetUnderlying() { return *_devContext.get(); }
 
-        #if GFXAPI_ACTIVE == GFXAPI_DX11
+        #if GFXAPI_TARGET == GFXAPI_DX11
             private: 
                 bool _useUpdateSubresourceWorkaround;
         #endif
@@ -158,7 +158,7 @@ namespace BufferUploads { namespace PlatformInterface
 
         //          Use these to customise behaviour for platforms
         //          without lots of #if defined(...) type code
-    #if GFXAPI_ACTIVE == GFXAPI_DX11
+    #if GFXAPI_TARGET == GFXAPI_DX11
 		static const bool SupportsResourceInitialisation_Texture = true;
 		static const bool SupportsResourceInitialisation_Buffer = true;
         static const bool RequiresStagingTextureUpload = false;
@@ -168,7 +168,7 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool ContextBasedMultithreading = true;
         static const bool CanDoPartialMaps = false;
         static const bool NonVolatileResourcesTakeSystemMemory = false;
-    #elif GFXAPI_ACTIVE == GFXAPI_DX9
+    #elif GFXAPI_TARGET == GFXAPI_DX9
 		static const bool SupportsResourceInitialisation_Texture = false;
 		static const bool SupportsResourceInitialisation_Buffer = false;
         static const bool RequiresStagingTextureUpload = true;
@@ -178,7 +178,7 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool ContextBasedMultithreading = false;
         static const bool CanDoPartialMaps = true;
         static const bool NonVolatileResourcesTakeSystemMemory = true;
-    #elif GFXAPI_ACTIVE == GFXAPI_OPENGLES
+    #elif GFXAPI_TARGET == GFXAPI_OPENGLES
         static const bool SupportsResourceInitialisation_Texture = true;
 		static const bool SupportsResourceInitialisation_Buffer = true;
         static const bool RequiresStagingTextureUpload = false;
@@ -188,7 +188,7 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool ContextBasedMultithreading = true;
         static const bool CanDoPartialMaps = false;
         static const bool NonVolatileResourcesTakeSystemMemory = false;
-	#elif GFXAPI_ACTIVE == GFXAPI_VULKAN
+	#elif GFXAPI_TARGET == GFXAPI_VULKAN
 		// Vulkan capabilities haven't been tested!
 		static const bool SupportsResourceInitialisation_Texture = false;
 		static const bool SupportsResourceInitialisation_Buffer = true;

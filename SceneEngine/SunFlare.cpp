@@ -295,7 +295,7 @@ namespace SceneEngine
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
                 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                 context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
                 context.Bind(savedViewport);
@@ -318,7 +318,7 @@ namespace SceneEngine
 
             } else {
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                 context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
                 context.Bind(savedViewport);

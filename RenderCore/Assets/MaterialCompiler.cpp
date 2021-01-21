@@ -215,7 +215,6 @@ namespace RenderCore { namespace Assets
             const ::Assets::IntermediateAssets::Store& store);
         ~MatCompilerMarker();
     private:
-        std::weak_ptr<::Assets::CompilationThread> _thread;
         ::Assets::rstring _materialFilename, _modelFilename;
         const ::Assets::IntermediateAssets::Store* _store;
 

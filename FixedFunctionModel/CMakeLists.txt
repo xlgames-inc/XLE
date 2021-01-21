@@ -18,5 +18,5 @@ set(Headers
     SharedStateSet.h)
 
 add_library(FixedFunctionModel STATIC ${Src} ${Headers})
-configure_xle_library(FixedFunctionModel)
+xle_configure_library(FixedFunctionModel)
 target_link_libraries(FixedFunctionModel PRIVATE ForeignMisc)

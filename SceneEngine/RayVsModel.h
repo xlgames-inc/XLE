@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Core/Types.h"
 #include <vector>
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext; class CameraDesc;

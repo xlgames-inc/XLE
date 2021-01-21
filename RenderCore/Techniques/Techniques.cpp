@@ -547,11 +547,11 @@ namespace RenderCore { namespace Techniques
 
 	UnderlyingAPI GetTargetAPI()
     {
-        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
+        #if GFXAPI_TARGET == GFXAPI_VULKAN
             return RenderCore::UnderlyingAPI::Vulkan;
-        #elif GFXAPI_ACTIVE == GFXAPI_OPENGLES
+        #elif GFXAPI_TARGET == GFXAPI_OPENGLES
             return RenderCore::UnderlyingAPI::OpenGLES;
-        #elif GFXAPI_ACTIVE == GFXAPI_APPLEMETAL
+        #elif GFXAPI_TARGET == GFXAPI_APPLEMETAL
             return RenderCore::UnderlyingAPI::AppleMetal;
         #else
             return RenderCore::UnderlyingAPI::DX11;

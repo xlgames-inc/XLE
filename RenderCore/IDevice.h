@@ -7,7 +7,6 @@
 #pragma once
 
 #include "IDevice_Forward.h"
-#include "IThreadContext_Forward.h"
 #include "ResourceDesc.h"       // (required just for SubResourceId)
 #include "../Core/Prefix.h"
 #include "../Utility/IntrusivePtr.h"
@@ -31,6 +30,7 @@ namespace RenderCore
         NotSupported,
         Supported
     };
+    class IThreadContext;
 
     /// <summary>Device description</summary>
     /// The build number is in a format such as:

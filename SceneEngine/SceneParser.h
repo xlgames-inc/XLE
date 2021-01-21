@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
 
 namespace SceneEngine

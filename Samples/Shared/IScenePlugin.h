@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include "../../RenderCore/IThreadContext_Forward.h"
-#include "../../RenderCore/Metal/Forward.h"
-
+namespace RenderCore { class IThreadContext; }
 namespace SceneEngine
 {
     class LightingParserContext;

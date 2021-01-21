@@ -798,7 +798,7 @@ namespace FixedFunctionModel
         auto& devContext = *context._context;
 		devContext.Bind(*checked_cast<Metal::Resource*>(_indexBuffer.get()), cm->_indexFormat, cm->_ibOffset);
 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11    // platformtemp
+		#if GFXAPI_TARGET == GFXAPI_DX11    // platformtemp
 			// unimplemented -- bind with BoundInputLayout path
 			//		(ie, using ApplyBoundInputLayout)
 			assert(0);
@@ -1387,7 +1387,7 @@ namespace FixedFunctionModel
 
             sharedStateSet.BeginRenderState(context, drawCallRes._renderStateSet);
 
-			#if GFXAPI_ACTIVE == GFXAPI_DX11
+			#if GFXAPI_TARGET == GFXAPI_DX11
 					// We have to do this transform update very frequently! isn't there a better way?
 				{
 					D3D11_MAPPED_SUBRESOURCE result;

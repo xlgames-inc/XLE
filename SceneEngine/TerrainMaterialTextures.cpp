@@ -115,7 +115,7 @@ namespace SceneEngine
                 context.Dispatch(expectedWidth/8, expectedHeight/8);
                 MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                 if (resamplingFormat!=destFormat) {
                         // We have to re-compress the texture. It's annoying, but we can use a library to do it
                     auto rawData = bufferUploads.Resource_ReadBack(*resamplingBuffer);

@@ -101,10 +101,4 @@ xcuserdata/
 xcshareddata/
 project.xcworkspace/
 
-# Apportable
-.scons*
-**/*.approj/configuration.json
-**/*.approj/assets/
-**/*.approj/targets/
-
 build

@@ -8,9 +8,9 @@
 
 #include "CLIXAutoPtr.h"
 #include "EngineDevice.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
 namespace PlatformRig { class InputTranslator; class InputContext; }
 
 using namespace System::Drawing;

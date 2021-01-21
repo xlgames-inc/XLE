@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../../RenderCore/Metal/Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }

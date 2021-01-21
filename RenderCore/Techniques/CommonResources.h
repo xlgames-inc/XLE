@@ -18,6 +18,7 @@ namespace RenderCore { namespace Techniques
         class Desc {};
         CommonResourceBox(const Desc&);
 
+#if GFXAPI_TARGET == GFXAPI_DX11
         Metal::DepthStencilState _dssReadWrite;
         Metal::DepthStencilState _dssReadOnly;
         Metal::DepthStencilState _dssDisable;
@@ -33,13 +34,14 @@ namespace RenderCore { namespace Techniques
         Metal::RasterizerState _defaultRasterizer;
         Metal::RasterizerState _cullDisable;
         Metal::RasterizerState _cullReverse;
+        
+        Metal::ConstantBuffer _localTransformBuffer;
+#endif
 
         Metal::SamplerState _defaultSampler;
         Metal::SamplerState _linearWrapSampler;
         Metal::SamplerState _linearClampSampler;
         Metal::SamplerState _pointClampSampler;
-
-        Metal::ConstantBuffer _localTransformBuffer;
 
 		///////////////////////////////////////
 
@@ -54,6 +56,10 @@ namespace RenderCore { namespace Techniques
 		AttachmentBlendDesc _abOpaque;
 		AttachmentBlendDesc _abOneSrcAlpha;
 		AttachmentBlendDesc _abAdditive;
+
+        RasterizationDesc _rsDefault;
+        RasterizationDesc _rsCullDisable;
+        RasterizationDesc _rsCullReverse;
 
     private:
         CommonResourceBox(CommonResourceBox&);

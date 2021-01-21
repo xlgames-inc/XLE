@@ -14,6 +14,7 @@ namespace RenderCore { namespace Techniques
     CommonResourceBox::CommonResourceBox(const Desc&)
     {
         using namespace RenderCore::Metal;
+#if GFXAPI_TARGET == GFXAPI_DX11
         _dssReadWrite = DepthStencilState();
         _dssReadOnly = DepthStencilState(true, false);
         _dssDisable = DepthStencilState(false, false);
@@ -30,11 +31,12 @@ namespace RenderCore { namespace Techniques
         _cullDisable = CullMode::None;
         _cullReverse = RasterizerState(CullMode::Back, false);
 
+        _localTransformBuffer = MakeConstantBuffer(GetObjectFactory(), sizeof(LocalTransformConstants));
+#endif
+
         _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Wrap);
         _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp);
         _pointClampSampler = SamplerState(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp);
-
-        _localTransformBuffer = MakeConstantBuffer(GetObjectFactory(), sizeof(LocalTransformConstants));
 
 		_dsReadWrite = DepthStencilDesc {};
 		_dsReadOnly = DepthStencilDesc { CompareOp::LessEqual, false };
@@ -47,6 +49,10 @@ namespace RenderCore { namespace Techniques
 		_abOneSrcAlpha = AttachmentBlendDesc { true, Blend::One, Blend::SrcAlpha, BlendOp::Add };
 		_abAdditive = AttachmentBlendDesc { true, Blend::One, Blend::One, BlendOp::Add };
 		_abOpaque = AttachmentBlendDesc { };
+
+        _rsDefault = RasterizationDesc { CullMode::Back };
+        _rsCullDisable = RasterizationDesc { CullMode::None };
+        _rsCullReverse = RasterizationDesc { CullMode::Back, FaceWinding::CW };
     }
 
     CommonResourceBox& CommonResources()

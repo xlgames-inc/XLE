@@ -321,7 +321,7 @@ namespace ToolsRig
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Topology::TriangleStrip);
-			#if GFXAPI_ACTIVE == GFXAPI_DX11
+			#if GFXAPI_TARGET == GFXAPI_DX11
 				metalContext.GetUnderlying()->IASetInputLayout(nullptr);
 			#endif
 

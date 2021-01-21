@@ -10,7 +10,6 @@
 #include "FrameBuffer.h"        // for AttachmentPool
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
-#include "../../IThreadContext_Forward.h"
 #include "../../ResourceList.h"
 #include "../../Types_Forward.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"

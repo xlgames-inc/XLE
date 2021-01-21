@@ -10,7 +10,6 @@
 		8F2D1AF31FD61B080028A531 /* FrameBufferDesc.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */; };
 		8F2D1AF41FD61B080028A531 /* Init.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD31FD61B040028A531 /* Init.cpp */; };
 		8F2D1AF51FD61B080028A531 /* Init.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AD31FD61B040028A531 /* Init.cpp */; };
-		8F2D1AF61FD61B080028A531 /* IThreadContext_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */; };
 		8F2D1AF71FD61B080028A531 /* Documentation.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD51FD61B050028A531 /* Documentation.h */; };
 		8F2D1AF81FD61B080028A531 /* ResourceList.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD61FD61B050028A531 /* ResourceList.h */; };
 		8F2D1AF91FD61B080028A531 /* IDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AD71FD61B050028A531 /* IDevice.h */; };
@@ -22,7 +21,6 @@
 		8F2D1AFF1FD61B080028A531 /* IDevice_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */; };
 		8F2D1B001FD61B080028A531 /* MinimalShaderSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */; };
 		8F2D1B011FD61B080028A531 /* MinimalShaderSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */; };
-		8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */; };
 		8F2D1B031FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
 		8F2D1B041FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
 		8F2D1B091FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
@@ -69,7 +67,6 @@
 		8F2D1ACE1FD61A920028A531 /* libRenderCoreMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FrameBufferDesc.h; path = ../FrameBufferDesc.h; sourceTree = "<group>"; };
 		8F2D1AD31FD61B040028A531 /* Init.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Init.cpp; path = ../Init.cpp; sourceTree = "<group>"; };
-		8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IThreadContext_Forward.h; path = ../IThreadContext_Forward.h; sourceTree = "<group>"; };
 		8F2D1AD51FD61B050028A531 /* Documentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Documentation.h; path = ../Documentation.h; sourceTree = "<group>"; };
 		8F2D1AD61FD61B050028A531 /* ResourceList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceList.h; path = ../ResourceList.h; sourceTree = "<group>"; };
 		8F2D1AD71FD61B050028A531 /* IDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDevice.h; path = ../IDevice.h; sourceTree = "<group>"; };
@@ -78,7 +75,6 @@
 		8F2D1ADA1FD61B050028A531 /* ResourceUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceUtils.h; path = ../ResourceUtils.h; sourceTree = "<group>"; };
 		8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDevice_Forward.h; path = ../IDevice_Forward.h; sourceTree = "<group>"; };
 		8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MinimalShaderSource.cpp; path = ../MinimalShaderSource.cpp; sourceTree = "<group>"; };
-		8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator_Forward.h; path = ../IAnnotator_Forward.h; sourceTree = "<group>"; };
 		8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderUtils.cpp; path = ../RenderUtils.cpp; sourceTree = "<group>"; };
 		8F2D1AE21FD61B060028A531 /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Format.cpp; path = ../Format.cpp; sourceTree = "<group>"; };
 		8F2D1AE31FD61B060028A531 /* IAnnotator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator.h; path = ../IAnnotator.h; sourceTree = "<group>"; };
@@ -144,13 +140,11 @@
 				8F2D1AE81FD61B070028A531 /* Format.h */,
 				8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */,
 				8F2D1AD21FD61B040028A531 /* FrameBufferDesc.h */,
-				8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */,
 				8F2D1AE31FD61B060028A531 /* IAnnotator.h */,
 				8F2D1ADB1FD61B050028A531 /* IDevice_Forward.h */,
 				8F2D1AD71FD61B050028A531 /* IDevice.h */,
 				8F2D1AD31FD61B040028A531 /* Init.cpp */,
 				8F2D1AF21FD61B080028A531 /* Init.h */,
-				8F2D1AD41FD61B040028A531 /* IThreadContext_Forward.h */,
 				8F2D1AEA1FD61B070028A531 /* IThreadContext.h */,
 				8F2D1B1E1FD61C6E0028A531 /* Metal */,
 				8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */,
@@ -239,7 +233,6 @@
 				BE299E67202D2F9B00E97A63 /* RenderPass.h in Headers */,
 				8F2D1B1B1FD61B080028A531 /* RenderUtils.h in Headers */,
 				8F2D1B0D1FD61B080028A531 /* ShaderService.h in Headers */,
-				8F2D1AF61FD61B080028A531 /* IThreadContext_Forward.h in Headers */,
 				8F2D1AF71FD61B080028A531 /* Documentation.h in Headers */,
 				8F2D1AF91FD61B080028A531 /* IDevice.h in Headers */,
 				8F2D1B111FD61B080028A531 /* Format.h in Headers */,
@@ -249,7 +242,6 @@
 				8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */,
 				8F2D1B121FD61B080028A531 /* ResourceDesc.h in Headers */,
 				8F2D1B1A1FD61B080028A531 /* Types_Forward.h in Headers */,
-				8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */,
 				8F2D1AFF1FD61B080028A531 /* IDevice_Forward.h in Headers */,
 				8F2D1AF31FD61B080028A531 /* FrameBufferDesc.h in Headers */,
 				8F2D1B131FD61B080028A531 /* IThreadContext.h in Headers */,

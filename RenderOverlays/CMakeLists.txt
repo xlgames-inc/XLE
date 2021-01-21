@@ -39,5 +39,5 @@ set(OverlaysHeaders
     Overlays/VolFogSettings.h)
 
 add_library(RenderOverlays STATIC ${Src} ${Headers} ${OverlaysSrc} ${OverlaysHeaders})
-configure_xle_library(RenderOverlays)
+xle_configure_library(RenderOverlays)
 target_link_libraries(RenderOverlays PRIVATE ForeignMisc freetype)

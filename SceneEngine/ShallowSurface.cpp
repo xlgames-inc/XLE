@@ -566,7 +566,7 @@ namespace SceneEngine
             unsigned(mainViewportDesc.Height*scale));
         refractionBox.Build(metalContext, parserContext, refractionStdDev);
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         SavedTargets targets(metalContext);
         if (!targets.GetDepthStencilView()) return false;
 

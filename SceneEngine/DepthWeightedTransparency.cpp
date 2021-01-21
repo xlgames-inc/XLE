@@ -62,7 +62,7 @@ namespace SceneEngine
             TextureDesc::Plain2D(desc._width, desc._height, Format::R16G16B16A16_FLOAT),
             "TransRefractBuffer", nullptr);
 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+		#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
 			D3D11_BLEND_DESC blendStateDesc;
 			blendStateDesc.AlphaToCoverageEnable = false;
 			blendStateDesc.IndependentBlendEnable = true;

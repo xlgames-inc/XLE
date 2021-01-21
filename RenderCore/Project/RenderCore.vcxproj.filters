@@ -38,7 +38,6 @@
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\IThreadContext.h" />
-    <ClInclude Include="..\IThreadContext_Forward.h" />
     <ClInclude Include="..\RenderUtils.h">
       <Filter>Util</Filter>
     </ClInclude>
@@ -81,7 +80,6 @@
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\IAnnotator.h" />
-    <ClInclude Include="..\IAnnotator_Forward.h" />
     <ClInclude Include="..\UniformsStream.h">
       <Filter>Util</Filter>
     </ClInclude>

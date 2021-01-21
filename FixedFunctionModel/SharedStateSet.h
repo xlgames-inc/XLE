@@ -5,7 +5,6 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Assets/AssetUtils.h"
 #include "../Core/Types.h"
 #include <string>
@@ -14,6 +13,7 @@
 namespace RenderCore
 {
 	class InputElementDesc;
+    class IThreadContext;
 	namespace Assets { class RenderStateSet; class PredefinedCBLayout; }
 	namespace Techniques 
 	{ 

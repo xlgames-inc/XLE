@@ -85,7 +85,7 @@ namespace SceneEngine
         RenderCore::Resource& sourceTexture,
         Format resolveFormat)
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+		#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
 				// todo -- support custom resolve (tone-map aware)
 				// See AMD post on this topic:
 				//      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/

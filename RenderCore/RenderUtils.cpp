@@ -58,6 +58,12 @@ namespace RenderCore
     public:
         using ResetId = unsigned;
 
+        static ResetId InitialResetId()
+        {
+            std::hash<std::thread::id> hasher;
+            return (ResetId)hasher(std::this_thread::get_id());
+        }
+
 #if !FEATURE_THREAD_LOCAL_KEYWORD
         SubFrameHeap_Heap* GetThreadLocalProducerHeap() const
         {
@@ -72,7 +78,7 @@ namespace RenderCore
                 producerHeap = s_producerHeap.get();
                 producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
                 producerHeap->_writeMarker = producerHeap->_data.data();
-                producerHeap->_resetId = 1;
+                producerHeap->_resetId = InitialResetId();
 
 #if defined(_DEBUG)
                 {
@@ -98,7 +104,7 @@ namespace RenderCore
                 producerHeap = s_producerHeap.get();
                 producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
                 producerHeap->_writeMarker = producerHeap->_data.data();
-                producerHeap->_resetId = 1;
+                producerHeap->_resetId = InitialResetId();
 #if defined(_DEBUG)
                 {
                     ScopedLock(_swapMutex);
@@ -152,12 +158,10 @@ namespace RenderCore
                 std::swap(*producerHeap, nextMainHeap);
 
 #if defined(_DEBUG)
-                for (auto it = _currentProducerHeapResetIds.begin(); it != _currentProducerHeapResetIds.end(); ++it) {
-                    if (*it == nextMainHeap._resetId) {
-                        _currentProducerHeapResetIds.erase(it);
-                        break;
-                    }
-                }
+                auto it = std::find(_currentProducerHeapResetIds.begin(), _currentProducerHeapResetIds.end(), nextMainHeap._resetId);
+                if (it != _currentProducerHeapResetIds.end())
+                    _currentProducerHeapResetIds.erase(it);
+                _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
 #endif
 
                 _pendingConsumerHeaps.emplace_back(std::move(nextMainHeap));
@@ -178,7 +182,18 @@ namespace RenderCore
             auto* producerHeap = GetThreadLocalProducerHeap();
             if (producerHeap) {
                 producerHeap->_writeMarker = producerHeap->_data.data();
+                auto oldId = producerHeap->_resetId;
                 ++producerHeap->_resetId;
+
+#if defined(_DEBUG)
+                {
+                    ScopedLock(_swapMutex);
+                    auto it = std::find(_currentProducerHeapResetIds.begin(), _currentProducerHeapResetIds.end(), oldId);
+                    if (it != _currentProducerHeapResetIds.end())
+                        _currentProducerHeapResetIds.erase(it);
+                    _currentProducerHeapResetIds.push_back(producerHeap->_resetId);
+                }
+#endif
             }
             _logMsg = true;
         }

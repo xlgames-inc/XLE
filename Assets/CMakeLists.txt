@@ -26,5 +26,5 @@ if (WIN32)
 endif ()
 
 add_library(Assets STATIC ${Src})
-configure_xle_library(Assets)
-target_link_libraries(Assets PRIVATE ForeignMisc)
+xle_configure_library(Assets)
+target_link_libraries(Assets PUBLIC OSServices Utility ForeignMisc)

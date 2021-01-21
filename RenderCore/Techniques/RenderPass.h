@@ -9,7 +9,6 @@
 #include "../ResourceDesc.h"        // needed for TextureViewDesc constructor
 #include "../Types.h"
 #include "../FrameBufferDesc.h"
-#include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/IteratorUtils.h"

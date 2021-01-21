@@ -8,7 +8,6 @@
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
 #include "RenderStateResolver.h"
-#include "CompiledRenderStateSet.h"
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
 #include "BasicDelegates.h"
@@ -130,7 +129,7 @@ namespace RenderCore { namespace Techniques
 
 				if (drawable._geo->_ibFormat != Format(0)) {
 					auto* ib = drawable._geo->_ib ? drawable._geo->_ib.get() : temporaryIB.get();
-					metalContext.Bind(Metal::AsResource(*ib), drawable._geo->_ibFormat);
+					metalContext.Bind(IndexBufferView{ib, drawable._geo->_ibFormat});
 				}
 			} else {
 				metalContext.UnbindInputLayout();
@@ -202,7 +201,8 @@ namespace RenderCore { namespace Techniques
 
 	void Drawable::DrawFunctionContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
 	{
-		_metalContext->DrawIndexed(*_pipeline, indexCount, startIndexLocation, baseVertexLocation);
+		assert(baseVertexLocation == 0);		// parameter deprecated
+		_metalContext->DrawIndexed(*_pipeline, indexCount, startIndexLocation);
 	}
 
 	void Drawable::DrawFunctionContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation) const
@@ -212,7 +212,8 @@ namespace RenderCore { namespace Techniques
 
 	void Drawable::DrawFunctionContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
 	{
-		_metalContext->DrawIndexedInstances(*_pipeline, indexCount, instanceCount, startIndexLocation, baseVertexLocation);
+		assert(baseVertexLocation == 0);		// parameter deprecated
+		_metalContext->DrawIndexedInstances(*_pipeline, indexCount, instanceCount, startIndexLocation);
 	}
 
 	void Drawable::DrawFunctionContext::DrawAuto() const

@@ -43,8 +43,6 @@ namespace RenderCore { namespace Metal_Vulkan
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);

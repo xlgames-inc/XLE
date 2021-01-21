@@ -52,6 +52,6 @@ if (WIN32)
 endif()
 
 add_library(PlatformRig STATIC ${Src} ${WinSrc} ${DebuggingDisplaysSrc} ${Headers} ${WinHeaders} ${DebuggingDisplaysHeaders})
-configure_xle_library(PlatformRig)
+xle_configure_library(PlatformRig)
 
 target_link_libraries(PlatformRig PRIVATE ForeignMisc)

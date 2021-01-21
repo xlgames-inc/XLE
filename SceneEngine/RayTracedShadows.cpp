@@ -117,7 +117,7 @@ namespace SceneEngine
                 BufferUploads::LinearBufferDesc::Create(triangleSize*desc._triangleCount, triangleSize),
                 "RTShadowsTriangles"));
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         _triangleBufferVB = _triangleBufferRes->GetUnderlying();
         _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->GetUnderlying(), triangleSize*desc._triangleCount);
 #endif
@@ -310,7 +310,7 @@ namespace SceneEngine
         auto restoreMarker = savedTargets.MakeResetMarker(context);
 		auto& mainTargets = lightingParserContext.GetMainTargets();
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+#if GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 

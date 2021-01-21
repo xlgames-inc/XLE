@@ -446,7 +446,7 @@ namespace SceneEngine
 					ConstantBufferView cbvs[] = {ambientLightPacket};
 					ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
-                    #if 0 // GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
+                    #if 0 // GFXAPI_TARGET == GFXAPI_DX11	// platformtemp
                             //  When screen space reflections are enabled, we need to take a copy of the lighting
                             //  resolve target. This is because we want to reflect the post-lighting resolve pixels.
                         if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())

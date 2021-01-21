@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Core/Types.h"
 #include <utility>
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; class SequencerContext; }}
 namespace SceneEngine 
 { 

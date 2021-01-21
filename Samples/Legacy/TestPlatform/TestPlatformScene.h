@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include <memory>

@@ -477,7 +477,7 @@ namespace ToolsRig
                             if (fillInStencilInfo) {
                                 // hack -- we just adjust the depth stencil state to enable the stencil buffer
                                 //          no way to do this currently without dropping back to low level API
-                                #if GFXAPI_ACTIVE == GFXAPI_DX11
+                                #if GFXAPI_TARGET == GFXAPI_DX11
                                     Metal::DepthStencilState dss(*metalContext);
                                     D3D11_DEPTH_STENCIL_DESC desc;
                                     dss.GetUnderlying()->GetDesc(&desc);

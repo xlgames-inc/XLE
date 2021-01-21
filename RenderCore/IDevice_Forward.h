@@ -14,6 +14,8 @@ namespace RenderCore
     class IPresentationChain;
     class IDevice;
     class IResource;
+    class IThreadContext;
+    class IAnnotator;
 
     using Resource = IResource;
     using IResourcePtr = std::shared_ptr<IResource>;
@@ -22,9 +24,5 @@ namespace RenderCore
     class SubResourceInitData;
     class PresentationChainDesc;
     class SubResourceId;
-
-    using Base_PresentationChain = IPresentationChain;
-    using Base_Device = IDevice;
-    using Base_Resource = IResource;
 }
 

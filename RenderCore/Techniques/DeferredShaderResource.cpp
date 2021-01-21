@@ -24,6 +24,7 @@
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
+#include "../../Utility/ParameterBox.h"
 #include "../../ConsoleRig/ResourceBox.h"
 
 namespace RenderCore { namespace Techniques 
@@ -53,11 +54,13 @@ namespace RenderCore { namespace Techniques
 	: _depVal(depVal)
 	{
 		StreamDOM<InputStreamFormatter<utf8>> dom(input);
-		auto colorSpace = dom.FirstChild().Attribute("colorSpace");
-		if (colorSpace) {
-			if (!XlCompareStringI(colorSpace.Value(), "srgb")) { _colorSpace = SourceColorSpace::SRGB; }
-            else if (!XlCompareStringI(colorSpace.Value(), "linear")) { _colorSpace = SourceColorSpace::Linear; }
-		}
+        if (!dom.RootElement().children().empty()) {
+            auto colorSpace = dom.RootElement().children().begin()->Attribute("colorSpace");
+            if (colorSpace) {
+                if (!XlCompareStringI(colorSpace.Value(), "srgb")) { _colorSpace = SourceColorSpace::SRGB; }
+                else if (!XlCompareStringI(colorSpace.Value(), "linear")) { _colorSpace = SourceColorSpace::Linear; }
+            }
+        }
 	}
 
     class DecodedInitializer
@@ -358,7 +361,7 @@ namespace RenderCore { namespace Techniques
         ~CachedTextureFormats();
 
         typedef std::pair<uint64, Format> Entry;
-        MemoryMappedFile _cache;
+        OSServices::MemoryMappedFile _cache;
 
         class Header
         {
@@ -467,12 +470,14 @@ namespace RenderCore { namespace Techniques
         for (const auto& param:resBindings) {
             result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
             if (param.HashName() == DefaultNormalsTextureBindingHash) {
-                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
-                ::Assets::ResChar resolvedName[MaxPath];
-                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
-                result.SetParameter(
-                    (const utf8*)"RES_HAS_NormalsTexture_DXT", 
-                    DeferredShaderResource::IsDXTNormalMap(resolvedName));
+                auto resourceName = resBindings.GetParameterAsString(DefaultNormalsTextureBindingHash);
+                if (resourceName.has_value()) {
+                    ::Assets::ResChar resolvedName[MaxPath];
+                    searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.value().c_str());
+                    result.SetParameter(
+                        (const utf8*)"RES_HAS_NormalsTexture_DXT", 
+                        DeferredShaderResource::IsDXTNormalMap(resolvedName));
+                }
             }
         }
         return std::move(result);

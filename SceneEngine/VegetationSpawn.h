@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../FixedFunctionModel/DelayedDrawCall.h"       // for DelayStep
 #include "../Assets/AssetsCore.h"
@@ -14,6 +13,7 @@
 #include "../Utility/UTFUtils.h"
 
 namespace FixedFunctionModel { class ModelCache; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace Utility
 {

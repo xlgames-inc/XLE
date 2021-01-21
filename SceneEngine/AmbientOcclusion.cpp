@@ -54,7 +54,7 @@
 #define AO_IMPLEMENTATION_NONE      0
 #define AO_IMPLEMENTATION_GFSDK     1
 
-#if (defined(USER_djewsbury) || defined(USER_David)) && (GFXAPI_ACTIVE == GFXAPI_DX11)
+#if (defined(USER_djewsbury) || defined(USER_David)) && (GFXAPI_TARGET == GFXAPI_DX11)
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_GFSDK
 #else
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_NONE

@@ -63,7 +63,7 @@ namespace RenderCore { namespace Techniques
                 while (e < defineEnd && std::isspace(*e)) ++e;
 				paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), MakeStringSection(e, defineEnd));
             } else {
-				paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), {}, ImpliedTyping::TypeCat::Void);
+				paramBoxSelectors.SetParameter(MakeStringSection(p, endOfName).Cast<utf8>(), {}, ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Void});
             }
 
             p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
@@ -135,8 +135,8 @@ namespace RenderCore { namespace Techniques
 			if (fromCharsResult.ec != std::errc{} || fromCharsResult.ptr != matches[2].second)
 				return AssembleDirectFromFile(filename);
 
-			auto i = LowerBound(_registry, patchCollectionGuid.value());
-			if (i == _registry.end() || i->first != patchCollectionGuid.value())
+			auto i = LowerBound(_registry, patchCollectionGuid);
+			if (i == _registry.end() || i->first != patchCollectionGuid)
 				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));		// don't understand the input filename, we can't expand this
 
 			auto& patchCollection = *i->second;

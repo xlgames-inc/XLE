@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
 using namespace System::ComponentModel::Composition;
 
 namespace GUILayer

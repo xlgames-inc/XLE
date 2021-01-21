@@ -12,6 +12,11 @@ list(APPEND Src
 file(GLOB Headers "*.h")
 
 add_library(RenderCore STATIC ${Src} ${Headers})
-configure_xle_library(RenderCore)
+xle_configure_library(RenderCore)
+target_link_libraries(RenderCore PUBLIC OSServices Utility ForeignMisc)
 
-target_link_libraries(RenderCore ForeignMisc)  # required to pull in interface include directories (etc)
+# todo -- ConsoleRig required just for SharedPkt/SubframeHeap globals -- would be better if we could remove this dependency
+target_link_libraries(RenderCore PUBLIC ConsoleRig)
+
+# todo -- Assets is also required, for ShaderService. Maybe this should be moved into RenderCore::Assets?
+target_link_libraries(RenderCore PUBLIC Assets)

@@ -7,12 +7,12 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
 namespace PlatformRig { class InputSnapshot; class IInputListener; }
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
 namespace SceneEngine { class TerrainManager; class IntersectionTestScene; }
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; class TechniqueContext; }}
 
 namespace ToolsRig

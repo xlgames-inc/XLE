@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "IAnnotator_Forward.h"
 #include "IThreadContext.h"
 #include "IDevice_Forward.h"
 #include "../Core/Types.h"

@@ -30,7 +30,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
 	#include "../RenderCore/DX11/Metal/DX11Utils.h"
 	#include "../RenderCore/DX11/Metal/IncludeDX11.h"
     #include "../RenderCore/DX11/IDeviceDX11.h"
@@ -219,7 +219,7 @@ namespace RenderCore { namespace Assets
     void ModelRenderer::PimplWithSkinning::StartBuildingSkinning(
         Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const
     {
-        #if GFXAPI_ACTIVE == GFXAPI_DX11        // platformtemp
+        #if GFXAPI_TARGET == GFXAPI_DX11        // platformtemp
             context.Bind(bindingBox._geometryShader);
         #endif
 
@@ -229,7 +229,7 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::PimplWithSkinning::EndBuildingSkinning(Metal::DeviceContext& context) const
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			context.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
 		#endif
         context.Unbind<Metal::GeometryShader>();
@@ -237,7 +237,7 @@ namespace RenderCore { namespace Assets
 
     static void SetSkinningShader(Metal::DeviceContext& context, SkinningBindingBox& bindingBox, unsigned materialIndexValue)
     {
-        #if GFXAPI_ACTIVE == GFXAPI_DX11        // platformtemp
+        #if GFXAPI_TARGET == GFXAPI_DX11        // platformtemp
             if (materialIndexValue == 4)         context.Bind(bindingBox._skinningVertexShaderP4);
             else if (materialIndexValue == 2)    context.Bind(bindingBox._skinningVertexShaderP2);
             else if (materialIndexValue == 1)    context.Bind(bindingBox._skinningVertexShaderP1);
@@ -425,7 +425,7 @@ namespace RenderCore { namespace Assets
                 IResource&					outputResult,
                 unsigned                    outputOffset) const
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if GFXAPI_TARGET == GFXAPI_DX11
         using namespace Metal;
         const auto bindingType =
             Tweakable("SkeletonUpload_ViaTBuffer", false)
@@ -633,7 +633,7 @@ namespace RenderCore { namespace Assets
         _pimpl->EndBuildingSkinning(*metalContext);
     }
 
-	#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#if GFXAPI_TARGET == GFXAPI_DX11
 		static intrusive_ptr<ID3D::Device> ExtractDevice(RenderCore::Metal::DeviceContext* context)
 		{
 			ID3D::Device* tempPtr;
@@ -644,7 +644,7 @@ namespace RenderCore { namespace Assets
 
     bool ModelRenderer::CanDoPrepareAnimation(IThreadContext& context)
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
             auto* contextD3D = (IThreadContextDX11*)context.QueryInterface(typeid(IThreadContextDX11).hash_code());
             if (contextD3D) {
 			    auto featureLevel = contextD3D->GetUnderlyingDevice()->GetFeatureLevel();
@@ -849,7 +849,7 @@ namespace RenderCore { namespace Assets
         _size = bufferSize;
         _shaderOffsetValue = 0;
 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			using namespace Metal;
 			D3D11_BUFFER_DESC bufferDesc;
 			bufferDesc.ByteWidth = (UINT)bufferSize;

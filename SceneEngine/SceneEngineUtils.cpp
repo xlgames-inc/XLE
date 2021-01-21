@@ -99,7 +99,7 @@ namespace SceneEngine
 
     SavedTargets::SavedTargets(Metal::DeviceContext& context)
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_oldViewportCount = dimof(_oldViewports);
 			std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
 			context.GetUnderlying()->OMGetRenderTargets(dimof(_oldTargets), _oldTargets, &_oldDepthTarget);
@@ -109,7 +109,7 @@ namespace SceneEngine
 
     SavedTargets::SavedTargets()
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_oldViewportCount = 0;
 			std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
 			_oldDepthTarget = nullptr;
@@ -118,7 +118,7 @@ namespace SceneEngine
 
     SavedTargets::SavedTargets(SavedTargets&& moveFrom) never_throws
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
 			for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
 				_oldTargets[c] = moveFrom._oldTargets[c];
@@ -132,7 +132,7 @@ namespace SceneEngine
 
     SavedTargets& SavedTargets::operator=(SavedTargets&& moveFrom) never_throws
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
 			for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
 				_oldTargets[c] = moveFrom._oldTargets[c];
@@ -147,7 +147,7 @@ namespace SceneEngine
 
     SavedTargets::~SavedTargets()
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			for (unsigned c=0; c<dimof(_oldTargets); ++c) {
 				if (_oldTargets[c]) {
 					_oldTargets[c]->Release();
@@ -158,7 +158,7 @@ namespace SceneEngine
 			}
 		#endif
     }
-	#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#if GFXAPI_TARGET == GFXAPI_DX11
 		void SavedTargets::SetDepthStencilView(ID3D::DepthStencilView* dsv)
 		{
 			if (_oldDepthTarget) {
@@ -174,7 +174,7 @@ namespace SceneEngine
 
     void        SavedTargets::ResetToOldTargets(Metal::DeviceContext& context)
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			context.GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
 			context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
 		#endif
@@ -457,7 +457,7 @@ namespace SceneEngine
     ProtectState::ProtectState(Metal::DeviceContext& context, States::BitField states)
     : _context(&context), _states(states)
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			if (_states & States::RenderTargets || _states & States::Viewports)
 				_targets = SavedTargets(context);
 			if (_states & States::DepthStencilState)
@@ -495,7 +495,7 @@ namespace SceneEngine
     {
         _context = nullptr;
         _states = 0;
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_ibFormat = DXGI_FORMAT_UNKNOWN;
 			_ibOffset = 0;
 			_topology = (D3D11_PRIMITIVE_TOPOLOGY)0;
@@ -503,7 +503,7 @@ namespace SceneEngine
     }
 
     ProtectState::ProtectState(ProtectState&& moveFrom)
-	#if GFXAPI_ACTIVE == GFXAPI_DX11
+	#if GFXAPI_TARGET == GFXAPI_DX11
         : _targets(std::move(moveFrom._targets))
 		, _depthStencilState(std::move(moveFrom._depthStencilState))
 		, _inputLayout(std::move(moveFrom._inputLayout))
@@ -515,7 +515,7 @@ namespace SceneEngine
         _context = moveFrom._context; moveFrom._context = nullptr;
         _states = moveFrom._states; moveFrom._states = 0;
         
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			_ibFormat = moveFrom._ibFormat;
 			_ibOffset = moveFrom._ibOffset;
 
@@ -539,7 +539,7 @@ namespace SceneEngine
         _context = moveFrom._context; moveFrom._context = nullptr;
         _states = moveFrom._states; moveFrom._states = 0;
 
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
             _targets = std::move(moveFrom._targets);
 			_depthStencilState = std::move(moveFrom._depthStencilState);
 			_inputLayout = std::move(moveFrom._inputLayout);
@@ -569,7 +569,7 @@ namespace SceneEngine
 
     void ProtectState::ResetStates()
     {
-		#if GFXAPI_ACTIVE == GFXAPI_DX11
+		#if GFXAPI_TARGET == GFXAPI_DX11
 			if (_context) {
 				if (_states & States::RenderTargets|| _states & States::Viewports)
 					_targets.ResetToOldTargets(*_context);

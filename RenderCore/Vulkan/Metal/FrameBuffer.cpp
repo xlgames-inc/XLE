@@ -594,10 +594,11 @@ namespace RenderCore { namespace Metal_Vulkan
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        const FrameBufferDesc& layout,
-        const FrameBufferProperties& props,
         IteratorRange<const ClearValue*> clearValues)
     {
+		// todo -- we need offset & extent information here -- 
+		// const FrameBufferDesc& layout,
+        // const FrameBufferProperties& props,
         context.BeginRenderPass(
             frameBuffer, TextureSamples::Create(),
             {0u, 0u}, {props._outputWidth, props._outputHeight},

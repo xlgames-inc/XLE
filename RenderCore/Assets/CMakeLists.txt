@@ -49,9 +49,9 @@ set(Headers
     ../GeoProc/NascentSkeletonMachine.h)
 
 add_library(RenderCoreAssets STATIC ${Src} ${Headers})
-configure_xle_library(RenderCoreAssets)
-target_link_libraries(RenderCoreAssets PRIVATE ForeignMisc)
+xle_configure_library(RenderCoreAssets)
+target_link_libraries(RenderCoreAssets PUBLIC RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)
 
 add_library(RenderCoreAssetsServices STATIC "AssetUtils.cpp;Services.cpp")
-configure_xle_library(RenderCoreAssetsServices)
-target_link_libraries(RenderCoreAssetsServices PRIVATE ForeignMisc)
+xle_configure_library(RenderCoreAssetsServices)
+target_link_libraries(RenderCoreAssetsServices PUBLIC RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)
