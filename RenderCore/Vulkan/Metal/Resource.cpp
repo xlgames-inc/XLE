@@ -12,8 +12,8 @@
 #include "../IDeviceVulkan.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
-#include "../../Utility/BitUtils.h"
-#include "../../Utility/MemoryUtils.h"
+#include "../../../Utility/BitUtils.h"
+#include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -291,13 +291,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			image_create_info.pNext = nullptr;
 			image_create_info.imageType = AsImageType(tDesc._dimensionality);
-			image_create_info.format = vkFormat;
+			image_create_info.format = (VkFormat)vkFormat;
 			image_create_info.extent.width = tDesc._width;
 			image_create_info.extent.height = tDesc._height;
 			image_create_info.extent.depth = tDesc._depth;
 			image_create_info.mipLevels = std::max(1u, unsigned(tDesc._mipCount));
 			image_create_info.arrayLayers = std::max(1u, unsigned(tDesc._arrayCount));
-			image_create_info.samples = AsSampleCountFlagBits(tDesc._samples);
+			image_create_info.samples = (VkSampleCountFlagBits)AsSampleCountFlagBits(tDesc._samples);
 			image_create_info.queueFamilyIndexCount = 0;
 			image_create_info.pQueueFamilyIndices = nullptr;
 			image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

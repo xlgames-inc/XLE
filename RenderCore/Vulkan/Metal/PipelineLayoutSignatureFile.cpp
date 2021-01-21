@@ -130,7 +130,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		result->_name = element.Attribute("name").Value().AsString();
 		result->_hashName = Hash64(result->_name);
 
-		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+		for (auto e:element.children()) {
 			if (!XlEqString(e.Name(), "Descriptors"))
 				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", result->_name.c_str()));
 
@@ -168,7 +168,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		result->_name = element.Attribute("name").Value().AsString();
 		result->_hashName = Hash64(result->_name);
 
-		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+		for (auto e:element.children()) {
 			auto name = e.Name();
 			if (name.IsEmpty())
 				Throw(std::runtime_error("Legacy register binding with empty name"));
@@ -215,9 +215,9 @@ namespace RenderCore { namespace Metal_Vulkan
 				Throw(::Exceptions::BasicLabel("Register overlap found in ReadLegacyRegisterBinding"));
 
 			dest->insert(di, LegacyRegisterBinding::Entry {
-				legacyRegisters._begin, legacyRegisters._end,
+				(unsigned)legacyRegisters._begin, (unsigned)legacyRegisters._end,
 				(unsigned)std::distance(descriptorSetNames.begin(), i),
-				mappedRegisters._begin, mappedRegisters._end });
+				(unsigned)mappedRegisters._begin, (unsigned)mappedRegisters._end });
 		}
 
 		return result;
@@ -226,7 +226,7 @@ namespace RenderCore { namespace Metal_Vulkan
     static PushConstantsRangeSigniture ReadPushConstRange(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
         PushConstantsRangeSigniture result;
-        for (auto a=element.FirstAttribute(); a; a=a.Next()) {
+        for (auto a:element.attributes()) {
             if (a.Name().IsEmpty()) continue;
 
             if (XlEqStringI(a.Name(), "name")) {
@@ -257,7 +257,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		result._hashName = Hash64(result._name);
 		result._legacyBindings = element.Attribute("legacyBindings").Value().AsString();
 
-		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+		for (auto e:element.children()) {
 			if (XlEqString(e.Name(), "Set")) {
 				RootSignature::DescriptorSetReference ref;
 				ref._type = AsDescriptorSetType(e.Attribute("type").Value());
@@ -351,11 +351,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
 			StreamDOM<InputStreamFormatter<char>> doc(formatter);
 
-			_mainRootSignature = doc.Attribute("MainRootSignature").Value().AsString();
+			_mainRootSignature = doc.RootElement().Attribute("MainRootSignature").Value().AsString();
 			if (_mainRootSignature.empty())
 				Throw(::Exceptions::BasicLabel("Main root root signature not specified while loading file (%s)", filename.AsString().c_str()));
 
-			for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
+			for (auto a:doc.RootElement().children()) {
 				if (XlEqString(a.Name(), "DescriptorSet")) {
 					_descriptorSets.emplace_back(ReadDescriptorSet(a));
 				} else if (XlEqString(a.Name(), "LegacyBinding")) {

@@ -23,7 +23,7 @@ namespace PlatformRig { namespace Network { namespace StatePropagation
     {
         _transpondVisibilityArea = 0;
         _transpondPosition = std::make_pair(
-            Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+            Float3(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()), Float3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()));
         _active = false;
     }
 

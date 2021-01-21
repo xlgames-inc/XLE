@@ -319,3 +319,87 @@ namespace RenderCore {
     IThreadContextAppleMetal::~IThreadContextAppleMetal() {}
 }
 
+#if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+	extern char **environ;
+#endif
+
+namespace RenderCore
+{
+#if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+	int appleMetalAPIValidationEnabled = -1;
+
+    void SetAppleMetalAPIValidationEnabled() {
+        // NOTE: The actual (undocumented) details are more complicated than
+        // this. These are the only values Xcode 10 ever sets, but other
+        // values (used by some command line tools by people who've
+        // partially reverse-engineered things) have the same effects,
+        // and it's always possible that a future Xcode will use other
+        // values. Other variables seen in the wild include METAL_ERROR_MODE
+        // and METAL_WARNINGS_MODE, but Xcode 10 doesn't seem to ever set them.
+        // If these values are not present in the environment, Metal sometimes
+        // checks for them in user defaults, but presumably nobody will ever
+        // set them on OSX, while on iOS that's where the environment comes
+        // from anyway.
+
+        const char *deviceWrapperType = getenv("METAL_DEVICE_WRAPPER_TYPE");
+        // 1 means that debug validation refers to API Validation, 2 means
+        // Telemetry, 3 means Counters, anything else means none of the above.
+        // Xcode 10 always sets 1. For this and the other variables, a
+        // non-numeric string appears to count as 0, but unset is not 0.
+        if (!deviceWrapperType || atoi(deviceWrapperType) != 1) {
+            appleMetalAPIValidationEnabled = 0;
+            return;
+        }
+
+        const char *extendedMode = getenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+        // Unset means no extended mode; set to anything means extended mode
+        // (and also means enabled, regardless of the last setting). Xcode
+        // 10 always sets 0 for extended, unsets for enabled or disabled.
+        if (extendedMode) {
+            appleMetalAPIValidationEnabled = 2;
+            return;
+        }
+
+        const char *debugErrorMode = getenv("METAL_DEBUG_ERROR_MODE");
+        // Unset means disabled, 4 means disabled, anything else means
+        // enabled (except that setting METAL_DEBUG_MODE to anything other
+        // than 4 changes the meaning of this flag). Xcode always sets 0
+        // for enabled, 4 for disabled (and doesn't set METAL_DEBUG_MODE).
+        if (debugErrorMode && atoi(debugErrorMode) != 4) {
+            appleMetalAPIValidationEnabled = 1;
+        } else {
+            appleMetalAPIValidationEnabled = 0;
+        }
+    }
+
+    void ForceAppleMetalAPIValidation(int level) {
+        switch (level) {
+            case 0:
+                // These are the settings used by Xcode 11 for Disabled.
+                // Xcode 10 sets METAL_DEVICE_WRAPPER_TYPE to 1 instead.
+                // Either way works, it's just a matter of selecting
+                // API validation and disabling that vs. disabling nothing
+                // validation and disabling that.
+                unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                unsetenv("METAL_DEVICE_WRAPPER_TYPE");
+                unsetenv("METAL_DEBUG_ERROR_MODE");
+                return;
+            case 1:
+                // These are the settings used by both Xcode 10 and Xcode 11
+                // for Enabled.
+                unsetenv("METAL_ERROR_CHECK_EXTENDED_MODE");
+                setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                return;
+            case 2:
+                // These are the settings used by Xcode 10 for Extended.
+                // Xcode 11 no longer has this setting, but its SDKs still
+                // support it.
+                setenv("METAL_ERROR_CHECK_EXTENDED_MODE", "0", 1);
+                setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
+                setenv("METAL_DEBUG_ERROR_MODE", "0", 1);
+                return;
+        }
+    }
+#endif
+}

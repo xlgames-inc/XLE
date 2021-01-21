@@ -30,14 +30,7 @@
     #define attribute_packed	__attribute__((packed))
 	#define expect_evaluation(X, Y)	__builtin_expect(X, Y)
 
-    #if PLATFORMOS_ACTIVE == PLATFORMOS_ANDROID 
-            // no dll export/import on android?
-        #define dll_export      
-        #define dll_import      
-    #else
-        #define dll_export      __attribute__(( dllexport ))
-        #define dll_import      __attribute__(( dllimport ))
-    #endif
+    #define dll_export      __attribute__((visibility("default")))
 
     #if !defined(__cplusplus) && !defined(thread_local)
 		#define thread_local    _Thread_local

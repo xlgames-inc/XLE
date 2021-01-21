@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned bIndex=0; bIndex<(unsigned)srcLayout._bindings.size(); ++bIndex) {
             VkDescriptorSetLayoutBinding dstBinding = {};
             dstBinding.binding = bIndex;
-            dstBinding.descriptorType = AsVkDescriptorType(srcLayout._bindings[bIndex]);
+            dstBinding.descriptorType = (VkDescriptorType)AsVkDescriptorType(srcLayout._bindings[bIndex]);
             dstBinding.descriptorCount = 1;
             dstBinding.stageFlags = stageFlags;
             dstBinding.pImmutableSamplers = nullptr;

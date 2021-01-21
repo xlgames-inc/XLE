@@ -199,8 +199,8 @@ namespace Assets
 	{
 		bool isRawFilesystem = IsSeparator(*filename.begin());
 		auto* firstSep = FindFirstSeparator(filename);
-		auto* driveMarker = XlFindChar(MakeStringSection(filename.begin(), firstSep), (CharType)':');
-		isRawFilesystem |= driveMarker < firstSep;
+		auto* driveMarker = std::find(filename.begin(), firstSep, (CharType)':');
+		isRawFilesystem |= driveMarker != firstSep;
 		return isRawFilesystem;
 	}
 
@@ -263,17 +263,18 @@ namespace Assets
 
 	auto MountingTree::Mount(StringSection<utf8> mountPointInput, std::shared_ptr<IFileSystem> system) -> MountID
 	{
-			// note that we're going to be ignoring slashs at the beginning or end. These have no effect 
+			// Note that we're going to be ignoring slashs at the beginning or end. These have no effect 
 			// on how we interpret the mount point.
-			// Also, we assume that mount point should already be simplified (ie, no '.' or '..' parts)
-		auto mountPoint = mountPointInput.AsString();
-		if (mountPoint.empty() || (*(mountPoint.end()-1) != '/' && *(mountPoint.end()-1) != '\\'))
-			mountPoint += '/';
+			// Let's do some normalization of the input to avoid any edge cases
+		std::string mountPoint;
+		{
+			auto mountPointSplitPath = MakeSplitPath(mountPointInput);
+			mountPointSplitPath.BeginsWithSeparator() = true;
+			mountPointSplitPath.EndsWithSeparator() = true;
+			mountPoint = mountPointSplitPath.Simplify().Rebuild(_pimpl->_rules);
+		}
+
 		auto split = MakeSplitPath(mountPoint);
-		#if defined(_DEBUG)
-			for (auto i:split.GetSections()) 
-				assert(!XlEqStringI(i, ".") && !XlEqStringI(i, "..") && !i.IsEmpty());
-		#endif
 
 		uint64 hash = 0;
 		for (auto i:split.GetSections())

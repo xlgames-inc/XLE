@@ -18,6 +18,9 @@
 	#include <GLES2/gl2ext.h>
 	#include <GLES3/gl3.h>
 	#undef None		// (macro pulled in from X11 headers)
+	#undef Bool
+	#undef Success
+	#undef Complex
 #elif PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	// Project Angle emulation layer
 	#define GL_GLEXT_PROTOTYPES 1

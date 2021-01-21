@@ -138,3 +138,33 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////
 }}
+
+namespace RenderCore
+{
+    // NOTE: Make sure you call SetAppleMetalAPIValidationEnabled somewhere
+    // during setup if you plan to use this flag in your code.
+    //
+    // There are a few cases where the most efficient way to pass a buffer
+    // will fail Metal API validation. You can wrap such calls in
+    //     if (!appleMetalAPIValidationEnabled) { ... }
+    // This value is meaningless if Apple Metal is not being used. (Xcode
+    // still sets up to enable validation, but nothing gets validated.)
+    //
+    //  * -1 for you forgot to call SetAppleMetalAPIValidationEnabled
+    //  * 0 for disabled
+    //  * 1 for enabled
+    //  * 2 for extended
+    extern int appleMetalAPIValidationEnabled;
+
+    void SetAppleMetalAPIValidationEnabled();
+
+    // NOTE: This function overrides whatever is set in your Xcode scheme
+    // when running in Xcode, or your shell/user defaults/system defaults
+    // otherwise. It must be called before MTLCreateSystemDefaultDevice
+    // (normally called by cocos3d's CreateXLEDevice, which calls
+    // RenderCore's TryCreateDevice), or it will have no effect.
+    //
+    // The values are the same as above.
+    void ForceAppleMetalAPIValidation(int level);
+}
+

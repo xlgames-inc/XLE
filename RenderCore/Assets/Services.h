@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../ConsoleRig/GlobalServices.h"
 #include "../IDevice_Forward.h"
 #include "../Init.h"
 #include "../../Assets/AssetUtils.h"

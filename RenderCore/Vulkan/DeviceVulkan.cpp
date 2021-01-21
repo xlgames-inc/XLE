@@ -288,7 +288,7 @@ namespace RenderCore { namespace ImplVulkan
 				rawResult,
 				[vulkan](VkSurfaceKHR inst) { vkDestroySurfaceKHR(vulkan, inst, Metal_Vulkan::g_allocationCallbacks); });
 		#else
-			#pragma Windowing platform not supported
+			#error Windowing platform not supported
 		#endif
 	}
 

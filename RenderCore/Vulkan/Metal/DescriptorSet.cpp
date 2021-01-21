@@ -77,7 +77,7 @@ namespace RenderCore { namespace Metal_Vulkan
             w.dstBinding = bindingPoint;
             w.dstArrayElement = 0;
             w.descriptorCount = 1;
-            w.descriptorType = type;
+            w.descriptorType = (VkDescriptorType)type;
 
 			InfoPtr<BindingInfo>(w) = (reallocateBufferInfo) ? &AllocateInfo(bindingInfo) : &bindingInfo;
 
@@ -95,7 +95,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 		// descriptor.
 		bool wroteSomething = false;
-		if (expect_evaluation(resource, 1)) {
+		if (expect_evaluation(resource != nullptr, true)) {
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				std::string description;
 				if (resource->GetResource()) {
@@ -141,7 +141,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DescriptorSetBuilder::BindUAV(unsigned descriptorSetBindPoint, const TextureView* resource)
     {
 		bool wroteSomething = false;
-		if (expect_evaluation(resource, 1)) {
+		if (expect_evaluation(resource != nullptr, true)) {
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				std::string description;
 				if (resource->GetResource()) {

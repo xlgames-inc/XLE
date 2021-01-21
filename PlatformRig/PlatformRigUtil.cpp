@@ -252,8 +252,8 @@ namespace PlatformRig
         CalculateAbsFrustumCorners(frustumCorners, worldToMiniProj, clipSpaceType);
 
         Float3 shadowViewSpace[8];
-		Float3 shadowViewMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
-		Float3 shadowViewMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		Float3 shadowViewMins( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+		Float3 shadowViewMaxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 		for (unsigned c = 0; c < 8; c++) {
 			shadowViewSpace[c] = TransformPoint(worldToLightProj, frustumCorners[c]);
 
@@ -321,8 +321,8 @@ namespace PlatformRig
         Float3 frustumCornerDir[4];
         CalculateCameraFrustumCornersDirection(frustumCornerDir, mainSceneProjectionDesc, clipSpaceType);
 
-        Float3 allCascadesMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
-		Float3 allCascadesMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        Float3 allCascadesMins( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+		Float3 allCascadesMaxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 
 		float distanceFromCamera = 0.f;
 		for (unsigned f=0; f<result._normalProjCount; ++f) {
@@ -355,8 +355,8 @@ namespace PlatformRig
                 //  but perhaps a better implementation of this function could try that out.
 
 			Float3 shadowViewSpace[8];
-			Float3 shadowViewMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
-			Float3 shadowViewMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+			Float3 shadowViewMins( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+			Float3 shadowViewMaxs(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
 			for (unsigned c = 0; c < 8; c++) {
 				shadowViewSpace[c] = TransformPoint(worldToLightProj, absFrustumCorners[c]);
 

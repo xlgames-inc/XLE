@@ -227,6 +227,5 @@ namespace Assets
     template std::vector<TextChunk<char>> ReadCompoundTextDocument(StringSection<char>);
 
 	template class ConfigFileContainer<InputStreamFormatter<utf8>>;
-	template class ConfigFileContainer<InputStreamFormatter<utf16>>;
 }
 

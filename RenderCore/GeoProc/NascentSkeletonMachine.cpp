@@ -7,7 +7,6 @@
 #include "../RenderUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/BlockSerializer.h"
-#include "../../ConsoleRig/OutputStream.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StreamUtils.h"

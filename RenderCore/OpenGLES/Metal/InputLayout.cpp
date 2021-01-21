@@ -81,7 +81,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 char buffer[64];
                 XlCopyString(buffer, elements[c]._semanticName.c_str());
-                XlCatString(buffer, dimof(buffer), char('0' + elements[c]._semanticIndex));
+                char append[] { char('0' + elements[c]._semanticIndex), '\0' };
+                XlCatString(buffer, dimof(buffer), append);
                 GLint attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), buffer);
 
                 const unsigned elementSize      = BitsPerPixel(elements[c]._nativeFormat) / 8;

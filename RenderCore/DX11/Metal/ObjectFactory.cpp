@@ -9,7 +9,6 @@
 #include "Resource.h"
 #include "../IDeviceDX11.h"
 #include "../../RenderUtils.h"
-#include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 

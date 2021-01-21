@@ -61,7 +61,7 @@ namespace RenderCore { namespace Metal_Vulkan
             VkVertexInputAttributeDescription desc;
             desc.location = i->second._location;
             desc.binding = e._inputSlot;
-            desc.format = AsVkFormat(e._nativeFormat);
+            desc.format = (VkFormat)AsVkFormat(e._nativeFormat);
             desc.offset = offset;
             _attributes.push_back(desc);
         }
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		for (unsigned slot=0; slot<layouts.size(); ++slot) {
 			bool boundAtLeastOne = false;
-			UINT accumulatingOffset = 0;
+			uint32_t accumulatingOffset = (uint32_t)0;
 			for (unsigned ei=0; ei<layouts[slot]._elements.size(); ++ei) {
 				const auto& e = layouts[slot]._elements[ei];
 				auto hash = e._semanticHash;
@@ -102,7 +102,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				VkVertexInputAttributeDescription desc;
 				desc.location = i->second._location;
 				desc.binding = slot;
-				desc.format = AsVkFormat(e._nativeFormat);
+				desc.format = (VkFormat)AsVkFormat(e._nativeFormat);
 				desc.offset = accumulatingOffset;
 				_attributes.push_back(desc);
 

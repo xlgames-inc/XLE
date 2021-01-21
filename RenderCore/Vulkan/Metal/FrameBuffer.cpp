@@ -14,6 +14,7 @@
 #include "../../Format.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
+#include <cmath>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -267,7 +268,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             VkAttachmentDescription desc;
             desc.flags = 0;
-            desc.format = AsVkFormat(resolvedFormat);
+            desc.format = (VkFormat)AsVkFormat(resolvedFormat);
             desc.samples = VK_SAMPLE_COUNT_1_BIT;
             desc.loadOp = AsLoadOp(originalLoad);
             desc.stencilLoadOp = AsLoadOpStencil(originalLoad);
@@ -303,7 +304,7 @@ namespace RenderCore { namespace Metal_Vulkan
             } 
             
             if (resourceDesc->_flags & AttachmentDesc::Flags::Multisampled)
-                desc.samples = AsSampleCountFlagBits(samples);
+                desc.samples = (VkSampleCountFlagBits)AsSampleCountFlagBits(samples);
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
             //          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL as appropriate for input attachments

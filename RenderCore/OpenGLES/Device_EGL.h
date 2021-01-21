@@ -9,6 +9,10 @@
 #include "../IThreadContext.h"
 
 #include <EGL/egl.h>
+#undef None
+#undef Bool
+#undef Success
+#undef Complex
 
 namespace RenderCore { namespace ImplOpenGLES
 {

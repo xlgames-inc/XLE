@@ -9,8 +9,6 @@ options
 
 @header
 {
-	#include <string.h>
-
 	#pragma warning(disable:4068)	// unknown pragma
 	#pragma GCC diagnostic ignored "-Wtypedef-redefinition"
 

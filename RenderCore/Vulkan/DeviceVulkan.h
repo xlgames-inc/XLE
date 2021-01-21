@@ -122,7 +122,7 @@ namespace RenderCore { namespace ImplVulkan
 
         bool                        IsImmediate() const override;
         ThreadContextStateDesc      GetStateDesc() const override;
-        std::shared_ptr<IDevice>    GetDevice() const;
+        std::shared_ptr<IDevice>    GetDevice() const override;
         void                        IncrFrameId();
 		void						InvalidateCachedState() const override;
 
@@ -162,7 +162,7 @@ namespace RenderCore { namespace ImplVulkan
     {
     public:
         virtual void*   QueryInterface(size_t guid) override;
-        const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext();
+        const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() override;
 
 		ThreadContextVulkan(
 			std::shared_ptr<Device> device,

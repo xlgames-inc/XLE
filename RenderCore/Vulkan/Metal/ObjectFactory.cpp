@@ -343,7 +343,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
-		createInfo.queryType = type;
+		createInfo.queryType = (VkQueryType)type;
 		createInfo.queryCount = count;
 		createInfo.pipelineStatistics = pipelineStats;
 
@@ -375,7 +375,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	VkFormatProperties ObjectFactory::GetFormatProperties(VkFormat_ fmt) const
 	{
 		VkFormatProperties formatProps;
-		vkGetPhysicalDeviceFormatProperties(_physDev, fmt, &formatProps);
+		vkGetPhysicalDeviceFormatProperties(_physDev, (VkFormat)fmt, &formatProps);
 		return formatProps;
 	}
 
@@ -745,6 +745,6 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     VulkanAPIFailure::VulkanAPIFailure(VkResult_ res, const char message[])
-        : Exceptions::BasicLabel("%s [%s, %i]", message, AsString(res), res) {}
+        : Exceptions::BasicLabel("%s [%s, %i]", message, AsString((VkResult)res), res) {}
 }}
 

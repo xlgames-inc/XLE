@@ -201,7 +201,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ms.pNext = nullptr;
         ms.flags = 0;
         ms.pSampleMask = nullptr;
-        ms.rasterizationSamples = AsSampleCountFlagBits(samples);
+        ms.rasterizationSamples = (VkSampleCountFlagBits)AsSampleCountFlagBits(samples);
         ms.sampleShadingEnable = VK_FALSE;
         ms.alphaToCoverageEnable = VK_FALSE;
         ms.alphaToOneEnable = VK_FALSE;

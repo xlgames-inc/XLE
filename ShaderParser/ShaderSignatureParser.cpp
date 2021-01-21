@@ -77,7 +77,8 @@ namespace ShaderSourceParser
 		if (!psr) Throw(::Exceptions::BasicLabel("Out of memory trying to allocate parser\n"));
 
 		auto* ast = BuildAST(*psr);
-		if (!ast) Throw(::Exceptions::BasicLabel("Could not build AST from shader fragment input"));
+		if (!ast)
+			Throw(::Exceptions::BasicLabel("Could not build AST from shader fragment input"));
 
 		// StructureDescription(std::cout, ast);
 
