@@ -67,8 +67,8 @@ namespace ShaderSourceParser
 		StringSection<> _line;
 		LineType _type;
 
-		const char* _nextLineBegin;
-		const char* _firstNonCommentNonWhitespaceChar;
+		const char* _nextLineBegin = nullptr;
+		const char* _firstNonCommentNonWhitespaceChar = nullptr;
 	};
 
 	static LineDetails ParseLineDetails(StringSection<> src, LineDetails::LineType prevLineType)
@@ -95,7 +95,7 @@ namespace ShaderSourceParser
 				} else {
 					result._type = LineDetails::LineType::Normal;
 				}
-				result._firstNonCommentNonWhitespaceChar = firstNonCommentNonWhitespaceChar;
+				result._firstNonCommentNonWhitespaceChar = std::min(i, firstNonCommentNonWhitespaceChar);
 
 				// i currently points to the end of this line; we should
 				// advance to the start of the next line
