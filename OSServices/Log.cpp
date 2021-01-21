@@ -220,11 +220,8 @@ namespace OSServices
         auto hash = Hash64(id);
         auto i = LowerBound(_pimpl->_activeTargets, hash);
 
-        // If you hit the following assert, it means there are 2 message targets with the same name
-        // This could happen if a target is copied from one place to another, or if it's defined in
-        // a header, instead of a source file.
-        assert(i == _pimpl->_activeTargets.end() || i->first != hash);
-
+        // We allow multiple targets with the same name. Despite that fact that they are different
+        // objects, they should contain the same data
         _pimpl->_activeTargets.insert(i, std::make_pair(hash, Pimpl::Target{id.AsString(), &target}));
 
         #if defined(OSSERVICES_ENABLE_LOG)

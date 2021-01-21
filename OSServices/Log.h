@@ -93,8 +93,13 @@ namespace OSServices
     class LogCentral
     {
     public:
-        static const std::shared_ptr<LogCentral>& GetInstance();
-        static void DestroyInstance();
+        // We want to try to ensure that there's only a single instance of LogCentral
+        // across the entire process, regardless of the number of modules. We can do
+        // that with visibility attributes when using clang. This ensures that shared
+        // libraries that are loaded by the main executable will use the implementation
+        // from that main executable
+        static const std::shared_ptr<LogCentral>& GetInstance() __attribute__((visibility("default")));
+        static void DestroyInstance() __attribute__((visibility("default")));
 
         void Register(MessageTarget<>& target, StringSection<> id);
         void Deregister(MessageTarget<>& target);
