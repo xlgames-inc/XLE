@@ -95,6 +95,17 @@ namespace ConsoleRig
 
     AttachableLibrary::~AttachableLibrary()
     {
+        // We can get shutdown while attach reference counts are still open. In these
+        // cases, we should just shut down the library, regardless of the attachment ref count
+        if (_pimpl->_library) {
+            auto detachFn = (void (*)())dlsym(_pimpl->_library, "DetachLibrary");
+			if (detachFn) {
+				(*detachFn)();
+			}
+
+			dlclose(_pimpl->_library);
+            _pimpl->_library = nullptr;
+        }
     }
 
 	AttachableLibrary::AttachableLibrary(AttachableLibrary&& moveFrom) never_throws

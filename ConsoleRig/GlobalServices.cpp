@@ -230,9 +230,8 @@ namespace ConsoleRig
         assert(s_instance == nullptr);
         s_instance = this;
         MainRig_Attach();
-		_pimpl->_logCfg = GetAttachablePtr<LogCentralConfiguration>();
 		if (!_pimpl->_logCfg)
-			_pimpl->_logCfg = MakeAttachablePtr<LogCentralConfiguration>(_pimpl->_cfg._logConfigFile);
+			_pimpl->_logCfg = std::make_shared<LogCentralConfiguration>(_pimpl->_cfg._logConfigFile);
     }
 
     void GlobalServices::DetachCurrentModule()
@@ -244,30 +243,6 @@ namespace ConsoleRig
 
 	ThreadPool& GlobalServices::GetShortTaskThreadPool() { return *_pimpl->_shortTaskPool; }
     ThreadPool& GlobalServices::GetLongTaskThreadPool() { return *_pimpl->_longTaskPool; }
-
-	CrossModule* CrossModule::s_instance = nullptr;
-
-	CrossModule& CrossModule::GetInstance()
-	{
-		if (!s_instance) {
-			s_instance = new CrossModule();
-			std::atexit([]() { delete s_instance; s_instance = nullptr; });
-		}
-		return *s_instance;
-	}
-
-	void CrossModule::SetInstance(CrossModule& crossModule)
-	{
-		assert(!s_instance);
-		s_instance = &crossModule;
-	}
-
-	void CrossModule::ReleaseInstance()
-	{
-		assert(s_instance);
-		s_instance = nullptr;
-	}
-
 
     IStep::~IStep() {}
     IProgress::~IProgress() {}

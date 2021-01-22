@@ -2,6 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "CrossModuleTestHelper.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -26,6 +27,18 @@ dll_export std::string ExampleFunctionReturnsString(std::string acrossInterface)
 	return "This is a string from ExampleFunctionReturnsString <<" + acrossInterface + ">>";
 }
 
+static ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromAttachedModule> s_singletonToPublish;
+static ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromMainModule2> s_embuedByMainModule2;
+
+dll_export std::string FunctionCheckingAttachablePtrs() asm("FunctionCheckingAttachablePtrs");
+dll_export std::string FunctionCheckingAttachablePtrs()
+{
+	s_singletonToPublish = std::make_shared<UnitTests::SingletonSharedFromAttachedModule>();
+
+	ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromMainModule1> embuedByMainModule1;
+	return embuedByMainModule1->_identifyingString + " and " + s_embuedByMainModule2->_identifyingString;
+}
+
 extern "C" 
 {
 	dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
@@ -33,19 +46,16 @@ extern "C"
 		return ConsoleRig::GetLibVersionDesc();
 	}
 
-	static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_attachRef;
+	static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_globalServicesAttachRef;
 
 	dll_export void AttachLibrary(ConsoleRig::CrossModule& crossModule)
 	{
-		ConsoleRig::CrossModule::SetInstance(crossModule);
-		s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
+		assert(s_globalServicesAttachRef != nullptr);
 		auto versionDesc = ConsoleRig::GetLibVersionDesc();
 		Log(Verbose) << "Attached unit test DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
 	}
 
 	dll_export void DetachLibrary()
 	{
-		s_attachRef.reset();
-		ConsoleRig::CrossModule::ReleaseInstance();
 	}
 }

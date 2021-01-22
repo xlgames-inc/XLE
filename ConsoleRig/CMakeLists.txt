@@ -5,6 +5,7 @@ set(Src
     GlobalServices.cpp
     OutputStream.cpp
     Plugins.cpp
+    AttachablePtr.cpp
     ${CMAKE_BINARY_DIR}/ConsoleRig/Version.cpp)
 
 if (WIN32)
