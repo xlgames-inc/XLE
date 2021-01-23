@@ -25,3 +25,6 @@
 [submodule "Foreign/freetype2"]
 	path = Foreign/freetype2
 	url = git@github.com:freetype/freetype2
+[submodule "Foreign/thousandeyes-futures"]
+	path = Foreign/thousandeyes-futures
+	url = git@github.com:thousandeyes/thousandeyes-futures
