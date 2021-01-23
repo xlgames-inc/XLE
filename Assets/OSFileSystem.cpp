@@ -127,6 +127,7 @@ namespace Assets
 		std::basic_string<utf8> _rootUTF8;
 		std::basic_string<utf16> _rootUTF16;
 		bool _ignorePaths;
+		std::shared_ptr<OSServices::RawFSMonitor> _fileSystemMonitor;
 	};
 
 	auto FileSystem_OS::TryTranslate(Marker& result, StringSection<utf8> filename) -> TranslateResult
@@ -246,19 +247,13 @@ namespace Assets
 			auto fn = MakeStringSection(
 				(const utf8*)PtrAdd(AsPointer(marker.cbegin()), 2),
 				(const utf8*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf8)));
-			auto split = MakeFileNameSplitter(fn);
-			utf8 directoryName[MaxPath];
-			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-			OSServices::AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
+			_fileSystemMonitor->Attach(fn, evnt);
 			return IOReason::Success;
 		} else if (type == 2) {
 			auto fn = MakeStringSection(
 				(const utf16*)PtrAdd(AsPointer(marker.cbegin()), 2),
 				(const utf16*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf16)));
-			auto split = MakeFileNameSplitter(fn);
-			utf16 directoryName[MaxPath];
-			MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-			OSServices::AttachFileSystemMonitor(directoryName, split.FileAndExtension(), evnt);
+			_fileSystemMonitor->Attach(fn, evnt);
 			return IOReason::Success;
 		}
 		return IOReason::Complex;
@@ -378,6 +373,9 @@ namespace Assets
 				_rootUTF16.push_back((utf16)utf8_nextchar(i, root.end()));
 			_rootUTF16.push_back((utf16)'/');
 		}
+
+		// todo -- _fileSystemMonitor must be initialized to something
+		// _fileSystemMonitor = 
 	}
 
 	FileSystem_OS::~FileSystem_OS() {}

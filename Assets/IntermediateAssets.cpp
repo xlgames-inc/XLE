@@ -163,7 +163,8 @@ namespace Assets { namespace IntermediateAssets
         FileNameSplitter<utf8> splitter(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
         SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         
-        OSServices::FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
+        assert(0);  // deprecated with changes to FileSystemMonitor
+        // OSServices::FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
 
         record->OnChange();
     }

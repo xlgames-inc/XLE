@@ -3,6 +3,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../FileSystemMonitor.h"
+#include "PollingThread.h"
+#include "../Log.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -10,6 +12,7 @@
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Core/Exceptions.h"
 #include <vector>
 #include <memory>
 #include <cctype>
@@ -20,205 +23,217 @@
 
 namespace OSServices
 {
-    class MonitoredDirectory
-    {
-    public:
-        void            AttachCallback(uint64_t filenameHash, std::shared_ptr<OnChangeCallback> callback);
-        void            OnChange(StringSection<> filename);
-        int             wd() const { return _wd; }
+	class MonitoredDirectory
+	{
+	public:
+		void            AttachCallback(uint64_t filenameHash, std::shared_ptr<OnChangeCallback> callback);
+		void            OnChange(StringSection<> filename);
+		int             wd() const { return _wd; }
 
-        static uint64_t HashFilename(StringSection<utf16> filename);
-        static uint64_t HashFilename(StringSection<utf8> filename);
+		static uint64_t HashFilename(StringSection<utf16> filename);
+		static uint64_t HashFilename(StringSection<utf8> filename);
 
-        MonitoredDirectory(const std::string& directoryName, int wd);
-        ~MonitoredDirectory();
-    private:
-        std::vector<std::pair<uint64_t, std::weak_ptr<OnChangeCallback>>>  _callbacks;
-        Threading::Mutex	_callbacksLock;
+		MonitoredDirectory(const std::string& directoryName, int wd);
+		~MonitoredDirectory();
+	private:
+		std::vector<std::pair<uint64_t, std::weak_ptr<OnChangeCallback>>>  _callbacks;
+		Threading::Mutex	_callbacksLock;
 
 		std::string     _directoryName;
-        unsigned        _monitoringUpdateId;
-        int             _wd;
-    };
+		int             _wd;
+	};
 
-    static Utility::Threading::Mutex MonitoredDirectoriesLock;
-    static std::vector<std::pair<uint64_t, std::unique_ptr<MonitoredDirectory>>>  MonitoredDirectories;
-    static unsigned CreationOrderId_Foreground = 0;
-
-    static int inotify_fd = -1;
-
-    MonitoredDirectory::MonitoredDirectory(const std::string& directoryName, int wd)
-    : _directoryName(directoryName), _wd(wd)
+	MonitoredDirectory::MonitoredDirectory(const std::string& directoryName, int wd)
+	: _directoryName(directoryName), _wd(wd)
 	{
-        _monitoringUpdateId = CreationOrderId_Foreground;
-    }
+	}
 
-    MonitoredDirectory::~MonitoredDirectory()
-    {
-    }
+	MonitoredDirectory::~MonitoredDirectory()
+	{
+	}
 
 	uint64_t MonitoredDirectory::HashFilename(StringSection<utf16> filename)  { return Utility::HashFilename(filename); }
-    uint64_t MonitoredDirectory::HashFilename(StringSection<utf8> filename) { return Utility::HashFilename(filename); }
+	uint64_t MonitoredDirectory::HashFilename(StringSection<utf8> filename) { return Utility::HashFilename(filename); }
 
-    void MonitoredDirectory::AttachCallback(
-        uint64 filenameHash,
-        std::shared_ptr<OnChangeCallback> callback)
-    {
-        ScopedLock(_callbacksLock);
-        _callbacks.insert(
-            LowerBound(_callbacks, filenameHash),
-            std::make_pair(filenameHash, std::move(callback)));
-    }
+	void MonitoredDirectory::AttachCallback(
+		uint64 filenameHash,
+		std::shared_ptr<OnChangeCallback> callback)
+	{
+		ScopedLock(_callbacksLock);
+		_callbacks.insert(
+			LowerBound(_callbacks, filenameHash),
+			std::make_pair(filenameHash, std::move(callback)));
+	}
 
-    void MonitoredDirectory::OnChange(StringSection<> filename)
-    {
-        // std::cout << "OnChange for filename: " << filename.AsString().c_str() << std::endl;
+	void MonitoredDirectory::OnChange(StringSection<> filename)
+	{
+		auto hash = MonitoredDirectory::HashFilename(filename);
+		ScopedLock(_callbacksLock);
+		auto range = std::equal_range(
+			_callbacks.begin(), _callbacks.end(),
+			hash, CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>());
 
-        auto hash = MonitoredDirectory::HashFilename(filename);
-        ScopedLock(_callbacksLock);
-        #if 0 //(STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
-            auto range = std::_Equal_range(
-                _callbacks.begin(), _callbacks.end(), hash,
-                CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>(),
-                _Dist_type(_callbacks.begin()));
-        #else
-            auto range = std::equal_range(
-                _callbacks.begin(), _callbacks.end(),
-                hash, CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>());
-        #endif
+		bool foundExpired = false;
+		for (auto i2=range.first; i2!=range.second; ++i2) {
+				// todo -- what happens if OnChange() results in a change to _callbacks?
+			auto l = i2->second.lock();
+			if (l) l->OnChange();
+			else foundExpired = true;
+		}
 
-        bool foundExpired = false;
-        for (auto i2=range.first; i2!=range.second; ++i2) {
-                // todo -- what happens if OnChange() results in a change to _callbacks?
-            auto l = i2->second.lock();
-            if (l) l->OnChange();
-            else foundExpired = true;
-        }
+		if (foundExpired) {
+				// Remove any pointers that have expired
+				// (note that we only check matching pointers. Non-matching pointers
+				// that have expired are untouched)
+			_callbacks.erase(
+				std::remove_if(range.first, range.second,
+					[](std::pair<uint64, std::weak_ptr<OnChangeCallback>>& i)
+					{ return i.second.expired(); }),
+				range.second);
+		}
+	}
 
-        if (foundExpired) {
-                // Remove any pointers that have expired
-                // (note that we only check matching pointers. Non-matching pointers
-                // that have expired are untouched)
-            _callbacks.erase(
-                std::remove_if(range.first, range.second,
-                    [](std::pair<uint64, std::weak_ptr<OnChangeCallback>>& i)
-                    { return i.second.expired(); }),
-                range.second);
-        }
-    }
+	class IConduit_Linux
+	{
+	public:
+		virtual IOPlatformHandle GetPlatformHandle() const = 0;
+	};
 
-    static std::unique_ptr<std::thread> MonitoringThread;
+	class RawFSMonitor::Pimpl
+	{
+	public:
+		class Conduit : public IConduit, public IConduit_Linux
+		{
+		public:
+			Utility::Threading::Mutex _monitoredDirectoriesLock;
+			std::vector<std::pair<uint64_t, std::unique_ptr<MonitoredDirectory>>> _monitoredDirectories;
+			int _inotify_fd = -1;
 
-    static void RestartMonitoring()
-    {
-        if (!MonitoringThread) {
-            MonitoringThread = std::make_unique<std::thread>([]() {
-                struct pollfd fds[1];
-                fds[0].fd = inotify_fd;
-                fds[0].events = POLLIN;
-                fds[0].revents = 0;
-                for (;;) {
-                    auto poll_num = poll(fds, dimof(fds), -1);
-                    if (poll_num == -1)
-                        break;
+			IOPlatformHandle GetPlatformHandle() const { return (IOPlatformHandle)_inotify_fd; }
 
-                    if (poll_num > 0) {
-                        bool cancelPolling = false;
-                        if (fds[0].revents & POLLIN) {
-                            char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
-                            for (;;) {
-                                /* Read some events. */
-                                auto len = read(inotify_fd, buf, sizeof buf);
-                                /*if (len == -1 && errno != EAGAIN) {
-                                    cancelPolling = true;
-                                    break;
-                                }*/
-                                if (len <= 0)
-                                    break;
+			void OnEvent(PollingEventType::BitField)
+			{
+				ScopedLock(_monitoredDirectoriesLock);
+				char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
+				for (;;) {
+					/* Read some events. */
+					auto len = read(_inotify_fd, buf, sizeof buf);
+					/*if (len == -1 && errno != EAGAIN) {
+						cancelPolling = true;
+						break;
+					}*/
+					if (len <= 0)
+						break;
 
-                                const struct inotify_event *event;
-                                for (auto* ptr = buf; ptr < buf + len;
-                                     ptr += sizeof(struct inotify_event) + event->len) {
+					const struct inotify_event *event;
+					for (auto* ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + event->len) {
+						event = (const struct inotify_event *) ptr;
+						for (const auto&m:_monitoredDirectories)
+							if (m.second->wd() == event->wd)
+								m.second->OnChange(event->name);
+					}
+				}
+			}
+			void OnException(const std::exception_ptr& exception)
+			{
+				TRY
+				{
+					std::rethrow_exception(exception);
+				}
+				CATCH(const std::exception& e)
+				{
+					Log(Error) << "Raw file system monitoring cancelled because of exception: " << e.what() << std::endl;
+				} 
+				CATCH(...)
+				{
+					Log(Error) << "Raw file system monitoring cancelled because of unknown exception" << std::endl;
+				}
+				CATCH_END
+			}
+		};
 
-                                    event = (const struct inotify_event *) ptr;
+		// Separating the conduit from the shared_ptr<> to PollingThread by making
+		// the conduit another class. If the conduit has a reference to the polling thread
+		// itself, we can end up with strange race conditions on shutdown where the polling
+		// thread is releasing a (temporary) reference count on the conduit while that
+		// conduiting holds the last reference to the PollingThread
+		std::shared_ptr<PollingThread> _pollingThread;
+		std::shared_ptr<Conduit> _conduit;
+	};
 
-                                    ScopedLock(MonitoredDirectoriesLock);
-                                    for (const auto&m:MonitoredDirectories)
-                                        if (m.second->wd() == event->wd)
-                                            m.second->OnChange(event->name);
-                                }
-                            }
-                        }
-                        if (cancelPolling)
-                            break;
-                    }
-                }
-            });
-        }
-    }
+	void RawFSMonitor::Attach(
+		StringSection<utf16> filename,
+		std::shared_ptr<OnChangeCallback> callback)
+	{
+		assert(0);      // not implemented
+	}
 
-    void TerminateFileSystemMonitoring()
-    {
-        {
-            ScopedLock(MonitoredDirectoriesLock);
-            MonitoredDirectories.clear();
-        }
-    }
-
-    void AttachFileSystemMonitor(
-        StringSection<utf16> directoryName,
-        StringSection<utf16> filename,
-        std::shared_ptr<OnChangeCallback> callback)
-    {
-        assert(0);      // not implemented
-    }
-
-	void AttachFileSystemMonitor(
-		StringSection<utf8> directoryName,
+	void RawFSMonitor::Attach(
 		StringSection<utf8> filename,
 		std::shared_ptr<OnChangeCallback> callback)
 	{
-        if (inotify_fd == -1)
-            inotify_fd = inotify_init();
+		bool startMonitoring = false;
 
-        // std::cout << "Register (" << (char*)directoryName.AsString().c_str() << ", " << (char*)filename.AsString().c_str() << ")" << std::endl;
+		auto split = MakeFileNameSplitter(filename);
+		utf8 directoryName[MaxPath];
+		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
+		if (!directoryName[0])
+			std::strcpy(directoryName, "./");
 
-        {
-            ScopedLock(MonitoredDirectoriesLock);
-            if (directoryName.IsEmpty())
-                directoryName = StringSection<utf8>("./");
+		{
+			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);
+			auto hash = MonitoredDirectory::HashFilename(directoryName);
+			auto i = std::lower_bound(
+				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
+				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
+			if (i != _pimpl->_conduit->_monitoredDirectories.cend() && i->first == hash) {
+				i->second->AttachCallback(MonitoredDirectory::HashFilename(split.FileAndExtension()), std::move(callback));
+				return;
+			}
 
-            auto hash = MonitoredDirectory::HashFilename(directoryName);
-            auto i = std::lower_bound(
-                MonitoredDirectories.cbegin(), MonitoredDirectories.cend(),
-                hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-            if (i != MonitoredDirectories.cend() && i->first == hash) {
-                i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
-                return;
-            }
+			if (_pimpl->_conduit->_inotify_fd == -1) {
+				_pimpl->_conduit->_inotify_fd = inotify_init();
+				assert(_pimpl->_conduit->_inotify_fd > 0);
+				startMonitoring = true;
+			}
 
-            auto directoryNameCopy = Conversion::Convert<std::string>(directoryName.AsString());
-            auto wd = inotify_add_watch(inotify_fd, directoryNameCopy.c_str(), IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+			auto wd = inotify_add_watch(_pimpl->_conduit->_inotify_fd, directoryName, IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+			assert(wd > 0);
 
-            ++CreationOrderId_Foreground;
-            auto i2 = MonitoredDirectories.insert(
-                i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryNameCopy, wd)));
-            i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
-        }
+			auto i2 = _pimpl->_conduit->_monitoredDirectories.insert(
+				i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName, wd)));
+			i2->second->AttachCallback(MonitoredDirectory::HashFilename(split.FileAndExtension()), std::move(callback));
+		}
 
-		//  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
-		//  (that operation must begin and be handled in the same thread when using completion routines)
-		RestartMonitoring();
+		if (startMonitoring) {
+			_pimpl->_pollingThread->Connect(_pimpl->_conduit);
+		}
 	}
 
-    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
-    {
-        assert(0);      // not implemented
-    }
+	void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
+	{
+		assert(0);      // not implemented
+	}
 
 	void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename)
 	{
-        assert(0);      // not implemented
+		assert(0);      // not implemented
+	}
+
+	RawFSMonitor::RawFSMonitor(const std::shared_ptr<PollingThread>& pollingThread)
+	{
+		_pimpl = std::make_shared<Pimpl>();
+		_pimpl->_conduit = std::make_shared<Pimpl::Conduit>();
+		_pimpl->_pollingThread = pollingThread;
+	}
+
+	RawFSMonitor::~RawFSMonitor()
+	{
+		if (_pimpl->_conduit->_inotify_fd != -1) {
+			_pimpl->_pollingThread->Disconnect(_pimpl->_conduit);
+			close(_pimpl->_conduit->_inotify_fd);
+		}
+		_pimpl->_conduit.reset();
 	}
 
 }

@@ -175,7 +175,6 @@ namespace ConsoleRig
 		ResourceBoxes_Shutdown();
 		DebugUtil_Shutdown();
         ::Assets::MainFileSystem::Shutdown();
-		OSServices::TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

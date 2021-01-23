@@ -6,6 +6,7 @@
 #include "../../OSServices/Log.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 
 #include <sys/epoll.h>
@@ -14,223 +15,402 @@
 
 namespace OSServices
 {
-    static struct epoll_event EPollEvent(PollingEventType::BitField types, bool oneShot = true)
-    {
-        struct epoll_event result{};
-        result.events = EPOLLRDHUP | EPOLLHUP | EPOLLERR;
+	class IConduit_Linux
+	{
+	public:
+		virtual IOPlatformHandle GetPlatformHandle() const = 0;
+	};
 
-        const bool edgeTriggered = false;
-        if (edgeTriggered)
-            result.events |= EPOLLET;
-        if (oneShot)
-            result.events |= EPOLLONESHOT;
+	static struct epoll_event EPollEvent(PollingEventType::BitField types, bool oneShot = true)
+	{
+		struct epoll_event result{};
+		result.events = EPOLLRDHUP | EPOLLHUP | EPOLLERR;
 
-        if (types & PollingEventType::Input)
-            result.events |= EPOLLIN;
-        if (types & PollingEventType::Output)
-            result.events |= EPOLLOUT;
-        return result;
-    }
+		const bool edgeTriggered = false;
+		if (edgeTriggered)
+			result.events |= EPOLLET;
+		if (oneShot)
+			result.events |= EPOLLONESHOT;
 
-    static PollingEventType::BitField AsPollingEventType(uint32_t osEventFlags)
-    {
-        PollingEventType::BitField result = 0;
-        if (osEventFlags & EPOLLIN)
-            result |= PollingEventType::Input;
-        if (osEventFlags & EPOLLOUT)
-            result |= PollingEventType::Output;
-        return result;
-    }
+		if (types & PollingEventType::Input)
+			result.events |= EPOLLIN;
+		if (types & PollingEventType::Output)
+			result.events |= EPOLLOUT;
+		return result;
+	}
 
-    class PollingThread::Pimpl
-    {
-    public:
-        int _interruptPollEvent = -1;
-        std::atomic<bool> _pendingShutdown;
-        std::thread _backgroundThread;
+	static PollingEventType::BitField AsPollingEventType(uint32_t osEventFlags)
+	{
+		PollingEventType::BitField result = 0;
+		if (osEventFlags & EPOLLIN)
+			result |= PollingEventType::Input;
+		if (osEventFlags & EPOLLOUT)
+			result |= PollingEventType::Output;
+		return result;
+	}
 
-        std::mutex _interfaceLock;
+	class PollingThread::Pimpl
+	{
+	public:
+		int _interruptPollEvent = -1;
+		std::atomic<bool> _pendingShutdown;
+		std::thread _backgroundThread;
 
-        struct PendingInitiates
-        {
-            PollingEventType::BitField _eventTypes;
-            PlatformHandle _platformHandle;
-            Threading::ContinuationPromise<PollingEventType::BitField> _promise;
-        };
-        std::vector<PendingInitiates> _pendingInitiates;
+		std::mutex _interfaceLock;
 
-        struct ActiveEvent
-        {
-            PlatformHandle _platformHandle;
-            Threading::ContinuationPromise<PollingEventType::BitField> _promise;
-        };
-        std::vector<ActiveEvent> _activeEvents;
+		////////////////////////////////////////////////////////
 
-        Pimpl() : _pendingShutdown(false)
-        {
-            _interruptPollEvent = eventfd(0, EFD_NONBLOCK);
-            _backgroundThread = std::thread(
-                [this]() {
-                    TRY {
-                        this->ThreadFunction(); 
-                    } CATCH(const std::exception& e) {
-                        Log(Error) << "Encountered exception in background epoll thread. Terminating any asynchronous operations" << std::endl;
-                        Log(Error) << "Exception as follows: " << e.what() << std::endl;
-                    } CATCH(...) {
-                        Log(Error) << "Encountered exception in background epoll thread. Terminating any asynchronous operations" << std::endl;
-                        Log(Error) << "Unknown exception type" << std::endl;
-                    } CATCH_END
-                });
-        }
+		struct PendingOnceInitiate
+		{
+			PollingEventType::BitField _eventTypes;
+			IOPlatformHandle _platformHandle;
+			std::promise<PollingEventType::BitField> _promise;
+		};
+		std::vector<PendingOnceInitiate> _pendingOnceInitiates;
 
-        ~Pimpl()
-        {
-            _pendingShutdown.store(true);
-            InterruptBackgroundThread();
-            _backgroundThread.join();
-        }
+		struct ActiveOnceEvent
+		{
+			IOPlatformHandle _platformHandle;
+			std::promise<PollingEventType::BitField> _promise;
+		};
+		std::vector<ActiveOnceEvent> _activeOnceEvents;
 
-        void ThreadFunction()
-        {
-            int epollContext = epoll_create1(0);
-            if (epollContext < 0)
-                Throw(std::runtime_error("Failure in epoll_create1"));
+		////////////////////////////////////////////////////////
 
-            {
-                auto readEvent = EPollEvent(PollingEventType::Input, false);
-                readEvent.data.fd = _interruptPollEvent;
-                auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, _interruptPollEvent, &readEvent);
-                if (ret < 0)
-                    Throw(std::runtime_error("Failure when adding interrupt event to epoll queue"));
-            }
+		struct ChangeEvent
+		{
+			std::weak_ptr<IConduit> _conduit;
+			PollingEventType::BitField _eventTypes;
+			IOPlatformHandle _platformHandle;
+			std::promise<void> _onChangePromise;
+		};
+		std::vector<ChangeEvent> _pendingEventConnects;
+		std::vector<ChangeEvent> _pendingEventDisconnects;
 
-            struct epoll_event events[32];
-            while (!_pendingShutdown.load()) {
-                // "add" all events that are pending
-                {
-                    ScopedLock(_interfaceLock);
-                    for (auto& event:_pendingInitiates) {
-                        auto existing = std::find_if(
-                            _activeEvents.begin(), _activeEvents.end(),
-                            [&event](const ActiveEvent& ae) { return ae._platformHandle == event._platformHandle; });
-                        if (existing != _activeEvents.end()) {
-                            // We can't queue multiple poll operations on the same platform handle, because we will be using
-                            // the platform handle to lookup events in _activeEvents (this would otherwise make it ambigious)
-                            event._promise.set_exception(std::make_exception_ptr(std::runtime_error("Multiple asynchronous events queued for the same platform handle")));
-                            continue;
-                        }
+		struct ActiveEvent
+		{
+			IOPlatformHandle _platformHandle;
+			std::weak_ptr<IConduit> _conduit;
+		};
+		std::vector<ActiveEvent> _activeEvents;
 
-                        auto evt = EPollEvent(event._eventTypes);
-                        evt.data.fd = event._platformHandle;
-                        auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, event._platformHandle, &evt);
-                        if (ret < 0) {
-                            event._promise.set_exception(std::make_exception_ptr(std::runtime_error("Failed to add asyncronous event to epoll queue")));
-                        } else {
-                            ActiveEvent activeEvent;
-                            activeEvent._platformHandle = event._platformHandle;
-                            activeEvent._promise = std::move(event._promise);
-                            _activeEvents.push_back(std::move(activeEvent));
-                        }
-                    }
-                    _pendingInitiates.clear();
-                }
-                
-                const int timeoutInMilliseconds = -1;
-                int eventCount = epoll_wait(epollContext, events, dimof(events), timeoutInMilliseconds);
-                if (eventCount <= 0 || eventCount > dimof(events)) {
-                    // We will actually get here during normal shutdown. When the main
-                    // thread calls _backgroundThread.join(), it seems to trigger an interrupt event on the epoll system
-                    // automatically. In that case, errno will be EINTR. Since this happens during normal usage,
-                    // we can't treat this as an error.
-                    if (errno != EINTR)
-                        Throw(std::runtime_error("Failure in epoll_wait"));
-                    break;
-                }
+		////////////////////////////////////////////////////////
 
-                for (const auto& triggeredEvent:MakeIteratorRange(events, &events[eventCount])) {
+		Pimpl() : _pendingShutdown(false)
+		{
+			_interruptPollEvent = eventfd(0, EFD_NONBLOCK);
+			_backgroundThread = std::thread(
+				[this]() {
+					TRY {
+						this->ThreadFunction(); 
+					} CATCH(const std::exception& e) {
+						Log(Error) << "Encountered exception in background epoll thread. Terminating any asynchronous operations" << std::endl;
+						Log(Error) << "Exception as follows: " << e.what() << std::endl;
+					} CATCH(...) {
+						Log(Error) << "Encountered exception in background epoll thread. Terminating any asynchronous operations" << std::endl;
+						Log(Error) << "Unknown exception type" << std::endl;
+					} CATCH_END
+				});
+		}
 
-                    // _interruptPollEvent exists only to break us out of "epoll_wait", so don't need to do much in this case
-                    // We should just drain _interruptPollEvent of all data we can read. Since we're not using EFD_SEMAPHORE
-                    // for this event, we should just have to read one
-                    if (triggeredEvent.data.fd == _interruptPollEvent) {
-                        uint64_t eventFdCounter=0;
-                        auto ret = read(_interruptPollEvent, &eventFdCounter, sizeof(eventFdCounter));
-                        assert(ret > 0);
-                        continue;
-                    }
+		~Pimpl()
+		{
+			_pendingShutdown.store(true);
+			InterruptBackgroundThread();
+			_backgroundThread.join();
+			close(_interruptPollEvent);
+		}
 
-                    auto i = std::find_if(
-                        _activeEvents.begin(), _activeEvents.end(),
-                        [&triggeredEvent](const ActiveEvent& ae) { return ae._platformHandle == triggeredEvent.data.fd; });
-                    if (i == _activeEvents.end()) {
-                        Log(Error) << "Got an event for a platform handle that isn't in our activeEvents list" << std::endl;
-                        continue;
-                    }
+		void ThreadFunction()
+		{
+			int epollContext = epoll_create1(0);
+			if (epollContext < 0)
+				Throw(std::runtime_error("Failure in epoll_create1"));
 
-                    if (triggeredEvent.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                        // this is a disconnection or error event. We should return an exception and also remove
-                        // the event from both the queue and our list of active events
-                        auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
-                        assert(ret == 0);
-                        auto promise = std::move(i->_promise);
-                        _activeEvents.erase(i);
-                        
-                        promise.set_exception(std::make_exception_ptr(std::runtime_error("")));
-                    } else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
-                        // This means data is available to read, or the fd is ready for writing to
-                        // It's effectively a success. Still, for one-shot events, we will remove the event
-                        // It seems that fd will still be registered in the epollContext, even for an event
-                        // marked as a one-shot (it just gets set to a disabled state)
-                        auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
-                        assert(ret == 0);
-                        auto promise = std::move(i->_promise);
-                        _activeEvents.erase(i);
+			auto cleanup = AutoCleanup(
+				[epollContext]() { 
+					close(epollContext); 
+				});
+			(void)cleanup;
 
-                        promise.set_value(AsPollingEventType(triggeredEvent.events));
-                    } else {
-                        Throw(std::runtime_error("Unexpected event trigger value"));
-                    }
+			{
+				auto readEvent = EPollEvent(PollingEventType::Input, false);
+				readEvent.data.fd = _interruptPollEvent;
+				auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, _interruptPollEvent, &readEvent);
+				if (ret < 0)
+					Throw(std::runtime_error("Failure when adding interrupt event to epoll queue"));
+			}
 
-                }
-            }
+			struct epoll_event events[32];
+			while (!_pendingShutdown.load()) {
+				// "add" all events that are pending
+				{
+					std::vector<std::promise<void>> pendingPromisesToTrigger;
+					std::vector<std::pair<std::promise<void>, std::exception_ptr>> pendingExceptionsToPropagate1;
+					std::vector<std::pair<std::promise<PollingEventType::BitField>, std::exception_ptr>> pendingExceptionsToPropagate2;
+					{
+						ScopedLock(_interfaceLock);
+						for (auto& event:_pendingOnceInitiates) {
+							auto existing = std::find_if(
+								_activeOnceEvents.begin(), _activeOnceEvents.end(),
+								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+							if (existing != _activeOnceEvents.end()) {
+								// We can't queue multiple poll operations on the same platform handle, because we will be using
+								// the platform handle to lookup events in _activeOnceEvents (this would otherwise make it ambigious)
+								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Multiple asynchronous events queued for the same platform handle"))});
+								continue;
+							}
 
-            close(epollContext);
-        }
+							auto evt = EPollEvent(event._eventTypes);
+							evt.data.fd = event._platformHandle;
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, event._platformHandle, &evt);
+							if (ret < 0) {
+								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Failed to add asyncronous event to epoll queue"))});
+							} else {
+								ActiveOnceEvent activeEvent;
+								activeEvent._platformHandle = event._platformHandle;
+								activeEvent._promise = std::move(event._promise);
+								_activeOnceEvents.push_back(std::move(activeEvent));
+							}
+						}
+						_pendingOnceInitiates.clear();
 
-        void InterruptBackgroundThread()
-        {
-            ssize_t ret = 0;
-            do {
-                uint64_t counterIncrement = 1;
-                ret = write(_interruptPollEvent, &counterIncrement, sizeof(counterIncrement));
-            } while (ret < 0 && errno == EAGAIN);
-        }
-    };
+						for (auto& event:_pendingEventConnects) {
+							auto existing = std::find_if(
+								_activeEvents.begin(), _activeEvents.end(),
+								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+							if (existing != _activeEvents.end()) {
+								// We can't queue multiple poll operations on the same platform handle, because we will be using
+								// the platform handle to lookup events in _activeOnceEvents (this would otherwise make it ambigious)
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Multiple asynchronous events queued for the same platform handle"))});
+								continue;
+							}
 
-    auto PollingThread::RespondOnEvent(PlatformHandle platformHandle, PollingEventType::BitField typesToWaitFor) -> Threading::ContinuationFuture<PollingEventType::BitField>
-    {
-        Threading::ContinuationFuture<PollingEventType::BitField> result;
-        {
-            ScopedLock(_pimpl->_interfaceLock);
-            Pimpl::PendingInitiates pendingInit;
-            pendingInit._eventTypes = typesToWaitFor;
-            pendingInit._platformHandle = platformHandle;
-            result = pendingInit._promise.get_future();
-            _pimpl->_pendingInitiates.push_back(std::move(pendingInit));
-        }
-        _pimpl->InterruptBackgroundThread();
-        return result;
-    }
+							// If the conduit is already expired, the system will just end up removing the event immediately
+							// so let's not even bother adding it in that case
+							auto conduit = event._conduit.lock();
+							if (!conduit) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Conduit ptr already expired before connection"))});
+								continue;
+							}
 
-    PollingThread::PollingThread()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
+							auto evt = EPollEvent(event._eventTypes, false);
+							evt.data.fd = event._platformHandle;
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, event._platformHandle, &evt);
+							if (ret < 0) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Failed to add asyncronous event to epoll queue"))});
+							} else {
+								ActiveEvent activeEvent;
+								activeEvent._platformHandle = event._platformHandle;
+								activeEvent._conduit = std::move(conduit);
+								_activeEvents.push_back(std::move(activeEvent));
+								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
+							}
+						}
+						_pendingEventConnects.clear();
 
-    PollingThread::~PollingThread()
-    {
+						for (auto& event:_pendingEventDisconnects) {
+							auto existing = std::find_if(
+								_activeEvents.begin(), _activeEvents.end(),
+								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+							if (existing == _activeEvents.end()) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Attempting to disconnect an event that is not currently connected"))});
+								continue;
+							}
 
-    }
+							assert(event._eventTypes == 0);		// field not used for disconnect
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, event._platformHandle, nullptr);
+							if (ret < 0) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Failed to remove asyncronous event to epoll queue"))});
+							} else {
+								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
+							}
+
+							_activeEvents.erase(existing);
+						}
+						_pendingEventDisconnects.clear();
+
+						// if any conduits have expired, we can go ahead and quietly remove them from the 
+						// epoll context. It's better to get an explicit disconnect, but this at least cleans
+						// up anything hanging. Note that we're expecting the conduit to have destroyed the 
+						// platform handle when it was cleaned up (in other words, that platform handle is now dangling)
+						for (auto i=_activeEvents.begin(); i!=_activeEvents.end();) {
+							if (i->_conduit.expired()) {
+								auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, i->_platformHandle, nullptr);
+								if (ret < 0)
+									Log(Error) << "Got error return from epoll_ctl when removing expired event" << std::endl;
+								i = _activeEvents.erase(i);
+							} else
+								++i;
+						}
+					}
+
+					// We wait until we unlock _interfaceLock before we trigger the promises
+					// this may change the order in which set_exception and set_value will happen
+					// But it avoids complication if there are any continuation functions that happen
+					// on the same thread and interact with the PollingThread class
+					for (auto&p:pendingExceptionsToPropagate1)
+						p.first.set_exception(std::move(p.second));
+					for (auto&p:pendingExceptionsToPropagate2)
+						p.first.set_exception(std::move(p.second));
+					for (auto&p:pendingPromisesToTrigger)
+						p.set_value();
+				}
+				
+				errno = 0;
+				const int timeoutInMilliseconds = -1;
+				int eventCount = epoll_wait(epollContext, events, dimof(events), timeoutInMilliseconds);
+				if (eventCount <= 0 || eventCount > dimof(events)) {
+					// We will actually get here during normal shutdown. When the main
+					// thread calls _backgroundThread.join(), it seems to trigger an interrupt event on the epoll system
+					// automatically. In that case, errno will be EINTR. Since this happens during normal usage,
+					// we can't treat this as an error.
+					if (errno != EINTR)
+						Throw(std::runtime_error("Failure in epoll_wait"));
+					break;
+				}
+
+				for (const auto& triggeredEvent:MakeIteratorRange(events, &events[eventCount])) {
+
+					// _interruptPollEvent exists only to break us out of "epoll_wait", so don't need to do much in this case
+					// We should just drain _interruptPollEvent of all data we can read. Since we're not using EFD_SEMAPHORE
+					// for this event, we should just have to read one
+					if (triggeredEvent.data.fd == _interruptPollEvent) {
+						uint64_t eventFdCounter=0;
+						auto ret = read(_interruptPollEvent, &eventFdCounter, sizeof(eventFdCounter));
+						assert(ret > 0);
+						continue;
+					}
+
+					auto onceEvent = std::find_if(
+						_activeOnceEvents.begin(), _activeOnceEvents.end(),
+						[&triggeredEvent](const auto& ae) { return ae._platformHandle == triggeredEvent.data.fd; });
+					if (onceEvent != _activeOnceEvents.end()) {
+						if (triggeredEvent.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+							// this is a disconnection or error event. We should return an exception and also remove
+							// the event from both the queue and our list of active events
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
+							assert(ret == 0);
+							auto promise = std::move(onceEvent->_promise);
+							_activeOnceEvents.erase(onceEvent);
+							
+							promise.set_exception(std::make_exception_ptr(std::runtime_error("")));
+						} else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
+							// This means data is available to read, or the fd is ready for writing to
+							// It's effectively a success. Still, for one-shot events, we will remove the event
+							// It seems that fd will still be registered in the epollContext, even for an event
+							// marked as a one-shot (it just gets set to a disabled state)
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
+							assert(ret == 0);
+							auto promise = std::move(onceEvent->_promise);
+							_activeOnceEvents.erase(onceEvent);
+
+							promise.set_value(AsPollingEventType(triggeredEvent.events));
+						} else {
+							Throw(std::runtime_error("Unexpected event trigger value"));
+						}
+
+						continue;
+					}
+
+					auto evnt = std::find_if(
+						_activeEvents.begin(), _activeEvents.end(),
+						[&triggeredEvent](const auto& ae) { return ae._platformHandle == triggeredEvent.data.fd; });
+					if (evnt != _activeEvents.end()) {
+						if (triggeredEvent.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+							// After any of these error cases, we always remove the event from the list of active events
+							// The client must reconnect the conduit if they want to receive anything new from it
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
+							assert(ret == 0);
+							auto conduit = evnt->_conduit.lock();
+							_activeEvents.erase(evnt);
+							if (conduit)
+								conduit->OnException(std::make_exception_ptr(std::runtime_error("")));
+						} else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
+							// Ready for read/write. We don't remove the event from the epoll context in this case
+							auto conduit = evnt->_conduit.lock();
+							if (conduit)
+								conduit->OnEvent(AsPollingEventType(triggeredEvent.events));
+						} else {
+							Throw(std::runtime_error("Unexpected event trigger value"));
+						}
+						continue;
+					}
+
+					Log(Error) << "Got an event for a platform handle that isn't in our activeEvents list" << std::endl;
+				}
+			}
+		}
+
+		void InterruptBackgroundThread()
+		{
+			ssize_t ret = 0;
+			do {
+				uint64_t counterIncrement = 1;
+				ret = write(_interruptPollEvent, &counterIncrement, sizeof(counterIncrement));
+			} while (ret < 0 && errno == EAGAIN);
+		}
+	};
+
+	auto PollingThread::RespondOnce(IOPlatformHandle platformHandle, PollingEventType::BitField typesToWaitFor) -> std::future<PollingEventType::BitField>
+	{
+		std::future<PollingEventType::BitField> result;
+		{
+			ScopedLock(_pimpl->_interfaceLock);
+			Pimpl::PendingOnceInitiate pendingInit;
+			pendingInit._eventTypes = typesToWaitFor;
+			pendingInit._platformHandle = platformHandle;
+			result = pendingInit._promise.get_future();
+			_pimpl->_pendingOnceInitiates.push_back(std::move(pendingInit));
+		}
+		_pimpl->InterruptBackgroundThread();
+		return result;
+	}
+
+	std::future<void> PollingThread::Connect(
+		const std::shared_ptr<IConduit>& conduit, 
+		PollingEventType::BitField eventTypes)
+	{
+		std::future<void> result;
+		{
+			ScopedLock(_pimpl->_interfaceLock);
+			Pimpl::ChangeEvent change;
+			change._eventTypes = eventTypes;
+			change._platformHandle = dynamic_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
+			change._conduit = conduit;
+			result = change._onChangePromise.get_future();
+			_pimpl->_pendingEventConnects.push_back(std::move(change));
+		}
+		_pimpl->InterruptBackgroundThread();
+		return result;
+	}
+
+	std::future<void> PollingThread::Disconnect(
+		const std::shared_ptr<IConduit>& conduit)
+	{
+		std::future<void> result;
+		{
+			ScopedLock(_pimpl->_interfaceLock);
+			Pimpl::ChangeEvent change;
+			change._eventTypes = 0;
+			change._platformHandle = dynamic_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
+			change._conduit = conduit;
+			result = change._onChangePromise.get_future();
+			_pimpl->_pendingEventDisconnects.push_back(std::move(change));
+		}
+		_pimpl->InterruptBackgroundThread();
+		return result;
+	}
+
+	PollingThread::PollingThread()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+
+	PollingThread::~PollingThread()
+	{
+
+	}
 
 }
 
