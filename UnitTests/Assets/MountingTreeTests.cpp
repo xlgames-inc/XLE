@@ -8,8 +8,8 @@
 #include "../../Assets/MemoryFile.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include <stdexcept>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
 using namespace Catch::literals;
 namespace UnitTests

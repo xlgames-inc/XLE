@@ -23,8 +23,8 @@
 #include "../../../Utility/Conversion.h"
 #include <cctype>
 #include <sstream>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
 #include "../../../RenderCore/Techniques/Techniques.h"
 #include "../../../RenderCore/Assets/LocalCompiledShaderSource.h"
@@ -97,7 +97,7 @@ static const int NonPreprocessorLine0 = 0;
 		const ::Assets::FileSystemWalker& walker)
 	{
 		for (auto file = walker.begin_files(); file != walker.end_files(); ++file) {
-			auto naturalName = Conversion::Convert<std::string>(file.Desc()._naturalName);
+			auto naturalName = file.Desc()._naturalName;
 			auto splitter = MakeFileNameSplitter(naturalName);
 			if (	XlEqStringI(splitter.Extension(), "h")
 				||	XlEqStringI(splitter.Extension(), "sh")

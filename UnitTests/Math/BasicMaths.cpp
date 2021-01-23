@@ -8,8 +8,8 @@
 #include "../../Math/ProjectionMath.h"
 #include "../../Math/Geometry.h"
 #include <random>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
 using namespace Catch::literals;
 namespace UnitTests

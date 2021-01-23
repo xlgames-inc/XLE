@@ -12,8 +12,8 @@
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/StringFormat.h"
 #include <stdexcept>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 #include <iostream>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS

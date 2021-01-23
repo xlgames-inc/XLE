@@ -11,8 +11,8 @@
 #include "../../../RenderCore/Metal/PipelineLayout.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../Math/Vector.h"
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 	#include "InputLayoutShaders_MSL.h"

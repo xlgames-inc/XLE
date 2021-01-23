@@ -13,8 +13,8 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ImpliedTyping.h"
 #include <string>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 #include <x86intrin.h>
 
 using namespace Catch::literals;
@@ -190,7 +190,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         for (const auto& c:src.Element("Strata").children()) {
             ExampleSerializableObject::StrataMaterial::Strata newStrata;
             for (unsigned t=0; t<dimof(TextureNames); ++t)
-                newStrata._texture[t] = c.Attribute(TextureNames[t]).Value().Cast<char>().AsString();
+                newStrata._texture[t] = c.Attribute(TextureNames[t]).Value().AsString();
 
             newStrata._endHeight = c.Attribute("EndHeight", 0.f);
             auto mappingConst = c.Attribute("Mapping", Float4(1.f, 1.f, 1.f, 1.f));
@@ -208,11 +208,11 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
     {
         mat._id = src.Attribute("MaterialId", 0);
             
-        mat._texture[0] = src.Attribute("Texture0").Value().Cast<char>().AsString();
-        mat._texture[1] = src.Attribute("Texture1").Value().Cast<char>().AsString();
-        mat._texture[2] = src.Attribute("Texture2").Value().Cast<char>().AsString();
-        mat._texture[3] = src.Attribute("Texture3").Value().Cast<char>().AsString();
-        mat._texture[4] = src.Attribute("Texture4").Value().Cast<char>().AsString();
+        mat._texture[0] = src.Attribute("Texture0").Value().AsString();
+        mat._texture[1] = src.Attribute("Texture1").Value().AsString();
+        mat._texture[2] = src.Attribute("Texture2").Value().AsString();
+        mat._texture[3] = src.Attribute("Texture3").Value().AsString();
+        mat._texture[4] = src.Attribute("Texture4").Value().AsString();
 
         // Manually parsing and converting into the array type we want
         // This is sort of a wordy approach to this; normally for vector & matrix types
@@ -232,9 +232,9 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& src,
         ExampleSerializableObject::ProcTextureSetting& mat)
     {
-        mat._name = src.Attribute("Name").Value().Cast<char>().AsString();
-        mat._texture[0] = src.Attribute("Texture0").Value().Cast<char>().AsString();
-        mat._texture[1] = src.Attribute("Texture1").Value().Cast<char>().AsString();
+        mat._name = src.Attribute("Name").Value().AsString();
+        mat._texture[0] = src.Attribute("Texture0").Value().AsString();
+        mat._texture[1] = src.Attribute("Texture1").Value().AsString();
         mat._hgrid = src.Attribute("HGrid", mat._hgrid);
         mat._gain = src.Attribute("Gain", mat._gain);
     }
@@ -314,7 +314,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                                 unsigned t=0;
                                 for (; t<dimof(TextureNames); ++t)
                                     if (XlEqString(name, TextureNames[t])) {
-                                        newStrata._texture[t] = value.Cast<char>().AsString();
+                                        newStrata._texture[t] = value.AsString();
                                         break;
                                     }
                                 if (t == dimof(TextureNames))
@@ -361,15 +361,15 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                     if (XlEqString(name, "MaterialId")) {
                         result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
                     } else if (XlEqString(name, "Texture0")) {
-                        result._texture[0] = value.Cast<char>().AsString();
+                        result._texture[0] = value.AsString();
                     } else if (XlEqString(name, "Texture1")) {
-                        result._texture[1] = value.Cast<char>().AsString();
+                        result._texture[1] = value.AsString();
                     } else if (XlEqString(name, "Texture2")) {
-                        result._texture[2] = value.Cast<char>().AsString();
+                        result._texture[2] = value.AsString();
                     } else if (XlEqString(name, "Texture3")) {
-                        result._texture[3] = value.Cast<char>().AsString();
+                        result._texture[3] = value.AsString();
                     } else if (XlEqString(name, "Texture4")) {
-                        result._texture[4] = value.Cast<char>().AsString();
+                        result._texture[4] = value.AsString();
                     } else if (XlEqString(name, "Mapping")) {
                         uint8_t buffer[512];
                         auto parsedType = ImpliedTyping::ParseFullMatch(
@@ -412,11 +412,11 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
                         Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
 
                     if (XlEqString(name, "Name")) {
-                        result._name = value.Cast<char>().AsString();
+                        result._name = value.AsString();
                     } else if (XlEqString(name, "Texture0")) {
-                        result._texture[0] = value.Cast<char>().AsString();
+                        result._texture[0] = value.AsString();
                     } else if (XlEqString(name, "Texture1")) {
-                        result._texture[1] = value.Cast<char>().AsString();
+                        result._texture[1] = value.AsString();
                     } else if (XlEqString(name, "HGrid")) {
                         result._hgrid = ImpliedTyping::ParseFullMatch<decltype(result._hgrid)>(value).value();
                     } else if (XlEqString(name, "Gain")) {
@@ -538,7 +538,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         SECTION("C++11 syntax element iteration") {
             unsigned visitedChildren = 0;
             for (auto i=rootElement.begin_children(); i!=rootElement.end_children(); ++i) {
-                std::cout << i->Name().Cast<char>() << std::endl;
+                std::cout << i->Name() << std::endl;
                 ++visitedChildren;
             }
             REQUIRE(visitedChildren == 4);
@@ -547,7 +547,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         SECTION("for(:) syntax element iteration") {
             unsigned visitedChildren = 0;
             for (const auto& i:rootElement.children()) {
-                std::cout << i.Name().Cast<char>() << std::endl;
+                std::cout << i.Name() << std::endl;
                 ++visitedChildren;
             }
             REQUIRE(visitedChildren == 4);
@@ -556,7 +556,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         SECTION("C++11 syntax attribute iteration") {
             unsigned visitedAttributes = 0;
             for (auto i=rootElement.begin_attributes(); i!=rootElement.end_attributes(); ++i) {
-                std::cout << i->Name().Cast<char>() << ":" << i->Value().Cast<char>() << std::endl;
+                std::cout << i->Name() << ":" << i->Value() << std::endl;
                 ++visitedAttributes;
             }
             REQUIRE(visitedAttributes == 3);
@@ -565,7 +565,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         SECTION("for(:) syntax attribute iteration") {
             unsigned visitedAttributes = 0;
             for (const auto& i:rootElement.attributes()) {
-                std::cout << i.Name().Cast<char>() << ":" << i.Value().Cast<char>() << std::endl;
+                std::cout << i.Name() << ":" << i.Value() << std::endl;
                 ++visitedAttributes;
             }
             REQUIRE(visitedAttributes == 3);
