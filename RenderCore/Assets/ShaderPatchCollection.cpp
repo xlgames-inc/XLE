@@ -124,7 +124,7 @@ namespace RenderCore { namespace Assets
 					if (!result._archiveName.empty())
 						Throw(FormatException("Multiple entry points found for a single technique fragment declaration", formatter.GetLocation()));
 
-					auto splitName = MakeFileNameSplitter(name.Cast<char>());
+					auto splitName = MakeFileNameSplitter(name);
 					if (splitName.DriveAndPath().IsEmpty()) {
 						char resolvedFile[MaxPath];
 						searchRules.ResolveFile(resolvedFile, splitName.FileAndExtension());
@@ -132,10 +132,10 @@ namespace RenderCore { namespace Assets
 							result._archiveName = resolvedFile;
 							result._archiveName.insert(result._archiveName.end(), splitName.ParametersWithDivider().begin(), splitName.ParametersWithDivider().end());
 						} else {
-							result._archiveName = name.Cast<char>().AsString();
+							result._archiveName = name.AsString();
 						}
 					} else {
-						result._archiveName = name.Cast<char>().AsString();
+						result._archiveName = name.AsString();
 					}
 					assert(!result._archiveName.empty());
 
@@ -149,7 +149,7 @@ namespace RenderCore { namespace Assets
 						Throw(FormatException("Could not parse element", formatter.GetLocation()));
 					result._parameterBindings.emplace(
 						std::make_pair(
-							name.Cast<char>().AsString(),
+							name.AsString(),
 							std::make_unique<ShaderSourceParser::InstantiationRequest>(DeserializeInstantiationRequest(formatter, searchRules))));
 
 					if (!formatter.TryEndElement())
@@ -179,7 +179,7 @@ namespace RenderCore { namespace Assets
 				StringSection<utf8> name;
 				if (!formatter.TryBeginElement(name))
 					Throw(FormatException("Could not parse element", formatter.GetLocation()));
-				_patches.emplace_back(std::make_pair(name.Cast<char>().AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
+				_patches.emplace_back(std::make_pair(name.AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
 
 				if (!formatter.TryEndElement())
 					Throw(FormatException("Expecting end element", formatter.GetLocation()));
@@ -193,9 +193,9 @@ namespace RenderCore { namespace Assets
 				if (XlEqString(name, "DescriptorSet")) {
 					if (!_descriptorSet.empty())
 						Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
-					_descriptorSet = value.Cast<char>().AsString();
+					_descriptorSet = value.AsString();
 				} else {
-					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name.Cast<char>() << ") in ShaderPatchCollection", formatter.GetLocation()));
+					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name << ") in ShaderPatchCollection", formatter.GetLocation()));
 				}
 			} else {
 				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));

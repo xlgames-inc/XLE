@@ -360,7 +360,7 @@ namespace Assets
 			return TranslateResult::Invalid;
 
 		// Note -- case sensitive lookup here
-		auto i = _filesAndContents.find(filename.Cast<char>().AsString());
+		auto i = _filesAndContents.find(filename.AsString());
 		if (i == _filesAndContents.end())
 			return TranslateResult::Invalid;
 

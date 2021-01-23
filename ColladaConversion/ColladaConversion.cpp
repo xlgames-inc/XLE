@@ -105,7 +105,7 @@ namespace ColladaConversion
 					"Geometry object is empty (%s)", reference.AsString().c_str()));
 			}
 
-			model.Add(geoId, scaffoldGeo->GetName().Cast<char>().AsString(), std::move(convertedMesh._geoBlock));
+			model.Add(geoId, scaffoldGeo->GetName().AsString(), std::move(convertedMesh._geoBlock));
 			geoBlockMatBindings.insert(std::make_pair(geoId, std::move(convertedMesh._matBindingSymbols)));
 		}
 
@@ -134,7 +134,7 @@ namespace ColladaConversion
 
 		model.Add(
 			{ attachedNode.GetId().GetHash() },
-			attachedNode.GetName().Cast<char>().AsString(),
+			attachedNode.GetName().AsString(),
 			NascentModel::Command {
 				geoId, std::move(skinControllers),
 				localToModelBinding,
@@ -163,7 +163,7 @@ namespace ColladaConversion
 		if (node)
 			return SkeletonBindingName(node);
 
-		auto skeleId = instController.GetSkeleton().Cast<char>().AsString();
+		auto skeleId = instController.GetSkeleton().AsString();
 		if (!skeleId.empty() && *skeleId.begin() == '#')
 			skeleId.erase(skeleId.begin());
 		return skeleId;
@@ -231,7 +231,7 @@ namespace ColladaConversion
 
 				model.Add(
 					controllerId, 
-					scaffoldController->GetName().Cast<char>().AsString(),
+					scaffoldController->GetName().AsString(),
 					NascentModel::SkinControllerBlock {
 						std::make_shared<UnboundSkinController>(std::move(controller)),
 						skeleName
@@ -618,8 +618,8 @@ namespace ColladaConversion
 					if (!formatter.TryAttribute(name, value))
 						Throw(FormatException("Malformed attribute", formatter.GetLocation()));
 					char foundFile[MaxPath];
-					searchRules.ResolveFile(foundFile, value.Cast<char>());
-					sourceFiles.push_back(std::make_pair(foundFile, name.Cast<char>().AsString()));
+					searchRules.ResolveFile(foundFile, value);
+					sourceFiles.push_back(std::make_pair(foundFile, name.AsString()));
 					continue;
 				} else if (next == InputStreamFormatter<utf8>::Blob::EndElement || next == InputStreamFormatter<utf8>::Blob::None)
 					break;

@@ -306,17 +306,17 @@ namespace Assets
     {
         std::string dir;
 		if (!baseDirectory.IsEmpty()) {
-			dir = Conversion::Convert<std::string>(_rootUTF8 + baseDirectory.AsString());
+			dir = _rootUTF8 + baseDirectory.AsString();
 			if (baseDirectory[baseDirectory.size()-1] != '/' && baseDirectory[baseDirectory.size()-1] != '\\')
 				dir += '/';
 		} else {
-			dir = Conversion::Convert<std::string>(_rootUTF8);
+			dir = _rootUTF8;
 		}
 		dir += "*";
         auto temp = OSServices::FindFiles(dir, OSServices::FindFilesFilter::File);
         std::vector<IFileSystem::Marker> res;
         res.reserve(temp.size());
-        std::regex r(regexMatchPattern.Cast<char>().AsString());
+        std::regex r(regexMatchPattern.AsString());
         for (const auto&t:temp) {
             std::smatch match;
             if (std::regex_match(t, match, r)) {
@@ -340,11 +340,11 @@ namespace Assets
     {
         std::string dir;
 		if (!baseDirectory.IsEmpty()) {
-			dir = Conversion::Convert<std::string>(_rootUTF8 + baseDirectory.AsString());
+			dir = _rootUTF8 + baseDirectory.AsString();
 			if (baseDirectory[baseDirectory.size()-1] != '/' && baseDirectory[baseDirectory.size()-1] != '\\')
 				dir += '/';
 		} else {
-			dir = Conversion::Convert<std::string>(_rootUTF8);
+			dir = _rootUTF8;
 		}
 		dir += "*";
         auto temp = OSServices::FindFiles(dir, OSServices::FindFilesFilter::Directory);
@@ -352,8 +352,7 @@ namespace Assets
         res.reserve(temp.size());
         auto rootSplit = MakeSplitPath(_rootUTF8);
         for (const auto&t:temp) {
-            auto asUTF8 = Conversion::Convert<std::basic_string<utf8>>(t);
-			auto fn = MakeFileNameSplitter(asUTF8).FileAndExtension();
+			auto fn = MakeFileNameSplitter(t).FileAndExtension();
 			if (!XlEqString(fn, ".") && !XlEqString(fn, ".."))
 				res.push_back(fn.AsString());
         }

@@ -348,7 +348,7 @@ namespace ShaderSourceParser
 		// Filter selectors based on the given relevance table
 		ParameterBox result;
 		for (const auto&p:unfiltered) {
-			auto i = relevance.find(p.Name().Cast<char>().AsString());
+			auto i = relevance.find(p.Name().AsString());
 			if (i == relevance.end())
 				continue;
 

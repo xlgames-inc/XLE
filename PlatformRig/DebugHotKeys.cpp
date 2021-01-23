@@ -62,7 +62,7 @@ namespace PlatformRig
                 auto p = std::make_pair(
                     PlatformRig::KeyId_Make(
                         StringSection<char>((const char*)keyName.begin(), (const char*)keyName.end())),
-                    Conversion::Convert<std::string>(executeString.AsString()));
+                    executeString.AsString());
                 _table.push_back(p);
             }
 

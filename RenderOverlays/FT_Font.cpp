@@ -261,7 +261,7 @@ namespace RenderOverlays
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
-					result.insert({Conversion::Convert<std::string>(name.AsString()), Conversion::Convert<std::string>(value.AsString())});
+					result.insert({name.AsString(), value.AsString()});
                     break;
                 }
 

@@ -44,7 +44,7 @@ namespace ColladaConversion
             auto* parseEnd = FastParseValue(nextSection, lod);
             if (parseEnd < nextSection.end() && *parseEnd == '_')
                 return LODDesc { lod, true, MakeStringSection(parseEnd+1, node.GetName().end()) };
-            Log(Warning) << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0." << std::endl;
+            Log(Warning) << "Node name (" << node.GetName() << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0." << std::endl;
         }
         return LODDesc { 0, false, StringSection<utf8>() };
     }
@@ -329,7 +329,7 @@ namespace ColladaConversion
                 if (file) {
                     const auto* mat = file->FindMaterial(ref._id);
                     if (mat) {
-                        newMaterialGuid = mat->_name.Cast<char>().AsString();
+                        newMaterialGuid = mat->_name.AsString();
                     }
                 }
 

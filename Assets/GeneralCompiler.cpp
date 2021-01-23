@@ -197,7 +197,7 @@ namespace Assets
 					if (!formatter.TryAttribute(name, value))
 						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
 					if (XlEqString(name, "Artifact")) {
-						result._intermediateArtifact = value.Cast<char>().AsString();
+						result._intermediateArtifact = value.AsString();
 					} else
 						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
 				}
@@ -226,7 +226,7 @@ namespace Assets
 						Throw(Utility::FormatException("Poorly formed begin element in CompileProductsFile", formatter.GetLocation()));
 
 					auto product = SerializeProduct(formatter);
-					product._type = Conversion::Convert<uint64_t>(eleName.Cast<char>());
+					product._type = Conversion::Convert<uint64_t>(eleName);
 					_compileProducts.push_back(product);
 
 					if (!formatter.TryEndElement())

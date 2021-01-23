@@ -72,7 +72,7 @@ namespace RenderCore { namespace Techniques
 					passesTechniqueRelevanceMap = true;		// considered relevant, unless we explicitly fail in the condition just below
 				}
 
-				auto relevanceI = techniqueFiltering._relevanceMap.find(sourceIterator->Name().Cast<char>().AsString());
+				auto relevanceI = techniqueFiltering._relevanceMap.find(sourceIterator->Name().AsString());
 				if (relevanceI != techniqueFiltering._relevanceMap.end()) {
 					// Set a key called "value" to the new value we want to set
 					pBoxValue.SetParameter("value", sourceIterator->RawValue(), sourceIterator->Type());
@@ -82,7 +82,7 @@ namespace RenderCore { namespace Techniques
 				}
 
 				// see if we can pass the relevance check
-				relevanceI = relevance.find(sourceIterator->Name().Cast<char>().AsString());
+				relevanceI = relevance.find(sourceIterator->Name().AsString());
 				if (relevanceI != relevance.end()) {
 					passesRelevanceMap = EvaluatePreprocessorExpression(
 						relevanceI->second,

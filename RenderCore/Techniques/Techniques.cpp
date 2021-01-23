@@ -108,9 +108,9 @@ namespace RenderCore { namespace Techniques
 						Throw(FormatException("Bad attribute in selector filtering section", source.GetLocation()));
 
 					if (XlEqStringI(filterType, "relevance")) {
-						dst._relevanceMap[selectorName.Cast<char>().AsString()] = value.Cast<char>().AsString();
+						dst._relevanceMap[selectorName.AsString()] = value.AsString();
 					} else if (XlEqStringI(filterType, "set")) {
-						dst._setValues.SetParameter(selectorName, value.Cast<char>());
+						dst._setValues.SetParameter(selectorName, value);
 					} else {
 						Throw(FormatException("Expecting \"whitelist\", \"blacklist\" or \"set\"", source.GetLocation()));
 					}
@@ -125,9 +125,9 @@ namespace RenderCore { namespace Techniques
 					Throw(FormatException("Bad attribute in parameter box list", source.GetLocation()));
 
 				if (!value.IsEmpty()) {
-					dst._setValues.SetParameter(selectorName, value.Cast<char>());
+					dst._setValues.SetParameter(selectorName, value);
 				} else {
-					dst._relevanceMap[selectorName.Cast<char>().AsString()] = "1";
+					dst._relevanceMap[selectorName.AsString()] = "1";
 				}
 			} else {
 				Throw(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));

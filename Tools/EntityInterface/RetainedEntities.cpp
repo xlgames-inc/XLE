@@ -192,7 +192,7 @@ namespace EntityInterface
 			stream << ", childList: " << childListName;
 		stream << std::endl;
 		for (auto p : entity._properties)
-			stream << StreamIndent(indent + 2) << p.Name().Cast<char>() << " = " << p.ValueAsString() << std::endl;
+			stream << StreamIndent(indent + 2) << p.Name() << " = " << p.ValueAsString() << std::endl;
 
 		for (auto c : entity._children) {
 			auto child = GetEntity(entity._doc, c.second);

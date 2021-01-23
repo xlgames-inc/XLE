@@ -701,7 +701,7 @@ namespace Utility
 	{
 		std::stringstream str;
 		for (const auto&i:box)
-			str << i.Name().Cast<char>() << '=' << i.ValueAsString() << ';';
+			str << i.Name() << '=' << i.ValueAsString() << ';';
 		return str.str();
 	}
 

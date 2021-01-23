@@ -227,7 +227,7 @@ namespace Utility
         TokenMap vars;
 		for (const auto&b:definedTokens) {
 			for (const auto&i:*b) {
-				auto name = i.Name().Cast<char>().AsString();
+				auto name = i.Name().AsString();
 				auto type = i.Type();
 
 				// For simple scalar types, attempt conversion to something

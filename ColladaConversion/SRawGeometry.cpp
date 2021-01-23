@@ -297,7 +297,7 @@ namespace ColladaConversion
 
             result->AddStream(
                 i->_sourceData, std::move(vertexMap),
-                Conversion::Convert<std::string>(i->_semantic).c_str(), i->_semanticIndex);
+                i->_semantic.c_str(), i->_semanticIndex);
         }
 
         return std::move(result);
@@ -886,7 +886,7 @@ namespace ColladaConversion
 					GuidReference(Hash64(nodeId), jointSourceRef._fileHash), resolveContext, 
 					&IDocScopeIdResolver::FindNodeBySid);
 				if (node) {
-					result[remappedElementIndex] = node.GetName().Cast<char>().AsString();
+					result[remappedElementIndex] = node.GetName().AsString();
 				} else {
 					result[remappedElementIndex] = nodeId;
 				}
