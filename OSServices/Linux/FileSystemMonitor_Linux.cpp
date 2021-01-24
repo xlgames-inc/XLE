@@ -118,10 +118,6 @@ namespace OSServices
 				for (;;) {
 					/* Read some events. */
 					auto len = read(_inotify_fd, buf, sizeof buf);
-					/*if (len == -1 && errno != EAGAIN) {
-						cancelPolling = true;
-						break;
-					}*/
 					if (len <= 0)
 						break;
 
@@ -130,7 +126,7 @@ namespace OSServices
 						event = (const struct inotify_event *) ptr;
 						for (const auto&m:_monitoredDirectories)
 							if (m.second->wd() == event->wd)
-								m.second->OnChange(event->name);
+								m.second->OnChange(event->name);		// note that we've got _monitoredDirectoriesLock locked while calling this
 					}
 				}
 			}
@@ -192,7 +188,7 @@ namespace OSServices
 			}
 
 			if (_pimpl->_conduit->_inotify_fd == -1) {
-				_pimpl->_conduit->_inotify_fd = inotify_init();
+				_pimpl->_conduit->_inotify_fd = inotify_init1(IN_NONBLOCK);		// requires Linux 2.6.27
 				assert(_pimpl->_conduit->_inotify_fd > 0);
 				startMonitoring = true;
 			}
