@@ -33,7 +33,7 @@ namespace RenderCore { namespace Assets
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(newDep);
+        auto depState = ::Assets::IntermediatesStore::GetDependentFileState(newDep);
         auto existing = std::find_if(
             deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) { return test._filename == depState._filename; });
@@ -45,7 +45,7 @@ namespace RenderCore { namespace Assets
         StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
         StringSection<::Assets::ResChar> destinationFile,
 		::Assets::ArtifactFuture& compileMarker,
-		const ::Assets::IntermediateAssets::Store& destinationStore)
+		const ::Assets::IntermediatesStore& destinationStore)
     {
 		std::vector<::Assets::DependentFileState> deps;
 		TRY
@@ -212,11 +212,11 @@ namespace RenderCore { namespace Assets
 
         MatCompilerMarker(
             ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-            const ::Assets::IntermediateAssets::Store& store);
+            const ::Assets::IntermediatesStore& store);
         ~MatCompilerMarker();
     private:
         ::Assets::rstring _materialFilename, _modelFilename;
-        const ::Assets::IntermediateAssets::Store* _store;
+        const ::Assets::IntermediatesStore* _store;
 
         void GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
     };
@@ -270,7 +270,7 @@ namespace RenderCore { namespace Assets
 
     MatCompilerMarker::MatCompilerMarker(
         ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-        const ::Assets::IntermediateAssets::Store& store)
+        const ::Assets::IntermediatesStore& store)
     : _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
     MatCompilerMarker::~MatCompilerMarker() {}
 

@@ -266,7 +266,7 @@ namespace ShaderSourceParser
 						result._dependencies.insert(
 							result._dependencies.end(),
 							expanded._dependencies.begin(), expanded._dependencies.end());
-						result._dependencies.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resolvedFN));
+						result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(resolvedFN));
 					}
 				}
 			}

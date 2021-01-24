@@ -4,10 +4,11 @@
 
 #pragma once
 
-#include "GenericFuture.h"
+#include "IAsyncMarker.h"
 #include "AssetsCore.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
+#include <functional>
 
 namespace Assets
 {
@@ -53,6 +54,10 @@ namespace Assets
 	private:
 		std::vector<NameAndArtifact> _artifacts;
     };
+
+	void QueueCompileOperation(
+		const std::shared_ptr<::Assets::ArtifactFuture>& future,
+		std::function<void(::Assets::ArtifactFuture&)>&& operation);
 
 	Blob GetErrorMessage(const ArtifactFuture& artifactList);
 

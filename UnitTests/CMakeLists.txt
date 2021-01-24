@@ -13,6 +13,7 @@ add_executable(
     OSServices/OSServicesAsync.cpp
     ConsoleRig/DynLibraryBinding.cpp
     Assets/MountingTreeTests.cpp
+    Assets/AssetCompilerTests.cpp
     )
 
 xle_configure_executable(UnitTests-Core)

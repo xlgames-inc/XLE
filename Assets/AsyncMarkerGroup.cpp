@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AsyncMarkerGroup.h"
-#include "GenericFuture.h"
+#include "IAsyncMarker.h"
 #include <memory>
 #include <algorithm>
 

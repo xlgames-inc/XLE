@@ -12,7 +12,7 @@
 #include <memory>
 
 namespace RenderCore { class ShaderService; }
-namespace Assets { class IAssetCompiler; }
+// namespace Assets { class IAssetCompiler; }
 
 namespace RenderCore { namespace Assets
 {

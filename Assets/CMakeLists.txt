@@ -12,18 +12,15 @@ set(Src
     CompilationThread.cpp
     CompileAndAsyncManager.cpp
     ConfigFileContainer.cpp
-    GeneralCompiler.cpp
     IntermediateAssets.cpp
+    IntermediateCompilers.cpp
     MainFileSystem.cpp
     MemoryFile.cpp
     MountingTree.cpp
     NascentChunk.cpp
     OSFileSystem.cpp
-    RawFileAsset.cpp)
-
-if (WIN32)
-    list(APPEND Src AsyncLoadOperation_WinAPI.cpp)
-endif ()
+    RawFileAsset.cpp
+    Legacy/AssetsLegacy.cpp)
 
 add_library(Assets STATIC ${Src})
 xle_configure_library(Assets)

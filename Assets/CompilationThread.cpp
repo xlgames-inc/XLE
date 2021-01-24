@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "CompilationThread.h"
+#include "IArtifact.h"
 #include "AssetsCore.h"
 #include "IArtifact.h"
 #include "../ConsoleRig/GlobalServices.h"

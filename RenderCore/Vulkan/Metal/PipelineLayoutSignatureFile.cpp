@@ -344,7 +344,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (!block || !fileSize)
 				Throw(::Exceptions::BasicLabel("Failure while attempting to load descriptor set signature file (%s)", filename.AsString().c_str()));
 
-			_dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
+			_dependentFileState = Assets::IntermediatesStore::GetDependentFileState(filename);
         
 
 			InputStreamFormatter<char> formatter(

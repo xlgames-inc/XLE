@@ -2,7 +2,7 @@
 
 #include "AssetsCore.h"
 #include "DepVal.h"
-#include "GenericFuture.h"
+#include "IAsyncMarker.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include <memory>

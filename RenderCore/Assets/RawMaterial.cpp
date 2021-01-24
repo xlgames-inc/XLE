@@ -532,7 +532,7 @@ namespace RenderCore { namespace Assets
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(newDep);
+        auto depState = ::Assets::IntermediatesStore::GetDependentFileState(newDep);
         auto existing = std::find_if(
             deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) { return test._filename == depState._filename; });

@@ -6,18 +6,13 @@
 
 #pragma once
 
-#include "AssetsCore.h"
-#include "../Core/Prefix.h"
-#include "../Core/Types.h"
 #include <memory>
-#include <functional>
-#include <vector>
-#include <assert.h>
 
 namespace Assets
 {
     class DependencyValidation; class DependentFileState; 
-    namespace IntermediateAssets { class Store; }
+    class IntermediatesStore;
+	class IntermediateCompilers;
     class ArchiveCache;
 
     class IPollingAsyncProcess
@@ -32,38 +27,7 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class IArtifactCompileMarker;
-
-	class IAssetCompiler
-	{
-	public:
-		virtual std::shared_ptr<IArtifactCompileMarker> Prepare(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
-		virtual std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
-		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode) = 0;
-		virtual void StallOnPendingOperations(bool cancelAll) = 0;
-		virtual ~IAssetCompiler();
-	};
-
-	class CompilerSet
-	{
-	public:
-		void AddCompiler(const std::shared_ptr<IAssetCompiler>& processor);
-        void RemoveCompiler(const IAssetCompiler& compiler);
-		std::shared_ptr<IArtifactCompileMarker> Prepare(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
-		std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount);
-		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
-		void StallOnPendingOperations(bool cancelAll);
-
-		CompilerSet();
-		~CompilerSet();
-	protected:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
-	};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
+	class IntermediateCompilers;
 
     class CompileAndAsyncManager
     {
@@ -72,10 +36,10 @@ namespace Assets
 
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
 
-		CompilerSet& GetIntermediateCompilers();
+		IntermediateCompilers& GetIntermediateCompilers();
 
-        const std::shared_ptr<IntermediateAssets::Store>&	GetIntermediateStore();
-		const std::shared_ptr<IntermediateAssets::Store>&	GetShadowingStore();
+        const std::shared_ptr<IntermediatesStore>&	GetIntermediateStore();
+		const std::shared_ptr<IntermediatesStore>&	GetShadowingStore();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();

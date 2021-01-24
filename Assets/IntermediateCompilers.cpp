@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "GeneralCompiler.h"
+#include "IntermediateCompilers.h"
 #include "AssetUtils.h"
 #include "AssetServices.h"
 #include "AssetsCore.h"
@@ -13,7 +13,6 @@
 #include "CompileAndAsyncManager.h"
 #include "DepVal.h"
 #include "IntermediateAssets.h"
-#include "CompilationThread.h"
 #include "IArtifact.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../OSServices/Log.h"
@@ -29,21 +28,19 @@
 #include "../Utility/Conversion.h"
 #include <regex>
 #include <set>
+#include <unordered_map>
 
 namespace Assets 
 {
-    class GeneralCompiler::Pimpl
-    {
-    public:
-		std::vector<std::shared_ptr<ExtensionAndDelegate>> _delegates;
-
-        Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
-		std::shared_ptr<IntermediateAssets::Store> _store;
-
-		Pimpl() {}
-		Pimpl(const Pimpl&) = delete;
-		Pimpl& operator=(const Pimpl&) = delete;
-    };
+	struct ExtensionAndDelegate
+	{
+		IntermediateCompilers::RegisteredCompilerId _registrationId;
+		std::vector<uint64_t> _assetTypes;
+		std::regex _regexFilter;
+		std::string _name;
+		ConsoleRig::LibVersionDesc _srcVersion;
+		IntermediateCompilers::CompileOperationDelegate _delegate;
+	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -116,7 +113,7 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class GeneralCompiler::Marker : public IArtifactCompileMarker
+    class IntermediateCompilers::Marker : public IArtifactCompileMarker
     {
     public:
         std::shared_ptr<IArtifact> GetExistingAsset() const;
@@ -124,28 +121,28 @@ namespace Assets
         StringSection<ResChar> Initializer() const;
 
         Marker(
-            StringSection<ResChar> requestName, uint64 typeCode,
+            StringSection<ResChar> requestName, uint64_t typeCode,
             std::shared_ptr<ExtensionAndDelegate> delegate,
-			std::shared_ptr<GeneralCompiler> compiler);
+			std::shared_ptr<IntermediatesStore> intermediateStore);
         ~Marker();
     private:
         std::weak_ptr<ExtensionAndDelegate> _delegate;
-		std::weak_ptr<GeneralCompiler> _compiler;
+		std::weak_ptr<IntermediatesStore> _intermediateStore;
         rstring _requestName;
-        uint64 _typeCode;
+        uint64_t _typeCode;
 
 		static void PerformCompile(
-			const GeneralCompiler::ExtensionAndDelegate& delegate,
+			const ExtensionAndDelegate& delegate,
 			uint64_t typeCode, StringSection<ResChar> initializer, 
 			ArtifactFuture& compileMarker,
-			const IntermediateAssets::Store* destinationStore);
+			const IntermediatesStore* destinationStore);
     };
 
 	static void MakeIntermediateName(
 		ResChar destination[], size_t destinationSize,
 		StringSection<> initializer,
 		StringSection<> postfix,
-		const IntermediateAssets::Store& store)
+		const IntermediatesStore& store)
     {
 		store.MakeIntermediateName(destination, (unsigned)destinationSize, initializer);
 		XlCatString(destination, destinationSize, "-");
@@ -247,10 +244,10 @@ namespace Assets
 	CompileProductsFile::CompileProductsFile() {}
 	CompileProductsFile::~CompileProductsFile() {}
 
-    std::shared_ptr<IArtifact> GeneralCompiler::Marker::GetExistingAsset() const
+    std::shared_ptr<IArtifact> IntermediateCompilers::Marker::GetExistingAsset() const
     {
-		auto c = _compiler.lock();
-        if (!c) return nullptr;
+		auto st = _intermediateStore.lock();
+        if (!st) return nullptr;
 
 		// Look for a compile products file from a previous compilation operation
 		// todo -- we should store these compile product tables in an ArchiveCache
@@ -258,7 +255,7 @@ namespace Assets
 		MakeIntermediateName(
 			intermediateName, dimof(intermediateName),
 			Initializer(),  "compileprod",
-			*c->_pimpl->_store);
+			*st);
 
 		size_t fileSize;
 		auto fileData = TryLoadFileAsMemoryBlock(intermediateName, &fileSize);
@@ -272,12 +269,12 @@ namespace Assets
 		if (!product) return nullptr;
 
 		// we found a product, return a FileArtifact for it.
-		auto depVal = c->_pimpl->_store->MakeDependencyValidation(product->_intermediateArtifact);
+		auto depVal = st->MakeDependencyValidation(product->_intermediateArtifact);
 		return std::make_shared<FileArtifact>(product->_intermediateArtifact, depVal);
     }
 
 	static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
-		const IntermediateAssets::Store& store,
+		const IntermediatesStore& store,
 		IteratorRange<const ICompileOperation::OperationResult*> chunks,
 		StringSection<> initializer,
 		StringSection<> targetName,
@@ -293,11 +290,11 @@ namespace Assets
 		return {artifactDepVal, intermediateName};
 	}
 
-	void GeneralCompiler::Marker::PerformCompile(
-		const GeneralCompiler::ExtensionAndDelegate& delegate,
+	void IntermediateCompilers::Marker::PerformCompile(
+		const ExtensionAndDelegate& delegate,
 		uint64_t typeCode, StringSection<ResChar> initializer, 
 		ArtifactFuture& compileMarker,
-		const IntermediateAssets::Store* destinationStore)
+		const IntermediatesStore* destinationStore)
     {
 		std::vector<DependentFileState> deps;
 
@@ -386,18 +383,29 @@ namespace Assets
 		} CATCH_END
     }
 
-    std::shared_ptr<ArtifactFuture> GeneralCompiler::Marker::InvokeCompile() const
+	class IntermediateCompilers::Pimpl
     {
-        auto c = _compiler.lock();
-        if (!c) return nullptr;
+    public:
+		Threading::Mutex _delegatesLock;
+		std::vector<std::shared_ptr<ExtensionAndDelegate>> _delegates;
+		std::unordered_multimap<RegisteredCompilerId, std::string> _extensionsAndDelegatesMap;
+		std::shared_ptr<IntermediatesStore> _store;
+		RegisteredCompilerId _nextCompilerId = 1;
 
+		Pimpl() {}
+		Pimpl(const Pimpl&) = delete;
+		Pimpl& operator=(const Pimpl&) = delete;
+    };
+
+    std::shared_ptr<ArtifactFuture> IntermediateCompilers::Marker::InvokeCompile() const
+    {
         auto backgroundOp = std::make_shared<ArtifactFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
 		std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
-		std::weak_ptr<IntermediateAssets::Store> weakStore = c->_pimpl->_store;
+		std::weak_ptr<IntermediatesStore> weakStore = _intermediateStore;
 		QueueCompileOperation(
 			backgroundOp,
 			[weakDelegate, weakStore, typeCode, requestName](ArtifactFuture& op) {
@@ -414,81 +422,118 @@ namespace Assets
         return std::move(backgroundOp);
     }
 
-    StringSection<ResChar> GeneralCompiler::Marker::Initializer() const
+    StringSection<ResChar> IntermediateCompilers::Marker::Initializer() const
     {
         return MakeStringSection(_requestName);
     }
 
-	GeneralCompiler::Marker::Marker(
-        StringSection<ResChar> requestName, uint64 typeCode,
+	IntermediateCompilers::Marker::Marker(
+        StringSection<ResChar> requestName, uint64_t typeCode,
         std::shared_ptr<ExtensionAndDelegate> delegate,
-		std::shared_ptr<GeneralCompiler> compiler)
-    : _delegate(std::move(delegate)), _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode)
+		std::shared_ptr<IntermediatesStore> intermediateStore)
+    : _delegate(std::move(delegate)), _intermediateStore(std::move(intermediateStore))
+	, _requestName(requestName.AsString()), _typeCode(typeCode)
     {}
 
-	GeneralCompiler::Marker::~Marker() {}
+	IntermediateCompilers::Marker::~Marker() {}
 
-    std::shared_ptr<IArtifactCompileMarker> GeneralCompiler::Prepare(
-        uint64 typeCode, 
+    std::shared_ptr<IArtifactCompileMarker> IntermediateCompilers::Prepare(
+        uint64_t typeCode, 
         const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
-		std::shared_ptr<ExtensionAndDelegate> delegate;
-
-			// Find the compiler that can handle this asset type (just by looking at the extension)
-		for (const auto&d:_pimpl->_delegates) {
-			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter)) {
-				delegate = d;
-				break;
-			}
-		}
-
-		if (!delegate)
-			return nullptr;
-
-        return std::make_shared<Marker>(initializers[0], typeCode, delegate, shared_from_this());
-    }
-
-	std::vector<uint64_t> GeneralCompiler::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
-	{
+		ScopedLock(_pimpl->_delegatesLock);
 		for (const auto&d:_pimpl->_delegates)
 			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter))
-				return d->_assetTypes;
-		return {};
+				return std::make_shared<Marker>(initializers[0], typeCode, d, _pimpl->_store);
+
+		return nullptr;
+    }
+
+	auto IntermediateCompilers::RegisterCompiler(
+		const std::string& initializerRegexFilter,
+		IteratorRange<const uint64_t*> outputAssetTypes,
+		const std::string& name,
+		ConsoleRig::LibVersionDesc srcVersion,
+		CompileOperationDelegate&& delegate
+		) -> CompilerRegistration
+	{
+		ScopedLock(_pimpl->_delegatesLock);
+		auto registration = std::make_shared<ExtensionAndDelegate>();
+		auto result = registration->_registrationId = _pimpl->_nextCompilerId++;
+		registration->_assetTypes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
+		registration->_regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
+		registration->_name = name;
+		registration->_srcVersion = srcVersion;
+		registration->_delegate = std::move(delegate);
+		_pimpl->_delegates.push_back(registration);
+		return { result };
 	}
 
-	std::vector<std::pair<std::string, std::string>> GeneralCompiler::GetExtensionsForType(uint64_t typeCode)
+	void IntermediateCompilers::DeregisterCompiler(RegisteredCompilerId id)
+	{
+		ScopedLock(_pimpl->_delegatesLock);
+		_pimpl->_extensionsAndDelegatesMap.erase(id);
+		for (auto i=_pimpl->_delegates.begin(); i!=_pimpl->_delegates.end();) {
+			if ((*i)->_registrationId == id) {
+				i = _pimpl->_delegates.erase(i);
+			} else {
+				++i;
+			}
+		}
+	}
+
+	std::vector<std::pair<std::string, std::string>> IntermediateCompilers::GetExtensionsForType(uint64_t typeCode)
 	{
 		std::vector<std::pair<std::string, std::string>> ext;
+
+		ScopedLock(_pimpl->_delegatesLock);
 		for (const auto&d:_pimpl->_delegates)
 			if (std::find(d->_assetTypes.begin(), d->_assetTypes.end(), typeCode) != d->_assetTypes.end()) {
-				auto i = d->_extensionsForOpenDlg.begin();
-				for (;;) {
-					while (i != d->_extensionsForOpenDlg.end() && *i == ',') ++i;
-					auto end = std::find(i, d->_extensionsForOpenDlg.end(), ',');
-					if (end == i) break;
-					ext.push_back(std::make_pair(std::string(i, end), d->_name));
-					i = end;
-				}
+				// This compiler can make this type. Let's check what extensions have been registered
+				auto r = _pimpl->_extensionsAndDelegatesMap.equal_range(d->_registrationId);
+				for (auto i=r.first; i!=r.second; ++i)
+					ext.push_back({i->second, d->_name});
 			}
 		return ext;
 	}
 
-    void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
+	void IntermediateCompilers::RegisterExtensions(
+		const std::string& commaSeparatedExtensions, 
+		RegisteredCompilerId associatedCompiler)
+	{
+		ScopedLock(_pimpl->_delegatesLock);
+		auto i = commaSeparatedExtensions.begin();
+		for (;;) {
+			while (i != commaSeparatedExtensions.end() && (*i == ' ' || *i == '\t' || *i == ',')) ++i;
+			if (i == commaSeparatedExtensions.end())
+				break;
+
+			if (*i == '.') ++i;		// if the token begins with a '.', we should just skip over and ignore it
+
+			auto tokenBegin = i;
+			auto lastNonWhitespace = commaSeparatedExtensions.end();	// set to a sentinel, to distinquish never-set from set-to-first
+			while (i != commaSeparatedExtensions.end() && *i != ',') {
+				if (*i != ' ' && *i != '\t') lastNonWhitespace = i;
+			}
+			if (lastNonWhitespace != commaSeparatedExtensions.end()) {
+				_pimpl->_extensionsAndDelegatesMap.insert({associatedCompiler, std::string{tokenBegin, lastNonWhitespace+1}});
+			}
+		}
+	}
+
+    void IntermediateCompilers::StallOnPendingOperations(bool cancelAll)
     {
 		// todo -- must reimplement, because compilation operations now occur on the main thread pool, rather than a custom thread
 		assert(0);
     }
 
-	GeneralCompiler::GeneralCompiler(
-		IteratorRange<const ExtensionAndDelegate*> delegates,
-		const std::shared_ptr<IntermediateAssets::Store>& store)
+	IntermediateCompilers::IntermediateCompilers(
+		const std::shared_ptr<IntermediatesStore>& store)
 	{ 
 		_pimpl = std::make_shared<Pimpl>(); 
 		_pimpl->_store = store;
-		for (const auto&d:delegates)
-			_pimpl->_delegates.emplace_back(std::make_shared<ExtensionAndDelegate>(d));
 	}
-	GeneralCompiler::~GeneralCompiler() {}
+	IntermediateCompilers::~IntermediateCompilers() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -526,9 +571,9 @@ namespace Assets
 					auto kind = compilerDesc->GetFileKind(c);
 					_kinds.push_back({
 						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
-						std::string{kind._regexFilter},
-						std::string{kind._name},
-						kind._extensionsForOpenDlg ? std::string{kind._extensionsForOpenDlg} : std::string{}});
+						kind._regexFilter,
+						kind._name,
+						kind._extensionsForOpenDlg});
 				}
 			}
 		}
@@ -558,11 +603,12 @@ namespace Assets
 		return result;
 	}
 
-	std::vector<GeneralCompiler::ExtensionAndDelegate> DiscoverCompileOperations(
+	std::vector<IntermediateCompilers::RegisteredCompilerId> DiscoverCompileOperations(
+		IntermediateCompilers& compilerManager,
 		StringSection<> librarySearch,
 		const DirectorySearchRules& searchRules)
 	{
-		std::vector<GeneralCompiler::ExtensionAndDelegate> result;
+		std::vector<IntermediateCompilers::RegisteredCompilerId> result;
 
 		auto candidateCompilers = searchRules.FindFiles(librarySearch);
 		for (auto& c : candidateCompilers) {
@@ -573,22 +619,20 @@ namespace Assets
 				if (!library._library->TryGetVersion(srcVersion))
 					Throw(std::runtime_error("Querying version returned an error"));
 
-				std::vector<GeneralCompiler::ExtensionAndDelegate> opsFromThisLibrary;
+				std::vector<IntermediateCompilers::RegisteredCompilerId> opsFromThisLibrary;
 				auto lib = library._library;
 				auto fn = library._createCompileOpFunction;
 				for (const auto&kind:library._kinds) {
-					opsFromThisLibrary.emplace_back(
-						GeneralCompiler::ExtensionAndDelegate {
-							kind._assetTypes,
-							std::regex{kind._identifierFilter, std::regex_constants::icase}, 
-							kind._name + " (" + c + ")",
-							kind._extensionsForOpenDlg,
-							srcVersion,
-							[lib, fn](StringSection<> identifier) {
-								(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
-								return (*fn)(identifier);
-							}
+					auto registrationId = compilerManager.RegisterCompiler(
+						kind._identifierFilter,
+						MakeIteratorRange(kind._assetTypes),
+						kind._name + " (" + c + ")",
+						srcVersion,
+						[lib, fn](StringSection<> identifier) {
+							(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
+							return (*fn)(identifier);
 						});
+					opsFromThisLibrary.push_back(registrationId._registrationId);
 				}
 
 				result.insert(result.end(), opsFromThisLibrary.begin(), opsFromThisLibrary.end());

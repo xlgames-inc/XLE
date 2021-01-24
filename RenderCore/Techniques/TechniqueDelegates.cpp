@@ -111,7 +111,7 @@ namespace RenderCore { namespace Techniques
 
 			// Fall back to loading the file directly (without any real preprocessing)
 			SourceCodeWithRemapping result;
-			result._dependencies.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(filename));
+			result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
 
 			size_t sizeResult = 0;
 			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);

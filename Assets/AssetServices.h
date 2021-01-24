@@ -15,23 +15,8 @@ namespace Assets
     class CompileAndAsyncManager;
     class InvalidAssetManager;
 
-    template<typename Type>
-        class AttachableSingleton
-    {
-    public:
-        static Type& GetInstance() { assert(s_instance); return *s_instance; }
-        static bool HasInstance() { return s_instance != nullptr; }
 
-        void AttachCurrentModule();
-        void DetachCurrentModule();
-
-        AttachableSingleton();
-        ~AttachableSingleton();
-    protected:
-        static Type* s_instance;
-    };
-
-    class Services : public AttachableSingleton<Services>
+    class Services
     {
     public:
         static AssetSetManager& GetAssetSets() { return *GetInstance()._assetSets; }
@@ -43,8 +28,8 @@ namespace Assets
             typedef unsigned BitField;
         };
 
-        void AttachCurrentModule() { AttachableSingleton<Services>::AttachCurrentModule(); }
-        void DetachCurrentModule() { AttachableSingleton<Services>::DetachCurrentModule(); }
+        static Services& GetInstance();
+        static bool HasInstance();
 
         Services(Flags::BitField flags=0);
         ~Services();
@@ -56,36 +41,6 @@ namespace Assets
         std::unique_ptr<CompileAndAsyncManager> _asyncMan;
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<typename Type>
-        AttachableSingleton<Type>::AttachableSingleton()
-    {
-        assert(s_instance == nullptr); 
-    }
-
-    template<typename Type>
-        AttachableSingleton<Type>::~AttachableSingleton()
-    {
-        assert(s_instance == nullptr);
-    }
-
-    template<typename Type>
-        void AttachableSingleton<Type>::AttachCurrentModule()
-    {
-        assert(s_instance==nullptr);
-        s_instance = (Type*)this;
-    }
-
-    template<typename Type>
-        void AttachableSingleton<Type>::DetachCurrentModule()
-    {
-        assert(s_instance==this);
-        s_instance = nullptr;
-    }
-
-    template<typename Type>
-        Type* AttachableSingleton<Type>::s_instance = nullptr;
 }
 
 

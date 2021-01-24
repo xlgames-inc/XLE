@@ -53,11 +53,11 @@
       <Filter>FileSystems</Filter>
     </ClInclude>
     <ClInclude Include="..\NascentChunk.h" />
-    <ClInclude Include="..\GenericFuture.h" />
+    <ClInclude Include="..\IAsyncMarker.h" />
     <ClInclude Include="..\IArtifact.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
-    <ClInclude Include="..\GeneralCompiler.h">
+    <ClInclude Include="..\IntermediateCompilers.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
     <ClInclude Include="..\ICompileOperation.h">

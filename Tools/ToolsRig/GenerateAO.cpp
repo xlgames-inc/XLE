@@ -752,13 +752,12 @@ namespace ToolsRig
             *_threadContext, destinationFile,
             *_aoGen, model, material, &searchRules);
 
-        using Store = ::Assets::IntermediateAssets::Store;
         return CompileResult 
             {
                 std::vector<::Assets::DependentFileState>
                     {
-                        Store::GetDependentFileState(modelFilename),
-                        Store::GetDependentFileState(materialFilename)
+                        ::Assets::IntermediatesStore::GetDependentFileState(modelFilename),
+                        ::Assets::IntermediatesStore::GetDependentFileState(materialFilename)
                     },
                 MakeFileNameSplitter(modelFilename).DriveAndPath().AsString()
             };
@@ -776,7 +775,7 @@ namespace ToolsRig
 			const std::string& modelFilename,
 			const std::string& materialFilename,
 			const std::string& destinationFilename,
-			const ::Assets::IntermediateAssets::Store& store);
+			const ::Assets::IntermediatesStore& store);
         ~PollingOp();
     private:
         std::weak_ptr<Pimpl> _pimpl;
@@ -784,7 +783,7 @@ namespace ToolsRig
 		std::string _modelFilename;
 		std::string _materialFilename;
 		std::string _destinationFilename;
-		const ::Assets::IntermediateAssets::Store* _store;
+		const ::Assets::IntermediatesStore* _store;
     };
 
     auto AOSupplementCompiler::PollingOp::Update() -> Result::Enum
@@ -823,7 +822,7 @@ namespace ToolsRig
 		const std::string& modelFilename,
 		const std::string& materialFilename,
 		const std::string& destinationFilename,
-		const ::Assets::IntermediateAssets::Store& store)
+		const ::Assets::IntermediatesStore& store)
     : _pimpl(std::move(pimpl))
     , _queuedOp(std::move(queuedOp))
 	, _modelFilename(modelFilename)
@@ -847,7 +846,7 @@ namespace ToolsRig
             StringSection<::Assets::ResChar> modelFilename,
             StringSection<::Assets::ResChar> materialFilename,
             uint64 typeCode,
-            const ::Assets::IntermediateAssets::Store& store,
+            const ::Assets::IntermediatesStore& store,
             std::shared_ptr<AOSupplementCompiler> compiler);
         ~Marker();
     private:
@@ -855,7 +854,7 @@ namespace ToolsRig
         ::Assets::rstring _initializer;
         std::weak_ptr<AOSupplementCompiler> _compiler;
         uint64 _typeCode;
-        const ::Assets::IntermediateAssets::Store* _store;
+        const ::Assets::IntermediatesStore* _store;
         void MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
     };
 
@@ -905,7 +904,7 @@ namespace ToolsRig
         StringSection<::Assets::ResChar> modelFilename,
         StringSection<::Assets::ResChar> materialFilename,
         uint64 typeCode,
-        const ::Assets::IntermediateAssets::Store& store,
+        const ::Assets::IntermediatesStore& store,
         std::shared_ptr<AOSupplementCompiler> compiler)
     : _modelFilename(modelFilename.AsString()), _materialFilename(materialFilename.AsString())
     , _typeCode(typeCode), _store(&store), _compiler(std::move(compiler))

@@ -33,7 +33,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetSetManager.h"
-#include "../../Assets/GenericFuture.h"
+#include "../../Assets/IAsyncMarker.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/PtrUtils.h"
 

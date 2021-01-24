@@ -1090,7 +1090,7 @@ namespace RenderCore { namespace Metal_DX11
             // Note that this isn't really enough -- we need dependencies on
             // this file, and any dependencies it has! Really, our dependency
             // is on the product asset, not the source asset.
-        _depFiles.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resolvedName));
+        _depFiles.push_back(::Assets::IntermediatesStore::GetDependentFileState(resolvedName));
 
         XlCatString(resolvedName, ":null:lib_");
         XlCatString(resolvedName, _shaderProfile.c_str());

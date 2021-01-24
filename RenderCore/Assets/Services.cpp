@@ -12,7 +12,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/GeneralCompiler.h"
+#include "../../Assets/IntermediateCompilers.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -61,7 +61,7 @@ namespace RenderCore { namespace Assets
 		auto compileOps = ::Assets::DiscoverCompileOperations("*Conversion.dll");
 		if (compileOps.empty()) return;
 
-		_modelCompilers = std::make_shared<::Assets::GeneralCompiler>(
+		_modelCompilers = std::make_shared<::Assets::IntermediateCompilers>(
 			MakeIteratorRange(compileOps),
 			::Assets::Services::GetAsyncMan().GetIntermediateStore());
 		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(_modelCompilers);

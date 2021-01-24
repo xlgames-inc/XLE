@@ -10,22 +10,18 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringUtils.h"
 
+namespace Utility { class OutputStream; }
+namespace OSServices { class BasicFile; }
+
 namespace Assets
 {
 	class DependentFileState;
 	class DependencyValidation;
-	class IAssetCompiler;
 	class IArtifactCompileMarker;
 	class IFileInterface;
-}
 
-namespace Utility { class OutputStream; }
-namespace OSServices { class BasicFile; }
-
-namespace Assets { namespace IntermediateAssets
-{
 	/// <summary>Archive of compiled intermediate assets</summary>
-	/// When compile operations succeed, the resulting artifacts are cached in an IntermediateAssets::Store,
+	/// When compile operations succeed, the resulting artifacts are cached in an IntermediatesStore,
 	/// which is typically in permanent memory (ie, on disk).
 	///
 	/// When working with multiple different versions of the engine codebase, it's necessary to have separate
@@ -37,7 +33,7 @@ namespace Assets { namespace IntermediateAssets
 	/// executables (eg, a game executable and a GUI tool executable) which we want to use with the same 
 	/// source assets, but they may have been compiled with different version of the engine code. This system
 	/// allows both executables to maintain separate copies of the intermediate store.
-	class Store
+	class IntermediatesStore
 	{
 	public:
 		using DepVal = std::shared_ptr<DependencyValidation>;
@@ -66,10 +62,10 @@ namespace Assets { namespace IntermediateAssets
 
         static void ClearDependencyData();
 
-		Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal = false);
-		~Store();
-		Store(const Store&) = delete;
-		Store& operator=(const Store&) = delete;
+		IntermediatesStore(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal = false);
+		~IntermediatesStore();
+		IntermediatesStore(const IntermediatesStore&) = delete;
+		IntermediatesStore& operator=(const IntermediatesStore&) = delete;
 
 	protected:
 		mutable std::string _resolvedBaseDirectory;
@@ -85,7 +81,7 @@ namespace Assets { namespace IntermediateAssets
 
 		void ResolveBaseDirectory() const;
 	};
-}}
+}
 
 
 

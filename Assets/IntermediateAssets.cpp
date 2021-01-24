@@ -33,7 +33,7 @@
 #endif
 #include <memory>
 
-namespace Assets { namespace IntermediateAssets
+namespace Assets
 {
 
     static ResChar ConvChar(ResChar input) 
@@ -41,7 +41,7 @@ namespace Assets { namespace IntermediateAssets
         return (ResChar)((input == '\\')?'/':tolower(input));
     }
 
-    void    Store::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<ResChar> firstInitializer) const
+    void    IntermediatesStore::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<ResChar> firstInitializer) const
     {
 		ResolveBaseDirectory();
 
@@ -142,17 +142,17 @@ namespace Assets { namespace IntermediateAssets
         }
     }
 
-    void Store::ClearDependencyData() {
+    void IntermediatesStore::ClearDependencyData() {
         ScopedLock(RetainedRecordsLock);
         RetainedRecords.clear();
     }
 
-    DependentFileState Store::GetDependentFileState(StringSection<ResChar> filename)
+    DependentFileState IntermediatesStore::GetDependentFileState(StringSection<ResChar> filename)
     {
         return GetRetainedFileRecord(filename)->_state;
     }
 
-    void Store::ShadowFile(StringSection<ResChar> filename)
+    void IntermediatesStore::ShadowFile(StringSection<ResChar> filename)
     {
         auto record = GetRetainedFileRecord(filename);
         record->_state._status = DependentFileState::Status::Shadowed;
@@ -169,7 +169,7 @@ namespace Assets { namespace IntermediateAssets
         record->OnChange();
     }
 
-    std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(StringSection<ResChar> intermediateFileName) const
+    std::shared_ptr<DependencyValidation> IntermediatesStore::MakeDependencyValidation(StringSection<ResChar> intermediateFileName) const
     {
             //  When we process a file, we write a little text file to the
             //  ".deps" directory. This contains a list of dependency files, and
@@ -232,7 +232,7 @@ namespace Assets { namespace IntermediateAssets
         return validation;
     }
 
-    std::shared_ptr<DependencyValidation> Store::WriteDependencies(
+    std::shared_ptr<DependencyValidation> IntermediatesStore::WriteDependencies(
         StringSection<ResChar> intermediateFileName, 
         StringSection<ResChar> baseDir,
         IteratorRange<const DependentFileState*> deps,
@@ -287,7 +287,7 @@ namespace Assets { namespace IntermediateAssets
         return result;
     }
 
-	void Store::ResolveBaseDirectory() const
+	void IntermediatesStore::ResolveBaseDirectory() const
 	{
 		if (!_resolvedBaseDirectory.empty()) return;
 
@@ -379,7 +379,7 @@ namespace Assets { namespace IntermediateAssets
 		_resolvedBaseDirectory = goodBranchDir;
     }
 
-	Store::Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
+	IntermediatesStore::IntermediatesStore(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
     {
 		if (universal) {
 			// This is the "universal" store directory. A single directory is used by all
@@ -394,16 +394,12 @@ namespace Assets { namespace IntermediateAssets
 		}
 	}
 
-    Store::~Store() 
+    IntermediatesStore::~IntermediatesStore() 
     {
     }
 
-}}
-
             ////////////////////////////////////////////////////////////
 
-namespace Assets
-{
 	IArtifact::~IArtifact() {}
 	IArtifactCompileMarker::~IArtifactCompileMarker() {}
 

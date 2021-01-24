@@ -5,7 +5,7 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "GenericFuture.h"
+#include "IAsyncMarker.h"
 #include "../Utility/Threading/Mutex.h"
 #include <vector>
 

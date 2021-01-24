@@ -15,7 +15,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IArtifact.h"
-#include "../../Assets/GeneralCompiler.h"
+#include "../../Assets/IntermediateCompilers.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../OSServices/FileSystemMonitor.h"
@@ -69,7 +69,7 @@ namespace Converter
 		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto discoveredOperations = ::Assets::DiscoverCompileOperations("*Conversion.dll");
-		auto generalCompiler = std::make_shared<::Assets::GeneralCompiler>(
+		auto generalCompiler = std::make_shared<::Assets::IntermediateCompilers>(
 			MakeIteratorRange(discoveredOperations),
 			nullptr);
 		compilers.AddCompiler(generalCompiler);

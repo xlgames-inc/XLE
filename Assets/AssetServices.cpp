@@ -23,5 +23,24 @@ namespace Assets
         _assetSets.reset();
         _asyncMan.reset();
     }
+
+    // todo -- figure out best pattern for managing s_servicesInstance
+    // for these kinds of singletons
+    namespace Internal
+    {
+        static ConsoleRig::AttachablePtr<Services> s_servicesInstance;
+    }
+
+    Services& Services::GetInstance()
+    {
+        if (!Internal::s_servicesInstance)
+            Internal::s_servicesInstance = std::make_shared<Services>(0);
+        return *Internal::s_servicesInstance;
+    }
+    
+    bool Services::HasInstance()
+    {
+        return Internal::s_servicesInstance != nullptr;
+    }
 }
 
