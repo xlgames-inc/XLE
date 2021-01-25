@@ -44,7 +44,7 @@ namespace RenderCore { namespace Assets
     static void CompileMaterialScaffold(
         StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
         StringSection<::Assets::ResChar> destinationFile,
-		::Assets::ArtifactFuture& compileMarker,
+		::Assets::ArtifactCollectionFuture& compileMarker,
 		const ::Assets::IntermediatesStore& destinationStore)
     {
 		std::vector<::Assets::DependentFileState> deps;
@@ -184,7 +184,7 @@ namespace RenderCore { namespace Assets
 			auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
 			compileMarker.AddArtifact(
 				"main",
-				std::make_shared<::Assets::BlobArtifact>(mainBlob, depVal));
+				std::make_shared<::Assets::BlobArtifactCollection>(mainBlob, depVal));
 
 			compileMarker.SetState(::Assets::AssetState::Ready);
 
@@ -203,11 +203,11 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MatCompilerMarker : public ::Assets::IArtifactCompileMarker
+    class MatCompilerMarker : public ::Assets::IIntermediateCompileMarker
     {
     public:
-        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::IArtifactCollection> GetExistingAsset() const;
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         MatCompilerMarker(
@@ -228,21 +228,21 @@ namespace RenderCore { namespace Assets
             << "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
     }
 
-    std::shared_ptr<::Assets::IArtifact> MatCompilerMarker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifactCollection> MatCompilerMarker::GetExistingAsset() const
     {
 		::Assets::ResChar intermediateName[MaxPath];
         GetIntermediateName(intermediateName, dimof(intermediateName));
         auto depVal = _store->MakeDependencyValidation(intermediateName);
-        return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
+        return std::make_shared<::Assets::ChunkFileArtifactCollection>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::ArtifactFuture> MatCompilerMarker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactCollectionFuture> MatCompilerMarker::InvokeCompile() const
     {
         using namespace ::Assets;
         StringMeld<256,ResChar> debugInitializer;
         debugInitializer<< _materialFilename << "(material scaffold)";
 
-        auto backgroundOp = std::make_shared<::Assets::ArtifactFuture>();
+        auto backgroundOp = std::make_shared<::Assets::ArtifactCollectionFuture>();
         backgroundOp->SetInitializer(debugInitializer);
 
 		::Assets::ResChar intermediateName[MaxPath];
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Assets
 		auto* store = _store;
 		QueueCompileOperation(
 			backgroundOp,
-			[materialFilename, modelFilename, destinationFile, store](::Assets::ArtifactFuture& op) {
+			[materialFilename, modelFilename, destinationFile, store](::Assets::ArtifactCollectionFuture& op) {
 				CompileMaterialScaffold(
 					MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile),
 					op, *store);
@@ -274,7 +274,7 @@ namespace RenderCore { namespace Assets
     : _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
     MatCompilerMarker::~MatCompilerMarker() {}
 
-    std::shared_ptr<::Assets::IArtifactCompileMarker> MaterialScaffoldCompiler::Prepare(
+    std::shared_ptr<::Assets::IIntermediateCompileMarker> MaterialScaffoldCompiler::Prepare(
         uint64 typeCode, 
         const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {

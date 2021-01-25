@@ -86,7 +86,7 @@ namespace GUILayer
 		auto artifacts = future->GetArtifacts();
 		assert(!artifacts.empty());
 		if (state == ::Assets::AssetState::Invalid)
-			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), ::Assets::GetErrorMessage(*future)));
+			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), future->GetErrorMessage()));
 
 		return RenderCore::CompiledShaderByteCode{
 			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};

@@ -22,8 +22,8 @@
 namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
-	class ArtifactFuture; class IArtifactCompileMarker; 
-	class IArtifact;
+	class ArtifactCollectionFuture; class IIntermediateCompileMarker; 
+	class IArtifactCollection;
 }
 
 namespace RenderCore
@@ -110,11 +110,11 @@ namespace RenderCore
         class IShaderSource
         {
         public:
-            virtual std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
+            virtual std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
                 StringSection<::Assets::ResChar> resId, 
                 StringSection<::Assets::ResChar> definesTable) const = 0;
             
-            virtual std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
+            virtual std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
                 StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
 
@@ -123,11 +123,11 @@ namespace RenderCore
             virtual ~IShaderSource();
         };
 
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
 
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, 
             StringSection<char> entryPoint, StringSection<char> shaderModel, 
             StringSection<::Assets::ResChar> definesTable) const;

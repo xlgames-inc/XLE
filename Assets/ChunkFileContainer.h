@@ -6,43 +6,14 @@
 
 #pragma once
 
+#include "IArtifact.h"
 #include "AssetsCore.h"
-#include "ChunkFile.h"
 #include "../Utility/IteratorUtils.h"
-#include "../Utility/MemoryUtils.h"
 #include <functional>
 #include <memory>
 
 namespace Assets
 {
-    class ArtifactFuture;
-    class DependencyValidation;
-    class IArtifactCompileMarker;
-
-	using AssetChunkReopenFunction = std::function<std::shared_ptr<IFileInterface>()>;
-
-    class AssetChunkRequest
-    {
-    public:
-		const char*		_name;		// for debugging purposes, to make it easier to track requests
-        ChunkFile::TypeIdentifier _type;
-        unsigned        _expectedVersion;
-        
-        enum class DataType
-        {
-            ReopenFunction, Raw, BlockSerializer
-        };
-        DataType        _dataType;
-    };
-
-    class AssetChunkResult
-    {
-    public:
-        std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
-        size_t                                      _bufferSize = 0;
-		AssetChunkReopenFunction					_reopenFunction;
-    };
-
     /// <summary>Utility for building asset objects that load from chunk files (sometimes asychronously)</summary>
     /// Some simple assets simply want to load some raw data from a chunk in a file, or
     /// perhaps from a few chunks in the same file. This is a base class to take away some
@@ -53,8 +24,8 @@ namespace Assets
         const rstring& Filename() const						{ return _filename; }
 		const DepValPtr& GetDependencyValidation() const	{ return _validationCallback; }
 
-		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
-        std::vector<AssetChunkResult> ResolveRequests(IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const;
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
+        std::vector<ArtifactRequestResult> ResolveRequests(IFileInterface& file, IteratorRange<const ArtifactRequest*> requests) const;
 
 		std::shared_ptr<IFileInterface> OpenFile() const;
 

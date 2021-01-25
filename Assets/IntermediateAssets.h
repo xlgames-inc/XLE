@@ -17,7 +17,7 @@ namespace Assets
 {
 	class DependentFileState;
 	class DependencyValidation;
-	class IArtifactCompileMarker;
+	class IIntermediateCompileMarker;
 	class IFileInterface;
 
 	/// <summary>Archive of compiled intermediate assets</summary>

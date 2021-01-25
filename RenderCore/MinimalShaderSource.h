@@ -15,11 +15,11 @@ namespace RenderCore
     class MinimalShaderSource : public ShaderService::IShaderSource
     {
     public:
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
 			StringSection<::Assets::ResChar> resId, 
 			StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
 			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
@@ -38,7 +38,7 @@ namespace RenderCore
         std::shared_ptr<ILowLevelCompiler> _compiler;
 		unsigned _flags;
 
-        std::shared_ptr<::Assets::ArtifactFuture> Compile(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> Compile(
             IteratorRange<const void*> shaderInMemory,
             const ILowLevelCompiler::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;

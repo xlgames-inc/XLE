@@ -19,7 +19,7 @@ namespace Utility
 
 namespace Assets
 {
-    class ArtifactFuture;
+    class ArtifactCollectionFuture;
 
     /// <summary>Container file with with one child that is initialized via InputStreamFormatter</summary>
     ///

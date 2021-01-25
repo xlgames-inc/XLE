@@ -578,9 +578,9 @@ namespace SceneEngine
 	static const uint64 ChunkType_QuadTree = ConstHash64<'Quad', 'Tree'>::Value;
 	static const unsigned QuadTreeDataVersion = 0;
 
-	static const ::Assets::AssetChunkRequest QuadTreeChunkRequests[]
+	static const ::Assets::ArtifactRequest QuadTreeChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "QuadTree", ChunkType_QuadTree, QuadTreeDataVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "QuadTree", ChunkType_QuadTree, QuadTreeDataVersion, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
 
 	GenericQuadTree::GenericQuadTree(GenericQuadTree&& moveFrom)

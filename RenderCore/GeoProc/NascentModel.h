@@ -87,7 +87,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		std::vector<std::pair<std::string, std::string>> BuildSkeletonInterface() const;
 
-		std::vector<::Assets::ICompileOperation::OperationResult> SerializeToChunks(
+		std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeToChunks(
 			const std::string& name,
 			const NascentSkeleton& embeddedSkeleton,
 			const NativeVBSettings& nativeSettings) const;

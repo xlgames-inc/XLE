@@ -356,12 +356,12 @@ namespace RenderCore { namespace Assets
         return *(const SkeletonMachine*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-    const ::Assets::AssetChunkRequest SkeletonScaffold::ChunkRequests[]
+    const ::Assets::ArtifactRequest SkeletonScaffold::ChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
     
-    SkeletonScaffold::SkeletonScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+    SkeletonScaffold::SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
     {
 		assert(chunks.size() == 1);
@@ -393,12 +393,12 @@ namespace RenderCore { namespace Assets
         return *(const AnimationImmutableData*)::Assets::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-    const ::Assets::AssetChunkRequest AnimationSetScaffold::ChunkRequests[]
+    const ::Assets::ArtifactRequest AnimationSetScaffold::ChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
     
-    AnimationSetScaffold::AnimationSetScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+    AnimationSetScaffold::AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
     {
 		assert(chunks.size() == 1);

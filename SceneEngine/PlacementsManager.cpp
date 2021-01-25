@@ -83,9 +83,9 @@ namespace SceneEngine
         void LogDetails(const char title[]) const;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const	{ return _dependencyValidation; }
-		static const ::Assets::AssetChunkRequest ChunkRequests[1];
+		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         Placements();
         ~Placements();
     protected:
@@ -233,16 +233,16 @@ namespace SceneEngine
         }
     }
 
-    const ::Assets::AssetChunkRequest Placements::ChunkRequests[]
+    const ::Assets::ArtifactRequest Placements::ChunkRequests[]
     {
-        ::Assets::AssetChunkRequest
+        ::Assets::ArtifactRequest
         {
             "Placements", ChunkType_Placements, 0, 
-            ::Assets::AssetChunkRequest::DataType::Raw 
+            ::Assets::ArtifactRequest::DataType::Raw 
         }
     };
 
-    Placements::Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+    Placements::Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _dependencyValidation(depVal)
     {
         assert(chunks.size() == 1);

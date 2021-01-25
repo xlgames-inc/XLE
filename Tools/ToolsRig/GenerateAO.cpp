@@ -769,7 +769,7 @@ namespace ToolsRig
     {
     public:
         Result::Enum Update();
-        using Op = ::Assets::ArtifactFuture;
+        using Op = ::Assets::ArtifactCollectionFuture;
         PollingOp(
 			std::shared_ptr<Pimpl> pimpl, std::shared_ptr<Op> queuedOp, 
 			const std::string& modelFilename,
@@ -802,7 +802,7 @@ namespace ToolsRig
             auto depVal = _store->WriteDependencies(
                 MakeStringSection(_destinationFilename), MakeStringSection(compileResult._baseDir), 
                 MakeIteratorRange(compileResult._dependencies));
-			_queuedOp->AddArtifact("main", std::make_shared<::Assets::FileArtifact>(_destinationFilename, depVal));
+			_queuedOp->AddArtifact("main", std::make_shared<::Assets::ChunkFileArtifactCollection>(_destinationFilename, depVal));
             _queuedOp->SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             return Result::KeepPolling;
@@ -818,7 +818,7 @@ namespace ToolsRig
 
     AOSupplementCompiler::PollingOp::PollingOp(
         std::shared_ptr<Pimpl> pimpl,
-        std::shared_ptr<::Assets::ArtifactFuture> queuedOp,
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> queuedOp,
 		const std::string& modelFilename,
 		const std::string& materialFilename,
 		const std::string& destinationFilename,
@@ -835,11 +835,11 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class AOSupplementCompiler::Marker : public ::Assets::IArtifactCompileMarker
+    class AOSupplementCompiler::Marker : public ::Assets::IIntermediateCompileMarker
     {
     public:
-        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::IArtifactCollection> GetExistingAsset() const;
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -858,20 +858,20 @@ namespace ToolsRig
         void MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
     };
 
-    std::shared_ptr<::Assets::IArtifact> AOSupplementCompiler::Marker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifactCollection> AOSupplementCompiler::Marker::GetExistingAsset() const
     {
 		::Assets::ResChar intermediateName[MaxPath];
         MakeIntermediateName(intermediateName, dimof(intermediateName));
         auto depVal = _store->MakeDependencyValidation(intermediateName);
-		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
+		return std::make_shared<::Assets::ChunkFileArtifactCollection>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::ArtifactFuture> AOSupplementCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactCollectionFuture> AOSupplementCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-        using QueuedOp = ::Assets::ArtifactFuture;
+        using QueuedOp = ::Assets::ArtifactCollectionFuture;
 
             // Because the we're using the immediate context, we must run in a foreground
             // thread. We can't push into a background thread here...
@@ -914,7 +914,7 @@ namespace ToolsRig
     
     AOSupplementCompiler::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::IArtifactCompileMarker> 
+    std::shared_ptr<::Assets::IIntermediateCompileMarker> 
         AOSupplementCompiler::Prepare(
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)

@@ -70,13 +70,13 @@ namespace RenderCore { namespace Assets
 
 	std::shared_ptr<::Assets::IFileInterface>	ModelScaffold::OpenLargeBlocks() const { return _largeBlocksReopen(); }
 
-    const ::Assets::AssetChunkRequest ModelScaffold::ChunkRequests[2]
+    const ::Assets::ArtifactRequest ModelScaffold::ChunkRequests[2]
     {
-        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, ModelScaffoldVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
-        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::AssetChunkRequest::DataType::ReopenFunction }
+        ::Assets::ArtifactRequest { "Scaffold", ChunkType_ModelScaffold, ModelScaffoldVersion, ::Assets::ArtifactRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::ArtifactRequest::DataType::ReopenFunction }
     };
     
-    ModelScaffold::ModelScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+    ModelScaffold::ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
     {
 		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
@@ -113,13 +113,13 @@ namespace RenderCore { namespace Assets
 
 	std::shared_ptr<::Assets::IFileInterface>	ModelSupplementScaffold::OpenLargeBlocks() const { return _largeBlocksReopen(); }
 
-    const ::Assets::AssetChunkRequest ModelSupplementScaffold::ChunkRequests[]
+    const ::Assets::ArtifactRequest ModelSupplementScaffold::ChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
-        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::ReopenFunction }
+        ::Assets::ArtifactRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::ArtifactRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::ArtifactRequest::DataType::ReopenFunction }
     };
     
-    ModelSupplementScaffold::ModelSupplementScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+    ModelSupplementScaffold::ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
 		assert(chunks.size() == 2);

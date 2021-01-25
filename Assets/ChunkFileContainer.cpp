@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ChunkFileContainer.h"
+#include "ChunkFile.h"
 #include "BlockSerializer.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
@@ -14,8 +15,8 @@
 
 namespace Assets
 {
-    std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
-        IteratorRange<const AssetChunkRequest*> requests) const
+    std::vector<ArtifactRequestResult> ChunkFileContainer::ResolveRequests(
+        IteratorRange<const ArtifactRequest*> requests) const
     {
 		auto file = OpenFile();
         return ResolveRequests(*file, requests);
@@ -29,34 +30,38 @@ namespace Assets
 		return MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
 	}
 
-    std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
-        IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const
+    std::vector<ArtifactRequestResult> ChunkFileContainer::ResolveRequests(
+        IFileInterface& file, IteratorRange<const ArtifactRequest*> requests) const
     {
         auto chunks = ChunkFile::LoadChunkTable(file);
         
-        std::vector<AssetChunkResult> result;
+        std::vector<ArtifactRequestResult> result;
         result.reserve(requests.size());
 
             // First scan through and check to see if we
             // have all of the chunks we need
         using ChunkHeader = ChunkFile::ChunkHeader;
-        for (const auto& r:requests) {
+        for (auto r=requests.begin(); r!=requests.end(); ++r) {
+            auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._type == r->_type; });
+            if (prevWithSameCode != r)
+                Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
+
             auto i = std::find_if(
                 chunks.begin(), chunks.end(), 
-                [&r](const ChunkHeader& c) { return c._type == r._type; });
+                [r](const ChunkHeader& c) { return c._type == r->_type; });
             if (i == chunks.end())
                 Throw(Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::MissingFile,
 					_validationCallback,
-                    StringMeld<128>() << "Missing chunk (" << r._name << ")", _filename.c_str()));
+                    StringMeld<128>() << "Missing chunk (" << r->_name << ")", _filename.c_str()));
 
-            if (i->_chunkVersion != r._expectedVersion)
+            if (i->_chunkVersion != r->_expectedVersion)
                 Throw(::Assets::Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::UnsupportedVersion,
 					_validationCallback,
                     StringMeld<256>() 
                         << "Data chunk is incorrect version for chunk (" 
-                        << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
+                        << r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_chunkVersion, 
 						_filename.c_str()));
         }
 
@@ -66,9 +71,9 @@ namespace Assets
                 [&r](const ChunkHeader& c) { return c._type == r._type; });
             assert(i != chunks.end());
 
-            AssetChunkResult chunkResult;
-            if (	r._dataType == AssetChunkRequest::DataType::BlockSerializer
-				||	r._dataType == AssetChunkRequest::DataType::Raw) {
+            ArtifactRequestResult chunkResult;
+            if (	r._dataType == ArtifactRequest::DataType::BlockSerializer
+				||	r._dataType == ArtifactRequest::DataType::Raw) {
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
                 chunkResult._bufferSize = i->_size;
@@ -76,9 +81,9 @@ namespace Assets
                 file.Read(chunkResult._buffer.get(), i->_size);
 
                 // initialize with the block serializer (if requested)
-                if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
+                if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
                     Block_Initialize(chunkResult._buffer.get());
-            } else if (r._dataType == AssetChunkRequest::DataType::ReopenFunction) {
+            } else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
 				auto offset = i->_fileOffset;
 				auto blobCopy = _blob;
 				auto filenameCopy = _filename;
@@ -96,7 +101,14 @@ namespace Assets
 						Throw(Exceptions::ConstructionError(e, depValCopy));
 					} CATCH_END
 				};
-			}
+			} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
+                chunkResult._sharedBlob = std::make_shared<std::vector<uint8_t>>();
+                chunkResult._sharedBlob->resize(i->_size);
+                file.Seek(i->_fileOffset);
+                file.Read(chunkResult._sharedBlob->data(), i->_size);
+            } else {
+                assert(0);
+            }
 
             result.emplace_back(std::move(chunkResult));
         }

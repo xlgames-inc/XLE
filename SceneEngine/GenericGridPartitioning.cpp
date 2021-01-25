@@ -299,9 +299,9 @@ namespace SceneEngine
 	static const uint64 ChunkType_GridPartitioning = ConstHash64<'Grid', 'Part'>::Value;
 	static const unsigned GridPartitioningDataVersion = 0;
 
-	static const ::Assets::AssetChunkRequest GridPartitioningChunkRequests[]
+	static const ::Assets::ArtifactRequest GridPartitioningChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { "GridPartitioning", ChunkType_GridPartitioning, GridPartitioningDataVersion, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::ArtifactRequest { "GridPartitioning", ChunkType_GridPartitioning, GridPartitioningDataVersion, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
 
 	GenericGridPartitioning::GenericGridPartitioning(GenericGridPartitioning&& moveFrom)

@@ -41,16 +41,16 @@ namespace RenderCore { namespace Assets
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
+        std::shared_ptr<::Assets::IIntermediateCompileMarker> Prepare(
             uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
 
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 

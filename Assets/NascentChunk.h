@@ -54,7 +54,7 @@ namespace Assets
 
 	void BuildChunkFile(
 		IFileInterface& file,
-		IteratorRange<const ICompileOperation::OperationResult*> chunks,
+		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
 		const ConsoleRig::LibVersionDesc& versionInfo,
-		std::function<bool(const ICompileOperation::OperationResult&)> predicate = {});
+		std::function<bool(const ICompileOperation::SerializedArtifact&)> predicate = {});
 }

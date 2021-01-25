@@ -87,7 +87,7 @@ namespace ToolsRig
     class AOSupplementCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
+        std::shared_ptr<::Assets::IIntermediateCompileMarker> Prepare(
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);

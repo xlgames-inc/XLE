@@ -258,7 +258,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		SerializationOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetDefaultParameters());
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(const std::string& name, const NascentGeometryObjects& geoObjects, const NascentModelCommandStream& cmdStream, const NascentSkeleton& skeleton)
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeSkinToChunks(const std::string& name, const NascentGeometryObjects& geoObjects, const NascentModelCommandStream& cmdStream, const NascentSkeleton& skeleton)
 	{
 		::Assets::NascentBlockSerializer serializer;
 
@@ -291,13 +291,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		return
 			{
-				::Assets::ICompileOperation::OperationResult{
+				::Assets::ICompileOperation::SerializedArtifact{
 					RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name,
 					std::move(scaffoldBlock)},
-				::Assets::ICompileOperation::OperationResult{
+				::Assets::ICompileOperation::SerializedArtifact{
 					RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name,
 					std::move(largeResourcesBlock)},
-				::Assets::ICompileOperation::OperationResult{
+				::Assets::ICompileOperation::SerializedArtifact{
 					RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
 					std::move(metricsBlock)}
 			};
@@ -313,7 +313,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return result;
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton, const NativeVBSettings& nativeSettings) const
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton, const NativeVBSettings& nativeSettings) const
 	{
 		NascentGeometryObjects geoObjects;
 		NascentModelCommandStream cmdStream;

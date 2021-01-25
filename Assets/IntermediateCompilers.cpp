@@ -40,6 +40,7 @@ namespace Assets
 		std::string _name;
 		ConsoleRig::LibVersionDesc _srcVersion;
 		IntermediateCompilers::CompileOperationDelegate _delegate;
+		DepValPtr _compilerLibraryDepVal;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ namespace Assets
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
     static void SerializeToFile(
-		IteratorRange<const ICompileOperation::OperationResult*> chunksInput,
+		IteratorRange<const ICompileOperation::SerializedArtifact*> chunksInput,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
@@ -59,7 +60,7 @@ namespace Assets
             // the main output file from chunks that will be written to
             // a metrics file.
 
-		std::vector<ICompileOperation::OperationResult> chunks(chunksInput.begin(), chunksInput.end());
+		std::vector<ICompileOperation::SerializedArtifact> chunks(chunksInput.begin(), chunksInput.end());
 
 		for (auto c=chunks.begin(); c!=chunks.end();)
 			if (c->_type == ChunkType_Metrics) {
@@ -80,44 +81,23 @@ namespace Assets
 		}
     }
 
-	static Blob SerializeToBlob(
-		IteratorRange<const ICompileOperation::OperationResult*> chunks,
-        const ConsoleRig::LibVersionDesc& versionInfo)
-	{
-		if (chunks.size() == 1 && chunks[0]._type == ChunkType_Text) {
-			return chunks[0]._data;
-		} else {
-			auto result = std::make_shared<std::vector<uint8>>();
-			auto file = CreateMemoryFile(result);
-			BuildChunkFile(*file, chunks, versionInfo,
-				[](const ICompileOperation::OperationResult& c) { return c._type != ChunkType_Metrics; });
-			return result;
-		}
-	}
-
 	static DepValPtr MakeDepVal(
 		IteratorRange<const DependentFileState*> deps,
-		StringSection<ResChar> initializer,
-		StringSection<ResChar> libraryName)
+		const DepValPtr& compilerDepVal)
 	{
-		DepValPtr depVal;
-		if (!deps.empty()) {
-			depVal = AsDepVal(deps);
-		} else {
-			depVal = std::make_shared<DependencyValidation>();
-			RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
-		}
-		RegisterFileDependency(depVal, libraryName);
+		DepValPtr depVal = AsDepVal(deps);
+		if (compilerDepVal)
+			RegisterAssetDependency(depVal, compilerDepVal);
 		return depVal;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class IntermediateCompilers::Marker : public IArtifactCompileMarker
+    class IntermediateCompilers::Marker : public IIntermediateCompileMarker
     {
     public:
-        std::shared_ptr<IArtifact> GetExistingAsset() const;
-        std::shared_ptr<ArtifactFuture> InvokeCompile() const;
+        std::shared_ptr<IArtifactCollection> GetExistingAsset() const;
+        std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() const;
         StringSection<ResChar> Initializer() const;
 
         Marker(
@@ -127,14 +107,14 @@ namespace Assets
         ~Marker();
     private:
         std::weak_ptr<ExtensionAndDelegate> _delegate;
-		std::weak_ptr<IntermediatesStore> _intermediateStore;
+		std::shared_ptr<IntermediatesStore> _intermediateStore;
         rstring _requestName;
         uint64_t _typeCode;
 
 		static void PerformCompile(
 			const ExtensionAndDelegate& delegate,
 			uint64_t typeCode, StringSection<ResChar> initializer, 
-			ArtifactFuture& compileMarker,
+			ArtifactCollectionFuture& compileMarker,
 			const IntermediatesStore* destinationStore);
     };
 
@@ -244,10 +224,9 @@ namespace Assets
 	CompileProductsFile::CompileProductsFile() {}
 	CompileProductsFile::~CompileProductsFile() {}
 
-    std::shared_ptr<IArtifact> IntermediateCompilers::Marker::GetExistingAsset() const
+    std::shared_ptr<IArtifactCollection> IntermediateCompilers::Marker::GetExistingAsset() const
     {
-		auto st = _intermediateStore.lock();
-        if (!st) return nullptr;
+        if (!_intermediateStore) return nullptr;
 
 		// Look for a compile products file from a previous compilation operation
 		// todo -- we should store these compile product tables in an ArchiveCache
@@ -255,7 +234,7 @@ namespace Assets
 		MakeIntermediateName(
 			intermediateName, dimof(intermediateName),
 			Initializer(),  "compileprod",
-			*st);
+			*_intermediateStore);
 
 		size_t fileSize;
 		auto fileData = TryLoadFileAsMemoryBlock(intermediateName, &fileSize);
@@ -269,13 +248,15 @@ namespace Assets
 		if (!product) return nullptr;
 
 		// we found a product, return a FileArtifact for it.
-		auto depVal = st->MakeDependencyValidation(product->_intermediateArtifact);
-		return std::make_shared<FileArtifact>(product->_intermediateArtifact, depVal);
+		auto depVal = _intermediateStore->MakeDependencyValidation(product->_intermediateArtifact);
+		return std::make_shared<ChunkFileArtifactCollection>(
+			MainFileSystem::OpenFileInterface(product->_intermediateArtifact, "rb"),
+			depVal);
     }
 
 	static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
 		const IntermediatesStore& store,
-		IteratorRange<const ICompileOperation::OperationResult*> chunks,
+		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
 		StringSection<> initializer,
 		StringSection<> targetName,
 		ConsoleRig::LibVersionDesc srcVersion,
@@ -293,7 +274,7 @@ namespace Assets
 	void IntermediateCompilers::Marker::PerformCompile(
 		const ExtensionAndDelegate& delegate,
 		uint64_t typeCode, StringSection<ResChar> initializer, 
-		ArtifactFuture& compileMarker,
+		ArtifactCollectionFuture& compileMarker,
 		const IntermediatesStore* destinationStore)
     {
 		std::vector<DependentFileState> deps;
@@ -307,9 +288,9 @@ namespace Assets
 			deps = model->GetDependencies();
 
 			CompileProductsFile compileProducts;
+			std::shared_ptr<IArtifactCollection> resultantArtifacts;
 
 			auto targets = model->GetTargets();
-			bool foundTarget = false;
 			for (unsigned t=0; t<targets.size(); ++t) {
 				const auto& target = targets[t];
 
@@ -319,6 +300,14 @@ namespace Assets
 					continue;
 
 				auto chunks = model->SerializeTarget(t);
+
+				// Note that the resultant artifacts only contains results from this 
+				// one serialized target
+				if (target._type == typeCode && !resultantArtifacts)
+					resultantArtifacts = std::make_shared<BlobArtifactCollection>(
+						MakeIteratorRange(chunks), 
+						::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
+
 				if (destinationStore) {
 					// Write the compile result to an intermediate file
 					std::shared_ptr<DependencyValidation> intermediateDepVal;
@@ -330,22 +319,6 @@ namespace Assets
 
 					compileProducts._compileProducts.push_back(
 						CompileProductsFile::Product{target._type, intermediateName});
-
-					// If this is the particular artifact we originally requested, we should create an artifact for it
-					if  (target._type == typeCode && !foundTarget) {
-						auto artifact = std::make_shared<FileArtifact>(intermediateName, intermediateDepVal);
-						compileMarker.AddArtifact(target._name, artifact);
-						foundTarget = true;
-					}
-				} else if (!foundTarget) {
-					auto artifactDepVal = std::make_shared<DependencyValidation>();
-					RegisterFileDependency(artifactDepVal, initializer);
-
-					auto blob = SerializeToBlob(MakeIteratorRange(chunks), delegate._srcVersion);
-					auto artifact = std::make_shared<BlobArtifact>(blob, artifactDepVal);
-					compileMarker.AddArtifact(target._name, artifact);
-					foundTarget = true;
-					break;
 				}
 			}
 
@@ -366,20 +339,26 @@ namespace Assets
 				}
 			}
 
-			if (!foundTarget)
+			if (!resultantArtifacts)
 				Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
         
-			compileMarker.SetState(AssetState::Ready);
+			compileMarker.SetArtifactCollection(AssetState::Ready, resultantArtifacts);
 
         } CATCH(const Exceptions::ConstructionError& e) {
-			Throw(Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name))));
+			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
+			if (deps.empty())
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
+			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(const std::exception& e) {
-			Throw(Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name))));
+			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
+			if (deps.empty())
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(...) {
-			Throw(Exceptions::ConstructionError(
-				Exceptions::ConstructionError::Reason::Unknown,
-				MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name)),
-				"%s", "unknown exception"));
+			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
+			if (deps.empty())
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::Unknown, depVal, "%s", "unknown exception"));
 		} CATCH_END
     }
 
@@ -397,26 +376,25 @@ namespace Assets
 		Pimpl& operator=(const Pimpl&) = delete;
     };
 
-    std::shared_ptr<ArtifactFuture> IntermediateCompilers::Marker::InvokeCompile() const
+    std::shared_ptr<ArtifactCollectionFuture> IntermediateCompilers::Marker::InvokeCompile() const
     {
-        auto backgroundOp = std::make_shared<ArtifactFuture>();
+        auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
 		std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
-		std::weak_ptr<IntermediatesStore> weakStore = _intermediateStore;
+		std::shared_ptr<IntermediatesStore> store = _intermediateStore;
 		QueueCompileOperation(
 			backgroundOp,
-			[weakDelegate, weakStore, typeCode, requestName](ArtifactFuture& op) {
+			[weakDelegate, store, typeCode, requestName](ArtifactCollectionFuture& op) {
 			auto d = weakDelegate.lock();
-			auto s = weakStore.lock();
-			if (!d || !s) {
+			if (!d) {
 				op.SetState(AssetState::Invalid);
 				return;
 			}
 
-			PerformCompile(*d, typeCode, MakeStringSection(requestName), op, s.get());
+			PerformCompile(*d, typeCode, MakeStringSection(requestName), op, store.get());
 		});
         
         return std::move(backgroundOp);
@@ -437,7 +415,7 @@ namespace Assets
 
 	IntermediateCompilers::Marker::~Marker() {}
 
-    std::shared_ptr<IArtifactCompileMarker> IntermediateCompilers::Prepare(
+    std::shared_ptr<IIntermediateCompileMarker> IntermediateCompilers::Prepare(
         uint64_t typeCode, 
         const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
@@ -454,6 +432,7 @@ namespace Assets
 		IteratorRange<const uint64_t*> outputAssetTypes,
 		const std::string& name,
 		ConsoleRig::LibVersionDesc srcVersion,
+		const DepValPtr& compilerDepVal,
 		CompileOperationDelegate&& delegate
 		) -> CompilerRegistration
 	{
@@ -465,6 +444,7 @@ namespace Assets
 		registration->_name = name;
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
+		registration->_compilerLibraryDepVal = compilerDepVal;
 		_pimpl->_delegates.push_back(registration);
 		return { result };
 	}
@@ -534,6 +514,8 @@ namespace Assets
 		_pimpl->_store = store;
 	}
 	IntermediateCompilers::~IntermediateCompilers() {}
+
+	IIntermediateCompileMarker::~IIntermediateCompileMarker() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -623,11 +605,14 @@ namespace Assets
 				auto lib = library._library;
 				auto fn = library._createCompileOpFunction;
 				for (const auto&kind:library._kinds) {
+					auto compilerDepVal = std::make_shared<DependencyValidation>();
+					RegisterFileDependency(compilerDepVal, MakeStringSection(c));
 					auto registrationId = compilerManager.RegisterCompiler(
 						kind._identifierFilter,
 						MakeIteratorRange(kind._assetTypes),
 						kind._name + " (" + c + ")",
 						srcVersion,
+						compilerDepVal,
 						[lib, fn](StringSection<> identifier) {
 							(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
 							return (*fn)(identifier);

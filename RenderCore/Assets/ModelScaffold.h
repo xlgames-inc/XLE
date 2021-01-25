@@ -62,16 +62,16 @@ namespace RenderCore { namespace Assets
 		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[2];
+		static const ::Assets::ArtifactRequest ChunkRequests[2];
 
-        ModelScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>		_rawMemoryBlock;
-		::Assets::AssetChunkReopenFunction				_largeBlocksReopen;
+		::Assets::ArtifactReopenFunction				_largeBlocksReopen;
 		::Assets::DepValPtr								_depVal;
     };
     
@@ -104,17 +104,17 @@ namespace RenderCore { namespace Assets
 		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
 		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
-        ModelSupplementScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
 
 		static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[2];
+		static const ::Assets::ArtifactRequest ChunkRequests[2];
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
-		::Assets::AssetChunkReopenFunction			_largeBlocksReopen;
+		::Assets::ArtifactReopenFunction			_largeBlocksReopen;
 		::Assets::DepValPtr							_depVal;
     };
 
@@ -154,9 +154,9 @@ namespace RenderCore { namespace Assets
 		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal;  }
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[1];
+		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        SkeletonScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
@@ -181,9 +181,9 @@ namespace RenderCore { namespace Assets
 		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[1];
+		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        AnimationSetScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();

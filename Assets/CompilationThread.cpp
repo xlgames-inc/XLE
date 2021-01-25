@@ -13,11 +13,9 @@
 
 namespace Assets 
 {
-
-
 	void QueueCompileOperation(
-		const std::shared_ptr<::Assets::ArtifactFuture>& future,
-		std::function<void(::Assets::ArtifactFuture&)>&& operation)
+		const std::shared_ptr<::Assets::ArtifactCollectionFuture>& future,
+		std::function<void(::Assets::ArtifactCollectionFuture&)>&& operation)
 	{
         if (!ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().IsGood()) {
             operation(*future);
@@ -34,14 +32,15 @@ namespace Assets
 				CATCH(const ::Assets::Exceptions::ConstructionError& e)
 				{
 					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
-					future->AddArtifact("exception", artifact);
-					future->SetState(::Assets::AssetState::Invalid);
+					future->SetArtifactCollection(
+						::Assets::AssetState::Invalid,
+						artifact);
 				}
 				CATCH(const std::exception& e)
 				{
-					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
-					future->AddArtifact("exception", artifact);
-					future->SetState(::Assets::AssetState::Invalid);
+					future->SetArtifactCollection(
+						::Assets::AssetState::Invalid,
+						std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr));
 				}
 				CATCH(...)
 				{

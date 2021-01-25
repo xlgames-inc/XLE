@@ -9,13 +9,6 @@
 #include "TableOfObjects.h"
 #include "DLLInterface.h"
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/Buffer.h"
-#include "../RenderCore/IDevice_Forward.h"
-#include "../Assets/ChunkFile.h"
-#include "../Assets/BlockSerializer.h"
-#include "../Math/Transformations.h"
 #include <tuple>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; }}

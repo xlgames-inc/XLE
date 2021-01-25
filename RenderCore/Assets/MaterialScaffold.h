@@ -17,8 +17,8 @@
 namespace Assets 
 { 
     class DependencyValidation;
-	class AssetChunkResult;
-	class AssetChunkRequest;
+	class ArtifactRequestResult;
+	class ArtifactRequest;
 }
 namespace Utility { class Data; }
 
@@ -183,9 +183,9 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
-		static const ::Assets::AssetChunkRequest ChunkRequests[2];
+		static const ::Assets::ArtifactRequest ChunkRequests[2];
 
-        MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
+        MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();

@@ -270,7 +270,7 @@ namespace RenderCore { namespace Assets
 
 	using Blob = ::Assets::Blob;
 
-	class ArchivedFileArtifact : public ::Assets::IArtifact
+	class ArchivedFileArtifact : public ::Assets::IArtifactCollection
 	{
 	public:
 		Blob	GetBlob() const;
@@ -306,11 +306,11 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class LocalCompiledShaderSource::Marker : public ::Assets::IArtifactCompileMarker
+    class LocalCompiledShaderSource::Marker : public ::Assets::IIntermediateCompileMarker
     {
     public:
-        std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::IArtifactCollection> GetExistingAsset() const;
+        std::shared_ptr<::Assets::ArtifactCollectionFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -339,13 +339,13 @@ namespace RenderCore { namespace Assets
 		return entryId;
     }
 
-    std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
+    std::shared_ptr<::Assets::IArtifactCollection> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
 		if (XlEqString(_res._filename, "null"))
-			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
+			return std::make_shared<::Assets::BlobArtifactCollection>(nullptr, std::make_shared<::Assets::DependencyValidation>());
 
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
         auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName), entryName, dimof(entryName));
@@ -356,19 +356,19 @@ namespace RenderCore { namespace Assets
             nullptr, nullptr);
     }
 
-    std::shared_ptr<::Assets::ArtifactFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactCollectionFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
         if (!_compiler.lock()) return nullptr;
 
-        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
+        auto futureRes = std::make_shared<::Assets::ArtifactCollectionFuture>();
 
         auto compiler = _compiler;
         auto definesTable = _definesTable;
         auto resId = _res;
 		assert(resId._filename[0] != '\0');		// empty filenames will result in a crash in the async function below, so catch here
 
-        std::function<void(::Assets::ArtifactFuture&)> operation =
-            [compiler, definesTable, resId] (::Assets::ArtifactFuture& future) {
+        std::function<void(::Assets::ArtifactCollectionFuture&)> operation =
+            [compiler, definesTable, resId] (::Assets::ArtifactCollectionFuture& future) {
 
             auto c = compiler.lock();
             if (!c)
@@ -470,11 +470,10 @@ namespace RenderCore { namespace Assets
 			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
 			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 
-            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
-            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifactCollection>(payload, depVal));
+            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifactCollection>(errors, depVal));
 
-                // give the ArtifactFuture object the same state
-            assert(future.GetArtifacts().size() != 0);
+                // give the ArtifactCollectionFuture object the same state
             future.SetState(newState);
         };
 
@@ -500,7 +499,7 @@ namespace RenderCore { namespace Assets
 
     LocalCompiledShaderSource::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::IArtifactCompileMarker> LocalCompiledShaderSource::Prepare(
+    std::shared_ptr<::Assets::IIntermediateCompileMarker> LocalCompiledShaderSource::Prepare(
         uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
             //  Execute an offline compile. This should happen in the background
@@ -549,7 +548,7 @@ namespace RenderCore { namespace Assets
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
     {
         /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
@@ -561,7 +560,7 @@ namespace RenderCore { namespace Assets
             
     auto LocalCompiledShaderSource::CompileFromMemory(
         StringSection<char> pShaderInMemory, StringSection<char> pEntryPoint, 
-        StringSection<char> pShaderModel, StringSection<ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
+        StringSection<char> pShaderModel, StringSection<ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
     {
         std::weak_ptr<ILowLevelCompiler> compiler = _compiler;
         std::string shaderInMemory = pShaderInMemory.AsString();
@@ -569,9 +568,9 @@ namespace RenderCore { namespace Assets
 		std::string shaderModel = pShaderModel.AsString();
 		std::string definesTable = pDefinesTable.AsString();
 
-        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
-		std::function<void(::Assets::ArtifactFuture&)> operation =
-            [compiler, shaderInMemory, entryPoint, shaderModel, definesTable] (::Assets::ArtifactFuture& future) {
+        auto futureRes = std::make_shared<::Assets::ArtifactCollectionFuture>();
+		std::function<void(::Assets::ArtifactCollectionFuture&)> operation =
+            [compiler, shaderInMemory, entryPoint, shaderModel, definesTable] (::Assets::ArtifactCollectionFuture& future) {
 
             auto c = compiler.lock();
             if (!c)
@@ -604,11 +603,10 @@ namespace RenderCore { namespace Assets
 			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
 			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 
-            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
-            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifactCollection>(payload, depVal));
+            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifactCollection>(errors, depVal));
 
-                // give the ArtifactFuture object the same state
-            assert(future.GetArtifacts().size() != 0);
+                // give the ArtifactCollectionFuture object the same state
             future.SetState(newState);
         };
 

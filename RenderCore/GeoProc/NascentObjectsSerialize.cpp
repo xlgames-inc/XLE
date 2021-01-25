@@ -13,7 +13,7 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeSkinToChunks(
 		const std::string& name,
 		const NascentModel& model,
 		const NascentSkeleton& embeddedSkeleton,
@@ -22,7 +22,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return model.SerializeToChunks(name, embeddedSkeleton, nativeSettings);
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeSkeletonToChunks(
 		const std::string& name,
 		const NascentSkeleton& skeleton)
 	{
@@ -33,16 +33,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
 		return {
-			::Assets::ICompileOperation::OperationResult{
+			::Assets::ICompileOperation::SerializedArtifact{
 				RenderCore::Assets::ChunkType_Skeleton, 0, name, 
 				std::move(block)},
-			::Assets::ICompileOperation::OperationResult{
+			::Assets::ICompileOperation::SerializedArtifact{
 				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
 				std::move(metricsBlock)}
 		};
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeAnimationsToChunks(
 		const std::string& name,
 		const NascentAnimationSet& animationSet)
 	{
@@ -55,10 +55,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
 		return {
-			::Assets::ICompileOperation::OperationResult{
+			::Assets::ICompileOperation::SerializedArtifact{
 				RenderCore::Assets::ChunkType_AnimationSet, 0, name, 
 				std::move(block)},
-			::Assets::ICompileOperation::OperationResult{
+			::Assets::ICompileOperation::SerializedArtifact{
 				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
 				std::move(metricsBlock)}
 		};

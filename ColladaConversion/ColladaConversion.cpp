@@ -56,7 +56,7 @@ namespace ColladaConversion
 		std::vector<::Assets::DependentFileState> _dependencies;
 
 		std::vector<TargetDesc> GetTargets() const;
-		std::vector<OperationResult> SerializeTarget(unsigned idx);
+		std::vector<SerializedArtifact> SerializeTarget(unsigned idx);
 		std::vector<::Assets::DependentFileState> GetDependencies() const;
 
 		ColladaCompileOp();
@@ -304,7 +304,7 @@ namespace ColladaConversion
 		return roots;
 	}
 
-    std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkin(const ColladaCompileOp& input, StringSection<utf8> rootNodeName)
+    std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeSkin(const ColladaCompileOp& input, StringSection<utf8> rootNodeName)
     {
         const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
@@ -425,7 +425,7 @@ namespace ColladaConversion
 		return result;
     }
 
-    std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeleton(const ColladaCompileOp& input, StringSection<utf8> rootNodeName)
+    std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeSkeleton(const ColladaCompileOp& input, StringSection<utf8> rootNodeName)
     {
 		const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
@@ -468,7 +468,7 @@ namespace ColladaConversion
         }
     }
 
-    std::vector<::Assets::ICompileOperation::OperationResult> SerializeMaterials(const ColladaCompileOp& model, StringSection<utf8> rootNodeName)
+    std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeMaterials(const ColladaCompileOp& model, StringSection<utf8> rootNodeName)
     { 
         // std::string matSettingsFile;
         // {
@@ -482,7 +482,7 @@ namespace ColladaConversion
         MemoryOutputStream<uint8> strm;
         SerializeMatTable(strm, model);
         return {
-			::Assets::ICompileOperation::OperationResult{
+			::Assets::ICompileOperation::SerializedArtifact{
 				ChunkType_Text, 0, model._name,
 				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
 		};
@@ -516,7 +516,7 @@ namespace ColladaConversion
 		return result;
     }
 
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimations(const ColladaCompileOp& model, StringSection<utf8> rootNodeName)
+	std::vector<::Assets::ICompileOperation::SerializedArtifact> SerializeAnimations(const ColladaCompileOp& model, StringSection<utf8> rootNodeName)
 	{
 		return SerializeAnimationsToChunks(model._name, ConvertAnimationSet(model));
 	}
@@ -528,7 +528,7 @@ namespace ColladaConversion
 		return _targets;
 	}
 
-	auto	ColladaCompileOp::SerializeTarget(unsigned idx) -> std::vector<OperationResult>
+	auto	ColladaCompileOp::SerializeTarget(unsigned idx) -> std::vector<SerializedArtifact>
 	{
 		if (idx >= _targets.size()) return {};
 
@@ -593,7 +593,7 @@ namespace ColladaConversion
 		std::vector<TargetDesc> GetTargets() const { return _targets; }
 		std::vector<::Assets::DependentFileState> GetDependencies() const { return _dependencies; }
 
-		std::vector<OperationResult> SerializeTarget(unsigned idx)
+		std::vector<SerializedArtifact> SerializeTarget(unsigned idx)
 		{
 			return SerializeAnimationsToChunks("MergedAnimSet", _animationSet);
 		}

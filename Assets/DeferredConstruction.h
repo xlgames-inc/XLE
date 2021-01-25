@@ -8,14 +8,17 @@
 #include "AssetFuture.h"
 #include "AssetTraits.h"
 #include "IArtifact.h"
+#include "IntermediateCompilers.h"
 #include "../OSServices/Log.h"
 #include <memory>
 
 namespace Assets
 {
+	class IIntermediateCompileMarker;
+
 	namespace Internal 
 	{
-		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 	}
 
 	namespace Internal
@@ -71,7 +74,7 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactFuture>& pendingCompile)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile)
 	{
 		// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
 		// still going to end up constructing the asset in the main thread.
@@ -79,11 +82,11 @@ namespace Assets
 			[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
 				auto state = pendingCompile->GetAssetState();
 				if (state == AssetState::Pending) return true;
-
-				if (state == AssetState::Invalid) {
-					auto artifacts = pendingCompile->GetArtifacts();
-					if (!artifacts.empty()) {
-						thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), GetErrorMessage(*pendingCompile));
+				
+				const auto& artifactCollection = pendingCompile->GetArtifactCollection();
+				if (state == AssetState::Invalid || !artifactCollection) {
+					if (artifactCollection) {
+						thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), pendingCompile->GetErrorMessage());
 					} else {
 						thatFuture.SetInvalidAsset(nullptr, nullptr);
 					}
@@ -91,8 +94,11 @@ namespace Assets
 				}
 
 				assert(state == AssetState::Ready);
-				auto& artifact = *pendingCompile->GetArtifacts()[0].second;
-				AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+				AutoConstructToFutureDirect(
+					thatFuture,
+					artifactCollection->GetBlob(), 
+					artifactCollection->GetDependencyValidation(),
+					artifactCollection->GetRequestParameters());
 				return false;
 			});
 	}

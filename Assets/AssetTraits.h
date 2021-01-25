@@ -25,8 +25,8 @@ namespace Assets
 	template <typename Formatter> class ConfigFileContainer;
 	class DirectorySearchRules;
 	class ChunkFileContainer;
-	class AssetChunkRequest;
-    class IArtifact;
+	class ArtifactRequest;
+    class IArtifactCollection;
 
 	namespace Internal
 	{
@@ -165,7 +165,7 @@ namespace Assets
 
 	//
 	//		Auto construct to:
-	//			(IteratorRange<AssetChunkResult>, const DepValPtr&)
+	//			(IteratorRange<ArtifactRequestResult>, const DepValPtr&)
 	//
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
@@ -191,6 +191,19 @@ namespace Assets
 			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH (const std::exception& e) {
 			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH_END
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
+		std::unique_ptr<AssetType> AutoConstructAsset(const IArtifactCollection& artifactCollection)
+	{
+		TRY {
+			auto chunks = artifactCollection.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+			return std::make_unique<AssetType>(MakeIteratorRange(chunks), artifactCollection.GetDependencyValidation());
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, artifactCollection.GetDependencyValidation()));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, artifactCollection.GetDependencyValidation()));
 		} CATCH_END
 	}
 

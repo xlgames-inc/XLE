@@ -659,36 +659,12 @@ namespace Assets
 		return result;
 	}
 
-	Blob GetErrorMessage(const ArtifactFuture& artifactList)
-	{
-		// Try to find an artifact named "log". Otherwise, look for one called "exception". If neither exists, just drop back to the first one
-		auto artifacts = artifactList.GetArtifacts();
-		IArtifact* logArtifact = nullptr;
-		for (const auto& e:artifacts)
-			if (e.first == "log") {
-				logArtifact = e.second.get();
-				break;
-			}
-		if (!logArtifact) {
-			for (const auto& e:artifacts)
-				if (e.first == "exception") {
-					logArtifact = e.second.get();
-					break;
-				}
-			if (!logArtifact)
-				logArtifact = artifacts[0].second.get();
-		}
-		if (logArtifact)
-			return logArtifact->GetBlob();
-		return {};
-	}
-
 	ICompileOperation::~ICompileOperation() {}
 	ICompilerDesc::~ICompilerDesc() {}
 
 	namespace Internal
 	{
-		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(
+		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(
 			uint64_t typeCode, const StringSection<ResChar> initializers[],
 			unsigned initializerCount)
 		{

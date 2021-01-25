@@ -21,7 +21,7 @@ namespace Assets
 			uint64_t		_type;
 			const char*		_name;
 		};
-		struct OperationResult
+		struct SerializedArtifact
 		{
 			uint64_t		_type;
 			unsigned		_version;
@@ -29,7 +29,7 @@ namespace Assets
 			::Assets::Blob	_data;
 		};
 		virtual std::vector<TargetDesc>			GetTargets() const = 0;
-		virtual std::vector<OperationResult>	SerializeTarget(unsigned idx) = 0;
+		virtual std::vector<SerializedArtifact>	SerializeTarget(unsigned idx) = 0;
 		virtual std::vector<DependentFileState> GetDependencies() const = 0;
 
 		virtual ~ICompileOperation();

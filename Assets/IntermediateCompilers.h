@@ -16,12 +16,12 @@
 namespace Assets
 {
 	class ICompileOperation;
-	class IArtifactCompileMarker;
+	class IIntermediateCompileMarker;
 
     class IntermediateCompilers : public std::enable_shared_from_this<IntermediateCompilers>
     {
     public:
-        std::shared_ptr<IArtifactCompileMarker> Prepare(
+        std::shared_ptr<IIntermediateCompileMarker> Prepare(
             uint64_t typeCode, 
             const StringSection<ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
@@ -38,6 +38,7 @@ namespace Assets
 			IteratorRange<const uint64_t*> outputAssetTypes,	///< compiler can generate these output asset types (though this isn't strict, the ICompileOperation outputs can vary on a per-asset basis)
 			const std::string& name,							///< string name for the compiler, usually something user-presentable
 			ConsoleRig::LibVersionDesc srcVersion,				///< version information for the module (propagated onto any assets written to disk)
+			const DepValPtr& compilerDepVal,					///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
 			CompileOperationDelegate&& delegate					///< delegate that can create the ICompileOperation for a given asset
 			);
 
@@ -61,6 +62,21 @@ namespace Assets
 
         class Marker;
     };
+
+	class IArtifactCollection;
+	class ArtifactCollectionFuture;
+
+	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
+	/// After receiving a compile marker, the caller can choose to either retrieve an existing
+	/// artifact from a previous compile, or begin a new asynchronous compile operation.
+	class IIntermediateCompileMarker
+	{
+	public:
+		virtual std::shared_ptr<IArtifactCollection> GetExistingAsset() const = 0;
+		virtual std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() const = 0;
+		virtual StringSection<ResChar> Initializer() const = 0;
+		virtual ~IIntermediateCompileMarker();
+	};
 
 	DirectorySearchRules DefaultLibrarySearchDirectories();
 

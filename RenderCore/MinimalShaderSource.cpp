@@ -19,9 +19,9 @@ namespace RenderCore
     auto MinimalShaderSource::Compile(
         IteratorRange<const void*> pShaderInMemory,
         const ILowLevelCompiler::ResId& resId,
-		StringSection<::Assets::ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
+		StringSection<::Assets::ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
     {
-		auto result = std::make_shared<::Assets::ArtifactFuture>();
+		auto result = std::make_shared<::Assets::ArtifactCollectionFuture>();
 		if (!(_flags & Flags::CompileInBackground)) {
 			using Payload = ::Assets::Blob;
 			Payload payload, errors;
@@ -32,16 +32,16 @@ namespace RenderCore
 				pShaderInMemory.begin(), pShaderInMemory.size(), resId, pDefinesTable);
 
 			auto depVal = AsDepVal(MakeIteratorRange(deps));
-			result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(payload, std::move(depVal)));
-			result->AddArtifact("log", std::make_shared<Assets::BlobArtifact>(errors, std::move(depVal)));
+			result->AddArtifact("main", std::make_shared<Assets::BlobArtifactCollection>(payload, std::move(depVal)));
+			result->AddArtifact("log", std::make_shared<Assets::BlobArtifactCollection>(errors, std::move(depVal)));
 			result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
 		} else {
 			std::weak_ptr<ILowLevelCompiler> compiler = _compiler;
 			std::string shaderInMemory{(const char*)pShaderInMemory.begin(), (const char*)pShaderInMemory.end()};
 			std::string definesTable = pDefinesTable.AsString();
 
-			std::function<void(::Assets::ArtifactFuture&)> operation =
-				[compiler, shaderInMemory, resId, definesTable] (::Assets::ArtifactFuture& future) {
+			std::function<void(::Assets::ArtifactCollectionFuture&)> operation =
+				[compiler, shaderInMemory, resId, definesTable] (::Assets::ArtifactCollectionFuture& future) {
 
 				auto c = compiler.lock();
 				if (!c)
@@ -73,11 +73,10 @@ namespace RenderCore
 				auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
 				auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 
-				future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
-				future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+				future.AddArtifact("main", std::make_shared<::Assets::BlobArtifactCollection>(payload, depVal));
+				future.AddArtifact("log", std::make_shared<::Assets::BlobArtifactCollection>(errors, depVal));
 
-					// give the ArtifactFuture object the same state
-				assert(future.GetArtifacts().size() != 0);
+					// give the ArtifactCollectionFuture object the same state
 				future.SetState(newState);
 			};
 
@@ -89,7 +88,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromFile(
 		StringSection<::Assets::ResChar> resource, 
 		StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::ArtifactFuture>
+        -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
     {
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
 
@@ -101,7 +100,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromMemory(
 		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::ArtifactFuture>
+        -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
     {
         return Compile(
 			{shaderInMemory.begin(), shaderInMemory.end()},

@@ -54,19 +54,19 @@ namespace RenderCore { namespace Assets
 		return nullptr;
 	}
 
-	const ::Assets::AssetChunkRequest MaterialScaffold::ChunkRequests[]
+	const ::Assets::ArtifactRequest MaterialScaffold::ChunkRequests[]
 	{
-		::Assets::AssetChunkRequest{
+		::Assets::ArtifactRequest{
 			"Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion,
-			::Assets::AssetChunkRequest::DataType::BlockSerializer
+			::Assets::ArtifactRequest::DataType::BlockSerializer
 		},
-		::Assets::AssetChunkRequest{
+		::Assets::ArtifactRequest{
 			"PatchCollections", ChunkType_PatchCollections, ResolvedMat_ExpectedVersion,
-			::Assets::AssetChunkRequest::DataType::Raw
+			::Assets::ArtifactRequest::DataType::Raw
 		}
 	};
 
-	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
 		assert(chunks.size() == 2);

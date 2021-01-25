@@ -23,14 +23,13 @@ namespace UnitTests
         if (state == ::Assets::AssetState::Invalid) {
             std::stringstream str;
             str << "Shader (" << shader << ") failed to compile. Message follows:" << std::endl;
-            str << ::Assets::AsString(::Assets::GetErrorMessage(*future));
+            str << ::Assets::AsString(future->GetErrorMessage());
             Throw(std::runtime_error(str.str()));
         }
-        assert(!future->GetArtifacts().empty());
         return RenderCore::CompiledShaderByteCode {
-            future->GetArtifacts()[0].second->GetBlob(),
-            future->GetArtifacts()[0].second->GetDependencyValidation(),
-            future->GetArtifacts()[0].second->GetRequestParameters()
+            future->GetBlob(),
+            future->GetDependencyValidation(),
+            future->GetRequestParameters()
         };
     }
 

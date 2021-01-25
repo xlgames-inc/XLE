@@ -5,20 +5,51 @@
 #pragma once
 
 #include "IAsyncMarker.h"
+#include "ICompileOperation.h"
 #include "AssetsCore.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <memory>
 #include <functional>
 
 namespace Assets
 {
-	class IArtifact
+	class IFileInterface;
+	using ArtifactReopenFunction = std::function<std::shared_ptr<IFileInterface>()>;
+
+    class ArtifactRequest
+    {
+    public:
+		const char*		_name;		// for debugging purposes, to make it easier to track requests
+        uint64_t 		_type;
+        unsigned        _expectedVersion;
+        
+        enum class DataType
+        {
+            ReopenFunction, 
+			Raw, BlockSerializer,
+			SharedBlob
+        };
+        DataType        _dataType;
+    };
+
+    class ArtifactRequestResult
+    {
+    public:
+        std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
+        size_t                                      _bufferSize = 0;
+		Blob										_sharedBlob;
+		ArtifactReopenFunction						_reopenFunction;
+    };
+
+	class IArtifactCollection
 	{
 	public:
+		virtual std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const = 0;
 		virtual Blob					GetBlob() const = 0;
 		virtual DepValPtr				GetDependencyValidation() const = 0;
 		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
-		virtual ~IArtifact();
+		virtual ~IArtifactCollection();
 	};
 
     /// <summary>Records the state of a resource being compiled</summary>
@@ -35,81 +66,82 @@ namespace Assets
     /// Other times, objects are stored in a "ArchiveCache" object. For example,
     /// shader compiles are typically combined together into archives of a few
     /// different configurations. So a pointer to an optional ArchiveCache is provided.
-    class ArtifactFuture : public GenericFuture
+    class ArtifactCollectionFuture : public GenericFuture
     {
     public:
-		using NameAndArtifact = std::pair<std::string, std::shared_ptr<IArtifact>>;
-		IteratorRange<const NameAndArtifact*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
+		const std::shared_ptr<IArtifactCollection>& GetArtifactCollection();
+		Blob GetErrorMessage();
 
-        ArtifactFuture();
-        ~ArtifactFuture();
+        ArtifactCollectionFuture();
+        ~ArtifactCollectionFuture();
 
-		ArtifactFuture(ArtifactFuture&&) = delete;
-		ArtifactFuture& operator=(ArtifactFuture&&) = delete;
-		ArtifactFuture(const ArtifactFuture&) = delete;
-		ArtifactFuture& operator=(const ArtifactFuture&) = delete;
+		ArtifactCollectionFuture(ArtifactCollectionFuture&&) = delete;
+		ArtifactCollectionFuture& operator=(ArtifactCollectionFuture&&) = delete;
+		ArtifactCollectionFuture(const ArtifactCollectionFuture&) = delete;
+		ArtifactCollectionFuture& operator=(const ArtifactCollectionFuture&) = delete;
 
-		void AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact);
+		void SetArtifactCollection(
+			::Assets::AssetState newState,
+			const std::shared_ptr<IArtifactCollection>& artifacts);
 
 	private:
-		std::vector<NameAndArtifact> _artifacts;
+		std::shared_ptr<IArtifactCollection> _artifactCollection;
     };
 
 	void QueueCompileOperation(
-		const std::shared_ptr<::Assets::ArtifactFuture>& future,
-		std::function<void(::Assets::ArtifactFuture&)>&& operation);
-
-	Blob GetErrorMessage(const ArtifactFuture& artifactList);
-
-	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
-	/// After receiving a compile marker, the caller can choose to either retrieve an existing
-	/// artifact from a previous compile, or begin a new asynchronous compile operation.
-	class IArtifactCompileMarker
-	{
-	public:
-		virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
-		virtual std::shared_ptr<ArtifactFuture> InvokeCompile() const = 0;
-		virtual StringSection<ResChar> Initializer() const = 0;
-		virtual ~IArtifactCompileMarker();
-	};
+		const std::shared_ptr<ArtifactCollectionFuture>& future,
+		std::function<void(ArtifactCollectionFuture&)>&& operation);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class FileArtifact : public IArtifact
+	class ChunkFileArtifactCollection : public IArtifactCollection
 	{
 	public:
-		Blob		GetBlob() const;
-		DepValPtr	GetDependencyValidation() const;
-		StringSection<ResChar>	GetRequestParameters() const;
-		FileArtifact(const rstring& filename, const DepValPtr& depVal);
-		~FileArtifact();
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
+		Blob GetBlob() const;
+		DepValPtr GetDependencyValidation() const;
+		StringSection<ResChar> GetRequestParameters() const;
+		ChunkFileArtifactCollection(
+			const std::shared_ptr<IFileInterface>& file,
+			const DepValPtr& depVal,
+			const std::string& requestParameters = {});
+		~ChunkFileArtifactCollection();
 	private:
-		rstring _filename;
+		std::shared_ptr<IFileInterface> _file;
 		DepValPtr _depVal;
-		rstring _params;
+		std::string _requestParameters;
 	};
 
-	class BlobArtifact : public IArtifact
+	class BlobArtifactCollection : public IArtifactCollection
 	{
 	public:
-		Blob		GetBlob() const;
-		DepValPtr	GetDependencyValidation() const;
-		StringSection<ResChar>	GetRequestParameters() const;
-		BlobArtifact(const Blob& blob, const DepValPtr& depVal, const rstring& requestParams = {});
-		~BlobArtifact();
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
+		Blob GetBlob() const;
+		DepValPtr GetDependencyValidation() const;
+		StringSection<ResChar> GetRequestParameters() const;
+		BlobArtifactCollection(
+			IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
+			const DepValPtr& depVal, 
+			const std::string& collectionName = {},
+			const std::string& requestParams = {});
+		~BlobArtifactCollection();
 	private:
-		Blob _blob;
+		std::vector<ICompileOperation::SerializedArtifact> _chunks;
 		DepValPtr _depVal;
-		rstring _requestParams;
+		std::string _collectionName;
+		std::string _requestParams;
 	};
 
-	class CompilerExceptionArtifact : public ::Assets::IArtifact
+	class CompilerExceptionArtifact : public ::Assets::IArtifactCollection
 	{
 	public:
-		Blob		GetBlob() const;
-		DepValPtr	GetDependencyValidation() const;
-		StringSection<::Assets::ResChar>	GetRequestParameters() const;
-		CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal);
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
+		Blob GetBlob() const;
+		DepValPtr GetDependencyValidation() const;
+		StringSection<::Assets::ResChar> GetRequestParameters() const;
+		CompilerExceptionArtifact(
+			const ::Assets::Blob& log,
+			const ::Assets::DepValPtr& depVal);
 		~CompilerExceptionArtifact();
 	private:
 		::Assets::Blob _log;

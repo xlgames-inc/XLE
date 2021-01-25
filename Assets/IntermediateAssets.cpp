@@ -11,6 +11,10 @@
 #include "IFileSystem.h"
 #include "DepVal.h"
 #include "AssetUtils.h"
+#include "ChunkFileContainer.h"
+
+#include "BlockSerializer.h"
+#include "MemoryFile.h"
 
 #include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
@@ -400,44 +404,153 @@ namespace Assets
 
             ////////////////////////////////////////////////////////////
 
-	IArtifact::~IArtifact() {}
-	IArtifactCompileMarker::~IArtifactCompileMarker() {}
+	IArtifactCollection::~IArtifactCollection() {}
 
-	void ArtifactFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
+    void ArtifactCollectionFuture::SetArtifactCollection(
+        ::Assets::AssetState newState,
+        const std::shared_ptr<IArtifactCollection>& artifacts)
+    {
+        assert(!_artifactCollection);
+        _artifactCollection = artifacts;
+        SetState(newState);
+    }
+
+    const std::shared_ptr<IArtifactCollection>& ArtifactCollectionFuture::GetArtifactCollection()
+    {
+        return _artifactCollection;
+    }
+
+    Blob ArtifactCollectionFuture::GetErrorMessage()
 	{
-		_artifacts.push_back(std::make_pair(name, artifact));
+        if (!_artifactCollection)
+            return nullptr;
+
+		// Try to find an artifact named "log"
+        ArtifactRequest requests[] = {
+            ArtifactRequest { "log", 0, 0, ArtifactRequest::DataType::SharedBlob }
+        };
+        auto resRequests = _artifactCollection->ResolveRequests(MakeIteratorRange(requests));
+        if (resRequests.empty())
+            return nullptr;
+        return resRequests[0]._sharedBlob;
 	}
 
-	ArtifactFuture::ArtifactFuture() {}
-    ArtifactFuture::~ArtifactFuture()  {}
+	ArtifactCollectionFuture::ArtifactCollectionFuture() {}
+    ArtifactCollectionFuture::~ArtifactCollectionFuture()  {}
 
 
-	auto FileArtifact::GetBlob() const -> Blob
-	{
-		auto splitter = MakeFileNameSplitter(_filename);
-		auto file = ::Assets::MainFileSystem::OpenFileInterface(splitter.AllExceptParameters(), "rb");
-		auto size = file->GetDesc()._size;
-		auto result = std::make_shared<std::vector<uint8>>((size_t)size);
-		file->Read(AsPointer(result->begin()), result->size());
-		return result;
-	}
-
-	::Assets::DepValPtr FileArtifact::GetDependencyValidation() const { return _depVal; }
-	StringSection<ResChar>	FileArtifact::GetRequestParameters() const { return MakeFileNameSplitter(_filename).Parameters(); }
-	FileArtifact::FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal)
-	: _filename(filename), _depVal(depVal) {}
-	FileArtifact::~FileArtifact() {}
+	::Assets::DepValPtr ChunkFileArtifactCollection::GetDependencyValidation() const { return _depVal; }
+    Blob ChunkFileArtifactCollection::GetBlob() const { return nullptr; }
+	StringSection<ResChar>	ChunkFileArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParameters); }
+    std::vector<ArtifactRequestResult> ChunkFileArtifactCollection::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
+    {
+        ChunkFileContainer chunkFile;
+        return chunkFile.ResolveRequests(*_file, requests);
+    }
+	ChunkFileArtifactCollection::ChunkFileArtifactCollection(
+        const std::shared_ptr<IFileInterface>& file, const ::Assets::DepValPtr& depVal, const std::string& requestParameters)
+	: _file(file), _depVal(depVal), _requestParameters(requestParameters) {}
+	ChunkFileArtifactCollection::~ChunkFileArtifactCollection() {}
 
 
-	auto BlobArtifact::GetBlob() const -> Blob { return _blob; }
-	::Assets::DepValPtr BlobArtifact::GetDependencyValidation() const { return _depVal; }
-	StringSection<ResChar>	BlobArtifact::GetRequestParameters() const { return MakeStringSection(_requestParams); }
-	BlobArtifact::BlobArtifact(const Blob& blob, const ::Assets::DepValPtr& depVal, const rstring& requestParams)
-	: _blob(blob), _depVal(depVal), _requestParams(requestParams) {}
-	BlobArtifact::~BlobArtifact() {}
+	std::vector<ArtifactRequestResult> BlobArtifactCollection::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
+    {
+        // We need to look through the list of chunks and try to match the given requests
+        // This is very similar to ChunkFileContainer::ResolveRequests
 
-	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return _log; }
-	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+        std::vector<ArtifactRequestResult> result;
+        result.reserve(requests.size());
+
+            // First scan through and check to see if we
+            // have all of the chunks we need
+        for (auto r=requests.begin(); r!=requests.end(); ++r) {
+            auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._type == r->_type; });
+            if (prevWithSameCode != r)
+                Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
+
+            auto i = std::find_if(
+                _chunks.begin(), _chunks.end(), 
+                [&r](const auto& c) { return c._type == r->_type; });
+            if (i == _chunks.end())
+                Throw(Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::MissingFile,
+					_depVal,
+                    StringMeld<128>() << "Missing chunk (" << r->_name << ")", _collectionName.c_str()));
+
+            if (i->_version != r->_expectedVersion)
+                Throw(::Assets::Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::UnsupportedVersion,
+					_depVal,
+                    StringMeld<256>() 
+                        << "Data chunk is incorrect version for chunk (" 
+                        << r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version, 
+						_collectionName.c_str()));
+        }
+
+        for (const auto& r:requests) {
+            auto i = std::find_if(
+                _chunks.begin(), _chunks.end(), 
+                [&r](const auto& c) { return c._type == r._type; });
+            assert(i != _chunks.end());
+
+            ArtifactRequestResult chunkResult;
+            if (	r._dataType == ArtifactRequest::DataType::BlockSerializer
+				||	r._dataType == ArtifactRequest::DataType::Raw) {
+                uint8_t* mem = (uint8*)XlMemAlign(i->_data->size(), sizeof(uint64_t));
+                chunkResult._buffer = std::unique_ptr<uint8_t[], PODAlignedDeletor>(mem);
+                chunkResult._bufferSize = i->_data->size();
+                std::memcpy(mem, i->_data->data(), i->_data->size());
+
+                // initialize with the block serializer (if requested)
+                if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
+                    Block_Initialize(chunkResult._buffer.get());
+            } else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
+				auto blobCopy = i->_data;
+				auto depValCopy = _depVal;
+				chunkResult._reopenFunction = [blobCopy, depValCopy]() -> std::shared_ptr<IFileInterface> {
+					TRY {
+						return CreateMemoryFile(blobCopy);
+					} CATCH (const std::exception& e) {
+						Throw(Exceptions::ConstructionError(e, depValCopy));
+					} CATCH_END
+				};
+			} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
+                chunkResult._sharedBlob = i->_data;
+            } else {
+                assert(0);
+            }
+
+            result.emplace_back(std::move(chunkResult));
+        }
+
+        return result;
+    }
+    Blob BlobArtifactCollection::GetBlob() const
+    {
+        if (_chunks.empty()) return nullptr;
+        return _chunks[0]._data;
+    }
+    ::Assets::DepValPtr BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
+	StringSection<ResChar>	BlobArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParams); }
+	BlobArtifactCollection::BlobArtifactCollection(
+        IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
+        const ::Assets::DepValPtr& depVal, const std::string& collectionName, const rstring& requestParams)
+	: _chunks(chunks.begin(), chunks.end()), _depVal(depVal), _collectionName(collectionName), _requestParams(requestParams) {}
+	BlobArtifactCollection::~BlobArtifactCollection() {}
+
+	std::vector<ArtifactRequestResult> CompilerExceptionArtifact::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
+    {
+        if (requests.size() == 1 && XlEqString(requests[0]._name, "log") && requests[0]._dataType == ArtifactRequest::DataType::SharedBlob) {
+            ArtifactRequestResult res;
+            res._sharedBlob = _log;
+            std::vector<ArtifactRequestResult> result;
+            result.push_back(std::move(res));
+            return result;
+        }
+        Throw(std::runtime_error("Compile operation failed with error: " + AsString(_log)));
+    }
+    Blob CompilerExceptionArtifact::GetBlob() const { return _log; }
+    ::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
 	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal) : _log(log), _depVal(depVal) {}
 	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
