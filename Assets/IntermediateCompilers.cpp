@@ -3,29 +3,19 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "IntermediateCompilers.h"
-#include "AssetUtils.h"
-#include "AssetServices.h"
 #include "AssetsCore.h"
-// #include "NascentChunk.h"
 #include "ICompileOperation.h"
-#include "IFileSystem.h"
-#include "MemoryFile.h"
-#include "CompileAndAsyncManager.h"
 #include "DepVal.h"
 #include "IntermediatesStore.h"
 #include "IArtifact.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../OSServices/Log.h"
-#include "../OSServices/LegacyFileStreams.h"
+#include "../OSServices/RawFS.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../Utility/Threading/LockFree.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/RawFS.h"
-#include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/Stream.h"
+#include "../OSServices/RawFS.h"		// for OSServices::GetProcessPath()
 #include "../Utility/StringFormat.h"
-#include "../OSServices/RawFS.h"
-#include "../Utility/Conversion.h"
 #include <regex>
 #include <set>
 #include <unordered_map>
@@ -46,44 +36,6 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-    static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
-	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
-
-    static void SerializeToFile(
-		IteratorRange<const ICompileOperation::SerializedArtifact*> chunksInput,
-        const char destinationFilename[],
-        const ConsoleRig::LibVersionDesc& versionInfo)
-    {
-            // Create the directory if we need to...
-        OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
-
-            // We need to separate out chunks that will be written to
-            // the main output file from chunks that will be written to
-            // a metrics file.
-
-		std::vector<ICompileOperation::SerializedArtifact> chunks(chunksInput.begin(), chunksInput.end());
-
-		for (auto c=chunks.begin(); c!=chunks.end();)
-			if (c->_type == ChunkType_Metrics) {
-				auto outputFile = MainFileSystem::OpenBasicFile(
-					StringMeld<MaxPath>() << destinationFilename << "-" << c->_name,
-					"wb");
-				outputFile.Write((const void*)AsPointer(c->_data->cbegin()), 1, c->_data->size());
-				c = chunks.erase(c);
-			} else
-				++c;
-
-		if (chunks.size() == 1 && chunks[0]._type == ChunkType_Text) {
-			auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-			outputFile->Write(AsPointer(chunks[0]._data->begin()), chunks[0]._data->size());
-		} else {
-			auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-			BuildChunkFile(*outputFile, MakeIteratorRange(chunks), versionInfo);
-		}
-    }
-*/
-
 	static DepValPtr MakeDepVal(
 		IteratorRange<const DependentFileState*> deps,
 		const DepValPtr& compilerDepVal)
@@ -93,8 +45,6 @@ namespace Assets
 			RegisterAssetDependency(depVal, compilerDepVal);
 		return depVal;
 	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class IntermediateCompilers::Marker : public IIntermediateCompileMarker
     {
@@ -124,47 +74,9 @@ namespace Assets
 			IntermediatesStore* destinationStore);
     };
 
-/*
-	static void MakeIntermediateName(
-		ResChar destination[], size_t destinationSize,
-		StringSection<> initializer,
-		StringSection<> postfix,
-		const IntermediatesStore& store)
-    {
-		store.MakeIntermediateName(destination, (unsigned)destinationSize, initializer);
-		XlCatString(destination, destinationSize, "-");
-		XlCatString(destination, destinationSize, postfix);
-    }
-*/
-
     std::shared_ptr<IArtifactCollection> IntermediateCompilers::Marker::GetExistingAsset() const
     {
         if (!_intermediateStore) return nullptr;
-
-		// Look for a compile products file from a previous compilation operation
-		// todo -- we should store these compile product tables in an ArchiveCache
-		/*ResChar intermediateName[MaxPath];
-		MakeIntermediateName(
-			intermediateName, dimof(intermediateName),
-			Initializer(),  "compileprod",
-			*_intermediateStore);
-
-		size_t fileSize;
-		auto fileData = TryLoadFileAsMemoryBlock(intermediateName, &fileSize);
-		if (!fileData) return nullptr;
-
-		InputStreamFormatter<utf8> formatter{
-			MemoryMappedInputStream{fileData.get(), PtrAdd(fileData.get(), fileSize)}};
-		CompileProductsFile compileProducts(formatter);
-
-		auto *product = compileProducts.FindProduct(_typeCode);
-		if (!product) return nullptr;
-
-		// we found a product, return a FileArtifact for it.
-		auto depVal = _intermediateStore->MakeDependencyValidation(product->_intermediateArtifact);
-		return std::make_shared<ChunkFileArtifactCollection>(
-			MainFileSystem::OpenFileInterface(product->_intermediateArtifact, "rb"),
-			depVal);*/
 
 		StringSection<> initializers[] = {
 			Initializer()
@@ -172,23 +84,6 @@ namespace Assets
 
 		return _intermediateStore->RetrieveCompileProducts(initializers, dimof(initializers), _groupIdInStore);
     }
-
-	/*static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
-		const IntermediatesStore& store,
-		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
-		StringSection<> initializer,
-		StringSection<> targetName,
-		ConsoleRig::LibVersionDesc srcVersion,
-		IteratorRange<const DependentFileState*> deps)
-	{
-		ResChar intermediateName[MaxPath];
-		MakeIntermediateName(intermediateName, dimof(intermediateName), initializer, targetName, store);
-		SerializeToFile(chunks, intermediateName, srcVersion);
-
-		// write new dependencies
-		auto artifactDepVal = store.WriteDependencies(intermediateName, {}, deps);
-		return {artifactDepVal, intermediateName};
-	}*/
 
 	void IntermediateCompilers::Marker::PerformCompile(
 		const ExtensionAndDelegate& delegate,
@@ -206,7 +101,6 @@ namespace Assets
 
 			deps = model->GetDependencies();
 
-			// CompileProductsFile compileProducts;
 			std::shared_ptr<IArtifactCollection> resultantArtifacts;
 			std::vector<ICompileOperation::SerializedArtifact> artifactsForStore;
 
@@ -230,38 +124,10 @@ namespace Assets
 
 				if (destinationStore)
 					artifactsForStore.insert(artifactsForStore.begin(), chunks.begin(), chunks.end());
-
-				/*if (destinationStore) {
-					// Write the compile result to an intermediate file
-					std::shared_ptr<DependencyValidation> intermediateDepVal;
-					std::string intermediateName;
-					std::tie(intermediateDepVal, intermediateName) = StoreCompileResults(
-						*destinationStore,
-						MakeIteratorRange(chunks), initializer, target._name,
-						delegate._srcVersion, MakeIteratorRange(deps));
-
-					compileProducts._compileProducts.push_back(
-						CompileProductsFile::Product{target._type, intermediateName});
-				}*/
 			}
 
 			// Write out the intermediate file that lists the products of this compile operation
 			if (destinationStore) {
-				/*
-				ResChar compileProductsFile[MaxPath];
-				MakeIntermediateName(
-					compileProductsFile, dimof(compileProductsFile),
-					initializer,  "compileprod",
-					*destinationStore);
-				OSServices::BasicFile file;
-				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {
-					auto stream = OSServices::Legacy::OpenFileOutput(std::move(file));
-					OutputStreamFormatter formatter(*stream);
-					SerializationOperator(formatter, compileProducts);
-				} else {
-					Throw(::Exceptions::BasicLabel("Failed while attempting to write compile products file in compile operation for (%s)", initializer.AsString().c_str()));
-				}
-				*/
 				StringSection<> initializers[] = { initializer };
 				destinationStore->StoreCompileProducts(
 					initializers, dimof(initializers),

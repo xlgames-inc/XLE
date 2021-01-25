@@ -7,17 +7,15 @@
 #include "AssetsCore.h"
 #include "ChunkFile.h"
 #include "BlockSerializer.h"
-#include "ICompileOperation.h"
-#include "../ConsoleRig/AttachableLibrary.h"	// (for LibVersionDesc)
 #include "../Utility/IteratorUtils.h"
-#include "../Core/Prefix.h"
-#include <vector>
 #include <memory>
 
 namespace Assets { class NascentBlockSerializer; }
 
 namespace Assets
 {
+	// todo -- NascentChunk client should use ICompileOperation::SerializedArtifact instead
+	
 	class NascentChunk
 	{
 	public:
@@ -45,16 +43,4 @@ namespace Assets
 		SerializationOperator(serializer, obj);
 		return AsBlob(serializer);
 	}
-
-	void BuildChunkFile(
-		IFileInterface& file,
-		IteratorRange<const NascentChunk*> chunks,
-		const ConsoleRig::LibVersionDesc& versionInfo,
-		std::function<bool(const NascentChunk&)> predicate = {});
-
-	void BuildChunkFile(
-		IFileInterface& file,
-		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
-		const ConsoleRig::LibVersionDesc& versionInfo,
-		std::function<bool(const ICompileOperation::SerializedArtifact&)> predicate = {});
 }

@@ -7,6 +7,7 @@
 #include "ChunkFile.h"
 #include "AssetsCore.h"
 #include "IFileSystem.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
@@ -92,6 +93,40 @@ namespace Assets { namespace ChunkFile
         return rawMemoryBlock;
     }
 
+    void BuildChunkFile(
+        IFileInterface& file,
+        IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
+        const ConsoleRig::LibVersionDesc& versionInfo,
+        std::function<bool(const ICompileOperation::SerializedArtifact&)> predicate)
+    {
+        unsigned chunksForMainFile = 0;
+		for (const auto& c:chunks)
+            if (!predicate || predicate(c))
+                ++chunksForMainFile;
+
+        using namespace Assets::ChunkFile;
+        auto header = MakeChunkFileHeader(
+            chunksForMainFile, 
+            versionInfo._versionString, versionInfo._buildDateString);
+        file.Write(&header, sizeof(header), 1);
+
+        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
+        for (const auto& c:chunks)
+            if (!predicate || predicate(c)) {
+				ChunkFile::ChunkHeader hdr;
+				hdr._type = c._type;
+				hdr._chunkVersion = c._version;
+				XlCopyString(hdr._name, c._name);
+                hdr._fileOffset = trackingOffset;
+				hdr._size = (ChunkFile::SizeType)c._data->size();
+                file.Write(&hdr, sizeof(hdr), 1);
+                trackingOffset += hdr._size;
+            }
+
+        for (const auto& c:chunks)
+            if (!predicate || predicate(c))
+                file.Write(AsPointer(c._data->begin()), c._data->size(), 1);
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     namespace Internal

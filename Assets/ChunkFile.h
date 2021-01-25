@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "ICompileOperation.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/Types.h"
@@ -15,6 +16,7 @@
 
 namespace Utility { class OutputStream; }
 namespace Assets { class IFileInterface; }
+namespace ConsoleRig { class LibVersionDesc; }
 
 namespace Assets { namespace ChunkFile
 {
@@ -84,6 +86,12 @@ namespace Assets { namespace ChunkFile
 
     std::unique_ptr<uint8[]> RawChunkAsMemoryBlock(
         const utf8 filename[], TypeIdentifier chunkType, unsigned expectedVersion);
+
+    void BuildChunkFile(
+		IFileInterface& file,
+		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
+		const ConsoleRig::LibVersionDesc& versionInfo,
+		std::function<bool(const ICompileOperation::SerializedArtifact&)> predicate = {});
 
     namespace Internal
     {

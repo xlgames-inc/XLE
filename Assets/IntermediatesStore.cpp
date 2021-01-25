@@ -10,26 +10,22 @@
 #include "DepVal.h"
 #include "AssetUtils.h"
 #include "ChunkFileContainer.h"
-
 #include "BlockSerializer.h"
 #include "MemoryFile.h"
-#include "NascentChunk.h"
-
+#include "ChunkFile.h"
 #include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
-#include "../OSServices/LegacyFileStreams.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Streams/Stream.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StreamUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/Conversion.h"
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
@@ -200,7 +196,7 @@ namespace Assets
 		std::string MakeIntermediateName(
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
 			CompileProductsGroupId groupId) const;
-		std::shared_ptr<IFileInterface> OpenCompileProductsFile(
+		std::shared_ptr<IFileInterface> TryOpenCompileProductsFile(
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
 			CompileProductsGroupId groupId,
 			const char openMode[]);
@@ -211,13 +207,17 @@ namespace Assets
 		return (ResChar)((input == '\\')?'/':tolower(input));
 	}
 
-	std::shared_ptr<IFileInterface> IntermediatesStore::Pimpl::OpenCompileProductsFile(
+	std::shared_ptr<IFileInterface> IntermediatesStore::Pimpl::TryOpenCompileProductsFile(
 		const StringSection<ResChar> initializers[], unsigned initializerCount,
 		CompileProductsGroupId groupId,
 		const char openMode[])
 	{
 		auto fn = MakeIntermediateName(initializers, initializerCount, groupId) + "-prods";
-		return MainFileSystem::OpenFileInterface(fn, 0);	// note -- no sharing allowed on this file. We take an exclusive lock on it
+		std::unique_ptr<IFileInterface> result;
+		auto ioResult = MainFileSystem::TryOpen(result, fn, openMode, 0);	// note -- no sharing allowed on this file. We take an exclusive lock on it
+		if (ioResult == IFileSystem::IOReason::Success)
+			return result;
+		return nullptr;
 	}
 
 	std::string IntermediatesStore::Pimpl::MakeIntermediateName(
@@ -400,7 +400,7 @@ namespace Assets
 
 		_pimpl->ResolveBaseDirectory();
 
-		auto productsFile = _pimpl->OpenCompileProductsFile(initializers, initializerCount, groupId, "rb");
+		auto productsFile = _pimpl->TryOpenCompileProductsFile(initializers, initializerCount, groupId, "rb");
 		if (!productsFile)
 			return nullptr;
 	
@@ -482,17 +482,21 @@ namespace Assets
 
 		auto intermediateName = _pimpl->MakeIntermediateName(initializers, initializerCount, groupId);
 		OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(intermediateName).DriveAndPath());
-		auto productsFile = _pimpl->OpenCompileProductsFile(initializers, initializerCount, groupId, "wb");
+		auto productsFile = _pimpl->TryOpenCompileProductsFile(initializers, initializerCount, groupId, "wb");
+		if (!productsFile)
+			Throw(std::runtime_error("Failed while attempting to open compiler products file for output"));
 
 		if (artifacts.size() == 1 && artifacts[0]._type == ChunkType_Text) {
-			auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb");
+			auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb", 0);
 			outputFile->Write(AsPointer(artifacts[0]._data->begin()), artifacts[0]._data->size());
 			compileProductsFile._compileProducts.push_back({artifacts[0]._type, intermediateName});
 		} else {
+			// Will we create one chunk file that will contain most of the artifacts
+			// However, some special artifacts (eg, metric files), can become separate files
 			std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
 			for (const auto&a:artifacts)
 				if (a._type == ChunkType_Metrics) {
-					auto outputFile = MainFileSystem::OpenFileInterface(intermediateName + ".metrics", "wb");
+					auto outputFile = MainFileSystem::OpenFileInterface(intermediateName + ".metrics", "wb", 0);
 					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 					compileProductsFile._compileProducts.push_back({a._type, intermediateName});
 				} else {
@@ -500,13 +504,14 @@ namespace Assets
 				}
 
 			if (!chunksInMainFile.empty()) {
-				auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb");
-				BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
+				auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb", 0);
+				ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
 				compileProductsFile._compileProducts.push_back({ChunkType_Multi, intermediateName});
 			}
 		}
 
-		// note -- we can set compileProductsFile._basePath here
+		// note -- we can set compileProductsFile._basePath here, and then make the dependencies
+		// 			within the compiler products file into relative filenames
 		/*
 			auto basePathSplitPath = MakeSplitPath(compileProductsFile._basePath);
 			if (!compileProductsFile._basePath.empty()) {
@@ -514,27 +519,6 @@ namespace Assets
 			} else {
 		*/
 
-		// Will we create one chunk file that will contain most of the artifacts
-		// However, some special artifacts (eg, metric files), can become separate files
-
-		/*
-		ResolveBaseDirectory();
-		MakeDepFileName(buffer, _resolvedBaseDirectory.c_str(), intermediateFileName);
-
-			// first, create the directory if we need to
-		char dirName[MaxPath];
-		Legacy::XlDirname(dirName, dimof(dirName), buffer);
-		
-
-			// now, write -- 
-		OSServices::BasicFile file;
-		if (MainFileSystem::TryOpen(file, buffer, "wb") != IFileSystem::IOReason::Success)
-			return nullptr;
-		auto stream = OSServices::Legacy::OpenFileOutput(std::move(file));
-		data.SaveToOutputStream(*stream);
-
-		return result;
-		*/
 		FileOutputStream stream(productsFile);
 		OutputStreamFormatter fmtter(stream);
 		fmtter << compileProductsFile;
