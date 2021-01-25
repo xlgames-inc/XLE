@@ -6,13 +6,13 @@
 #include "AssetUtils.h"
 #include "AssetServices.h"
 #include "AssetsCore.h"
-#include "NascentChunk.h"
+// #include "NascentChunk.h"
 #include "ICompileOperation.h"
 #include "IFileSystem.h"
 #include "MemoryFile.h"
 #include "CompileAndAsyncManager.h"
 #include "DepVal.h"
-#include "IntermediateAssets.h"
+#include "IntermediatesStore.h"
 #include "IArtifact.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../OSServices/Log.h"
@@ -41,10 +41,12 @@ namespace Assets
 		ConsoleRig::LibVersionDesc _srcVersion;
 		IntermediateCompilers::CompileOperationDelegate _delegate;
 		DepValPtr _compilerLibraryDepVal;
+		IntermediatesStore::CompileProductsGroupId _storeGroupId = 0;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
@@ -80,6 +82,7 @@ namespace Assets
 			BuildChunkFile(*outputFile, MakeIteratorRange(chunks), versionInfo);
 		}
     }
+*/
 
 	static DepValPtr MakeDepVal(
 		IteratorRange<const DependentFileState*> deps,
@@ -97,27 +100,31 @@ namespace Assets
     {
     public:
         std::shared_ptr<IArtifactCollection> GetExistingAsset() const;
-        std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() const;
+        std::shared_ptr<ArtifactCollectionFuture> InvokeCompile();
         StringSection<ResChar> Initializer() const;
 
         Marker(
             StringSection<ResChar> requestName, uint64_t typeCode,
             std::shared_ptr<ExtensionAndDelegate> delegate,
-			std::shared_ptr<IntermediatesStore> intermediateStore);
+			std::shared_ptr<IntermediatesStore> intermediateStore,
+			IntermediatesStore::CompileProductsGroupId groupIdInStore);
         ~Marker();
     private:
+		std::weak_ptr<ArtifactCollectionFuture> _activeFuture;
         std::weak_ptr<ExtensionAndDelegate> _delegate;
 		std::shared_ptr<IntermediatesStore> _intermediateStore;
         rstring _requestName;
         uint64_t _typeCode;
+		IntermediatesStore::CompileProductsGroupId _groupIdInStore;
 
 		static void PerformCompile(
 			const ExtensionAndDelegate& delegate,
 			uint64_t typeCode, StringSection<ResChar> initializer, 
 			ArtifactCollectionFuture& compileMarker,
-			const IntermediatesStore* destinationStore);
+			IntermediatesStore* destinationStore);
     };
 
+/*
 	static void MakeIntermediateName(
 		ResChar destination[], size_t destinationSize,
 		StringSection<> initializer,
@@ -128,101 +135,7 @@ namespace Assets
 		XlCatString(destination, destinationSize, "-");
 		XlCatString(destination, destinationSize, postfix);
     }
-
-	class CompileProductsFile
-	{
-	public:
-		struct Product
-		{
-			uint64_t _type;
-			std::string _intermediateArtifact;
-		};
-		std::vector<Product> _compileProducts;
-
-		const Product* FindProduct(uint64_t type) const
-		{
-			for (const auto&p:_compileProducts)
-				if (p._type == type)
-					return &p;
-			return nullptr;
-		}
-
-		void SerializeMethod(OutputStreamFormatter& formatter) const;
-		CompileProductsFile();
-		CompileProductsFile(InputStreamFormatter<utf8>& formatter);
-		~CompileProductsFile();
-	};
-
-	void CompileProductsFile::SerializeMethod(OutputStreamFormatter& formatter) const
-	{
-		for (const auto&product:_compileProducts) {
-			auto ele = formatter.BeginElement(std::to_string(product._type));
-			formatter.WriteAttribute("Artifact", product._intermediateArtifact.c_str());
-			formatter.EndElement(ele);
-		}
-	}
-
-	static CompileProductsFile::Product SerializeProduct(InputStreamFormatter<utf8>& formatter)
-	{
-		CompileProductsFile::Product result;
-		using FormatterBlob = InputStreamFormatter<utf8>::Blob;
-		for (;;) {
-			switch (formatter.PeekNext()) {
-			case FormatterBlob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					if (XlEqString(name, "Artifact")) {
-						result._intermediateArtifact = value.AsString();
-					} else
-						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
-				}
-				continue;
-
-			case FormatterBlob::EndElement:
-				break;
-
-			default:
-				Throw(Utility::FormatException("Unexpected blob in CompileProductsFile", formatter.GetLocation()));
-			}
-			break;
-		}
-		return result;
-	}
-
-	CompileProductsFile::CompileProductsFile(InputStreamFormatter<utf8>& formatter)
-	{
-		using FormatterBlob = InputStreamFormatter<utf8>::Blob;
-		for (;;) {
-			switch (formatter.PeekNext()) {
-			case FormatterBlob::BeginElement:
-				{
-					InputStreamFormatter<utf8>::InteriorSection eleName;
-					if (!formatter.TryBeginElement(eleName))
-						Throw(Utility::FormatException("Poorly formed begin element in CompileProductsFile", formatter.GetLocation()));
-
-					auto product = SerializeProduct(formatter);
-					product._type = Conversion::Convert<uint64_t>(eleName);
-					_compileProducts.push_back(product);
-
-					if (!formatter.TryEndElement())
-						Throw(Utility::FormatException("Expecting end element in CompileProductsFile", formatter.GetLocation()));
-				}
-				continue;
-
-			case FormatterBlob::AttributeName:
-				Throw(Utility::FormatException("Unexpected attribute in CompileProductsFile", formatter.GetLocation()));
-
-			default:
-				break;
-			}
-			break;
-		}
-	}
-
-	CompileProductsFile::CompileProductsFile() {}
-	CompileProductsFile::~CompileProductsFile() {}
+*/
 
     std::shared_ptr<IArtifactCollection> IntermediateCompilers::Marker::GetExistingAsset() const
     {
@@ -230,7 +143,7 @@ namespace Assets
 
 		// Look for a compile products file from a previous compilation operation
 		// todo -- we should store these compile product tables in an ArchiveCache
-		ResChar intermediateName[MaxPath];
+		/*ResChar intermediateName[MaxPath];
 		MakeIntermediateName(
 			intermediateName, dimof(intermediateName),
 			Initializer(),  "compileprod",
@@ -251,10 +164,16 @@ namespace Assets
 		auto depVal = _intermediateStore->MakeDependencyValidation(product->_intermediateArtifact);
 		return std::make_shared<ChunkFileArtifactCollection>(
 			MainFileSystem::OpenFileInterface(product->_intermediateArtifact, "rb"),
-			depVal);
+			depVal);*/
+
+		StringSection<> initializers[] = {
+			Initializer()
+		};
+
+		return _intermediateStore->RetrieveCompileProducts(initializers, dimof(initializers), _groupIdInStore);
     }
 
-	static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
+	/*static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
 		const IntermediatesStore& store,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks,
 		StringSection<> initializer,
@@ -269,13 +188,13 @@ namespace Assets
 		// write new dependencies
 		auto artifactDepVal = store.WriteDependencies(intermediateName, {}, deps);
 		return {artifactDepVal, intermediateName};
-	}
+	}*/
 
 	void IntermediateCompilers::Marker::PerformCompile(
 		const ExtensionAndDelegate& delegate,
 		uint64_t typeCode, StringSection<ResChar> initializer, 
 		ArtifactCollectionFuture& compileMarker,
-		const IntermediatesStore* destinationStore)
+		IntermediatesStore* destinationStore)
     {
 		std::vector<DependentFileState> deps;
 
@@ -287,8 +206,9 @@ namespace Assets
 
 			deps = model->GetDependencies();
 
-			CompileProductsFile compileProducts;
+			// CompileProductsFile compileProducts;
 			std::shared_ptr<IArtifactCollection> resultantArtifacts;
+			std::vector<ICompileOperation::SerializedArtifact> artifactsForStore;
 
 			auto targets = model->GetTargets();
 			for (unsigned t=0; t<targets.size(); ++t) {
@@ -308,7 +228,10 @@ namespace Assets
 						MakeIteratorRange(chunks), 
 						::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
 
-				if (destinationStore) {
+				if (destinationStore)
+					artifactsForStore.insert(artifactsForStore.begin(), chunks.begin(), chunks.end());
+
+				/*if (destinationStore) {
 					// Write the compile result to an intermediate file
 					std::shared_ptr<DependencyValidation> intermediateDepVal;
 					std::string intermediateName;
@@ -319,11 +242,12 @@ namespace Assets
 
 					compileProducts._compileProducts.push_back(
 						CompileProductsFile::Product{target._type, intermediateName});
-				}
+				}*/
 			}
 
 			// Write out the intermediate file that lists the products of this compile operation
 			if (destinationStore) {
+				/*
 				ResChar compileProductsFile[MaxPath];
 				MakeIntermediateName(
 					compileProductsFile, dimof(compileProductsFile),
@@ -337,6 +261,14 @@ namespace Assets
 				} else {
 					Throw(::Exceptions::BasicLabel("Failed while attempting to write compile products file in compile operation for (%s)", initializer.AsString().c_str()));
 				}
+				*/
+				StringSection<> initializers[] = { initializer };
+				destinationStore->StoreCompileProducts(
+					initializers, dimof(initializers),
+					delegate._storeGroupId,
+					MakeIteratorRange(artifactsForStore),
+					MakeIteratorRange(deps),
+					delegate._srcVersion);
 			}
 
 			if (!resultantArtifacts)
@@ -368,6 +300,7 @@ namespace Assets
 		Threading::Mutex _delegatesLock;
 		std::vector<std::shared_ptr<ExtensionAndDelegate>> _delegates;
 		std::unordered_multimap<RegisteredCompilerId, std::string> _extensionsAndDelegatesMap;
+		std::unordered_map<uint64_t, std::shared_ptr<Marker>> _markers;
 		std::shared_ptr<IntermediatesStore> _store;
 		RegisteredCompilerId _nextCompilerId = 1;
 
@@ -376,8 +309,12 @@ namespace Assets
 		Pimpl& operator=(const Pimpl&) = delete;
     };
 
-    std::shared_ptr<ArtifactCollectionFuture> IntermediateCompilers::Marker::InvokeCompile() const
+    std::shared_ptr<ArtifactCollectionFuture> IntermediateCompilers::Marker::InvokeCompile()
     {
+		auto activeFuture = _activeFuture.lock();
+		if (activeFuture)
+			return activeFuture;
+
         auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
@@ -397,6 +334,7 @@ namespace Assets
 			PerformCompile(*d, typeCode, MakeStringSection(requestName), op, store.get());
 		});
         
+		_activeFuture = backgroundOp;
         return std::move(backgroundOp);
     }
 
@@ -408,9 +346,11 @@ namespace Assets
 	IntermediateCompilers::Marker::Marker(
         StringSection<ResChar> requestName, uint64_t typeCode,
         std::shared_ptr<ExtensionAndDelegate> delegate,
-		std::shared_ptr<IntermediatesStore> intermediateStore)
+		std::shared_ptr<IntermediatesStore> intermediateStore,
+		IntermediatesStore::CompileProductsGroupId groupIdInStore)
     : _delegate(std::move(delegate)), _intermediateStore(std::move(intermediateStore))
 	, _requestName(requestName.AsString()), _typeCode(typeCode)
+	, _groupIdInStore(groupIdInStore)
     {}
 
 	IntermediateCompilers::Marker::~Marker() {}
@@ -420,9 +360,19 @@ namespace Assets
         const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
 		ScopedLock(_pimpl->_delegatesLock);
+		uint64_t requestHashCode = typeCode;
+		for (auto c=0; c<initializerCount; ++c)
+			requestHashCode = Hash64(initializers[c], requestHashCode);
+		auto existing = _pimpl->_markers.find(requestHashCode);
+		if (existing != _pimpl->_markers.end())
+			return existing->second;
+
 		for (const auto&d:_pimpl->_delegates)
-			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter))
-				return std::make_shared<Marker>(initializers[0], typeCode, d, _pimpl->_store);
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter)) {
+				auto result = std::make_shared<Marker>(initializers[0], typeCode, d, _pimpl->_store, d->_storeGroupId);
+				_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
+				return result;
+			}
 
 		return nullptr;
     }
@@ -445,6 +395,8 @@ namespace Assets
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
+		if (_pimpl->_store)
+			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name));
 		_pimpl->_delegates.push_back(registration);
 		return { result };
 	}

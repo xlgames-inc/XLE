@@ -7,7 +7,7 @@
     <ClInclude Include="..\ArchiveCache.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
-    <ClInclude Include="..\IntermediateAssets.h" />
+    <ClInclude Include="..\IntermediatesStore.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\ChunkFileContainer.h" />
     <ClInclude Include="..\AssetHeap.h">
@@ -80,7 +80,7 @@
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ArchiveCache.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
-    <ClCompile Include="..\IntermediateAssets.cpp" />
+    <ClCompile Include="..\IntermediatesStore.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
     <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />

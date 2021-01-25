@@ -12,7 +12,6 @@
 #include "NascentChunk.h"		// (for AsBlob)
 #include "AssetServices.h"
 #include "CompileAndAsyncManager.h"
-#include "IntermediateAssets.h"		// (used in BeginCompileOperation)
 #include "IntermediateCompilers.h"
 #include "IArtifact.h"
 #include "../OSServices/Log.h"

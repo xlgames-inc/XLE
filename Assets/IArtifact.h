@@ -97,10 +97,10 @@ namespace Assets
 	class ChunkFileArtifactCollection : public IArtifactCollection
 	{
 	public:
-		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
-		Blob GetBlob() const;
-		DepValPtr GetDependencyValidation() const;
-		StringSection<ResChar> GetRequestParameters() const;
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
+		Blob GetBlob() const override;
+		DepValPtr GetDependencyValidation() const override;
+		StringSection<ResChar> GetRequestParameters() const override;
 		ChunkFileArtifactCollection(
 			const std::shared_ptr<IFileInterface>& file,
 			const DepValPtr& depVal,
@@ -115,10 +115,10 @@ namespace Assets
 	class BlobArtifactCollection : public IArtifactCollection
 	{
 	public:
-		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
-		Blob GetBlob() const;
-		DepValPtr GetDependencyValidation() const;
-		StringSection<ResChar> GetRequestParameters() const;
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
+		Blob GetBlob() const override;
+		DepValPtr GetDependencyValidation() const override;
+		StringSection<ResChar> GetRequestParameters() const override;
 		BlobArtifactCollection(
 			IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 			const DepValPtr& depVal, 
@@ -135,10 +135,10 @@ namespace Assets
 	class CompilerExceptionArtifact : public ::Assets::IArtifactCollection
 	{
 	public:
-		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
-		Blob GetBlob() const;
-		DepValPtr GetDependencyValidation() const;
-		StringSection<::Assets::ResChar> GetRequestParameters() const;
+		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
+		Blob GetBlob() const override;
+		DepValPtr GetDependencyValidation() const override;
+		StringSection<::Assets::ResChar> GetRequestParameters() const override;
 		CompilerExceptionArtifact(
 			const ::Assets::Blob& log,
 			const ::Assets::DepValPtr& depVal);

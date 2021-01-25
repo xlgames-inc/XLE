@@ -68,7 +68,7 @@
     <ClInclude Include="..\IAsyncMarker.h" />
     <ClInclude Include="..\IArtifact.h" />
     <ClInclude Include="..\IFileSystem.h" />
-    <ClInclude Include="..\IntermediateAssets.h" />
+    <ClInclude Include="..\IntermediatesStore.h" />
     <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
     <ClInclude Include="..\AssetFutureContinuation.h" />
@@ -93,7 +93,7 @@
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\GeneralCompiler.cpp" />
-    <ClCompile Include="..\IntermediateAssets.cpp" />
+    <ClCompile Include="..\IntermediatesStore.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
     <ClCompile Include="..\NascentChunk.cpp" />

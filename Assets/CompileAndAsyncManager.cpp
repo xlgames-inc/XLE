@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompileAndAsyncManager.h"
-#include "IntermediateAssets.h"
+#include "IntermediatesStore.h"
 #include "IntermediateCompilers.h"
 #include "../OSServices/Log.h"
 #include "../Utility/Threading/Mutex.h"

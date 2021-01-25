@@ -7,7 +7,7 @@
 #include "../../Assets/ICompileOperation.h"
 #include "../../Assets/IArtifact.h"
 #include "../../Assets/IntermediateCompilers.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IntermediatesStore.h"
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/AssetTraits.h"
@@ -238,7 +238,33 @@ namespace UnitTests
 				}());
 			}
 
-			compilers->DeregisterCompiler(registration._registrationId);    
+			compilers->DeregisterCompiler(registration._registrationId);
+		}
+
+
+		SECTION("Compiler marker management")
+		{
+			uint64_t outputTypes[] = { Type_UnitTestArtifact };
+			auto registration = compilers->RegisterCompiler(
+				"unit-test-asset-.*",
+				MakeIteratorRange(outputTypes),
+				"UnitTestCompiler",
+				ConsoleRig::GetLibVersionDesc(),
+				nullptr,
+				[](StringSection<> initializer) {
+					return std::make_shared<TestCompileOperation>(initializer);
+				});
+
+			StringSection<> initializers0[] = { "unit-test-asset-one" };
+			StringSection<> initializers1[] = { "unit-test-asset-two" };
+			auto marker0 = compilers->Prepare(Type_UnitTestArtifact, initializers0, dimof(initializers0));
+			auto marker1 = compilers->Prepare(Type_UnitTestArtifact, initializers0, dimof(initializers0));
+			auto marker2 = compilers->Prepare(Type_UnitTestArtifact, initializers1, dimof(initializers1));
+			REQUIRE(marker0 == marker1);
+			REQUIRE(marker0 != marker2);
+
+			compilers->DeregisterCompiler(registration._registrationId);
+
 		}
 
 		// ::Assets::MainFileSystem::Shutdown();

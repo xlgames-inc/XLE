@@ -12,7 +12,7 @@ set(Src
     CompilationThread.cpp
     CompileAndAsyncManager.cpp
     ConfigFileContainer.cpp
-    IntermediateAssets.cpp
+    IntermediatesStore.cpp
     IntermediateCompilers.cpp
     MainFileSystem.cpp
     MemoryFile.cpp

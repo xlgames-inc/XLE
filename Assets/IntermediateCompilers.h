@@ -73,7 +73,7 @@ namespace Assets
 	{
 	public:
 		virtual std::shared_ptr<IArtifactCollection> GetExistingAsset() const = 0;
-		virtual std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() const = 0;
+		virtual std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() = 0;
 		virtual StringSection<ResChar> Initializer() const = 0;
 		virtual ~IIntermediateCompileMarker();
 	};

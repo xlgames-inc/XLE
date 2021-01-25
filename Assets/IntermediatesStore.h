@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -7,18 +5,19 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "ICompileOperation.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringUtils.h"
 
 namespace Utility { class OutputStream; }
 namespace OSServices { class BasicFile; }
+namespace ConsoleRig { class LibVersionDesc; }
 
 namespace Assets
 {
 	class DependentFileState;
 	class DependencyValidation;
-	class IIntermediateCompileMarker;
-	class IFileInterface;
+	class IArtifactCollection;
 
 	/// <summary>Archive of compiled intermediate assets</summary>
 	/// When compile operations succeed, the resulting artifacts are cached in an IntermediatesStore,
@@ -37,49 +36,36 @@ namespace Assets
 	{
 	public:
 		using DepVal = std::shared_ptr<DependencyValidation>;
+		using CompileProductsGroupId = uint64_t;
 
-		DepVal MakeDependencyValidation(
-			StringSection<ResChar> intermediateFileName) const;
+		void StoreCompileProducts(
+            const StringSection<> initializers[], unsigned initializerCount,
+			CompileProductsGroupId groupId,
+			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+			IteratorRange<const DependentFileState*> dependencies,
+			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
 
-		DepVal WriteDependencies(
-			StringSection<ResChar> intermediateFileName, 
-			StringSection<ResChar> baseDir, 
-			IteratorRange<const DependentFileState*> deps,
-			bool makeDepValidation = true) const;
+		std::shared_ptr<IArtifactCollection> RetrieveCompileProducts(
+            const StringSection<> initializers[], unsigned initializerCount,
+			CompileProductsGroupId groupId);
 
-		void    MakeIntermediateName(
-			ResChar buffer[], unsigned bufferMaxCount, 
-			StringSection<ResChar> firstInitializer) const;
+		CompileProductsGroupId RegisterCompileProductsGroup(StringSection<> name);
 
-		template<int Count>
-			void    MakeIntermediateName(ResChar (&buffer)[Count], StringSection<ResChar> firstInitializer) const
-			{
-				MakeIntermediateName(buffer, Count, firstInitializer);
-			}
+		static auto GetDependentFileState(StringSection<> filename) -> DependentFileState;
+		static void ShadowFile(StringSection<> filename);
 
-		static auto GetDependentFileState(StringSection<ResChar> filename) -> DependentFileState;
-		static void ShadowFile(StringSection<ResChar> filename);
-
-        static void ClearDependencyData();
-
-		IntermediatesStore(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal = false);
+		IntermediatesStore(
+			const char baseDirectory[],
+			const char versionString[],
+			const char configString[],
+			bool universal = false);
 		~IntermediatesStore();
 		IntermediatesStore(const IntermediatesStore&) = delete;
 		IntermediatesStore& operator=(const IntermediatesStore&) = delete;
 
 	protected:
-		mutable std::string _resolvedBaseDirectory;
-		mutable std::unique_ptr<OSServices::BasicFile> _markerFile;
-
-		struct ConstructorOptions
-		{
-			::Assets::rstring _baseDir;
-			::Assets::rstring _versionString;
-			::Assets::rstring _configString;
-		};
-		ConstructorOptions _constructorOptions;
-
-		void ResolveBaseDirectory() const;
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
 	};
 }
 
