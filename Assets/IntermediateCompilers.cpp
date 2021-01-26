@@ -9,12 +9,11 @@
 #include "IntermediatesStore.h"
 #include "IArtifact.h"
 #include "../ConsoleRig/AttachableLibrary.h"
-#include "../OSServices/Log.h"
-#include "../OSServices/RawFS.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../OSServices/Log.h"
+#include "../OSServices/RawFS.h"		// for OSServices::GetProcessPath()
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../OSServices/RawFS.h"		// for OSServices::GetProcessPath()
 #include "../Utility/StringFormat.h"
 #include <regex>
 #include <set>

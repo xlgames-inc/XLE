@@ -26,7 +26,10 @@
 #include "../Utility/StreamUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/FunctionUtils.h"
 #include "../Utility/Conversion.h"
+#include <filesystem>
+#include <set>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	#include "../OSServices/WinAPI/IncludeWindows.h"
@@ -175,6 +178,13 @@ namespace Assets
 		}
 	}
 
+	class StoreReferenceCounts
+	{
+	public:
+		Threading::Mutex _lock;
+		std::set<uint64_t> _storeOperationsInFlight;
+		std::vector<std::pair<uint64_t, unsigned>> _readReferenceCount;
+	};
 
 	class IntermediatesStore::Pimpl
 	{
@@ -192,14 +202,15 @@ namespace Assets
 
 		std::unordered_map<uint64_t, std::string> _groupIdToDirName;
 
+		std::shared_ptr<StoreReferenceCounts> _storeRefCounts;
+
 		void ResolveBaseDirectory() const;
-		std::string MakeIntermediateName(
+		std::string MakeStoreName(
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
 			CompileProductsGroupId groupId) const;
-		std::shared_ptr<IFileInterface> TryOpenCompileProductsFile(
+		uint64_t MakeHashCode(
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
-			CompileProductsGroupId groupId,
-			const char openMode[]);
+			CompileProductsGroupId groupId) const;
 	};
 
 	static ResChar ConvChar(ResChar input) 
@@ -207,20 +218,7 @@ namespace Assets
 		return (ResChar)((input == '\\')?'/':tolower(input));
 	}
 
-	std::shared_ptr<IFileInterface> IntermediatesStore::Pimpl::TryOpenCompileProductsFile(
-		const StringSection<ResChar> initializers[], unsigned initializerCount,
-		CompileProductsGroupId groupId,
-		const char openMode[])
-	{
-		auto fn = MakeIntermediateName(initializers, initializerCount, groupId) + "-prods";
-		std::unique_ptr<IFileInterface> result;
-		auto ioResult = MainFileSystem::TryOpen(result, fn, openMode, 0);	// note -- no sharing allowed on this file. We take an exclusive lock on it
-		if (ioResult == IFileSystem::IOReason::Success)
-			return result;
-		return nullptr;
-	}
-
-	std::string IntermediatesStore::Pimpl::MakeIntermediateName(
+	std::string IntermediatesStore::Pimpl::MakeStoreName(
 		const StringSection<ResChar> initializers[], unsigned initializerCount,
 		CompileProductsGroupId groupId) const
 	{
@@ -238,6 +236,16 @@ namespace Assets
 		auto result = str.str();
 		for (auto&b:result)
 			if (b == ':') b = '-';
+		return result;
+	}
+
+	uint64_t IntermediatesStore::Pimpl::MakeHashCode(
+		const StringSection<ResChar> initializers[], unsigned initializerCount,
+		CompileProductsGroupId groupId) const
+	{
+		uint64_t result = groupId;
+		for (unsigned i=0; i<initializerCount; ++i)
+			result = Hash64(initializers[i].begin(), initializers[i].end(), result);
 		return result;
 	}
 
@@ -369,28 +377,80 @@ namespace Assets
 		StringSection<ResChar> GetRequestParameters() const override { return {}; }
 		CompileProductsArtifactCollection(
 			const CompileProductsFile& productsFile, 
-			const ::Assets::DepValPtr& depVal)
+			const ::Assets::DepValPtr& depVal,
+			const std::shared_ptr<StoreReferenceCounts>& refCounts,
+			uint64_t refCountHashCode)
 		: _productsFile(productsFile), _depVal(depVal)
+		, _refCounts(refCounts), _refCountHashCode(refCountHashCode)
 		{
+			ScopedLock(_refCounts->_lock);
+			auto read = LowerBound(_refCounts->_readReferenceCount, _refCountHashCode);
+			if (read != _refCounts->_readReferenceCount.end() && read->first == _refCountHashCode) {
+				++read->second;
+			} else
+				_refCounts->_readReferenceCount.insert(read, std::make_pair(_refCountHashCode, 1));
 		}
-		~CompileProductsArtifactCollection() {}
+
+		~CompileProductsArtifactCollection() 
+		{
+			ScopedLock(_refCounts->_lock);
+			auto read = LowerBound(_refCounts->_readReferenceCount, _refCountHashCode);
+			if (read != _refCounts->_readReferenceCount.end() && read->first == _refCountHashCode) {
+				assert(read->second > 0);
+				--read->second;
+			} else {
+				Log(Error) << "Missing _readReferenceCount marker during cleanup op in RetrieveCompileProducts" << std::endl;
+			}
+		}
+
+		CompileProductsArtifactCollection(const CompileProductsArtifactCollection&) = delete;
+		CompileProductsArtifactCollection& operator=(const CompileProductsArtifactCollection&) = delete;
 	private:
 		std::vector<ICompileOperation::SerializedArtifact> _chunks;
 		CompileProductsFile _productsFile;
 		DepValPtr _depVal;
+		std::shared_ptr<StoreReferenceCounts> _refCounts;
+		uint64_t _refCountHashCode;
 	};
 
 	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
 		const CompileProductsFile& productsFile, 
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DepValPtr& depVal,
+		const std::shared_ptr<StoreReferenceCounts>& refCounts,
+		uint64_t refCountHashCode)
 	{
-		return std::make_shared<CompileProductsArtifactCollection>(productsFile, depVal);
+		return std::make_shared<CompileProductsArtifactCollection>(productsFile, depVal, refCounts, refCountHashCode);
 	}
 
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
 		const StringSection<ResChar> initializers[], unsigned initializerCount,
 		CompileProductsGroupId groupId)
 	{
+		auto hashCode = _pimpl->MakeHashCode(initializers, initializerCount, groupId);
+		{
+			ScopedLock(_pimpl->_storeRefCounts->_lock);
+			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
+			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
+				Throw(std::runtime_error("Attempting to retrieve compile products while store in flight: " + DescriptiveName(initializers, initializerCount)));
+			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
+			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
+				++read->second;
+			} else
+				_pimpl->_storeRefCounts->_readReferenceCount.insert(read, std::make_pair(hashCode, 1));
+		}
+		auto cleanup = AutoCleanup(
+			[hashCode, initializers, initializerCount, this]() {
+				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
+				auto read = LowerBound(this->_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
+				if (read != this->_pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
+					assert(read->second > 0);
+					--read->second;
+				} else {
+					Log(Error) << "Missing _readReferenceCount marker during cleanup op in RetrieveCompileProducts" << std::endl;
+				}
+			});
+		(void)cleanup;
+
 			//  When we process a file, we write a little text file to the
 			//  ".deps" directory. This contains a list of dependency files, and
 			//  the state of those files when this file was compiled.
@@ -398,10 +458,10 @@ namespace Assets
 			//  the .deps file, then we can assume that it is out of date and
 			//  must be recompiled.
 
-		_pimpl->ResolveBaseDirectory();
-
-		auto productsFile = _pimpl->TryOpenCompileProductsFile(initializers, initializerCount, groupId, "rb");
-		if (!productsFile)
+		auto intermediateName = _pimpl->MakeStoreName(initializers, initializerCount, groupId);
+		std::unique_ptr<IFileInterface> productsFile;
+		auto ioResult = MainFileSystem::TryOpen(productsFile, intermediateName.c_str(), "rb", 0);
+		if (ioResult != ::Assets::IFileSystem::IOReason::Success || !productsFile)
 			return nullptr;
 	
 		size_t size = productsFile->GetSize();
@@ -445,7 +505,7 @@ namespace Assets
 			}
 		}
 
-		return MakeArtifactCollection(finalProductsFile, depVal);
+		return MakeArtifactCollection(finalProductsFile, depVal, _pimpl->_storeRefCounts, hashCode);
 	}
 
 	class FileOutputStream : public OutputStream
@@ -473,6 +533,40 @@ namespace Assets
 		IteratorRange<const DependentFileState*> dependencies,
 		const ConsoleRig::LibVersionDesc& compilerVersionInfo)
 	{
+		//
+		//		Maintain _pimpl->_storeOperationsInFlight, which just records what
+		//		store operations are currently in flight
+		//
+
+		auto hashCode = _pimpl->MakeHashCode(initializers, initializerCount, groupId);
+		{
+			ScopedLock(_pimpl->_storeRefCounts->_lock);
+			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
+			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
+				Throw(std::runtime_error("Multiple stores in flight for the same compile product: " + DescriptiveName(initializers, initializerCount)));
+			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
+			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode && read->second != 0)
+				Throw(std::runtime_error("Attempting to store compile product while still reading from it: " + DescriptiveName(initializers, initializerCount)));
+			_pimpl->_storeRefCounts->_storeOperationsInFlight.insert(hashCode);
+		}
+
+		bool successfulStore = false;
+		auto cleanup = AutoCleanup(
+			[&successfulStore, hashCode, initializers, initializerCount, this]() {
+				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
+				auto existing = this->_pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
+				if (existing != this->_pimpl->_storeRefCounts->_storeOperationsInFlight.end()) {
+					this->_pimpl->_storeRefCounts->_storeOperationsInFlight.erase(existing);
+				} else {
+					Log(Error) << "Missing _storeOperationsInFlight marker during cleanup op in StoreCompileProducts" << std::endl;
+				}
+			});
+		(void)cleanup;
+
+		//
+		// 		Now write out the compile products
+		//
+
 		CompileProductsFile compileProductsFile;
 
 		for (const auto& s:dependencies) {
@@ -480,33 +574,37 @@ namespace Assets
 			compileProductsFile._dependencies.push_back({filename, s._timeMarker});
 		}
 
-		auto intermediateName = _pimpl->MakeIntermediateName(initializers, initializerCount, groupId);
+		auto intermediateName = _pimpl->MakeStoreName(initializers, initializerCount, groupId);
 		OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(intermediateName).DriveAndPath());
-		auto productsFile = _pimpl->TryOpenCompileProductsFile(initializers, initializerCount, groupId, "wb");
-		if (!productsFile)
-			Throw(std::runtime_error("Failed while attempting to open compiler products file for output"));
+		std::vector<std::pair<std::string, std::string>> renameOps;
 
 		if (artifacts.size() == 1 && artifacts[0]._type == ChunkType_Text) {
-			auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb", 0);
+			auto mainBlobName = intermediateName + ".blob";
+			auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
 			outputFile->Write(AsPointer(artifacts[0]._data->begin()), artifacts[0]._data->size());
-			compileProductsFile._compileProducts.push_back({artifacts[0]._type, intermediateName});
+			compileProductsFile._compileProducts.push_back({artifacts[0]._type, mainBlobName});
+			renameOps.push_back({mainBlobName + ".staging", mainBlobName});
 		} else {
 			// Will we create one chunk file that will contain most of the artifacts
 			// However, some special artifacts (eg, metric files), can become separate files
 			std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
 			for (const auto&a:artifacts)
 				if (a._type == ChunkType_Metrics) {
-					auto outputFile = MainFileSystem::OpenFileInterface(intermediateName + ".metrics", "wb", 0);
+					auto metricsName = intermediateName + ".metrics";
+					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
 					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-					compileProductsFile._compileProducts.push_back({a._type, intermediateName});
+					compileProductsFile._compileProducts.push_back({a._type, metricsName});
+					renameOps.push_back({metricsName + ".staging", metricsName});
 				} else {
 					chunksInMainFile.push_back(a);
 				}
 
 			if (!chunksInMainFile.empty()) {
-				auto outputFile = MainFileSystem::OpenFileInterface(intermediateName, "wb", 0);
+				auto mainBlobName = intermediateName + ".chunk";
+				auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
 				ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
-				compileProductsFile._compileProducts.push_back({ChunkType_Multi, intermediateName});
+				compileProductsFile._compileProducts.push_back({ChunkType_Multi, mainBlobName});
+				renameOps.push_back({mainBlobName + ".staging", mainBlobName});
 			}
 		}
 
@@ -519,9 +617,22 @@ namespace Assets
 			} else {
 		*/
 
-		FileOutputStream stream(productsFile);
-		OutputStreamFormatter fmtter(stream);
-		fmtter << compileProductsFile;
+		{
+			std::shared_ptr<IFileInterface> productsFile = MainFileSystem::OpenFileInterface(intermediateName + ".staging", "wb", 0); // note -- no sharing allowed on this file. We take an exclusive lock on it
+			FileOutputStream stream(productsFile);
+			OutputStreamFormatter fmtter(stream);
+			fmtter << compileProductsFile;
+			renameOps.push_back({intermediateName + ".staging", intermediateName});
+		}
+
+		// If we get to here successfully, go ahead and rename all of the staging files to their final names 
+		// This gives us a little bit of protection against exceptions while writing out the staging files
+		for (const auto& renameOp:renameOps) {
+			std::filesystem::remove(renameOp.second);
+			std::filesystem::rename(renameOp.first, renameOp.second);
+		}
+
+		successfulStore = false;		
 	}
 
 	void IntermediatesStore::Pimpl::ResolveBaseDirectory() const
@@ -642,6 +753,7 @@ namespace Assets
 			_pimpl->_constructorOptions._versionString = versionString;
 			_pimpl->_constructorOptions._configString = configString;
 		}
+		_pimpl->_storeRefCounts = std::make_shared<StoreReferenceCounts>();
 	}
 
 	IntermediatesStore::~IntermediatesStore() 
