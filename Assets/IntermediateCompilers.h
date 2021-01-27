@@ -26,7 +26,8 @@ namespace Assets
             const StringSection<ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
 		
-		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(StringSection<>)>;
+		using IdentifiersList = IteratorRange<const StringSection<>*>;
+		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(IdentifiersList)>;
 
 		using RegisteredCompilerId = uint64_t;
 		struct  CompilerRegistration

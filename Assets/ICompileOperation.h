@@ -35,6 +35,11 @@ namespace Assets
 		virtual ~ICompileOperation();
 	};
 
+	using IdentifiersList = IteratorRange<const StringSection<char>*>;
+	using CreateCompileOperationFn = std::shared_ptr<ICompileOperation>(IdentifiersList identifier);
+
+	// Compiler shared libraries -- 
+
 	class ICompilerDesc
 	{
 	public:
@@ -55,6 +60,5 @@ namespace Assets
 	};
 
 	using GetCompilerDescFn = std::shared_ptr<ICompilerDesc>();
-	using CreateCompileOperationFn = std::shared_ptr<ICompileOperation>(StringSection<::Assets::ResChar> identifier);
 }
 

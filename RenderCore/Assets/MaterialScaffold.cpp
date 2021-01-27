@@ -9,7 +9,6 @@
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/Assets.h"
-#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Streams/PathUtils.h"
 
 namespace RenderCore { namespace Assets

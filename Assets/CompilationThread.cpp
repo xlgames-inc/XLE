@@ -31,15 +31,12 @@ namespace Assets
 				}
 				CATCH(const ::Assets::Exceptions::ConstructionError& e)
 				{
-					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
 					future->SetArtifactCollection(
-						::Assets::AssetState::Invalid,
-						artifact);
+						std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation()));
 				}
 				CATCH(const std::exception& e)
 				{
 					future->SetArtifactCollection(
-						::Assets::AssetState::Invalid,
 						std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr));
 				}
 				CATCH(...)

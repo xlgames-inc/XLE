@@ -48,27 +48,26 @@ namespace Assets
     class IntermediateCompilers::Marker : public IIntermediateCompileMarker
     {
     public:
+		using IdentifiersList = IteratorRange<const StringSection<>*>;
         std::shared_ptr<IArtifactCollection> GetExistingAsset() const;
         std::shared_ptr<ArtifactCollectionFuture> InvokeCompile();
         StringSection<ResChar> Initializer() const;
 
         Marker(
-            StringSection<ResChar> requestName, uint64_t typeCode,
+            IdentifiersList requestName, uint64_t typeCode,
             std::shared_ptr<ExtensionAndDelegate> delegate,
-			std::shared_ptr<IntermediatesStore> intermediateStore,
-			IntermediatesStore::CompileProductsGroupId groupIdInStore);
+			std::shared_ptr<IntermediatesStore> intermediateStore);
         ~Marker();
     private:
 		std::weak_ptr<ArtifactCollectionFuture> _activeFuture;
         std::weak_ptr<ExtensionAndDelegate> _delegate;
 		std::shared_ptr<IntermediatesStore> _intermediateStore;
-        rstring _requestName;
+        std::vector<std::string> _requestName;
         uint64_t _typeCode;
-		IntermediatesStore::CompileProductsGroupId _groupIdInStore;
 
 		static void PerformCompile(
 			const ExtensionAndDelegate& delegate,
-			uint64_t typeCode, StringSection<ResChar> initializer, 
+			uint64_t typeCode, IdentifiersList initializers,
 			ArtifactCollectionFuture& compileMarker,
 			IntermediatesStore* destinationStore);
     };
@@ -77,26 +76,32 @@ namespace Assets
     {
         if (!_intermediateStore) return nullptr;
 
-		StringSection<> initializers[] = {
-			Initializer()
-		};
+		auto d = _delegate.lock();
+		if (!d)
+			return nullptr;
 
-		return _intermediateStore->RetrieveCompileProducts(initializers, dimof(initializers), _groupIdInStore);
+		std::vector<StringSection<>> initializers;
+		initializers.resize(_requestName.size());
+		for (size_t c=0; c<_requestName.size(); ++c)
+			initializers[c] = MakeStringSection(_requestName[c]);
+
+		return _intermediateStore->RetrieveCompileProducts(AsPointer(initializers.begin()), initializers.size(), d->_storeGroupId);
     }
 
 	void IntermediateCompilers::Marker::PerformCompile(
 		const ExtensionAndDelegate& delegate,
-		uint64_t typeCode, StringSection<ResChar> initializer, 
+		uint64_t typeCode, IdentifiersList initializers, 
 		ArtifactCollectionFuture& compileMarker,
 		IntermediatesStore* destinationStore)
     {
 		std::vector<DependentFileState> deps;
+		assert(!initializers.empty());
 
         TRY
         {
-            auto model = delegate._delegate(initializer);
+            auto model = delegate._delegate(initializers);
 			if (!model)
-				Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializer.AsString().c_str()));
+				Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializers[0].AsString().c_str()));
 
 			deps = model->GetDependencies();
 
@@ -127,34 +132,34 @@ namespace Assets
 
 			// Write out the intermediate file that lists the products of this compile operation
 			if (destinationStore) {
-				StringSection<> initializers[] = { initializer };
 				destinationStore->StoreCompileProducts(
-					initializers, dimof(initializers),
+					initializers.begin(), initializers.size(),
 					delegate._storeGroupId,
 					MakeIteratorRange(artifactsForStore),
+					resultantArtifacts->GetAssetState(),
 					MakeIteratorRange(deps),
 					delegate._srcVersion);
 			}
 
 			if (!resultantArtifacts)
-				Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
+				Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializers[0].AsString().c_str()));
         
-			compileMarker.SetArtifactCollection(AssetState::Ready, resultantArtifacts);
+			compileMarker.SetArtifactCollection(resultantArtifacts);
 
         } CATCH(const Exceptions::ConstructionError& e) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializers[0]).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
 			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(const std::exception& e) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializers[0]).AllExceptParameters());
 			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(...) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+				RegisterFileDependency(depVal, MakeFileNameSplitter(initializers[0]).AllExceptParameters());
 			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::Unknown, depVal, "%s", "unknown exception"));
 		} CATCH_END
     }
@@ -181,7 +186,7 @@ namespace Assets
 			return activeFuture;
 
         auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
-        backgroundOp->SetInitializer(_requestName.c_str());
+        backgroundOp->SetInitializer(_requestName[0].c_str());
 
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
@@ -196,7 +201,11 @@ namespace Assets
 				return;
 			}
 
-			PerformCompile(*d, typeCode, MakeStringSection(requestName), op, store.get());
+			std::vector<StringSection<>> initializers;
+			initializers.resize(requestName.size());
+			for (size_t c=0; c<requestName.size(); ++c)
+				initializers[c] = MakeStringSection(requestName[c]);
+			PerformCompile(*d, typeCode, MakeIteratorRange(initializers), op, store.get());
 		});
         
 		_activeFuture = backgroundOp;
@@ -205,18 +214,20 @@ namespace Assets
 
     StringSection<ResChar> IntermediateCompilers::Marker::Initializer() const
     {
-        return MakeStringSection(_requestName);
+        return MakeStringSection(_requestName[0]);
     }
 
 	IntermediateCompilers::Marker::Marker(
-        StringSection<ResChar> requestName, uint64_t typeCode,
+        IdentifiersList requestName, uint64_t typeCode,
         std::shared_ptr<ExtensionAndDelegate> delegate,
-		std::shared_ptr<IntermediatesStore> intermediateStore,
-		IntermediatesStore::CompileProductsGroupId groupIdInStore)
+		std::shared_ptr<IntermediatesStore> intermediateStore)
     : _delegate(std::move(delegate)), _intermediateStore(std::move(intermediateStore))
-	, _requestName(requestName.AsString()), _typeCode(typeCode)
-	, _groupIdInStore(groupIdInStore)
-    {}
+	, _typeCode(typeCode)
+    {
+		_requestName.reserve(requestName.size());
+		for (const auto&n:requestName)
+			_requestName.push_back(n.AsString());
+	}
 
 	IntermediateCompilers::Marker::~Marker() {}
 
@@ -232,12 +243,18 @@ namespace Assets
 		if (existing != _pimpl->_markers.end())
 			return existing->second;
 
-		for (const auto&d:_pimpl->_delegates)
+		for (const auto&d:_pimpl->_delegates) {
+			auto i = std::find(d->_assetTypes.begin(), d->_assetTypes.end(), typeCode);
+			if (i == d->_assetTypes.end())
+				continue;
 			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter)) {
-				auto result = std::make_shared<Marker>(initializers[0], typeCode, d, _pimpl->_store, d->_storeGroupId);
+				auto result = std::make_shared<Marker>(
+					MakeIteratorRange(initializers, &initializers[initializerCount]), 
+					typeCode, d, _pimpl->_store);
 				_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
 				return result;
 			}
+		}
 
 		return nullptr;
     }
@@ -255,7 +272,8 @@ namespace Assets
 		auto registration = std::make_shared<ExtensionAndDelegate>();
 		auto result = registration->_registrationId = _pimpl->_nextCompilerId++;
 		registration->_assetTypes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
-		registration->_regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
+		if (!initializerRegexFilter.empty())
+			registration->_regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
 		registration->_name = name;
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
@@ -430,9 +448,9 @@ namespace Assets
 						kind._name + " (" + c + ")",
 						srcVersion,
 						compilerDepVal,
-						[lib, fn](StringSection<> identifier) {
+						[lib, fn](auto initializers) {
 							(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
-							return (*fn)(identifier);
+							return (*fn)(initializers);
 						});
 					opsFromThisLibrary.push_back(registrationId._registrationId);
 				}

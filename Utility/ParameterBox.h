@@ -199,15 +199,6 @@ namespace Utility
         return def;
     }
 
-    namespace ImpliedTyping
-    {
-        template<typename Stream>
-            void TypeDesc::SerializeMethod(Stream& serializer) const
-        {
-            SerializationOperator(serializer, *(uint32_t*)this);
-        }
-    }
-
     inline ParameterBox::ParameterName::ParameterName(StringSection<> name)
     {
         _hash = ParameterBox::MakeParameterNameHash(name);

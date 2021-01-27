@@ -12,7 +12,6 @@
 #include <memory>
 
 namespace RenderCore { class ShaderService; }
-// namespace Assets { class IAssetCompiler; }
 
 namespace RenderCore { namespace Assets
 {
@@ -40,7 +39,7 @@ namespace RenderCore { namespace Assets
         ::Assets::DirectorySearchRules _techConfDirs;
         static Services* s_instance;
 
-		std::shared_ptr<::Assets::IAssetCompiler> _modelCompilers;
+		// std::shared_ptr<::Assets::IAssetCompiler> _modelCompilers;
     };
 }}
 

@@ -240,6 +240,9 @@ namespace Assets
 
 	auto FileSystem_OS::TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) -> IOReason
 	{
+		if (!_fileSystemMonitor)
+			return IOReason::Complex;
+
 		// note -- we can install monitors even for files and directories that don't exist
 		//			when they are created, the monitor should start to take effect.
 		auto type = *(uint16*)AsPointer(marker.cbegin());

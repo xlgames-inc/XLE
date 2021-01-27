@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,14 +10,14 @@
 
 namespace RenderCore
 {
-    class MinimalShaderSource : public ShaderService::IShaderSource
-    {
-    public:
-        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
+	class MinimalShaderSource : public ShaderService::IShaderSource
+	{
+	public:
+		std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
 			StringSection<::Assets::ResChar> resId, 
 			StringSection<::Assets::ResChar> definesTable) const;
-            
-        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
+			
+		std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
 			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
@@ -31,18 +29,18 @@ namespace RenderCore
 			using BitField = unsigned;
 		};
 
-        MinimalShaderSource(const std::shared_ptr<ILowLevelCompiler>& compiler, Flags::BitField flags = 0);
-        ~MinimalShaderSource();
+		MinimalShaderSource(const std::shared_ptr<ILowLevelCompiler>& compiler, Flags::BitField flags = 0);
+		~MinimalShaderSource();
 
-    protected:
-        std::shared_ptr<ILowLevelCompiler> _compiler;
+	protected:
+		std::shared_ptr<ILowLevelCompiler> _compiler;
 		unsigned _flags;
 
-        std::shared_ptr<::Assets::ArtifactCollectionFuture> Compile(
-            IteratorRange<const void*> shaderInMemory,
-            const ILowLevelCompiler::ResId& resId,
+		std::shared_ptr<::Assets::ArtifactCollectionFuture> Compile(
+			IteratorRange<const void*> shaderInMemory,
+			const ILowLevelCompiler::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;
-    };
+	};
 }
 
 

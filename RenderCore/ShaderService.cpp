@@ -89,7 +89,7 @@ namespace RenderCore
 		return MakeStringSection(hdr._identifier);
     }
 
-    const uint64 CompiledShaderByteCode::CompileProcessType = ConstHash64<'Shad', 'erCo', 'mpil', 'e'>::Value;
+    const uint64 CompiledShaderByteCode::CompileProcessType = ConstHash64<'Shdr', 'Byte', 'Code'>::Value;
 
         ////////////////////////////////////////////////////////////
 
@@ -212,5 +212,7 @@ namespace RenderCore
         XlCopyString(_identifier, identifier);
 		XlCopyString(_shaderModel, shaderModel);
 	}
+
+    const unsigned ShaderService::ShaderHeader::Version = 2u;
 }
 

@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 #include <sstream>
+#include <filesystem>
 
 namespace Assets
 {
@@ -117,9 +118,11 @@ namespace Assets
             #endif
         #endif
 
+        auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
+
 		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_intStore = std::make_shared<IntermediatesStore>("int", storeVersionString, storeConfigString);
-		_pimpl->_shadowingStore = std::make_shared<IntermediatesStore>("int", storeVersionString, storeConfigString, true);
+		_pimpl->_intStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString);
+		_pimpl->_shadowingStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString, true);
 
 		_pimpl->_intMan = std::make_unique<IntermediateCompilers>(_pimpl->_intStore);
     }

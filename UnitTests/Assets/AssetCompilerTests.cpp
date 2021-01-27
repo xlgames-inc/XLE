@@ -149,8 +149,9 @@ namespace UnitTests
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
-				[](StringSection<> initializer) {
-					return std::make_shared<TestCompileOperation>(initializer);
+				[](auto initializers) {
+					assert(initializers.size() == 0);
+					return std::make_shared<TestCompileOperation>(initializers[0]);
 				});
 
 			StringSection<> initializers[] = { "unit-test-asset-one" };
@@ -245,8 +246,9 @@ namespace UnitTests
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
-				[](StringSection<> initializer) {
-					return std::make_shared<TestCompileOperation>(initializer);
+				[](auto initializers) {
+					assert(initializers.size() == 0);
+					return std::make_shared<TestCompileOperation>(initializers[0]);
 				});
 
 			StringSection<> initializers0[] = { "unit-test-asset-one" };
@@ -290,8 +292,8 @@ namespace UnitTests
 			"UnitTestCompiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
-			[](StringSection<> initializer) {
-				return std::make_shared<TestCompileOperation>(initializer);
+			[](auto initializers) {
+				return std::make_shared<TestCompileOperation>(initializers[0]);
 			});
 
 		::Assets::ArtifactRequest requests[] {
@@ -350,7 +352,6 @@ namespace UnitTests
 		}
 
 		compilers->DeregisterCompiler(registration._registrationId);
-		::Assets::MainFileSystem::Shutdown();
 	}
 }
 

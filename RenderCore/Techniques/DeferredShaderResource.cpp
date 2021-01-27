@@ -15,9 +15,7 @@
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
-#include "../../Assets/IntermediateAssets.h"	// (for MakeIntermediateName)
 #include "../../Assets/IFileSystem.h"
-#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetServices.h"
 
 #include "../../Utility/Streams/PathUtils.h"
@@ -94,6 +92,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
+#if 0
 	static bool CheckShadowingFile(const FileNameSplitter<::Assets::ResChar>& splitter)
 	{
 		return !XlEqStringI(splitter.Extension(), "dds")
@@ -111,6 +110,7 @@ namespace RenderCore { namespace Techniques
 		XlCatString(buffer, Count, ".dds;");
 		XlCatString(buffer, Count, splitter.AllExceptParameters());
 	}
+#endif
 
 	class TransactionMonitor
 	{
@@ -184,11 +184,11 @@ namespace RenderCore { namespace Techniques
 		// two names -- a possible shadowing file, and the original file as well. But don't do this for
 		// DDS files. We'll assume they do not have a shadowing file.
 		intrusive_ptr<DataPacket> pkt;
-		const bool checkForShadowingFile = CheckShadowingFile(splitter);
+		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			BuildRequestString(filename, splitter);
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), MakeStringSection(filename), flags);
-		} else {
+		} else*/ {
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
 		}
 
@@ -302,12 +302,12 @@ namespace RenderCore { namespace Techniques
         DecodedInitializer init(splitter);
 
 		Format result;
-		const bool checkForShadowingFile = CheckShadowingFile(splitter);
+		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
 			BuildRequestString(filename, splitter);
 			result = BufferUploads::LoadTextureFormat(MakeStringSection(filename))._format;
-		} else
+		} else*/
 			result = BufferUploads::LoadTextureFormat(splitter.AllExceptParameters())._format;
 
         return ResolveFormatImmediate(result, init, splitter);
@@ -322,12 +322,12 @@ namespace RenderCore { namespace Techniques
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
 
 		intrusive_ptr<DataPacket> pkt;
-		const bool checkForShadowingFile = CheckShadowingFile(splitter);
+		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
 			BuildRequestString(filename, splitter);
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), MakeStringSection(filename), flags);
-		} else
+		} else*/
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
 
         auto result = Services::GetBufferUploads().Transaction_Immediate(

@@ -17,7 +17,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IntermediatesStore.h"			// for GetDependentFileState()
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
@@ -190,6 +190,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::pair<uint64_t, std::shared_ptr<CompiledShaderPatchCollection>>> _registry;
 	};
 
+#if 0		// todo -- need to bring this back
 	static const std::shared_ptr<InstantiateShaderGraphPreprocessor>& GetInstantiateShaderGraphPreprocessor()
 	{
 		static std::shared_ptr<InstantiateShaderGraphPreprocessor> singleton;
@@ -205,6 +206,7 @@ namespace RenderCore { namespace Techniques
 		}
 		return singleton;
 	}
+#endif
 
 	class CompiledShaderByteCode_InstantiateShaderGraph : public RenderCore::CompiledShaderByteCode
 	{
@@ -287,9 +289,10 @@ namespace RenderCore { namespace Techniques
 		, _patchExpansions(patchExpansions)
 		{
 			if (_patchCollection) {
-				GetInstantiateShaderGraphPreprocessor()->Register(
+				assert(0);	// todo -- temporarily broken
+				/*GetInstantiateShaderGraphPreprocessor()->Register(
 					_patchCollection->GetGUID(),
-					_patchCollection);
+					_patchCollection);*/
 			}
 
 			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;

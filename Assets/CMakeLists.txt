@@ -24,4 +24,4 @@ set(Src
 
 add_library(Assets STATIC ${Src})
 xle_configure_library(Assets)
-target_link_libraries(Assets PUBLIC OSServices Utility ForeignMisc)
+target_link_libraries(Assets PUBLIC ConsoleRig OSServices Utility ForeignMisc)

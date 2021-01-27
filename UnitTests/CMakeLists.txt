@@ -39,6 +39,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     add_executable(
         UnitTests-RenderCore-${metal_name}
+        RenderCore/Metal/ShaderCompilation.cpp
         RenderCore/Metal/CoordinateSpaces.cpp
         RenderCore/Metal/InputLayout.cpp
         RenderCore/Metal/MetalUnitTest.cpp
@@ -66,6 +67,8 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         UnitTests-RenderCoreAssetsTechniques-${metal_name}
         RenderCore/Assets/ShaderParserTests.cpp
         RenderCore/Assets/TransformationMachineOpt.cpp
+        RenderCore/Assets/RenderCoreCompilerTests.cpp
+        RenderCore/Assets/FakeModelCompiler.cpp
         )
 
     xle_configure_executable(UnitTests-RenderCoreAssetsTechniques-${metal_name})

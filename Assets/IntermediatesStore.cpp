@@ -39,6 +39,7 @@
 namespace Assets
 {
 	static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
+	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 	static const auto ChunkType_Multi = ConstHash64<'Mult', 'iChu', 'nk'>::Value;
 
@@ -59,6 +60,7 @@ namespace Assets
 		};
 		std::vector<Dependency> _dependencies;
 
+		::Assets::AssetState _state = AssetState::Ready;
 		std::string _basePath;
 
 		const Product* FindProduct(uint64_t type) const
@@ -72,6 +74,9 @@ namespace Assets
 
 	static void SerializationOperator(OutputStreamFormatter& formatter, const CompileProductsFile& compileProducts)
 	{
+		formatter.WriteAttribute("BasePath", compileProducts._basePath);
+		formatter.WriteAttribute("Invalid", compileProducts._state == AssetState::Ready ? "0" : "1");
+
 		for (const auto&product:compileProducts._compileProducts) {
 			auto ele = formatter.BeginElement(std::to_string(product._type));
 			formatter.WriteAttribute("Artifact", product._intermediateArtifact.c_str());
@@ -169,7 +174,21 @@ namespace Assets
 				continue;
 
 			case FormatterBlob::AttributeName:
-				Throw(Utility::FormatException("Unexpected attribute in CompileProductsFile", formatter.GetLocation()));
+				{
+					StringSection<utf8> name, value;
+					if (!formatter.TryAttribute(name, value))
+						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
+					if (XlEqString(name, "BasePath")) {
+						result._basePath = value.AsString();
+					} else if (XlEqString(name, "Invalid")) {
+						if (XlEqString(value.AsString(), "1'")) {
+							result._state = AssetState::Invalid;
+						} else
+							result._state = AssetState::Ready;
+					} else
+						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
+				}
+				continue;
 
 			default:
 				break;
@@ -375,6 +394,7 @@ namespace Assets
 		Blob GetBlob() const override { return nullptr; }
 		DepValPtr GetDependencyValidation() const override { return _depVal; }
 		StringSection<ResChar> GetRequestParameters() const override { return {}; }
+		AssetState GetAssetState() const override { return _productsFile._state; }
 		CompileProductsArtifactCollection(
 			const CompileProductsFile& productsFile, 
 			const ::Assets::DepValPtr& depVal,
@@ -406,7 +426,6 @@ namespace Assets
 		CompileProductsArtifactCollection(const CompileProductsArtifactCollection&) = delete;
 		CompileProductsArtifactCollection& operator=(const CompileProductsArtifactCollection&) = delete;
 	private:
-		std::vector<ICompileOperation::SerializedArtifact> _chunks;
 		CompileProductsFile _productsFile;
 		DepValPtr _depVal;
 		std::shared_ptr<StoreReferenceCounts> _refCounts;
@@ -530,6 +549,7 @@ namespace Assets
 		const StringSection<> initializers[], unsigned initializerCount,
 		CompileProductsGroupId groupId,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+		::Assets::AssetState state,
 		IteratorRange<const DependentFileState*> dependencies,
 		const ConsoleRig::LibVersionDesc& compilerVersionInfo)
 	{
@@ -568,6 +588,7 @@ namespace Assets
 		//
 
 		CompileProductsFile compileProductsFile;
+		compileProductsFile._state = state;
 
 		for (const auto& s:dependencies) {
 			auto filename = MakeSplitPath(s._filename).Simplify().Rebuild();
@@ -595,6 +616,12 @@ namespace Assets
 					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 					compileProductsFile._compileProducts.push_back({a._type, metricsName});
 					renameOps.push_back({metricsName + ".staging", metricsName});
+				} else if (a._type == ChunkType_Log) {
+					auto metricsName = intermediateName + ".log";
+					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".log", "wb", 0);
+					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
+					compileProductsFile._compileProducts.push_back({a._type, metricsName});
+					renameOps.push_back({metricsName + ".log", metricsName});
 				} else {
 					chunksInMainFile.push_back(a);
 				}
@@ -765,12 +792,11 @@ namespace Assets
 	IArtifactCollection::~IArtifactCollection() {}
 
 	void ArtifactCollectionFuture::SetArtifactCollection(
-		::Assets::AssetState newState,
 		const std::shared_ptr<IArtifactCollection>& artifacts)
 	{
 		assert(!_artifactCollection);
 		_artifactCollection = artifacts;
-		SetState(newState);
+		SetState(_artifactCollection->GetAssetState());
 	}
 
 	const std::shared_ptr<IArtifactCollection>& ArtifactCollectionFuture::GetArtifactCollection()
@@ -783,9 +809,9 @@ namespace Assets
 		if (!_artifactCollection)
 			return nullptr;
 
-		// Try to find an artifact named "log"
+		// Try to find an artifact named with the type "ChunkType_Log"
 		ArtifactRequest requests[] = {
-			ArtifactRequest { "log", 0, 0, ArtifactRequest::DataType::SharedBlob }
+			ArtifactRequest { nullptr, ChunkType_Log, 0, ArtifactRequest::DataType::SharedBlob }
 		};
 		auto resRequests = _artifactCollection->ResolveRequests(MakeIteratorRange(requests));
 		if (resRequests.empty())
@@ -805,6 +831,7 @@ namespace Assets
 		ChunkFileContainer chunkFile;
 		return chunkFile.ResolveRequests(*_file, requests);
 	}
+	AssetState ChunkFileArtifactCollection::GetAssetState() const { return AssetState::Ready; }
 	ChunkFileArtifactCollection::ChunkFileArtifactCollection(
 		const std::shared_ptr<IFileInterface>& file, const ::Assets::DepValPtr& depVal, const std::string& requestParameters)
 	: _file(file), _depVal(depVal), _requestParameters(requestParameters) {}
@@ -890,6 +917,7 @@ namespace Assets
 	}
 	::Assets::DepValPtr BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	BlobArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParams); }
+	AssetState BlobArtifactCollection::GetAssetState() const { return AssetState::Ready; }
 	BlobArtifactCollection::BlobArtifactCollection(
 		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 		const ::Assets::DepValPtr& depVal, const std::string& collectionName, const rstring& requestParams)
@@ -898,7 +926,7 @@ namespace Assets
 
 	std::vector<ArtifactRequestResult> CompilerExceptionArtifact::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
 	{
-		if (requests.size() == 1 && XlEqString(requests[0]._name, "log") && requests[0]._dataType == ArtifactRequest::DataType::SharedBlob) {
+		if (requests.size() == 1 && requests[0]._type == ChunkType_Log && requests[0]._dataType == ArtifactRequest::DataType::SharedBlob) {
 			ArtifactRequestResult res;
 			res._sharedBlob = _log;
 			std::vector<ArtifactRequestResult> result;
@@ -910,6 +938,7 @@ namespace Assets
 	Blob CompilerExceptionArtifact::GetBlob() const { return _log; }
 	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
+	AssetState CompilerExceptionArtifact::GetAssetState() const { return AssetState::Invalid; }
 	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal) : _log(log), _depVal(depVal) {}
 	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
 

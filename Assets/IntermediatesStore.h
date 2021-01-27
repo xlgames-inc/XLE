@@ -42,6 +42,7 @@ namespace Assets
             const StringSection<> initializers[], unsigned initializerCount,
 			CompileProductsGroupId groupId,
 			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+			::Assets::AssetState state,
 			IteratorRange<const DependentFileState*> dependencies,
 			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
 

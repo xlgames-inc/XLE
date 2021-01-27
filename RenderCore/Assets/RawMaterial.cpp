@@ -7,9 +7,10 @@
 #include "RawMaterial.h"
 #include "../StateDesc.h"
 #include "../../Assets/Assets.h"
-#include "../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../../Assets/DeferredConstruction.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -480,28 +481,15 @@ namespace RenderCore { namespace Assets
 
 		std::string containerInitializerString = containerInitializer.AsString();
 		std::string section = splitName.Parameters().AsString();
-		future.SetPollingFunction(
-			[containerFuture, section, containerInitializerString](::Assets::AssetFuture<RawMaterial>& thatFuture) -> bool {
-
-			std::shared_ptr<::Assets::ConfigFileContainer<>> containerActual; ::Assets::DepValPtr containerDepVal; ::Assets::Blob containerLog;
-			auto containerState = containerFuture->CheckStatusBkgrnd(containerActual, containerDepVal, containerLog);
-			if (!containerActual) {
-				if (containerState == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(containerDepVal, containerLog);
-					return false;
-				}
-				return true;
-			}
-
-			auto fmttr = containerActual->GetFormatter(MakeStringSection(section).Cast<utf8>());
-			auto newShader = std::make_shared<RawMaterial>(
-				fmttr, 
-				::Assets::DefaultDirectorySearchRules(containerInitializerString),
-				containerActual->GetDependencyValidation());
-			thatFuture.SetAsset(std::move(newShader), {});
-			return false;
-		});
-
+        ::Assets::WhenAll(containerFuture).ThenConstructToFuture<RawMaterial>(
+            future,
+            [section, containerInitializerString](const std::shared_ptr<::Assets::ConfigFileContainer<>>& containerActual) {
+                auto fmttr = containerActual->GetFormatter(MakeStringSection(section));
+                return std::make_shared<RawMaterial>(
+                    fmttr, 
+                    ::Assets::DefaultDirectorySearchRules(containerInitializerString),
+                    containerActual->GetDependencyValidation());
+            });
 	}
 
 	void MergeInto(MaterialScaffold::Material& dest, ShaderPatchCollection& destPatchCollection, const RawMaterial& source)

@@ -49,6 +49,7 @@ namespace Assets
 		virtual Blob					GetBlob() const = 0;
 		virtual DepValPtr				GetDependencyValidation() const = 0;
 		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
+		virtual AssetState				GetAssetState() const = 0;
 		virtual ~IArtifactCollection();
 	};
 
@@ -81,7 +82,6 @@ namespace Assets
 		ArtifactCollectionFuture& operator=(const ArtifactCollectionFuture&) = delete;
 
 		void SetArtifactCollection(
-			::Assets::AssetState newState,
 			const std::shared_ptr<IArtifactCollection>& artifacts);
 
 	private:
@@ -101,6 +101,7 @@ namespace Assets
 		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
+		AssetState GetAssetState() const override;
 		ChunkFileArtifactCollection(
 			const std::shared_ptr<IFileInterface>& file,
 			const DepValPtr& depVal,
@@ -119,6 +120,7 @@ namespace Assets
 		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
+		AssetState GetAssetState() const override;
 		BlobArtifactCollection(
 			IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 			const DepValPtr& depVal, 
@@ -139,6 +141,7 @@ namespace Assets
 		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<::Assets::ResChar> GetRequestParameters() const override;
+		AssetState GetAssetState() const override;
 		CompilerExceptionArtifact(
 			const ::Assets::Blob& log,
 			const ::Assets::DepValPtr& depVal);

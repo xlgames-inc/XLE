@@ -15,7 +15,8 @@ namespace Utility
         enum class TypeCat : uint8_t { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64, Float, Double };
         enum class TypeHint : uint8_t { None, Vector, Matrix, Color, String };
         enum class CastType : uint8_t { Narrowing, Equal, Widening};
-        class TypeDesc
+#pragma pack(push,1)
+        class __attribute__((packed)) TypeDesc
         {
         public:
             TypeCat     _type = TypeCat::UInt32;
@@ -27,6 +28,7 @@ namespace Utility
             template<typename Stream> void SerializeMethod(Stream& serializer) const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
+#pragma pack(pop)
 
         /// Calculate type of an object given in string form.
         /// Object should be formatted in one of the following C++ like patterns:
@@ -135,6 +137,13 @@ namespace Utility
                 }
             }
             return {};
+        }
+
+        template<typename Stream>
+            void TypeDesc::SerializeMethod(Stream& serializer) const
+        {
+            static_assert(sizeof(TypeDesc) == sizeof(uint32_t));
+            SerializationOperator(serializer, *(uint32_t*)this);
         }
     }
 }

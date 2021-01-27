@@ -4,7 +4,7 @@
 
 #include "ShaderAnalysis.h"
 #include "../Assets/IFileSystem.h"
-#include "../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/PreprocessorInterpreter.h"

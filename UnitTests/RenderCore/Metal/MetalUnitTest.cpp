@@ -26,10 +26,11 @@ namespace UnitTests
             str << ::Assets::AsString(future->GetErrorMessage());
             Throw(std::runtime_error(str.str()));
         }
+        auto artifacts = future->GetArtifactCollection();
         return RenderCore::CompiledShaderByteCode {
-            future->GetBlob(),
-            future->GetDependencyValidation(),
-            future->GetRequestParameters()
+            artifacts->GetBlob(),
+            artifacts->GetDependencyValidation(),
+            artifacts->GetRequestParameters()
         };
     }
 

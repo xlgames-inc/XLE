@@ -17,6 +17,7 @@ add_library(ConsoleRig STATIC ${Src})
 xle_configure_library(ConsoleRig)
 
 target_link_libraries(ConsoleRig PUBLIC OSServices Utility ForeignMisc)
+target_link_libraries(ConsoleRig PRIVATE Assets)    # todo -- this creates a dependency cycle; find a better way!
 
 # Posix platforms should link in "dl", which is used for interacting with shared libraries
 if (NOT WIN32)

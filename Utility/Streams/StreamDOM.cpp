@@ -61,16 +61,9 @@ namespace Utility
                     _attributes[lastAttribute]._nextSibling = a;
                 }
                 lastAttribute = a;
-            } else if (next == Formatter::Blob::EndElement) {
-                if (rootElement)
-                    Throw(FormatException(
-                        "Unexpected end element in document root element", formatter.GetLocation()));
+            } else if (next == Formatter::Blob::EndElement || next == Formatter::Blob::None) {
                 break;
-            } else if (next == Formatter::Blob::None && rootElement) {
-                // For the root element, we'll get "None" when we hit the end of the file,
-                // at which point we should exit
-                return e;
-			} else if (next == Formatter::Blob::CharacterData) {
+            } else if (next == Formatter::Blob::CharacterData) {
 				typename Formatter::InteriorSection dummy;
                 if (!formatter.TryCharacterData(dummy))
                     Throw(FormatException(
@@ -82,9 +75,18 @@ namespace Utility
             }
         }
 
-        if (!formatter.TryEndElement()) 
-            Throw(FormatException(
-                "Expected end element in StreamDOM", formatter.GetLocation()));
+        // For the root element, we'll get "None" when we hit the end of the file,
+        // at which point we should exit
+        if (rootElement) {
+            // We can exit a rootElement after hitting either Blob::EndElement or Blob::None
+            // The Blob::EndElement case happens because we can use StreamDOM to deserialize
+            // only part of the hierarchy of am input file (for example, the rest of the 
+            // deserialization might use the StreamFormatter directly)
+        } else {
+            if (!formatter.TryEndElement()) 
+                Throw(FormatException(
+                    "Expected end element in StreamDOM", formatter.GetLocation()));
+        }
 
         return e;
     }

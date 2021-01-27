@@ -97,7 +97,7 @@ namespace RenderCore
         class ShaderHeader
         {
         public:
-            static const auto Version = 2u;
+            static const unsigned Version;
             unsigned _version = Version;
             char _identifier[128];
 			char _shaderModel[8];

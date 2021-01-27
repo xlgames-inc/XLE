@@ -7,7 +7,7 @@
 
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IThreadContext.h"
-#include "../../../RenderCore/Assets/Services.h"
+// #include "../../../RenderCore/Assets/Services.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/ShaderService.h"
 #include "../../../RenderCore/Metal/Shader.h"
