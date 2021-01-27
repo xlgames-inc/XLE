@@ -27,8 +27,11 @@ namespace UnitTests
             Throw(std::runtime_error(str.str()));
         }
         auto artifacts = future->GetArtifactCollection();
+        ::Assets::ArtifactRequest request { "", RenderCore::CompiledShaderByteCode::CompileProcessType, ~0u, ::Assets::ArtifactRequest::DataType::SharedBlob };
+        auto reqRes = artifacts->ResolveRequests(MakeIteratorRange(&request, &request+1));
+        assert(!reqRes.empty());
         return RenderCore::CompiledShaderByteCode {
-            artifacts->GetBlob(),
+            reqRes[0]._sharedBlob,
             artifacts->GetDependencyValidation(),
             artifacts->GetRequestParameters()
         };

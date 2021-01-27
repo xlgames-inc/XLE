@@ -39,8 +39,6 @@ using namespace RenderCore::Assets::GeoProc;
 namespace ColladaConversion
 {
 
-	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ColladaCompileOp : public ::Assets::ICompileOperation
@@ -483,7 +481,7 @@ namespace ColladaConversion
         SerializeMatTable(strm, model);
         return {
 			::Assets::ICompileOperation::SerializedArtifact{
-				ChunkType_Text, 0, model._name,
+				Type_RawMat, 0, model._name,
 				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
 		};
     }

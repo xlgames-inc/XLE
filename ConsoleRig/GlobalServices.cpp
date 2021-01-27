@@ -268,14 +268,8 @@ namespace ConsoleRig
         _logConfigFile = "log.dat";
         _setWorkingDir = true;
         _redirectCout = true;
-        // Hack -- these thread pools are only useful/efficient on windows
-        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-            _longTaskThreadPoolCount = 4;
-            _shortTaskThreadPoolCount = 2;
-        #else
-            _longTaskThreadPoolCount = 0;
-            _shortTaskThreadPoolCount = 0;
-        #endif
+        _longTaskThreadPoolCount = 4;
+        _shortTaskThreadPoolCount = 2;
     }
 
     StartupConfig::StartupConfig(const char applicationName[]) : StartupConfig()

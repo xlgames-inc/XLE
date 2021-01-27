@@ -391,7 +391,6 @@ namespace Assets
 			return {};
 		}
 
-		Blob GetBlob() const override { return nullptr; }
 		DepValPtr GetDependencyValidation() const override { return _depVal; }
 		StringSection<ResChar> GetRequestParameters() const override { return {}; }
 		AssetState GetAssetState() const override { return _productsFile._state; }
@@ -824,7 +823,6 @@ namespace Assets
 
 
 	::Assets::DepValPtr ChunkFileArtifactCollection::GetDependencyValidation() const { return _depVal; }
-	Blob ChunkFileArtifactCollection::GetBlob() const { return nullptr; }
 	StringSection<ResChar>	ChunkFileArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParameters); }
 	std::vector<ArtifactRequestResult> ChunkFileArtifactCollection::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
 	{
@@ -862,7 +860,7 @@ namespace Assets
 					_depVal,
 					StringMeld<128>() << "Missing chunk (" << r->_name << ")", _collectionName.c_str()));
 
-			if (i->_version != r->_expectedVersion)
+			if (r->_expectedVersion != ~0u && (i->_version != r->_expectedVersion))
 				Throw(::Assets::Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::UnsupportedVersion,
 					_depVal,
@@ -910,11 +908,6 @@ namespace Assets
 
 		return result;
 	}
-	Blob BlobArtifactCollection::GetBlob() const
-	{
-		if (_chunks.empty()) return nullptr;
-		return _chunks[0]._data;
-	}
 	::Assets::DepValPtr BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	BlobArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParams); }
 	AssetState BlobArtifactCollection::GetAssetState() const { return AssetState::Ready; }
@@ -935,7 +928,6 @@ namespace Assets
 		}
 		Throw(std::runtime_error("Compile operation failed with error: " + AsString(_log)));
 	}
-	Blob CompilerExceptionArtifact::GetBlob() const { return _log; }
 	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
 	AssetState CompilerExceptionArtifact::GetAssetState() const { return AssetState::Invalid; }

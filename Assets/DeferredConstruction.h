@@ -75,12 +75,12 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile, uint64_t compileTypeCode = AssetType::CompileProcessType)
 	{
 		// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
 		// still going to end up constructing the asset in the main thread.
 		future.SetPollingFunction(
-			[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
+			[pendingCompile, compileTypeCode](AssetFuture<AssetType>& thatFuture) -> bool {
 				auto state = pendingCompile->GetAssetState();
 				if (state == AssetState::Pending) return true;
 				
@@ -95,11 +95,17 @@ namespace Assets
 				}
 
 				assert(state == AssetState::Ready);
-				AutoConstructToFutureDirect(
-					thatFuture,
-					artifactCollection->GetBlob(), 
-					artifactCollection->GetDependencyValidation(),
-					artifactCollection->GetRequestParameters());
+				ArtifactRequest request { "", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
+				auto reqRes = artifactCollection->ResolveRequests(MakeIteratorRange(&request, &request+1));
+				if (!reqRes.empty()) {
+					AutoConstructToFutureDirect(
+						thatFuture,
+						reqRes[0]._sharedBlob, 
+						artifactCollection->GetDependencyValidation(),
+						artifactCollection->GetRequestParameters());
+				} else {
+					thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), {});
+				}
 				return false;
 			});
 	}
@@ -108,7 +114,7 @@ namespace Assets
 		static void DefaultCompilerConstruction(
 			AssetFuture<AssetType>& future,
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
-			uint64 compileTypeCode = AssetType::CompileProcessType)
+			uint64_t compileTypeCode = AssetType::CompileProcessType)
 	{
 		// Begin a compilation operation via the registered compilers for this type.
 		// Our deferred constructor will wait for the completion of that compilation operation,
@@ -124,13 +130,19 @@ namespace Assets
 			auto existingArtifact = marker->GetExistingAsset();
 			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 				bool doRecompile = false;
-				auto asset = AutoConstructAsset<AssetType>(existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
-				future.SetAsset(std::move(asset), {});
+				ArtifactRequest request { "", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
+				auto reqRes = existingArtifact->ResolveRequests(MakeIteratorRange(&request, &request+1));
+				if (!reqRes.empty()) {
+					auto asset = AutoConstructAsset<AssetType>(reqRes[0]._sharedBlob, existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
+					future.SetAsset(std::move(asset), {});
+				} else {
+					future.SetInvalidAsset(existingArtifact->GetDependencyValidation(), {});
+				}
 				if (!doRecompile) return;
 			}
 		
 			auto pendingCompile = marker->InvokeCompile();
-			AutoConstructToFuture(future, pendingCompile);
+			AutoConstructToFuture(future, pendingCompile, compileTypeCode);
 			
 		} CATCH(const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());

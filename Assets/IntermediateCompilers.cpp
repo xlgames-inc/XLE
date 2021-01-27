@@ -23,14 +23,17 @@ namespace Assets
 {
 	struct ExtensionAndDelegate
 	{
-		IntermediateCompilers::RegisteredCompilerId _registrationId;
-		std::vector<uint64_t> _assetTypes;
-		std::regex _regexFilter;
 		std::string _name;
 		ConsoleRig::LibVersionDesc _srcVersion;
 		IntermediateCompilers::CompileOperationDelegate _delegate;
 		DepValPtr _compilerLibraryDepVal;
 		IntermediatesStore::CompileProductsGroupId _storeGroupId = 0;
+	};
+
+	struct DelegateAssociation
+	{
+		std::vector<uint64_t> _assetTypes;
+		std::regex _regexFilter;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,12 +134,12 @@ namespace Assets
 			}
 
 			// Write out the intermediate file that lists the products of this compile operation
-			if (destinationStore) {
+			if (destinationStore && !artifactsForStore.empty()) {
 				destinationStore->StoreCompileProducts(
 					initializers.begin(), initializers.size(),
 					delegate._storeGroupId,
 					MakeIteratorRange(artifactsForStore),
-					resultantArtifacts->GetAssetState(),
+					::Assets::AssetState::Ready,
 					MakeIteratorRange(deps),
 					delegate._srcVersion);
 			}
@@ -168,8 +171,9 @@ namespace Assets
     {
     public:
 		Threading::Mutex _delegatesLock;
-		std::vector<std::shared_ptr<ExtensionAndDelegate>> _delegates;
+		std::vector<std::pair<RegisteredCompilerId, std::shared_ptr<ExtensionAndDelegate>>> _delegates;
 		std::unordered_multimap<RegisteredCompilerId, std::string> _extensionsAndDelegatesMap;
+		std::unordered_multimap<RegisteredCompilerId, DelegateAssociation> _requestAssociations;
 		std::unordered_map<uint64_t, std::shared_ptr<Marker>> _markers;
 		std::shared_ptr<IntermediatesStore> _store;
 		RegisteredCompilerId _nextCompilerId = 1;
@@ -243,16 +247,21 @@ namespace Assets
 		if (existing != _pimpl->_markers.end())
 			return existing->second;
 
-		for (const auto&d:_pimpl->_delegates) {
-			auto i = std::find(d->_assetTypes.begin(), d->_assetTypes.end(), typeCode);
-			if (i == d->_assetTypes.end())
+		for (const auto&a:_pimpl->_requestAssociations) {
+			auto i = std::find(a.second._assetTypes.begin(), a.second._assetTypes.end(), typeCode);
+			if (i == a.second._assetTypes.end())
 				continue;
-			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter)) {
-				auto result = std::make_shared<Marker>(
-					MakeIteratorRange(initializers, &initializers[initializerCount]), 
-					typeCode, d, _pimpl->_store);
-				_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
-				return result;
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), a.second._regexFilter)) {
+				// find the associated delegate and use that
+				for (const auto&d:_pimpl->_delegates) {
+					if (d.first != a.first) continue;
+					auto result = std::make_shared<Marker>(
+						MakeIteratorRange(initializers, &initializers[initializerCount]), 
+						typeCode, d.second, _pimpl->_store);
+					_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
+					return result;
+				}
+				return nullptr;
 			}
 		}
 
@@ -260,8 +269,6 @@ namespace Assets
     }
 
 	auto IntermediateCompilers::RegisterCompiler(
-		const std::string& initializerRegexFilter,
-		IteratorRange<const uint64_t*> outputAssetTypes,
 		const std::string& name,
 		ConsoleRig::LibVersionDesc srcVersion,
 		const DepValPtr& compilerDepVal,
@@ -270,17 +277,14 @@ namespace Assets
 	{
 		ScopedLock(_pimpl->_delegatesLock);
 		auto registration = std::make_shared<ExtensionAndDelegate>();
-		auto result = registration->_registrationId = _pimpl->_nextCompilerId++;
-		registration->_assetTypes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
-		if (!initializerRegexFilter.empty())
-			registration->_regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
+		auto result = _pimpl->_nextCompilerId++;
 		registration->_name = name;
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
 		if (_pimpl->_store)
 			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name));
-		_pimpl->_delegates.push_back(registration);
+		_pimpl->_delegates.push_back(std::make_pair(result, std::move(registration)));
 		return { result };
 	}
 
@@ -288,8 +292,9 @@ namespace Assets
 	{
 		ScopedLock(_pimpl->_delegatesLock);
 		_pimpl->_extensionsAndDelegatesMap.erase(id);
+		_pimpl->_requestAssociations.erase(id);
 		for (auto i=_pimpl->_delegates.begin(); i!=_pimpl->_delegates.end();) {
-			if ((*i)->_registrationId == id) {
+			if (i->first == id) {
 				i = _pimpl->_delegates.erase(i);
 			} else {
 				++i;
@@ -297,24 +302,41 @@ namespace Assets
 		}
 	}
 
+	void IntermediateCompilers::AssociateRequest(
+		RegisteredCompilerId compiler,
+		IteratorRange<const uint64_t*> outputAssetTypes,
+		const std::string& initializerRegexFilter)
+	{
+		ScopedLock(_pimpl->_delegatesLock);
+		DelegateAssociation association;
+		association._assetTypes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
+		if (!initializerRegexFilter.empty())
+			association._regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
+		_pimpl->_requestAssociations.insert(std::make_pair(compiler, association));
+	}
+
 	std::vector<std::pair<std::string, std::string>> IntermediateCompilers::GetExtensionsForType(uint64_t typeCode)
 	{
 		std::vector<std::pair<std::string, std::string>> ext;
 
 		ScopedLock(_pimpl->_delegatesLock);
-		for (const auto&d:_pimpl->_delegates)
-			if (std::find(d->_assetTypes.begin(), d->_assetTypes.end(), typeCode) != d->_assetTypes.end()) {
-				// This compiler can make this type. Let's check what extensions have been registered
-				auto r = _pimpl->_extensionsAndDelegatesMap.equal_range(d->_registrationId);
-				for (auto i=r.first; i!=r.second; ++i)
-					ext.push_back({i->second, d->_name});
+		for (const auto&d:_pimpl->_delegates) {
+			auto a = _pimpl->_requestAssociations.equal_range(d.first);
+			for (auto association=a.first; association != a.second; ++association) {
+				if (std::find(association->second._assetTypes.begin(), association->second._assetTypes.end(), typeCode) != association->second._assetTypes.end()) {
+					// This compiler can make this type. Let's check what extensions have been registered
+					auto r = _pimpl->_extensionsAndDelegatesMap.equal_range(d.first);
+					for (auto i=r.first; i!=r.second; ++i)
+						ext.push_back({i->second, d.second->_name});
+				}
 			}
+		}
 		return ext;
 	}
 
 	void IntermediateCompilers::RegisterExtensions(
-		const std::string& commaSeparatedExtensions, 
-		RegisteredCompilerId associatedCompiler)
+		RegisteredCompilerId associatedCompiler,
+		const std::string& commaSeparatedExtensions)
 	{
 		ScopedLock(_pimpl->_delegatesLock);
 		auto i = commaSeparatedExtensions.begin();
@@ -443,8 +465,6 @@ namespace Assets
 					auto compilerDepVal = std::make_shared<DependencyValidation>();
 					RegisterFileDependency(compilerDepVal, MakeStringSection(c));
 					auto registrationId = compilerManager.RegisterCompiler(
-						kind._identifierFilter,
-						MakeIteratorRange(kind._assetTypes),
 						kind._name + " (" + c + ")",
 						srcVersion,
 						compilerDepVal,
@@ -452,6 +472,11 @@ namespace Assets
 							(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
 							return (*fn)(initializers);
 						});
+
+					compilerManager.AssociateRequest(
+						registrationId._registrationId,
+						MakeIteratorRange(kind._assetTypes),
+						kind._identifierFilter);
 					opsFromThisLibrary.push_back(registrationId._registrationId);
 				}
 

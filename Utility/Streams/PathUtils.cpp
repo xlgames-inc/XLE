@@ -24,7 +24,7 @@ namespace Utility
         {
             // do simple concatenation first
             T tmp[MaxPath];
-            if (a) {
+            if (a && a[0]) {
                 XlCopyString(tmp, dimof(tmp), a);
                     // note -- there maybe be some problems with the following
                     //          lines with network paths... todo, more robust

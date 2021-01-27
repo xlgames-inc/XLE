@@ -14,7 +14,6 @@ namespace UnitTests
 	static const uint64 Type_RawMat = ConstHash64<'RawM', 'at'>::Value;
 	static const uint64 Type_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
 	static const uint64 Type_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
-	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
 	class FakeModelCompileOperation : public ::Assets::ICompileOperation
 	{
@@ -104,7 +103,7 @@ namespace UnitTests
 
         return {
 			::Assets::ICompileOperation::SerializedArtifact{
-				ChunkType_Text, 0, _modelName,
+				Type_RawMat, 0, _modelName,
 				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
 		};
 	}
@@ -123,18 +122,22 @@ namespace UnitTests
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterFakeModelCompiler(
 		::Assets::IntermediateCompilers& intermediateCompilers)
 	{
+		auto result = intermediateCompilers.RegisterCompiler(
+			"fake-model-scaffold-compiler",
+			ConsoleRig::GetLibVersionDesc(),
+			nullptr,
+			BeginFakeModelCompilation);
+
 		uint64_t outputAssetTypes[] = { 
 			Type_Model,
 			Type_RawMat,
 			Type_AnimationSet,
 			Type_Skeleton,
 		};
-		return intermediateCompilers.RegisterCompiler(
-			"fake-model",
+		intermediateCompilers.AssociateRequest(
+			result._registrationId,
 			MakeIteratorRange(outputAssetTypes),
-			"fake-model-scaffold-compiler",
-			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
-			BeginFakeModelCompilation);
+			"fake-model");
+		return result;
 	}   
 }

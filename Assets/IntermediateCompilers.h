@@ -35,8 +35,6 @@ namespace Assets
 			RegisteredCompilerId _registrationId;
 		};
 		CompilerRegistration RegisterCompiler(
-			const std::string& initializerRegexFilter,			///< compiler will be invoked for assets that match this regex filter
-			IteratorRange<const uint64_t*> outputAssetTypes,	///< compiler can generate these output asset types (though this isn't strict, the ICompileOperation outputs can vary on a per-asset basis)
 			const std::string& name,							///< string name for the compiler, usually something user-presentable
 			ConsoleRig::LibVersionDesc srcVersion,				///< version information for the module (propagated onto any assets written to disk)
 			const DepValPtr& compilerDepVal,					///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
@@ -45,11 +43,20 @@ namespace Assets
 
 		void DeregisterCompiler(RegisteredCompilerId id);
 
+		// AssociateRequest associates a pattern with a compiler (previously registered with RegisterCompiler)
+		// When requests are made (via Prepare) that match the pattern, that compiler can be selected to
+		// handle the request
+		void AssociateRequest(
+			RegisteredCompilerId compiler,
+			IteratorRange<const uint64_t*> outputAssetTypes,	///< compiler can generate these output asset types (though this isn't strict, the ICompileOperation outputs can vary on a per-asset basis)
+			const std::string& initializerRegexFilter = ".*"	///< compiler will be invoked for assets that match this regex filter
+			);
+
 		//
 
 		// RegisterExtensions & GetExtensionsForType are both used for FileOpen dialogs in tools
 		// It's so the tool knows what model formats are available to load (for example)
-		void RegisterExtensions(const std::string& commaSeparatedExtensions, RegisteredCompilerId associatedCompiler);
+		void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions);
 		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
 
 		//

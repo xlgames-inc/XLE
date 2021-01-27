@@ -46,7 +46,6 @@ namespace Assets
 	{
 	public:
 		virtual std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const = 0;
-		virtual Blob					GetBlob() const = 0;
 		virtual DepValPtr				GetDependencyValidation() const = 0;
 		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
 		virtual AssetState				GetAssetState() const = 0;
@@ -98,7 +97,6 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;
@@ -117,7 +115,6 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;
@@ -138,7 +135,6 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		Blob GetBlob() const override;
 		DepValPtr GetDependencyValidation() const override;
 		StringSection<::Assets::ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;

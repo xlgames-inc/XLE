@@ -202,16 +202,19 @@ namespace RenderCore { namespace Assets
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterMaterialCompiler(
 		::Assets::IntermediateCompilers& intermediateCompilers)
 	{
-		uint64_t outputAssetTypes[] = { MaterialScaffold::CompileProcessType };
-		return intermediateCompilers.RegisterCompiler(
-			".*",
-			MakeIteratorRange(outputAssetTypes),
+		auto result = intermediateCompilers.RegisterCompiler(
 			"material-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[](auto identifiers) {
 				return std::make_shared<MaterialCompileOperation>(identifiers);
 			});
+
+		uint64_t outputAssetTypes[] = { MaterialScaffold::CompileProcessType };
+		intermediateCompilers.AssociateRequest(
+			result._registrationId,
+			MakeIteratorRange(outputAssetTypes));
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

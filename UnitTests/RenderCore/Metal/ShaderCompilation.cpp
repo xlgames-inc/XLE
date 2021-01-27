@@ -76,7 +76,10 @@ namespace UnitTests
 			REQUIRE(artifacts != nullptr);
 			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
-			auto blob = artifacts->GetBlob();
+			::Assets::ArtifactRequest request { "", RenderCore::CompiledShaderByteCode::CompileProcessType, ~0u, ::Assets::ArtifactRequest::DataType::SharedBlob };
+        	auto reqRes = artifacts->ResolveRequests(MakeIteratorRange(&request, &request+1));
+        	REQUIRE(reqRes.size() == 1);
+			auto blob = reqRes[0]._sharedBlob;
 			REQUIRE(blob != nullptr);
 			REQUIRE(blob->size() >= sizeof(ShaderService::ShaderHeader));
 			const auto& hdr = *(const ShaderService::ShaderHeader*)blob->data();

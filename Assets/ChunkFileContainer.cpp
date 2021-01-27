@@ -55,7 +55,7 @@ namespace Assets
 					_validationCallback,
                     StringMeld<128>() << "Missing chunk (" << r->_name << ")", _filename.c_str()));
 
-            if (i->_chunkVersion != r->_expectedVersion)
+            if (r->_expectedVersion != ~0u && (i->_chunkVersion != r->_expectedVersion))
                 Throw(::Assets::Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::UnsupportedVersion,
 					_validationCallback,
