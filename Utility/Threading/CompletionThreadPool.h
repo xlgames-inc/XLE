@@ -7,11 +7,14 @@
 #pragma once
 
 #include "Mutex.h"
-#include "LockFree.h"
-#include "../../OSServices/WinAPI/System_WinAPI.h"
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "LockFree.h"
+    #include "../../OSServices/WinAPI/System_WinAPI.h"
+#endif
 #include <vector>
 #include <thread>
 #include <functional>
+#include <queue>
 
 namespace Utility
 {
@@ -33,8 +36,13 @@ namespace Utility
      * 
      * When run on some other thread, it will just yield back to the OS.
     */
-    void YieldToPool();
-    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction);
+    void YieldToPoolUntilInternal(std::chrono::steady_clock::time_point timeoutTime);
+    template<typename Rep, typename Period>
+        void YieldToPoolFor(const std::chrono::duration<Rep, Period>& timeout)
+    {
+        return YieldToPoolUntilInternal(std::chrono::steady_clock::now() + timeout);
+    }
+    void SetYieldToPoolFunction(const std::function<void(std::chrono::steady_clock::time_point)>& yieldToPoolFunction);
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     class CompletionThreadPool
@@ -100,7 +108,7 @@ namespace Utility
         Threading::Conditional _pendingTaskVariable;
         Threading::Mutex _pendingTaskLock;
         typedef std::function<void()> PendingTask;
-        LockFreeFixedSizeQueue<PendingTask, 256> _pendingTasks;
+        std::queue<PendingTask> _pendingTasks;
 
         volatile bool _workerQuit;
     };

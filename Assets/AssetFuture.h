@@ -102,6 +102,45 @@ namespace Assets
 		void DeregisterFrameBarrierCallback(unsigned);
 
 		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime);
+
+		using FutureResolution_CheckStatusFn = AssetState(*)(void*);
+		void FutureResolution_BeginMoment(void* future, FutureResolution_CheckStatusFn);
+		void FutureResolution_EndMoment(void* future);
+		bool FutureResolution_DeadlockDetection(void* future);
+
+		/**
+			FutureResolutionMoment is used to bracket a piece of code that is going to resolve
+			the state of an AssetFuture. When FutureResolutionMoment begins, the future should
+			be in Pending state, and when it ends, it should be in either Ready or Invalid state
+			(or at least have that state change queued to happen at the next frame barrier)
+
+			This will bracket resolution code fairly tightly (and only a single thread).
+			It's used to detect deadlock scenarios. That is, we can't stall waiting for a future
+			during it's own resolution moment.
+		*/
+		template<typename AssetType>
+			class FutureResolutionMoment
+		{
+		public:
+			FutureResolutionMoment(AssetFuture<AssetType>& future) : _future(&future)
+			{
+				assert(future.GetAssetState() == AssetState::Pending);
+				FutureResolution_BeginMoment(
+					&future,
+					[](void* inputFuture) {
+						AssetPtr<AssetType> actualized;
+						DepValPtr depVal;
+						Blob actualizationLog;
+						return ((AssetFuture<AssetType>*)inputFuture)->CheckStatusBkgrnd(actualized, depVal, actualizationLog);
+					});
+			}
+			~FutureResolutionMoment()
+			{
+				FutureResolution_EndMoment(_future);
+			}
+		private:
+			AssetFuture<AssetType>* _future;
+		};
 	}
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
@@ -263,6 +302,16 @@ namespace Assets
 	template<typename AssetType>
         std::optional<AssetState>   AssetFuture<AssetType>::StallWhilePending(std::chrono::milliseconds timeout) const
 	{
+		if (Internal::FutureResolution_DeadlockDetection((void*)this)) {
+			// This future is currently in a "resolution moment"
+			// This means that the code that will assign this future to either ready or invalid is
+			// higher up in the callstack on this same thread. If we attempt to stall for it here, 
+			// the stall will be infinite -- because we need to pass execution back to that resolution
+			// moment in order for the future to be resolved
+			Throw(std::runtime_error("Detected asset future deadlock scenario in StallWhilePending. Future initializer: " + _initializer));
+		}
+
+		using namespace std::chrono_literals;
 		auto startTime = std::chrono::steady_clock::now();
         auto timeToCancel = startTime + timeout;
 
@@ -312,7 +361,9 @@ namespace Assets
 				// can easily get into a deadlock situation where all threadpool worker threads 
 				// can end up here, waiting on some other operation to execute on the same pool,
 				// but it can never happen because all workers are stuck yielding.
-				YieldToPool();
+				using namespace std::chrono_literals;
+				YieldToPoolFor(std::min(std::chrono::duration_cast<std::chrono::microseconds>(timeout), 50us));
+				DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
 			}
 			
 			if (!isInLock)

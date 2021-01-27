@@ -60,6 +60,7 @@ namespace Assets
 		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFutureDirect(AssetFuture<AssetType>& future, Params... initialisers)
 	{
+		Internal::FutureResolutionMoment<AssetType> moment(future);
 		TRY {
 			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
 			future.SetAsset(std::move(asset), {});

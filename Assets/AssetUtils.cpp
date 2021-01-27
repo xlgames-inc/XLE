@@ -21,6 +21,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/RawFS.h"     // for GetCurrentDirectory
@@ -627,10 +628,11 @@ namespace Assets
     {
         auto timeToCancel = std::chrono::steady_clock::now() + timeout;
 
-            // Stall until the _state variable changes
-            // in another thread.
-            // there is no semaphore, so we must poll
-            // note -- we should start a progress bar here...
+        // Stall until the _state variable changes in another thread.
+        // there is no semaphore, so we must poll
+        //      however, that does have a potential advantage in that we can use
+        //      YieldToPool rather than stalling the thread entirely, if we're
+        //      careful about all of the extra complexity YieldToPool can bring along
         volatile AssetState* state = const_cast<AssetState*>(&_state);
 		uint32 waitCount = 0u;
         while (*state == AssetState::Pending) {
@@ -639,7 +641,8 @@ namespace Assets
 			sleepValue /= 16.f;
             ++waitCount;
             if (timeout.count() != 0 && std::chrono::steady_clock::now() >= timeToCancel) return {};
-			Threading::Sleep(uint32(std::min(100.0f, std::max(0.0f, sleepValue))));
+            auto timeoutMS = uint32(std::min(100.0f, std::max(0.0f, sleepValue)));
+            YieldToPoolFor(std::chrono::milliseconds(timeoutMS));
 		}
 
         return (AssetState)*state;
@@ -670,6 +673,40 @@ namespace Assets
 			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
 			return compilers.Prepare(typeCode, initializers, initializerCount);
 		}
+
+        struct ActiveFutureResolutionMoment
+        {
+            void* _future;
+            FutureResolution_CheckStatusFn _checkStatusFn;
+        };
+        static thread_local std::vector<ActiveFutureResolutionMoment> s_activeFutureResolutionMoments;
+        void FutureResolution_BeginMoment(void* future, FutureResolution_CheckStatusFn checkStatusFn)
+        {
+            assert((*checkStatusFn)(future) == AssetState::Pending);
+            s_activeFutureResolutionMoments.push_back({future, checkStatusFn});
+        }
+
+		void FutureResolution_EndMoment(void* future)
+        {
+            for (auto i=s_activeFutureResolutionMoments.rbegin(); i!=s_activeFutureResolutionMoments.rend(); ++i) {
+                if (i->_future != future)
+                    continue;
+
+                auto newState = i->_checkStatusFn(i->_future);
+                assert(newState == AssetState::Ready || newState == AssetState::Invalid);
+                s_activeFutureResolutionMoments.erase((i+1).base());
+                return;
+            }
+            assert(0);      // didn't find this resolution item
+        }
+
+		bool FutureResolution_DeadlockDetection(void* future)
+        {
+            for (auto i=s_activeFutureResolutionMoments.rbegin(); i!=s_activeFutureResolutionMoments.rend(); ++i)
+                if (i->_future == future)
+                    return true;
+            return false;
+        }
 	}
 
 }

@@ -68,12 +68,13 @@ namespace Assets
 					std::shared_ptr<DependencyValidation> exceptionDepVal;
 					std::tuple<std::shared_ptr<AssetTypes>...> actualized;
 					Internal::CheckAssetState(currentState, actualizationBlob, exceptionDepVal, actualized, subFutures);
-						
+
 					if (currentState == AssetState::Invalid) {
 						// Note that if one of the assets in invalid, we only consider the depVal for that specific asset
 						thatFuture.SetInvalidAsset(exceptionDepVal, actualizationBlob);
 						return false;
 					} else if (currentState == AssetState::Ready) {
+						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
 							auto finalConstruction = std::apply(continuationFunction, actualized);
@@ -111,6 +112,7 @@ namespace Assets
 						thatFuture.SetInvalidAsset(exceptionDepVal, actualizationBlob);
 						return false;
 					} else if (currentState == AssetState::Ready) {
+						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
 							// Note -- watch for a subtle edge condition here. Since we're passing the future to the callback function here,
@@ -148,6 +150,7 @@ namespace Assets
 						thatFuture.SetInvalidAsset(exceptionDepVal, actualizationBlob);
 						return false;
 					} else if (currentState == AssetState::Ready) {
+						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
 							auto finalConstruction = Internal::ApplyMakeShared<FinalAssetType>(actualized);

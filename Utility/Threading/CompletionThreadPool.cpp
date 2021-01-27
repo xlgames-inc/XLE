@@ -6,7 +6,10 @@
 
 #include "CompletionThreadPool.h"
 #include "ThreadLocalPtr.h"
-#include "../../OSServices/WinAPI/System_WinAPI.h"
+#include "ThreadingUtils.h"
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../../OSServices/WinAPI/System_WinAPI.h"
+#endif
 #include "../../OSServices/Log.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Core/Exceptions.h"
@@ -152,7 +155,8 @@ namespace Utility
     void ThreadPool::EnqueueBasic(PendingTask&& task)
     {
         assert(IsGood());
-        _pendingTasks.push_overflow(std::forward<PendingTask>(task));
+        std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
+        _pendingTasks.push(std::forward<PendingTask>(task));
         _pendingTaskVariable.notify_one();
     }
 
@@ -164,21 +168,23 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
-                    SetYieldToPoolFunction([this]() {
+                    SetYieldToPoolFunction([this](std::chrono::steady_clock::time_point waitUntilTime) {
                         std::function<void()> task;
                         {
+                            // slightly awkwardly, we can't actually use std::timed_mutex and try_lock_until
+                            // here, because std::timed_mutex can't be used with std::condition_variable
                             std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
-                            if (this->_workerQuit) return;
+                            if (this->_workerQuit) 
+                                return;
 
-                            std::function<void()>*t = nullptr;
-                            if (!_pendingTasks.try_front(t)) {
-                                this->_pendingTaskVariable.wait(autoLock);
+                            if (_pendingTasks.empty()) {
+                                this->_pendingTaskVariable.wait_until(autoLock, waitUntilTime);
                                 if (this->_workerQuit) return;
-                                if (!_pendingTasks.try_front(t))
+                                if (_pendingTasks.empty())
                                     return;
                             }
 
-                            task = std::move(*t);
+                            task = std::move(_pendingTasks.front());
                             _pendingTasks.pop();
                         }
 
@@ -204,15 +210,14 @@ namespace Utility
                             std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
                             if (this->_workerQuit) break;
 
-                            std::function<void()>*t = nullptr;
-                            if (!_pendingTasks.try_front(t)) {
+                            if (_pendingTasks.empty()) {
                                 this->_pendingTaskVariable.wait(autoLock);
                                 if (this->_workerQuit) break;
-                                if (!_pendingTasks.try_front(t))
+                                if (_pendingTasks.empty())
                                     continue;
                             }
 
-                            task = std::move(*t);
+                            task = std::move(_pendingTasks.front());
                             _pendingTasks.pop();
                         }
 
@@ -242,15 +247,15 @@ namespace Utility
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if !FEATURE_THREAD_LOCAL_KEYWORD
-    static thread_local_ptr<std::function<void()>> s_threadPoolYieldFunction;
+    static thread_local_ptr<std::function<void(std::chrono::steady_clock::time_point)>> s_threadPoolYieldFunction;
 
-    void YieldToPool()
+    void YieldToPoolUntilInternal(std::chrono::steady_clock::time_point timeoutTime)
     {
         auto* yieldFn = s_threadPoolYieldFunction.get();
         if (yieldFn) {
-            (*yieldFn)();
+            (*yieldFn)(timeoutTime);
         } else {
-            Threading::YieldTimeSlice();
+            std::this_thread::sleep_until(timeoutTime);
         }
     }
 
@@ -259,18 +264,18 @@ namespace Utility
         s_threadPoolYieldFunction.allocate(yieldToPoolFunction);
     }
 #else
-    static thread_local std::function<void()> s_threadPoolYieldFunction;
+    static thread_local std::function<void(std::chrono::steady_clock::time_point)> s_threadPoolYieldFunction;
 
-    void YieldToPool()
+    void YieldToPoolUntilInternal(std::chrono::steady_clock::time_point timeoutTime)
     {
         if (s_threadPoolYieldFunction) {
-            s_threadPoolYieldFunction();
+            s_threadPoolYieldFunction(timeoutTime);
         } else {
-            Threading::YieldTimeSlice();
+            std::this_thread::sleep_until(timeoutTime);
         }
     }
 
-    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction)
+    void SetYieldToPoolFunction(const std::function<void(std::chrono::steady_clock::time_point)>& yieldToPoolFunction)
     {
         s_threadPoolYieldFunction = yieldToPoolFunction;
     }
