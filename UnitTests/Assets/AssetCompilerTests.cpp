@@ -144,15 +144,18 @@ namespace UnitTests
 		{
 			uint64_t outputTypes[] = { Type_UnitTestArtifact };
 			auto registration = compilers->RegisterCompiler(
-				"unit-test-asset-.*",
-				MakeIteratorRange(outputTypes),
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
-					assert(initializers.size() == 0);
+					assert(initializers.size() == 1);
 					return std::make_shared<TestCompileOperation>(initializers[0]);
 				});
+
+			compilers->AssociateRequest(
+				registration._registrationId,
+				MakeIteratorRange(outputTypes),
+				"unit-test-asset-.*");
 
 			StringSection<> initializers[] = { "unit-test-asset-one" };
 			auto marker = compilers->Prepare(Type_UnitTestArtifact, initializers, dimof(initializers));
@@ -241,15 +244,18 @@ namespace UnitTests
 		{
 			uint64_t outputTypes[] = { Type_UnitTestArtifact };
 			auto registration = compilers->RegisterCompiler(
-				"unit-test-asset-.*",
-				MakeIteratorRange(outputTypes),
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
-					assert(initializers.size() == 0);
+					assert(initializers.size() == 1);
 					return std::make_shared<TestCompileOperation>(initializers[0]);
 				});
+
+			compilers->AssociateRequest(
+				registration._registrationId,
+				MakeIteratorRange(outputTypes),
+				"unit-test-asset-.*");
 
 			StringSection<> initializers0[] = { "unit-test-asset-one" };
 			StringSection<> initializers1[] = { "unit-test-asset-two" };
@@ -274,6 +280,7 @@ namespace UnitTests
 
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		::Assets::MainFileSystem::GetMountingTree()->SetAbsolutePathMode(Assets::MountingTree::AbsolutePathMode::RawOS);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
@@ -287,14 +294,18 @@ namespace UnitTests
 
 		uint64_t outputTypes[] = { Type_UnitTestArtifact };
 		auto registration = compilers->RegisterCompiler(
-			"unit-test-asset-.*",
-			MakeIteratorRange(outputTypes),
 			"UnitTestCompiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[](auto initializers) {
+				assert(initializers.size() == 1);
 				return std::make_shared<TestCompileOperation>(initializers[0]);
 			});
+
+		compilers->AssociateRequest(
+			registration._registrationId,
+			MakeIteratorRange(outputTypes),
+			"unit-test-asset-.*");
 
 		::Assets::ArtifactRequest requests[] {
 			::Assets::ArtifactRequest {

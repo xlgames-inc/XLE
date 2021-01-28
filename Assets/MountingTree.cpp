@@ -6,6 +6,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Streams/PathUtils.h"
+#include <atomic>
 
 namespace Assets
 {
@@ -35,7 +36,7 @@ namespace Assets
 		};
 
 		std::vector<Mount>	_mounts;	// ordered from highest to lowest priority
-		uint32				_changeId = 0;
+		uint32_t			_changeId = 1;	// start at one so we can use 0 as a sentinel
 		Threading::RecursiveMutex	_mountsLock;
 		bool				_hasAtLeastOneMount;
 		AbsolutePathMode    _absolutePathMode;
@@ -81,7 +82,12 @@ namespace Assets
 	template<typename CharType>
 		auto MountingTree::EnumerableLookup::TryGetNext_Internal(CandidateObject& result) const -> Result
 	{
+		// Since we don't hold the _mountsLock after returning from this function, we will 
+		// use a "change id" system to detect any changes to the mounted file systems as we've been 
+		// iterating through. If the mounted filesystems change (ie, mounts added or removed), it
+		// potentially invalidates the iteration, and we should start again from the top
 		ScopedLock(_pimpl->_mountsLock);
+		_changeId = _changeId ?: _pimpl->_changeId;
 		if (!_pimpl || _pimpl->_changeId != _changeId)
 			return Result::Invalidated;
 
@@ -90,7 +96,7 @@ namespace Assets
 			(const CharType*)AsPointer(_request.cend()));
 
 		for (;;) {
-			if (_nextMountToTest >= (uint32)_pimpl->_mounts.size())
+			if (_nextMountToTest >= (uint32_t)_pimpl->_mounts.size())
 				return Result::NoCandidates;
 
 			const auto& mt = _pimpl->_mounts[_nextMountToTest];
@@ -111,43 +117,25 @@ namespace Assets
 
 			// If the mount point is too deep, we can't match it.
 			// It's a limitation of the system, but helps us write a little optimisation.
-			if (mt._depth > dimof(_cachedRemainders)) continue;
+			if (mt._depth >= _segmentCount || mt._depth > dimof(_segments)) continue;
 
-			if (_cachedRemainders[mt._depth-1] == ~0u) {
-				// build the cached value for this depth
-				for (auto d = 0u; d < mt._depth; ++d) {
-					if (_cachedRemainders[d] != ~0u) continue;
-					auto startingPt = (d == 0) ? 0 : _cachedRemainders[d - 1];
-					auto s = MakeStringSection(PtrAdd(requestString.begin(), startingPt), requestString.end());
-					auto sep = FindFirstSeparator(s);
-
-					if (sep == s.end()) {
-						// We didn't find a separator, or we started with an empty string. There are no
-						// further matches possible. We can just clear out the rest of the array
-						for (unsigned d2 = d; d2 < dimof(_cachedRemainders); ++d2) {
-							_cachedHashValues[d2] = 0x0;
-							_cachedRemainders[d2] = (uint32)(size_t(s.end()) - size_t(AsPointer(_request.begin())));
-						}
-						break;
-					}
-
-					auto newRemainder = SkipSeparators(MakeStringSection(sep, s.end()));
-					_cachedRemainders[d] = (uint32)PtrDiff(newRemainder, requestString.begin());
-
-					auto rootHash = (d == 0) ? 0 : _cachedHashValues[d - 1];
-					_cachedHashValues[d] = HashCombine(
-						rootHash, 
-						HashFilename(MakeStringSection(s.begin(), sep), _pimpl->_rules));
-				}
+			// build the cached value for this depth
+			for (auto d = _nextHashValueToBuild; d < mt._depth; ++d) {
+				assert(_cachedHashValues[d] == 0);
+				auto segment = MakeStringSection((const CharType*)_segments[d].begin(), (const CharType*)_segments[d].end());
+				auto rootHash = (d == 0) ? s_FNV_init64 : _cachedHashValues[d - 1];
+				_cachedHashValues[d] = HashFilename(segment, rootHash, _pimpl->_rules);
 			}
+			_nextHashValueToBuild = std::max(_nextHashValueToBuild, mt._depth);
 
 			if (_cachedHashValues[mt._depth-1] == mt._hash) {
 				// We got a match. We have to pass this onto the filesystem to try to translate 
 				// it into a "Marker" which can later be used for file operations.
 				// Note that if the filesystem is still mounting, we can get a "pending/mounting" state for
 				// some files that will later become available.
+				assert(mt._depth < _segmentCount);
 				auto remainderSection = MakeStringSection(
-					PtrAdd(requestString.begin(), _cachedRemainders[mt._depth-1]), 
+					(const CharType*)_segments[mt._depth].begin(), 
 					requestString.end());
 
 				IFileSystem::Marker marker;
@@ -175,25 +163,6 @@ namespace Assets
 		return Result::NoCandidates;
 	}
 
-	MountingTree::EnumerableLookup::EnumerableLookup(
-		std::vector<uint8>&& request, Encoding encoding, MountingTree::Pimpl* pimpl)
-	: _request(std::move(request))
-	, _encoding(encoding)
-	, _nextMountToTest(0)
-	, _pimpl(pimpl)
-	{
-		// get the mounts lock to make sure we get the correct value from _changeId
-		ScopedLock(pimpl->_mountsLock);
-		_changeId = pimpl->_changeId;
-	}
-
-	MountingTree::EnumerableLookup::EnumerableLookup()
-	: _encoding(Encoding::UTF8)
-	, _nextMountToTest(0)
-	, _changeId(0)
-	, _pimpl(nullptr)
-	{}
-
 	template<typename CharType>
 		static CharType IsRawFilesystem(StringSection<CharType> filename)
 	{
@@ -204,17 +173,122 @@ namespace Assets
 		return isRawFilesystem;
 	}
 
+	MountingTree::EnumerableLookup::EnumerableLookup(
+		std::vector<uint8_t>&& request, Encoding encoding, MountingTree::Pimpl* pimpl)
+	: _request(std::move(request))
+	, _encoding(encoding)
+	, _nextMountToTest(0)
+	, _isAbsolutePath(false)
+	, _pimpl(pimpl)
+	, _changeId(0)
+	, _nextHashValueToBuild(0)
+	{
+		// We must split the input string into segments (ie, separated by slashes)
+		// while we're doing this, we'll resolve segments such as "./" or "../"
+		// It would be nice to be able to find the correct mount without having
+		// to resolve these just yet; but as "../" can happen anywhere in the input
+		// string we effectively have to iterate over the entire thing...
+		_segmentCount = 0;
+		bool firstSegmentContainsColon = false;
+		if (_encoding == Encoding::UTF8) {
+			StringSection<char> totalSection { (char*)AsPointer(_request.begin()), (char*)AsPointer(_request.end()) };
+			const char* iterator = totalSection.begin();
+			while (iterator < totalSection.end()) {
+				iterator = SkipSeparators<char>({iterator, totalSection.end()});
+				auto segmentBegin = iterator;
+				iterator = FindFirstSeparator<char>({iterator, totalSection.end()});
+
+				if (iterator != segmentBegin) {
+					if (*segmentBegin == '.') {
+						if (segmentBegin+1 == iterator) {
+							// If we find "./", we can ignore that entirely
+							// This also applies to "./" at the start of the input -- we just skip it
+							// It's not relevant here; because "./" refers to a directory, not a file
+							// and the mounting tree system only handles files, not directories
+							continue;
+						} else if (*(segmentBegin+1) == '.' && (segmentBegin+2) == iterator) {
+							// this is exactly ".."
+							// we should ignore the last segment
+							if (!_segmentCount) {
+								// If there are more '..' than specified segments, we consider this an
+								// absolute path and don't try to apply the mounting tree syste,
+								_isAbsolutePath = true;
+								break;
+							} else {
+								--_segmentCount;
+								continue;
+							}
+						}
+					}
+
+					if (_segmentCount < dimof(_segments))
+						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (uint8_t*)iterator };
+					++_segmentCount;
+				}
+			}
+
+			// If the filename begins with a "/" or a Windows-style drive (eg, c:/) then we can't
+			// use the mounting system, and we must drop back to the raw OS filesystem.
+			_isAbsolutePath |= !totalSection.IsEmpty() && IsSeparator(totalSection[0]);
+			if (_segmentCount >= 2) {
+				_isAbsolutePath |= std::find((const char*)_segments[0].begin(), (const char*)_segments[0].end(), ':') != (const char*)_segments[0].end();
+			}
+		} else {
+			StringSection<utf16> totalSection { (utf16*)AsPointer(_request.begin()), (utf16*)AsPointer(_request.end()) };
+			const utf16* iterator = totalSection.begin();
+			while (iterator < totalSection.end()) {
+				iterator = SkipSeparators<utf16>({iterator, totalSection.end()});
+				auto segmentBegin = iterator;
+				iterator = FindFirstSeparator<utf16>({iterator, totalSection.end()});
+
+				if (iterator != segmentBegin) {
+					if (*segmentBegin == '.') {
+						if (segmentBegin+1 == iterator) {
+							// If we find "./", we can ignore that entirely
+							// This also applies to "./" at the start of the input -- we just skip it
+							// It's not relevant here; because "./" refers to a directory, not a file
+							// and the mounting tree system only handles files, not directories
+							continue;
+						} else if (*(segmentBegin+1) == '.' && (segmentBegin+2) == iterator) {
+							// this is exactly ".."
+							// we should ignore the last segment
+							if (!_segmentCount) {
+								// If there are more '..' than specified segments, we consider this an
+								// absolute path and don't try to apply the mounting tree syste,
+								_isAbsolutePath = true;
+								break;
+							} else {
+								--_segmentCount;
+								continue;
+							}
+						}
+					}
+
+					if (_segmentCount < dimof(_segments))
+						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (uint8_t*)iterator };
+					++_segmentCount;
+				}
+			}
+
+			// If the filename begins with a "/" or a Windows-style drive (eg, c:/) then we can't
+			// use the mounting system, and we must drop back to the raw OS filesystem.
+			_isAbsolutePath |= !totalSection.IsEmpty() && IsSeparator(totalSection[0]);
+			if (_segmentCount >= 2) {
+				_isAbsolutePath |= std::find((const utf16*)_segments[0].begin(), (const utf16*)_segments[0].end(), ':') != (const utf16*)_segments[0].end();
+			}
+		}
+	}
+
+	MountingTree::EnumerableLookup::EnumerableLookup()
+	: _encoding(Encoding::UTF8)
+	, _nextMountToTest(0)
+	, _changeId(0)
+	, _pimpl(nullptr)
+	{}
+
 	auto MountingTree::Lookup(StringSection<utf8> filename) -> EnumerableLookup
 	{
-		// If the filename begins with a "/" or a Windows-style drive (eg, c:/) then we can't
-		// use the mounting system, and we must drop back to the raw OS filesystem.
-		if (filename.IsEmpty()) return EnumerableLookup();
-
-		// todo -- fall back to raw filesystem in this case
-		if (_pimpl->_absolutePathMode == AbsolutePathMode::RawOS && IsRawFilesystem(filename))
-			return EnumerableLookup();
-
-		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
+		if (filename.IsEmpty()) return {};
 
 		// We need to find all possible matching candidates for this filename. There are a number
 		// of possible ways to this.
@@ -241,24 +315,15 @@ namespace Assets
 		// So, given this, it seems like maybe the linear list could be the ideal option? Anyway, it 
 		// gives the fastest resolution when the highest priority filesystem is the one selected.
 
-		std::vector<uint8> request(filename.begin(), filename.end());
-		return EnumerableLookup 
-			{
-				std::move(request), EnumerableLookup::Encoding::UTF8, _pimpl.get()
-			};
+		std::vector<uint8_t> request(filename.begin(), filename.end());
+		return EnumerableLookup { std::move(request), EnumerableLookup::Encoding::UTF8, _pimpl.get() };
 	}
 
 	auto MountingTree::Lookup(StringSection<utf16> filename) -> EnumerableLookup
 	{
-		if (filename.IsEmpty()) return EnumerableLookup();
-		if (_pimpl->_absolutePathMode == AbsolutePathMode::RawOS && IsRawFilesystem(filename))
-			return EnumerableLookup();
-		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
-		std::vector<uint8> request((const uint8*)filename.begin(), (const uint8*)filename.end());
-		return EnumerableLookup
-			{
-				std::move(request), EnumerableLookup::Encoding::UTF16, _pimpl.get()
-			};
+		if (filename.IsEmpty()) return {};
+		std::vector<uint8_t> request((const uint8_t*)filename.begin(), (const uint8_t*)filename.end());
+		return EnumerableLookup { std::move(request), EnumerableLookup::Encoding::UTF16, _pimpl.get() };
 	}
 
 	auto MountingTree::Mount(StringSection<utf8> mountPointInput, std::shared_ptr<IFileSystem> system) -> MountID
@@ -276,9 +341,9 @@ namespace Assets
 
 		auto split = MakeSplitPath(mountPoint);
 
-		uint64 hash = 0;
+		uint64 hash = s_FNV_init64;
 		for (auto i:split.GetSections())
-			hash = HashCombine(hash, HashFilename(i, _pimpl->_rules));
+			hash = HashFilename(i, hash, _pimpl->_rules);
 		
 		ScopedLock(_pimpl->_mountsLock);
 		MountID id = _pimpl->_changeId++;
@@ -326,6 +391,11 @@ namespace Assets
 	void MountingTree::SetAbsolutePathMode(AbsolutePathMode newMode)
 	{
 		_pimpl->_absolutePathMode = newMode;
+	}
+
+	auto MountingTree::GetAbsolutePathMode() -> AbsolutePathMode
+	{
+		return _pimpl->_absolutePathMode;
 	}
 
 	FileSystemWalker MountingTree::BeginWalk(StringSection<utf8> initialSubDirectory)

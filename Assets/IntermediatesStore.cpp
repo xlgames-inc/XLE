@@ -313,7 +313,7 @@ namespace Assets
 		// Use HashFilename to avoid case sensitivity/slash direction problems
 		// todo --	we could also consider a system where we could use MainFileSystem::TryTranslate
 		//			to transform the filename into some more definitive representation
-		auto hash = HashFilename(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), s_defaultFilenameRules);
+		auto hash = HashFilename(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
 		{
 			ScopedLock(RetainedRecordsLock);
 			auto i = LowerBound(RetainedRecords, hash);

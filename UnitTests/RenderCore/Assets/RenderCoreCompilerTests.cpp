@@ -6,6 +6,7 @@
 #include "../../UnitTestHelper.h"
 #include "../../../RenderCore/Assets/MaterialCompiler.h"
 #include "../../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../../RenderCore/Assets/RawMaterial.h"
 #include "../../../Assets/IntermediatesStore.h"
 #include "../../../Assets/IntermediateCompilers.h"
 #include "../../../Assets/IArtifact.h"
@@ -14,6 +15,7 @@
 #include "../../../Assets/AssetTraits.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/Assets.h"
 #include "../../../Math/Vector.h"
 #include "../../../Math/MathSerialization.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
@@ -65,6 +67,22 @@ namespace UnitTests
 		auto matRegistration = RenderCore::Assets::RegisterMaterialCompiler(compilers);
 		auto modelRegistration = UnitTests::RegisterFakeModelCompiler(compilers);
 
+		SECTION("Get material settings from a model file")
+		{
+			auto& cfgs = *::Assets::Actualize<RenderCore::Assets::RawMatConfigurations>("fake-model");
+			REQUIRE(cfgs._configurations.size() == 2);
+			REQUIRE(cfgs._configurations[0] == "Material0");
+			REQUIRE(cfgs._configurations[1] == "Material1");
+
+			auto& material0 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material0");
+			REQUIRE(material0._constants.GetParameter<float>("Brightness") == 50_a);
+			REQUIRE(Equivalent(material0._constants.GetParameter<Float3>("Emissive").value(), Float3{0.5f, 0.5f, 0.5f}, 1e-3f));
+
+			auto& material1 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material1");
+			REQUIRE(material1._constants.GetParameter<float>("Brightness") == 33_a);
+			REQUIRE(Equivalent(material1._constants.GetParameter<Float3>("Emissive").value(), Float3{2.5f, 0.25f, 0.15f}, 1e-3f));
+		}
+
 		SECTION("Compile material scaffold")
 		{
 			StringSection<> initializers[] = { "ut-data/test.material", "fake-model" };
@@ -87,7 +105,6 @@ namespace UnitTests
 
 			auto* material0 = finalScaffold->GetMaterial(Hash64("Material0"));
 			REQUIRE(material0->_matParams.GetParameter<unsigned>("MAT_DOUBLE_SIDED_LIGHTING").value() == 1);
-			auto emissive = material0->_constants.GetParameterAsString("Emissive"); (void)emissive;
 			REQUIRE(Equivalent(material0->_constants.GetParameter<Float3>("Emissive").value(), Float3{0.5f, 0.5f, 0.5f}, 1e-3f));
 			REQUIRE(Equivalent(material0->_constants.GetParameter<Float3>("MaterialDiffuse").value(), Float3{0.1f, 0.1f, 0.1f}, 1e-3f));
 			REQUIRE(Equivalent(material0->_constants.GetParameter<Float3>("SharedConstant").value(), Float3{1.0f, 1.0f, 1.0f}, 1e-3f));

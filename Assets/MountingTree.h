@@ -7,7 +7,6 @@
 #include "IFileSystem.h"
 #include "../Utility/UTFUtils.h"		// for utf8, utf16
 #include "../Utility/StringUtils.h"		// for StringSection
-#include "../Core/Types.h"
 
 namespace Utility { class FilenameRules; }
 
@@ -47,7 +46,7 @@ namespace Assets
 		// If will have multiple high-priority but "sparse" filesystems, we could get multiple
 		// failed file operations before each successful one...?
 
-		using MountID = uint32;
+		using MountID = uint32_t;
 		MountID			Mount(StringSection<utf8> mountPoint, std::shared_ptr<IFileSystem> system);
 		void			Unmount(MountID mountId);
 		IFileSystem*	GetMountedFileSystem(MountID);
@@ -55,6 +54,7 @@ namespace Assets
 
 		enum class AbsolutePathMode { MountingTree, RawOS };
 		void        SetAbsolutePathMode(AbsolutePathMode newMode);
+		AbsolutePathMode GetAbsolutePathMode();
 
 		FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory);
 
@@ -87,6 +87,7 @@ namespace Assets
 		enum class Result { Success, NoCandidates, Invalidated };
 		Result TryGetNext(CandidateObject& result) const;
 		bool IsGood() const { return _pimpl != nullptr; }
+		bool IsAbsolutePath() const { return _isAbsolutePath; }
 
 		EnumerableLookup(const EnumerableLookup&) = delete;
 		EnumerableLookup& operator=(const EnumerableLookup&) = delete;
@@ -96,16 +97,20 @@ namespace Assets
 			EnumerableLookup& operator=(EnumerableLookup&&) = default;
 		#endif
 	private:
-		std::vector<uint8>		_request;
+		std::vector<uint8_t>		_request;
 		enum Encoding { UTF8, UTF16 };
 		Encoding				_encoding;
-		mutable uint32			_nextMountToTest;
-		uint32					_changeId;
+		mutable uint32_t		_nextMountToTest;
+		mutable uint32_t		_changeId;
 		MountingTree::Pimpl *	_pimpl;			// raw pointer; client must be careful
-		mutable uint64			_cachedHashValues[8] = { 0,0,0,0,0,0,0,0 };
-		mutable uint32			_cachedRemainders[8] = { ~0u,~0u,~0u,~0u,~0u,~0u,~0u,~0u };
 
-		EnumerableLookup(std::vector<uint8>&& request, Encoding encoding, MountingTree::Pimpl* pimpl);
+		mutable uint64			_cachedHashValues[8] = { 0,0,0,0,0,0,0,0 };
+		mutable IteratorRange<const uint8_t*> _segments[8];
+		unsigned 				_segmentCount;
+		mutable unsigned		_nextHashValueToBuild;
+		bool					_isAbsolutePath;
+
+		EnumerableLookup(std::vector<uint8_t>&& request, Encoding encoding, MountingTree::Pimpl* pimpl);
 		EnumerableLookup();
 
 		template<typename CharType>

@@ -219,8 +219,14 @@ namespace Conversion
 
     template<> std::basic_string<utf16> Convert(StringSection<utf8> input)
 	{
-		assert(0);      // not implemented
-        return {};
+        // Note -- despite the name utf8_2_ucs2 actually does generate
+        //      utf16 characters for non-BMP "Basic Multilingual Plane" characters
+		std::basic_string<utf16> result;
+		result.resize(input.Length());
+		utf8_2_ucs2(
+			AsPointer(input.begin()), input.Length(),
+			(ucs2*)AsPointer(result.begin()), result.size());
+		return result;
 	}
 
 	template<> std::basic_string<utf8> Convert(StringSection<ucs2> input)
@@ -245,6 +251,7 @@ namespace Conversion
 
     template<> std::basic_string<utf8> Convert(StringSection<utf16> input)
 	{
+        // Unlike utf8_2_ucs2, ucs2_2_utf8 does not support utf16 surrogate pairs
 		assert(0);      // not implemented
         return {};
 	}

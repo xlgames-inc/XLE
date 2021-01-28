@@ -547,15 +547,13 @@ namespace Utility
 	utf16 ConvertPathChar(utf16 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
 
-	static const uint64 s_FNV_init64 =  0xcbf29ce484222325ULL;
-
-	static uint64 FNVHash64(const void* start, const void* end, uint64 hval = s_FNV_init64)
+	static uint64_t FNVHash64(const void* start, const void* end, uint64_t hval)
 	{
 		auto* b = (unsigned char*)start;
 		auto* e = (unsigned char*)end;
 
 		while (b<e) {
-			hval ^= (uint64)*b++;
+			hval ^= (uint64_t)*b++;
 			hval += 
 				(hval << 1) + (hval << 4) + (hval << 5) +
 				(hval << 7) + (hval << 8) + (hval << 40);
@@ -563,19 +561,19 @@ namespace Utility
 		return hval;
 	}
 
-	static uint64 FNVHash64(uint16 chr, uint64 hval)
+	static uint64_t FNVHash64(uint16 chr, uint64_t hval)
 	{
 		// FNV always works with 8 bit values entering the machine
 		//	-- so we have to split this value up into 2, and do it twice.
 		// However, since we're using this for UTF16 filenames, the upper
 		// 8 bits will very frequently be zero. Maybe it would be best to
 		// actually skip the second hash part when that is the case?
-		hval ^= (uint64)(chr & 0xff);
+		hval ^= (uint64_t)(chr & 0xff);
 		hval +=
 			(hval << 1) + (hval << 4) + (hval << 5) +
 			(hval << 7) + (hval << 8) + (hval << 40);
 
-		hval ^= (uint64)(chr >> 8);
+		hval ^= (uint64_t)(chr >> 8);
 		hval +=
 			(hval << 1) + (hval << 4) + (hval << 5) +
 			(hval << 7) + (hval << 8) + (hval << 40);
@@ -583,7 +581,7 @@ namespace Utility
 	}
 
 	template<>
-		uint64 HashFilename(StringSection<utf16> filename, const FilenameRules& rules)
+		uint64_t HashFilename(StringSection<utf16> filename, uint64_t seed, const FilenameRules& rules)
 	{
 		// Note -- see also an interesting hashing for filenames in the linux source /fs/ folder.
 		//		it does a simple 32 bit hash, but does 4 characters at a time.
@@ -599,20 +597,20 @@ namespace Utility
 		//
 		// This method is just well suited to our needs in this case
 		if (rules.IsCaseSensitive())
-			return FNVHash64(filename.begin(), filename.end());
+			return FNVHash64(filename.begin(), filename.end(), seed);
 
-		uint64 hval = s_FNV_init64;
+		uint64_t hval = seed;
 		for (auto i:filename)
 			hval = FNVHash64((utf16)std::tolower(i), hval);		// note -- potentially non-ideal tolower usage here...?
 		return hval;
 	}
 
 	template<>
-		uint64 HashFilename(StringSection<utf8> filename, const FilenameRules& rules)
+		uint64_t HashFilename(StringSection<utf8> filename, uint64_t seed, const FilenameRules& rules)
 	{
 		// Implemented so we get the same hash for utf8 and utf16 versions
 		// of the same string
-		uint64 hval = s_FNV_init64;
+		uint64_t hval = seed;
 		if (rules.IsCaseSensitive()) {
 
 			for (auto i = filename.begin(); i<filename.end();) {
@@ -635,13 +633,13 @@ namespace Utility
 	static inline bool IsSeparator(utf8 chr)	{ return chr == '/' || chr == '\\'; }
 
 	template<>
-		uint64 HashFilenameAndPath(StringSection<utf16> filename, const FilenameRules& rules)
+		uint64_t HashFilenameAndPath(StringSection<utf16> filename, uint64_t seed, const FilenameRules& rules)
 	{
 		// This is a special version of HashFilenameAndPath where we assume there may be path
 		// separators in the filename. Whenever we find any sequence of either type of path
 		// separator, we hash a single '/'
 
-		uint64 hval = s_FNV_init64; 
+		uint64_t hval = seed; 
 		if (rules.IsCaseSensitive()) {
 			for (auto i = filename.begin(); i<filename.end();) {
 				if (IsSeparator(*i)) {
@@ -668,13 +666,13 @@ namespace Utility
 	}
 
 	template<>
-		uint64 HashFilenameAndPath(StringSection<utf8> filename, const FilenameRules& rules)
+		uint64_t HashFilenameAndPath(StringSection<utf8> filename, uint64_t seed, const FilenameRules& rules)
 	{
 		// This is a special version of HashFilenameAndPath where we assume there may be path
 		// separators in the filename. Whenever we find any sequence of either type of path
 		// separator, we hash a single '/'
 
-		uint64 hval = s_FNV_init64; 
+		uint64_t hval = seed;
 		if (rules.IsCaseSensitive()) {
 			for (auto i = filename.begin(); i<filename.end();) {
 				if (IsSeparator(*i)) {

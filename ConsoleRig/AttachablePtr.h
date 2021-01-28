@@ -189,7 +189,14 @@ namespace ConsoleRig
 		AttachablePtr<Obj>& AttachablePtr<Obj>::operator=(const std::shared_ptr<Obj>& copyFrom)
 	{
 		if (copyFrom.get() != get()) {
+			auto oldValue = std::move(_internalPointer);
 			Internal::InfraModuleManager::GetInstance().Reset(typeid(Obj).hash_code(), copyFrom);
+
+			// We don't actually release our reference on the old _internal pointer until after all of the 
+			// pointer changes have propaged through. This is generally preferable with singleton type objects,
+			// when assigning pointers to nullptr during destruction, because it means that by the time we enter 
+			// the destructor for the singleton, we've already cleared out the singleton instance pointers
+			oldValue.reset();
 		}
 		return *this;
 	}
@@ -220,9 +227,11 @@ namespace ConsoleRig
 	template<typename Obj>
 		AttachablePtr<Obj>::~AttachablePtr()
 	{
+		auto oldValue = std::move(_internalPointer);
 		// The manager may have shutdown before us; in which case we should avoid attempting to deregister ourselves
 		if (_managerRegistry != ~0u)
 			Internal::InfraModuleManager::GetInstance().Deregister(_managerRegistry);
+		oldValue.reset();
 	}
 
 	template<typename Obj>

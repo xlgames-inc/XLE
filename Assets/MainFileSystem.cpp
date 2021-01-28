@@ -45,6 +45,13 @@ namespace Assets
 
 			MountingTree::CandidateObject candidateObject;
 			auto lookup = s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+					// attempt opening with the default file system...
+				if (s_defaultFileSystem)
+					return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
+				return IFileSystem::IOReason::FileNotFound;
+			}
+			
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
@@ -62,9 +69,6 @@ namespace Assets
 					return ioRes;
 			}
 
-			// attempt opening with the default file system...
-			if (s_defaultFileSystem)
-				return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
 			return IFileSystem::IOReason::FileNotFound;
 		}
 
@@ -75,6 +79,13 @@ namespace Assets
 
 			MountingTree::CandidateObject candidateObject;
 			auto lookup = s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+					// attempt opening with the default file system...
+				if (s_defaultFileSystem)
+					return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
+				return IFileSystem::IOReason::FileNotFound;
+			}
+
 			for (;;) {
                 auto r = lookup.TryGetNext(candidateObject);
                 if (r == LookupResult::Invalidated) {
@@ -92,9 +103,6 @@ namespace Assets
 					return ioRes;
 			}
 
-			// attempt opening with the default file system...
-			if (s_defaultFileSystem) 
-				return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
 			return IFileSystem::IOReason::FileNotFound;
 		}
 
@@ -103,6 +111,13 @@ namespace Assets
 		{
 			MountingTree::CandidateObject candidateObject;
 			auto lookup = s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+					// attempt opening with the default file system...
+				if (s_defaultFileSystem)
+					return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
+				return IFileSystem::IOReason::FileNotFound;
+			}
+
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
@@ -122,8 +137,6 @@ namespace Assets
 				(void)ioRes;
 			}
 
-			if (s_defaultFileSystem) 
-				return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
 			return IFileSystem::IOReason::FileNotFound;
 		}
 
@@ -132,6 +145,13 @@ namespace Assets
 		{
 			MountingTree::CandidateObject candidateObject;
 			auto lookup = s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+					// attempt opening with the default file system...
+				if (s_defaultFileSystem)
+					return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
+				return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
+			}
+
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
@@ -151,8 +171,6 @@ namespace Assets
 				}
 			}
 
-			if (s_defaultFileSystem)
-				return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
 			return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 		}
 	}

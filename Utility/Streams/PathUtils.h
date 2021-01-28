@@ -168,11 +168,12 @@ namespace Utility
     utf8 ConvertPathChar(utf8 input, const FilenameRules& rules = s_defaultFilenameRules);
     ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules = s_defaultFilenameRules);
 
-	template<typename CharType>
-		uint64 HashFilename(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
+	static const uint64_t s_FNV_init64 = 0xcbf29ce484222325ULL;
+    template<typename CharType>
+		uint64_t HashFilename(StringSection<CharType> filename, uint64_t seed = s_FNV_init64, const FilenameRules& rules = s_defaultFilenameRules);
 
 	template<typename CharType>
-		uint64 HashFilenameAndPath(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules);
+		uint64_t HashFilenameAndPath(StringSection<CharType> filename, uint64_t seed = s_FNV_init64, const FilenameRules& rules = s_defaultFilenameRules);
 
     namespace Legacy
     {
