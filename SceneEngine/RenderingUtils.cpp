@@ -63,7 +63,7 @@ namespace SceneEngine
 
 			auto& metalContext = *Metal::DeviceContext::Get(context);
 
-            const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
+            const auto& shaderProgram = ::Assets::Legacy::GetAsset<ShaderProgram>(
                 NO_PATCHES_VERTEX_HLSL ":main:" VS_DefShaderModel, 
                 NO_PATCHES_PIXEL_HLSL ":forward", 
                 "GEO_HAS_COLOR=1");

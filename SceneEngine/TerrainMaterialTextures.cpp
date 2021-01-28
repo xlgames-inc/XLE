@@ -36,7 +36,7 @@ namespace SceneEngine
     {
         for (;;) {
             TRY {
-                return ::Assets::GetAsset<Type>(initializer);
+                return ::Assets::Legacy::GetAsset<Type>(initializer);
             } CATCH (::Assets::Exceptions::PendingAsset&) {
                 ::Assets::Services::GetAsyncMan().Update();
             } CATCH_END

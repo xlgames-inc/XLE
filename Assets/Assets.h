@@ -18,29 +18,24 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params>
-		const AssetType& Actualize(Params... initialisers)
-	{
-		auto future = MakeAsset<AssetType>(initialisers...);
-		future->StallWhilePending();
-		return *future->Actualize();
-	}
-
-	template<typename AssetType, typename... Params>
-		const std::shared_ptr<AssetType>& ActualizePtr(Params... initialisers)
+		const std::shared_ptr<AssetType>& Actualize(Params... initialisers)
 	{
 		auto future = MakeAsset<AssetType>(initialisers...);
 		future->StallWhilePending();
 		return future->Actualize();
 	}
 
-	template<typename AssetType, typename... Params>
-		const AssetType& GetAsset(Params... initialisers) { return Actualize<AssetType>(std::forward<Params>(initialisers)...); }
+	namespace Legacy
+	{
+		template<typename AssetType, typename... Params>
+			const AssetType& GetAsset(Params... initialisers) { return *Actualize<AssetType>(std::forward<Params>(initialisers)...); }
 
-	template<typename AssetType, typename... Params>
-		const AssetType& GetAssetDep(Params... initialisers) { return Actualize<AssetType>(std::forward<Params>(initialisers)...); }
+		template<typename AssetType, typename... Params>
+			const AssetType& GetAssetDep(Params... initialisers) { return *Actualize<AssetType>(std::forward<Params>(initialisers)...); }
 
-	template<typename AssetType, typename... Params>
-		const AssetType& GetAssetComp(Params... initialisers) { return Actualize<AssetType>(std::forward<Params>(initialisers)...); }
+		template<typename AssetType, typename... Params>
+			const AssetType& GetAssetComp(Params... initialisers) { return *Actualize<AssetType>(std::forward<Params>(initialisers)...); }
+	}
 
 }
 

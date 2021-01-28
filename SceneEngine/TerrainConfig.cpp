@@ -358,10 +358,10 @@ namespace SceneEngine
     void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainMaterialConfig& cfg)
     {
         // if (!cfg._textureCfgName.empty()) {
-        //     auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(cfg._textureCfgName.c_str());
+        //     auto& scaffold = ::Assets::Legacy::GetAssetDep<TerrainMaterialScaffold>(cfg._textureCfgName.c_str());
         //     scaffold.Write(stream);
         // } else {
-        //     auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
+        //     auto& scaffold = ::Assets::Legacy::GetAssetDep<TerrainMaterialScaffold>();
         //     scaffold.Write(stream);
         // }
         Utility::OutputStreamFormatter formatter(stream);

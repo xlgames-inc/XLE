@@ -90,7 +90,7 @@ namespace SceneEngine
             };
             auto cb0 = MakeMetalCB(nullptr, sizeof(RainSpawnConstants));
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/effects/rainparticles.hlsl:vs_main:vs_*", 
                 "xleres/effects/rainparticles.hlsl:gs_main:gs_*",
                 "xleres/effects/rainparticles.hlsl:ps_main:ps_*",
@@ -216,7 +216,7 @@ namespace SceneEngine
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
 
-            auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
+            auto& simulationShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                 "xleres/effects/simrain.hlsl:SimulateDrops:cs_*", 
                 "");
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
@@ -301,7 +301,7 @@ namespace SceneEngine
                 //  different vertex shader that will read the particles from the simulation
                 //  buffer shader resource;
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/effects/simrain.hlsl:vs_main:vs_*", 
                 "xleres/effects/rainparticles.hlsl:gs_main:gs_*",
                 "xleres/effects/rainparticles.hlsl:ps_main:ps_*",
@@ -369,7 +369,7 @@ namespace SceneEngine
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
 
-            auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
+            auto& simulationShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                 "xleres/effects/sparkparticlestest.hlsl:SimulateDrops:cs_*", 
                 "");
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
@@ -467,7 +467,7 @@ namespace SceneEngine
                 //  different vertex shader that will read the particles from the simulation
                 //  buffer shader resource;
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/effects/sparkparticlestest.hlsl:vs_main:vs_*", 
                 "xleres/effects/sparkparticlestest.hlsl:gs_main:gs_*",
                 "xleres/effects/sparkparticlestest.hlsl:ps_main:ps_*",

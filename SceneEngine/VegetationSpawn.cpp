@@ -401,7 +401,7 @@ namespace SceneEngine
                 parserContext.GetGlobalTransformCB(),
                 MakeMetalCB(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
 
-            metalContext->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
+            metalContext->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                 SCENE_ENGINE_RES "/Vegetation/InstanceSpawnSeparate.compute.hlsl:main:cs_*", 
                 shaderParams.get()));
             metalContext->Dispatch(StreamOutputMaxCount / 256);

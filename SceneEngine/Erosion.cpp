@@ -291,7 +291,7 @@ namespace SceneEngine
         auto simSize = _pimpl->_simSize;
 
             // update sediment
-        auto& updateShader = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:UpdateSediment:cs_*", defines);
+        auto& updateShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:UpdateSediment:cs_*", defines);
         metalContext.Bind(updateShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
@@ -299,14 +299,14 @@ namespace SceneEngine
         Metal::Copy(metalContext, Metal::AsResource(*_pimpl->_softMaterialsCopy->GetUnderlying()), Metal::AsResource(*_pimpl->_softMaterials->GetUnderlying()));
         metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
 
-        auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:ShiftSediment:cs_*", defines);
+        auto& shiftShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:ShiftSediment:cs_*", defines);
         metalContext.Bind(shiftShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // "thermal" erosion
         Metal::Copy(metalContext, Metal::AsResource(*_pimpl->_softMaterialsCopy->GetUnderlying()), Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying()));
 
-        auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:ThermalErosion:cs_*", defines);
+        auto& thermalShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/tickerosion.compute.hlsl:ThermalErosion:cs_*", defines);
         metalContext.Bind(thermalShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
         
@@ -368,7 +368,7 @@ namespace SceneEngine
                     pixelShader = SCENE_ENGINE_RES "/Ocean/erosiondebug.hlsl:ps_softMaterials:ps_*";
                 }
 
-                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
 
                 Float2 wsDims = _pimpl->_simSize * _pimpl->_worldSpaceSpacing;

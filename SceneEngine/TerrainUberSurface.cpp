@@ -452,7 +452,7 @@ namespace SceneEngine
 		StringMeld<256, ::Assets::ResChar> fullShaderName;
 		fullShaderName << desc._shaderName << ":cs_*";
 
-		_cs = &::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
+		_cs = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
 
 		UniformsStreamInterface usi;
 		usi.BindConstantBuffer(0, {Hash64("Parameters")});
@@ -583,7 +583,7 @@ namespace SceneEngine
             using namespace RenderCore;
             Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, gpuCacheSRV));
-            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/ui/terrainmodification.hlsl:GpuCacheDebugging:ps_*",
                 "");

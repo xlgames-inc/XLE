@@ -63,7 +63,7 @@ namespace ShaderSourceParser
     {
         StringMeld<MaxPath, Assets::ResChar> str;
         str << "xleres/TechniqueLibrary/ToolsRig/MaterialTool/PreviewTemplates.hlsl:" << templateName;
-		return ::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item;
+		return ::Assets::Legacy::GetAssetDep<TemplateItem>(str.AsStringSection())._item;
     }
 
 	struct VaryingParamsFlags
@@ -555,7 +555,7 @@ namespace ShaderSourceParser
     {
         StringMeld<MaxPath, Assets::ResChar> str;
         str << "xleres/System/TechniqueTemplates.hlsl:" << templateName;
-        return ::Assets::GetAssetDep<TemplateItem>(str.AsStringSection())._item;
+        return ::Assets::Legacy::GetAssetDep<TemplateItem>(str.AsStringSection())._item;
     }
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }

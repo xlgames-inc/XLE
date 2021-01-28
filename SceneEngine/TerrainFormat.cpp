@@ -627,14 +627,14 @@ namespace SceneEngine
     const TerrainCell& TerrainFormat::LoadHeights(const char filename[], bool skipDependsCheck) const
     {
         if (skipDependsCheck) {
-            return ::Assets::GetAsset<MainTerrainFormat::TerrainCell>(filename);
+            return ::Assets::Legacy::GetAsset<MainTerrainFormat::TerrainCell>(filename);
         }
-        return ::Assets::GetAssetDep<MainTerrainFormat::TerrainCell>(filename);
+        return ::Assets::Legacy::GetAssetDep<MainTerrainFormat::TerrainCell>(filename);
     }
 
     const TerrainCellTexture& TerrainFormat::LoadCoverage(const char filename[]) const
     {
-        return ::Assets::GetAssetDep<MainTerrainFormat::TerrainCellTexture>(filename);
+        return ::Assets::Legacy::GetAssetDep<MainTerrainFormat::TerrainCellTexture>(filename);
     }
 
     void TerrainFormat::WriteCell(

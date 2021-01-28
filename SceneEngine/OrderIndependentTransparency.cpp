@@ -143,9 +143,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        // auto box5   = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
-        // auto box12  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
-        // auto box34  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
+        // auto box5   = ::Assets::Legacy::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
+        // auto box12  = ::Assets::Legacy::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
+        // auto box34  = ::Assets::Legacy::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
         // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         // auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
@@ -188,7 +188,7 @@ namespace SceneEngine
 
             const auto checkForInfiniteLoops = transparencyTargets._desc._checkInfiniteLoops;
             if (checkForInfiniteLoops) {
-                metalContext.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+                metalContext.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                     "xleres/forward/transparency/resolve.pixel.hlsl:FindInfiniteLoops:ps_*"));
                 metalContext.Bind(MakeResourceList(transparencyTargets._infiniteLoopRTV), nullptr);
@@ -203,7 +203,7 @@ namespace SceneEngine
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
-            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& resolveShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/forward/transparency/resolve.pixel.hlsl:main:ps_*",
                 checkForInfiniteLoops ? "DETECT_INFINITE_LISTS=1" : nullptr);

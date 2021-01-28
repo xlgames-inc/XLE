@@ -222,7 +222,7 @@ namespace ToolsRig
 
         // metalContext.Bind(*_pimpl->_stepDownShader);
         metalContext.Bind(
-            ::Assets::GetAssetDep<Metal::ComputeShader>(
+            ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                 "xleres/toolshelper/aogenprocess.hlsl:CubeMapStepDown:cs_*"));
         metalContext.Dispatch(1u);
 
@@ -321,7 +321,7 @@ namespace ToolsRig
                 "AoGenMini"));
         _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
 
-        // _pimpl->_stepDownShader = &::Assets::GetAssetDep<Metal::ComputeShader>(
+        // _pimpl->_stepDownShader = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
         //     "xleres/toolshelper/aogenprocess.hlsl:CubeMapStepDown:cs_*");
 
         _pimpl->_depVal = std::make_shared<::Assets::DependencyValidation>();
@@ -744,8 +744,8 @@ namespace ToolsRig
         ::Assets::ResChar modelFilenameNoParam[MaxPath];
         XlCopyString(modelFilenameNoParam, MakeFileNameSplitter(modelFilename).AllExceptParameters());
 
-        const auto& model    = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
-        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, MakeStringSection(modelFilenameNoParam));
+        const auto& model    = ::Assets::Legacy::GetAssetComp<ModelScaffold>(modelFilename);
+        const auto& material = ::Assets::Legacy::GetAssetComp<MaterialScaffold>(materialFilename, MakeStringSection(modelFilenameNoParam));
         auto searchRules     = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
         CalculateVertexAO(

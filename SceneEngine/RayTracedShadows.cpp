@@ -265,7 +265,7 @@ namespace SceneEngine
             //
             // todo -- also calculate min/max for each grid during this step
         CATCH_ASSETS_BEGIN
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 SCENE_ENGINE_RES "/ShadowGen/rtwritetiles.hlsl:vs_passthrough:vs_*",
                 SCENE_ENGINE_RES "/ShadowGen/ConsRaster.hlsl:gs_conservativeRasterization:gs_*",
                 SCENE_ENGINE_RES "/ShadowGen/rtwritetiles.hlsl:ps_main:ps_*",
@@ -328,7 +328,7 @@ namespace SceneEngine
         defines << "SHADOW_CASCADE_MODE=2";
         if (useMsaaSamplers) defines << ";MSAA_SAMPLERS=1";
 
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             SCENE_ENGINE_RES "/ShadowGen/rtshadmetrics.hlsl:ps_main:ps_*",
             defines.get());

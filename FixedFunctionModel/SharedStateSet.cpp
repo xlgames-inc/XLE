@@ -193,7 +193,7 @@ namespace FixedFunctionModel
         }
 
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<BoundShaderVariationSet>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::Legacy::GetAssetDep<BoundShaderVariationSet>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &context._parserContext->GetTechniqueContext()._globalEnvironmentState,
@@ -254,7 +254,7 @@ namespace FixedFunctionModel
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::TechniqueShaderVariationSet>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::Legacy::GetAssetDep<Techniques::TechniqueShaderVariationSet>(MakeStringSection(sn));
 		return &shaderType.GetTechnique().TechniqueCBLayout();
     }
 

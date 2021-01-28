@@ -378,7 +378,7 @@ namespace SceneEngine
                 pixelShader = "xleres/cfd/debug.hlsl:ps_vectorfield:ps_*";
             }
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
 
             Float2 wsDims = dimensions;
@@ -450,7 +450,7 @@ namespace SceneEngine
             if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "xleres/cfd/debug3d.hlsl:ps_scalarfield:ps_*";
             else if (debuggingMode == RenderFluidMode::Vector)  pixelShader = "xleres/cfd/debug3d.hlsl:ps_vectorfield:ps_*";
 
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(BASIC3D_VERTEX_HLSL ":PT:vs_*", pixelShader);
             Float2 wsDims = Truncate(dimensions);
 
             struct Vertex { Float3 position; Float2 texCoord; } 

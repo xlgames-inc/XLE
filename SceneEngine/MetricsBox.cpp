@@ -63,7 +63,7 @@ namespace SceneEngine
             // shader converts the numbers into a string, and textures appropriately.
             // So a final value can be written to the screen without ever touching
             // the CPU.
-        const auto& shader = ::Assets::GetAssetDep<Metal::DeepShaderProgram>(
+        const auto& shader = ::Assets::Legacy::GetAssetDep<Metal::DeepShaderProgram>(
             (StringMeld<MaxPath, ::Assets::ResChar>() << shaderName << ":metricsrig_main:!vs_*").get(),
             METRICS_RENDER_GEO_HLSL ":main:gs_*",
             METRICS_RENDER_PIXEL_HLSL ":main:ps_*",

@@ -11,12 +11,13 @@ namespace Assets { namespace Internal
 {
 	const ConfigFileContainer<>& GetConfigFileContainer(StringSection<ResChar> identifier)
 	{
-		return ::Assets::GetAsset<ConfigFileContainer<>>(identifier);
+		return ::Assets::Legacy::GetAsset<ConfigFileContainer<>>(identifier);
 	}
 
 	const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier)
 	{
-		return ::Assets::GetAsset<ChunkFileContainer>(identifier);
+		return ::Assets::Legacy::GetAsset<ChunkFileContainer>(identifier);
+	}
 
 	FuturePtr<ConfigFileContainer<>> GetConfigFileContainerFuture(StringSection<ResChar> identifier)
 	{

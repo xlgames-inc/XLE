@@ -833,7 +833,7 @@ namespace PlatformRig { namespace Overlays
                 forkedContext->Bind(MakeResourceList(box._bufferRTV), nullptr);
                 forkedContext->Bind(box._viewport);
 
-                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":P2C:vs_*",
                     SCENE_ENGINE_RES "/ShadowGen/ConsRaster.hlsl:gs_conservativeRasterization:gs_*",
                     BASIC_PIXEL_HLSL ":P:ps_*",
@@ -882,7 +882,7 @@ namespace PlatformRig { namespace Overlays
         // now render this texture onto the main render target
         TRY
         {
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":P2CT:vs_*",
                 BASIC_PIXEL_HLSL ":PCT:ps_*",
                 "");

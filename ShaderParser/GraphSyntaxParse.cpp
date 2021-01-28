@@ -161,7 +161,7 @@ namespace GraphLanguage
 
 	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint)
 	{
-		auto& asset = ::Assets::GetAsset<::Assets::RawFileAsset>(filename);
+		auto& asset = ::Assets::Legacy::GetAsset<::Assets::RawFileAsset>(filename);
 		auto inputStr = MakeStringSection((const char*)asset.GetData().begin(), (const char*)asset.GetData().end());
 
 		auto graphSyntax = std::make_shared<GraphLanguage::GraphSyntaxFile>(ParseGraphSyntax(inputStr));

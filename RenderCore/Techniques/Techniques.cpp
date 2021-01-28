@@ -62,7 +62,7 @@ namespace RenderCore { namespace Techniques
 				XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
 				searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
 
-				auto& settingsTable = ::Assets::GetAssetDep<TechniqueSetFile>(resolvedFile);
+				auto& settingsTable = ::Assets::Legacy::GetAssetDep<TechniqueSetFile>(resolvedFile);
 				auto settingHash = Hash64(colon+1, name._end);
                     
 				auto s = LowerBound(settingsTable._settings, settingHash);
@@ -424,7 +424,7 @@ namespace RenderCore { namespace Techniques
                             searchRules.ResolveFile(resolvedFile, resolvedFile);
 
                             // exceptions thrown by from the inheritted asset will not be suppressed
-                            const auto& inheritFrom = ::Assets::GetAssetDep<Technique>(resolvedFile);
+                            const auto& inheritFrom = ::Assets::Legacy::GetAssetDep<Technique>(resolvedFile);
                             inheritedAssets.push_back(inheritFrom.GetDependencyValidation());
 
                             // we should merge in the content from all the inheritted's assets
@@ -462,7 +462,7 @@ namespace RenderCore { namespace Techniques
 										settingName = t;
 									}
 
-									const auto& setFile = ::Assets::GetAssetDep<TechniqueSetFile>(containerName);
+									const auto& setFile = ::Assets::Legacy::GetAssetDep<TechniqueSetFile>(containerName);
 									auto hash = Hash64(settingName);
 									auto i = LowerBound(setFile._settings, hash);
 									if (i != setFile._settings.end() && i->first == hash) {

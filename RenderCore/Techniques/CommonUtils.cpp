@@ -105,7 +105,7 @@ namespace RenderCore { namespace Techniques
 
 	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
 	{
-		return ::Assets::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>(ILLUM_LEGACY_DS);
+		return ::Assets::Legacy::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>(ILLUM_LEGACY_DS);
 	}
 
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>>

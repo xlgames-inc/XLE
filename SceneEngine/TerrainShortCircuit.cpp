@@ -73,9 +73,9 @@ namespace SceneEngine
         auto encodedGradientFlags = desc._gradientFlagsEnable;
         if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
 
-        _cs0 = &::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
-        _cs1 = &::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
-        _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Terrain/copyterraintile.hlsl:DirectToFinal:cs_*", defines.get());
+        _cs0 = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
+        _cs1 = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
+        _cs2 = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Terrain/copyterraintile.hlsl:DirectToFinal:cs_*", defines.get());
 
 		UniformsStreamInterface usi;
         usi.BindConstantBuffer(0, {Hash64("Parameters")});

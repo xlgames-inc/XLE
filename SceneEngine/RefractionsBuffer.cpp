@@ -93,7 +93,7 @@ namespace SceneEngine
                 _width != textureDesc.Width || _height != textureDesc.Height || textureDesc.SampleDesc.Count > 1;
             if (needStepDown) {
                 metalContext.Bind(
-                    ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                         SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:SingleStepDownSample:ps_*",
                         (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
@@ -110,7 +110,7 @@ namespace SceneEngine
 
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
             metalContext.Bind(
-                ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                     SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:HorizontalBlur:ps_*"));
             metalContext.Draw(4);
@@ -121,7 +121,7 @@ namespace SceneEngine
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsBackSRV));
             metalContext.Bind(
-                ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                     SCENE_ENGINE_RES "/Effects/SeparableFilter.pixel.hlsl:VerticalBlur:ps_*"));
             metalContext.Draw(4);

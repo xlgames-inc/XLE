@@ -105,7 +105,7 @@
 
         \code{.cpp}
             using namespace RenderCore;
-            auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& debuggingShader = Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
                 "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
                 "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",

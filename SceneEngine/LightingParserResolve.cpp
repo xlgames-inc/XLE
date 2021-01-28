@@ -772,7 +772,7 @@ namespace SceneEngine
 
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);
-        auto* perSampleMask = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* perSampleMask = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             "xleres/deferred/persamplemask.pixel.hlsl:main:ps_*", definesTable);
 

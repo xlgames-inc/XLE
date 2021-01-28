@@ -79,7 +79,7 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
-        _commitShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _commitShader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             "xleres/effects/occludingsunflare.hlsl:vs_sunflare:vs_*",
             "xleres/effects/occludingsunflare.hlsl:ps_sunflare:ps_*",
             (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
@@ -95,7 +95,7 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
-        _blurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _blurShader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
             "xleres/effects/occludingsunflare.hlsl:ps_blur:ps_*",
             (StringMeld<128>() 
@@ -114,7 +114,7 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
-        _toRadialShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _toRadialShader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             "xleres/effects/occludingsunflare.hlsl:vs_sunflare_full:vs_*",
             "xleres/effects/occludingsunflare.hlsl:ps_toradial:ps_*");
 
@@ -129,7 +129,7 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
-        _directBlurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _directBlurShader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             "xleres/effects/occludingsunflare.hlsl:vs_sunflare:vs_*",
             "xleres/effects/occludingsunflare.hlsl:ps_sunflare_directblur:ps_*");
 

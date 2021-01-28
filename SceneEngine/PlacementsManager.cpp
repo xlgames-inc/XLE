@@ -1010,7 +1010,7 @@ namespace SceneEngine
         std::vector<std::pair<Float3x4, ObjectBoundingBoxes>> result;
         for (auto i=cellSet._pimpl->_cells.begin(); i!=cellSet._pimpl->_cells.end(); ++i) {
             if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType())) {
-                auto& placements = Assets::GetAsset<Placements>(i->_filename);
+                auto& placements = Assets::Legacy::GetAsset<Placements>(i->_filename);
                 ObjectBoundingBoxes obb;
                 obb._boundingBox = &placements.GetObjectReferences()->_cellSpaceBoundary;
                 obb._stride = sizeof(Placements::ObjectReference);
@@ -1295,7 +1295,7 @@ namespace SceneEngine
 
 			if (cell->_filename[0] != '[') {		// used in the editor for dynamic placements
 				TRY {
-					auto& sourcePlacements = Assets::GetAsset<Placements>(cell->_filename);
+					auto& sourcePlacements = Assets::Legacy::GetAsset<Placements>(cell->_filename);
 					placements = std::make_shared<DynamicPlacements>(sourcePlacements);
 				} CATCH (const std::exception& e) {
 					Log(Warning) << "Got invalid resource while loading placements file (" << cell->_filename << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ")." << std::endl;

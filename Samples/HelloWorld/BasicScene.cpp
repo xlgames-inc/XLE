@@ -136,9 +136,9 @@ namespace Sample
         using namespace RenderCore::Assets;
         if (!_modelRenderer) {
 
-                //  We're going to use the Assets::GetAssetComp<> function to initialize
+                //  We're going to use the Assets::Legacy::GetAssetComp<> function to initialize
                 //  our ModelScaffold. These are other ways to create a ModelScaffold, 
-                //  though (eg, Assets::GetAsset<>, or just using the constructor directly)
+                //  though (eg, Assets::Legacy::GetAsset<>, or just using the constructor directly)
                 //
                 //  In this case, we use GetAssetComp to cause the system to execute a
                 //  Collada compile when required. This will compile the input Collada
@@ -154,8 +154,8 @@ namespace Sample
                 //  never be correctly loaded (eg, missing file or something)
             const char sampleAsset[] = "game/model/galleon/galleon.dae";
             const char sampleMaterial[] = "game/model/galleon/galleon.material";
-            auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
-            auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
+            auto& scaffold = Assets::Legacy::GetAssetComp<ModelScaffold>(sampleAsset);
+            auto& matScaffold = Assets::Legacy::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
 
                 //  We want to create a Assets::DirectorySearchRules object before we
                 //  make the ModelRenderer. This is used when we need to find the 
@@ -221,11 +221,11 @@ namespace Sample
 		if (!renderer) return;
 
 		{
-			auto& skeletonScaffold = ::Assets::GetAsset<RenderCore::Assets::SkeletonScaffold>(
+			auto& skeletonScaffold = ::Assets::Legacy::GetAsset<RenderCore::Assets::SkeletonScaffold>(
 				"game/model/character/skin.dae");
 			auto& skeletonMachine = skeletonScaffold.GetTransformationMachine();
 
-			auto& animScaffold = ::Assets::GetAsset<RenderCore::Assets::AnimationSetScaffold>(
+			auto& animScaffold = ::Assets::Legacy::GetAsset<RenderCore::Assets::AnimationSetScaffold>(
 				"game/model/character/animations/alldae");
 			auto& animData = animScaffold.ImmutableData();
 

@@ -273,7 +273,7 @@ namespace FixedFunctionModel
 		::Assets::ResChar resName[MaxPath];
 		searchDirs.ResolveFile(resName, dimof(resName), techniqueConfig);
 
-        auto& techConfig = ::Assets::GetAssetDep<BoundShaderVariationSet>(MakeStringSection(resName));
+        auto& techConfig = ::Assets::Legacy::GetAssetDep<BoundShaderVariationSet>(MakeStringSection(resName));
 
         Variation result;
         result._cbLayout = nullptr;
@@ -284,7 +284,7 @@ namespace FixedFunctionModel
 
     const RenderCore::Assets::PredefinedCBLayout& SimpleShaderVariationManager::GetCBLayout(StringSection<> techniqueConfigName)
     {
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::TechniqueShaderVariationSet>(techniqueConfigName);
+        auto& techConfig = ::Assets::Legacy::GetAssetDep<Techniques::TechniqueShaderVariationSet>(techniqueConfigName);
         return techConfig.GetTechnique().TechniqueCBLayout();
     }
 

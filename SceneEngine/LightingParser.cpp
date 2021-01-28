@@ -649,7 +649,7 @@ namespace SceneEngine
 
                 using namespace RenderCore;
                 using namespace RenderCore::Metal;
-                auto& metricsShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& metricsShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         METRICS_RENDER_VERTEX_HLSL ":main:vs_*", 
                         METRICS_RENDER_GEO_HLSL ":main:gs_*",
                         METRICS_RENDER_PIXEL_HLSL ":main:ps_*",

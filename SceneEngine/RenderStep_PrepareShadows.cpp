@@ -362,7 +362,7 @@ namespace SceneEngine
 
     SFDResources::SFDResources(const Desc& desc)
     {
-        _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
             CASCADE_VIS_HLSL ":main:ps_*",
             (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 

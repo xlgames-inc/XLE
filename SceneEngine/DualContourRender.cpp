@@ -170,7 +170,7 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             context->Bind(Techniques::CommonResources()._dssReadOnly);
 
-            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& resolveShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/forward/transparency/cloudresolve.pixel.hlsl:main:ps_*");
             context->Bind(resolveShader);

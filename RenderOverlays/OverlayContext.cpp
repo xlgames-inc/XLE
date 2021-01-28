@@ -474,9 +474,9 @@ namespace RenderOverlays
 
         if (desc._pixelShaderName.empty()) {
 			if (geometryShaderSource) {
-				_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, pixelShaderDefault, "");
+				_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, pixelShaderDefault, "");
 			} else 
-				_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderDefault, "");
+				_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderDefault, "");
         } else {
             StringMeld<MaxPath, ::Assets::ResChar> assetName;
             auto paramStart = desc._pixelShaderName.find_first_of(':');
@@ -491,9 +491,9 @@ namespace RenderOverlays
                 assetName << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
 
 				if (geometryShaderSource) {
-					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
+					_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
 				} else
-					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
+					_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
                 _boundClassInterfaces = Metal::BoundClassInterfaces(*_shaderProgram);
 
                 auto i = desc._pixelShaderName.cbegin() + comma + 1;
@@ -518,9 +518,9 @@ namespace RenderOverlays
             } else {
                 assetName << desc._pixelShaderName << ":ps_*";
 				if (geometryShaderSource) {
-					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
+					_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
 				} else
-					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
+					_shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
             }
         }
 

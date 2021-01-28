@@ -97,15 +97,15 @@ namespace SceneEngine
         if (useMirrorOptimisation) {
             fftDefines = "USE_MIRROR_OPT=1";
         }
-        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_1:cs_*");
-        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_2:cs_*");
-        auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:Setup:cs_*", fftDefines);
+        auto& fft1 = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_1:cs_*");
+        auto& fft2 = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_2:cs_*");
+        auto& setup = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:Setup:cs_*", fftDefines);
 
         StringMeld<64> shaderDefines;
         shaderDefines << "DO_FOAM_SIM=" << int(_foamQuantityUAV[0].IsGood());
 
-        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildDerivatives:cs_*" : SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildNormals:cs_*", shaderDefines.get());
-        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildDerivativesMipmap:cs_*" : SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildNormalsMipmap:cs_*", shaderDefines.get());
+        auto& buildNormals = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildDerivatives:cs_*" : SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildNormals:cs_*", shaderDefines.get());
+        auto& buildNormalsMipmaps = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildDerivativesMipmap:cs_*" : SCENE_ENGINE_RES "/Ocean/OceanNormals.compute.hlsl:BuildNormalsMipmap:cs_*", shaderDefines.get());
     
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         // const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
@@ -223,7 +223,7 @@ namespace SceneEngine
 
         SetupVertexGeneratorShader(context);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
-        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/Ocean/FFTDebugging.pixel.hlsl:main:ps_*"));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
             _workingTextureRealSRV, _workingTextureImaginarySRV,

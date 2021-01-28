@@ -195,7 +195,7 @@ namespace RenderOverlays
 		const char vertexShaderSource[]   = BASIC2D_VERTEX_HLSL ":P2CT:" VS_DefShaderModel;
 		const char pixelShaderSource[]    = BASIC_PIXEL_HLSL ":PCT_Text:" PS_DefShaderModel;
 
-		const auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
+		const auto& shaderProgram = Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
 		Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);
 
 		ConstantBufferElementDesc elements[] = {

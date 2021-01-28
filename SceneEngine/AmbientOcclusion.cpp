@@ -281,7 +281,7 @@ namespace SceneEngine
         SetupVertexGeneratorShader(context);
         context.BindPS(MakeResourceList(resources._aoSRV));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
-        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", "xleres/postprocess/debugging.pixel.hlsl:AODebugging:ps_*"));
         context.Draw(4);
     }

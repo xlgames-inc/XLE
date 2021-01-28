@@ -180,10 +180,10 @@ namespace RenderCore { namespace Assets
                 AsPointer(skinningOutputLayout.begin()), unsigned(skinningOutputLayout.size()),
                 &outputVertexStride, 1));
 
-        auto& vsByteCodeP4 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
-        auto& vsByteCodeP2 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
-        auto& vsByteCodeP1 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN1 : skinningVertexShaderSourceP1);
-        auto& vsByteCodeP0 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN0 : skinningVertexShaderSourceP0);
+        auto& vsByteCodeP4 = ::Assets::Legacy::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
+        auto& vsByteCodeP2 = ::Assets::Legacy::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
+        auto& vsByteCodeP1 = ::Assets::Legacy::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN1 : skinningVertexShaderSourceP1);
+        auto& vsByteCodeP0 = ::Assets::Legacy::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN0 : skinningVertexShaderSourceP0);
 
         _skinningVertexShaderP4 = Metal::VertexShader(vsByteCodeP4);
         _skinningVertexShaderP2 = Metal::VertexShader(vsByteCodeP2);
@@ -792,7 +792,7 @@ namespace RenderCore { namespace Assets
 
         auto metalContext = Metal::DeviceContext::Get(context);
 
-        const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
+        const auto& shaderProgram = ::Assets::Legacy::GetAsset<ShaderProgram>(  
             ILLUM_FORWARD_VERTEX_HLSL ":main:" VS_DefShaderModel, 
             ILLUM_FORWARD_PIXEL_HLSL ":main", "GEO_HAS_COLOR=1");
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);

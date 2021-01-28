@@ -186,7 +186,7 @@ namespace ToolsRig
 		StringSection<::Assets::ResChar> filename)
 	{
 		_pipelineAcceleratorPool = pipelineAcceleratorPool;
-		auto& scaffold = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
+		auto& scaffold = ::Assets::Legacy::GetAssetComp<RenderCore::Assets::ModelScaffold>(filename);
 		if (scaffold.ImmutableData()._geoCount > 0) {
 			auto largeBlocksFile = scaffold.OpenLargeBlocks();
 			Build(*scaffold.ImmutableData()._geos, *largeBlocksFile);

@@ -72,7 +72,7 @@ namespace UnitTests
 				//
 				//	We will invoke model conversion using ColladaConversion dll
 				//
-				//	We're going to use Assets::GetAssetComp<> to load a 
+				//	We're going to use Assets::Legacy::GetAssetComp<> to load a 
 				//	model scaffold. So, we'll need to delete the intermediate
 				//	file before we start, to guarantee that the system executes
 				//	asset compilation
@@ -104,7 +104,7 @@ namespace UnitTests
 				auto startTime = Millisecond_Now();
 				for (;;) {
 					TRY {
-						auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
+						auto& scaffold = Assets::Legacy::GetAssetComp<ModelScaffold>(sampleAsset);
 						Assert::AreEqual(scaffold.ImmutableData()._geoCount, size_t(8));
 						break;
 					} 

@@ -73,7 +73,7 @@ namespace SceneEngine
         ViewportDesc newViewport( 0, 0, float(dimensions), float(dimensions), 0.f, 1.f );
         context->Bind(newViewport);
 
-        context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context->Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/Ocean/FFTDebugging.pixel.hlsl:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds")->Actualize()->GetShaderResource()));
@@ -82,8 +82,8 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(*context);
         context->Bind(oldViewport);
 
-        auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_1:cs_*");
-        auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_2:cs_*");
+        auto& fft1 = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_1:cs_*");
+        auto& fft2 = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:FFT2D_2:cs_*");
 
         context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(box._workingTextureRealUVA, box._workingTextureImaginaryUVA));
         unsigned constants[4] = {1, 0, 0, 0};
@@ -91,7 +91,7 @@ namespace SceneEngine
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:Lowpass:cs_*"));
+        context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/Ocean/FFT.compute.hlsl:Lowpass:cs_*"));
         context->Dispatch((dimensions + (32-1))/32);
 
         constants[0] = 0;
@@ -101,7 +101,7 @@ namespace SceneEngine
         MetalStubs::UnbindCS<UnorderedAccessView>(*context, 0, 2);
 
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-        context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context->Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/Ocean/FFTDebugging.pixel.hlsl:main:ps_*"));
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(box._workingTextureRealSRV, box._workingTextureImaginarySRV));
         context->Draw(4);
@@ -499,7 +499,7 @@ namespace SceneEngine
             };
             auto temporaryBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(lines));
 
-            auto& shader = ::Assets::GetAsset<ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAsset<ShaderProgram>(
                 NO_PATCHES_VERTEX_HLSL ":main:vs_*", 
                 NO_PATCHES_PIXEL_HLSL ":forward:ps_*",
                 "GEO_HAS_COLOR=1");
@@ -673,7 +673,7 @@ namespace SceneEngine
         const bool useWireframeRender               = Tweakable("OceanRenderWireframe", false);
         if (!useWireframeRender) {
 
-            auto& shaderType = ::Assets::GetAssetDep<FixedFunctionModel::BoundShaderVariationSet>("xleres/ocean/oceanmaterial.tech");
+            auto& shaderType = ::Assets::Legacy::GetAssetDep<FixedFunctionModel::BoundShaderVariationSet>("xleres/ocean/oceanmaterial.tech");
 
             ParameterBox materialParameters;
             materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
@@ -707,7 +707,7 @@ namespace SceneEngine
 					variation._boundLayout->Apply(*context, {});
                 }
 
-                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
+                //auto& surfaceSpecularity = ::Assets::Legacy::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
                 auto& surfaceSpecularity = ConsoleRig::FindCachedBox2<WaterNoiseTexture>();
                 ConstantBufferView prebuiltBuffers[] = { oceanMaterialConstants, oceanGridConstants, oceanRenderingConstants, oceanLightingConstants };
                 const ShaderResourceView* srvs[]	= { &OceanReflectionResource, surfaceSpecularity._srv.get() };
@@ -721,7 +721,7 @@ namespace SceneEngine
 
         } else {
 
-            auto& patchRender = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& patchRender = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 SCENE_ENGINE_RES "/Ocean/OceanPatch.vertex.hlsl:main:vs_*",
                 SOLID_WIREFRAME_GEO_HLSL ":main:gs_*",
                 SOLID_WIREFRAME_PIXEL_HLSL ":outlinepatch:ps_*",
@@ -751,7 +751,7 @@ namespace SceneEngine
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, fftBuffer._normalsTextureSRV));
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            // ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
+            // ::Assets::Legacy::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
 			*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             shallowWater->BindForOceanRender(*context, OceanBufferCounter);

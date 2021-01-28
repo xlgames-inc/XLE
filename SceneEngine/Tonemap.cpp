@@ -313,13 +313,13 @@ namespace SceneEngine
         shaderDefines << "MSAA_SAMPLES=" << desc._sampleCount;
         if (desc._useMSAASamplers) shaderDefines << ";MSAA_SAMPLERS=1";
 
-        _sampleInitialLuminanceByteCode    = &::Assets::GetAssetDep<CompiledShaderByteCode>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:SampleInitialLuminance:cs_*", shaderDefines.get());
+        _sampleInitialLuminanceByteCode    = &::Assets::Legacy::GetAssetDep<CompiledShaderByteCode>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:SampleInitialLuminance:cs_*", shaderDefines.get());
         _sampleInitialLuminance     = Metal::ComputeShader(Metal::GetObjectFactory(), *_sampleInitialLuminanceByteCode);
-        _luminanceStepDown          = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:LuminanceStepDown:cs_*");
-        _updateOverallLuminance     = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:UpdateOverallLuminance:cs_*");
-        _brightPassStepDown         = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:BrightPassStepDown:cs_*");
+        _luminanceStepDown          = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:LuminanceStepDown:cs_*");
+        _updateOverallLuminance     = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:UpdateOverallLuminance:cs_*");
+        _brightPassStepDown         = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:BrightPassStepDown:cs_*");
 
-        _updateOverallLuminanceNoAdapt = &::Assets::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
+        _updateOverallLuminanceNoAdapt = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(SCENE_ENGINE_RES "/postprocess/hdrluminance.compute.hlsl:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
 
 		UniformsStreamInterface usi;
 		usi.BindConstantBuffer(0, {Hash64("ToneMapSettings")});
@@ -472,13 +472,13 @@ namespace SceneEngine
                 XlSetMemory(filteringWeights.get(), 0, sizeof(filteringWeights));
                 BuildGaussianFilteringWeights((float*)filteringWeights.get(), settings._bloomBlurStdDev, 11);
 
-                auto& horizBlur = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                auto& horizBlur = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                     SCENE_ENGINE_RES "/Effects/SeparableFilter.compute.hlsl:HorizontalBlur11NoScale:cs_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& vertBlur = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                auto& vertBlur = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                     SCENE_ENGINE_RES "/Effects/SeparableFilter.compute.hlsl:VerticalBlur11NoScale:cs_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& copyShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
+                auto& copyShader = ::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
                     BASIC_COMPUTE_HLSL ":ResampleBilinear:cs_*");
 
                 // We're doing this all with compute shaders to try to simplify it.
@@ -660,7 +660,7 @@ namespace SceneEngine
             << ";MAT_PHOTO_FILTER=" << desc._doFilterColour
             ;
 
-        _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _shaderProgram = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
             SCENE_ENGINE_RES "/postprocess/tonemap.pixel.hlsl:main:ps_*", 
             shaderDefines.get());
@@ -740,7 +740,7 @@ namespace SceneEngine
             if (bindCopyShader) {
                     // If tone mapping is disabled (or if tonemapping failed for any reason)
                     //      -- then we have to bind a copy shader
-                devContext.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+                devContext.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", BASIC_PIXEL_HLSL ":fake_tonemap:ps_*"));
                 devContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(inputResource));
             }
@@ -765,11 +765,11 @@ namespace SceneEngine
         for (unsigned c=0; c<std::min(size_t(3),resources._bloomBuffers.size()); ++c) {
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBuffer.SRV()));
         }
-        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", SCENE_ENGINE_RES "/postprocess/debugging.pixel.hlsl:HDRDebugging:ps_*"));
         context.Draw(4);
 
-        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             SCENE_ENGINE_RES "/postprocess/debugging.pixel.hlsl:LuminanceValue:vs_*", 
             METRICS_RENDER_GEO_HLSL ":main:gs_*",
             METRICS_RENDER_PIXEL_HLSL ":main:ps_*", ""));
@@ -843,10 +843,10 @@ namespace SceneEngine
         Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->GetUnderlying());
         Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->GetUnderlying());
 
-        auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* horizontalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             SCENE_ENGINE_RES "/Effects/distantblur.pixel.hlsl:HorizontalBlur_DistanceWeighted:ps_*");
-        auto* verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* verticalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             SCENE_ENGINE_RES "/Effects/distantblur.pixel.hlsl:VerticalBlur_DistanceWeighted:ps_*");
 
@@ -867,7 +867,7 @@ namespace SceneEngine
 			UniformsStreamInterface{},
 			filterUsi);
 
-        auto* integrateDistantBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* integrateDistantBlur = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             SCENE_ENGINE_RES "/Effects/distantblur.pixel.hlsl:integrate:ps_*");
         

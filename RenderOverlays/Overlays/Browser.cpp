@@ -162,7 +162,7 @@ namespace Overlays
 
         auto vertexBuffer = MakeVertexBuffer(GetObjectFactory(), MakeIteratorRange(vertices));
 
-        const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
+        const auto& shaderProgram = ::Assets::Legacy::GetAssetDep<ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":P2T:" VS_DefShaderModel, 
             BASIC_PIXEL_HLSL ":copy_point_scrolllimit:" PS_DefShaderModel);
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);

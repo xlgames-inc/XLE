@@ -70,8 +70,8 @@ namespace SceneEngine
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
-        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
-        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(18, Assets::Legacy::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::Legacy::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
     void ReturnToSteadyState(Metal::DeviceContext& context)
@@ -625,7 +625,7 @@ namespace SceneEngine
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(
-            ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
                 BASIC_PIXEL_HLSL ":copy_depth:ps_*"));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
@@ -658,19 +658,19 @@ namespace SceneEngine
                     // the source (unlike bilinear filter, which will
                     // only sample some pixels in large downsampling 
                     // operations)
-                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                _shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
                     BASIC_PIXEL_HLSL ":copy_boxfilter:ps_*");
                 break;
 
             case CopyFilter::BoxFilterAlphaComplementWeight:
-                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                _shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
                     BASIC_PIXEL_HLSL ":copy_boxfilter_alphacomplementweight:ps_*");
                 break;
 
             default:
-                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                _shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":screenspacerect:vs_*",
                     BASIC_PIXEL_HLSL ":copy_bilinear:ps_*");
                 break;

@@ -131,22 +131,22 @@ namespace SceneEngine
         dest._hasBeenResolved = false;
 
         if (desc._debugging) {
-            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 "xleres/deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==1) {
-            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 "xleres/deferred/resolvelightgraph.pixel.hlsl:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==2) {
-            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 "xleres/deferred/resolvelight.pixel.hlsl:main:!ps_*",
                 definesTable.get());
         } else {
-            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 (!desc._debugging)
                     ? "xleres/deferred/resolvelight.pixel.hlsl:main:ps_*"
@@ -312,7 +312,7 @@ namespace SceneEngine
                 : BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*"
                 ;
 
-        auto* ambientLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* ambientLight = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "xleres/deferred/resolveambient.pixel.hlsl:ResolveAmbient:ps_*",
             definesTable.get());
@@ -381,7 +381,7 @@ namespace SceneEngine
         bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
         meld << ";GBUFFER_TYPE=" << enableParametersBuffer?1:2;
         
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", ps, meld.get());
 
         if (debuggingType == 2) {
@@ -422,7 +422,7 @@ namespace SceneEngine
 
         StringMeld<256> meld;
         
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", ps, meld.get());
 
         Metal::BoundClassInterfaces boundInterfaces(debuggingShader);

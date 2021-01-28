@@ -203,7 +203,7 @@ namespace ToolsRig
         TRY
         {
                 // note -- we might need access to the MSAA defines for this shader
-            auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shaderProgram = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
                 "xleres/ui/terrainmanipulators.hlsl:ps_circlehighlight:ps_*");
             
@@ -280,7 +280,7 @@ namespace ToolsRig
         TRY
         {
                 // note -- we might need access to the MSAA defines for this shader
-            auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shaderProgram = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
                 (type == RectangleHighlightType::Tool)
 					? "xleres/ui/terrainmanipulators.hlsl:ps_rectanglehighlight:ps_*"
@@ -434,7 +434,7 @@ namespace ToolsRig
 
         auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
 
-        const auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        const auto& shaderProgram = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":P2T:" VS_DefShaderModel, 
             BASIC_PIXEL_HLSL ":copy_bilinear:" PS_DefShaderModel);
         Metal::BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);

@@ -135,7 +135,7 @@ namespace SceneEngine
 
         {
             SetupVertexGeneratorShader(*_context);
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
                 "xleres/forward/transparency/depthweighted.hlsl:resolve:ps_*");
 

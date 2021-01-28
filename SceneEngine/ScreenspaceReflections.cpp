@@ -214,7 +214,7 @@ namespace SceneEngine
         // _samplingPatternConstantsCS = Metal::ShaderResourceView(samplingPatternCS->GetUnderlying());
 
             ////////////
-        _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
+        _buildMask = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BuildMask.compute.hlsl:BuildMask:cs_*");
 
         StringMeld<256> definesBuffer;
@@ -225,21 +225,21 @@ namespace SceneEngine
             << ";GBUFFER_TYPE=" << desc._hasGBufferProperties?1:2;
             ;
 
-        _buildReflections = &::Assets::GetAssetDep<Metal::ComputeShader>(
+        _buildReflections = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BuildReflection.compute.hlsl:BuildReflection:cs_*",
             definesBuffer.get());
     
-        _downsampleTargets = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _downsampleTargets = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/DownsampleStep.pixel.hlsl:main:ps_*",
             definesBuffer.get());
 
-        _horizontalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _horizontalBlur = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BlurStep.pixel.hlsl:HorizontalBlur:ps_*",
             definesBuffer.get());
 
-        _verticalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _verticalBlur = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/BlurStep.pixel.hlsl:VerticalBlur:ps_*",
             definesBuffer.get());
@@ -395,7 +395,7 @@ namespace SceneEngine
             << (resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"") 
             << "DOWNSAMPLE_SCALE=" << resources._desc._downsampleScale 
             << ";INTERPOLATE_SAMPLES=" << int(resources._desc._interpolateSamples);
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*", 
             SCENE_ENGINE_RES "/Lighting/ScreenspaceRefl/Debugging.pixel.hlsl:main:ps_*",
             definesBuffer.get());

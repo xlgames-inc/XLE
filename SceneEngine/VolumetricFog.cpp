@@ -130,7 +130,7 @@ namespace SceneEngine
             desc._shadowCascadeMode,
             desc._blurredShadowCascadeCount, desc._depthSlices,
             desc._shadowCascadeSkip);
-        auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* buildExponentialShadowMap = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:BuildExponentialShadowMap:ps_*", 
             defines);
@@ -141,11 +141,11 @@ namespace SceneEngine
         if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::BoxFilter) {
 
             StringMeld<32> filterDefines; filterDefines << "ESM_SHADOW_MAPS=" << int(desc._esmShadowMaps);
-            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            horizontalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalBoxFilter11:ps_*",
                 filterDefines.get());
-            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            verticalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalBoxFilter11:ps_*",
                 filterDefines.get());
@@ -153,20 +153,20 @@ namespace SceneEngine
 
         } else if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::Seven) {
 
-            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            horizontalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalFilter7:ps_*");
-            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            verticalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalFilter7:ps_*");
             filterSize = 7;
 
         } else if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::Five) {
 
-            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            horizontalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:HorizontalFilter5:ps_*");
-            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            verticalFilter = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
                 "xleres/VolumetricEffect/shadowsfilter.pixel.hlsl:VerticalFilter5:ps_*");
             filterSize = 5;
@@ -209,9 +209,9 @@ namespace SceneEngine
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        auto* injectLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
+        auto* injectLight = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
             "xleres/volumetriceffect/injectlight.compute.hlsl:InjectLighting:cs_*", defines);
-        auto* propagateLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
+        auto* propagateLight = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
             "xleres/volumetriceffect/injectlight.compute.hlsl:PropagateLighting:cs_*", defines);
 
 		UniformsStreamInterface injectLightBindingUsi;
@@ -248,7 +248,7 @@ namespace SceneEngine
         resolveLightBindingUsi.BindShaderResource(0, Hash64("InscatterTexture"));
 		resolveLightBindingUsi.BindShaderResource(1, Hash64("TransmissionTexture"));
 
-        auto* resolveLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* resolveLight = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "xleres/VolumetricEffect/resolvefog.pixel.hlsl:ResolveFog:ps_*", definesTable);
         Metal::BoundUniforms resolveLightBinding(
 			*resolveLight,
@@ -256,7 +256,7 @@ namespace SceneEngine
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			resolveLightBindingUsi);
 
-        auto* resolveLightNoGrid = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto* resolveLightNoGrid = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "xleres/VolumetricEffect/resolvefog.pixel.hlsl:ResolveFogNoGrid:ps_*", definesTable);
         Metal::BoundUniforms resolveLightNoGridBinding(
 			*resolveLightNoGrid,
@@ -1052,7 +1052,7 @@ namespace SceneEngine
     {
             // draw debugging for blurred shadows texture
         using namespace RenderCore;
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             "xleres/volumetriceffect/debugging.pixel.hlsl:VolumeShadows:ps_*",
             "");

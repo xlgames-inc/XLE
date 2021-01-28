@@ -259,7 +259,7 @@ namespace SceneEngine
 
         {
             SetupVertexGeneratorShader(*_context);
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
                 BASIC_PIXEL_HLSL ":copy:ps_*");
 			UniformsStreamInterface usi;
@@ -286,7 +286,7 @@ namespace SceneEngine
             _parserContext->_pendingOverlays.push_back(
                 [box](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext)
                 {
-                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
                         "xleres/forward/transparency/stochasticdebug.hlsl:ps_pixelmetrics:ps_*");
 					UniformsStreamInterface usi;
@@ -314,7 +314,7 @@ namespace SceneEngine
         }
 
         if (Tweakable("StochTransDebug", false)) {
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
                 "xleres/forward/transparency/stochasticdebug.hlsl:ps_depthave:ps_*");
 			UniformsStreamInterface usi;

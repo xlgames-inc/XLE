@@ -257,7 +257,7 @@ namespace SceneEngine
 
         const DeepShaderProgram* shaderProgram;
         TRY {
-            shaderProgram = &::Assets::GetAssetDep<DeepShaderProgram>(
+            shaderProgram = &::Assets::Legacy::GetAssetDep<DeepShaderProgram>(
                 "xleres/objects/terrain/GeoGenerator.hlsl:vs_dyntess_main:vs_*", 
                 gs, ps, 
                 "xleres/objects/terrain/GeoGenerator.hlsl:hs_main:hs_*",
@@ -329,17 +329,17 @@ namespace SceneEngine
         } else {
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
-                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::Legacy::GetAssetDep<ShaderProgram>(
                     "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
                     SOLID_WIREFRAME_GEO_HLSL ":main:gs_*", 
                     SOLID_WIREFRAME_PIXEL_HLSL ":main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
-                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::Legacy::GetAssetDep<ShaderProgram>(
                     "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
                     SCENE_ENGINE_RES "/Vegetation/InstanceSpawn.geo.hlsl:main:gs_*", 
                     "", "VSOUT_HAS_WORLD_POSITION=1");
             } else {
-                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::Legacy::GetAssetDep<ShaderProgram>(
                     "xleres/objects/terrain/Basic.hlsl:vs_basic:vs_*", 
                     "xleres/objects/terrain/TerrainIntersection.hlsl:gs_intersectiontest:gs_*", 
                     "", "VSOUT_HAS_WORLD_POSITION=1");

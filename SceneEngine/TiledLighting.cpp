@@ -143,7 +143,7 @@ namespace SceneEngine
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T")->Actualize()->GetShaderResource()));
-        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             "xleres/deferred/debugging.pixel.hlsl:DepthsDebuggingTexture:ps_*");
         context.Bind(debuggingShader);
@@ -281,16 +281,16 @@ namespace SceneEngine
                     metricBufferUAV, 
                     tileLightingResources._debuggingTexture[0], tileLightingResources._debuggingTexture[1], tileLightingResources._debuggingTexture[2]));
 
-                context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:PrepareLights"));
+                context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:PrepareLights"));
                 context->Dispatch((tileLightCount + 256 - 1) / 256);
                         
                 char definesTable[256];
                 Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", sampleCount);
         
                 if (doClusteredRenderingTest) {
-                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/clustered.compute.hlsl:main", definesTable));
+                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/clustered.compute.hlsl:main", definesTable));
                 } else {
-                    context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:main", definesTable));
+                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:main", definesTable));
                 }
                 context->Dispatch(lightCulling._groupCounts[0], lightCulling._groupCounts[1]);
 
@@ -305,7 +305,7 @@ namespace SceneEngine
                         auto& airLight = FindCachedBox<AirLightResources>(AirLightResources::Desc());
                         
                         context->BindCS(MakeResourceList(3, fogRes._inscatterPointLightsValuesUnorderedAccess));
-                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+                        context->BindCS(MakeResourceList(13, Assets::Legacy::GetAssetDep<Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
                         context->BindCS(MakeResourceList(1, airLight._lookupShaderResource));
                         context->Bind(*fogShaders._injectPointLightSources);
                         context->Dispatch(160/10, 90/10, 128/8);
@@ -364,7 +364,7 @@ namespace SceneEngine
 
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;
 
-                auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
                     "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
                     "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",
@@ -396,7 +396,7 @@ namespace SceneEngine
 
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
                     context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-                    auto& predepth = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    auto& predepth = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
                         "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
                         "xleres/deferred/debugging/beams.pixel.hlsl:predepth:ps_*",
@@ -411,7 +411,7 @@ namespace SceneEngine
                 context->Draw(globals[0]*globals[1]);
 
                 if (!isShadowsPass) {
-                    context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
                         "xleres/deferred/debugging/beams.geo.hlsl:Outlines:gs_*", 
                         "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",
