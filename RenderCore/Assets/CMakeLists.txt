@@ -1,5 +1,5 @@
 set(Src 
-    # AssetUtils.cpp  (*1 some files not really required for processing dlls -- eg model conversion dlls -- so it's convenient to remove them here)
+    AssetUtils.cpp  
     LocalCompiledShaderSource.cpp
     MaterialCompiler.cpp
     MaterialScaffold.cpp
@@ -8,7 +8,7 @@ set(Src
     PredefinedDescriptorSetLayout.cpp
     RawAnimationCurve.cpp
     RawMaterial.cpp
-    # Services.cpp  (*1 see above)
+    # Services.cpp  (*1 some files not really required for processing dlls -- eg model conversion dlls -- so it's convenient to remove them here)
     ShaderPatchCollection.cpp
     SkinningScaffold.cpp
     TransformationCommands.cpp
@@ -52,6 +52,6 @@ add_library(RenderCoreAssets STATIC ${Src} ${Headers})
 xle_configure_library(RenderCoreAssets)
 target_link_libraries(RenderCoreAssets PUBLIC RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)
 
-add_library(RenderCoreAssetsServices STATIC "AssetUtils.cpp;Services.cpp")
+add_library(RenderCoreAssetsServices STATIC "Services.cpp")
 xle_configure_library(RenderCoreAssetsServices)
 target_link_libraries(RenderCoreAssetsServices PUBLIC RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)

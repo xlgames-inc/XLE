@@ -37,7 +37,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				RenderCore::Assets::ChunkType_Skeleton, 0, name, 
 				std::move(block)},
 			::Assets::ICompileOperation::SerializedArtifact{
-				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+				RenderCore::Assets::ChunkType_Metrics, 0, "skel-" + name, 
 				std::move(metricsBlock)}
 		};
 	}
@@ -59,7 +59,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				RenderCore::Assets::ChunkType_AnimationSet, 0, name, 
 				std::move(block)},
 			::Assets::ICompileOperation::SerializedArtifact{
-				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+				RenderCore::Assets::ChunkType_Metrics, 0, "anim-" + name, 
 				std::move(metricsBlock)}
 		};
 	}

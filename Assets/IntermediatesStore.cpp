@@ -610,13 +610,21 @@ namespace Assets
 			std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
 			for (const auto&a:artifacts)
 				if (a._type == ChunkType_Metrics) {
-					auto metricsName = intermediateName + ".metrics";
+					std::string metricsName;
+					if (!a._name.empty()) {
+						metricsName = intermediateName + "-" + a._name + ".metrics";
+					} else 
+						metricsName = intermediateName + ".metrics";
 					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
 					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 					compileProductsFile._compileProducts.push_back({a._type, metricsName});
 					renameOps.push_back({metricsName + ".staging", metricsName});
 				} else if (a._type == ChunkType_Log) {
-					auto metricsName = intermediateName + ".log";
+					std::string metricsName;
+					if (!a._name.empty()) {
+						metricsName = intermediateName + "-" + a._name + ".log";
+					} else 
+						metricsName = intermediateName + ".log";
 					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".log", "wb", 0);
 					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 					compileProductsFile._compileProducts.push_back({a._type, metricsName});
@@ -650,6 +658,17 @@ namespace Assets
 			fmtter << compileProductsFile;
 			renameOps.push_back({intermediateName + ".staging", intermediateName});
 		}
+
+#if defined(_DEBUG)
+		// Check for duplicated names in renameOps. Any dupes will result in exceptions later
+		for (auto i=renameOps.begin(); i!=renameOps.end(); ++i)
+			for (auto i2=renameOps.begin(); i2!=i; ++i2) {
+				if (i->first == i2->first)
+					Throw(std::runtime_error("Duplicated rename op in IntermediatesStore for intermediate: " + i->first));
+				if (i->second == i2->second)
+					Throw(std::runtime_error("Duplicated rename op in IntermediatesStore for intermediate: " + i->second));
+			}
+#endif
 
 		// If we get to here successfully, go ahead and rename all of the staging files to their final names 
 		// This gives us a little bit of protection against exceptions while writing out the staging files

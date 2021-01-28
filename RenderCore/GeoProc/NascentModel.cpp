@@ -298,7 +298,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name,
 					std::move(largeResourcesBlock)},
 				::Assets::ICompileOperation::SerializedArtifact{
-					RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+					RenderCore::Assets::ChunkType_Metrics, 0, "skin-" + name, 
 					std::move(metricsBlock)}
 			};
 	}

@@ -6,6 +6,7 @@
 #include "../../UnitTestHelper.h"
 #include "../../../RenderCore/Assets/MaterialCompiler.h"
 #include "../../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../../RenderCore/Assets/ModelScaffold.h"
 #include "../../../RenderCore/Assets/RawMaterial.h"
 #include "../../../Assets/IntermediatesStore.h"
 #include "../../../Assets/IntermediateCompilers.h"
@@ -67,22 +68,6 @@ namespace UnitTests
 		auto matRegistration = RenderCore::Assets::RegisterMaterialCompiler(compilers);
 		auto modelRegistration = UnitTests::RegisterFakeModelCompiler(compilers);
 
-		SECTION("Get material settings from a model file")
-		{
-			auto& cfgs = *::Assets::Actualize<RenderCore::Assets::RawMatConfigurations>("fake-model");
-			REQUIRE(cfgs._configurations.size() == 2);
-			REQUIRE(cfgs._configurations[0] == "Material0");
-			REQUIRE(cfgs._configurations[1] == "Material1");
-
-			auto& material0 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material0");
-			REQUIRE(material0._constants.GetParameter<float>("Brightness") == 50_a);
-			REQUIRE(Equivalent(material0._constants.GetParameter<Float3>("Emissive").value(), Float3{0.5f, 0.5f, 0.5f}, 1e-3f));
-
-			auto& material1 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material1");
-			REQUIRE(material1._constants.GetParameter<float>("Brightness") == 33_a);
-			REQUIRE(Equivalent(material1._constants.GetParameter<Float3>("Emissive").value(), Float3{2.5f, 0.25f, 0.15f}, 1e-3f));
-		}
-
 		SECTION("Compile material scaffold")
 		{
 			StringSection<> initializers[] = { "ut-data/test.material", "fake-model" };
@@ -120,6 +105,56 @@ namespace UnitTests
 		compilers.DeregisterCompiler(modelRegistration._registrationId);
 		compilers.DeregisterCompiler(matRegistration._registrationId);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt);
+	}
+
+	TEST_CASE( "RenderCoreCompilation-Models", "[rendercore_assets]" )
+	{
+		UnitTest_SetWorkingDirectory();
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+
+		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
+		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
+		std::filesystem::create_directories(tempDirPath);
+
+		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+
+		auto modelRegistration = UnitTests::RegisterFakeModelCompiler(compilers);
+
+		SECTION("ModelScaffold compilation")
+		{
+			StringSection<> initializers[] = { "fake-model" };
+			auto marker = compilers.Prepare(RenderCore::Assets::ModelScaffold::CompileProcessType, initializers, dimof(initializers));
+			REQUIRE(marker != nullptr);
+			REQUIRE(marker->GetExistingAsset() == nullptr);
+
+			auto compile = marker->InvokeCompile();
+			REQUIRE(compile != nullptr);
+
+			compile->StallWhilePending();
+			REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
+
+			auto finalScaffold = ::Assets::AutoConstructAsset<RenderCore::Assets::ModelScaffold>(
+				*compile->GetArtifactCollection());
+			(void)finalScaffold;
+		}
+
+		SECTION("Get material settings from a model file")
+		{
+			auto& cfgs = *::Assets::Actualize<RenderCore::Assets::RawMatConfigurations>("fake-model");
+			REQUIRE(cfgs._configurations.size() == 2);
+			REQUIRE(cfgs._configurations[0] == "Material0");
+			REQUIRE(cfgs._configurations[1] == "Material1");
+
+			auto& material0 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material0");
+			REQUIRE(material0._constants.GetParameter<float>("Brightness") == 50_a);
+			REQUIRE(Equivalent(material0._constants.GetParameter<Float3>("Emissive").value(), Float3{0.5f, 0.5f, 0.5f}, 1e-3f));
+
+			auto& material1 = *::Assets::Actualize<RenderCore::Assets::RawMaterial>("fake-model:Material1");
+			REQUIRE(material1._constants.GetParameter<float>("Brightness") == 33_a);
+			REQUIRE(Equivalent(material1._constants.GetParameter<Float3>("Emissive").value(), Float3{2.5f, 0.25f, 0.15f}, 1e-3f));
+		}
+
+		compilers.DeregisterCompiler(modelRegistration._registrationId);
 	}
 
 }
