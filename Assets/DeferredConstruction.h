@@ -181,9 +181,9 @@ namespace Assets
 		AutoConstructToFutureDirect(future, std::forward<Params>(initialisers)...);
 	}
 
-	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
-
-	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
+	template<
+		typename AssetType, 
+		typename std::enable_if_t<Internal::AssetTraits<AssetType>::Constructor_Formatter && !Internal::HasConstructToFutureOverride<AssetType, StringSection<ResChar>>::value>* =nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
 	{
 		const char* p = XlFindChar(initializer, ':');
@@ -215,7 +215,9 @@ namespace Assets
 		}
 	}
 
-	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if_t<Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer && !Internal::HasConstructToFutureOverride<AssetType, StringSection<ResChar>>::value>* =nullptr>
 		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
 	{
 		auto containerFuture = Internal::GetChunkFileContainerFuture(initializer);
@@ -226,7 +228,9 @@ namespace Assets
 			});
 	}
 
-	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if_t<Internal::AssetTraits<AssetType>::HasChunkRequests && !Internal::HasConstructToFutureOverride<AssetType, StringSection<ResChar>>::value>* =nullptr>
 		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
 	{
 		auto containerFuture = Internal::GetChunkFileContainerFuture(initializer);
@@ -237,7 +241,5 @@ namespace Assets
 				return std::make_unique<AssetType>(MakeIteratorRange(chunks), container->GetDependencyValidation());
 			});
 	}
-
-	#undef ENABLE_IF
 }
 
