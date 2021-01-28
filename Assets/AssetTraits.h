@@ -69,6 +69,8 @@ namespace Assets
 
 		const ConfigFileContainer<InputStreamFormatter<utf8>>& GetConfigFileContainer(StringSection<ResChar> identifier);
 		const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier);
+		FuturePtr<ConfigFileContainer<InputStreamFormatter<utf8>>> GetConfigFileContainerFuture(StringSection<ResChar> identifier);
+		FuturePtr<ChunkFileContainer> GetChunkFileContainerFuture(StringSection<ResChar> identifier);
 
         template <typename... Params> uint64 BuildHash(Params... initialisers);
 	}
@@ -85,6 +87,7 @@ namespace Assets
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
 		// First parameter should be the section of the input file to read (or just use the root of the file if it doesn't exist)
+		// See also AutoConstructToFuture<> variation of this function
 		const char* p = XlFindChar(initializer, ':');
 		if (p) {
 			char buffer[256];
@@ -141,6 +144,7 @@ namespace Assets
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
+		// See also AutoConstructToFuture<> variation of this function
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		TRY {
 			return std::make_unique<AssetType>(container);
@@ -170,6 +174,7 @@ namespace Assets
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
+		// See also AutoConstructToFuture<> variation of this function
 		const auto& container = Internal::GetChunkFileContainer(initializer);
 		TRY {
 			auto chunks = container.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));

@@ -7,6 +7,7 @@
 #include "AssetsInternal.h"
 #include "AssetFuture.h"
 #include "AssetTraits.h"
+#include "AssetFutureContinuation.h"
 #include "IArtifact.h"
 #include "IntermediateCompilers.h"
 #include "../OSServices/Log.h"
@@ -179,5 +180,64 @@ namespace Assets
 	{
 		AutoConstructToFutureDirect(future, std::forward<Params>(initialisers)...);
 	}
+
+	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
+
+	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
+	{
+		const char* p = XlFindChar(initializer, ':');
+		if (p) {
+			std::string containerName = MakeStringSection(initializer.begin(), p).AsString();
+			std::string sectionName = MakeStringSection((const utf8*)(p+1), (const utf8*)initializer.end()).AsString();
+			auto containerFuture = Internal::GetConfigFileContainerFuture(MakeStringSection(containerName));
+			WhenAll(containerFuture).ThenConstructToFuture<AssetType>(
+				future,
+				[containerName, sectionName](const std::shared_ptr<ConfigFileContainer<>>& container) {
+					auto fmttr = container->GetFormatter(sectionName);
+					return std::make_unique<AssetType>(
+						fmttr, 
+						DefaultDirectorySearchRules(containerName),
+						container->GetDependencyValidation());
+				});
+		} else {
+			std::string containerName = initializer.AsString();
+			auto containerFuture = Internal::GetConfigFileContainerFuture(MakeStringSection(containerName));
+			WhenAll(containerFuture).ThenConstructToFuture<AssetType>(
+				future,
+				[containerName](const std::shared_ptr<ConfigFileContainer<>>& container) {
+					auto fmttr = container->GetRootFormatter();
+					return std::make_unique<AssetType>(
+						fmttr, 
+						DefaultDirectorySearchRules(containerName),
+						container->GetDependencyValidation());
+				});
+		}
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
+		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
+	{
+		auto containerFuture = Internal::GetChunkFileContainerFuture(initializer);
+		WhenAll(containerFuture).ThenConstructToFuture<AssetType>(
+			future,
+			[](const std::shared_ptr<ChunkFileContainer>& container) {
+				return std::make_unique<AssetType>(*container);
+			});
+	}
+
+	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
+		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
+	{
+		auto containerFuture = Internal::GetChunkFileContainerFuture(initializer);
+		WhenAll(containerFuture).ThenConstructToFuture<AssetType>(
+			future,
+			[](const std::shared_ptr<ChunkFileContainer>& container) {
+				auto chunks = container->ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+				return std::make_unique<AssetType>(MakeIteratorRange(chunks), container->GetDependencyValidation());
+			});
+	}
+
+	#undef ENABLE_IF
 }
 

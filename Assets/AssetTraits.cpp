@@ -17,6 +17,15 @@ namespace Assets { namespace Internal
 	const ChunkFileContainer& GetChunkFileContainer(StringSection<ResChar> identifier)
 	{
 		return ::Assets::GetAsset<ChunkFileContainer>(identifier);
+
+	FuturePtr<ConfigFileContainer<>> GetConfigFileContainerFuture(StringSection<ResChar> identifier)
+	{
+		return ::Assets::MakeAsset<ConfigFileContainer<>>(identifier);
+	}
+
+	FuturePtr<ChunkFileContainer> GetChunkFileContainerFuture(StringSection<ResChar> identifier)
+	{
+		return ::Assets::MakeAsset<ChunkFileContainer>(identifier);
 	}
 }}
 
