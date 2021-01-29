@@ -225,10 +225,10 @@ namespace Assets
 
 		void ResolveBaseDirectory() const;
 		std::string MakeStoreName(
-			const StringSection<ResChar> initializers[], unsigned initializerCount,
+			StringSection<> archivableName,
 			CompileProductsGroupId groupId) const;
 		uint64_t MakeHashCode(
-			const StringSection<ResChar> initializers[], unsigned initializerCount,
+			StringSection<> archivableName,
 			CompileProductsGroupId groupId) const;
 	};
 
@@ -238,7 +238,7 @@ namespace Assets
 	}
 
 	std::string IntermediatesStore::Pimpl::MakeStoreName(
-		const StringSection<ResChar> initializers[], unsigned initializerCount,
+		StringSection<> archivableName,
 		CompileProductsGroupId groupId) const
 	{
 		ResolveBaseDirectory();
@@ -247,10 +247,7 @@ namespace Assets
 		str << _resolvedBaseDirectory << "/";
 		assert(_groupIdToDirName.find(groupId) != _groupIdToDirName.end());
 		str << _groupIdToDirName.find(groupId)->second << "/";
-		for (unsigned i=0; i<initializerCount; ++i) {
-			if (i != 0) str << "-";
-			str << initializers[i];
-		}
+		str << archivableName;
 
 		auto result = str.str();
 		for (auto&b:result)
@@ -259,13 +256,10 @@ namespace Assets
 	}
 
 	uint64_t IntermediatesStore::Pimpl::MakeHashCode(
-		const StringSection<ResChar> initializers[], unsigned initializerCount,
+		StringSection<> archivableName,
 		CompileProductsGroupId groupId) const
 	{
-		uint64_t result = groupId;
-		for (unsigned i=0; i<initializerCount; ++i)
-			result = Hash64(initializers[i].begin(), initializers[i].end(), result);
-		return result;
+		return Hash64(archivableName.begin(), archivableName.end(), groupId);
 	}
 
 	template <int DestCount>
@@ -441,15 +435,15 @@ namespace Assets
 	}
 
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
-		const StringSection<ResChar> initializers[], unsigned initializerCount,
+		StringSection<> archivableName,
 		CompileProductsGroupId groupId)
 	{
-		auto hashCode = _pimpl->MakeHashCode(initializers, initializerCount, groupId);
+		auto hashCode = _pimpl->MakeHashCode(archivableName, groupId);
 		{
 			ScopedLock(_pimpl->_storeRefCounts->_lock);
 			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
 			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
-				Throw(std::runtime_error("Attempting to retrieve compile products while store in flight: " + DescriptiveName(initializers, initializerCount)));
+				Throw(std::runtime_error("Attempting to retrieve compile products while store in flight: " + archivableName.AsString()));
 			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
 			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
 				++read->second;
@@ -457,7 +451,7 @@ namespace Assets
 				_pimpl->_storeRefCounts->_readReferenceCount.insert(read, std::make_pair(hashCode, 1));
 		}
 		auto cleanup = AutoCleanup(
-			[hashCode, initializers, initializerCount, this]() {
+			[hashCode, this]() {
 				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
 				auto read = LowerBound(this->_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
 				if (read != this->_pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
@@ -476,7 +470,7 @@ namespace Assets
 			//  the .deps file, then we can assume that it is out of date and
 			//  must be recompiled.
 
-		auto intermediateName = _pimpl->MakeStoreName(initializers, initializerCount, groupId);
+		auto intermediateName = _pimpl->MakeStoreName(archivableName, groupId);
 		std::unique_ptr<IFileInterface> productsFile;
 		auto ioResult = MainFileSystem::TryOpen(productsFile, intermediateName.c_str(), "rb", 0);
 		if (ioResult != ::Assets::IFileSystem::IOReason::Success || !productsFile)
@@ -506,18 +500,18 @@ namespace Assets
 			RegisterAssetDependency(depVal, record);
 
 			if (record->_state._status == DependentFileState::Status::Shadowed) {
-				Log(Verbose) << "Asset (" << DescriptiveName(initializers, initializerCount) << ") is invalidated because dependency (" << finalProductsFile._basePath << ") is marked shadowed" << std::endl;
+				Log(Verbose) << "Asset (" << archivableName << ") is invalidated because dependency (" << finalProductsFile._basePath << ") is marked shadowed" << std::endl;
 				return nullptr;
 			}
 
 			if (!record->_state._timeMarker) {
 				Log(Verbose)
-					<< "Asset (" << DescriptiveName(initializers, initializerCount) 
+					<< "Asset (" << archivableName
 					<< ") is invalidated because of missing dependency (" << finalProductsFile._basePath << ")" << std::endl;
 				return nullptr;
 			} else if (record->_state._timeMarker != dep._timeMarker) {
 				Log(Verbose)
-					<< "Asset (" << DescriptiveName(initializers, initializerCount) 
+					<< "Asset (" << archivableName
 					<< ") is invalidated because of file data on dependency (" << finalProductsFile._basePath << ")" << std::endl;
 				return nullptr;
 			}
@@ -545,7 +539,7 @@ namespace Assets
     };
 
 	void IntermediatesStore::StoreCompileProducts(
-		const StringSection<> initializers[], unsigned initializerCount,
+		StringSection<> archivableName,
 		CompileProductsGroupId groupId,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
 		::Assets::AssetState state,
@@ -557,21 +551,21 @@ namespace Assets
 		//		store operations are currently in flight
 		//
 
-		auto hashCode = _pimpl->MakeHashCode(initializers, initializerCount, groupId);
+		auto hashCode = _pimpl->MakeHashCode(archivableName, groupId);
 		{
 			ScopedLock(_pimpl->_storeRefCounts->_lock);
 			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
 			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
-				Throw(std::runtime_error("Multiple stores in flight for the same compile product: " + DescriptiveName(initializers, initializerCount)));
+				Throw(std::runtime_error("Multiple stores in flight for the same compile product: " + archivableName.AsString()));
 			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
 			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode && read->second != 0)
-				Throw(std::runtime_error("Attempting to store compile product while still reading from it: " + DescriptiveName(initializers, initializerCount)));
+				Throw(std::runtime_error("Attempting to store compile product while still reading from it: " + archivableName.AsString()));
 			_pimpl->_storeRefCounts->_storeOperationsInFlight.insert(hashCode);
 		}
 
 		bool successfulStore = false;
 		auto cleanup = AutoCleanup(
-			[&successfulStore, hashCode, initializers, initializerCount, this]() {
+			[&successfulStore, hashCode, this]() {
 				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
 				auto existing = this->_pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
 				if (existing != this->_pimpl->_storeRefCounts->_storeOperationsInFlight.end()) {
@@ -594,7 +588,7 @@ namespace Assets
 			compileProductsFile._dependencies.push_back({filename, s._timeMarker});
 		}
 
-		auto intermediateName = _pimpl->MakeStoreName(initializers, initializerCount, groupId);
+		auto intermediateName = _pimpl->MakeStoreName(archivableName, groupId);
 		OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(intermediateName).DriveAndPath());
 		std::vector<std::pair<std::string, std::string>> renameOps;
 

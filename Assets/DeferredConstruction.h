@@ -4,12 +4,13 @@
 
 #pragma once
 
-#include "AssetsInternal.h"
+#include "InitializerPack.h"
 #include "AssetFuture.h"
 #include "AssetTraits.h"
 #include "AssetFutureContinuation.h"
 #include "IArtifact.h"
 #include "IntermediateCompilers.h"
+#include "InitializerPack.h"
 #include "../OSServices/Log.h"
 #include <memory>
 
@@ -19,7 +20,7 @@ namespace Assets
 
 	namespace Internal 
 	{
-		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(uint64_t typeCode, InitializerPack&&);
 	}
 
 	namespace Internal
@@ -111,18 +112,22 @@ namespace Assets
 			});
 	}
 
-	template<typename AssetType>
+	template<typename AssetType, typename... Args>
 		static void DefaultCompilerConstruction(
 			AssetFuture<AssetType>& future,
-			const StringSection<ResChar> initializers[], unsigned initializerCount,
-			uint64_t compileTypeCode = AssetType::CompileProcessType)
+			uint64_t compileTypeCode, 		// typically AssetType::CompileProcessType,
+			Args... args)
 	{
 		// Begin a compilation operation via the registered compilers for this type.
 		// Our deferred constructor will wait for the completion of that compilation operation,
 		// and then construct the final asset from the result
 
+		#if defined(_DEBUG)
+			std::string debugLabel = InitializerPack{args...}.ArchivableName();
+		#endif
+
 		TRY { 
-			auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
+			auto marker = Internal::BeginCompileOperation(compileTypeCode, InitializerPack{std::forward<Args>(args)...});
 			// std::basic_string<ResChar> init0 = initializers[0].AsString();
 
 			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
@@ -151,7 +156,9 @@ namespace Assets
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 			throw;	// Have to rethrow InvalidAsset, otherwise we loose our dependency validation. This can occur when the AutoConstructAsset function itself loads some other asset
 		} CATCH(const std::exception& e) {
-			Log(Warning) << "No dependency validation associated with asset (" << (initializerCount ? initializers[0].AsString() : "<<empty initializers>>") << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
+			#if defined(_DEBUG)
+				Log(Warning) << "No dependency validation associated with asset (" << debugLabel << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
+			#endif
 			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 		} CATCH_END
 	}
@@ -169,8 +176,7 @@ namespace Assets
 		typename std::enable_if<Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasConstructToFutureOverride<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
-		StringSection<ResChar> inits[] = { initialisers... };
-		DefaultCompilerConstruction<AssetType>(future, inits, dimof(inits));
+		DefaultCompilerConstruction<AssetType>(future, AssetType::CompileProcessType, std::forward<Params>(initialisers)...);
 	}
 
 	template<

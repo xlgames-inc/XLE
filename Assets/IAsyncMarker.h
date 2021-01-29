@@ -26,7 +26,7 @@ namespace Assets
     public:
         AssetState		GetAssetState() const { return _state; }
         std::optional<AssetState>   StallWhilePending(std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
-        const char*     Initializer() const;  // "initializer" interface only provided in debug builds, and only intended for debugging
+        const char*     GetDebugLabel() const;  // GetDebugLabel only provided in debug builds, and only intended for debugging
 
         GenericFuture(AssetState state = AssetState::Pending);
         ~GenericFuture();
@@ -37,7 +37,7 @@ namespace Assets
 		GenericFuture& operator=(const GenericFuture&) = delete;
 
 		void	SetState(AssetState newState);
-		void	SetInitializer(const ResChar initializer[]);
+		void	SetDebugLabel(StringSection<char> initializer);
 
 	private:
 		AssetState _state;

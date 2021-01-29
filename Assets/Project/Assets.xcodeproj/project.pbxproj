@@ -17,7 +17,6 @@
 		8F044C511EA6B13E0074D6A4 /* AssetSetInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C221EA6B13E0074D6A4 /* AssetSetInternal.h */; };
 		8F044C521EA6B13E0074D6A4 /* AssetSetManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C231EA6B13E0074D6A4 /* AssetSetManager.cpp */; };
 		8F044C531EA6B13E0074D6A4 /* AssetSetManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C241EA6B13E0074D6A4 /* AssetSetManager.h */; };
-		8F044C541EA6B13E0074D6A4 /* AssetsInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C251EA6B13E0074D6A4 /* AssetsInternal.h */; };
 		8F044C551EA6B13E0074D6A4 /* AssetTraits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C261EA6B13E0074D6A4 /* AssetTraits.cpp */; };
 		8F044C561EA6B13E0074D6A4 /* AssetTraits.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F044C271EA6B13E0074D6A4 /* AssetTraits.h */; };
 		8F044C571EA6B13E0074D6A4 /* AssetUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C281EA6B13E0074D6A4 /* AssetUtils.cpp */; };
@@ -98,7 +97,6 @@
 		8F044C221EA6B13E0074D6A4 /* AssetSetInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetSetInternal.h; path = ../AssetSetInternal.h; sourceTree = "<group>"; };
 		8F044C231EA6B13E0074D6A4 /* AssetSetManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AssetSetManager.cpp; path = ../AssetSetManager.cpp; sourceTree = "<group>"; };
 		8F044C241EA6B13E0074D6A4 /* AssetSetManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetSetManager.h; path = ../AssetSetManager.h; sourceTree = "<group>"; };
-		8F044C251EA6B13E0074D6A4 /* AssetsInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetsInternal.h; path = ../AssetsInternal.h; sourceTree = "<group>"; };
 		8F044C261EA6B13E0074D6A4 /* AssetTraits.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AssetTraits.cpp; path = ../AssetTraits.cpp; sourceTree = "<group>"; };
 		8F044C271EA6B13E0074D6A4 /* AssetTraits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetTraits.h; path = ../AssetTraits.h; sourceTree = "<group>"; };
 		8F044C281EA6B13E0074D6A4 /* AssetUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AssetUtils.cpp; path = ../AssetUtils.cpp; sourceTree = "<group>"; };
@@ -175,7 +173,6 @@
 				8F044C221EA6B13E0074D6A4 /* AssetSetInternal.h */,
 				8F044C231EA6B13E0074D6A4 /* AssetSetManager.cpp */,
 				8F044C241EA6B13E0074D6A4 /* AssetSetManager.h */,
-				8F044C251EA6B13E0074D6A4 /* AssetsInternal.h */,
 				8F044C261EA6B13E0074D6A4 /* AssetTraits.cpp */,
 				8F044C271EA6B13E0074D6A4 /* AssetTraits.h */,
 				8F044C281EA6B13E0074D6A4 /* AssetUtils.cpp */,
@@ -252,7 +249,6 @@
 				8F4D371B2155ADB3001FD93E /* AsyncMarkerGroup.h in Headers */,
 				8F044C621EA6B13E0074D6A4 /* CompilationThread.h in Headers */,
 				8F044C5E1EA6B13E0074D6A4 /* ChunkFile.h in Headers */,
-				8F044C541EA6B13E0074D6A4 /* AssetsInternal.h in Headers */,
 				8F044C561EA6B13E0074D6A4 /* AssetTraits.h in Headers */,
 				8F4A08CA224470C2009D8927 /* MemoryFile.h in Headers */,
 				8F044C511EA6B13E0074D6A4 /* AssetSetInternal.h in Headers */,

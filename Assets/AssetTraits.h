@@ -72,7 +72,7 @@ namespace Assets
 		FuturePtr<ConfigFileContainer<InputStreamFormatter<utf8>>> GetConfigFileContainerFuture(StringSection<ResChar> identifier);
 		FuturePtr<ChunkFileContainer> GetChunkFileContainerFuture(StringSection<ResChar> identifier);
 
-        template <typename... Params> uint64 BuildHash(Params... initialisers);
+        template <typename... Params> uint64_t BuildParamHash(Params... initialisers);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

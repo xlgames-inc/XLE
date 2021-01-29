@@ -50,7 +50,6 @@
     <ClInclude Include="..\Assets.h" />
     <ClInclude Include="..\AssetsCore.h" />
     <ClInclude Include="..\AssetSetManager.h" />
-    <ClInclude Include="..\AssetsInternal.h" />
     <ClInclude Include="..\AssetUtils.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
     <ClInclude Include="..\AsyncMarkerGroup.h" />

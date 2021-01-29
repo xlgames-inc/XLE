@@ -605,7 +605,7 @@ namespace Assets
 
     GenericFuture::~GenericFuture() {}
 
-    const char* GenericFuture::Initializer() const
+    const char* GenericFuture::GetDebugLabel() const
     {
         #if defined(_DEBUG)
             return _initializer;
@@ -614,7 +614,7 @@ namespace Assets
         #endif
     }
 
-    void GenericFuture::SetInitializer(const char initializer[])
+    void GenericFuture::SetDebugLabel(StringSection<char> initializer)
     {
         DEBUG_ONLY(XlCopyString(_initializer, initializer));
     }
@@ -661,17 +661,13 @@ namespace Assets
 		return result;
 	}
 
-	ICompileOperation::~ICompileOperation() {}
-	ICompilerDesc::~ICompilerDesc() {}
-
 	namespace Internal
 	{
 		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(
-			uint64_t typeCode, const StringSection<ResChar> initializers[],
-			unsigned initializerCount)
+			uint64_t typeCode, InitializerPack&& initializers)
 		{
 			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-			return compilers.Prepare(typeCode, initializers, initializerCount);
+			return compilers.Prepare(typeCode, std::move(initializers));
 		}
 
         struct ActiveFutureResolutionMoment

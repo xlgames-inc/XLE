@@ -86,7 +86,7 @@ namespace Assets
 		template<typename... Params>
 			auto DefaultAssetHeap<AssetType>::Get(Params... initialisers) -> FuturePtr<AssetType>
 	{
-		auto hash = Internal::BuildHash(initialisers...);
+		auto hash = Internal::BuildParamHash(initialisers...);
 
 		FuturePtr<AssetType> newFuture;
 		{
@@ -120,7 +120,7 @@ namespace Assets
 		template<typename... Params>
 			uint64_t DefaultAssetHeap<AssetType>::SetShadowingAsset(AssetPtr<AssetType>&& newShadowingAsset, Params... initialisers)
 	{
-		auto hash = Internal::BuildHash(initialisers...);
+		auto hash = Internal::BuildParamHash(initialisers...);
 
 		ScopedLock(_lock);
 		auto shadowing = LowerBound(_shadowingAssets, hash);

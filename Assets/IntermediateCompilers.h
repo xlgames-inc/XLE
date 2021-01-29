@@ -4,30 +4,31 @@
 
 #pragma once
 
-#include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../ConsoleRig/GlobalServices.h"	// (for LibVersionDesc)
-#include "../../Utility/MemoryUtils.h"
-#include "../../Core/Types.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <memory>
 #include <functional>
 #include <vector>
+#include <string>
+
+namespace ConsoleRig { class LibVersionDesc; }
 
 namespace Assets
 {
 	class ICompileOperation;
 	class IIntermediateCompileMarker;
+	class InitializerPack;
+	class IntermediatesStore;
+	class DependencyValidation;
 
     class IntermediateCompilers : public std::enable_shared_from_this<IntermediateCompilers>
     {
     public:
         std::shared_ptr<IIntermediateCompileMarker> Prepare(
-            uint64_t typeCode, 
-            const StringSection<ResChar> initializers[], unsigned initializerCount);
+            uint64_t typeCode, InitializerPack&&);
         void StallOnPendingOperations(bool cancelAll);
 		
-		using IdentifiersList = IteratorRange<const StringSection<>*>;
-		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(IdentifiersList)>;
+		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(const InitializerPack&)>;
 
 		using RegisteredCompilerId = uint64_t;
 		struct  CompilerRegistration
@@ -35,10 +36,10 @@ namespace Assets
 			RegisteredCompilerId _registrationId;
 		};
 		CompilerRegistration RegisterCompiler(
-			const std::string& name,							///< string name for the compiler, usually something user-presentable
-			ConsoleRig::LibVersionDesc srcVersion,				///< version information for the module (propagated onto any assets written to disk)
-			const DepValPtr& compilerDepVal,					///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
-			CompileOperationDelegate&& delegate					///< delegate that can create the ICompileOperation for a given asset
+			const std::string& name,										///< string name for the compiler, usually something user-presentable
+			ConsoleRig::LibVersionDesc srcVersion,							///< version information for the module (propagated onto any assets written to disk)
+			const std::shared_ptr<DependencyValidation>& compilerDepVal,	///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
+			CompileOperationDelegate&& delegate								///< delegate that can create the ICompileOperation for a given asset
 			);
 
 		void DeregisterCompiler(RegisteredCompilerId id);
@@ -82,15 +83,7 @@ namespace Assets
 	public:
 		virtual std::shared_ptr<IArtifactCollection> GetExistingAsset() const = 0;
 		virtual std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() = 0;
-		virtual StringSection<ResChar> Initializer() const = 0;
 		virtual ~IIntermediateCompileMarker();
 	};
-
-	DirectorySearchRules DefaultLibrarySearchDirectories();
-
-	std::vector<IntermediateCompilers::RegisteredCompilerId> DiscoverCompileOperations(
-		IntermediateCompilers& compilerManager,
-		StringSection<> librarySearch,
-		const DirectorySearchRules& searchRules = DefaultLibrarySearchDirectories());
 }
 

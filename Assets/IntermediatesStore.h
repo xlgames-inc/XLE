@@ -39,7 +39,7 @@ namespace Assets
 		using CompileProductsGroupId = uint64_t;
 
 		void StoreCompileProducts(
-            const StringSection<> initializers[], unsigned initializerCount,
+            StringSection<> archivableName,
 			CompileProductsGroupId groupId,
 			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
 			::Assets::AssetState state,
@@ -47,7 +47,7 @@ namespace Assets
 			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
 
 		std::shared_ptr<IArtifactCollection> RetrieveCompileProducts(
-            const StringSection<> initializers[], unsigned initializerCount,
+            StringSection<> archivableName,
 			CompileProductsGroupId groupId);
 
 		CompileProductsGroupId RegisterCompileProductsGroup(StringSection<> name);

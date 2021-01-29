@@ -35,7 +35,7 @@ namespace Assets
 		template<typename... Params>
 			auto AssetLRUHeap<AssetType>::Get(Params... initialisers) -> FuturePtr<AssetType>
 	{
-		auto hash = Internal::BuildHash(initialisers...);
+		auto hash = Internal::BuildParamHash(initialisers...);
 
 		FuturePtr<AssetType> newFuture;
 		{

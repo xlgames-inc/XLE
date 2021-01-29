@@ -12,6 +12,7 @@
 namespace Assets
 {
 	class DependentFileState;
+	class InitializerPack;
 
 	class ICompileOperation
 	{
@@ -35,30 +36,6 @@ namespace Assets
 		virtual ~ICompileOperation();
 	};
 
-	using IdentifiersList = IteratorRange<const StringSection<char>*>;
-	using CreateCompileOperationFn = std::shared_ptr<ICompileOperation>(IdentifiersList identifier);
-
-	// Compiler shared libraries -- 
-
-	class ICompilerDesc
-	{
-	public:
-		virtual std::string			Description() const = 0;
-
-		class FileKind
-		{
-		public:
-			IteratorRange<const uint64_t*>	_assetTypes;
-			std::string						_regexFilter = nullptr;
-			std::string						_name = nullptr;
-			std::string						_extensionsForOpenDlg = nullptr;		// comma separated list of extensions for file-open-dialog scenarios
-		};
-		virtual unsigned			FileKindCount() const = 0;
-		virtual FileKind			GetFileKind(unsigned index) const = 0;
-
-		virtual ~ICompilerDesc();
-	};
-
-	using GetCompilerDescFn = std::shared_ptr<ICompilerDesc>();
+	using CreateCompileOperationFn = std::shared_ptr<ICompileOperation>(const InitializerPack&);
 }
 

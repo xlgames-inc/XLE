@@ -11,6 +11,7 @@
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/AssetTraits.h"
+#include "../../Assets/InitializerPack.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -23,6 +24,7 @@
 
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
+
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -86,7 +88,7 @@ namespace UnitTests
 			return {};
 		}
 
-		TestCompileOperation(StringSection<> initializer) : _initializer(initializer.AsString()) {}
+		TestCompileOperation(::Assets::InitializerPack& initializer) : _initializer(initializer.GetInitializer<std::string>(0)) {}
 	};
 
 	unsigned TestCompileOperation::s_serializeTargetCount = 0;
@@ -148,8 +150,8 @@ namespace UnitTests
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
-					assert(initializers.size() == 1);
-					return std::make_shared<TestCompileOperation>(initializers[0]);
+					assert(!initializers.IsEmpty());
+					return std::make_shared<TestCompileOperation>(initializers);
 				});
 
 			compilers->AssociateRequest(
@@ -157,11 +159,9 @@ namespace UnitTests
 				MakeIteratorRange(outputTypes),
 				"unit-test-asset-.*");
 
-			StringSection<> initializers[] = { "unit-test-asset-one" };
-			auto marker = compilers->Prepare(Type_UnitTestArtifact, initializers, dimof(initializers));
+			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-one" });
 			REQUIRE(marker != nullptr);
 			REQUIRE(marker->GetExistingAsset() == nullptr);
-			REQUIRE(marker->Initializer().AsString() == "unit-test-asset-one");
 
 			auto compile = marker->InvokeCompile();
 			REQUIRE(compile != nullptr);
@@ -248,8 +248,8 @@ namespace UnitTests
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
-					assert(initializers.size() == 1);
-					return std::make_shared<TestCompileOperation>(initializers[0]);
+					assert(!initializers.IsEmpty() == 1);
+					return std::make_shared<TestCompileOperation>(initializers);
 				});
 
 			compilers->AssociateRequest(
@@ -257,11 +257,11 @@ namespace UnitTests
 				MakeIteratorRange(outputTypes),
 				"unit-test-asset-.*");
 
-			StringSection<> initializers0[] = { "unit-test-asset-one" };
-			StringSection<> initializers1[] = { "unit-test-asset-two" };
-			auto marker0 = compilers->Prepare(Type_UnitTestArtifact, initializers0, dimof(initializers0));
-			auto marker1 = compilers->Prepare(Type_UnitTestArtifact, initializers0, dimof(initializers0));
-			auto marker2 = compilers->Prepare(Type_UnitTestArtifact, initializers1, dimof(initializers1));
+			auto initializer0 = "unit-test-asset-one";
+			auto initializer1 = "unit-test-asset-two";
+			auto marker0 = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer0 });
+			auto marker1 = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer0 });
+			auto marker2 = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer1 });
 			REQUIRE(marker0 == marker1);
 			REQUIRE(marker0 != marker2);
 
@@ -298,8 +298,8 @@ namespace UnitTests
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[](auto initializers) {
-				assert(initializers.size() == 1);
-				return std::make_shared<TestCompileOperation>(initializers[0]);
+				assert(!initializers.IsEmpty());
+				return std::make_shared<TestCompileOperation>(initializers);
 			});
 
 		compilers->AssociateRequest(
@@ -322,8 +322,8 @@ namespace UnitTests
 		{
 			unsigned initialSerializeTargetCount = TestCompileOperation::s_serializeTargetCount;
 				
-			StringSection<> initializers[] = { "unit-test-asset-one" };
-			auto marker = compilers->Prepare(Type_UnitTestArtifact, initializers, dimof(initializers));
+			auto initializer = "unit-test-asset-one";
+			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer } );
 			REQUIRE(marker != nullptr);
 			REQUIRE(marker->GetExistingAsset() == nullptr);
 
@@ -351,7 +351,7 @@ namespace UnitTests
 			// We can also go all the way back to the Prepare() function and expect an existing asset this time
 			compile = nullptr;
 			marker = nullptr;
-			marker = compilers->Prepare(Type_UnitTestArtifact, initializers, dimof(initializers));
+			marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer } );
 			REQUIRE(marker != nullptr);
 			existingAsset = marker->GetExistingAsset();
 			REQUIRE(existingAsset != nullptr);
@@ -363,6 +363,53 @@ namespace UnitTests
 		}
 
 		compilers->DeregisterCompiler(registration._registrationId);
+	}
+
+
+	struct TypeWithComplexMembers
+	{
+	public:
+		std::vector<uint64_t> _integers;
+		std::unordered_map<std::string, std::string> _stringMap;
+
+		uint64_t GetHash() const
+		{
+			uint64_t result = Hash64(_integers.data(), PtrAdd(_integers.data(), _integers.size() * sizeof(uint64_t)));
+			for (const auto&p:_stringMap) {
+				result = Hash64(p.first, result);
+				result = Hash64(p.second, result);
+			}
+			return result;
+		}
+	};
+
+	TEST_CASE( "AssetCompilers-InitializerPack", "[assets]" )
+	{
+		TypeWithComplexMembers complexInitializer;
+		complexInitializer._integers = { 45, 75, 23 };
+		complexInitializer._stringMap = { std::make_pair("key", "value") };
+		auto initializerPack = ::Assets::InitializerPack{
+			std::string{"SomeName"},
+			"String0",
+			MakeStringSection("String1"),
+			34,
+			complexInitializer};
+
+		REQUIRE(initializerPack.GetInitializer<std::string>(0) == "SomeName");
+		REQUIRE(initializerPack.GetInitializer<std::string>(1) == "String0");
+		REQUIRE(initializerPack.GetInitializer<std::string>(2) == "String1");
+		// unfortunately it's extremely intolerant of integer types
+		// There's no casting; you have to request exactly the type that was provided
+		REQUIRE(initializerPack.GetInitializer<int>(3) == 34);	
+		REQUIRE(&initializerPack.GetInitializer<TypeWithComplexMembers>(4) != &complexInitializer);	// we get a copy, not a reference
+		const auto& storedComplexType = initializerPack.GetInitializer<TypeWithComplexMembers>(4);
+		REQUIRE(storedComplexType._integers == complexInitializer._integers);
+		REQUIRE(storedComplexType._stringMap == complexInitializer._stringMap);
+
+		auto name = initializerPack.ArchivableName();
+		REQUIRE(name == "SomeName-String0-String1-34-" + std::to_string(complexInitializer.GetHash()));
+		auto hash = initializerPack.ArchivableHash();
+		REQUIRE(hash == 10240750523902726346ull);
 	}
 }
 
