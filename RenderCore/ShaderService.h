@@ -110,36 +110,30 @@ namespace RenderCore
         class IShaderSource
         {
         public:
-            virtual std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
-                StringSection<::Assets::ResChar> resId, 
-                StringSection<::Assets::ResChar> definesTable) const = 0;
-            
-            virtual std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
-                StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
+            struct ShaderByteCodeBlob
+            {
+		        ::Assets::Blob _payload, _errors;
+                std::vector<::Assets::DependentFileState> _deps;
+            };
 
-            virtual void ClearCaches() = 0;
+            virtual ShaderByteCodeBlob CompileFromFile(
+                const ILowLevelCompiler::ResId& resId, 
+                StringSection<> definesTable) const = 0;
             
+            virtual ShaderByteCodeBlob CompileFromMemory(
+                StringSection<> shaderInMemory, StringSection<> entryPoint, 
+				StringSection<> shaderModel, StringSection<> definesTable) const = 0;
+
             virtual ~IShaderSource();
         };
 
-        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
-            StringSection<::Assets::ResChar> resId, 
-            StringSection<::Assets::ResChar> definesTable) const;
-
-        std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
-            StringSection<char> shaderInMemory, 
-            StringSection<char> entryPoint, StringSection<char> shaderModel, 
-            StringSection<::Assets::ResChar> definesTable) const;
-
-        void AddShaderSource(std::shared_ptr<IShaderSource> shaderSource);
+        void SetShaderSource(std::shared_ptr<IShaderSource> shaderSource);
+        const std::shared_ptr<IShaderSource>& GetShaderSource();
 
         static ILowLevelCompiler::ResId MakeResId(
             StringSection<::Assets::ResChar> initializer, 
             const ILowLevelCompiler* compiler = nullptr);
 
-        void DestroyAllShaders();
-        
         static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
         static void SetInstance(ShaderService*);
 
@@ -148,7 +142,7 @@ namespace RenderCore
 
     protected:
         static ShaderService* s_instance;
-        std::vector<std::shared_ptr<IShaderSource>> _shaderSources;
+        std::shared_ptr<IShaderSource> _shaderSource;
     };
 
     /// <summary>Represents a chunk of compiled shader code</summary>

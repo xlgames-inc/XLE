@@ -7,7 +7,7 @@
 #include "DrawableDelegates.h"
 #include "ShaderVariationSet.h"
 #include "RenderStateResolver.h"		// (for RSDepthBias)
-#include "../Assets/LocalCompiledShaderSource.h"		// (for ISourceCodePreprocessor)
+#include "../MinimalShaderSource.h"		// (for ISourceCodePreprocessor)
 
 namespace RenderCore { class StreamOutputInitializers; }
 
@@ -70,7 +70,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping;
+		StringSection<> definesTable) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping;
 
 }}
 

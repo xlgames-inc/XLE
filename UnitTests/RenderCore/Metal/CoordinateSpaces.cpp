@@ -274,7 +274,10 @@ namespace UnitTests
 		{
 			// origin is lower-left
 			auto rpi = fbHelper.BeginRenderPass();
-			SetScissorRect(0, 0, 0, 0, false); // zero size
+			REQUIRE_THROWS(
+				[SetScissorRect]() {
+					SetScissorRect(0, 0, 0, 0, false); // zero size, we throw in this case
+				}());
 			SetScissorRect(0, 0, 64, 64, false); // full-frame
 			SetScissorRect(-32, 0, 64, 64, false); // outside left
 			//SetScissorRect(32, 0, 64, 64, false); // outside right (Metal validation error)

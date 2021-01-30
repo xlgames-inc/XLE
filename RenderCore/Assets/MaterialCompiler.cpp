@@ -60,15 +60,14 @@ namespace RenderCore { namespace Assets
 		}
 		std::vector<::Assets::DependentFileState> GetDependencies() const { return _dependencies; }
 
-		MaterialCompileOperation(IteratorRange<const StringSection<>*> identifiers)
+		MaterialCompileOperation(const ::Assets::InitializerPack& initializers)
 		{
 			TRY
 			{
-				StringSection sourceMaterial, sourceModel;
-				if (identifiers.size() >= 1)
-					sourceMaterial = identifiers[0];
-				if (identifiers.size() >= 2)
-					sourceModel = identifiers[1];
+				std::string sourceMaterial, sourceModel;
+				sourceMaterial = initializers.GetInitializer<std::string>(0);
+				if (initializers.GetCount() >= 2)
+					sourceModel = initializers.GetInitializer<std::string>(1);
 
 					// Parameters must be stripped off the source model filename before we get here.
 					// the parameters are irrelevant to the compiler -- so if they stay on the request
@@ -81,7 +80,7 @@ namespace RenderCore { namespace Assets
 					Throw(::Assets::Exceptions::ConstructionError(
 						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
 						modelMatFuture->GetDependencyValidation(),
-						"Failed while loading material information from source model (%s)", sourceModel.AsString().c_str()));
+						"Failed while loading material information from source model (%s)", sourceModel.c_str()));
 				}
 
 				auto modelMat = modelMatFuture->Actualize();
@@ -206,8 +205,8 @@ namespace RenderCore { namespace Assets
 			"material-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
-			[](auto identifiers) {
-				return std::make_shared<MaterialCompileOperation>(identifiers);
+			[](auto initializers) {
+				return std::make_shared<MaterialCompileOperation>(initializers);
 			});
 
 		uint64_t outputAssetTypes[] = { MaterialScaffold::CompileProcessType };

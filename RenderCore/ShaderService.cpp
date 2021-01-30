@@ -152,39 +152,14 @@ namespace RenderCore
         return shaderId;
     }
 
-    auto ShaderService::CompileFromFile(
-        StringSection<::Assets::ResChar> resId, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
+    void ShaderService::SetShaderSource(std::shared_ptr<IShaderSource> shaderSource)
     {
-        for (const auto& i:_shaderSources) {
-            auto r = i->CompileFromFile(resId, definesTable);
-            if (r) return r;
-        }
-        return nullptr;
+        _shaderSource = shaderSource;
     }
 
-    auto ShaderService::CompileFromMemory(
-        StringSection<char> shaderInMemory, 
-        StringSection<char> entryPoint, StringSection<char> shaderModel, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactCollectionFuture>
+    auto ShaderService::GetShaderSource() -> const std::shared_ptr<IShaderSource>&
     {
-        for (const auto& i:_shaderSources) {
-            auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);
-            if (r) return r;
-        }
-        return nullptr;
-    }
-
-    void ShaderService::AddShaderSource(std::shared_ptr<IShaderSource> shaderSource)
-    {
-        _shaderSources.push_back(shaderSource);
-    }
-
-    void ShaderService::DestroyAllShaders()
-    {
-        for (auto &source : _shaderSources) {
-            source->ClearCaches();
-        }
+        return _shaderSource;
     }
 
     ShaderService* ShaderService::s_instance = nullptr;

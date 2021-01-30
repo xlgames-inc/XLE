@@ -472,12 +472,12 @@ namespace RenderCore { namespace Assets
 		}
 
 		// 
-		auto containerInitializer = splitName.AllExceptParameters();
+        auto containerInitializer = splitName.AllExceptParameters();
 		auto containerFuture = std::make_shared<::Assets::AssetFuture<::Assets::ConfigFileContainer<>>>(containerInitializer.AsString());
 		::Assets::DefaultCompilerConstruction(
 			*containerFuture, 
-			&containerInitializer, 1,
-			s_MaterialCompileProcessType);
+            s_MaterialCompileProcessType,
+			containerInitializer);
 
 		std::string containerInitializerString = containerInitializer.AsString();
 		std::string section = splitName.Parameters().AsString();

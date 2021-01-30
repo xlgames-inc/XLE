@@ -5,42 +5,61 @@
 #pragma once
 
 #include "ShaderService.h"
+#include "../Assets/IntermediateCompilers.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
+namespace Assets { class DirectorySearchRules; }
+
 namespace RenderCore
 {
+	class ISourceCodePreprocessor
+    {
+    public:
+        struct SourceCodeWithRemapping
+        {
+        public:
+            std::string _processedSource;
+			unsigned _processedSourceLineCount = 0;
+            std::vector<ILowLevelCompiler::SourceLineMarker> _lineMarkers;
+            std::vector<::Assets::DependentFileState> _dependencies;
+        };
+
+        virtual SourceCodeWithRemapping RunPreprocessor(
+            StringSection<> inputSource, 
+            StringSection<> definesTable,
+            const ::Assets::DirectorySearchRules& searchRules) = 0;
+    };
+
 	class MinimalShaderSource : public ShaderService::IShaderSource
 	{
 	public:
-		std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromFile(
-			StringSection<::Assets::ResChar> resId, 
-			StringSection<::Assets::ResChar> definesTable) const;
+		ShaderByteCodeBlob CompileFromFile(
+			const ILowLevelCompiler::ResId& resId, 
+			StringSection<> definesTable) const;
 			
-		std::shared_ptr<::Assets::ArtifactCollectionFuture> CompileFromMemory(
-			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
+		ShaderByteCodeBlob CompileFromMemory(
+			StringSection<> shaderInMemory, StringSection<> entryPoint, 
+			StringSection<> shaderModel, StringSection<> definesTable) const;
 
-		void ClearCaches();
-
-		struct Flags
-		{
-			enum Bits { CompileInBackground = 1<<0 };
-			using BitField = unsigned;
-		};
-
-		MinimalShaderSource(const std::shared_ptr<ILowLevelCompiler>& compiler, Flags::BitField flags = 0);
+		MinimalShaderSource(
+			const std::shared_ptr<ILowLevelCompiler>& compiler,
+			const std::shared_ptr<ISourceCodePreprocessor>& preprocessor = nullptr);
 		~MinimalShaderSource();
 
 	protected:
-		std::shared_ptr<ILowLevelCompiler> _compiler;
-		unsigned _flags;
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
 
-		std::shared_ptr<::Assets::ArtifactCollectionFuture> Compile(
-			IteratorRange<const void*> shaderInMemory,
+		ShaderByteCodeBlob Compile(
+			StringSection<> shaderInMemory,
 			const ILowLevelCompiler::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;
 	};
+
+	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
+		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		::Assets::IntermediateCompilers& intermediateCompilers);
 }
 
 

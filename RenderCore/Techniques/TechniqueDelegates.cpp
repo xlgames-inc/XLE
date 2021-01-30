@@ -13,6 +13,7 @@
 #include "../Metal/ObjectFactory.h"
 #include "../IDevice.h"
 #include "../Format.h"
+#include "../MinimalShaderSource.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
@@ -34,7 +35,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping
+		StringSection<> definesTable) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping
 	{
 		// We can assemble the final shader in 3 fragments:
 		//  1) the source code in CompiledShaderPatchCollection
@@ -90,7 +91,7 @@ namespace RenderCore { namespace Techniques
 				output << i->_scaffoldInFunction;
 		}
 
-		RenderCore::Assets::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping result;
 		result._processedSource = output.str();
 		/*result._dependencies.insert(
 			result._dependencies.end(),
@@ -102,7 +103,7 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	class InstantiateShaderGraphPreprocessor : public RenderCore::Assets::ISourceCodePreprocessor
+	class InstantiateShaderGraphPreprocessor : public RenderCore::ISourceCodePreprocessor
 	{
 	public:
 		SourceCodeWithRemapping AssembleDirectFromFile(StringSection<> filename)
@@ -120,10 +121,13 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
-		virtual SourceCodeWithRemapping RunPreprocessor(StringSection<> filename, StringSection<> definesTable) override
+		virtual SourceCodeWithRemapping RunPreprocessor(StringSection<> inputSource, StringSection<> definesTable, const ::Assets::DirectorySearchRules& searchRules) override
 		{
 			// Encoded in the filename is the guid for the CompiledShaderPatchCollection, the list of functions that require
 			// redirection and the entry point shader filename
+
+			assert(0);
+			StringSection<> filename;
 			
 			static std::regex filenameExp(R"--(([^-]+)-([0-9,a-f,A-F]{1,16})(?:-([0-9,a-f,A-F]{1,16}))*)--");
 			std::cmatch matches;

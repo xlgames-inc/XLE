@@ -33,8 +33,6 @@ namespace Assets
 
     Services& Services::GetInstance()
     {
-        if (!Internal::s_servicesInstance)
-            Internal::s_servicesInstance = std::make_shared<Services>(0);
         return *Internal::s_servicesInstance;
     }
     

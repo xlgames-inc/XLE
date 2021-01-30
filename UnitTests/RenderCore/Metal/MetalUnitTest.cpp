@@ -10,6 +10,7 @@
 #include "../../../Assets/IArtifact.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
+#include "../../../Assets/AssetUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include <sstream>
 
@@ -18,22 +19,11 @@ namespace UnitTests
     
     RenderCore::CompiledShaderByteCode MetalTestHelper::MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
     {
-        auto future = _shaderSource->CompileFromMemory(shader, "main", shaderModel, defines);
-        auto state = future->GetAssetState();
-        if (state == ::Assets::AssetState::Invalid) {
-            std::stringstream str;
-            str << "Shader (" << shader << ") failed to compile. Message follows:" << std::endl;
-            str << ::Assets::AsString(future->GetErrorMessage());
-            Throw(std::runtime_error(str.str()));
-        }
-        auto artifacts = future->GetArtifactCollection();
-        ::Assets::ArtifactRequest request { "", RenderCore::CompiledShaderByteCode::CompileProcessType, ~0u, ::Assets::ArtifactRequest::DataType::SharedBlob };
-        auto reqRes = artifacts->ResolveRequests(MakeIteratorRange(&request, &request+1));
-        assert(!reqRes.empty());
+        auto codeBlob = _shaderSource->CompileFromMemory(shader, "main", shaderModel, defines);
         return RenderCore::CompiledShaderByteCode {
-            reqRes[0]._sharedBlob,
-            artifacts->GetDependencyValidation(),
-            artifacts->GetRequestParameters()
+            codeBlob._payload,
+            ::Assets::AsDepVal(MakeIteratorRange(codeBlob._deps)),
+            {}
         };
     }
 
@@ -55,7 +45,7 @@ namespace UnitTests
 
         _shaderService = std::make_unique<RenderCore::ShaderService>();
         _shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_device->CreateShaderCompiler());
-        _shaderService->AddShaderSource(_shaderSource);
+        _shaderService->SetShaderSource(_shaderSource);
     }
 
 	MetalTestHelper::MetalTestHelper(const std::shared_ptr<RenderCore::IDevice>& device)
@@ -64,7 +54,7 @@ namespace UnitTests
 
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
         _shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_device->CreateShaderCompiler());
-        _shaderService->AddShaderSource(_shaderSource);
+        _shaderService->SetShaderSource(_shaderSource);
 	}
 
     MetalTestHelper::~MetalTestHelper()

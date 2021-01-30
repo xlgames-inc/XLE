@@ -191,22 +191,32 @@ namespace Assets
         auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
         backgroundOp->SetDebugLabel(_initializers.ArchivableName());
 
-		// Unfortunately we have to copy _initializers here, because we 
-		// must allow for this marker to be reused (and both InvokeCompile 
-		// and GetExistingAsset use _initializers)
-		std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
-		std::shared_ptr<IntermediatesStore> store = _intermediateStore;
-		QueueCompileOperation(
-			backgroundOp,
-			[weakDelegate, store, typeCode = _typeCode, inits=_initializers](ArtifactCollectionFuture& op) {
-			auto d = weakDelegate.lock();
-			if (!d) {
-				op.SetState(AssetState::Invalid);
-				return;
-			}
+		const bool allowBackgroundOps = true;
+		if (allowBackgroundOps) {
+			// Unfortunately we have to copy _initializers here, because we 
+			// must allow for this marker to be reused (and both InvokeCompile 
+			// and GetExistingAsset use _initializers)
+			std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
+			std::shared_ptr<IntermediatesStore> store = _intermediateStore;
+			QueueCompileOperation(
+				backgroundOp,
+				[weakDelegate, store, typeCode = _typeCode, inits=_initializers](ArtifactCollectionFuture& op) {
+				auto d = weakDelegate.lock();
+				if (!d) {
+					op.SetState(AssetState::Invalid);
+					return;
+				}
 
-			PerformCompile(*d, typeCode, inits, op, store.get());
-		});
+				PerformCompile(*d, typeCode, inits, op, store.get());
+			});
+		} else {
+			auto d = _delegate.lock();
+			if (!d) {
+				backgroundOp->SetState(AssetState::Invalid);
+			} else {
+				PerformCompile(*d, _typeCode, _initializers, *backgroundOp, _intermediateStore.get());
+			}
+		}
         
 		_activeFuture = backgroundOp;
         return std::move(backgroundOp);

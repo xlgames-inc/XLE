@@ -58,6 +58,7 @@ namespace UnitTests
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
@@ -70,8 +71,9 @@ namespace UnitTests
 
 		SECTION("Compile material scaffold")
 		{
-			StringSection<> initializers[] = { "ut-data/test.material", "fake-model" };
-			auto marker = compilers.Prepare(RenderCore::Assets::MaterialScaffold::CompileProcessType, initializers, dimof(initializers));
+			auto marker = compilers.Prepare(
+				RenderCore::Assets::MaterialScaffold::CompileProcessType, 
+				::Assets::InitializerPack { "ut-data/test.material", "fake-model" });
 			REQUIRE(marker != nullptr);
 			REQUIRE(marker->GetExistingAsset() == nullptr);
 
@@ -111,6 +113,7 @@ namespace UnitTests
 	{
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
@@ -122,8 +125,9 @@ namespace UnitTests
 
 		SECTION("ModelScaffold compilation")
 		{
-			StringSection<> initializers[] = { "fake-model" };
-			auto marker = compilers.Prepare(RenderCore::Assets::ModelScaffold::CompileProcessType, initializers, dimof(initializers));
+			auto marker = compilers.Prepare(
+				RenderCore::Assets::ModelScaffold::CompileProcessType, 
+				::Assets::InitializerPack { "fake-model" });
 			REQUIRE(marker != nullptr);
 			REQUIRE(marker->GetExistingAsset() == nullptr);
 

@@ -10,6 +10,7 @@
 #include "../../../RenderCore/GeoProc/NascentObjectsSerialize.h"
 #include "../../../RenderCore/GeoProc/NascentModel.h"
 #include "../../../RenderCore/GeoProc/MeshDatabase.h"
+#include "../../../ConsoleRig/GlobalServices.h"			// for ConsoleRig::GetLibVersionDesc()
 #include "../../../Utility/Streams/StreamTypes.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 
@@ -231,7 +232,7 @@ namespace UnitTests
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	static std::shared_ptr<::Assets::ICompileOperation> BeginFakeModelCompilation(
-		IteratorRange<const StringSection<>*> identifiers)
+		const ::Assets::InitializerPack&)
 	{
 		return std::make_shared<FakeModelCompileOperation>();
 	}

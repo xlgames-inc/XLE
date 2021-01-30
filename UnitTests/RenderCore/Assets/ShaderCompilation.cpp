@@ -2,24 +2,28 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "MetalUnitTest.h"
+#include "../Metal/MetalUnitTest.h"
 #include "../../UnitTestHelper.h"
+#include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
 #include "../../../Assets/IArtifact.h"
+#include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/DeferredConstruction.h"
+#include "../../../Assets/InitializerPack.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
 
 #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-	#include "InputLayoutShaders_MSL.h"
+	#include "../Metal/InputLayoutShaders_MSL.h"
 #elif GFXAPI_TARGET == GFXAPI_OPENGLES
-	#include "InputLayoutShaders_GLSL.h"
+	#include "../Metal/InputLayoutShaders_GLSL.h"
 #elif GFXAPI_TARGET == GFXAPI_DX11
-	#include "InputLayoutShaders_HLSL.h"
+	#include "../Metal/InputLayoutShaders_HLSL.h"
 #else
 	#error Unit test shaders not written for this graphics API
 #endif
@@ -27,6 +31,18 @@
 using namespace Catch::literals;
 namespace UnitTests
 {
+	class ExpandIncludesPreprocessor : public RenderCore::ISourceCodePreprocessor
+	{
+	public:
+		virtual SourceCodeWithRemapping RunPreprocessor(
+            StringSection<> inputSource, 
+            StringSection<> definesTable,
+            const ::Assets::DirectorySearchRules& searchRules) override
+		{
+			return ShaderSourceParser::ExpandIncludes(inputSource, "main", searchRules);
+		}
+	};
+
 	static std::unordered_map<std::string, ::Assets::Blob> s_utData {
 		std::make_pair(
 			"IncludeDirective.hlsl",
@@ -58,17 +74,39 @@ namespace UnitTests
 		using namespace RenderCore;
 		UnitTest_SetWorkingDirectory();
 		auto _globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto testHelper = MakeTestHelper();
-		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 
-		SECTION("MinimalShaderSource") {
+		SECTION("UnitTestHelper shaders") {
 			// Ensure that we can compile a shader from string input, via the MakeShaderProgram
 			// utility function
 			auto compiledFromString = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
 			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
+		}
+
+		// Let's load and compile a basic shader from a mounted filesystem
+		// We'll use a custom shader source that will expand #include directives
+		// for us (some gfx-apis can already do this, others need a little help)
+		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+
+		auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+			testHelper->_device->CreateShaderCompiler(),
+			std::make_shared<ExpandIncludesPreprocessor>());
+
+		auto compilerRegistration = RenderCore::RegisterShaderCompiler(
+			customShaderSource, 
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers());
+
+		SECTION("MinimalShaderSource") {
+			auto compiledFromString = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
+			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
 
 			// Using RenderCore::ShaderService, ensure that we can compile a simple shader (this shader should compile successfully)
-			auto compiledFromFile = testHelper->_shaderService->CompileFromFile("IncludeDirective.hlsl:main:vs_*", "SOME_DEFINE=1");
+			auto compileMarker = ::Assets::Internal::BeginCompileOperation(
+				RenderCore::CompiledShaderByteCode::CompileProcessType,
+				::Assets::InitializerPack { "ut-data/IncludeDirective.hlsl:main:vs_*", "SOME_DEFINE=1" });
+			REQUIRE(compileMarker != nullptr);
+			auto compiledFromFile = compileMarker->InvokeCompile();
 			REQUIRE(compiledFromFile != nullptr);
 			compiledFromFile->StallWhilePending();
 			REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
@@ -84,9 +122,10 @@ namespace UnitTests
 			REQUIRE(blob->size() >= sizeof(ShaderService::ShaderHeader));
 			const auto& hdr = *(const ShaderService::ShaderHeader*)blob->data();
 			REQUIRE(hdr._version == ShaderService::ShaderHeader::Version);
-			REQUIRE(XlEqString(hdr._identifier, "IncludeDirective.hlsl[SOME_DEFINE=1]"));
+			REQUIRE(XlEqString(hdr._identifier, "ut-data/IncludeDirective.hlsl[SOME_DEFINE=1]"));
 		}
 
+		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().DeregisterCompiler(compilerRegistration._registrationId);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt);
 	}
 }
