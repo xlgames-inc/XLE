@@ -1,10 +1,10 @@
 // CompoundDocument:1
-import color = "xleres/nodes/color.sh"
-import templates = "xleres/nodes/templates.sh"
+import color = "xleres/Nodes/Color.sh"
+import templates = "xleres/Nodes/Templates.sh"
 import woodrings002 = "xleres/objects/example/procwood/woodrings002.graph"
 import woodgnarlgrainstain = "xleres/objects/example/procwood/woodgnarlgrainstain.graph"
 import woodplanks = "xleres/objects/example/procwood/woodplanks.graph"
-import basic = "xleres/nodes/basic.sh"
+import basic = "xleres/Nodes/Basic.sh"
 
 float3 Wood_04_G(float3 coords) implements templates::CoordinatesToColor
 {

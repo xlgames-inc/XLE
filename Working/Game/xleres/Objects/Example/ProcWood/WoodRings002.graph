@@ -1,5 +1,5 @@
 // CompoundDocument:1
-import basic = "xleres/nodes/basic.sh"
+import basic = "xleres/Nodes/Basic.sh"
 
 void WoodRings002(out float rings, float3 coords, float density, float strength, float shape)
 {

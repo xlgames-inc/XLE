@@ -1,7 +1,7 @@
 // CompoundDocument:1
-import basic = "game/xleres/nodes/basic.sh"
+import basic = "game/xleres/Nodes/Basic.sh"
 import utils = "game/xleres/authoringconcept/utils.sh"
-import noise = "game/xleres/nodes/noise.sh"
+import noise = "game/xleres/Nodes/nNoise.sh"
 import perlinnoise = "game/xleres/utility/perlinnoise.h"
 
 void CloudShadows(float2 UV, out float clouds)

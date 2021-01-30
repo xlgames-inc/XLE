@@ -1,8 +1,8 @@
 // CompoundDocument:1
 import wood_04_g = "xleres/objects/example/procwood/wood_04_g.sh"
 import surface = "xleres/surface.h"
-import output = "xleres/nodes/output.sh"
-import materialparam = "xleres/nodes/materialparam.sh"
+import output = "xleres/Nodes/Output.sh"
+import materialparam = "xleres/Nodes/MaterialParam.sh"
 
 void ProcWood()
 {

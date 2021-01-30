@@ -8,8 +8,8 @@ float BasicLambert(float3 normal, float3 lightDirection)
 
 /*
 
-import basic = "xleres/nodes/basic.sh"
-import test = "xleres/nodes/test.sh"
+import basic = "xleres/Nodes/Basic.sh"
+import test = "xleres/Nodes/Test.sh"
 
 float3 DefaultLight(float3 diffuse, float3 normal, float3 lightDirection, graph<test::LightTemplate> lighter)
 {

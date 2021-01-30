@@ -1,6 +1,6 @@
 // CompoundDocument:1
-import basic = "xleres/nodes/basic.sh"
-import texture = "xleres/nodes/texture.sh"
+import basic = "xleres/Nodes/Basic.sh"
+import texture = "xleres/Nodes/Texture.sh"
 
 void WoodGnarlGrainStain(out float grain, out float3 gnarledCoords, float stain, float gnarlDensity, float3 coords, float gnarlStrength, float grainStrength, float grainDensity)
 {

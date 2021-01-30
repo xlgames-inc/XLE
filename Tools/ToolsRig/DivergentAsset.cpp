@@ -8,7 +8,7 @@
 
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetServices.h"
-#include "../Utility/Threading/Mutex.h"
+#include "../../Utility/Threading/Mutex.h"
 
 namespace ToolsRig
 {
@@ -152,7 +152,7 @@ namespace ToolsRig
 	template<typename AssetType, typename... Params>
 		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params)
 	{
-		auto& set = ::Assets::GetAssetSetManager().GetSetForType<AssetType>();
+		auto& set = ::Assets::Services::GetAssetSets().GetSetForType<AssetType>();
 		std::shared_ptr<AssetType> originalAsset;
 
 		TRY {

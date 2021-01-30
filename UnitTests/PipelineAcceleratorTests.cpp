@@ -73,11 +73,11 @@ static const char s_techniqueForColorFromSelector[] = R"--(
 )--";
 
 static const char* s_basicTexturingGraph = R"--(
-	import templates = "xleres/nodes/templates.sh"
-	import output = "xleres/nodes/output.sh"
-	import texture = "xleres/nodes/texture.sh"
-	import basic = "xleres/nodes/basic.sh"
-	import materialParam = "xleres/nodes/materialparam.sh"
+	import templates = "xleres/Nodes/Templates.sh"
+	import output = "xleres/Nodes/Output.sh"
+	import texture = "xleres/Nodes/Texture.sh"
+	import basic = "xleres/Nodes/Basic.sh"
+	import materialParam = "xleres/Nodes/Materialparam.sh"
 
 	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{

@@ -1,11 +1,11 @@
 // CompoundDocument:1
-import templates = "xleres/nodes/templates.sh"
-import basic = "game/xleres/nodes/basic.sh"
+import templates = "xleres/Nodes/Templates.sh"
+import basic = "game/xleres/Nodes/Basic.sh"
 import utils = "game/xleres/authoringconcept/utils.sh"
 import surface = "game/xleres/surface.h"
-import texture = "game/xleres/nodes/texture.sh"
-import conditions = "game/xleres/nodes/conditions.sh"
-import lighting = "game/xleres/nodes/lighting.sh"
+import texture = "game/xleres/Nodes/Texture.sh"
+import conditions = "game/xleres/Nodes/Conditions.sh"
+import lighting = "game/xleres/Nodes/Lighting.sh"
 
 float4 Freeze2(VSOUT geo, float4 inputColor) implements templates::AmendColor
 {

@@ -1,8 +1,8 @@
 // CompoundDocument:1
 import surface = "xleres/surface.h"
-import texture = "xleres/nodes/texture.sh"
-import output = "xleres/nodes/output.sh"
-import basic = "xleres/nodes/basic.sh"
+import texture = "xleres/Nodes/Texture.sh"
+import output = "xleres/Nodes/Output.sh"
+import basic = "xleres/Nodes/Basic.sh"
 import color = "xleres/color.h"
 import decodeparameterstexture_coloredspecular = "xleres/toolshelper/decodeparameterstexture_coloredspecular.sh"
 

@@ -1,5 +1,5 @@
 // CompoundDocument:1
-import basic = "xleres/nodes/basic.sh"
+import basic = "xleres/Nodes/Basic.sh"
 
 void WoodModulator001(out float frac, out float int, float value, float period)
 {

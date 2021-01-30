@@ -1,7 +1,7 @@
 // CompoundDocument:1
 import woodmodulator002 = "xleres/objects/example/procwood/woodmodulator002.graph"
-import basic = "xleres/nodes/basic.sh"
-import texture = "xleres/nodes/texture.sh"
+import basic = "xleres/Nodes/Basic.sh"
+import texture = "xleres/Nodes/Texture.sh"
 
 void WoodPlanks(float3 coords, float height, float width, float shift3, float length, float shift1, float shift2, float3 offcenter, out float3 plankCoords)
 {
