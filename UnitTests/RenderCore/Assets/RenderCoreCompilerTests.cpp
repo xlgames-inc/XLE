@@ -58,7 +58,7 @@ namespace UnitTests
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
-		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
@@ -113,7 +113,7 @@ namespace UnitTests
 	{
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory

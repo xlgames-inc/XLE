@@ -240,7 +240,7 @@ static const int NonPreprocessorLine0 = 0;
 	TEST_CASE( "ShaderParser-BindShaderToTechnique", "[shader_parser]" )
 	{
 		LocalHelper localHelper;
-		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		// Given some shader (either straight-up shader code, or something generated from a shader graph)
 		// bind it to a technique, and produce both the final shader text and required meta-data

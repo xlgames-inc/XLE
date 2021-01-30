@@ -2,29 +2,30 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../UnitTestHelper.h"
 #include "../ReusableDataFiles.h"
-#include "../../RenderCore/Assets/ShaderPatchCollection.h"
-#include "../../RenderCore/Assets/PredefinedCBLayout.h"
-#include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
-#include "../../ShaderParser/ShaderInstantiation.h"
-#include "../../ShaderParser/DescriptorSetInstantiation.h"
-#include "../../Assets/AssetServices.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/OSFileSystem.h"
-#include "../../Assets/MountingTree.h"
-#include "../../Assets/MemoryFile.h"
-#include "../../Assets/DepVal.h"
-#include "../../ConsoleRig/Console.h"
-#include "../../OSServices/Log.h"
-#include "../../ConsoleRig/AttachablePtr.h"
-#include "../../Utility/Streams/StreamFormatter.h"
-#include "../../Utility/Streams/StreamTypes.h"
-#include "../../Utility/MemoryUtils.h"
-#include <CppUnitTest.h>
+#include "../../UnitTestHelper.h"
+#include "../../../RenderCore/Assets/ShaderPatchCollection.h"
+#include "../../../RenderCore/Assets/PredefinedCBLayout.h"
+#include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../../../ShaderParser/ShaderInstantiation.h"
+#include "../../../ShaderParser/DescriptorSetInstantiation.h"
+// #include "../../../Assets/AssetServices.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/OSFileSystem.h"
+#include "../../../Assets/MountingTree.h"
+#include "../../../Assets/MemoryFile.h"
+#include "../../../Assets/DepVal.h"
+#include "../../../ConsoleRig/Console.h"
+#include "../../../OSServices/Log.h"
+#include "../../../OSServices/FileSystemMonitor.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
+#include "../../../Utility/Streams/StreamFormatter.h"
+#include "../../../Utility/Streams/StreamTypes.h"
+#include "../../../Utility/MemoryUtils.h"
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-
+using namespace Catch::literals;
 namespace UnitTests
 {
 	static const char s_exampleTechniqueFragments[] = R"--(
@@ -59,7 +60,7 @@ namespace UnitTests
 			::Assets::AsBlob(R"--(
 				import templates = "xleres/Nodes/Templates.sh"
 				import texture = "xleres/Nodes/Texture.sh"
-				import gbuffer = "xleres/gbuffer.h"
+				import gbuffer = "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
 
 				auto deferred_pass_main(
 					VSOUT geo,
@@ -106,11 +107,11 @@ namespace UnitTests
 		std::make_pair(
 			"shader_with_selectors.pixel.hlsl",
 			::Assets::AsBlob(R"--(
-				#include "xleres/MainGeometry.h"
-				#include "xleres/CommonResources.h"
-				#include "xleres/gbuffer.h"
-				#include "xleres/surface.h"
-				#include "xleres/colour.h"
+				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/CommonResources.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
+				#include "xleres/TechniqueLibrary/Utility/Colour.hlsl"
 
 				Texture2D       Texture0		BIND_MAT_T0;		// Diffuse
 				Texture2D       Texture1		BIND_MAT_T1;		// Normal/Gloss
@@ -168,16 +169,25 @@ namespace UnitTests
 		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
 	};
 
-    TEST_CLASS(ShaderPatchCollection)
+	static void FakeChange(StringSection<> fn)
 	{
-	public:
+		::Assets::MainFileSystem::TryFakeFileChange(fn);
+	}
 
-		TEST_METHOD(DeserializeShaderPatchCollection)
+	TEST_CASE( "ShaderPatchCollection", "[rendercore_techniques]" )
+	{
+		UnitTest_SetWorkingDirectory();
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("/home/davidj/code/XLE/Working/Game/xleres", globalServices->GetPollingThread()));
+		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
+		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+
+		SECTION( "DeserializeShaderPatchCollection" )
 		{
 			// Normally a ShaderPatchCollection is deserialized from a material file
 			// We'll test the serialization and deserialization code here, and ensure
-			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+			InputStreamFormatter<> formattr { s_exampleTechniqueFragments };
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			// Verify that a few things got deserialized correctly
 			auto i = std::find_if(
@@ -186,32 +196,32 @@ namespace UnitTests
 				[](const std::pair<std::string, ShaderSourceParser::InstantiationRequest>& r) {
 					return r.first == "main";
 				});
-			Assert::IsTrue(i!=patchCollection.GetPatches().end());
-			Assert::AreEqual(i->second._parameterBindings.size(), (size_t)1);
-			Assert::AreEqual(i->second._parameterBindings.begin()->first, std::string("perPixel"));
-			Assert::AreEqual(i->second._parameterBindings.begin()->second._archiveName, std::string("ut-data/perpixel.graph::Default_PerPixel"));
+			REQUIRE(i!=patchCollection.GetPatches().end());
+			REQUIRE(i->second._parameterBindings.size() == (size_t)1);
+			REQUIRE(i->second._parameterBindings.begin()->first == std::string("perPixel"));
+			REQUIRE(i->second._parameterBindings.begin()->second->_archiveName == std::string("ut-data/perpixel.graph::Default_PerPixel"));
 
 			// Write out the patch collection again
-			MemoryOutputStream<uint8> strm;
+			MemoryOutputStream<char> strm;
 			OutputStreamFormatter outFmttr(strm);
 			SerializationOperator(outFmttr, patchCollection);
 
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();
 			InputStreamFormatter<utf8> formattr2 { MemoryMappedInputStream { serializedStream.Begin(), serializedStream.End() } };
-			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2);
+			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2, ::Assets::DirectorySearchRules{}, nullptr);
 
 			// we should have the same contents in both patch collections
-			Assert::IsTrue(patchCollection.GetPatches().size() == patchCollection2.GetPatches().size());
-			Assert::IsTrue(patchCollection.GetHash() == patchCollection2.GetHash());
+			REQUIRE(patchCollection.GetPatches().size() == patchCollection2.GetPatches().size());
+			REQUIRE(patchCollection.GetHash() == patchCollection2.GetHash());
 		}
 
-		TEST_METHOD(CompileShaderGraph)
+		SECTION( "CompileShaderGraph" )
 		{
 			// Ensure that we can correctly compile the shader graph in the test data
 			// (otherwise the following tests won't work)
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			std::vector<ShaderSourceParser::InstantiationRequest> instantiations;
 			for (const auto& p:patchCollection.GetPatches())
@@ -219,58 +229,49 @@ namespace UnitTests
 
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
 			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), generateOptions, RenderCore::ShaderLanguage::HLSL);
-			::Assert::AreNotEqual(instantiation._sourceFragments.size(), (size_t)0);
+			REQUIRE(instantiation._sourceFragments.size() != (size_t)0);
 		}
 
-		TEST_METHOD(CompileShaderPatchCollection1)
+		SECTION( "CompileShaderPatchCollection1" )
 		{
 			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection);
 
 			// Check for some of the expected interface elements
-			Assert::IsTrue(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers.size(), (size_t)2);
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[0]._name, std::string{"MaterialUniforms"});
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[0]._layout->_elements.size(), (size_t)2);
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[1]._name, std::string{"SecondUnifomBuffer"});
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers[1]._layout->_elements.size(), (size_t)1);
-			Assert::AreEqual(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_resources.size(), (size_t)3);
+			REQUIRE(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
+			auto& cbs = compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers;
+			REQUIRE(cbs.size() == (size_t)2);
+			auto material = std::find_if(cbs.begin(), cbs.end(), [](const auto& t) { return t._name == "MaterialUniforms"; });
+			auto second = std::find_if(cbs.begin(), cbs.end(), [](const auto& t) { return t._name == "SecondUnifomBuffer"; });
+			REQUIRE(material != cbs.end());
+			REQUIRE(material->_layout->_elements.size() == 2);
+			REQUIRE(second != cbs.end());
+			REQUIRE(second->_layout->_elements.size() == 1);
+			REQUIRE(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_resources.size() == (size_t)3);
 		}
 
-		TEST_METHOD(CompileShaderPatchCollection2)
+		SECTION( "CompileShaderPatchCollection2" )
 		{
 			InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection);
 
 			// Check for some of the recognized properties, in particular look for shader selectors
 			// We're expecting the selectors "RES_HAS_Texture0" and "RES_HAS_Texture1"
-			Assert::IsTrue(
+			REQUIRE(
 				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture0")
 				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
-			Assert::IsTrue(
+			REQUIRE(
 				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture1")
 				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
 		}
 
-		static void FakeChange(const char* fn)
-		{
-			// Note - FakeFileChange() just happens to work, even for files in virtual filesystems
-			// this is because even in these cases, we register the name in the main filesystem
-			// monitor (we can monitor both existing and non-existing files). It won't work
-			// correctly with aliasing, but it will at least catch the case where the names match
-			// exactly.
-			// It's a little dodgy; but we get by -- 
-			auto split = MakeFileNameSplitter(fn);
-			Utility::FakeFileChange(split.DriveAndPath().Cast<utf8>(), split.FileAndExtension().Cast<utf8>());
-		}
-
-		TEST_METHOD(TestCompiledShaderDependencyChecking)
+		SECTION( "TestCompiledShaderDependencyChecking" )
 		{
 			// Let's make sure that the CompiledShaderPatchCollection recognizes when it has become 
 			// out-of-date due to a source file change
@@ -278,7 +279,7 @@ namespace UnitTests
 				const char* dependenciesToCheck[] = {
 					"ut-data/shader_with_selectors_adapter.graph",		// root graph
 					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
-					"ut-data/shader_with_selectors.pixel.sh",			// shader directly imported by root graph
+					"ut-data/shader_with_selectors.pixel.hlsl",			// shader directly imported by root graph
 					"xleres/TechniqueLibrary/Framework/gbuffer.hlsl",	// 1st level include from shader
 					"xleres/TechniqueLibrary/Framework/Binding.hlsl"	// 2nd level include from shader
 				};
@@ -290,20 +291,20 @@ namespace UnitTests
 				};
 
 				InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
-				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr);
+				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {
 					RenderCore::Techniques::CompiledShaderPatchCollection compiledCollection(patchCollection);
-					Assert::AreEqual(compiledCollection._depVal->GetValidationIndex(), 0u);
+					REQUIRE(compiledCollection._depVal->GetValidationIndex() == 0u);
 					
 					if (c < dimof(nonDependencies)) {
 						FakeChange(nonDependencies[c]);
-						Assert::AreEqual(compiledCollection._depVal->GetValidationIndex(), 0u);
+						REQUIRE(compiledCollection._depVal->GetValidationIndex() == 0u);
 					}
 
 					if (c < dimof(dependenciesToCheck)) {
 						FakeChange(dependenciesToCheck[c]);
-						Assert::IsTrue(compiledCollection._depVal->GetValidationIndex() > 0u);
+						REQUIRE(compiledCollection._depVal->GetValidationIndex() > 0u);
 					}
 				}
 			}
@@ -338,36 +339,19 @@ namespace UnitTests
 
 					if (c < dimof(nonDependencies)) {
 						FakeChange(nonDependencies[c]);
-						Assert::AreEqual(depVal->GetValidationIndex(), 0u);
+						REQUIRE(depVal->GetValidationIndex() == 0u);
 					}
 
 					if (c < dimof(dependenciesToCheck)) {
 						FakeChange(dependenciesToCheck[c]);
-						Assert::IsTrue(depVal->GetValidationIndex() > 0u);
+						REQUIRE(depVal->GetValidationIndex() > 0u);
 					}
 				}
 			}
 		}
-	
-		static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _globalServices;
-		static ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
 
-		TEST_CLASS_INITIALIZE(Startup)
-		{
-			UnitTest_SetWorkingDirectory();
-			_globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-			::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
-			::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
-			_assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
-		}
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt1);
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
+	}
 
-		TEST_CLASS_CLEANUP(Shutdown)
-		{
-			_assetServices.reset();
-			_globalServices.reset();
-		}
-	};
-
-	ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> ShaderPatchCollection::_globalServices;
-	ConsoleRig::AttachablePtr<::Assets::Services> ShaderPatchCollection::_assetServices;
 }

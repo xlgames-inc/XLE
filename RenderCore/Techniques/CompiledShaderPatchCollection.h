@@ -65,6 +65,7 @@ namespace RenderCore { namespace Techniques
 		std::string InstantiateShader(const ParameterBox& selectors) const;
 
 		uint64_t GetGUID() const { return _guid; }
+		uint64_t GetHash() const { return _guid; }
 
 		CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src);
 		CompiledShaderPatchCollection(const ShaderSourceParser::InstantiatedShader& instantiatedShader);

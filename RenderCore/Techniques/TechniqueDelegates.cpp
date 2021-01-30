@@ -20,6 +20,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediatesStore.h"			// for GetDependentFileState()
 #include "../../Assets/AssetFutureContinuation.h"
+#include "../../ConsoleRig/GlobalServices.h"			// for GetLibVersionDesc
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
 #include "../../xleres/FileList.h"
@@ -103,114 +104,49 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	class InstantiateShaderGraphPreprocessor : public RenderCore::ISourceCodePreprocessor
+	static auto AssembleDirectFromFile(StringSection<> filename) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping
 	{
-	public:
-		SourceCodeWithRemapping AssembleDirectFromFile(StringSection<> filename)
-		{
-			assert(!XlEqString(filename, "-0"));
+		assert(!XlEqString(filename, "-0"));
 
-			// Fall back to loading the file directly (without any real preprocessing)
-			SourceCodeWithRemapping result;
-			result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
+		// Fall back to loading the file directly (without any real preprocessing)
+		RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
 
-			size_t sizeResult = 0;
-			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
-			result._processedSource = std::string((char*)blob.get(), (char*)PtrAdd(blob.get(), sizeResult));
-			result._lineMarkers.push_back(RenderCore::ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
-			return result;
-		}
-
-		virtual SourceCodeWithRemapping RunPreprocessor(StringSection<> inputSource, StringSection<> definesTable, const ::Assets::DirectorySearchRules& searchRules) override
-		{
-			// Encoded in the filename is the guid for the CompiledShaderPatchCollection, the list of functions that require
-			// redirection and the entry point shader filename
-
-			assert(0);
-			StringSection<> filename;
-			
-			static std::regex filenameExp(R"--(([^-]+)-([0-9,a-f,A-F]{1,16})(?:-([0-9,a-f,A-F]{1,16}))*)--");
-			std::cmatch matches;
-			if (!std::regex_match(filename.begin(), filename.end(), matches, filenameExp) || matches.size() < 3)
-				return AssembleDirectFromFile(filename);		// don't understand the input filename, we can't expand this
-
-			uint64_t patchCollectionGuid = 0;
-			auto fromCharsResult = std::from_chars(matches[2].first, matches[2].second, patchCollectionGuid, 16);
-			if (fromCharsResult.ec != std::errc{} || fromCharsResult.ptr != matches[2].second)
-				return AssembleDirectFromFile(filename);
-
-			auto i = LowerBound(_registry, patchCollectionGuid);
-			if (i == _registry.end() || i->first != patchCollectionGuid)
-				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));		// don't understand the input filename, we can't expand this
-
-			auto& patchCollection = *i->second;
-			if (patchCollection.GetInterface().GetPatches().empty())
-				return AssembleDirectFromFile(MakeStringSection(matches[1].first, matches[1].second));
-
-			std::vector<uint64_t> redirectedPatchFunctions;
-			redirectedPatchFunctions.reserve(matches.size() - 3);
-			for (auto m=matches.begin()+3; m!=matches.end(); ++m)
-				if (m->matched) {
-					uint64_t guid = 0;
-					fromCharsResult = std::from_chars(m->first, m->second, guid, 16);
-					if (fromCharsResult.ec != std::errc{} || fromCharsResult.ptr != matches[2].second)
-						Throw(std::runtime_error("Integer parsing failure"));
-					redirectedPatchFunctions.push_back(guid);
-				}
-
-			auto result = AssembleShader(patchCollection, MakeIteratorRange(redirectedPatchFunctions), definesTable);
-
-			// For simplicity, we'll just append the entry point file using an #include directive
-			// This will ensure we go through the normal mechanisms to find and load this file.
-			// Note that this relies on the underlying shader compiler supporting #includes, however
-			//   -- in cases  (like GLSL) that don't have #include support, we would need another
-			//	changed preprocessor to handle the include expansions.
-			{
-				std::stringstream str;
-				str << "#include \"" << MakeStringSection(matches[1].first, matches[1].second) << "\"" << std::endl;
-				result._processedSource += str.str();
-			}
-
-			return result;
-		}
-
-		InstantiateShaderGraphPreprocessor() {}
-		~InstantiateShaderGraphPreprocessor() {}
-
-		void Register(uint64_t id, const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection)
-		{
-			if (id == 0)
-				return;
-
-			auto i = LowerBound(_registry, id);
-			if (i != _registry.end() && i->first == id) {
-				// assert(i->second == patchCollection);
-			} else {
-				_registry.insert(i, std::make_pair(id, patchCollection));
-			}
-		}
-
-	private:
-		std::vector<std::pair<uint64_t, std::shared_ptr<CompiledShaderPatchCollection>>> _registry;
-	};
-
-#if 0		// todo -- need to bring this back
-	static const std::shared_ptr<InstantiateShaderGraphPreprocessor>& GetInstantiateShaderGraphPreprocessor()
-	{
-		static std::shared_ptr<InstantiateShaderGraphPreprocessor> singleton;
-		if (!singleton) {
-			singleton = std::make_shared<InstantiateShaderGraphPreprocessor>();
-			auto shaderSource = std::make_shared<RenderCore::Assets::LocalCompiledShaderSource>(
-				RenderCore::Assets::Services::GetDevice().CreateShaderCompiler(),
-				singleton,
-				RenderCore::Assets::Services::GetDevice().GetDesc(),
-				CompileProcess_InstantiateShaderGraph);
-			RenderCore::ShaderService::GetInstance().AddShaderSource(shaderSource);
-			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(shaderSource);
-		}
-		return singleton;
+		size_t sizeResult = 0;
+		auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
+		result._processedSource = std::string((char*)blob.get(), (char*)PtrAdd(blob.get(), sizeResult));
+		result._lineMarkers.push_back(RenderCore::ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
+		return result;
 	}
-#endif
+
+	static auto InstantiateShaderGraph_CompileFromFile(
+		ShaderService::IShaderSource& internalShaderSource,
+		const ILowLevelCompiler::ResId& resId, 
+		StringSection<> definesTable,
+		const CompiledShaderPatchCollection& patchCollection,
+		IteratorRange<const uint64_t*> redirectedPatchFunctions) -> ShaderService::IShaderSource::ShaderByteCodeBlob
+	{
+		if (patchCollection.GetInterface().GetPatches().empty())
+			return internalShaderSource.CompileFromFile(resId, definesTable);
+
+		auto result = AssembleShader(patchCollection, redirectedPatchFunctions, definesTable);
+
+		// For simplicity, we'll just append the entry point file using an #include directive
+		// This will ensure we go through the normal mechanisms to find and load this file.
+		// Note that this relies on the underlying shader compiler supporting #includes, however
+		//   -- in cases  (like GLSL) that don't have #include support, we would need another
+		//	changed preprocessor to handle the include expansions.
+		{
+			std::stringstream str;
+			str << "#include \"" << resId._filename << "\"" << std::endl;
+			result._processedSource += str.str();
+		}
+
+		return internalShaderSource.CompileFromMemory(
+			MakeStringSection(result._processedSource),
+			resId._entryPoint, resId._shaderModel,
+			definesTable);
+	}
 
 	class CompiledShaderByteCode_InstantiateShaderGraph : public RenderCore::CompiledShaderByteCode
 	{
@@ -219,6 +155,80 @@ namespace RenderCore { namespace Techniques
 
 		using CompiledShaderByteCode::CompiledShaderByteCode;
 	};
+
+	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
+	class ShaderGraphCompileOperation : public ::Assets::ICompileOperation
+	{
+	public:
+		virtual std::vector<TargetDesc> GetTargets() const override
+		{
+			return {
+				TargetDesc { CompileProcess_InstantiateShaderGraph, "main" }
+			};
+		}
+		
+		virtual std::vector<SerializedArtifact> SerializeTarget(unsigned idx) override
+		{
+			std::vector<SerializedArtifact> result;
+			if (_byteCode._payload)
+				result.push_back({
+					CompileProcess_InstantiateShaderGraph, 0, "main",
+					_byteCode._payload});
+			if (_byteCode._errors)
+				result.push_back({
+					ChunkType_Log, 0, "log",
+					_byteCode._errors});
+			return result;
+		}
+
+		virtual std::vector<::Assets::DependentFileState> GetDependencies() const override
+		{
+			return _byteCode._deps;
+		}
+
+		ShaderGraphCompileOperation(
+			ShaderService::IShaderSource& shaderSource,
+			const ILowLevelCompiler::ResId& resId,
+			StringSection<> definesTable,
+			const CompiledShaderPatchCollection& patchCollection,
+			IteratorRange<const uint64_t*> redirectedPatchFunctions)
+		: _byteCode { 
+			InstantiateShaderGraph_CompileFromFile(shaderSource, resId, definesTable, patchCollection, redirectedPatchFunctions) 
+		}
+		{
+		}
+		
+		~ShaderGraphCompileOperation()
+		{
+		}
+
+		ShaderService::IShaderSource::ShaderByteCodeBlob _byteCode;
+	};
+
+	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
+		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		::Assets::IntermediateCompilers& intermediateCompilers)
+	{
+		auto result = intermediateCompilers.RegisterCompiler(
+			"shader-graph-compiler",
+			ConsoleRig::GetLibVersionDesc(),
+			nullptr,
+			[shaderSource](const ::Assets::InitializerPack& initializers) {
+				return std::make_shared<ShaderGraphCompileOperation>(
+					*shaderSource,
+					ShaderService::MakeResId(initializers.GetInitializer<std::string>(0)),
+					initializers.GetInitializer<std::string>(1),
+					*initializers.GetInitializer<std::shared_ptr<CompiledShaderPatchCollection>>(2),
+					MakeIteratorRange(initializers.GetInitializer<std::vector<uint64_t>>(3))
+				);
+			});
+
+		uint64_t outputAssetTypes[] = { CompileProcess_InstantiateShaderGraph };
+		intermediateCompilers.AssociateRequest(
+			result._registrationId,
+			MakeIteratorRange(outputAssetTypes));
+		return result;
+	}
 
 	class ShaderPatchFactory : public IShaderVariationFactory
 	{
@@ -230,17 +240,7 @@ namespace RenderCore { namespace Techniques
 
 			char temp[MaxPath];
 			auto meld = StringMeldInPlace(temp);
-			auto sep = std::find(initializer.begin(), initializer.end(), ':');
-			meld << MakeStringSection(initializer.begin(), sep);
-
-			// patch collection & expansions
-			if (!XlEqString(MakeStringSection(initializer.begin(), sep), "null")
-				&& _patchCollection && _patchCollection->GetGUID() != 0) {
-				meld << "-" << std::hex << _patchCollection->GetGUID();
-				for (auto exp:_patchExpansions) meld << "-" << exp;
-			}
-
-			meld << MakeStringSection(sep, initializer.end());
+			meld << initializer;
 
 			// shader profile
 			{
@@ -258,7 +258,7 @@ namespace RenderCore { namespace Techniques
 				}
 			}
 
-			auto ret = ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable);
+			auto ret = ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable, _patchCollection, _patchExpansions);
 			return std::reinterpret_pointer_cast<::Assets::AssetFuture<CompiledShaderByteCode>>(ret);
 		}
 
@@ -290,15 +290,8 @@ namespace RenderCore { namespace Techniques
 			const StreamOutputInitializers& so = {})
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
-		, _patchExpansions(patchExpansions)
+		, _patchExpansions(patchExpansions.begin(), patchExpansions.end())
 		{
-			if (_patchCollection) {
-				assert(0);	// todo -- temporarily broken
-				/*GetInstantiateShaderGraphPreprocessor()->Register(
-					_patchCollection->GetGUID(),
-					_patchCollection);*/
-			}
-
 			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;
 
 			if (!so._outputElements.empty() && !so._outputBufferStrides.empty()) {
@@ -323,7 +316,7 @@ namespace RenderCore { namespace Techniques
 	private:
 		const TechniqueEntry* _entry;
 		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
-		IteratorRange<const uint64_t*> _patchExpansions;
+		std::vector<uint64_t> _patchExpansions;
 
 		std::string _soExtraDefines;
 		std::vector<RenderCore::InputElementDesc> _soElements;

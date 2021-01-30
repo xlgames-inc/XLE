@@ -477,7 +477,7 @@ namespace ColladaConversion
         //     matSettingsFile = settingsName;
         // }
 
-        MemoryOutputStream<uint8> strm;
+        MemoryOutputStream<char> strm;
         SerializeMatTable(strm, model);
         return {
 			::Assets::ICompileOperation::SerializedArtifact{

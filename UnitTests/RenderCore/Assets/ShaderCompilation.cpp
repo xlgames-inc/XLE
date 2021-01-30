@@ -74,7 +74,7 @@ namespace UnitTests
 		using namespace RenderCore;
 		UnitTest_SetWorkingDirectory();
 		auto _globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto testHelper = MakeTestHelper();
 
 		SECTION("UnitTestHelper shaders") {

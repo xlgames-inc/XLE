@@ -1304,7 +1304,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto table = _objects.SerializeMaterial();
 
-        MemoryOutputStream<uint8> strm;
+        MemoryOutputStream<char> strm;
         auto root = std::make_unique<Data>();
         for (auto i=table.begin(); i!=table.end(); ++i) {
             root->Add(i->release());

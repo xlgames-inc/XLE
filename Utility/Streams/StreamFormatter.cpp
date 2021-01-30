@@ -24,10 +24,6 @@ namespace Utility
         _end = end;
     }
 
-	MemoryMappedInputStream::MemoryMappedInputStream(const char* nullTerminatedStr)
-	: MemoryMappedInputStream(nullTerminatedStr, XlStringEnd(nullTerminatedStr))
-	{}
-
     MemoryMappedInputStream::~MemoryMappedInputStream() {}
 
     static const unsigned TabWidth = 4;

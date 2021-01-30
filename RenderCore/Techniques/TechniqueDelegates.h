@@ -72,5 +72,9 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
 		StringSection<> definesTable) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping;
 
+	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
+		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		::Assets::IntermediateCompilers& intermediateCompilers);
+
 }}
 

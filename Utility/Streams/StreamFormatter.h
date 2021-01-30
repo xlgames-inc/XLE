@@ -119,8 +119,6 @@ namespace Utility
 		template<typename Type>
 			MemoryMappedInputStream(IteratorRange<Type*> range)
 				: MemoryMappedInputStream(range.begin(), range.end()) {}
-
-		MemoryMappedInputStream(const char* nullTerminatedStr);
     protected:
         const void* _start;
         const void* _end;
