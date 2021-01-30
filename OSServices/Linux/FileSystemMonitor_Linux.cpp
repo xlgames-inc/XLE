@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../FileSystemMonitor.h"
-#include "PollingThread.h"
+#include "../PollingThread.h"
 #include "../Log.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/Mutex.h"
@@ -206,14 +206,30 @@ namespace OSServices
 		}
 	}
 
-	void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
+	void    RawFSMonitor::FakeFileChange(StringSection<utf16> filename)
 	{
 		assert(0);      // not implemented
 	}
 
-	void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename)
+	void    RawFSMonitor::FakeFileChange(StringSection<utf8> filename)
 	{
-		assert(0);      // not implemented
+		auto split = MakeFileNameSplitter(filename);
+		utf8 directoryName[MaxPath];
+		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
+		if (!directoryName[0])
+			std::strcpy(directoryName, "./");
+
+		{
+			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);
+			auto hash = MonitoredDirectory::HashFilename(directoryName);
+			auto i = std::lower_bound(
+				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
+				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
+			if (i != _pimpl->_conduit->_monitoredDirectories.cend() && i->first == hash) {
+				i->second->OnChange(split.FileAndExtension());
+				return;
+			}
+		}
 	}
 
 	RawFSMonitor::RawFSMonitor(const std::shared_ptr<PollingThread>& pollingThread)

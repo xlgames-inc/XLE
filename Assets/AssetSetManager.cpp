@@ -6,6 +6,7 @@
 
 #include "AssetSetManager.h"
 #include "AssetHeap.h"
+#include "AssetServices.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
@@ -161,15 +162,15 @@ namespace Assets
 	{
 		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn)
 		{
-			return GetAssetSetManager().RegisterFrameBarrierCallback(std::move(fn));
+			return Services::GetAssetSets().RegisterFrameBarrierCallback(std::move(fn));
 		}
 
 		void DeregisterFrameBarrierCallback(unsigned markerId)
 		{
 			// This can be called while the asset set manager is being shutdown; at that time it is
 			// not available as a singleton
-			if (HasAssetSetManager())
-				GetAssetSetManager().DeregisterFrameBarrierCallback(markerId);
+			if (Services::HasAssetSets())
+				Services::GetAssetSets().DeregisterFrameBarrierCallback(markerId);
 		}
 
 		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime)

@@ -764,6 +764,7 @@ namespace Assets
 #endif
 
 		_resolvedBaseDirectory = goodBranchDir;
+		std::filesystem::create_directories(_resolvedBaseDirectory);
 	}
 
 	auto IntermediatesStore::RegisterCompileProductsGroup(StringSection<> name) -> CompileProductsGroupId

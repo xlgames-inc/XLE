@@ -48,9 +48,6 @@ namespace Assets
         void Add(size_t typeCode, std::unique_ptr<IDefaultAssetHeap>&& set);
     };
 
-	AssetSetManager& GetAssetSetManager();
-    bool HasAssetSetManager();
-
     template<typename Type>
 		DefaultAssetHeap<Type>& AssetSetManager::GetSetForType()
     {

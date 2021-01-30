@@ -76,6 +76,7 @@ namespace Assets
 		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& marker, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default) = 0;
 
 		virtual	IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) = 0;
+		virtual IOReason	TryFakeFileChange(const Marker& marker) = 0;
 		virtual	FileDesc	TryGetDesc(const Marker& marker) = 0;
 		virtual				~IFileSystem();
 	};
@@ -235,6 +236,7 @@ namespace Assets
 		static IOReason	TryOpen(OSServices::BasicFile& result, StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryOpen(OSServices::MemoryMappedFile& result, StringSection<utf8> filename, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryMonitor(StringSection<utf8> filename, const std::shared_ptr<IFileMonitor>& evnt);
+		static IOReason	TryFakeFileChange(StringSection<utf8> filename);
 		static FileDesc	TryGetDesc(StringSection<utf8> filename);
 
 		static OSServices::BasicFile OpenBasicFile(StringSection<utf8> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
@@ -245,6 +247,7 @@ namespace Assets
 		static IOReason	TryOpen(OSServices::BasicFile& result, StringSection<utf16> filename, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryOpen(OSServices::MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
+		static IOReason	TryFakeFileChange(StringSection<utf16> filename);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
 		static IFileSystem* GetFileSystem(FileSystemId id);
@@ -260,6 +263,7 @@ namespace Assets
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
 	T1(CharType) IFileSystem::IOReason TryMonitor(IFileSystem& fs, StringSection<CharType> fn, const std::shared_ptr<IFileMonitor>& evnt);
+	T1(CharType) IFileSystem::IOReason TryFakeFileChange(IFileSystem& fs, StringSection<CharType> fn);
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
 	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 

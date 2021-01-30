@@ -372,7 +372,7 @@ namespace GUILayer
     {
 		// We have to pump some services, or assets will never complete loading/compiling
 		::Assets::Services::GetAsyncMan().Update();
-		::Assets::GetAssetSetManager().OnFrameBarrier();
+		::Assets::Services::GetAssetSets().OnFrameBarrier();
 		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(), false);
 

@@ -295,7 +295,7 @@ namespace PlatformRig
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
         }
 
-		::Assets::GetAssetSetManager().OnFrameBarrier();
+		::Assets::Services::GetAssetSets().OnFrameBarrier();
 
         FrameResult result;
         result._elapsedTime = frameElapsedTime;

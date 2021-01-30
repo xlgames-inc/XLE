@@ -112,6 +112,7 @@ namespace Assets
 		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
+		virtual IOReason	TryFakeFileChange(const Marker& marker);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
         virtual std::vector<IFileSystem::Marker> FindFiles(
@@ -120,7 +121,10 @@ namespace Assets
         virtual std::vector<std::basic_string<utf8>> FindSubDirectories(
             StringSection<utf8> baseDirectory);
 
-		FileSystem_OS(StringSection<utf8> root, bool ignorePaths);
+		FileSystem_OS(
+			StringSection<utf8> root,
+			const std::shared_ptr<OSServices::PollingThread>& pollingThread,
+			bool ignorePaths);
 		~FileSystem_OS();
 
 	protected:
@@ -262,6 +266,30 @@ namespace Assets
 		return IOReason::Complex;
 	}
 
+	auto FileSystem_OS::TryFakeFileChange(const Marker& marker) -> IOReason
+	{
+		if (!_fileSystemMonitor)
+			return IOReason::Complex;
+
+		// note -- we can install monitors even for files and directories that don't exist
+		//			when they are created, the monitor should start to take effect.
+		auto type = *(uint16*)AsPointer(marker.cbegin());
+		if (type == 1) {
+			auto fn = MakeStringSection(
+				(const utf8*)PtrAdd(AsPointer(marker.cbegin()), 2),
+				(const utf8*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf8)));
+			_fileSystemMonitor->FakeFileChange(fn);
+			return IOReason::Success;
+		} else if (type == 2) {
+			auto fn = MakeStringSection(
+				(const utf16*)PtrAdd(AsPointer(marker.cbegin()), 2),
+				(const utf16*)PtrAdd(AsPointer(marker.cend()), -(ptrdiff_t)sizeof(utf16)));
+			_fileSystemMonitor->FakeFileChange(fn);
+			return IOReason::Success;
+		}
+		return IOReason::Complex;
+	}
+
 	FileDesc FileSystem_OS::TryGetDesc(const Marker& marker)
 	{
 		// Given the filename in the "marker", try to find some basic information about the file.
@@ -362,7 +390,10 @@ namespace Assets
         return res;
     }
 
-	FileSystem_OS::FileSystem_OS(StringSection<utf8> root, bool ignorePaths)
+	FileSystem_OS::FileSystem_OS(
+		StringSection<utf8> root, 
+		const std::shared_ptr<OSServices::PollingThread>& pollingThread, 
+		bool ignorePaths)
 	: _ignorePaths(ignorePaths)
 	{
 		if (!root.IsEmpty()) {
@@ -376,16 +407,16 @@ namespace Assets
 			_rootUTF16.push_back((utf16)'/');
 		}
 
-		// todo -- _fileSystemMonitor must be initialized to something
-		// _fileSystemMonitor = 
+		if (pollingThread)
+			_fileSystemMonitor = std::make_shared<OSServices::RawFSMonitor>(pollingThread);
 	}
 
 	FileSystem_OS::~FileSystem_OS() {}
 
 
-	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root, bool flattenPaths)
+	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root, const std::shared_ptr<OSServices::PollingThread>& pollingThread, bool flattenPaths)
 	{
-		return std::make_shared<FileSystem_OS>(root, flattenPaths);
+		return std::make_shared<FileSystem_OS>(root, pollingThread, flattenPaths);
 	}
 
 }

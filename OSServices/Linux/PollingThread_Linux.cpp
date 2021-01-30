@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "PollingThread.h"
+#include "../PollingThread.h"
 #include "../../OSServices/Log.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/IteratorUtils.h"

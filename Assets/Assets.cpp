@@ -71,14 +71,4 @@ namespace Assets
 		*/
 
     }
-
-	AssetSetManager& GetAssetSetManager()
-	{
-		return Services::GetAssetSets();
-	}
- 
-     bool HasAssetSetManager()
-     {
-        return Services::HasInstance();
-     }
 }

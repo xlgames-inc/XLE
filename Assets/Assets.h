@@ -7,6 +7,7 @@
 #include "AssetSetManager.h"
 #include "AssetFuture.h"
 #include "AssetHeap.h"
+#include "AssetServices.h"
 
 namespace Assets
 {
@@ -14,7 +15,7 @@ namespace Assets
 	template<typename AssetType, typename... Params>
 		std::shared_ptr<AssetFuture<AssetType>> MakeAsset(Params... initialisers)
 	{
-		return GetAssetSetManager().GetSetForType<AssetType>().Get(std::forward<Params>(initialisers)...);
+		return Services::GetAssetSets().GetSetForType<AssetType>().Get(std::forward<Params>(initialisers)...);
 	}
 
 	template<typename AssetType, typename... Params>

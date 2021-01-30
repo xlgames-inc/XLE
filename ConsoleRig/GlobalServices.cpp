@@ -15,10 +15,12 @@
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
 #include "../Assets/DepVal.h"
+#include "../Assets/AssetSetManager.h"
+#include "../Assets/CompileAndAsyncManager.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/FileSystemMonitor.h"
-#include "../OSServices/RawFS.h"
+#include "../OSServices/PollingThread.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/StringFormat.h"
@@ -148,7 +150,7 @@ namespace ConsoleRig
 
         std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
 		if (!serv.Has<std::shared_ptr<::Assets::IFileSystem>()>(Fn_DefaultFileSystem)) {
-			defaultFileSystem = ::Assets::CreateFileSystem_OS();
+			defaultFileSystem = ::Assets::CreateFileSystem_OS({}, GlobalServices::GetInstance().GetPollingThread());
 			serv.Add(Fn_DefaultFileSystem, [defaultFileSystem]() { return defaultFileSystem; });
 		} else {
 			defaultFileSystem = serv.Call<std::shared_ptr<::Assets::IFileSystem>>(Fn_DefaultFileSystem);
@@ -185,8 +187,12 @@ namespace ConsoleRig
 		AttachablePtr<LogCentralConfiguration> _logCfg;
         std::unique_ptr<ThreadPool> _shortTaskPool;
         std::unique_ptr<ThreadPool> _longTaskPool;
+        std::shared_ptr<OSServices::PollingThread> _pollingThread;
 		StartupConfig _cfg;
 		std::unique_ptr<PluginSet> _pluginSet;
+
+        AttachablePtr<::Assets::AssetSetManager> _assetsSetsManager;
+        AttachablePtr<::Assets::CompileAndAsyncManager> _compileAndAsyncManager;
 	};
 
     GlobalServices* GlobalServices::s_instance = nullptr;
@@ -196,9 +202,16 @@ namespace ConsoleRig
 		_pimpl = std::make_unique<Pimpl>();
         _pimpl->_shortTaskPool = std::make_unique<ThreadPool>(cfg._shortTaskThreadPoolCount);
         _pimpl->_longTaskPool = std::make_unique<ThreadPool>(cfg._longTaskThreadPoolCount);
+        _pimpl->_pollingThread = std::make_shared<OSServices::PollingThread>();
 		_pimpl->_cfg = cfg;
 
         MainRig_Startup(cfg);
+
+        if (!_pimpl->_assetsSetsManager)
+            _pimpl->_assetsSetsManager = std::make_shared<::Assets::AssetSetManager>();
+
+        if (!_pimpl->_compileAndAsyncManager)
+            _pimpl->_compileAndAsyncManager = std::make_shared<::Assets::CompileAndAsyncManager>();
 
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
@@ -242,6 +255,7 @@ namespace ConsoleRig
 
 	ThreadPool& GlobalServices::GetShortTaskThreadPool() { return *_pimpl->_shortTaskPool; }
     ThreadPool& GlobalServices::GetLongTaskThreadPool() { return *_pimpl->_longTaskPool; }
+    const std::shared_ptr<OSServices::PollingThread>& GlobalServices::GetPollingThread() { return _pimpl->_pollingThread; }
 
     IStep::~IStep() {}
     IProgress::~IProgress() {}

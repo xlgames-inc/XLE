@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MemoryFile.h"
+#include "DepVal.h"
 #include <algorithm>
 #if !defined(EXCLUDE_Z_LIB)
     #include "../Foreign/zlib/zlib.h"
@@ -340,13 +341,16 @@ namespace Assets
 		virtual IOReason	TryOpen(OSServices::BasicFile& result, const Marker& uri, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryOpen(OSServices::MemoryMappedFile& result, const Marker& uri, uint64 size, const char openMode[], OSServices::FileShareMode::BitField shareMode);
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
+		virtual IOReason	TryFakeFileChange(const Marker& marker);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
-		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents);
+		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags);
 		~FileSystem_Memory();
 
 	protected:
 		std::unordered_map<std::string, Blob> _filesAndContents;
+		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _attachedMonitors;
+		FileSystemMemoryFlags::BitField _flags;
 
 		struct MarkerStruct
 		{
@@ -415,7 +419,46 @@ namespace Assets
 
 	auto FileSystem_Memory::TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) -> IOReason
 	{
-		return IOReason::Invalid;
+		// Monitors are only really needed for unit tests and debugging purposes
+		// when not needed, we should disable them
+		if (!(_flags & FileSystemMemoryFlags::EnableChangeMonitoring))
+			return IOReason::Invalid;
+
+		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
+
+		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
+		if (m._fileIdx >= _filesAndContents.size())
+			return IOReason::FileNotFound;
+
+		auto range = EqualRange(_attachedMonitors, (unsigned)m._fileIdx);
+		for (auto r=range.first; r!=range.second; ++r)
+			// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
+			// compares the control block, rather than the object pointer itself
+			if (!r->second.owner_before(evnt) && !evnt.owner_before(r->second))
+				return IOReason::Invalid;
+
+		_attachedMonitors.insert(range.second, std::make_pair(m._fileIdx, evnt));
+		return IOReason::Success;
+	}
+
+	auto FileSystem_Memory::TryFakeFileChange(const Marker& marker) -> IOReason
+	{
+		if (!(_flags & FileSystemMemoryFlags::EnableChangeMonitoring))
+			return IOReason::Invalid;
+
+		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
+
+		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
+		if (m._fileIdx >= _filesAndContents.size())
+			return IOReason::FileNotFound;
+
+		auto range = EqualRange(_attachedMonitors, (unsigned)m._fileIdx);
+		for (auto r=range.first; r!=range.second; ++r) {
+			auto m = r->second.lock();
+			if (m)
+				m->OnChange();
+		}
+		return IOReason::Success;
 	}
 
 	FileDesc FileSystem_Memory::TryGetDesc(const Marker& marker)
@@ -438,17 +481,18 @@ namespace Assets
 			};
 	}
 
-	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents)
+	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags)
 	: _filesAndContents(filesAndContents)
-	{		
+	, _flags(flags)
+	{
 	}
 
 	FileSystem_Memory::~FileSystem_Memory() {}
 
 
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents)
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags)
 	{
-		return std::make_shared<FileSystem_Memory>(filesAndContents);
+		return std::make_shared<FileSystem_Memory>(filesAndContents, flags);
 	}
 }
 

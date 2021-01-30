@@ -25,8 +25,17 @@ namespace Assets
 		size_t decompressedSize,
 		unsigned fixedWindowSize = 0);
 
+	namespace FileSystemMemoryFlags
+	{
+		enum Flags
+		{
+			EnableChangeMonitoring = 1<<0
+		};
+		using BitField = unsigned;
+	}
+
 	// Creates a static case sensitive filesystem containing the given of files (in a single directory)
 	// with the given contents
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents);
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField = 0);
 }
 

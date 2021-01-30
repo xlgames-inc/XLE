@@ -141,6 +141,39 @@ namespace Assets
 		}
 
 		template<typename CharType>
+			IFileSystem::IOReason TryFakeFileChange(StringSection<CharType> filename)
+		{
+			MountingTree::CandidateObject candidateObject;
+			auto lookup = s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+					// attempt opening with the default file system...
+				if (s_defaultFileSystem)
+					return ::Assets::TryFakeFileChange(*s_defaultFileSystem, filename);
+				return IFileSystem::IOReason::FileNotFound;
+			}
+
+			for (;;) {
+				auto r = lookup.TryGetNext(candidateObject);
+				if (r == LookupResult::Invalidated) {
+                    // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
+                    lookup = s_mainMountingTree->Lookup(filename);
+                    continue;
+                }
+
+				if (r == LookupResult::NoCandidates)
+					break;
+
+				// As with TryMonitor, we end up calling TryFakeFileChange for every filesystem, not
+				// just the first that returns a success code
+				assert(candidateObject._fileSystem);
+				auto ioRes = candidateObject._fileSystem->TryFakeFileChange(candidateObject._marker);
+				(void)ioRes;
+			}
+
+			return IFileSystem::IOReason::FileNotFound;
+		}
+
+		template<typename CharType>
 			FileDesc TryGetDesc(StringSection<CharType> filename)
 		{
 			MountingTree::CandidateObject candidateObject;
@@ -205,6 +238,11 @@ namespace Assets
 		return Internal::TryMonitor(filename, evnt);
 	}
 
+	IFileSystem::IOReason MainFileSystem::TryFakeFileChange(StringSection<utf8> filename)
+	{
+		return Internal::TryFakeFileChange(filename);
+	}
+
 	FileDesc MainFileSystem::TryGetDesc(StringSection<utf8> filename)
 	{
 		return Internal::TryGetDesc(filename);
@@ -228,6 +266,11 @@ namespace Assets
 	IFileSystem::IOReason MainFileSystem::TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt)
 	{
 		return Internal::TryMonitor(filename, evnt);
+	}
+
+	IFileSystem::IOReason MainFileSystem::TryFakeFileChange(StringSection<utf16> filename)
+	{
+		return Internal::TryFakeFileChange(filename);
 	}
 
 	FileDesc MainFileSystem::TryGetDesc(StringSection<utf16> filename)
@@ -321,6 +364,15 @@ namespace Assets
 		auto transResult = fs.TryTranslate(marker, fn);
 		if (transResult == IFileSystem::TranslateResult::Success)
 			return fs.TryMonitor(marker, evnt);
+		return AsIOReason(transResult);
+	}
+
+	T1(CharType) IFileSystem::IOReason TryFakeFileChange(IFileSystem& fs, StringSection<CharType> fn)
+	{
+		IFileSystem::Marker marker;
+		auto transResult = fs.TryTranslate(marker, fn);
+		if (transResult == IFileSystem::TranslateResult::Success)
+			return fs.TryFakeFileChange(marker);
 		return AsIOReason(transResult);
 	}
 

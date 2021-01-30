@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -7,38 +5,26 @@
 #include "AssetServices.h"
 #include "AssetSetManager.h"
 #include "CompileAndAsyncManager.h"
-#include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachablePtr.h"
 
 namespace Assets
 {
-    Services::Services(Flags::BitField flags)
+    static ConsoleRig::AttachablePtr<AssetSetManager> s_assetSetsManagerInstance;
+    static ConsoleRig::AttachablePtr<CompileAndAsyncManager> s_compileAndAsyncManager;
+
+    AssetSetManager& Services::GetAssetSets()
     {
-        _assetSets = std::make_unique<AssetSetManager>();
-        _asyncMan = std::make_unique<CompileAndAsyncManager>();
+        return *s_assetSetsManagerInstance;
     }
 
-    Services::~Services() 
+    CompileAndAsyncManager& Services::GetAsyncMan()
     {
-        _assetSets.reset();
-        _asyncMan.reset();
+        return *s_compileAndAsyncManager;
     }
 
-    // todo -- figure out best pattern for managing s_servicesInstance
-    // for these kinds of singletons
-    namespace Internal
+    bool Services::HasAssetSets()
     {
-        static ConsoleRig::AttachablePtr<Services> s_servicesInstance;
-    }
-
-    Services& Services::GetInstance()
-    {
-        return *Internal::s_servicesInstance;
-    }
-    
-    bool Services::HasInstance()
-    {
-        return Internal::s_servicesInstance != nullptr;
+        return s_assetSetsManagerInstance != nullptr;
     }
 }
 

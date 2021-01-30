@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../OSServices/Linux/PollingThread.h"
+#include "../../OSServices/PollingThread.h"
 #include "../../OSServices/FileSystemMonitor.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/Threading/ThreadingUtils.h"

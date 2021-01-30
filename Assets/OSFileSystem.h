@@ -8,8 +8,18 @@
 #include "../Utility/UTFUtils.h"
 #include <memory>
 
+namespace OSServices { class PollingThread; }
+
 namespace Assets
 {
 	class IFileSystem;
-	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root = StringSection<utf8>(), bool ignorePaths = false);
+
+	/**
+	 * <summary>Create a mountable filesystem that reads and writes from the underlying OS filesystem</summary>
+	 * Note that the polling thread is only required for filesystem monitoring; and so it not essential 
+	**/
+	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(
+		StringSection<utf8> root = StringSection<utf8>(), 
+		const std::shared_ptr<OSServices::PollingThread>& pollingThread = nullptr,
+		bool ignorePaths = false);
 }

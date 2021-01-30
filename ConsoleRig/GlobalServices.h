@@ -11,6 +11,7 @@
 #include <assert.h>
 
 namespace Utility { class ThreadPool; }
+namespace OSServices { class PollingThread; }
 
 namespace ConsoleRig
 {
@@ -33,6 +34,7 @@ namespace ConsoleRig
     public:
         Utility::ThreadPool& GetShortTaskThreadPool();
         Utility::ThreadPool& GetLongTaskThreadPool();
+        const std::shared_ptr<OSServices::PollingThread>& GetPollingThread();
 
         static GlobalServices& GetInstance() { assert(s_instance); return *s_instance; }
 
