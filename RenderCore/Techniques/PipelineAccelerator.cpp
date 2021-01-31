@@ -538,9 +538,10 @@ namespace RenderCore { namespace Techniques
 
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 
-	PipelineAcceleratorPool::PipelineAcceleratorPool()
+	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device)
 	{
 		_guid = s_nextPipelineAcceleratorPoolGUID++;
+		_device = device;
 	}
 
 	PipelineAcceleratorPool::~PipelineAcceleratorPool() {}
@@ -548,9 +549,9 @@ namespace RenderCore { namespace Techniques
 
 	IPipelineAcceleratorPool::~IPipelineAcceleratorPool() {}
 
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool()
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>& device)
 	{
-		return std::make_shared<PipelineAcceleratorPool>();
+		return std::make_shared<PipelineAcceleratorPool>(device);
 	}
 
 }}

@@ -85,17 +85,6 @@ namespace UnitTests
 		RenderCore::InputElementDesc { "texCoord", 0, RenderCore::Format::R32G32_FLOAT }
 	};
 
-	static std::unique_ptr<MetalTestHelper> MakeTestHelper()
-	{
-		#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-		#elif GFXAPI_TARGET == GFXAPI_DX11
-			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
-		#else
-			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-		#endif
-	}
-
 	void RenderQuad(
 		MetalTestHelper& testHelper,
 		RenderCore::Metal::DeviceContext& metalContext,

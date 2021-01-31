@@ -42,6 +42,7 @@ namespace RenderCore { namespace Techniques
 	}
 
 	::Assets::FuturePtr<DescriptorSetAccelerator> MakeDescriptorSetAccelerator(
+		IDevice& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
 		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout,
@@ -79,7 +80,6 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		auto& device = Services::GetDevice();
 		auto shrLanguage = GetDefaultShaderLanguage();
 
 		// Build constant buffers

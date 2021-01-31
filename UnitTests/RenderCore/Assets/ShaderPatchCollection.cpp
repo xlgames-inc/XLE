@@ -4,17 +4,22 @@
 
 #include "../ReusableDataFiles.h"
 #include "../../UnitTestHelper.h"
+#include "../Metal/MetalUnitTest.h"
 #include "../../../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
-// #include "../../../Assets/AssetServices.h"
+#include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
 #include "../../../Assets/DepVal.h"
+#include "../../../Assets/DeferredConstruction.h"
+#include "../../../Assets/InitializerPack.h"
+#include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../ConsoleRig/Console.h"
 #include "../../../OSServices/Log.h"
 #include "../../../OSServices/FileSystemMonitor.h"
@@ -174,6 +179,18 @@ namespace UnitTests
 		::Assets::MainFileSystem::TryFakeFileChange(fn);
 	}
 
+	class ExpandIncludesPreprocessor : public RenderCore::ISourceCodePreprocessor
+	{
+	public:
+		virtual SourceCodeWithRemapping RunPreprocessor(
+            StringSection<> inputSource, 
+            StringSection<> definesTable,
+            const ::Assets::DirectorySearchRules& searchRules) override
+		{
+			return ShaderSourceParser::ExpandIncludes(inputSource, "main", searchRules);
+		}
+	};
+
 	TEST_CASE( "ShaderPatchCollection", "[rendercore_techniques]" )
 	{
 		UnitTest_SetWorkingDirectory();
@@ -216,7 +233,7 @@ namespace UnitTests
 			REQUIRE(patchCollection.GetHash() == patchCollection2.GetHash());
 		}
 
-		SECTION( "CompileShaderGraph" )
+		SECTION( "ShaderSourceParser::InstantiateShader" )
 		{
 			// Ensure that we can correctly compile the shader graph in the test data
 			// (otherwise the following tests won't work)
@@ -230,6 +247,45 @@ namespace UnitTests
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
 			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), generateOptions, RenderCore::ShaderLanguage::HLSL);
 			REQUIRE(instantiation._sourceFragments.size() != (size_t)0);
+		}
+
+		SECTION( "InstantiateShaderGraphCompiler" )
+		{
+			// Ensure that we can compile a shader graph via the intermediate compilers
+			// mechanisms
+			auto testHelper = MakeTestHelper();
+			auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+				testHelper->_device->CreateShaderCompiler(),
+				std::make_shared<ExpandIncludesPreprocessor>());
+			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(
+				customShaderSource, 
+				::Assets::Services::GetAsyncMan().GetIntermediateCompilers());
+
+			const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
+			
+			InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			auto compiledCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
+			std::vector<uint64_t> instantiations { Hash64("PerPixel") };
+
+			::Assets::InitializerPack initializers {
+				"ut-data/example-perpixel.pixel.hlsl:main:ps_*", 
+				"SOME_DEFINE=1",
+				compiledCollection,
+				instantiations
+			};
+			auto compileMarker = ::Assets::Internal::BeginCompileOperation(CompileProcess_InstantiateShaderGraph, std::move(initializers));
+			REQUIRE(compileMarker != nullptr);
+			auto compiledFromFile = compileMarker->InvokeCompile();
+			REQUIRE(compiledFromFile != nullptr);
+			compiledFromFile->StallWhilePending();
+			REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
+			auto artifacts = compiledFromFile->GetArtifactCollection();
+			REQUIRE(artifacts != nullptr);
+			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
+			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
+
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().DeregisterCompiler(compilerRegistration._registrationId);
 		}
 
 		SECTION( "CompileShaderPatchCollection1" )

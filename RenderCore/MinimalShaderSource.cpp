@@ -57,20 +57,15 @@ namespace RenderCore
 			// embue any exceptions with the dependency validation
 		CATCH(const ::Assets::Exceptions::ConstructionError& e)
 		{
-			Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(result._deps))));
+			result._errors = ::Assets::AsBlob(e.what());
 		}
 		CATCH(const std::exception& e)
 		{
-			Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(result._deps))));
+			result._errors = ::Assets::AsBlob(e.what());
 		}
 		CATCH_END
 
-		if (!success) {
-			Throw(::Assets::Exceptions::ConstructionError(
-				::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, 
-				::Assets::AsDepVal(MakeIteratorRange(result._deps)),
-				result._errors));
-		}
+		(void)success;
 
 		return result;
 	}

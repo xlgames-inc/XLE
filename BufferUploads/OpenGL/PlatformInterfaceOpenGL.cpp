@@ -10,7 +10,7 @@
 #if GFXAPI_TARGET == GFXAPI_OPENGLES
 
     #include "../PlatformInterface.h"
-    #include "../../RenderCore/Metal/Format.h"
+    #include "../../RenderCore/Format.h"
     #include <GLES2/gl2.h>
 
     namespace BufferUploads { namespace PlatformInterface

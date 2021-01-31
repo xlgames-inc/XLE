@@ -11,7 +11,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Assets { class PredefinedDescriptorSetLayout; }}
-namespace RenderCore { class IResource; }
+namespace RenderCore { class IResource; class IDevice; }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -38,6 +38,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	::Assets::FuturePtr<DescriptorSetAccelerator> MakeDescriptorSetAccelerator(
+		IDevice& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
 		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout,

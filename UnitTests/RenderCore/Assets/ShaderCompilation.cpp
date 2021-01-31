@@ -54,21 +54,6 @@ namespace UnitTests
 			::Assets::AsBlob(vsText))
 	};
 
-	static std::unique_ptr<MetalTestHelper> MakeTestHelper()
-	{
-		#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-		#elif GFXAPI_TARGET == GFXAPI_OPENGLES
-			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-		#elif GFXAPI_TARGET == GFXAPI_DX11
-			auto res = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
-			// hack -- required for D3D11 currently
-			auto metalContext = RenderCore::Metal::DeviceContext::Get(*res->_device->GetImmediateContext());
-			metalContext->Bind(RenderCore::Metal::RasterizerState{RenderCore::CullMode::None});
-			return res;
-		#endif
-	}
-
 	TEST_CASE( "ShaderCompilation-Compile", "[rendercore_metal]" )
 	{
 		using namespace RenderCore;

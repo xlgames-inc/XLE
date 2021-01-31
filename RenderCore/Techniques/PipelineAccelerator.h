@@ -20,6 +20,7 @@ namespace RenderCore
 }
 
 namespace RenderCore { namespace Assets { class RenderStateSet; } }
+namespace RenderCore { class IDevice; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -59,12 +60,15 @@ namespace RenderCore { namespace Techniques
 		virtual void	SetFrameBufferProperties(const FrameBufferProperties& fbProps) = 0;
 		virtual void	RebuildAllOutOfDatePipelines() = 0;
 
+		virtual std::shared_ptr<IDevice>& GetDevice() const = 0;
+
 		virtual ~IPipelineAcceleratorPool();
 
 		unsigned GetGUID() const { return _guid; }
 		uint64_t GetHash() const { return _guid; }	// GetHash() function for Assets::Internal::HashParam expansion
 	protected:
 		unsigned _guid;
+		std::shared_ptr<IDevice> _device;
 	};
 
 	T1(Type) inline void   IPipelineAcceleratorPool::SetGlobalSelector(StringSection<> name, Type value)
@@ -75,6 +79,6 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, MakeOpaqueIteratorRange(value), insertType);
 	}
 
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool();
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>&);
 }}
 

@@ -129,7 +129,7 @@ namespace RenderCore { namespace Techniques
 		if (patchCollection.GetInterface().GetPatches().empty())
 			return internalShaderSource.CompileFromFile(resId, definesTable);
 
-		auto result = AssembleShader(patchCollection, redirectedPatchFunctions, definesTable);
+		auto assembledShader = AssembleShader(patchCollection, redirectedPatchFunctions, definesTable);
 
 		// For simplicity, we'll just append the entry point file using an #include directive
 		// This will ensure we go through the normal mechanisms to find and load this file.
@@ -137,15 +137,18 @@ namespace RenderCore { namespace Techniques
 		//   -- in cases  (like GLSL) that don't have #include support, we would need another
 		//	changed preprocessor to handle the include expansions.
 		{
-			std::stringstream str;
+			std::stringstream str ;
 			str << "#include \"" << resId._filename << "\"" << std::endl;
-			result._processedSource += str.str();
+			assembledShader._processedSource += str.str();
 		}
 
-		return internalShaderSource.CompileFromMemory(
-			MakeStringSection(result._processedSource),
+		auto result = internalShaderSource.CompileFromMemory(
+			MakeStringSection(assembledShader._processedSource),
 			resId._entryPoint, resId._shaderModel,
 			definesTable);
+
+		result._deps.insert(result._deps.end(), assembledShader._dependencies.begin(), assembledShader._dependencies.end());
+		return result;
 	}
 
 	class CompiledShaderByteCode_InstantiateShaderGraph : public RenderCore::CompiledShaderByteCode

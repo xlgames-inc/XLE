@@ -193,7 +193,7 @@ namespace OSServices
                 // ways to avoid a crash, but I found out that only this solution worked. The global ignore alternative
                 // worked well on desktop, however. To learn more, search for SIGPIPE in:
                 // https://developer.apple.com/library/archive/documentation/NetworkingInternetWeb/Conceptual/NetworkingOverview/CommonPitfalls/CommonPitfalls.html#//apple_ref/doc/uid/TP40010220-CH4-SW11
-                if (setsockopt(_fd, SOL_SOCKET, 0/*SO_NOSIGPIPE*/, &enable, sizeof(enable)) < 0) {
+                if (setsockopt(_fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
                     int errnoValue = errno;
                     closesocket(_fd);
                     Throw(SocketException(SocketException::ErrorCode::bad_creation, errnoValue));

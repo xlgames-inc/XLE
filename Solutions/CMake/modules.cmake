@@ -16,7 +16,7 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ShaderParser ShaderParser)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../PlatformRig PlatformRig)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderOverlays RenderOverlays)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../SceneEngine SceneEngine)
-#add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../FixedFunctionModel FixedFunctionModel)
 
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign ForeignMisc)

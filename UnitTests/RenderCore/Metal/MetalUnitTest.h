@@ -45,6 +45,8 @@ namespace UnitTests
         ~MetalTestHelper();
     };
 
+    std::unique_ptr<MetalTestHelper> MakeTestHelper();
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    U N I T   T E S T   F B    H E L P E R
 
