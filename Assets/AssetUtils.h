@@ -9,6 +9,7 @@
 #include "AssetsCore.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/Streams/Stream.h"
 
 namespace Assets
 {
@@ -76,5 +77,25 @@ namespace Assets
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     void Dependencies_Shutdown();
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class IFileInterface;
+    class FileOutputStream : public OutputStream
+    {
+    public:
+        virtual size_type Tell() override;
+        virtual void Write(const void* p, size_type len) override;
+        virtual void WriteChar(char ch) override;
+        virtual void Write(StringSection<utf8> s) override;
+        virtual void Flush() override;
+        FileOutputStream(const std::shared_ptr<IFileInterface>& file);
+        FileOutputStream(std::unique_ptr<IFileInterface>&& file);
+
+        FileOutputStream(FileOutputStream&&) = default;
+        FileOutputStream& operator=(FileOutputStream&&) = default;
+    private:
+        std::shared_ptr<IFileInterface> _file;
+    };
 }
 

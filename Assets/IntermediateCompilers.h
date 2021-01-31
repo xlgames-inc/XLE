@@ -28,7 +28,9 @@ namespace Assets
             uint64_t typeCode, InitializerPack&&);
         void StallOnPendingOperations(bool cancelAll);
 		
+		struct SplitArchiveName { std::string _archive; uint64_t _entryId = 0ull; };
 		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(const InitializerPack&)>;
+		using ArchiveNameDelegate = std::function<SplitArchiveName(const InitializerPack&)>;
 
 		using RegisteredCompilerId = uint64_t;
 		struct  CompilerRegistration
@@ -39,7 +41,8 @@ namespace Assets
 			const std::string& name,										///< string name for the compiler, usually something user-presentable
 			ConsoleRig::LibVersionDesc srcVersion,							///< version information for the module (propagated onto any assets written to disk)
 			const std::shared_ptr<DependencyValidation>& compilerDepVal,	///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
-			CompileOperationDelegate&& delegate								///< delegate that can create the ICompileOperation for a given asset
+			CompileOperationDelegate&& delegate,							///< delegate that can create the ICompileOperation for a given asset
+			ArchiveNameDelegate&& archiveNameDelegate = {}					///< delegate used to store the artifacts with in ArchiveCache, rather than individual files (optional)
 			);
 
 		void DeregisterCompiler(RegisteredCompilerId id);

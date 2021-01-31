@@ -13,6 +13,7 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/FastParseValue.h"
 #include <stdexcept>
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
@@ -380,6 +381,50 @@ namespace UnitTests
         REQUIRE(std::string("(SELECTOR_0 || SELECTOR_1)") == tokenizer._preprocessorContext.GetCurrentConditionString());
 
         REQUIRE(tokenizer.PeekNextToken()._value.IsEmpty());
+    }
+
+    TEST_CASE( "Utilities-FastParseValue (integer)", "[utility]" )
+    {
+        const uint64_t testCount = 100000;
+        for (uint64_t t=0; t<testCount; ++t) {
+            auto u32 = (std::numeric_limits<uint32_t>::max() / testCount) * t;
+            char buffer[64];
+            uint32_t parsed = 0;
+
+            XlUI32toA(u32, buffer, dimof(buffer), 10);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed) == '\0');
+            REQUIRE(parsed == u32);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 10) == '\0');
+            REQUIRE(parsed == u32);
+
+            XlUI32toA(u32, buffer, dimof(buffer), 16);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 16) == '\0');
+            REQUIRE(parsed == u32);
+
+            XlUI32toA(u32, buffer, dimof(buffer), 8);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 8) == '\0');
+            REQUIRE(parsed == u32);
+        }
+
+        for (uint64_t t=0; t<testCount; ++t) {
+            auto i64 = int64_t((std::numeric_limits<uint64_t>::max() / testCount) * t);
+            char buffer[128];
+            int64_t parsed = 0;
+
+            XlI64toA(i64, buffer, dimof(buffer), 10);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed) == '\0');
+            REQUIRE(parsed == i64);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 10) == '\0');
+            REQUIRE(parsed == i64);
+
+            XlI64toA(i64, buffer, dimof(buffer), 16);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 16) == '\0');
+            REQUIRE(parsed == i64);
+
+            XlI64toA(i64, buffer, dimof(buffer), 8);
+            REQUIRE(*FastParseValue(MakeStringSection(buffer), parsed, 8) == '\0');
+            REQUIRE(parsed == i64);
+        }
     }
 }
 

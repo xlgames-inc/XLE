@@ -1670,6 +1670,8 @@ double XlAtoF64(const char* str, const char** endptr)
 static bool IsValidDimForI32(size_t dim, int radix)
 {
     switch(radix) {
+        case 8:
+            return dim > 12;        // "-20000000000"
         case 10:
             return dim > 11;        // "-2147483648" longest possible. need 11 chars + null terminator
         case 16:
@@ -1677,12 +1679,15 @@ static bool IsValidDimForI32(size_t dim, int radix)
         //expand when need.
     }
 
+    assert(0);
     return false;
 }
 
 static bool IsValidDimForI64(size_t dim, int radix)
 {
     switch(radix) {
+        case 8:
+            return dim > 23;    // "-1000000000000000000000"
         case 10:
             return dim > 20;    // "-9223372036854775808" or "18446744073709551615" longest possible. need 20 chars + null terminator
         case 16:
@@ -1690,6 +1695,7 @@ static bool IsValidDimForI64(size_t dim, int radix)
         //expand when need.
     }
 
+    assert(0);
     return false;
 }
 
@@ -1735,7 +1741,7 @@ static inline char* tpl_itoa(T value, char* buf, int radix)
 
 char* XlI32toA(int32 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 12) {
+	if (!IsValidDimForI32(dim, radix)) {
 		return 0;
 	}
 
@@ -1750,7 +1756,7 @@ char* XlI32toA(int32 value, char* buffer, size_t dim, int radix)
 
 char* XlI64toA(int64 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 65) {
+	if (!IsValidDimForI64(dim, radix)) {
 		return 0;
 	}
 
@@ -1783,7 +1789,7 @@ char* XlUI64toA(uint64 value, char* buffer, size_t dim, int radix)
 
 int XlI32toA_s(int32 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 12) {
+	if (!IsValidDimForI32(dim, radix)) {
 		return EINVAL;
 	}
 
@@ -1799,7 +1805,7 @@ int XlI32toA_s(int32 value, char* buffer, size_t dim, int radix)
 
 int XlI64toA_s(int64 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 65) {
+	if (!IsValidDimForI64(dim, radix)) {
 		return EINVAL;
 	}
 
@@ -1815,7 +1821,7 @@ int XlI64toA_s(int64 value, char* buffer, size_t dim, int radix)
 
 int XlUI32toA_s(uint32 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 12) {
+	if (!IsValidDimForI32(dim, radix)) {
 		return EINVAL;
 	}
 
@@ -1825,7 +1831,7 @@ int XlUI32toA_s(uint32 value, char* buffer, size_t dim, int radix)
 
 int XlUI64toA_s(uint64 value, char* buffer, size_t dim, int radix)
 {
-	if (dim < 65) {
+	if (!IsValidDimForI64(dim, radix)) {
 		return EINVAL;
 	}
 

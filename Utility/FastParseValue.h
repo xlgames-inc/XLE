@@ -19,6 +19,9 @@ namespace Utility
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst);
+    template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst, unsigned radix);
+    template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst, unsigned radix);
+    template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst, unsigned radix);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, float& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, double& dst);
 }

@@ -11,6 +11,7 @@
 #include "IArtifact.h"
 #include "InitializerPack.h"
 #include "CompilerLibrary.h"
+#include "ArchiveCache.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../OSServices/Log.h"
@@ -29,6 +30,7 @@ namespace Assets
 		std::string _name;
 		ConsoleRig::LibVersionDesc _srcVersion;
 		IntermediateCompilers::CompileOperationDelegate _delegate;
+		IntermediateCompilers::ArchiveNameDelegate _archiveNameDelegate;
 		DepValPtr _compilerLibraryDepVal;
 		IntermediatesStore::CompileProductsGroupId _storeGroupId = 0;
 	};
@@ -191,7 +193,7 @@ namespace Assets
         auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
         backgroundOp->SetDebugLabel(_initializers.ArchivableName());
 
-		const bool allowBackgroundOps = true;
+		const bool allowBackgroundOps = false;
 		if (allowBackgroundOps) {
 			// Unfortunately we have to copy _initializers here, because we 
 			// must allow for this marker to be reused (and both InvokeCompile 
@@ -271,7 +273,8 @@ namespace Assets
 		const std::string& name,
 		ConsoleRig::LibVersionDesc srcVersion,
 		const DepValPtr& compilerDepVal,
-		CompileOperationDelegate&& delegate
+		CompileOperationDelegate&& delegate,
+		ArchiveNameDelegate&& archiveNameDelegate
 		) -> CompilerRegistration
 	{
 		ScopedLock(_pimpl->_delegatesLock);
@@ -280,6 +283,7 @@ namespace Assets
 		registration->_name = name;
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
+		registration->_archiveNameDelegate = std::move(archiveNameDelegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
 		if (_pimpl->_store)
 			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name));

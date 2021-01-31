@@ -40,7 +40,6 @@ namespace Assets
 {
 	static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
-	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 	static const auto ChunkType_Multi = ConstHash64<'Mult', 'iChu', 'nk'>::Value;
 
 	class CompileProductsFile
@@ -52,13 +51,7 @@ namespace Assets
 			std::string _intermediateArtifact;
 		};
 		std::vector<Product> _compileProducts;
-
-		struct Dependency
-		{
-			std::string _filename;
-			uint64_t _timeMarker;
-		};
-		std::vector<Dependency> _dependencies;
+		std::vector<DependentFileState> _dependencies;
 
 		::Assets::AssetState _state = AssetState::Ready;
 		std::string _basePath;
@@ -131,7 +124,7 @@ namespace Assets
 					StringSection<utf8> name, value;
 					if (!formatter.TryAttribute(name, value))
 						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					result._dependencies.push_back(CompileProductsFile::Dependency {
+					result._dependencies.push_back(DependentFileState {
 						name.AsString(),
 						Conversion::Convert<uint64_t>(value)
 					});
@@ -307,7 +300,7 @@ namespace Assets
 		// Use HashFilename to avoid case sensitivity/slash direction problems
 		// todo --	we could also consider a system where we could use MainFileSystem::TryTranslate
 		//			to transform the filename into some more definitive representation
-		auto hash = HashFilename(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
+		auto hash = HashFilename(filename);
 		{
 			ScopedLock(RetainedRecordsLock);
 			auto i = LowerBound(RetainedRecords, hash);
@@ -348,13 +341,7 @@ namespace Assets
 
 			// propagate change messages...
 			// (duplicating processing from RegisterFileDependency)
-		utf8 directoryName[MaxPath];
-		FileNameSplitter<utf8> splitter(MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()));
-		SplitPath<utf8>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
-		
-		assert(0);  // deprecated with changes to FileSystemMonitor
-		// OSServices::FakeFileChange(MakeStringSection(directoryName), splitter.FileAndExtension());
-
+		MainFileSystem::TryFakeFileChange(filename);
 		record->OnChange();
 	}
 
@@ -434,6 +421,35 @@ namespace Assets
 		return std::make_shared<CompileProductsArtifactCollection>(productsFile, depVal, refCounts, refCountHashCode);
 	}
 
+	bool TryRegisterDependency(
+		const std::shared_ptr<DependencyValidation>& target,
+		const DependentFileState& fileState,
+		const StringSection<> assetName)
+	{
+		auto record = GetRetainedFileRecord(fileState._filename);
+
+		RegisterAssetDependency(target, record);
+
+		if (record->_state._status == DependentFileState::Status::Shadowed) {
+			Log(Verbose) << "Asset (" << assetName << ") is invalidated because dependency (" << fileState._filename << ") is marked shadowed" << std::endl;
+			return false;
+		}
+
+		if (!record->_state._timeMarker) {
+			Log(Verbose)
+				<< "Asset (" << assetName
+				<< ") is invalidated because of missing dependency (" << fileState._filename << ")" << std::endl;
+			return false;
+		} else if (record->_state._timeMarker != fileState._timeMarker) {
+			Log(Verbose)
+				<< "Asset (" << assetName
+				<< ") is invalidated because of file data on dependency (" << fileState._filename << ")" << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
 		StringSection<> archivableName,
 		CompileProductsGroupId groupId)
@@ -489,54 +505,21 @@ namespace Assets
 		auto depVal = std::make_shared<DependencyValidation>();
 
 		for (const auto&dep:finalProductsFile._dependencies) {
-			std::shared_ptr<RetainedFileRecord> record;
 			if (!finalProductsFile._basePath.empty()) {
+				auto adjustedDep = dep;
 				char buffer[MaxPath];
 				Legacy::XlConcatPath(buffer, dimof(buffer), finalProductsFile._basePath.c_str(), AsPointer(dep._filename.begin()), AsPointer(dep._filename.end()));
-				record = GetRetainedFileRecord(buffer);
-			} else
-				record = GetRetainedFileRecord(dep._filename);
-
-			RegisterAssetDependency(depVal, record);
-
-			if (record->_state._status == DependentFileState::Status::Shadowed) {
-				Log(Verbose) << "Asset (" << archivableName << ") is invalidated because dependency (" << finalProductsFile._basePath << ") is marked shadowed" << std::endl;
-				return nullptr;
-			}
-
-			if (!record->_state._timeMarker) {
-				Log(Verbose)
-					<< "Asset (" << archivableName
-					<< ") is invalidated because of missing dependency (" << finalProductsFile._basePath << ")" << std::endl;
-				return nullptr;
-			} else if (record->_state._timeMarker != dep._timeMarker) {
-				Log(Verbose)
-					<< "Asset (" << archivableName
-					<< ") is invalidated because of file data on dependency (" << finalProductsFile._basePath << ")" << std::endl;
-				return nullptr;
+				adjustedDep._filename = buffer;
+				if (!TryRegisterDependency(depVal, adjustedDep, archivableName))
+					return nullptr;
+			} else {
+				if (!TryRegisterDependency(depVal, dep, archivableName))
+					return nullptr;
 			}
 		}
 
 		return MakeArtifactCollection(finalProductsFile, depVal, _pimpl->_storeRefCounts, hashCode);
 	}
-
-	class FileOutputStream : public OutputStream
-    {
-    public:
-        virtual size_type Tell() override { return _file->TellP(); }
-        virtual void Write(const void* p, size_type len) override { _file->Write(p, 1, len); }
-        virtual void WriteChar(char ch) override { _file->Write(&ch, 1); }
-        virtual void Write(StringSection<utf8> s) override { _file->Write(s.begin(), sizeof(utf8), s.size()); }
-
-        virtual void Flush() override {}
-
-        FileOutputStream(const std::shared_ptr<IFileInterface>& file) : _file(file) {}
-
-        FileOutputStream(FileOutputStream&&) = default;
-        FileOutputStream& operator=(FileOutputStream&&) = default;
-    private:
-        std::shared_ptr<IFileInterface> _file;
-    };
 
 	void IntermediatesStore::StoreCompileProducts(
 		StringSection<> archivableName,
@@ -592,48 +575,40 @@ namespace Assets
 		OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(intermediateName).DriveAndPath());
 		std::vector<std::pair<std::string, std::string>> renameOps;
 
-		if (artifacts.size() == 1 && artifacts[0]._type == ChunkType_Text) {
-			auto mainBlobName = intermediateName + ".blob";
-			auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
-			outputFile->Write(AsPointer(artifacts[0]._data->begin()), artifacts[0]._data->size());
-			compileProductsFile._compileProducts.push_back({artifacts[0]._type, mainBlobName});
-			renameOps.push_back({mainBlobName + ".staging", mainBlobName});
-		} else {
-			// Will we create one chunk file that will contain most of the artifacts
-			// However, some special artifacts (eg, metric files), can become separate files
-			std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
-			for (const auto&a:artifacts)
-				if (a._type == ChunkType_Metrics) {
-					std::string metricsName;
-					if (!a._name.empty()) {
-						metricsName = intermediateName + "-" + a._name + ".metrics";
-					} else 
-						metricsName = intermediateName + ".metrics";
-					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
-					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-					compileProductsFile._compileProducts.push_back({a._type, metricsName});
-					renameOps.push_back({metricsName + ".staging", metricsName});
-				} else if (a._type == ChunkType_Log) {
-					std::string metricsName;
-					if (!a._name.empty()) {
-						metricsName = intermediateName + "-" + a._name + ".log";
-					} else 
-						metricsName = intermediateName + ".log";
-					auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".log", "wb", 0);
-					outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-					compileProductsFile._compileProducts.push_back({a._type, metricsName});
-					renameOps.push_back({metricsName + ".log", metricsName});
-				} else {
-					chunksInMainFile.push_back(a);
-				}
-
-			if (!chunksInMainFile.empty()) {
-				auto mainBlobName = intermediateName + ".chunk";
-				auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
-				ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
-				compileProductsFile._compileProducts.push_back({ChunkType_Multi, mainBlobName});
-				renameOps.push_back({mainBlobName + ".staging", mainBlobName});
+		// Will we create one chunk file that will contain most of the artifacts
+		// However, some special artifacts (eg, metric files), can become separate files
+		std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
+		for (const auto&a:artifacts)
+			if (a._type == ChunkType_Metrics) {
+				std::string metricsName;
+				if (!a._name.empty()) {
+					metricsName = intermediateName + "-" + a._name + ".metrics";
+				} else 
+					metricsName = intermediateName + ".metrics";
+				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
+				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
+				compileProductsFile._compileProducts.push_back({a._type, metricsName});
+				renameOps.push_back({metricsName + ".staging", metricsName});
+			} else if (a._type == ChunkType_Log) {
+				std::string metricsName;
+				if (!a._name.empty()) {
+					metricsName = intermediateName + "-" + a._name + ".log";
+				} else 
+					metricsName = intermediateName + ".log";
+				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".log", "wb", 0);
+				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
+				compileProductsFile._compileProducts.push_back({a._type, metricsName});
+				renameOps.push_back({metricsName + ".log", metricsName});
+			} else {
+				chunksInMainFile.push_back(a);
 			}
+
+		if (!chunksInMainFile.empty()) {
+			auto mainBlobName = intermediateName + ".chunk";
+			auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
+			ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
+			compileProductsFile._compileProducts.push_back({ChunkType_Multi, mainBlobName});
+			renameOps.push_back({mainBlobName + ".staging", mainBlobName});
 		}
 
 		// note -- we can set compileProductsFile._basePath here, and then make the dependencies
@@ -849,6 +824,31 @@ namespace Assets
 	: _file(file), _depVal(depVal), _requestParameters(requestParameters) {}
 	ChunkFileArtifactCollection::~ChunkFileArtifactCollection() {}
 
+	ArtifactRequestResult MakeArtifactRequestResult(ArtifactRequest::DataType dataType, const ::Assets::Blob& blob)
+	{
+		ArtifactRequestResult chunkResult;
+		if (	dataType == ArtifactRequest::DataType::BlockSerializer
+			||	dataType == ArtifactRequest::DataType::Raw) {
+			uint8_t* mem = (uint8*)XlMemAlign(blob->size(), sizeof(uint64_t));
+			chunkResult._buffer = std::unique_ptr<uint8_t[], PODAlignedDeletor>(mem);
+			chunkResult._bufferSize = blob->size();
+			std::memcpy(mem, blob->data(), blob->size());
+
+			// initialize with the block serializer (if requested)
+			if (dataType == ArtifactRequest::DataType::BlockSerializer)
+				Block_Initialize(chunkResult._buffer.get());
+		} else if (dataType == ArtifactRequest::DataType::ReopenFunction) {
+			auto blobCopy = blob;
+			chunkResult._reopenFunction = [blobCopy]() -> std::shared_ptr<IFileInterface> {
+				return CreateMemoryFile(blobCopy);
+			};
+		} else if (dataType == ArtifactRequest::DataType::SharedBlob) {
+			chunkResult._sharedBlob = blob;
+		} else {
+			assert(0);
+		}
+		return chunkResult;
+	}
 
 	std::vector<ArtifactRequestResult> BlobArtifactCollection::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
 	{
@@ -872,7 +872,7 @@ namespace Assets
 				Throw(Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::MissingFile,
 					_depVal,
-					StringMeld<128>() << "Missing chunk (" << r->_name << ")", _collectionName.c_str()));
+					StringMeld<128>() << "Missing chunk (" << r->_name << ") in collection " << _collectionName));
 
 			if (r->_expectedVersion != ~0u && (i->_version != r->_expectedVersion))
 				Throw(::Assets::Exceptions::ConstructionError(
@@ -880,8 +880,8 @@ namespace Assets
 					_depVal,
 					StringMeld<256>() 
 						<< "Data chunk is incorrect version for chunk (" 
-						<< r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version, 
-						_collectionName.c_str()));
+						<< r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version
+						<< " in collection " << _collectionName));
 		}
 
 		for (const auto& r:requests) {
@@ -889,35 +889,7 @@ namespace Assets
 				_chunks.begin(), _chunks.end(), 
 				[&r](const auto& c) { return c._type == r._type; });
 			assert(i != _chunks.end());
-
-			ArtifactRequestResult chunkResult;
-			if (	r._dataType == ArtifactRequest::DataType::BlockSerializer
-				||	r._dataType == ArtifactRequest::DataType::Raw) {
-				uint8_t* mem = (uint8*)XlMemAlign(i->_data->size(), sizeof(uint64_t));
-				chunkResult._buffer = std::unique_ptr<uint8_t[], PODAlignedDeletor>(mem);
-				chunkResult._bufferSize = i->_data->size();
-				std::memcpy(mem, i->_data->data(), i->_data->size());
-
-				// initialize with the block serializer (if requested)
-				if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
-					Block_Initialize(chunkResult._buffer.get());
-			} else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
-				auto blobCopy = i->_data;
-				auto depValCopy = _depVal;
-				chunkResult._reopenFunction = [blobCopy, depValCopy]() -> std::shared_ptr<IFileInterface> {
-					TRY {
-						return CreateMemoryFile(blobCopy);
-					} CATCH (const std::exception& e) {
-						Throw(Exceptions::ConstructionError(e, depValCopy));
-					} CATCH_END
-				};
-			} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
-				chunkResult._sharedBlob = i->_data;
-			} else {
-				assert(0);
-			}
-
-			result.emplace_back(std::move(chunkResult));
+			result.emplace_back(MakeArtifactRequestResult(r._dataType, i->_data));
 		}
 
 		return result;

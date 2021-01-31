@@ -33,6 +33,7 @@ namespace Assets
     std::vector<ArtifactRequestResult> ChunkFileContainer::ResolveRequests(
         IFileInterface& file, IteratorRange<const ArtifactRequest*> requests) const
     {
+        auto initialOffset = file.TellP();
         auto chunks = ChunkFile::LoadChunkTable(file);
         
         std::vector<ArtifactRequestResult> result;
@@ -77,7 +78,7 @@ namespace Assets
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
                 chunkResult._bufferSize = i->_size;
-                file.Seek(i->_fileOffset);
+                file.Seek(initialOffset + i->_fileOffset);
                 file.Read(chunkResult._buffer.get(), i->_size);
 
                 // initialize with the block serializer (if requested)
@@ -88,14 +89,14 @@ namespace Assets
 				auto blobCopy = _blob;
 				auto filenameCopy = _filename;
 				auto depValCopy = _validationCallback;
-				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy, depValCopy]() -> std::shared_ptr<IFileInterface> {
+				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy, depValCopy, initialOffset]() -> std::shared_ptr<IFileInterface> {
 					TRY {
 						std::shared_ptr<IFileInterface> result;
 						if (blobCopy) {
 							result = CreateMemoryFile(blobCopy);
 						} else 
 							result = MainFileSystem::OpenFileInterface(filenameCopy.c_str(), "rb");
-						result->Seek(offset);
+						result->Seek(initialOffset + offset);
 						return result;
 					} CATCH (const std::exception& e) {
 						Throw(Exceptions::ConstructionError(e, depValCopy));
@@ -104,7 +105,7 @@ namespace Assets
 			} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
                 chunkResult._sharedBlob = std::make_shared<std::vector<uint8_t>>();
                 chunkResult._sharedBlob->resize(i->_size);
-                file.Seek(i->_fileOffset);
+                file.Seek(initialOffset + i->_fileOffset);
                 file.Read(chunkResult._sharedBlob->data(), i->_size);
             } else {
                 assert(0);

@@ -14,6 +14,7 @@ add_executable(
     ConsoleRig/DynLibraryBinding.cpp
     Assets/MountingTreeTests.cpp
     Assets/AssetCompilerTests.cpp
+    Assets/ArchiveCacheTests.cpp
     )
 
 xle_configure_executable(UnitTests-Core)

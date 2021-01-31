@@ -19,12 +19,12 @@ namespace Utility
         if (*start == '-') { positive = false; ++start; }
         else if (*start == '+') ++start;
 
-        uint64 result = 0;
+        uint64_t result = 0;
         for (;;) {
             if (start >= input.end()) break;
             if (*start < '0' || *start > '9') break;
 
-            result = (result * 10ull) + uint64((*start) - '0');
+            result = (result * 10ull) + uint64_t((*start) - '0');
             ++start;
         }
         dst = positive ? result : -int64(result);
@@ -34,13 +34,13 @@ namespace Utility
     template<typename CharType>
         const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst)
     {
-        uint64 result = 0;
+        uint64_t result = 0;
         auto start = input.begin();
         for (;;) {
             if (start >= input.end()) break;
             if (*start < '0' || *start > '9') break;
 
-            result = (result * 10ull) + uint64((*start) - '0');
+            result = (result * 10ull) + uint64_t((*start) - '0');
             ++start;
         }
         dst = result;
@@ -50,13 +50,86 @@ namespace Utility
     template<typename CharType>
         const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst)
     {
-        uint32 result = 0;
+        uint32_t result = 0;
         auto start = input.begin();
         for (;;) {
             if (start >= input.end()) break;
             if (*start < '0' || *start > '9') break;
 
-            result = (result * 10u) + uint32((*start) - '0');
+            result = (result * 10u) + uint32_t((*start) - '0');
+            ++start;
+        }
+        dst = result;
+        return start;
+    }
+
+    template<typename CharType>
+        const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst, unsigned radix)
+    {
+        bool positive = true;
+        dst = 0;
+        auto start = input.begin();
+
+        if (start >= input.end()) return start;
+        if (*start == '-') { positive = false; ++start; }
+        else if (*start == '+') ++start;
+
+        uint64_t result = 0;
+        for (;;) {
+            if (start >= input.end()) break;
+            if (*start >= '0' && *start <= '9') {
+                if (((*start) - '0') >= radix) break;
+                result = (result * radix) + uint64_t((*start) - '0');
+            } else if (*start >= 'a' && *start <= 'a'+radix-11) {
+                result = (result * radix) + uint64_t((*start) - 'a' + 10);
+            } else if (*start >= 'A' && *start <= 'A'+radix-11) {
+                result = (result * radix) + uint64_t((*start) - 'A' + 10);
+            } else
+                break;
+            ++start;
+        }
+        dst = positive ? result : -int64(result);
+        return start;
+    }
+
+    template<typename CharType>
+        const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst, unsigned radix)
+    {
+        uint64_t result = 0;
+        auto start = input.begin();
+        for (;;) {
+            if (start >= input.end()) break;
+            if (*start >= '0' && *start <= '9') {
+                if (((*start) - '0') >= radix) break;
+                result = (result * radix) + uint64_t((*start) - '0');
+            } else if (*start >= 'a' && *start <= 'a'+radix-11) {
+                result = (result * radix) + uint64_t((*start) - 'a' + 10);
+            } else if (*start >= 'A' && *start <= 'A'+radix-11) {
+                result = (result * radix) + uint64_t((*start) - 'A' + 10);
+            } else
+                break;
+            ++start;
+        }
+        dst = result;
+        return start;
+    }
+
+    template<typename CharType>
+        const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst, unsigned radix)
+    {
+        uint32_t result = 0;
+        auto start = input.begin();
+        for (;;) {
+            if (start >= input.end()) break;
+            if (*start >= '0' && *start <= '9') {
+                if (((*start) - '0') >= radix) break;
+                result = (result * radix) + uint32_t((*start) - '0');
+            } else if (*start >= 'a' && *start <= 'a'+radix-11) {
+                result = (result * radix) + uint32_t((*start) - 'a' + 10);
+            } else if (*start >= 'A' && *start <= 'A'+radix-11) {
+                result = (result * radix) + uint32_t((*start) - 'A' + 10);
+            } else
+                break;
             ++start;
         }
         dst = result;
@@ -87,8 +160,8 @@ namespace Utility
             // deal with subnormal numbers, and check for overflow/underflow conditions.
             // This implementation is very imprecise -- but at least it's quick.
 
-        uint64 beforePoint;
-        uint64 afterPoint;
+        uint64_t beforePoint;
+        uint64_t afterPoint;
         unsigned afterPointPrec;
 
         bool positive;
@@ -136,13 +209,13 @@ namespace Utility
         auto mantissa = SignedRShift(beforePoint, shift);
         auto exponent = shift+23;
         
-        uint32 result;
+        uint32_t result;
         if (beforePoint) {
             result = (((127+exponent) << 23) & 0x7F800000) | (mantissa & 0x7FFFFF);
         } else result = 0;
 
         if (afterPoint) {
-            static std::tuple<int32, uint64, double> ExponentTable[32];
+            static std::tuple<int32, uint64_t, double> ExponentTable[32];
             static bool ExponentTableBuilt = false;
             int32 bias = 40;
             if (!ExponentTableBuilt) {
@@ -152,7 +225,7 @@ namespace Utility
                     auto integerBase2Exp = std::ceil(base2Exp); // - .5);
                     auto fractBase2Exp = base2Exp - integerBase2Exp;
                     assert(fractBase2Exp <= 0.f);   // (std::powf(2.f, fractBase2Exp) must be smaller than 1 for precision reasons)
-                    auto multiplier = uint64(std::exp2(fractBase2Exp + bias));
+                    auto multiplier = uint64_t(std::exp2(fractBase2Exp + bias));
 
                     ExponentTable[c] = std::make_tuple(int32(integerBase2Exp), multiplier, fractBase2Exp);
                 }
@@ -167,9 +240,9 @@ namespace Utility
                 // that we can get the maximum precision. Double precision
                 // FPU math is accurate enough, but single precision isn't.
                 // ideally we should do it completely on the CPU.
-            uint64 rawMantissaT;
+            uint64_t rawMantissaT;
             if (idealBias < bias) {
-                auto multiplier = uint64(std::exp2(std::get<2>(ExponentTable[afterPointPrec]) + bias));
+                auto multiplier = uint64_t(std::exp2(std::get<2>(ExponentTable[afterPointPrec]) + bias));
                 rawMantissaT = afterPoint * multiplier;
                 bias = idealBias;
             } else {
@@ -204,9 +277,9 @@ namespace Utility
 
         #if defined(_DEBUG)
             float compare = strtof((const char*)start, nullptr);
-            auto t0 = *(uint32*)&compare;
-            auto t1 = *(uint32*)&dst;
-            const uint32 expectedAccuracy = explicitExponent ? 4 : 1;
+            auto t0 = *(uint32_t*)&compare;
+            auto t1 = *(uint32_t*)&dst;
+            const uint32_t expectedAccuracy = explicitExponent ? 4 : 1;
             assert((t0-t1) <= expectedAccuracy || (t1-t0) <= expectedAccuracy);
         #endif
 
@@ -257,5 +330,8 @@ namespace Utility
     template const utf8* FastParseValue(StringSection<utf8> input, int64_t& dst);
     template const utf8* FastParseValue(StringSection<utf8> input, uint64_t& dst);
     template const utf8* FastParseValue(StringSection<utf8> input, uint32_t& dst);
+    template const utf8* FastParseValue(StringSection<utf8> input, int64_t& dst, unsigned);
+    template const utf8* FastParseValue(StringSection<utf8> input, uint64_t& dst, unsigned);
+    template const utf8* FastParseValue(StringSection<utf8> input, uint32_t& dst, unsigned);
     template const utf8* FastParseValue(StringSection<utf8> input, float& dst);
 }
