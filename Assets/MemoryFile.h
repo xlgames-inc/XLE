@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IFileSystem.h"
+#include "../Utility/Streams/PathUtils.h"
 #include <unordered_map>
 
 namespace Assets
@@ -36,6 +37,9 @@ namespace Assets
 
 	// Creates a static case sensitive filesystem containing the given of files (in a single directory)
 	// with the given contents
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField = 0);
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(
+		const std::unordered_map<std::string, Blob>& filesAndContents,
+		const FilenameRules& filenameRules = FilenameRules { '/', true },
+		FileSystemMemoryFlags::BitField = 0);
 }
 

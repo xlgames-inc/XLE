@@ -561,7 +561,7 @@ namespace Utility
 		return hval;
 	}
 
-	static uint64_t FNVHash64(uint16 chr, uint64_t hval)
+	static uint64_t FNVHash64(uint16_t chr, uint64_t hval)
 	{
 		// FNV always works with 8 bit values entering the machine
 		//	-- so we have to split this value up into 2, and do it twice.
@@ -581,7 +581,7 @@ namespace Utility
 	}
 
 	template<>
-		uint64_t HashFilename(StringSection<utf16> filename, uint64_t seed, const FilenameRules& rules)
+		uint64_t HashFilename(StringSection<utf16> filename, const FilenameRules& rules, uint64_t seed)
 	{
 		// Note -- see also an interesting hashing for filenames in the linux source /fs/ folder.
 		//		it does a simple 32 bit hash, but does 4 characters at a time.
@@ -606,7 +606,7 @@ namespace Utility
 	}
 
 	template<>
-		uint64_t HashFilename(StringSection<utf8> filename, uint64_t seed, const FilenameRules& rules)
+		uint64_t HashFilename(StringSection<utf8> filename, const FilenameRules& rules, uint64_t seed)
 	{
 		// Implemented so we get the same hash for utf8 and utf16 versions
 		// of the same string
@@ -632,33 +632,105 @@ namespace Utility
 	static inline bool IsSeparator(utf16 chr)	{ return chr == '/' || chr == '\\'; }
 	static inline bool IsSeparator(utf8 chr)	{ return chr == '/' || chr == '\\'; }
 
-	template<>
-		uint64_t HashFilenameAndPath(StringSection<utf16> filename, uint64_t seed, const FilenameRules& rules)
+	template<typename CharType> uint16_t NextChar(CharType const*& iterator, CharType const*);
+
+	template<> uint16_t NextChar(utf8 const*& iterator, utf8 const* end) { return (uint16_t)utf8_nextchar(iterator, end); }
+	template<> uint16_t NextChar(utf16 const*& iterator, utf16 const* end) { return (uint16_t)*iterator++; }
+
+	template<bool CaseSensitive, typename CharType>
+		uint64_t HashFilenameAndPath_Internal(StringSection<CharType> filename, const FilenameRules& rules, uint64_t seed)
 	{
+		if (filename.IsEmpty())
+			return FNVHash64('\0', seed);	// note that we can't ignore the seed in the return value, because that might hold some importance to the caller
+
 		// This is a special version of HashFilenameAndPath where we assume there may be path
 		// separators in the filename. Whenever we find any sequence of either type of path
 		// separator, we hash a single '/'
 
 		uint64_t hval = seed; 
-		if (rules.IsCaseSensitive()) {
-			for (auto i = filename.begin(); i<filename.end();) {
-				if (IsSeparator(*i)) {
-					++i;
+
+		uint64_t backpathQueue[64];
+		unsigned backpathQueueCount = 0;
+
+		// Special case some logic for paths that begin with a '/' -- this allows us
+		// to handle an exception for strings that are only separators. That is the only
+		// cases where we don't ignore a separator at the end of a string
+		auto i = filename.begin();
+		if (i != filename.end() && IsSeparator(*i)) {
+			while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+			hval = FNVHash64('/', hval);
+		}
+
+		backpathQueue[backpathQueueCount++] = hval;
+		bool pendingSlash = false;
+
+		for (; i!=filename.end();) {
+			if (*i == '.') {
+				if ((i+1) == filename.end()) {
+					// ending in a segment that is just '.'. We ignore that final dot, it holds
+					// no meaning
+					return hval;
+				} else if (IsSeparator(*(i+1))) {
+					// This is "./". There are no cases where this has an impact, we should ignore it
+					i += 2;
 					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
-					hval = FNVHash64('/', hval);
-				} else {
-					hval = FNVHash64(*i++, hval);
+					continue;
+				} else if (*(i+1) == '.') {
+					if (pendingSlash) {
+						hval = FNVHash64('/', hval);
+						pendingSlash = false;
+					}
+
+					if ((i+2) == filename.end()) {
+						// ending in a back path
+						if (backpathQueueCount < 2) {
+							// entering into negative territory at the end (see below for how this is handled)
+							hval = FNVHash64('.', backpathQueue[0]);
+							hval = FNVHash64('.', hval);
+							hval = FNVHash64('/', hval);
+							return hval;
+						}
+						return backpathQueue[backpathQueueCount-2];
+					} else if (IsSeparator(*(i+2))) {
+						if (backpathQueueCount < 2) {
+							// we're entering into negative territory. Nothing that we've read
+							// so far actually matters (other than if we started with a separator)
+							// We can handle this case recursively
+							i += 2;
+							while (i != filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+							hval = FNVHash64('.', backpathQueue[0]);
+							hval = FNVHash64('.', hval);
+							hval = FNVHash64('/', hval);
+							return HashFilenameAndPath(MakeStringSection(i, filename.end()), rules, hval);
+						}
+						hval = backpathQueue[backpathQueueCount-2];
+						backpathQueueCount-=1;
+						i += 2;
+						while (i != filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+						if (i != filename.end())	// note that we ignore slashes at the end of paths
+							hval = FNVHash64('/', hval);
+						continue;
+					}
 				}
 			}
-		} else {
-			for (auto i = filename.begin(); i<filename.end();) {
-				if (IsSeparator(*i)) {
-					++i;
-					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
-					hval = FNVHash64('/', hval);
-				} else {
-					hval = FNVHash64((utf16)std::tolower(*i++), hval);
-				}
+
+			if (pendingSlash) {
+				hval = FNVHash64('/', hval);
+				pendingSlash = false;
+			}
+
+			while (i != filename.end() && !IsSeparator(*i)) {
+				auto nextChar = NextChar<CharType>(i, filename.end());
+				if constexpr (!CaseSensitive)
+					nextChar = std::tolower(nextChar);
+				hval = FNVHash64(nextChar, hval);
+			}
+
+			if (i != filename.end()) {
+				while (i != filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
+				assert(backpathQueueCount < dimof(backpathQueue));
+				backpathQueue[backpathQueueCount++] = hval;
+				pendingSlash = true;
 			}
 		}
 
@@ -666,36 +738,23 @@ namespace Utility
 	}
 
 	template<>
-		uint64_t HashFilenameAndPath(StringSection<utf8> filename, uint64_t seed, const FilenameRules& rules)
+		uint64_t HashFilenameAndPath(StringSection<utf16> filename, const FilenameRules& rules, uint64_t seed)
 	{
-		// This is a special version of HashFilenameAndPath where we assume there may be path
-		// separators in the filename. Whenever we find any sequence of either type of path
-		// separator, we hash a single '/'
-
-		uint64_t hval = seed;
 		if (rules.IsCaseSensitive()) {
-			for (auto i = filename.begin(); i<filename.end();) {
-				if (IsSeparator(*i)) {
-					++i;
-					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
-					hval = FNVHash64('/', hval);
-				} else {
-					hval = FNVHash64((utf16)utf8_nextchar(i, filename.end()), hval);
-				}
-			}
+			return HashFilenameAndPath_Internal<true>(filename, rules, seed);
 		} else {
-			for (auto i = filename.begin(); i<filename.end();) {
-				if (IsSeparator(*i)) {
-					++i;
-					while (i < filename.end() && IsSeparator(*i)) ++i;	// skip over additionals
-					hval = FNVHash64('/', hval);
-				} else {
-					hval = FNVHash64((utf16)std::tolower(utf8_nextchar(i, filename.end())), hval);
-				}
-			}
+			return HashFilenameAndPath_Internal<false>(filename, rules, seed);
 		}
+	}
 
-		return hval;
+	template<>
+		uint64_t HashFilenameAndPath(StringSection<utf8> filename, const FilenameRules& rules, uint64_t seed)
+	{
+		if (rules.IsCaseSensitive()) {
+			return HashFilenameAndPath_Internal<true>(filename, rules, seed);
+		} else {
+			return HashFilenameAndPath_Internal<false>(filename, rules, seed);
+		}
 	}
 
     FilenameRules s_defaultFilenameRules('/', true);

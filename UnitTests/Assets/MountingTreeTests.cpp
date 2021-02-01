@@ -7,6 +7,7 @@
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/MemoryFile.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Conversion.h"
 #include <stdexcept>
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
@@ -179,6 +180,10 @@ namespace UnitTests
 
 				// "./" or "../" within the mounted filesystem part may or may not work depending on the 
 				// filesystem implementation
+				lookup = mountingTree->Lookup("ut-data/././internalFolder/one/two/../../one/two/./three/./././exampleFileFive.file");
+				REQUIRE(lookup.IsGood());
+				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
+				REQUIRE(obj._mountPoint == "/ut-data/");
 
 				// When the mounting tree "absolute path mode" is set to MountingTree, the absolute
 				// root is the root of the mounting tree (not the root of the raw FS)
@@ -217,6 +222,10 @@ namespace UnitTests
 
 				// "./" or "../" within the mounted filesystem part may or may not work depending on the 
 				// filesystem implementation
+				lookup = mountingTree->Lookup(u"ut-data/././internalFolder/one/two/../../one/two/./three/./././exampleFileFive.file");
+				REQUIRE(lookup.IsGood());
+				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
+				REQUIRE(obj._mountPoint == "/ut-data/");
 
 				// When the mounting tree "absolute path mode" is set to MountingTree, the absolute
 				// root is the root of the mounting tree (not the root of the raw FS)
@@ -230,5 +239,104 @@ namespace UnitTests
 			mountingTree->Unmount(mnt2);
 			mountingTree->Unmount(mnt1);
 		}
+	}
+
+	template<typename CharType>
+		uint64_t H(const utf8* input, const FilenameRules& rules)
+	{
+		auto str = Conversion::Convert<std::basic_string<CharType>>(std::basic_string<utf8>(input));
+		return HashFilenameAndPath(MakeStringSection(str), rules);
+	}
+
+	template<typename CharType>
+		static void HashAwkwardPaths(const FilenameRules& rules)
+	{
+		// In many cases different input strings will generate the same output hash
+		// this is done to try to make sure that different strings that point to the
+		// same object will have the same hash (to the extent that we have enough context to know that)
+		auto hashCurrentA = H<CharType>("./", rules);
+		auto hashCurrentB = H<CharType>("path-i/..", rules);
+		auto hashCurrentC = H<CharType>("path-i/../", rules);
+		auto hashCurrentD = H<CharType>(".", rules);
+		auto hashCurrentE = H<CharType>("././././.", rules);
+		auto hashCurrentF = H<CharType>("./././", rules);
+		REQUIRE(hashCurrentA == hashCurrentB);
+		REQUIRE(hashCurrentA == hashCurrentC);
+		REQUIRE(hashCurrentA == hashCurrentD);
+		REQUIRE(hashCurrentA == hashCurrentE);
+		REQUIRE(hashCurrentA == hashCurrentF);
+
+		auto hashEmpty = H<CharType>("", rules);
+		REQUIRE(hashCurrentA != hashEmpty);
+		
+		auto hashFilesystemRoot = H<CharType>("/", rules);
+		REQUIRE(hashCurrentA != hashFilesystemRoot);
+		REQUIRE(hashEmpty != hashFilesystemRoot);
+
+		auto hashBackOneA = H<CharType>("../", rules);
+		auto hashBackOneB = H<CharType>("../something/..", rules);
+		REQUIRE(hashBackOneA != hashBackOneB);
+		REQUIRE(hashBackOneA != hashEmpty);
+		REQUIRE(hashBackOneA != hashFilesystemRoot);
+		REQUIRE(hashBackOneA != hashCurrentA);
+
+		auto hashBackPathComboA = H<CharType>("path-one/path-two/path-three", rules);
+		auto hashBackPathComboB = H<CharType>("path-one/path-i/../path-two/path-three/path-four/..", rules);
+		auto hashBackPathComboC = H<CharType>("path-one/path-i/path-i2/../../path-two/path-three/path-four/..", rules);
+		auto hashBackPathComboD = H<CharType>("path-one/path-two/path-three/", rules);
+		auto hashBackPathComboE = H<CharType>("path-one/path-i/../path-two/path-three/path-four/../", rules);
+		REQUIRE(hashBackPathComboA == hashBackPathComboB);
+		REQUIRE(hashBackPathComboA == hashBackPathComboC);
+		REQUIRE(hashBackPathComboA == hashBackPathComboD);
+		REQUIRE(hashBackPathComboA == hashBackPathComboE);
+
+		auto hashNegativeDomainA = H<CharType>("../../something", rules);
+		auto hashNegativeDomainB = H<CharType>("ignored/ignored/../../alsoignored/../../../something", rules);
+		REQUIRE(hashNegativeDomainA == hashNegativeDomainB);
+		REQUIRE(hashNegativeDomainA != H<CharType>("something", rules));
+
+		auto hashNegativeDomainC = H<CharType>("../../something/something/returned", rules);
+		auto hashNegativeDomainD = H<CharType>("returned", rules);
+		REQUIRE(hashNegativeDomainC != hashNegativeDomainD);
+
+		REQUIRE(H<CharType>("something", rules) == H<CharType>("./something", rules));
+		REQUIRE(H<CharType>("something", rules) != H<CharType>(".something", rules));
+
+		REQUIRE(H<CharType>("somedir/./somedir2", rules) == H<CharType>("somedir/somedir2", rules));
+
+		auto hashExtraneousEndA = H<CharType>("somedir/", rules);
+		auto hashExtraneousEndB = H<CharType>("somedir/.", rules);
+		auto hashExtraneousEndC = H<CharType>("somedir/./././", rules);
+		auto hashExtraneousEndD = H<CharType>("somedir/./././.", rules);
+		auto hashExtraneousEndE = H<CharType>("somedir", rules);
+		REQUIRE(hashExtraneousEndA == hashExtraneousEndB);
+		REQUIRE(hashExtraneousEndA == hashExtraneousEndC);
+		REQUIRE(hashExtraneousEndA == hashExtraneousEndD);
+		REQUIRE(hashExtraneousEndA == hashExtraneousEndE);
+
+		REQUIRE(H<CharType>("one/two", rules) == H<CharType>("one//\\/two", rules));
+		REQUIRE(H<CharType>("../../negative-paths", rules) != H<CharType>("/../../negative-paths", rules));
+		REQUIRE(H<CharType>("../../something/something/returned", rules) != H<CharType>("returned", rules));
+		REQUIRE(H<CharType>("/filename", rules) != H<CharType>("filename", rules));
+		REQUIRE(H<CharType>("/../../filename", rules) != H<CharType>("../../filename", rules));
+	}
+
+	TEST_CASE( "HashFilenameAndPath", "[assets]" )
+	{
+		// todo -- check 64 deep lookup
+
+		FilenameRules rules0('/', true);
+		FilenameRules rules1('/', false);
+
+		HashAwkwardPaths<utf8>(rules0);
+		HashAwkwardPaths<utf16>(rules0);
+		HashAwkwardPaths<utf8>(rules1);
+		HashAwkwardPaths<utf16>(rules1);
+
+		// Hashes should be the same regardless of whether the input is utf8 or utf16
+		REQUIRE(H<utf8>("ignored/ignored/../../alsoignored/../../../something", rules0) == H<utf16>("ignored/ignored/../../alsoignored/../../../something", rules0));
+		REQUIRE(H<utf8>("ignored/ignored/../../alsoignored/../../../something", rules1) == H<utf16>("ignored/ignored/../../alsoignored/../../../something", rules1));
+
+		REQUIRE(H<utf8>("internalFolder/exampleFileThree.file", rules0) == H<utf16>("internalFolder/exampleFileThree.file", rules0));
 	}
 }

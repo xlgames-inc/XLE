@@ -170,10 +170,10 @@ namespace Utility
 
 	static const uint64_t s_FNV_init64 = 0xcbf29ce484222325ULL;
     template<typename CharType>
-		uint64_t HashFilename(StringSection<CharType> filename, uint64_t seed = s_FNV_init64, const FilenameRules& rules = s_defaultFilenameRules);
+		uint64_t HashFilename(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules, uint64_t seed = s_FNV_init64);
 
 	template<typename CharType>
-		uint64_t HashFilenameAndPath(StringSection<CharType> filename, uint64_t seed = s_FNV_init64, const FilenameRules& rules = s_defaultFilenameRules);
+		uint64_t HashFilenameAndPath(StringSection<CharType> filename, const FilenameRules& rules = s_defaultFilenameRules, uint64_t seed = s_FNV_init64);
 
     namespace Legacy
     {

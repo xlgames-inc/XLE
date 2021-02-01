@@ -344,12 +344,13 @@ namespace Assets
 		virtual IOReason	TryFakeFileChange(const Marker& marker);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
-		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags);
+		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags);
 		~FileSystem_Memory();
 
 	protected:
-		std::unordered_map<std::string, Blob> _filesAndContents;
+		std::vector<std::pair<uint64_t, Blob>> _filesAndContents;
 		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _attachedMonitors;
+		FilenameRules _filenameRules;
 		FileSystemMemoryFlags::BitField _flags;
 
 		struct MarkerStruct
@@ -363,9 +364,9 @@ namespace Assets
 		if (filename.IsEmpty())
 			return TranslateResult::Invalid;
 
-		// Note -- case sensitive lookup here
-		auto i = _filesAndContents.find(filename.AsString());
-		if (i == _filesAndContents.end())
+		auto hash = HashFilenameAndPath(filename, _filenameRules);
+		auto i = LowerBound(_filesAndContents, hash);
+		if (i == _filesAndContents.end() || i->first != hash)
 			return TranslateResult::Invalid;
 
 		result.resize(sizeof(MarkerStruct));
@@ -379,8 +380,15 @@ namespace Assets
 		if (filename.IsEmpty())
 			return TranslateResult::Invalid;
 
-		auto converted = Conversion::Convert<std::basic_string<utf8>>(filename);
-		return TryTranslate(result, MakeStringSection(converted));
+		auto hash = HashFilenameAndPath(filename, _filenameRules);
+		auto i = LowerBound(_filesAndContents, hash);
+		if (i == _filesAndContents.end() || i->first != hash)
+			return TranslateResult::Invalid;
+
+		result.resize(sizeof(MarkerStruct));
+		auto* out = (MarkerStruct*)AsPointer(result.begin());
+		out->_fileIdx = std::distance(_filesAndContents.begin(), i);
+		return TranslateResult::Success;
 	}
 
 	auto FileSystem_Memory::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
@@ -481,18 +489,28 @@ namespace Assets
 			};
 	}
 
-	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags)
-	: _filesAndContents(filesAndContents)
+	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags)
+	: _filenameRules(filenameRules)
 	, _flags(flags)
 	{
+		_filesAndContents.reserve(filesAndContents.size());
+		for (const auto&i:filesAndContents) {
+			auto fnHash = HashFilename(MakeStringSection(i.first), _filenameRules);
+			auto i2 = LowerBound(_filesAndContents, fnHash);
+			assert(i2 == _filesAndContents.end() || i2->first != fnHash);
+			_filesAndContents.insert(i2, {fnHash, i.second});
+		}
 	}
 
 	FileSystem_Memory::~FileSystem_Memory() {}
 
 
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, FileSystemMemoryFlags::BitField flags)
+	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(
+		const std::unordered_map<std::string, Blob>& filesAndContents,
+		const FilenameRules& filenameRules,
+		FileSystemMemoryFlags::BitField flags)
 	{
-		return std::make_shared<FileSystem_Memory>(filesAndContents, flags);
+		return std::make_shared<FileSystem_Memory>(filesAndContents, filenameRules, flags);
 	}
 }
 

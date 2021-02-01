@@ -128,8 +128,14 @@ namespace Conversion
 
     template<> std::basic_string<utf16> Convert(const std::basic_string<utf8>& input)
     {
-        assert(0);      // not implemented
-        return {};
+        // Note -- despite the name utf8_2_ucs2 actually does generate
+        //      utf16 characters for non-BMP "Basic Multilingual Plane" characters
+		std::basic_string<utf16> result;
+		result.resize(input.size());
+		utf8_2_ucs2(
+			AsPointer(input.begin()), input.size(),
+			(ucs2*)AsPointer(result.begin()), result.size());
+		return result;
     }
     
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs2>& input)

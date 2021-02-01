@@ -124,7 +124,7 @@ namespace Assets
 				assert(_cachedHashValues[d] == 0);
 				auto segment = MakeStringSection((const CharType*)_segments[d].begin(), (const CharType*)_segments[d].end());
 				auto rootHash = (d == 0) ? s_FNV_init64 : _cachedHashValues[d - 1];
-				_cachedHashValues[d] = HashFilename(segment, rootHash, _pimpl->_rules);
+				_cachedHashValues[d] = HashFilename(segment, _pimpl->_rules, rootHash);
 			}
 			_nextHashValueToBuild = std::max(_nextHashValueToBuild, mt._depth);
 
@@ -343,7 +343,7 @@ namespace Assets
 
 		uint64 hash = s_FNV_init64;
 		for (auto i:split.GetSections())
-			hash = HashFilename(i, hash, _pimpl->_rules);
+			hash = HashFilename(i, _pimpl->_rules, hash);
 		
 		ScopedLock(_pimpl->_mountsLock);
 		MountID id = _pimpl->_changeId++;
