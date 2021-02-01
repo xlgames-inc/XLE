@@ -13,16 +13,15 @@ namespace Utility
 {
 
     template <typename Formatter>
-        unsigned StreamDOM<Formatter>::ParseElement(Formatter& formatter, bool rootElement)
+        unsigned StreamDOM<Formatter>::ParseElement(Formatter& formatter, bool rootElement, StringSection<> name)
     {
-        typename Formatter::InteriorSection section;
-        if (!rootElement && !formatter.TryBeginElement(section))
+        if (!rootElement && !formatter.TryBeginElement())
             return ~0u;
 
         unsigned e = ~0u;
         {
             ElementDesc newElement;
-            newElement._name = section;
+            newElement._name = name;
             newElement._firstAttribute = ~0u;
             newElement._firstChild = ~0u;
             newElement._nextSibling = ~0u;
@@ -34,18 +33,24 @@ namespace Utility
         auto lastAttribute = ~0u;
         for (;;) {
             auto next = formatter.PeekNext();
+            if (next == Formatter::Blob::MappedItem) {
+                typename Formatter::InteriorSection name;
+                if (!formatter.TryMappedItem(name))
+                    Throw(FormatException(
+                        "Error while reading mapped item name in StreamDOM", formatter.GetLocation()));
+
+                next = formatter.PeekNext();
             if (next == Formatter::Blob::BeginElement) {
-                auto newElement = ParseElement(formatter, false);
+                    auto newElement = ParseElement(formatter, false, name);
                 if (lastChild == ~0u) {
                     _elements[e]._firstChild = newElement;
                 } else {
                     _elements[lastChild]._nextSibling = newElement;
                 }
                 lastChild = newElement;
-            } else if (next == Formatter::Blob::AttributeName) {
-                typename Formatter::InteriorSection name;
+                } else if (next == Formatter::Blob::Value) {
                 typename Formatter::InteriorSection value;
-                if (!formatter.TryAttribute(name, value))
+                    if (!formatter.TryValue(value))
                     Throw(FormatException(
                         "Error while reading attribute in StreamDOM", formatter.GetLocation()));
 
@@ -61,6 +66,16 @@ namespace Utility
                     _attributes[lastAttribute]._nextSibling = a;
                 }
                 lastAttribute = a;
+                } else {
+                    Throw(FormatException(
+                        "Expecting either a value or element for mapped item in StreamDOM", formatter.GetLocation()));
+                }
+            } else if (next == Formatter::Blob::Value) {
+                Throw(FormatException(
+                        "Sequence values not supported by StreamDOM (use a mapping)", formatter.GetLocation()));
+            } else if (next == Formatter::Blob::BeginElement) {
+                Throw(FormatException(
+                        "Sequence elements not supported by StreamDOM (use a mapping)", formatter.GetLocation()));
             } else if (next == Formatter::Blob::EndElement || next == Formatter::Blob::None) {
                 break;
             } else if (next == Formatter::Blob::CharacterData) {
@@ -108,7 +123,7 @@ namespace Utility
             // Parse the input formatter, building a tree
             // of elements and a list of attributes.
             // We can start with several top-level elements
-        ParseElement(formatter, true);
+        ParseElement(formatter, true, {});
     }
 
     template <typename Formatter>

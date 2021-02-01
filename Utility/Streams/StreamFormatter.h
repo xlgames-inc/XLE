@@ -132,31 +132,33 @@ namespace Utility
         FormatException(const char message[], StreamLocation location);
     };
 
+    enum class FormatterBlob
+    {
+        MappedItem,
+        Value,
+        BeginElement,
+        EndElement,
+        CharacterData,
+        None 
+    };
+
     template<typename CharType=char>
         class XL_UTILITY_API InputStreamFormatter
     {
     public:
-        enum class Blob 
-        {
-            BeginElement, EndElement, 
-            AttributeName, AttributeValue, 
-			CharacterData,
-			None 
-        };
-        Blob PeekNext();
+        FormatterBlob PeekNext();
 
-        using InteriorSection = StringSection<CharType>;
-
-        bool TryBeginElement(InteriorSection& name);
+        bool TryBeginElement();
         bool TryEndElement();
-        bool TryAttribute(InteriorSection& name, InteriorSection& value);
-		bool TryCharacterData(InteriorSection&);
-
-        void SkipElement();
+        bool TryMappedItem(StringSection<CharType>& name);
+        bool TryValue(StringSection<CharType>& value);
+		bool TryCharacterData(StringSection<CharType>&);
 
         StreamLocation GetLocation() const;
 
         using value_type = CharType;
+        using InteriorSection = StringSection<CharType>;
+        using Blob = FormatterBlob;
 
         InputStreamFormatter(const MemoryMappedInputStream& stream);
 		InputStreamFormatter(StringSection<CharType> inputData) : InputStreamFormatter(MemoryMappedInputStream{inputData.begin(), inputData.end()}) {}
@@ -167,7 +169,7 @@ namespace Utility
 		InputStreamFormatter& operator=(const InputStreamFormatter& cloneFrom);
     protected:
         MemoryMappedInputStream _stream;
-        Blob _primed;
+        FormatterBlob _primed;
         signed _activeLineSpaces;
         signed _parentBaseLine;
 
@@ -215,6 +217,82 @@ namespace Utility
 	{
 		input.SerializeMethod(formatter);
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Formatter>
+        void SkipElement(Formatter& formatter)
+    {
+        unsigned subtreeEle = 0;
+        typename Formatter::InteriorSection dummy0;
+        for (;;) {
+            switch(formatter.PeekNext()) {
+            case FormatterBlob::BeginElement:
+                if (!formatter.TryBeginElement())
+                    Throw(FormatException(
+                        "Malformed begin element while skipping forward", formatter.GetLocation()));
+                ++subtreeEle;
+                break;
+
+            case FormatterBlob::EndElement:
+                if (!subtreeEle) return;    // end now, while the EndElement is primed
+
+                if (!formatter.TryEndElement())
+                    Throw(FormatException(
+                        "Malformed end element while skipping forward", formatter.GetLocation()));
+                --subtreeEle;
+                break;
+
+            case FormatterBlob::MappedItem:
+                if (!formatter.TryMappedItem(dummy0))
+                    Throw(FormatException(
+                        "Malformed mapped item while skipping forward", formatter.GetLocation()));
+                break;
+
+            case FormatterBlob::Value:
+                if (!formatter.TryValue(dummy0))
+                    Throw(FormatException(
+                        "Malformed mapped item while skipping forward", formatter.GetLocation()));
+                break;
+
+            default:
+                Throw(FormatException(
+                    "Unexpected blob or end of stream hit while skipping forward", formatter.GetLocation()));
+            }
+        }
+    }
+
+    template<typename Formatter>
+        void RequireBeginElement(Formatter& formatter)
+    {
+        if (!formatter.TryBeginElement())
+            Throw(Utility::FormatException("Expecting begin element", formatter.GetLocation()));
+    }
+
+    template<typename Formatter>
+        void RequireEndElement(Formatter& formatter)
+    {
+        if (!formatter.TryEndElement())
+            Throw(Utility::FormatException("Expecting end element", formatter.GetLocation()));
+    }
+
+    template<typename Formatter>
+        typename Formatter::InteriorSection RequireMappedItem(Formatter& formatter)
+    {
+        typename Formatter::InteriorSection name;
+        if (!formatter.TryMappedItem(name))
+            Throw(Utility::FormatException("Expecting mapped item", formatter.GetLocation()));
+        return name;
+    }
+
+    template<typename Formatter>
+        typename Formatter::InteriorSection RequireValue(Formatter& formatter)
+    {
+        typename Formatter::InteriorSection value;
+        if (!formatter.TryValue(value))
+            Throw(Utility::FormatException("Expecting value", formatter.GetLocation()));
+        return value;
+    }
 }
 
 using namespace Utility;

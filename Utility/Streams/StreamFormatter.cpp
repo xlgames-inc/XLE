@@ -317,7 +317,7 @@ namespace Utility
     template<typename CharType>
         auto InputStreamFormatter<CharType>::PeekNext() -> Blob
     {
-        if (_primed != Blob::None) return _primed;
+        if (_primed != FormatterBlob::None) return _primed;
 
         using Consts = FormatterConstants<CharType>;
         
@@ -378,10 +378,45 @@ namespace Utility
                 break;
 
             case '=':
+                if (_activeLineSpaces <= _parentBaseLine) {
+                    _protectedStringMode = false;
+                    return _primed = FormatterBlob::EndElement;
+                }
+
                 _stream.AdvancePointer(sizeof(CharType));
                 EatWhitespace<CharType>(_stream);
-                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
-                return _primed = Blob::AttributeValue;
+
+                // This is a sequence item. In other words, it's just the value part of a key/value pair
+                // It functions like an element in an array
+                // It can be either a value or an element. But an element will always be marked with
+                // a '~'
+                //
+                // This construction is effectively 2 tokens:
+                //    "+" and then either "~" or some value
+                // Even still, we don't accept a newline between the 2 tokens. That would lead to extra
+                // complications (such as, what happens if the identation increases or decreases at that
+                // point). Also, because there can't be any newlines, we also cannot support any comments
+                // in this space
+                //
+                // So, we just call EatWhitespace (which jumps over any non-new-line whitespace) and expect
+                // to find either a 
+                if (_stream.RemainingBytes() < sizeof(CharType))
+                    Throw(FormatException("Unexpected end of file in the middle of mapping pair", GetLocation()));
+
+                if (*(const CharType*)_stream.ReadPointer() == '\r' || *(const CharType*)_stream.ReadPointer() == '\n')
+                    Throw(FormatException("The value for a key/pair mapping pair must follow immediate after the '='. New lines can not appear here", GetLocation()));
+
+                if (TryEat(_stream, Consts::CommentPrefix))
+                    Throw(FormatException("The value for a key/pair mapping pair must follow immediate after the '='. Comments can not appear here", GetLocation()));
+
+                if (*(const CharType*)_stream.ReadPointer() == '~') {
+                    _protectedStringMode = false;
+                    _stream.AdvancePointer(sizeof(CharType));
+                    return _primed = FormatterBlob::BeginElement;
+                } else {
+                    _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                    return _primed = FormatterBlob::Value;
+                }
 
             case '~':
                 if (TryEat(_stream, Consts::CommentPrefix)) {
@@ -397,42 +432,34 @@ namespace Utility
                 }
 
                 // else, this is a new element
+                _protectedStringMode = false;
                 if (_activeLineSpaces <= _parentBaseLine) {
-                    _protectedStringMode = false;
-                    return _primed = Blob::EndElement;
+                    return _primed = FormatterBlob::EndElement;
                 }
 
                 _stream.AdvancePointer(sizeof(CharType));
-                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
-                return _primed = Blob::BeginElement;
+                return _primed = FormatterBlob::BeginElement;
 
             default:
                 // first, if our spacing has decreased, then we must consider it an "end element"
                 // caller must follow with "TryEndElement" until _expectedLineSpaces matches _activeLineSpaces
                 if (_activeLineSpaces <= _parentBaseLine) {
                     _protectedStringMode = false;
-                    return _primed = Blob::EndElement;
+                    return _primed = FormatterBlob::EndElement;
                 }
 
                     // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
                     // more indented than it's parent will become it's child
                     // let's see if there's a fully formed blob here
                 _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
-                return _primed = Blob::AttributeName;
+                return _primed = FormatterBlob::MappedItem;
             }
         }
 
             // we've reached the end of the stream...
             // while there are elements on our stack, we need to end them
-        if (_baseLineStackPtr > 0) return _primed = Blob::EndElement;
-        return Blob::None;
-    }
-
-    template<typename CharType> int AsInt(const CharType* inputStart, const CharType* inputEnd)
-    {
-        char buffer[32];
-        Conversion::Convert(buffer, dimof(buffer), inputStart, inputEnd);
-        return XlAtoI32(buffer);
+        if (_baseLineStackPtr > 0) return _primed = FormatterBlob::EndElement;
+        return FormatterBlob::None;
     }
 
     template<typename CharType>
@@ -473,10 +500,10 @@ namespace Utility
                     Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
 
                     if (!XlCompareStringI(convBuffer, "Format")) {
-                        if (AsInt(aValueStart, aValueEnd)!=1)
+                        if (Conversion::Convert<int>(MakeStringSection(aValueStart, aValueEnd))!=2)
                             Throw(FormatException("Unsupported format in input stream formatter header", GetLocation()));
                     } else if (!XlCompareStringI(convBuffer, "Tab")) {
-                        _tabWidth = AsInt(aValueStart, aValueEnd);
+                        _tabWidth = Conversion::Convert<unsigned>(MakeStringSection(aValueStart, aValueEnd));
                         if (_tabWidth==0)
                             Throw(FormatException("Bad tab width in input stream formatter header", GetLocation()));
                     }
@@ -492,12 +519,9 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryBeginElement(InteriorSection& name)
+        bool InputStreamFormatter<CharType>::TryBeginElement()
     {
-        if (PeekNext() != Blob::BeginElement) return false;
-
-        name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
+        if (PeekNext() != FormatterBlob::BeginElement) return false;
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
@@ -506,7 +530,7 @@ namespace Utility
 
         _baseLineStack[_baseLineStackPtr++] = _activeLineSpaces;
         _parentBaseLine = _activeLineSpaces;
-        _primed = Blob::None;
+        _primed = FormatterBlob::None;
         _protectedStringMode = false;
         return true;
     }
@@ -514,81 +538,86 @@ namespace Utility
     template<typename CharType>
         bool InputStreamFormatter<CharType>::TryEndElement()
     {
-        if (PeekNext() != Blob::EndElement) return false;
+        if (PeekNext() != FormatterBlob::EndElement) return false;
 
         if (_baseLineStackPtr != 0) {
             _parentBaseLine = (_baseLineStackPtr > 1) ? _baseLineStack[_baseLineStackPtr-2] : -1;
             --_baseLineStackPtr;
         }
 
-        _primed = Blob::None;
+        _primed = FormatterBlob::None;
         _protectedStringMode = false;
         return true;
     }
 
     template<typename CharType>
-        void InputStreamFormatter<CharType>::SkipElement()
+        bool InputStreamFormatter<CharType>::TryMappedItem(StringSection<CharType>& name)
     {
-        unsigned subtreeEle = 0;
-        InteriorSection dummy0, dummy1;
-        for (;;) {
-            switch(PeekNext()) {
-            case Blob::BeginElement:
-                if (!TryBeginElement(dummy0))
-                    Throw(FormatException(
-                        "Malformed begin element while skipping forward", GetLocation()));
-                ++subtreeEle;
-                break;
-
-            case Blob::EndElement:
-                if (!subtreeEle) return;    // end now, while the EndElement is primed
-
-                if (!TryEndElement())
-                    Throw(FormatException(
-                        "Malformed end element while skipping forward", GetLocation()));
-                --subtreeEle;
-                break;
-
-            case Blob::AttributeName:
-                if (!TryAttribute(dummy0, dummy1))
-                    Throw(FormatException(
-                        "Malformed attribute while skipping forward", GetLocation()));
-                break;
-
-            default:
-                Throw(FormatException(
-                    "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
-            }
-        }
-    }
-
-    template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryAttribute(InteriorSection& name, InteriorSection& value)
-    {
-        if (PeekNext() != Blob::AttributeName) return false;
+        if (PeekNext() != FormatterBlob::MappedItem) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
         name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
         EatWhitespace<CharType>(_stream);
 
-        _primed = Blob::None;
+        _primed = FormatterBlob::None;
         _protectedStringMode = false;
+        
+        // After the name must come '='. Anything else is invalid in the syntax
+        // "sequence items" (ie, values that don't have a key=value arrangement)
+        // should begin with a "=", which will distinguish them from mapped items
+        //
+        // even though this makes up a series of tokens, we don't support newlines
+        // before the '='. That would create complications with identation. And 
+        // because we don't support newlines, we also don't support comments.
+        // 
+        // The same rules also apply for between the '=" and the start of the element/value
 
-        if (PeekNext() == Blob::AttributeValue) {
-            value._start = (const CharType*)_stream.ReadPointer();
-            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, true, GetLocation());
-            _protectedStringMode = false;
-            _primed = Blob::None;
-        } else {
-            value._start = value._end = nullptr;
-        }
+        if (_stream.RemainingBytes() < sizeof(CharType))
+            Throw(FormatException("Unexpected end of file while looking for a '=' to signify value for mapped item", GetLocation()));
+
+        if (*(const CharType*)_stream.ReadPointer() == '\r' || *(const CharType*)_stream.ReadPointer() == '\n')
+            Throw(FormatException("New lines can not appear before the '=' in a mapping name/value pair", GetLocation()));
+
+        if (TryEat(_stream, FormatterConstants<CharType>::CommentPrefix))
+            Throw(FormatException("Comments can not appear before the '=' in a mapping name/value pair", GetLocation()));
+
+        const auto* next = (const CharType*)_stream.ReadPointer();
+        if (*next != '=')
+            Throw(FormatException("Missing '=' to signify value for mapped item", GetLocation()));
+        
+        // this can be followed up with either an element (ie, new element containing within
+        // itself more elements, sequences, or mapped pairs) or a value. But there must be one
+        // or the other -- as so far we've only deserialized the "key" part of a key/value pair
+        //
+        // Note that we don't have to advance over the '=', because from this point on the 
+        // deserialization is identical to what we get with a sequence value/element. PeekNext
+        // should just be able to find either of those
+        
+        assert(PeekNext() == FormatterBlob::Value || PeekNext() == FormatterBlob::BeginElement);
+
+        return true;
+    }
+
+    template<typename CharType>
+        bool InputStreamFormatter<CharType>::TryValue(StringSection<CharType>& value)
+    {
+        if (PeekNext() != FormatterBlob::Value) return false;
+
+        value._start = (const CharType*)_stream.ReadPointer();
+        value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
+        EatWhitespace<CharType>(_stream);
+
+        _primed = FormatterBlob::None;
+        _protectedStringMode = false;
 
         return true;
     }
 
 	template<typename CharType>
-		bool InputStreamFormatter<CharType>::TryCharacterData(InteriorSection&)
+		bool InputStreamFormatter<CharType>::TryCharacterData(StringSection<CharType>&)
 	{
+        // CharacterData never appears with in this format files. However it might appear in
+        // XML or some other format
 		return false;
 	}
 
@@ -605,7 +634,7 @@ namespace Utility
         InputStreamFormatter<CharType>::InputStreamFormatter(const MemoryMappedInputStream& stream) 
         : _stream(stream)
     {
-        _primed = Blob::None;
+        _primed = FormatterBlob::None;
         _activeLineSpaces = 0;
         _parentBaseLine = -1;
         _baseLineStackPtr = 0;
@@ -624,7 +653,7 @@ namespace Utility
 		InputStreamFormatter<CharType>::InputStreamFormatter()
 		: _stream(nullptr, nullptr)
 	{
-		_primed = Blob::None;
+		_primed = FormatterBlob::None;
 		_activeLineSpaces = _parentBaseLine = 0;
 
 		for (signed& s:_baseLineStack) s = 0;

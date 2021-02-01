@@ -162,9 +162,9 @@ namespace Assets
 
 		for (;;) {
 			auto next = formatter.PeekNext();
-			if (next == InputStreamFormatter<char>::Blob::AttributeName) {
+			if (next == FormatterBlob::MappedItem) {
 				StringSection<> name, value;
-				if (!formatter.TryAttribute(name, value))
+				if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
 					break;
 				result.push_back({name.AsString(), value.AsString()});
 			} else {
@@ -180,9 +180,12 @@ namespace Assets
 		std::vector<std::pair<uint64_t, DependentFileState>> result;
 		InputStreamFormatter<char> formatter(data);
 
-		while (formatter.PeekNext() == InputStreamFormatter<char>::Blob::BeginElement) {
+		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
 			StringSection<> eleName;
-			if (!formatter.TryBeginElement(eleName))
+			if (!formatter.TryMappedItem(eleName))
+				return result;	// break on any error
+				
+			if (!formatter.TryBeginElement())
 				return result;	// break on any error
 
 			uint64_t objectId = 0;
@@ -190,9 +193,9 @@ namespace Assets
 			if (end != eleName.end())
 				return result;	// break on any error
 
-			while (formatter.PeekNext() == InputStreamFormatter<char>::Blob::AttributeName) {
+			while (formatter.PeekNext() == FormatterBlob::MappedItem) {
 				StringSection<> name, value;
-				if (!formatter.TryAttribute(name, value))
+				if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
 					return result;
 
 				uint64_t timeCode = 0;
@@ -204,10 +207,6 @@ namespace Assets
 			}
 
 			if (!formatter.TryEndElement())
-				return result;
-
-			StringSection<> name, value;
-			if (!formatter.TryAttribute(name, value))
 				return result;
 		}
 

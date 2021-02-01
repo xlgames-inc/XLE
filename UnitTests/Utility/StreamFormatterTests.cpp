@@ -54,26 +54,184 @@ namespace UnitTests
             InputStreamFormatter<utf8> formatter(MakeStringSection(testString));
             StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
             TestClass testClass;
-             doc.RootElement() >> testClass;
+            doc.RootElement() >> testClass;
             REQUIRE( testClass._c1 == 10 );
             REQUIRE( testClass._c2 == 50 );
             REQUIRE( testClass._c3 == UInt2(20, 30) );
         }
     }
 
-    const std::basic_string<utf8> testString = (const utf8*)R"~~(~~!Format=1; Tab=4
+    TEST_CASE( "StreamFormatter-InputSyntaxTests", "[utility]" )
+    {
+        SECTION("NestedElements") {
+            const std::basic_string<utf8> testStringWithNestedElements = R"(~~!Format=2; Tab=4
+Value0 = value0
+Value1 = value1
+Element =~
+    NestedElement =~
+        something = value
+    AnotherNestedElement =~
+        anotherThing = value
+    AnotherValue = something
+Value2 = value2)";
+            InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithNestedElements));
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireValue(formatter).AsString() == "value0");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireValue(formatter).AsString() == "value1");
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Element");
+            RequireBeginElement(formatter);
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "NestedElement");
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "something");
+            REQUIRE(RequireValue(formatter).AsString() == "value");
+            RequireEndElement(formatter);
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "AnotherNestedElement");
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "anotherThing");
+            REQUIRE(RequireValue(formatter).AsString() == "value");
+            RequireEndElement(formatter);
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "AnotherValue");
+            REQUIRE(RequireValue(formatter).AsString() == "something");
+            RequireEndElement(formatter);
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value2");
+            REQUIRE(RequireValue(formatter).AsString() == "value2");
+        }
+
+        SECTION("Sequences") {
+            const std::basic_string<utf8> testStringWithSequences = R"(~~!Format=2; Tab=4
+=~
+    Value0 = value
+    Value1 = value2
+=       ~           
+    SomeValue=one
+    SomeValue=two
+=~           ~~ This is comment at the start of an element
+    =!%one
+    =&*two
+    =(three)
+=~
+    =~
+        =~
+            =~
+)";
+            InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithSequences));
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireValue(formatter).AsString() == "value");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireValue(formatter).AsString() == "value2");
+            RequireEndElement(formatter);
+
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireValue(formatter).AsString() == "one");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireValue(formatter).AsString() == "two");
+            RequireEndElement(formatter);
+
+            RequireBeginElement(formatter);
+            REQUIRE(RequireValue(formatter).AsString() == "!%one");
+            REQUIRE(RequireValue(formatter).AsString() == "&*two");
+            REQUIRE(RequireValue(formatter).AsString() == "(three)");
+            RequireEndElement(formatter);
+
+            RequireBeginElement(formatter);
+            RequireBeginElement(formatter);
+            RequireBeginElement(formatter);
+            RequireBeginElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+        }
+
+        SECTION("CompressedElements") {
+            const std::basic_string<utf8> testStringWithCompressedElements = R"(~~!Format=2; Tab=4
+Value0 = value; Value1 = value2
+=one; =two;
+
+~~ Following is a sight detail in the syntax. In the following element, the second "=~" that appears
+~~ begins a nested element within the first
+~~ This is also the case if all of the elements begin on the same line. The syntax looks a little
+~~ ambigous; but we interpret it as nesting
+
+=~; SomeValue=one;
+    SomeValue=two; =~
+
+~~ Following on from above; are examples of 3 sibling elements
+
+=~; =~; =~;
+=~; value=1; =~; value=2; =~; value=3
+)";
+            InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithCompressedElements));
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireValue(formatter).AsString() == "value");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireValue(formatter).AsString() == "value2");
+
+            REQUIRE(RequireValue(formatter).AsString() == "one");
+            REQUIRE(RequireValue(formatter).AsString() == "two");
+
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireValue(formatter).AsString() == "one");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireValue(formatter).AsString() == "two");
+            RequireBeginElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+
+            RequireBeginElement(formatter);
+            RequireBeginElement(formatter);
+            RequireBeginElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireValue(formatter).AsString() == "1");
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireValue(formatter).AsString() == "2");
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireValue(formatter).AsString() == "3");
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+            RequireEndElement(formatter);
+        }
+    }
+
+    const std::basic_string<utf8> testStringXML = R"(
+
+<element v0="stringValue" v1="5.">
+<element v0="sequenceValue0" v1="sequenceValue1" v2="sequenceValue2"/>
+Character data
+</element>
+
+    )";
+
+
+    const std::basic_string<utf8> testString = (const utf8*)R"~~(~~!Format=2; Tab=4
 
 DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
 
-~StrataMaterial
-    ~Strata
-        ~One
+StrataMaterial=~
+    Strata=~
+        One=~
             Texture0=Tex0
             Texture1=Tex1
             Slopes=SlopesTex
             EndHeight = 0.4
             Mapping = {4,3,2}
-        ~Two
+        Two=~
             Texture0=aaTex0
             Texture1=12Tex1
             Slopes=XXXSlopesTexXXX
@@ -81,7 +239,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
             Mapping = {7,9,10,12,14,16,17}
     MaterialId=2u
 
-~GradFlagMaterial
+GradFlagMaterial=~
     MaterialId=0u
     Texture0=grassTextureNo9227
     Texture1=tr_canyon_rock_700b_800b
@@ -89,7 +247,7 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
     Texture3=tr_canyon_rock3d_602b
     Texture4=grassTextureNo9227; Mapping={1.8f, 1f, 1f, 1f, 1f}
 
-~GradFlagMaterial
+GradFlagMaterial=~
     MaterialId=1u
     Texture0=ProcTexture
     Texture1=stonesTextureNo8648
@@ -97,42 +255,42 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
     Texture3=tr_canyon_rock3d_409a
     Texture4=gravelTextureNo7899; Mapping={1.8f, 1f, 1f, 1f, 1f}
 
-~ProcTextureSetting; Name=ProcTexture; 
+ProcTextureSetting=~; Name=ProcTexture; 
     Texture0=grassTextureNo7109
     Texture1=grassTextureNo6354; HGrid=5f; Gain=0.5f
 )~~";
 
-    const std::string testString2 = R"--(~~!Format=1; Tab=4
+    const std::string testString2 = R"--(~~!Format=2; Tab=4
 
-~EnvSettings
+EnvSettings=~
 	Name=environment
 	
-	~ToneMapSettings; BloomDesaturationFactor=0.6f; BloomRampingFactor=0.8f; SceneKey=0.23f
+	ToneMapSettings=~; BloomDesaturationFactor=0.6f; BloomRampingFactor=0.8f; SceneKey=0.23f
 		BloomBlurStdDev=1.32f; Flags=3i; BloomBrightness=20.8f; LuminanceMax=3f; WhitePoint=8f
 		BloomThreshold=10f; LuminanceMin=0.06f; BloomScale=-1405359i
 	
-	~AmbientSettings; AmbientLight=-12080934i; AmbientBrightness=0.1f; SkyReflectionBlurriness=2f
+	AmbientSettings=~; AmbientLight=-12080934i; AmbientBrightness=0.1f; SkyReflectionBlurriness=2f
 		SkyTexture=xleres/DefaultResources/sky/desertsky.dds; SkyReflectionScale=8f
 		SkyBrightness=0.68f
 	
-	~ShadowFrustumSettings; FrustumCount=5i; ShadowRasterDepthBias=400i; FrustumSizeFactor=4f
+	ShadowFrustumSettings=~; FrustumCount=5i; ShadowRasterDepthBias=400i; FrustumSizeFactor=4f
 		ShadowSlopeScaledBias=1f; Flags=1i; ShadowDepthBiasClamp=0f; MaxBlurSearch=64f
 		MinBlurSearch=2f; MaxDistanceFromCamera=500f; WorldSpaceResolveBias=0f; FocusDistance=3f
 		BlurAngleDegrees=0.25f; Name=shadows; TextureSize=2048i
 	
-	~DirectionalLight; DiffuseModel=1i; DiffuseBrightness=3.5f; Diffuse=-1072241i
+	DirectionalLight=~; DiffuseModel=1i; DiffuseBrightness=3.5f; Diffuse=-1072241i
 		Specular=-1647966i; Flags=1i; SpecularBrightness=19f; DiffuseWideningMin=0.2f
 		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, -5.05525f, 32.7171f, 5.73295f, 1f}
 		ShadowResolveModel=0i; SpecularNonMetalBrightness=15f; DiffuseWideningMax=0.9f
 		Name=DirLight; ShadowFrustumSettings=shadows; Visible=0u
 	
-	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=0.75f; Diffuse=-957580i; Specular=-1i
+	DirectionalLight=~; DiffuseModel=0i; DiffuseBrightness=0.75f; Diffuse=-957580i; Specular=-1i
 		Flags=0i; SpecularBrightness=5f; DiffuseWideningMin=0.5f
 		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, 3.59605f, 2.4588f, -2.49624f, 1f}
 		ShadowResolveModel=0i; SpecularNonMetalBrightness=5f; DiffuseWideningMax=2.5f
 		Name=SecondaryLight; ShadowFrustumSettings=shadows; Visible=0u
 	
-	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=0.2f; Diffuse=-5247249i; Specular=-1i
+	DirectionalLight=~; DiffuseModel=0i; DiffuseBrightness=0.2f; Diffuse=-5247249i; Specular=-1i
 		Flags=0i; SpecularBrightness=3.5f; DiffuseWideningMin=0.5f
 		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, -9.9108f, -8.22611f, 2.5275f, 1f}
 		ShadowResolveModel=0i; SpecularNonMetalBrightness=3.5f; DiffuseWideningMax=2.5f
@@ -268,79 +426,48 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
     {
         static const utf8* TextureNames[] = { "Texture0", "Texture1", "Slopes" };
         
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
+        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+            auto name = RequireMappedItem(formatter);
 
-                    if (XlEqString(name, "MaterialId")) {
-                        result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
-                    } else
-                        Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
-                    break;
-                }
+            if (XlEqString(name, "MaterialId")) {
+                result._id = Conversion::Convert<decltype(result._id)>(RequireValue(formatter));
+            } else if (XlEqString(name, "Strata")) {
+                RequireBeginElement(formatter);
 
-            case Blob::BeginElement:
-                {
-                    // We should have one element called "Strata" with an array of elements within it
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    if (!formatter.TryBeginElement(eleName))
-                        Throw(FormatException("Error in element declaration", formatter.GetLocation()));
-                    if (!XlEqString(eleName, "Strata"))
-                        Throw(FormatException("Unknown element encountered", formatter.GetLocation()));
+                while (formatter.PeekNext() != FormatterBlob::EndElement) {
+                    auto ignoredName = RequireMappedItem(formatter);
+                    RequireBeginElement(formatter);
 
-                    while (formatter.PeekNext() == Blob::BeginElement) {
-                        if (!formatter.TryBeginElement(eleName))
-                            Throw(FormatException("Error in element declaration", formatter.GetLocation()));
+                    ExampleSerializableObject::StrataMaterial::Strata newStrata;
+                    while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+                        auto name = RequireMappedItem(formatter);
+                        auto value = RequireValue(formatter);
 
-                        ExampleSerializableObject::StrataMaterial::Strata newStrata;
-                        while (formatter.PeekNext() == Blob::AttributeName) {
-                            InputStreamFormatter<utf8>::InteriorSection name, value;
-                            if (!formatter.TryAttribute(name, value))
-                                Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
-
-                            if (XlEqString(name, "EndHeight")) {
-                                newStrata._endHeight = ImpliedTyping::ParseFullMatch<decltype(newStrata._endHeight)>(value).value();
-                            } else if (XlEqString(name, "Mapping")) {
-                                auto mappingConst = ImpliedTyping::ParseFullMatch<Float4>(value).value();
-                                newStrata._mappingConstant[0] = mappingConst[0];
-                                newStrata._mappingConstant[1] = mappingConst[1];
-                                newStrata._mappingConstant[2] = mappingConst[2];
-                            } else {
-                                unsigned t=0;
-                                for (; t<dimof(TextureNames); ++t)
-                                    if (XlEqString(name, TextureNames[t])) {
-                                        newStrata._texture[t] = value.AsString();
-                                        break;
-                                    }
-                                if (t == dimof(TextureNames))
-                                    Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
-                            }
+                        if (XlEqString(name, "EndHeight")) {
+                            newStrata._endHeight = Conversion::Convert<decltype(newStrata._endHeight)>(value);
+                        } else if (XlEqString(name, "Mapping")) {
+                            auto mappingConst = ImpliedTyping::ParseFullMatch<Float4>(value).value();
+                            newStrata._mappingConstant[0] = mappingConst[0];
+                            newStrata._mappingConstant[1] = mappingConst[1];
+                            newStrata._mappingConstant[2] = mappingConst[2];
+                        } else {
+                            unsigned t=0;
+                            for (; t<dimof(TextureNames); ++t)
+                                if (XlEqString(name, TextureNames[t])) {
+                                    newStrata._texture[t] = value.AsString();
+                                    break;
+                                }
+                            if (t == dimof(TextureNames))
+                                Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
                         }
-                        result._strata.push_back(newStrata);
-
-                        if (!formatter.TryEndElement())
-                            Throw(FormatException("Expected end element", formatter.GetLocation()));
                     }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expected end element", formatter.GetLocation()));
-                    break;
+                    RequireEndElement(formatter);
+                    result._strata.push_back(newStrata);
                 }
 
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected blob", formatter.GetLocation()));
-
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            default:
-                assert(0);
+                RequireEndElement(formatter);
+            } else {
+                Throw(FormatException("Unknown item encountered", formatter.GetLocation()));
             }
         }
     }
@@ -349,158 +476,105 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject::GradFlagMaterial& result)
     {
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
+        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+            auto name = RequireMappedItem(formatter);
+            auto value = RequireValue(formatter);
 
-                    if (XlEqString(name, "MaterialId")) {
-                        result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
-                    } else if (XlEqString(name, "Texture0")) {
-                        result._texture[0] = value.AsString();
-                    } else if (XlEqString(name, "Texture1")) {
-                        result._texture[1] = value.AsString();
-                    } else if (XlEqString(name, "Texture2")) {
-                        result._texture[2] = value.AsString();
-                    } else if (XlEqString(name, "Texture3")) {
-                        result._texture[3] = value.AsString();
-                    } else if (XlEqString(name, "Texture4")) {
-                        result._texture[4] = value.AsString();
-                    } else if (XlEqString(name, "Mapping")) {
-                        uint8_t buffer[512];
-                        auto parsedType = ImpliedTyping::ParseFullMatch(
-                            value,
-                            buffer, sizeof(buffer));
-                        ImpliedTyping::Cast(
-                            MakeIteratorRange(result._mappingConstant), 
-                            ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, dimof(result._mappingConstant)},
-                            MakeIteratorRange(buffer), parsedType);
-                    } else
-                        Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::BeginElement:
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected blob", formatter.GetLocation()));
-
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            default:
-                assert(0);
-            }
+            if (XlEqString(name, "MaterialId")) {
+                result._id = ImpliedTyping::ParseFullMatch<decltype(result._id)>(value).value();
+            } else if (XlEqString(name, "Texture0")) {
+                result._texture[0] = value.AsString();
+            } else if (XlEqString(name, "Texture1")) {
+                result._texture[1] = value.AsString();
+            } else if (XlEqString(name, "Texture2")) {
+                result._texture[2] = value.AsString();
+            } else if (XlEqString(name, "Texture3")) {
+                result._texture[3] = value.AsString();
+            } else if (XlEqString(name, "Texture4")) {
+                result._texture[4] = value.AsString();
+            } else if (XlEqString(name, "Mapping")) {
+                uint8_t buffer[512];
+                auto parsedType = ImpliedTyping::ParseFullMatch(
+                    value,
+                    buffer, sizeof(buffer));
+                ImpliedTyping::Cast(
+                    MakeIteratorRange(result._mappingConstant), 
+                    ImpliedTyping::TypeDesc{ImpliedTyping::TypeCat::Float, dimof(result._mappingConstant)},
+                    MakeIteratorRange(buffer), parsedType);
+            } else
+                Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
         }
+
+        auto next = formatter.PeekNext();
+        if (next != FormatterBlob::EndElement && next != FormatterBlob::None)
+            Throw(FormatException("Unexpected blob", formatter.GetLocation()));
     }
     
     static void DeserializationOperator(
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject::ProcTextureSetting& result)
     {
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
+        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+            auto name = RequireMappedItem(formatter);
+            auto value = RequireValue(formatter);
 
-                    if (XlEqString(name, "Name")) {
-                        result._name = value.AsString();
-                    } else if (XlEqString(name, "Texture0")) {
-                        result._texture[0] = value.AsString();
-                    } else if (XlEqString(name, "Texture1")) {
-                        result._texture[1] = value.AsString();
-                    } else if (XlEqString(name, "HGrid")) {
-                        result._hgrid = ImpliedTyping::ParseFullMatch<decltype(result._hgrid)>(value).value();
-                    } else if (XlEqString(name, "Gain")) {
-                        result._gain = ImpliedTyping::ParseFullMatch<decltype(result._gain)>(value).value();
-                    } else
-                        Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::BeginElement:
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected blob", formatter.GetLocation()));
-
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            default:
-                assert(0);
-            }
+            if (XlEqString(name, "Name")) {
+                result._name = value.AsString();
+            } else if (XlEqString(name, "Texture0")) {
+                result._texture[0] = value.AsString();
+            } else if (XlEqString(name, "Texture1")) {
+                result._texture[1] = value.AsString();
+            } else if (XlEqString(name, "HGrid")) {
+                result._hgrid = ImpliedTyping::ParseFullMatch<decltype(result._hgrid)>(value).value();
+            } else if (XlEqString(name, "Gain")) {
+                result._gain = ImpliedTyping::ParseFullMatch<decltype(result._gain)>(value).value();
+            } else
+                Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
         }
+
+        auto next = formatter.PeekNext();
+        if (next != FormatterBlob::EndElement && next != FormatterBlob::None)
+            Throw(FormatException("Unexpected blob", formatter.GetLocation()));
     }
     
     static void DeserializationOperator(
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject& result)
     {
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in attribute declaration", formatter.GetLocation()));
+        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+            auto name = RequireMappedItem(formatter);
 
-                    if (XlEqString(name, "DiffuseDims")) {
-                        result._diffuseDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
-                    } else if (XlEqString(name, "NormalDims")) {
-                        result._normalDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
-                    } else if (XlEqString(name, "ParamDims")) {
-                        result._paramDims = ImpliedTyping::ParseFullMatch<UInt2>(value).value();
-                    } else
-                        Throw(FormatException("Unknown attribute encountered", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::BeginElement:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    if (!formatter.TryBeginElement(eleName))
-                        Throw(FormatException("Error in element begin", formatter.GetLocation()));
-
-                    if (XlEqString(eleName, "StrataMaterial")) {
-                        ExampleSerializableObject::StrataMaterial newMaterial;
-                        formatter >> newMaterial;
-                        result._strataMaterials.push_back(std::move(newMaterial));
-                    } else if (XlEqString(eleName, "GradFlagMaterial")) {
-                        ExampleSerializableObject::GradFlagMaterial newMaterial;
-                        formatter >> newMaterial;
-                        result._gradFlagMaterials.push_back(std::move(newMaterial));
-                    } else if (XlEqString(eleName, "ProcTextureSetting")) {
-                        ExampleSerializableObject::ProcTextureSetting newMaterial;
-                        formatter >> newMaterial;
-                        result._procTextures.push_back(std::move(newMaterial));
-                    } else
-                        Throw(FormatException("Unknown element encountered", formatter.GetLocation()));
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expected end element", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected blob", formatter.GetLocation()));
-
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            default:
-                assert(0);
-            }
+            if (XlEqString(name, "DiffuseDims")) {
+                result._diffuseDims = ImpliedTyping::ParseFullMatch<UInt2>(RequireValue(formatter)).value();
+            } else if (XlEqString(name, "NormalDims")) {
+                result._normalDims = ImpliedTyping::ParseFullMatch<UInt2>(RequireValue(formatter)).value();
+            } else if (XlEqString(name, "ParamDims")) {
+                result._paramDims = ImpliedTyping::ParseFullMatch<UInt2>(RequireValue(formatter)).value();
+            } else if (XlEqString(name, "StrataMaterial")) {
+                RequireBeginElement(formatter);
+                ExampleSerializableObject::StrataMaterial newMaterial;
+                formatter >> newMaterial;
+                result._strataMaterials.push_back(std::move(newMaterial));
+                RequireEndElement(formatter);
+            } else if (XlEqString(name, "GradFlagMaterial")) {
+                RequireBeginElement(formatter);
+                ExampleSerializableObject::GradFlagMaterial newMaterial;
+                formatter >> newMaterial;
+                result._gradFlagMaterials.push_back(std::move(newMaterial));
+                RequireEndElement(formatter);
+            } else if (XlEqString(name, "ProcTextureSetting")) {
+                RequireBeginElement(formatter);
+                ExampleSerializableObject::ProcTextureSetting newMaterial;
+                formatter >> newMaterial;
+                result._procTextures.push_back(std::move(newMaterial));
+                RequireEndElement(formatter);
+            } else
+                Throw(FormatException("Unknown mapping encountered", formatter.GetLocation()));
         }
+
+        auto next = formatter.PeekNext();
+        if (next != FormatterBlob::EndElement && next != FormatterBlob::None)
+            Throw(FormatException("Unexpected blob", formatter.GetLocation()));
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

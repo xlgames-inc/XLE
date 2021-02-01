@@ -128,31 +128,15 @@ namespace OSServices
     LogConfigurationSet::LogConfigurationSet() {}
     LogConfigurationSet::LogConfigurationSet(InputStreamFormatter<char>& formatter)
     {
-        for (;;) {
-            using Blob = InputStreamFormatter<char>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-            case Blob::AttributeValue:
-                break;
+        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+            StringSection<char> eleName;
+            formatter.TryMappedItem(eleName);
+            RequireBeginElement(formatter);
 
-            case Blob::BeginElement:
-                {
-                    InputStreamFormatter<char>::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+            auto cfg = LoadConfig(formatter);
+            _configs.emplace_back(std::make_pair(eleName.AsString(), std::move(cfg)));
 
-                    auto cfg = LoadConfig(formatter);
-                    _configs.emplace_back(std::make_pair(eleName.AsString(), std::move(cfg)));
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::CharacterData:
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            }
+            RequireEndElement(formatter);
         }
     }
 

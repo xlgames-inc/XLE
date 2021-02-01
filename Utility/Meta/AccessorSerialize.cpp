@@ -28,62 +28,55 @@ namespace Utility
             Formatter& formatter,
             void* obj, const ClassAccessors& props)
     {
-        using Blob = typename Formatter::Blob;
         using CharType = typename Formatter::value_type;
         auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
 
         for (;;) {
             switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
+            case FormatterBlob::MappedItem:
                 {
-                    typename Formatter::InteriorSection name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in begin element", formatter.GetLocation()));
-                    
-                    if (!props.SetFromString( obj, name, value)) {
-                        std::cout << "Failure while assigning property during deserialization -- " <<
-                            Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end)) << std::endl;
+                    auto name = RequireMappedItem(formatter);
+
+                    if (formatter.PeekNext() == FormatterBlob::Value) {
+                        auto value = RequireValue(formatter);
+                        if (!props.SetFromString(obj, name, value)) {
+                            std::cout << "Failure while assigning property during deserialization -- " << name << std::endl;
+                        }
+                    } else if (formatter.PeekNext() == FormatterBlob::BeginElement) {
+#if SUPPORT_POLYMORPHIC_EXTENSIONS
+                        auto* legacyExtensions = dynamic_cast<const Legacy::ClassAccessorsWithChildLists*>(&props)
+                        if (legacyExtensions) {
+                            formatter.BeginElement();
+
+                            auto created = legacyExtensions->TryCreateChild(obj, Hash64(name._start, name._end));
+                            if (created.first) {
+                                AccessorDeserialize(formatter, created.first, *created.second);
+                            } else {
+                                std::cout << "Couldn't find a match for element name during deserialization -- " << name << std::endl;
+                                SkipElement(formatter);
+                            }
+
+                            formatter.EndElement();
+                        } else 
+#endif
+                        {
+                            Throw(FormatException("Children elements not supported for this type", formatter.GetLocation()));
+                        }
+                    } else {
+                        Throw(FormatException("Expecting either a value or an element", formatter.GetLocation()));
                     }
                 }
                 break;
                     
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
+            case FormatterBlob::Value:
+            case FormatterBlob::BeginElement:
+            case FormatterBlob::CharacterData:
                 assert(0);
                 break;
 
-            case Blob::EndElement:
-            case Blob::None:
+            case FormatterBlob::EndElement:
+            case FormatterBlob::None:
                 return;
-
-            case Blob::BeginElement:
-                {
-#if SUPPORT_POLYMORPHIC_EXTENSIONS
-                    auto* legacyExtensions = dynamic_cast<const Legacy::ClassAccessorsWithChildLists*>(&props)
-                    if (legacyExtensions) {
-                        typename Formatter::InteriorSection eleName;
-                        if (!formatter.TryBeginElement(eleName))
-                            Throw(FormatException("Error in begin element", formatter.GetLocation()));
-
-                        auto created = legacyExtensions->TryCreateChild(obj, Hash64(eleName._start, eleName._end));
-                        if (created.first) {
-                            AccessorDeserialize(formatter, created.first, *created.second);
-                        } else {
-                            std::cout << "Couldn't find a match for element name during deserialization -- " <<
-                                Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end)) << std::endl;
-                            formatter.SkipElement();
-                        }
-
-                        if (!formatter.TryEndElement())
-                            Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    } else 
-#endif
-                    {
-                        Throw(FormatException("Children elements not supported for this type", formatter.GetLocation()));
-                    }
-
-                    break;
-                }
             }
         }
     }

@@ -89,104 +89,65 @@ namespace Assets
 
 	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile::Product& result)
 	{
-		using FormatterBlob = InputStreamFormatter<utf8>::Blob;
-		for (;;) {
-			switch (formatter.PeekNext()) {
-			case FormatterBlob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					if (XlEqString(name, "Artifact")) {
-						result._intermediateArtifact = value.AsString();
-					} else
-						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
-				}
-				continue;
-
-			case FormatterBlob::EndElement:
-				break;
-
-			default:
-				Throw(Utility::FormatException("Unexpected blob in CompileProductsFile", formatter.GetLocation()));
-			}
-			break;
+		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+			StringSection<utf8> name, value;
+			if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
+			if (XlEqString(name, "Artifact")) {
+				result._intermediateArtifact = value.AsString();
+			} else
+				Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
 		}
 	}
 
 	static void DerializeDependencies(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
 	{
-		using FormatterBlob = InputStreamFormatter<utf8>::Blob;
-		for (;;) {
-			switch (formatter.PeekNext()) {
-			case FormatterBlob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					result._dependencies.push_back(DependentFileState {
-						name.AsString(),
-						Conversion::Convert<uint64_t>(value)
-					});
-				}
-				continue;
-
-			case FormatterBlob::EndElement:
-				break;
-
-			default:
-				Throw(Utility::FormatException("Unexpected blob in CompileProductsFile", formatter.GetLocation()));
-			}
-			break;
+		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+			StringSection<utf8> name, value;
+			if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
+			result._dependencies.push_back(DependentFileState {
+				name.AsString(),
+				Conversion::Convert<uint64_t>(value)
+			});
 		}
+	}
+
+	static StringSection<utf8> DeserializeValue(InputStreamFormatter<utf8>& formatter)
+	{
+		StringSection<utf8> value;
+		if (!formatter.TryValue(value))
+			Throw(Utility::FormatException("Expecting value", formatter.GetLocation()));
+		return value;
 	}
 
 	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
 	{
-		using FormatterBlob = InputStreamFormatter<utf8>::Blob;
-		for (;;) {
-			switch (formatter.PeekNext()) {
-			case FormatterBlob::BeginElement:
-				{
-					InputStreamFormatter<utf8>::InteriorSection eleName;
-					if (!formatter.TryBeginElement(eleName))
-						Throw(Utility::FormatException("Poorly formed begin element in CompileProductsFile", formatter.GetLocation()));
+		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+			InputStreamFormatter<utf8>::InteriorSection name;
+			if (!formatter.TryMappedItem(name))
+				Throw(Utility::FormatException("Poorly formed item in CompileProductsFile", formatter.GetLocation()));
 
-					if (XlEqString(eleName, "Dependencies")) {
-						DerializeDependencies(formatter, result);
-					} else {
-						CompileProductsFile::Product product;
-						formatter >> product;
-						product._type = Conversion::Convert<uint64_t>(eleName);
-						result._compileProducts.push_back(product);
-					}
-
-					if (!formatter.TryEndElement())
-						Throw(Utility::FormatException("Expecting end element in CompileProductsFile", formatter.GetLocation()));
-				}
-				continue;
-
-			case FormatterBlob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-					if (XlEqString(name, "BasePath")) {
-						result._basePath = value.AsString();
-					} else if (XlEqString(name, "Invalid")) {
-						if (XlEqString(value.AsString(), "1'")) {
-							result._state = AssetState::Invalid;
-						} else
-							result._state = AssetState::Ready;
-					} else
-						Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
-				}
-				continue;
-
-			default:
-				break;
-			}
-			break;
+			if (XlEqString(name, "Dependencies")) {
+				RequireBeginElement(formatter);
+				DerializeDependencies(formatter, result);
+				RequireEndElement(formatter);
+			} else if (XlEqString(name, "BasePath")) {
+				result._basePath = DeserializeValue(formatter).AsString();
+			} else if (XlEqString(name, "Invalid")) {
+				if (XlEqString(DeserializeValue(formatter), "1")) {
+					result._state = AssetState::Invalid;
+				} else
+					result._state = AssetState::Ready;
+			} else if (formatter.PeekNext() == FormatterBlob::BeginElement) {
+				RequireBeginElement(formatter);
+				CompileProductsFile::Product product;
+				formatter >> product;
+				product._type = Conversion::Convert<uint64_t>(name);
+				result._compileProducts.push_back(product);
+				RequireEndElement(formatter);
+			} else
+				Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
 		}
 	}
 

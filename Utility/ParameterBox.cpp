@@ -541,9 +541,9 @@ namespace Utility
             // as soon as we hit something that is not another attribute
             // (it could be a sub-element, or the end of this element)
             // then we will stop reading and return
-        while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::AttributeName) {
+        while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::MappedItem) {
             typename InputStreamFormatter<CharType>::InteriorSection name, value;
-            bool success = stream.TryAttribute(name, value);
+            bool success = stream.TryMappedItem(name) && stream.TryValue(value);
             if (!success)
                 Throw(::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization"));
 

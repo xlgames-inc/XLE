@@ -63,7 +63,7 @@ namespace Utility
             mutable unsigned _activeMarkerCount = 0;
         #endif
 
-        unsigned ParseElement(Formatter& formatter, bool rootElement);
+        unsigned ParseElement(Formatter& formatter, bool rootElement, StringSection<> name);
 
         friend class StreamDOMElement<Formatter>;
         friend class StreamDOMAttribute<Formatter>;

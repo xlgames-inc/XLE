@@ -40,36 +40,38 @@ namespace Assets
 
 		for (;;) {
 			switch (formatter.PeekNext()) {
-			case Formatter::Blob::BeginElement:
+			case FormatterBlob::MappedItem:
+                {
+                    auto eleName = RequireMappedItem(formatter);
+
+                    if (XlEqStringI(eleName, immediateConfigName) && formatter.PeekNext() == FormatterBlob::BeginElement) {
+                        if (!formatter.TryBeginElement())
+                            Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
+
+                        // We can access a nested item using ':' as a separator
+                        // For example, "first:second:third" will look for "first" at
+                        // the top level with "second" nested within and then "third"
+                        // nested within that.
+                        immediateConfigName._start = immediateConfigName.end()+1;
+                        if (immediateConfigName.begin() < configName.end())
+                            immediateConfigName._end = std::find(immediateConfigName.begin(), configName.end(), ':');
+                        if (immediateConfigName.begin() >= immediateConfigName.end())
+                            return formatter;
+                        // else continue searching for the next config name
+                    }
+                    continue;
+                }
+                        
+            case FormatterBlob::BeginElement:
+                RequireBeginElement(formatter);
+                SkipElement(formatter);    // skip the whole element; it's not required
+                RequireEndElement(formatter);
+                continue;
+
+			case Formatter::Blob::Value:
 				{
-					typename Formatter::InteriorSection eleName;
-					if (!formatter.TryBeginElement(eleName))
-						Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
-
-					if (XlEqStringI(eleName, immediateConfigName)) {
-						// We can access a nested item using ':' as a separator
-						// For example, "first:second:third" will look for "first" at
-						// the top level with "second" nested within and then "third"
-						// nested within that.
-						immediateConfigName._start = immediateConfigName.end()+1;
-						if (immediateConfigName.begin() < configName.end())
-							immediateConfigName._end = std::find(immediateConfigName.begin(), configName.end(), ':');
-						if (immediateConfigName.begin() >= immediateConfigName.end())
-							return formatter;
-						// else continue searching for the next config name
-					} else {
-						formatter.SkipElement();    // skip the whole element; it's not required
-						if (!formatter.TryEndElement())
-							Throw(Utility::FormatException("Expecting end element in config file", formatter.GetLocation()));
-					}
-
-					continue;
-				}
-
-			case Formatter::Blob::AttributeName:
-				{
-					typename Formatter::InteriorSection name, value;
-					formatter.TryAttribute(name, value);
+					typename Formatter::InteriorSection value;
+					formatter.TryValue(value);
 					continue;
 				}
 
@@ -100,7 +102,7 @@ namespace Assets
 	}
 
 	template<typename Formatter> 
-		ConfigFileContainer<Formatter>::ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
+		ConfigFileContainer<Formatter>::~ConfigFileContainer() {}
 
 	template<typename Formatter>
 		auto ConfigFileContainer<Formatter>::CreateNew(StringSection<ResChar> initialiser)
