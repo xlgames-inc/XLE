@@ -12,6 +12,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -191,25 +192,25 @@ namespace RenderCore { namespace Assets
     static void SerializeStateSet(OutputStreamFormatter& formatter, const RenderStateSet& stateSet)
     {
         if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
-            formatter.WriteAttribute("DoubleSided", AutoAsString(stateSet._doubleSided));
+            formatter.WriteKeyedValue("DoubleSided", AutoAsString(stateSet._doubleSided));
 
         if (stateSet._flag & RenderStateSet::Flag::Wireframe)
-            formatter.WriteAttribute("Wireframe", AutoAsString(stateSet._wireframe));
+            formatter.WriteKeyedValue("Wireframe", AutoAsString(stateSet._wireframe));
 
         if (stateSet._flag & RenderStateSet::Flag::WriteMask)
-            formatter.WriteAttribute("WriteMask", AutoAsString(stateSet._writeMask));
+            formatter.WriteKeyedValue("WriteMask", AutoAsString(stateSet._writeMask));
 
         if (stateSet._flag & RenderStateSet::Flag::BlendType)
-            formatter.WriteAttribute("BlendType", AsString(stateSet._blendType));
+            formatter.WriteKeyedValue("BlendType", AsString(stateSet._blendType));
 
         if (stateSet._flag & RenderStateSet::Flag::DepthBias)
-            formatter.WriteAttribute("DepthBias", AutoAsString(stateSet._depthBias));
+            formatter.WriteKeyedValue("DepthBias", AutoAsString(stateSet._depthBias));
 
         if (stateSet._flag & RenderStateSet::Flag::ForwardBlend) {
-            auto ele = formatter.BeginElement("ForwardBlend");
-            formatter.WriteAttribute("Src", AsString(stateSet._forwardBlendSrc));
-            formatter.WriteAttribute("Dst", AsString(stateSet._forwardBlendDst));
-            formatter.WriteAttribute("Op", AsString(stateSet._forwardBlendOp));
+            auto ele = formatter.BeginKeyedElement("ForwardBlend");
+            formatter.WriteKeyedValue("Src", AsString(stateSet._forwardBlendSrc));
+            formatter.WriteKeyedValue("Dst", AsString(stateSet._forwardBlendDst));
+            formatter.WriteKeyedValue("Op", AsString(stateSet._forwardBlendOp));
             formatter.EndElement(ele);
         }
     }
@@ -252,38 +253,9 @@ namespace RenderCore { namespace Assets
         DeserializeInheritList(InputStreamFormatter<utf8>& formatter)
     {
         std::vector<::Assets::rstring> result;
-
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    result.push_back(
-                        Conversion::Convert<::Assets::rstring>(std::basic_string<utf8>(name._start, name._end)));
-                    break;
-                }
-
-            case Blob::BeginElement:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-                    break;
-                }
-
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected element", formatter.GetLocation()));
-                break;
-
-            case Blob::EndElement:
-            case Blob::None:
-                return result;
-            default:
-                assert(0);
-            }
-        }
+        while (formatter.PeekNext() == FormatterBlob::Value)
+            result.push_back(RequireValue(formatter).AsString());
+        return result;
     }
 
     RawMaterial::RawMaterial(
@@ -292,55 +264,41 @@ namespace RenderCore { namespace Assets
 		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal), _searchRules(searchRules)
     {
-        for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    break;
-                }
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto eleName = RequireKeyedItem(formatter);
 
-            case Blob::BeginElement:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-
-                       // first, load inherited settings.
-                    if (XlEqString(eleName, "Inherit")) {
-                        _inherit = DeserializeInheritList(formatter);
-                    } else if (XlEqString(eleName, "ShaderParams")) {
-                        _matParamBox = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, "Constants")) {
-                        _constants = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, "ResourceBindings")) {
-                        _resourceBindings = ParameterBox(formatter);
-                    } else if (XlEqString(eleName, "States")) {
-                        _stateSet = DeserializeStateSet(formatter);
-					} else if (XlEqString(eleName, "Patches")) {
-						_patchCollection = ShaderPatchCollection(formatter, searchRules, depVal);
-                    } else {
-                        formatter.SkipElement();
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    break;
-                }
-
-            case Blob::AttributeValue:
-            case Blob::CharacterData:
-                Throw(FormatException("Unexpected element", formatter.GetLocation()));
-                break;
-
-            case Blob::EndElement:
-            case Blob::None:
-                return;
-            default:
-                assert(0);
+                // first, load inherited settings.
+            if (XlEqString(eleName, "Inherit")) {
+                RequireBeginElement(formatter);
+                _inherit = DeserializeInheritList(formatter);
+                RequireEndElement(formatter);
+            } else if (XlEqString(eleName, "ShaderParams")) {
+                RequireBeginElement(formatter);
+                _matParamBox = ParameterBox(formatter);
+                RequireEndElement(formatter);
+            } else if (XlEqString(eleName, "Constants")) {
+                RequireBeginElement(formatter);
+                _constants = ParameterBox(formatter);
+                RequireEndElement(formatter);
+            } else if (XlEqString(eleName, "ResourceBindings")) {
+                RequireBeginElement(formatter);
+                _resourceBindings = ParameterBox(formatter);
+                RequireEndElement(formatter);
+            } else if (XlEqString(eleName, "States")) {
+                RequireBeginElement(formatter);
+                _stateSet = DeserializeStateSet(formatter);
+                RequireEndElement(formatter);
+            } else if (XlEqString(eleName, "Patches")) {
+                RequireBeginElement(formatter);
+                _patchCollection = ShaderPatchCollection(formatter, searchRules, depVal);
+                RequireEndElement(formatter);
+            } else {
+                SkipValueOrElement(formatter);
             }
         }
+
+        if (formatter.PeekNext() != FormatterBlob::EndElement && formatter.PeekNext() != FormatterBlob::None)
+			Throw(FormatException("Unexpected data while deserializating RawMaterial", formatter.GetLocation()));
     }
 
     RawMaterial::~RawMaterial() {}
@@ -348,42 +306,38 @@ namespace RenderCore { namespace Assets
     void RawMaterial::SerializeMethod(OutputStreamFormatter& formatter) const
     {
 		if (!_patchCollection.GetPatches().empty()) {
-			auto ele = formatter.BeginElement("Patches");
+			auto ele = formatter.BeginKeyedElement("Patches");
 			SerializationOperator(formatter, _patchCollection);
 			formatter.EndElement(ele);
 		}
 
         if (!_inherit.empty()) {
-            auto ele = formatter.BeginElement("Inherit");
-            for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
-                auto str = Conversion::Convert<std::basic_string<utf8>>(*i);
-                formatter.WriteAttribute(
-                    AsPointer(str.cbegin()), AsPointer(str.cend()),
-                    (const utf8*)nullptr, (const utf8*)nullptr);
-            }
+            auto ele = formatter.BeginKeyedElement("Inherit");
+            for (const auto& i:_inherit)
+                formatter.WriteSequencedValue(i);
             formatter.EndElement(ele);
         }
 
         if (_matParamBox.GetCount() > 0) {
-            auto ele = formatter.BeginElement("ShaderParams");
+            auto ele = formatter.BeginKeyedElement("ShaderParams");
             _matParamBox.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_constants.GetCount() > 0) {
-            auto ele = formatter.BeginElement("Constants");
+            auto ele = formatter.BeginKeyedElement("Constants");
             _constants.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (_resourceBindings.GetCount() > 0) {
-            auto ele = formatter.BeginElement("ResourceBindings");
+            auto ele = formatter.BeginKeyedElement("ResourceBindings");
             _resourceBindings.SerializeWithCharType<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         if (HasSomethingToSerialize(_stateSet)) {
-            auto ele = formatter.BeginElement("States");
+            auto ele = formatter.BeginKeyedElement("States");
             SerializeStateSet(formatter, _stateSet);
             formatter.EndElement(ele);
         }
@@ -443,8 +397,7 @@ namespace RenderCore { namespace Assets
         if (!blob || blob->size() == 0)
             Throw(::Exceptions::BasicLabel("Missing or empty file"));
 
-        InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(MakeIteratorRange(*blob)));
+        InputStreamFormatter<utf8> formatter(MakeIteratorRange(*blob).template Cast<const void*>());
         StreamDOM<decltype(formatter)> doc(formatter);
             
         for (auto config:doc.RootElement().children()) {

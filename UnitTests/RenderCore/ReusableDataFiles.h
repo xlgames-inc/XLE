@@ -98,23 +98,23 @@ static const char* s_internalComplicatedGraph = R"--(
 )--";
 
 static const char* s_basicTechniqueFile = R"--(
-	~Shared
-		~Selectors
+	Shared=~
+		Selectors=~
 			CLASSIFY_NORMAL_MAP
 			SKIP_MATERIAL_DIFFUSE=0
 
-	~Deferred_NoPatches
-		~Inherit; Shared
+	Deferred_NoPatches=~
+		Inherit=~; Shared
 		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
-	~Deferred_PerPixel
-		~Inherit; Shared
+	Deferred_PerPixel=~
+		Inherit=~; Shared
 		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
-	~Deferred_PerPixelAndEarlyRejection
-		~Inherit; Shared
+	Deferred_PerPixelAndEarlyRejection=~
+		Inherit=~; Shared
 		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 )--";

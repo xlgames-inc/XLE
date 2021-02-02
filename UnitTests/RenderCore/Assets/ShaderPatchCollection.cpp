@@ -35,18 +35,18 @@ using namespace Catch::literals;
 namespace UnitTests
 {
 	static const char s_exampleTechniqueFragments[] = R"--(
-		~fragment
+		fragment=~
 			ut-data/fragment.graph::Fragment
-		~main
+		main=~
 			ut-data/outergraph.graph::deferred_pass_main
-			~perPixel
+			perPixel=~
 				ut-data/perpixel.graph::Default_PerPixel
-		~coordsToColor
+		coordsToColor=~
 			ut-data/outergraph.graph::CoordsToColor
 		)--";
 
 	static const char s_fragmentsWithSelectors[] = R"--(
-		~perPixel
+		perPixel=~
 			ut-data/shader_with_selectors_adapter.graph::Default_PerPixel
 		)--";
 
@@ -197,14 +197,14 @@ namespace UnitTests
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("/home/davidj/code/XLE/Working/Game/xleres", globalServices->GetPollingThread()));
-		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
+		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
 		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		SECTION( "DeserializeShaderPatchCollection" )
 		{
 			// Normally a ShaderPatchCollection is deserialized from a material file
 			// We'll test the serialization and deserialization code here, and ensure
-			InputStreamFormatter<> formattr { s_exampleTechniqueFragments };
+			InputStreamFormatter<> formattr { MakeStringSection(s_exampleTechniqueFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			// Verify that a few things got deserialized correctly
@@ -226,7 +226,7 @@ namespace UnitTests
 
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();
-			InputStreamFormatter<utf8> formattr2 { MemoryMappedInputStream { serializedStream.Begin(), serializedStream.End() } };
+			InputStreamFormatter<utf8> formattr2 { MakeStringSection(serializedStream.Begin(), serializedStream.End()) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2, ::Assets::DirectorySearchRules{}, nullptr);
 
 			// we should have the same contents in both patch collections
@@ -238,7 +238,7 @@ namespace UnitTests
 		{
 			// Ensure that we can correctly compile the shader graph in the test data
 			// (otherwise the following tests won't work)
-			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
+			InputStreamFormatter<utf8> formattr { MakeStringSection(s_exampleTechniqueFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			std::vector<ShaderSourceParser::InstantiationRequest> instantiations;
@@ -264,7 +264,7 @@ namespace UnitTests
 
 			const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 			
-			InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
+			InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 			auto compiledCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
 			std::vector<uint64_t> instantiations { Hash64("PerPixel") };
@@ -291,7 +291,7 @@ namespace UnitTests
 
 		SECTION( "CompileShaderPatchCollection1" )
 		{
-			InputStreamFormatter<utf8> formattr { s_exampleTechniqueFragments };
+			InputStreamFormatter<utf8> formattr { MakeStringSection(s_exampleTechniqueFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
@@ -312,7 +312,7 @@ namespace UnitTests
 
 		SECTION( "CompileShaderPatchCollection2" )
 		{
-			InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
+			InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
@@ -347,7 +347,7 @@ namespace UnitTests
 					"shader_with_selectors_adapter.graph"	// incorrect path
 				};
 
-				InputStreamFormatter<utf8> formattr { s_fragmentsWithSelectors };
+				InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
 				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {

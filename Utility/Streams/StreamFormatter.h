@@ -136,13 +136,32 @@ namespace Utility
 			case FormatterBlob::Value:
 				if (!formatter.TryValue(dummy0))
 					Throw(FormatException(
-						"Malformed keyed item while skipping forward", formatter.GetLocation()));
+						"Malformed value while skipping forward", formatter.GetLocation()));
 				break;
 
 			default:
 				Throw(FormatException(
 					"Unexpected blob or end of stream hit while skipping forward", formatter.GetLocation()));
 			}
+		}
+	}
+
+	template<typename Formatter>
+		void SkipValueOrElement(Formatter& formatter)
+	{
+		typename Formatter::InteriorSection dummy0;
+		if (formatter.PeekNext() == FormatterBlob::Value) {
+			if (!formatter.TryValue(dummy0))
+				Throw(FormatException(
+					"Malformed value while skipping forward", formatter.GetLocation()));
+		} else {
+			if (!formatter.TryBeginElement())
+				Throw(FormatException(
+					"Expected begin element while skipping forward", formatter.GetLocation()));
+			SkipElement(formatter);
+			if (!formatter.TryEndElement())
+				Throw(FormatException(
+					"Malformed end element while skipping forward", formatter.GetLocation()));
 		}
 	}
 

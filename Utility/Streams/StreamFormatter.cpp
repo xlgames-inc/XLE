@@ -280,8 +280,7 @@ namespace Utility
 
     template<typename CharType>
         const CharType* ReadToStringEnd(
-            TextStreamMarker<CharType>& marker, bool protectedStringMode, bool allowEquals,
-            StreamLocation location)
+            TextStreamMarker<CharType>& marker, bool protectedStringMode)
     {
         const auto pattern = FormatterConstants<CharType>::ProtectedNamePostfix;
         const auto patternLength = dimof(FormatterConstants<CharType>::ProtectedNamePostfix);
@@ -300,7 +299,7 @@ namespace Utility
                 ++ptr;
             }
 
-            Throw(FormatException("String deliminator not found", location));
+            Throw(FormatException("String deliminator not found", marker.GetLocation()));
             return nullptr;
         } else {
                 // we must read forward until we hit a formatting character
@@ -310,7 +309,7 @@ namespace Utility
             const auto* stringEnd = ptr;
             for (;;) {
                     // here, hitting EOF is the same as hitting a formatting char
-                if (ptr == end || (FormattingChar(*ptr) && (!allowEquals || *ptr != '='))) {
+                if (ptr == end || FormattingChar(*ptr)) {
                     marker.SetPointer(ptr);
                     return stringEnd;
                 } else if (!WhitespaceChar(*ptr)) {
@@ -457,7 +456,18 @@ namespace Utility
                     // more indented than it's parent will become it's child
                     // let's see if there's a fully formed blob here
                 _protectedStringMode = TryEat(_marker, Consts::ProtectedNamePrefix);
-                return _primed = FormatterBlob::KeyedItem;
+
+                // Unfortunately we have to roll forward a bit to see if there's a '=' after the
+                // next token
+                auto readForwardMarker = _marker;
+                ReadToStringEnd<CharType>(readForwardMarker, _protectedStringMode);
+                EatWhitespace<CharType>(readForwardMarker);
+
+                if (*readForwardMarker == '=') {
+                    return _primed = FormatterBlob::KeyedItem;
+                } else {
+                    return _primed = FormatterBlob::Value;
+                }
             }
         }
 
@@ -498,7 +508,7 @@ namespace Utility
                 
                 {
                     const auto* aValueStart = _marker.Pointer();
-                    const auto* aValueEnd = ReadToStringEnd<CharType>(_marker, false, true, GetLocation());
+                    const auto* aValueEnd = ReadToStringEnd<CharType>(_marker, false);
 
                     char convBuffer[12];
                     Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
@@ -516,7 +526,7 @@ namespace Utility
 
             default:
                 aNameStart = _marker.Pointer();
-                aNameEnd = ReadToStringEnd<CharType>(_marker, false, false, GetLocation());
+                aNameEnd = ReadToStringEnd<CharType>(_marker, false);
                 break;
             }
         }
@@ -560,7 +570,7 @@ namespace Utility
         if (PeekNext() != FormatterBlob::KeyedItem) return false;
 
         name._start = _marker.Pointer();
-        name._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode, false, GetLocation());
+        name._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode);
         EatWhitespace<CharType>(_marker);
 
         _primed = FormatterBlob::None;
@@ -607,7 +617,7 @@ namespace Utility
         if (PeekNext() != FormatterBlob::Value) return false;
 
         value._start = _marker.Pointer();
-        value._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode, false, GetLocation());
+        value._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode);
         EatWhitespace<CharType>(_marker);
 
         _primed = FormatterBlob::None;

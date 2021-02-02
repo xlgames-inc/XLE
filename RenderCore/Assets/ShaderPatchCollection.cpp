@@ -6,6 +6,7 @@
 #include "../../Assets/DepVal.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
@@ -85,12 +86,9 @@ namespace RenderCore { namespace Assets
 		OutputStreamFormatter& formatter, 
 		const ShaderSourceParser::InstantiationRequest& instRequest)
 	{
-		formatter.WriteAttribute(
-			AsPointer(instRequest._archiveName.begin()), AsPointer(instRequest._archiveName.end()), 
-			(const char*)nullptr, (const char*)nullptr);
-
+		formatter.WriteSequencedValue(instRequest._archiveName);
 		for (const auto&p:instRequest._parameterBindings) {
-			auto ele = formatter.BeginElement(p.first);
+			auto ele = formatter.BeginKeyedElement(p.first);
 			SerializeInstantiationRequest(formatter, *p.second);
 			formatter.EndElement(ele);
 		}
@@ -99,108 +97,72 @@ namespace RenderCore { namespace Assets
 	void ShaderPatchCollection::SerializeMethod(OutputStreamFormatter& formatter) const
 	{
 		for (const auto& p:_patches) {
-			auto pele = formatter.BeginElement(p.first);
+			auto pele = formatter.BeginKeyedElement(p.first);
 			SerializeInstantiationRequest(formatter, p.second);
 			formatter.EndElement(pele);
 		}
 		if (!_descriptorSet.empty())
-			formatter.WriteAttribute("DescriptorSet", _descriptorSet);
+			formatter.WriteKeyedValue("DescriptorSet", _descriptorSet);
 	}
 
 	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		ShaderSourceParser::InstantiationRequest result;
 
-		for (;;) {
-			auto next = formatter.PeekNext();
-			switch (next) {
-			case InputStreamFormatter<utf8>::Blob::AttributeName:
-				{
-					StringSection<utf8> name, value;
-					if (!formatter.TryAttribute(name, value))
-						Throw(FormatException("Could not parse attribute", formatter.GetLocation()));
-					if (!value.IsEmpty())
-						Throw(FormatException("Expecting only a single attribute in each fragment, which is the entry point name, with no value", formatter.GetLocation()));
-					if (!result._archiveName.empty())
-						Throw(FormatException("Multiple entry points found for a single technique fragment declaration", formatter.GetLocation()));
-
-					auto splitName = MakeFileNameSplitter(name);
-					if (splitName.DriveAndPath().IsEmpty()) {
-						char resolvedFile[MaxPath];
-						searchRules.ResolveFile(resolvedFile, splitName.FileAndExtension());
-						if (resolvedFile[0]) {
-							result._archiveName = resolvedFile;
-							result._archiveName.insert(result._archiveName.end(), splitName.ParametersWithDivider().begin(), splitName.ParametersWithDivider().end());
-						} else {
-							result._archiveName = name.AsString();
-						}
-					} else {
-						result._archiveName = name.AsString();
-					}
-					assert(!result._archiveName.empty());
-
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::BeginElement:
-				{
-					StringSection<utf8> name;
-					if (!formatter.TryBeginElement(name))
-						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result._parameterBindings.emplace(
-						std::make_pair(
-							name.AsString(),
-							std::make_unique<ShaderSourceParser::InstantiationRequest>(DeserializeInstantiationRequest(formatter, searchRules))));
-
-					if (!formatter.TryEndElement())
-						Throw(FormatException("Expecting end element", formatter.GetLocation()));
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::EndElement:
-			case InputStreamFormatter<utf8>::Blob::None:
-				if (result._archiveName.empty())
-					Throw(FormatException("No entry point was specified for fragment ending at marked location", formatter.GetLocation()));
-				return result;
-
-			default:
-				Throw(FormatException("Unexpected blob while parsing TechniqueFragment", formatter.GetLocation()));
+		auto archiveNameInput = RequireValue(formatter);		// Expecting only a single sequenced value in each fragment, which is the entry point name
+		auto splitName = MakeFileNameSplitter(archiveNameInput);
+		if (splitName.DriveAndPath().IsEmpty()) {
+			char resolvedFile[MaxPath];
+			searchRules.ResolveFile(resolvedFile, splitName.FileAndExtension());
+			if (resolvedFile[0]) {
+				result._archiveName = resolvedFile;
+				result._archiveName.insert(result._archiveName.end(), splitName.ParametersWithDivider().begin(), splitName.ParametersWithDivider().end());
+			} else {
+				result._archiveName = archiveNameInput.AsString();
 			}
+		} else {
+			result._archiveName = archiveNameInput.AsString();
 		}
+		assert(!result._archiveName.empty());
+
+		StringSection<> bindingName;
+		while (formatter.TryKeyedItem(bindingName)) {
+			RequireBeginElement(formatter);
+			result._parameterBindings.emplace(
+				std::make_pair(
+					bindingName.AsString(),
+					std::make_unique<ShaderSourceParser::InstantiationRequest>(DeserializeInstantiationRequest(formatter, searchRules))));
+			RequireEndElement(formatter);
+		}
+
+		if (formatter.PeekNext() != FormatterBlob::EndElement && formatter.PeekNext() != FormatterBlob::None)
+			Throw(FormatException("Unexpected data while deserializating InstantiationRequest", formatter.GetLocation()));
+
+		return result;
 	}
 
 	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
-		for (;;) {
-			auto next = formatter.PeekNext();
-			if (next == InputStreamFormatter<utf8>::Blob::BeginElement) {
-
-				StringSection<utf8> name;
-				if (!formatter.TryBeginElement(name))
-					Throw(FormatException("Could not parse element", formatter.GetLocation()));
-				_patches.emplace_back(std::make_pair(name.AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
-
-				if (!formatter.TryEndElement())
-					Throw(FormatException("Expecting end element", formatter.GetLocation()));
-
-			} else if (	next == InputStreamFormatter<utf8>::Blob::EndElement
-					||	next == InputStreamFormatter<utf8>::Blob::None) {
-				break;
-			} else if ( next == InputStreamFormatter<utf8>::Blob::AttributeName) {
-				InputStreamFormatter<utf8>::InteriorSection name, value;
-                formatter.TryAttribute(name, value);
-				if (XlEqString(name, "DescriptorSet")) {
-					if (!_descriptorSet.empty())
-						Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
-					_descriptorSet = value.AsString();
-				} else {
-					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name << ") in ShaderPatchCollection", formatter.GetLocation()));
-				}
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+			auto name = RequireKeyedItem(formatter);
+			
+			if (XlEqString(name, "DescriptorSet")) {
+				if (!_descriptorSet.empty())
+					Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
+				_descriptorSet = RequireValue(formatter).AsString();
 			} else {
-				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
+				if (formatter.PeekNext() != FormatterBlob::BeginElement)
+					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name << ") in ShaderPatchCollection", formatter.GetLocation()));
+
+				RequireBeginElement(formatter);
+				_patches.emplace_back(std::make_pair(name.AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
+				RequireEndElement(formatter);
 			}
 		}
+
+		if (formatter.PeekNext() != FormatterBlob::EndElement && formatter.PeekNext() != FormatterBlob::None)
+			Throw(FormatException("Unexpected data while deserializating ShaderPatchCollection", formatter.GetLocation()));
 
 		SortAndCalculateHash();
 	}
@@ -208,29 +170,12 @@ namespace RenderCore { namespace Assets
 	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
 	{
 		std::vector<ShaderPatchCollection> result;
-		for (;;) {
-			auto next = formatter.PeekNext();
-			switch (next) {
-			case InputStreamFormatter<utf8>::Blob::BeginElement:
-				{
-					StringSection<utf8> name;
-					if (!formatter.TryBeginElement(name))
-						Throw(FormatException("Could not parse element", formatter.GetLocation()));
-					result.emplace_back(ShaderPatchCollection(formatter, searchRules, depVal));
-
-					if (!formatter.TryEndElement())
-						Throw(FormatException("Expecting end element", formatter.GetLocation()));
-					continue;
-				}
-
-			case InputStreamFormatter<utf8>::Blob::EndElement:
-			case InputStreamFormatter<utf8>::Blob::None:
-				return result;
-
-			default:
-				Throw(FormatException("Unexpected blob while parsing TechniqueFragment list", formatter.GetLocation()));
-			}
+		while (formatter.TryBeginElement()) {
+			result.emplace_back(ShaderPatchCollection(formatter, searchRules, depVal));
+			RequireEndElement(formatter);
 		}
+		if (formatter.PeekNext() != FormatterBlob::EndElement && formatter.PeekNext() != FormatterBlob::None)
+			Throw(FormatException("Unexpected data while deserializating ShaderPatchCollection", formatter.GetLocation()));
 		std::sort(result.begin(), result.end());
 		return result;
 	}
@@ -238,7 +183,7 @@ namespace RenderCore { namespace Assets
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections)
 	{
 		for (const auto& p:patchCollections) {
-			auto ele = formatter.BeginElement("ShaderPatchCollection");
+			auto ele = formatter.BeginSequencedElement();
 			SerializationOperator(formatter, p);
 			formatter.EndElement(ele);
 		}

@@ -98,11 +98,11 @@ namespace UnitTests
 				std::make_pair("Brightness", "33")
 			};
 
-			auto matContainer = formatter.BeginElement("Material0");
+			auto matContainer = formatter.BeginKeyedElement("Material0");
 			formatter << material0;
 			formatter.EndElement(matContainer);
 
-			matContainer = formatter.BeginElement("Material1");
+			matContainer = formatter.BeginKeyedElement("Material1");
 			formatter << material1;
 			formatter.EndElement(matContainer);
 		}

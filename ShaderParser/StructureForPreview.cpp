@@ -39,13 +39,7 @@ namespace ShaderSourceParser
             const ::Assets::DirectorySearchRules&,
 			const ::Assets::DepValPtr& depVal)
         {
-            InputStreamFormatter<utf8>::InteriorSection name, value;
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            if (formatter.PeekNext() == Blob::AttributeName && formatter.TryAttribute(name, value)) {
-                _item = value.AsString();
-            } else
-                Throw(Utility::FormatException("Expecting single string attribute", formatter.GetLocation()));
-
+            _item = RequireValue(formatter).AsString();
 			_depVal = depVal;
         }
         TemplateItem() : _depVal(std::make_shared<::Assets::DependencyValidation>()) {}

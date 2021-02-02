@@ -32,23 +32,23 @@ namespace UnitTests
 		std::make_pair(
 			"test.material",
 			::Assets::AsBlob(R"--(
-				~*
-					~Constants
+				*=~
+					Constants=~
 						OnEverything=75
-				~Material0
-					~Inherit; ./base.material:BaseSetting
-					~ShaderParams
+				Material0=~
+					Inherit=~; ./base.material:BaseSetting
+					ShaderParams=~
 						MAT_DOUBLE_SIDED_LIGHTING=1u
-					~Constants
+					Constants=~
 						MaterialDiffuse={0.1f, 0.1f, 0.1f}c
-					~States
+					States=~
 						DoubleSided=1u
 			)--")),
 		std::make_pair(
 			"base.material",
 			::Assets::AsBlob(R"--(
-				~BaseSetting
-					~Constants
+				BaseSetting=~
+					Constants=~
 						SharedConstant={1.0f, 1.0f, 1.0f}c
 			)--"))
 	};

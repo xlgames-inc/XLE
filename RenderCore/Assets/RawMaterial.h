@@ -19,7 +19,7 @@ namespace Assets
     class DependencyValidation; class DirectorySearchRules; 
 	class DependentFileState;
 }
-namespace Utility { class Data; }
+namespace Utility { class OutputStreamFormatter; }
 
 namespace RenderCore { namespace Assets
 {
