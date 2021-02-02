@@ -9,6 +9,7 @@
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/SerializationUtils.h"
+#include "../../Utility/Streams/XmlStreamFormatter.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ImpliedTyping.h"
@@ -16,6 +17,10 @@
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
 #include <x86intrin.h>
+
+/*#include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachablePtr.h"
+#include "../../Assets/IFileSystem.h"*/
 
 using namespace Catch::literals;
 
@@ -164,9 +169,9 @@ Value0 = value; Value1 = value2
 =~; SomeValue=one;
     SomeValue=two; =~
 
-~~ Following on from above; are examples of 3 sibling elements
+~~ Following on from above; are examples where elements still nest within each other
 
-=~; =~; =~;
+=~; mappedEle=~; =~;
 =~; value=1; =~; value=2; =~; value=3
 )";
             InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithCompressedElements));
@@ -188,6 +193,7 @@ Value0 = value; Value1 = value2
             RequireEndElement(formatter);
 
             RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "mappedEle");
             RequireBeginElement(formatter);
             RequireBeginElement(formatter);
             RequireEndElement(formatter);
@@ -209,15 +215,52 @@ Value0 = value; Value1 = value2
         }
     }
 
-    const std::basic_string<utf8> testStringXML = R"(
+    TEST_CASE( "StreamFormatter-XMLInputSyntaxTests", "[utility]" )
+    {
 
-<element v0="stringValue" v1="5.">
-<element v0="sequenceValue0" v1="sequenceValue1" v2="sequenceValue2"/>
-Character data
-</element>
+        const std::basic_string<utf8> testStringXML = R"(
 
-    )";
+    <element v0="stringValue" v1="5.">
+        <nestedElement v0="attributeValue0" v1="attributeValue1" v2="attributeValue2"/>
+        Character data
+    </element>
 
+        )";
+
+        XmlInputStreamFormatter<utf8> formatter(MakeStringSection(testStringXML));
+        formatter._allowCharacterData = true;
+        REQUIRE(RequireMappedItem(formatter).AsString() == "element");
+        RequireBeginElement(formatter);
+        REQUIRE(RequireMappedItem(formatter).AsString() == "v0");
+        REQUIRE(RequireValue(formatter).AsString() == "stringValue");
+        REQUIRE(RequireMappedItem(formatter).AsString() == "v1");
+        REQUIRE(RequireValue(formatter).AsString() == "5.");
+
+            REQUIRE(RequireMappedItem(formatter).AsString() == "nestedElement");
+            RequireBeginElement(formatter);
+            REQUIRE(RequireMappedItem(formatter).AsString() == "v0");
+            REQUIRE(RequireValue(formatter).AsString() == "attributeValue0");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "v1");
+            REQUIRE(RequireValue(formatter).AsString() == "attributeValue1");
+            REQUIRE(RequireMappedItem(formatter).AsString() == "v2");
+            REQUIRE(RequireValue(formatter).AsString() == "attributeValue2");
+            RequireEndElement(formatter);
+
+        StringSection<char> cdata;
+        REQUIRE(formatter.TryCharacterData(cdata));
+        RequireEndElement(formatter);
+
+        /*{
+            auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
+            auto blob = ::Assets::TryLoadFileAsBlob("/home/davidj/code/XLE/Working/Game/Model/Galleon/Galleon.DAE");
+            MemoryMappedInputStream inputStream  { AsPointer(blob->begin()), AsPointer(blob->end()) };
+            XmlInputStreamFormatter<utf8> formatter ( inputStream );
+            StreamDOM<XmlInputStreamFormatter<utf8>> dom ( formatter );
+            REQUIRE(dom.RootElement().Element("COLLADA").Attribute("version").Value().AsString() == "1.4.1");
+            REQUIRE(dom.RootElement().Element("COLLADA").Element("library_effects").Element("effect").Attribute("id").Value().AsString() == "galleon_01");
+            (void)dom;
+        }*/
+    }
 
     const std::basic_string<utf8> testString = (const utf8*)R"~~(~~!Format=2; Tab=4
 

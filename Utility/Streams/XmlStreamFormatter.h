@@ -52,25 +52,24 @@ namespace Utility
         class XL_UTILITY_API XmlInputStreamFormatter
     {
     public:
-        enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, CharacterData, None };
-        Blob PeekNext();
+        FormatterBlob PeekNext();
 
-        using InteriorSection = StringSection<CharType>;
-
-        bool TryBeginElement(InteriorSection& name);
+        bool TryBeginElement();
         bool TryEndElement();
-        bool TryAttribute(InteriorSection& name, InteriorSection& value);
-        bool TryCharacterData(InteriorSection& cdata);
-
-        void SkipElement();
+        bool TryMappedItem(StringSection<CharType>& name);
+        bool TryValue(StringSection<CharType>& value);
+        bool TryCharacterData(StringSection<CharType>& cdata);
 
         StreamLocation GetLocation() const;
 
         using value_type = CharType;
+        using InteriorSection = StringSection<CharType>;
+        using Blob = FormatterBlob;
 
         bool _allowCharacterData = false;
 
         XmlInputStreamFormatter(const TextStreamMarker<CharType>& marker);
+        XmlInputStreamFormatter(StringSection<CharType> inputData);
         ~XmlInputStreamFormatter();
     protected:
         TextStreamMarker<CharType> _marker;
@@ -81,7 +80,7 @@ namespace Utility
         class Scope
         {
         public:
-            enum class Type { AttributeList, Element, None };
+            enum class Type { AttributeList, Element, ElementName, PendingBeginElement, AttributeValue, None };
             Type _type;
             InteriorSection _elementName;
         };

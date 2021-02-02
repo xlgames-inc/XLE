@@ -245,8 +245,11 @@ namespace Utility
 
                 if (IsNameStartChar(testChar)) {
 
+                    // openning a new element (ie <eleName...) should generate FormatterBlob::MappedItem first, then
+                    // FormatterBlob::BeginElement
                     _marker = mark;
-                    return _primed = Blob::BeginElement;
+                    _scopeStack.push(Scope{Scope::Type::ElementName, {}});
+                    return _primed = Blob::MappedItem;
 
                 } else if (testChar == '!') {
 
@@ -286,7 +289,7 @@ namespace Utility
 
             if (IsNameStartChar(*mark)) {
                 _marker = mark;
-                return _primed = Blob::AttributeName;
+                return _primed = Blob::MappedItem;
             } else if (*mark == '/') {
                 ++mark;
                 _marker = mark;
@@ -300,6 +303,26 @@ namespace Utility
                 Throw(FormatException("Bad character in attribute list", mark.GetLocation()));
             }
 
+        } else if (scopeType == Scope::Type::ElementName) {
+
+            // elements will always begin with name, which we return via TryMappedItem
+            _marker = mark;
+            return _primed = Blob::MappedItem;
+
+        } else if (scopeType == Scope::Type::PendingBeginElement) {
+
+            // this is a placeholder to ensure that Blob::BeginElement is returned
+            // after we've read the <eleName part of the element begin
+            _marker = mark;
+            return _primed = Blob::BeginElement;
+
+        } else if (scopeType == Scope::Type::AttributeValue) {
+
+            // this is a placeholder to ensure that Blob::Value is returned
+            // after we've read the key= part of an attribute in the attribute list
+            _marker = mark;
+            return _primed = Blob::Value;
+
         } else {
             assert(0);
         }
@@ -308,26 +331,12 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::    TryBeginElement(InteriorSection& name)
+        bool XmlInputStreamFormatter<CharType>::TryBeginElement()
         {
             if (PeekNext() != Blob::BeginElement) return false;
 
-                // This is an element. We should expect a NameStartChar, followed by any number of 
-                // NameChars
-
-            name._start = _marker.Pointer();
-            ++_marker;
-
-            for (;;) {
-                if (_marker.Remaining() < 1)
-                    Throw(FormatException("Unexpected end of file in element", _marker.GetLocation()));
-                if (!IsNameChar(*_marker)) break;
-                ++_marker;  // no need to check for new-line because new lines are not name chars
-            }
-
-            name._end = _marker.Pointer();
-
-                // next should come either an attribute list, or ">" or "/>" style deliminator
+             assert(_scopeStack.top()._type == Scope::Type::PendingBeginElement);
+             // next should come either an attribute list, or ">" or "/>" style deliminator
 
             for (;;) {
                 if (_marker.Remaining() < 1)
@@ -340,9 +349,9 @@ namespace Utility
             if (IsNameStartChar(*_marker)
                 || (*_marker == '/' && _marker.Remaining() >= 2 && _marker[1] == '>')) {
 
-                _scopeStack.push(Scope{Scope::Type::AttributeList, name});
+                _scopeStack.top()._type = Scope::Type::AttributeList;
             } else if (*_marker == '>') {
-                _scopeStack.push(Scope{Scope::Type::Element, name});
+                _scopeStack.top()._type = Scope::Type::Element;
                 ++_marker;
             } else {
                 Throw(FormatException("Bad character after element name", _marker.GetLocation()));
@@ -350,6 +359,56 @@ namespace Utility
 
             _primed = Blob::None;
             return true;
+        }
+
+    template<typename CharType>
+        bool XmlInputStreamFormatter<CharType>::TryMappedItem(StringSection<CharType>& name)
+        {
+            if (PeekNext() != Blob::MappedItem) return false;
+
+            auto scopeType = _scopeStack.top()._type;
+            if (scopeType == Scope::Type::ElementName) {
+                name._start = _marker.Pointer();
+                ++_marker;
+
+                for (;;) {
+                    if (_marker.Remaining() < 1)
+                        Throw(FormatException("Unexpected end of file in element", _marker.GetLocation()));
+                    if (!IsNameChar(*_marker)) break;
+                    ++_marker;  // no need to check for new-line because new lines are not name chars
+                }
+
+                name._end = _marker.Pointer();
+                _scopeStack.top()._elementName = name;
+                _scopeStack.top()._type = Scope::Type::PendingBeginElement;
+                _primed = Blob::None;
+                return true;
+                   
+            } else if (scopeType == Scope::Type::AttributeList) {
+                name._start = _marker.Pointer();
+                ++_marker;
+
+                for (;;) {
+                    if (_marker.Remaining() < 1 || !IsNameChar(*_marker))
+                        break;
+                    ++_marker;
+                }
+                name._end = _marker.Pointer();
+
+                EatWhitespace(_marker, "Unexpected end of file in attribute");
+                if (*_marker != '=')
+                    Throw(FormatException("Expected = after attribute name", _marker.GetLocation()));
+                ++_marker;
+                EatWhitespace(_marker, "Unexpected end of file in attribute");
+
+                // a value must follow this
+                _scopeStack.top()._type = Scope::Type::AttributeValue;
+
+                _primed = Blob::None;
+                return true;
+            } else {
+                Throw(FormatException("Unexpected scoped while reading mapped item name", _marker.GetLocation()));
+            }
         }
 
     template<typename CharType>
@@ -398,25 +457,11 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryAttribute(InteriorSection& name, InteriorSection& value)
+        bool XmlInputStreamFormatter<CharType>::TryValue(InteriorSection& value)
     {
-        if (PeekNext() != Blob::AttributeName) return false;
+        if (PeekNext() != Blob::Value) return false;
 
-        name._start = _marker.Pointer();
-        ++_marker;
-
-        for (;;) {
-            if (_marker.Remaining() < 1 || !IsNameChar(*_marker))
-                break;
-            ++_marker;
-        }
-        name._end = _marker.Pointer();
-
-        EatWhitespace(_marker, "Unexpected end of file in attribute");
-        if (*_marker != '=')
-            Throw(FormatException("Expected = after attribute name", _marker.GetLocation()));
-        ++_marker;
-        EatWhitespace(_marker, "Unexpected end of file in attribute");
+        assert(_scopeStack.top()._type == Scope::Type::AttributeValue);
 
         CharType openner[1] = { *_marker };
         if (openner[0] != '"' && openner[0] != '\'')
@@ -428,12 +473,13 @@ namespace Utility
         ScanToClosing(openner, _marker, "Unexpected end of file in attribute value", _marker.GetLocation());
         value._end = _marker.Pointer()-1;
 
+        _scopeStack.top()._type = Scope::Type::AttributeList;
         _primed = Blob::None;
         return true;
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryCharacterData(InteriorSection& cdata)
+        bool XmlInputStreamFormatter<CharType>::TryCharacterData(StringSection<CharType>& cdata)
     {
         assert(_allowCharacterData);
         if (PeekNext() != Blob::CharacterData) return false;
@@ -469,48 +515,6 @@ namespace Utility
     }
 
     template<typename CharType>
-        void XmlInputStreamFormatter<CharType>::SkipElement() 
-    {
-        unsigned subtreeEle = 0;
-        InteriorSection dummy0, dummy1;
-        for (;;) {
-            switch(PeekNext()) {
-            case Blob::BeginElement:
-                if (!TryBeginElement(dummy0))
-                    Throw(FormatException(
-                        "Malformed begin element while skipping forward", GetLocation()));
-                ++subtreeEle;
-                break;
-
-            case Blob::EndElement:
-                if (!subtreeEle) return;    // end now, while the EndElement is primed
-
-                if (!TryEndElement())
-                    Throw(FormatException(
-                        "Malformed end element while skipping forward", GetLocation()));
-                --subtreeEle;
-                break;
-
-            case Blob::AttributeName:
-                if (!TryAttribute(dummy0, dummy1))
-                    Throw(FormatException(
-                        "Malformed attribute while skipping forward", GetLocation()));
-                break;
-
-			case Blob::CharacterData:
-				if (!TryCharacterData(dummy0))
-					Throw(FormatException(
-                        "Malformed character data while skipping forward", GetLocation()));
-				break;
-
-            default:
-                Throw(FormatException(
-                    "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
-            }
-        }
-    }
-
-    template<typename CharType>
         StreamLocation XmlInputStreamFormatter<CharType>::GetLocation() const
     {
         return _marker.GetLocation();
@@ -523,6 +527,13 @@ namespace Utility
         _primed = Blob::None;
         _pendingHeader = true;
         _scopeStack.push(Scope{Scope::Type::None, InteriorSection()});
+    }
+
+    template<typename CharType>
+        XmlInputStreamFormatter<CharType>::XmlInputStreamFormatter(StringSection<CharType> inputData)
+    : XmlInputStreamFormatter{
+        TextStreamMarker<CharType>{ MemoryMappedInputStream{inputData.begin(), inputData.end() }} }
+    {
     }
 
     template<typename CharType>
