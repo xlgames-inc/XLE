@@ -163,9 +163,9 @@ namespace Assets
 
 		for (;;) {
 			auto next = formatter.PeekNext();
-			if (next == FormatterBlob::MappedItem) {
+			if (next == FormatterBlob::KeyedItem) {
 				StringSection<> name, value;
-				if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+				if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
 					break;
 				result.push_back({name.AsString(), value.AsString()});
 			} else {
@@ -181,9 +181,9 @@ namespace Assets
 		std::vector<std::pair<uint64_t, DependentFileState>> result;
 		InputStreamFormatter<char> formatter(data);
 
-		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 			StringSection<> eleName;
-			if (!formatter.TryMappedItem(eleName))
+			if (!formatter.TryKeyedItem(eleName))
 				return result;	// break on any error
 				
 			if (!formatter.TryBeginElement())
@@ -194,9 +194,9 @@ namespace Assets
 			if (end != eleName.end())
 				return result;	// break on any error
 
-			while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+			while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 				StringSection<> name, value;
-				if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+				if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
 					return result;
 
 				uint64_t timeCode = 0;
@@ -443,9 +443,7 @@ namespace Assets
 					FileOutputStream stream(std::move(outputFile));
 					OutputStreamFormatter formatter(stream);
 					for (const auto&i:attachedStrings)
-						formatter.WriteAttribute(
-							AsPointer(i.first.begin()), AsPointer(i.first.end()), 
-							AsPointer(i.second.begin()), AsPointer(i.second.end()));
+						formatter.WriteKeyedValue(i.first, i.second);
 				}
 			} CATCH (...) {
 			} CATCH_END
@@ -493,10 +491,10 @@ namespace Assets
 
 						char buffer[64];
 						XlUI64toA(i->first, buffer, dimof(buffer), 16);
-						auto ele = formatter.BeginElement(buffer);
+						auto ele = formatter.BeginKeyedElement(buffer);
 						for (auto i2=i; i2!=objEnd; ++i2) {
 							XlUI64toA(i2->second._timeMarker, buffer, dimof(buffer), 16);
-							formatter.WriteAttribute(MakeStringSection(i2->second._filename), MakeStringSection(buffer));
+							formatter.WriteKeyedValue(MakeStringSection(i2->second._filename), MakeStringSection(buffer));
 						}
 						formatter.EndElement(ele);
 						i=objEnd;

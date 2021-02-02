@@ -33,11 +33,11 @@ namespace Utility
         auto lastAttribute = ~0u;
         for (;;) {
             auto next = formatter.PeekNext();
-            if (next == Formatter::Blob::MappedItem) {
+            if (next == Formatter::Blob::KeyedItem) {
                 typename Formatter::InteriorSection name;
-                if (!formatter.TryMappedItem(name))
+                if (!formatter.TryKeyedItem(name))
                     Throw(FormatException(
-                        "Error while reading mapped item name in StreamDOM", formatter.GetLocation()));
+                        "Error while reading keyed item name in StreamDOM", formatter.GetLocation()));
 
                 next = formatter.PeekNext();
             if (next == Formatter::Blob::BeginElement) {
@@ -68,7 +68,7 @@ namespace Utility
                 lastAttribute = a;
                 } else {
                     Throw(FormatException(
-                        "Expecting either a value or element for mapped item in StreamDOM", formatter.GetLocation()));
+                        "Expecting either a value or element for keyed item in StreamDOM", formatter.GetLocation()));
                 }
             } else if (next == Formatter::Blob::Value) {
                 Throw(FormatException(

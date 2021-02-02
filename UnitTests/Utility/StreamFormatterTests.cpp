@@ -80,31 +80,31 @@ Element =~
     AnotherValue = something
 Value2 = value2)";
             InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithNestedElements));
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value0");
             REQUIRE(RequireValue(formatter).AsString() == "value0");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value1");
             REQUIRE(RequireValue(formatter).AsString() == "value1");
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Element");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Element");
             RequireBeginElement(formatter);
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "NestedElement");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "NestedElement");
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "something");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "something");
             REQUIRE(RequireValue(formatter).AsString() == "value");
             RequireEndElement(formatter);
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "AnotherNestedElement");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "AnotherNestedElement");
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "anotherThing");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "anotherThing");
             REQUIRE(RequireValue(formatter).AsString() == "value");
             RequireEndElement(formatter);
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "AnotherValue");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "AnotherValue");
             REQUIRE(RequireValue(formatter).AsString() == "something");
             RequireEndElement(formatter);
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value2");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value2");
             REQUIRE(RequireValue(formatter).AsString() == "value2");
         }
 
@@ -127,16 +127,16 @@ Value2 = value2)";
 )";
             InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithSequences));
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value0");
             REQUIRE(RequireValue(formatter).AsString() == "value");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value1");
             REQUIRE(RequireValue(formatter).AsString() == "value2");
             RequireEndElement(formatter);
 
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "SomeValue");
             REQUIRE(RequireValue(formatter).AsString() == "one");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "SomeValue");
             REQUIRE(RequireValue(formatter).AsString() == "two");
             RequireEndElement(formatter);
 
@@ -175,25 +175,25 @@ Value0 = value; Value1 = value2
 =~; value=1; =~; value=2; =~; value=3
 )";
             InputStreamFormatter<utf8> formatter(MakeStringSection(testStringWithCompressedElements));
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value0");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value0");
             REQUIRE(RequireValue(formatter).AsString() == "value");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "Value1");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "Value1");
             REQUIRE(RequireValue(formatter).AsString() == "value2");
 
             REQUIRE(RequireValue(formatter).AsString() == "one");
             REQUIRE(RequireValue(formatter).AsString() == "two");
 
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "SomeValue");
             REQUIRE(RequireValue(formatter).AsString() == "one");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "SomeValue");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "SomeValue");
             REQUIRE(RequireValue(formatter).AsString() == "two");
             RequireBeginElement(formatter);
             RequireEndElement(formatter);
             RequireEndElement(formatter);
 
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "mappedEle");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "mappedEle");
             RequireBeginElement(formatter);
             RequireBeginElement(formatter);
             RequireEndElement(formatter);
@@ -201,13 +201,13 @@ Value0 = value; Value1 = value2
             RequireEndElement(formatter);
 
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "value");
             REQUIRE(RequireValue(formatter).AsString() == "1");
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "value");
             REQUIRE(RequireValue(formatter).AsString() == "2");
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "value");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "value");
             REQUIRE(RequireValue(formatter).AsString() == "3");
             RequireEndElement(formatter);
             RequireEndElement(formatter);
@@ -229,20 +229,20 @@ Value0 = value; Value1 = value2
 
         XmlInputStreamFormatter<utf8> formatter(MakeStringSection(testStringXML));
         formatter._allowCharacterData = true;
-        REQUIRE(RequireMappedItem(formatter).AsString() == "element");
+        REQUIRE(RequireKeyedItem(formatter).AsString() == "element");
         RequireBeginElement(formatter);
-        REQUIRE(RequireMappedItem(formatter).AsString() == "v0");
+        REQUIRE(RequireKeyedItem(formatter).AsString() == "v0");
         REQUIRE(RequireValue(formatter).AsString() == "stringValue");
-        REQUIRE(RequireMappedItem(formatter).AsString() == "v1");
+        REQUIRE(RequireKeyedItem(formatter).AsString() == "v1");
         REQUIRE(RequireValue(formatter).AsString() == "5.");
 
-            REQUIRE(RequireMappedItem(formatter).AsString() == "nestedElement");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "nestedElement");
             RequireBeginElement(formatter);
-            REQUIRE(RequireMappedItem(formatter).AsString() == "v0");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "v0");
             REQUIRE(RequireValue(formatter).AsString() == "attributeValue0");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "v1");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "v1");
             REQUIRE(RequireValue(formatter).AsString() == "attributeValue1");
-            REQUIRE(RequireMappedItem(formatter).AsString() == "v2");
+            REQUIRE(RequireKeyedItem(formatter).AsString() == "v2");
             REQUIRE(RequireValue(formatter).AsString() == "attributeValue2");
             RequireEndElement(formatter);
 
@@ -469,8 +469,8 @@ EnvSettings=~
     {
         static const utf8* TextureNames[] = { "Texture0", "Texture1", "Slopes" };
         
-        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
-            auto name = RequireMappedItem(formatter);
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
 
             if (XlEqString(name, "MaterialId")) {
                 result._id = Conversion::Convert<decltype(result._id)>(RequireValue(formatter));
@@ -478,12 +478,12 @@ EnvSettings=~
                 RequireBeginElement(formatter);
 
                 while (formatter.PeekNext() != FormatterBlob::EndElement) {
-                    auto ignoredName = RequireMappedItem(formatter);
+                    auto ignoredName = RequireKeyedItem(formatter);
                     RequireBeginElement(formatter);
 
                     ExampleSerializableObject::StrataMaterial::Strata newStrata;
-                    while (formatter.PeekNext() == FormatterBlob::MappedItem) {
-                        auto name = RequireMappedItem(formatter);
+                    while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                        auto name = RequireKeyedItem(formatter);
                         auto value = RequireValue(formatter);
 
                         if (XlEqString(name, "EndHeight")) {
@@ -519,8 +519,8 @@ EnvSettings=~
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject::GradFlagMaterial& result)
     {
-        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
-            auto name = RequireMappedItem(formatter);
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
             auto value = RequireValue(formatter);
 
             if (XlEqString(name, "MaterialId")) {
@@ -557,8 +557,8 @@ EnvSettings=~
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject::ProcTextureSetting& result)
     {
-        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
-            auto name = RequireMappedItem(formatter);
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
             auto value = RequireValue(formatter);
 
             if (XlEqString(name, "Name")) {
@@ -584,8 +584,8 @@ EnvSettings=~
         InputStreamFormatter<utf8>& formatter,
         ExampleSerializableObject& result)
     {
-        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
-            auto name = RequireMappedItem(formatter);
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
 
             if (XlEqString(name, "DiffuseDims")) {
                 result._diffuseDims = ImpliedTyping::ParseFullMatch<UInt2>(RequireValue(formatter)).value();

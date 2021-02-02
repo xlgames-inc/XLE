@@ -40,9 +40,9 @@ namespace Assets
 
 		for (;;) {
 			switch (formatter.PeekNext()) {
-			case FormatterBlob::MappedItem:
+			case FormatterBlob::KeyedItem:
                 {
-                    auto eleName = RequireMappedItem(formatter);
+                    auto eleName = RequireKeyedItem(formatter);
 
                     if (XlEqStringI(eleName, immediateConfigName) && formatter.PeekNext() == FormatterBlob::BeginElement) {
                         if (!formatter.TryBeginElement())

@@ -68,19 +68,19 @@ namespace Assets
 
 	static void SerializationOperator(OutputStreamFormatter& formatter, const CompileProductsFile& compileProducts)
 	{
-		formatter.WriteAttribute("BasePath", compileProducts._basePath);
-		formatter.WriteAttribute("Invalid", compileProducts._state == AssetState::Ready ? "0" : "1");
+		formatter.WriteKeyedValue("BasePath", compileProducts._basePath);
+		formatter.WriteKeyedValue("Invalid", compileProducts._state == AssetState::Ready ? "0" : "1");
 
 		for (const auto&product:compileProducts._compileProducts) {
-			auto ele = formatter.BeginElement(std::to_string(product._type));
-			formatter.WriteAttribute("Artifact", product._intermediateArtifact.c_str());
+			auto ele = formatter.BeginKeyedElement(std::to_string(product._type));
+			formatter.WriteKeyedValue("Artifact", product._intermediateArtifact.c_str());
 			formatter.EndElement(ele);
 		}
 
 		{
-			auto ele = formatter.BeginElement("Dependencies");
+			auto ele = formatter.BeginKeyedElement("Dependencies");
 			for (const auto&product:compileProducts._dependencies) {
-				formatter.WriteAttribute(
+				formatter.WriteKeyedValue(
 					MakeStringSection(product._filename), 
 					MakeStringSection(std::to_string(product._timeMarker)));
 			}
@@ -90,9 +90,9 @@ namespace Assets
 
 	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile::Product& result)
 	{
-		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 			StringSection<utf8> name, value;
-			if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+			if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
 				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
 			if (XlEqString(name, "Artifact")) {
 				result._intermediateArtifact = value.AsString();
@@ -103,9 +103,9 @@ namespace Assets
 
 	static void DerializeDependencies(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
 	{
-		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 			StringSection<utf8> name, value;
-			if (!formatter.TryMappedItem(name) || !formatter.TryValue(value))
+			if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
 				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
 			result._dependencies.push_back(DependentFileState {
 				name.AsString(),
@@ -124,9 +124,9 @@ namespace Assets
 
 	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
 	{
-		while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 			InputStreamFormatter<utf8>::InteriorSection name;
-			if (!formatter.TryMappedItem(name))
+			if (!formatter.TryKeyedItem(name))
 				Throw(Utility::FormatException("Poorly formed item in CompileProductsFile", formatter.GetLocation()));
 
 			if (XlEqString(name, "Dependencies")) {

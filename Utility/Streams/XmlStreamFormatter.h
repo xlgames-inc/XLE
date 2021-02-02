@@ -32,7 +32,7 @@ namespace Utility
 
         bool TryBeginElement();
         bool TryEndElement();
-        bool TryMappedItem(StringSection<CharType>& name);
+        bool TryKeyedItem(StringSection<CharType>& name);
         bool TryValue(StringSection<CharType>& value);
         bool TryCharacterData(StringSection<CharType>& cdata);
 

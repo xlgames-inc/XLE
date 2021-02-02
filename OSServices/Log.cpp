@@ -128,9 +128,9 @@ namespace OSServices
     LogConfigurationSet::LogConfigurationSet() {}
     LogConfigurationSet::LogConfigurationSet(InputStreamFormatter<char>& formatter)
     {
-        while (formatter.PeekNext() == FormatterBlob::MappedItem) {
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
             StringSection<char> eleName;
-            formatter.TryMappedItem(eleName);
+            formatter.TryKeyedItem(eleName);
             RequireBeginElement(formatter);
 
             auto cfg = LoadConfig(formatter);

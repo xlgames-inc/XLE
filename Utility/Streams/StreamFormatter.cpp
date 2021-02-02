@@ -77,27 +77,27 @@ namespace Utility
         return true;
     }
 
-    template<typename CharType>
-        auto OutputStreamFormatter::BeginElement(StringSection<CharType> name) -> ElementId
+    auto OutputStreamFormatter::BeginKeyedElement(StringSection<utf8> name) -> ElementId
     {
-        DoNewLine<CharType>();
+        DoNewLine();
 
         // _hotLine = true; DoNewLine<CharType>(); // (force extra new line before new element)
-
-        _stream->WriteChar(FormatterConstants<CharType>::ElementPrefix);
 
             // in simple cases, we just write the name without extra formatting 
             //  (otherwise we have to write a string prefix and string postfix
         if (IsSimpleString(name)) {
             _stream->Write(name);
         } else {
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
+            WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePrefix, _currentLineLength);
             _stream->Write(name);
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+            WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePostfix, _currentLineLength);
         }
 
+        _stream->WriteChar('=');
+        _stream->WriteChar(FormatterConstants<utf8>::ElementPrefix);
+
         _hotLine = true;
-        _currentLineLength += unsigned(name.size() + 1);
+        _currentLineLength += unsigned(name.size() + 2);
         ++_currentIndentLevel;
 		_indentLevelAtStartOfLine = _currentIndentLevel;
 
@@ -110,13 +110,33 @@ namespace Utility
         #endif
     }
 
-    template<typename CharType>
-        void OutputStreamFormatter::DoNewLine()
+    auto OutputStreamFormatter::BeginSequencedElement() -> ElementId
+    {
+        DoNewLine();
+
+        _stream->WriteChar('=');
+        _stream->WriteChar(FormatterConstants<utf8>::ElementPrefix);
+
+        _hotLine = true;
+        _currentLineLength += 2;
+        ++_currentIndentLevel;
+		_indentLevelAtStartOfLine = _currentIndentLevel;
+
+        #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
+            auto id = _nextElementId;
+            _elementStack.push_back(id);
+            return id;
+        #else
+            return 0;
+        #endif
+    }
+
+    void OutputStreamFormatter::DoNewLine()
     {
         if (_pendingHeader) {
-            WriteConst(*_stream, FormatterConstants<CharType>::HeaderPrefix, _currentLineLength);
-            StringMeld<128, CharType> buffer;
-            buffer << "Format=1; Tab=" << TabWidth;
+            WriteConst(*_stream, FormatterConstants<utf8>::HeaderPrefix, _currentLineLength);
+            StringMeld<128, utf8> buffer;
+            buffer << "Format=2; Tab=" << TabWidth;
             _stream->Write(buffer.get());
 
             _hotLine = true;
@@ -124,22 +144,21 @@ namespace Utility
         }
 
         if (_hotLine) {
-            WriteConst(*_stream, FormatterConstants<CharType>::EndLine, _currentLineLength);
+            WriteConst(*_stream, FormatterConstants<utf8>::EndLine, _currentLineLength);
             
-            CharType tabBuffer[64];
+            utf8 tabBuffer[64];
             if (_currentIndentLevel > dimof(tabBuffer))
                 Throw(::Exceptions::BasicLabel("Excessive indent level found in OutputStreamFormatter (%i)", _currentIndentLevel));
-            std::fill(tabBuffer, &tabBuffer[_currentIndentLevel], FormatterConstants<CharType>::Tab);
-            _stream->Write(StringSection<CharType>(tabBuffer, &tabBuffer[_currentIndentLevel]));
+            std::fill(tabBuffer, &tabBuffer[_currentIndentLevel], FormatterConstants<utf8>::Tab);
+            _stream->Write(StringSection<utf8>(tabBuffer, &tabBuffer[_currentIndentLevel]));
             _hotLine = false;
             _currentLineLength = _currentIndentLevel * TabWidth;
         }
     }
 
-    template<typename CharType> 
-        void OutputStreamFormatter::WriteAttribute(
-            StringSection<CharType> name,
-            StringSection<CharType> value)
+    void OutputStreamFormatter::WriteKeyedValue(
+        StringSection<utf8> name,
+        StringSection<utf8> value)
     {
         const unsigned idealLineLength = 100;
         bool forceNewLine = 
@@ -148,35 +167,42 @@ namespace Utility
 			|| _currentIndentLevel < _indentLevelAtStartOfLine;
 
         if (forceNewLine) {
-            DoNewLine<CharType>();
+            DoNewLine();
         } else if (_hotLine) {
             _stream->WriteChar(';');
             _stream->WriteChar(' ');
             _currentLineLength += 2;
         }
 
-        if (IsSimpleString(name)) {
-            _stream->Write(name);
-        } else {
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->Write(name);
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+        if (!name.IsEmpty()) {
+            if (IsSimpleString(name)) {
+                _stream->Write(name);
+            } else {
+                WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePrefix, _currentLineLength);
+                _stream->Write(name);
+                WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePostfix, _currentLineLength);
+            }
         }
 
-        if (!value.IsEmpty()) {
-            _stream->WriteChar('=');
+        _stream->WriteChar('=');
 
-            if (IsSimpleString(value)) {
-                _stream->Write(value);
-            } else {
-                WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-                _stream->Write(value);
-                WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
-            }
+        if (IsSimpleString(value)) {
+            _stream->Write(value);
+        } else {
+            WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePrefix, _currentLineLength);
+            _stream->Write(value);
+            WriteConst(*_stream, FormatterConstants<utf8>::ProtectedNamePostfix, _currentLineLength);
         }
 
         _currentLineLength += unsigned(value.size() + name.size() + 1);
         _hotLine = true;
+    }
+
+    void OutputStreamFormatter::WriteSequencedValue(
+		StringSection<utf8> value)
+    {
+        // it turns out this is identical to a "keyed" value, just with an empty name
+        WriteKeyedValue({}, value);
     }
 
     void OutputStreamFormatter::EndElement(ElementId id)
@@ -196,13 +222,13 @@ namespace Utility
 
     void OutputStreamFormatter::Flush()
     {
-        DoNewLine<utf8>();  // finish on a new line (just for neatness)
+        DoNewLine();  // finish on a new line (just for neatness)
         assert(_currentIndentLevel == 0);
     }
 
     void OutputStreamFormatter::NewLine()
     {
-        DoNewLine<utf8>();
+        DoNewLine();
     }
 
     OutputStreamFormatter::OutputStreamFormatter(OutputStream& stream) 
@@ -218,8 +244,6 @@ namespace Utility
     OutputStreamFormatter::~OutputStreamFormatter()
     {}
 
-    template auto OutputStreamFormatter::BeginElement(StringSection<char> name) -> ElementId;
-    template void OutputStreamFormatter::WriteAttribute(StringSection<char> name, StringSection<char> value);
 
     
     FormatException::FormatException(const char label[], StreamLocation location)
@@ -433,7 +457,7 @@ namespace Utility
                     // more indented than it's parent will become it's child
                     // let's see if there's a fully formed blob here
                 _protectedStringMode = TryEat(_marker, Consts::ProtectedNamePrefix);
-                return _primed = FormatterBlob::MappedItem;
+                return _primed = FormatterBlob::KeyedItem;
             }
         }
 
@@ -531,9 +555,9 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryMappedItem(StringSection<CharType>& name)
+        bool InputStreamFormatter<CharType>::TryKeyedItem(StringSection<CharType>& name)
     {
-        if (PeekNext() != FormatterBlob::MappedItem) return false;
+        if (PeekNext() != FormatterBlob::KeyedItem) return false;
 
         name._start = _marker.Pointer();
         name._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode, false, GetLocation());
@@ -544,7 +568,7 @@ namespace Utility
         
         // After the name must come '='. Anything else is invalid in the syntax
         // "sequence items" (ie, values that don't have a key=value arrangement)
-        // should begin with a "=", which will distinguish them from mapped items
+        // should begin with a "=", which will distinguish them from keyed items
         //
         // even though this makes up a series of tokens, we don't support newlines
         // before the '='. That would create complications with identation. And 
@@ -553,7 +577,7 @@ namespace Utility
         // The same rules also apply for between the '=" and the start of the element/value
 
         if (!_marker.Remaining())
-            Throw(FormatException("Unexpected end of file while looking for a '=' to signify value for mapped item", GetLocation()));
+            Throw(FormatException("Unexpected end of file while looking for a '=' to signify value for keyed item", GetLocation()));
 
         if (*_marker == '\r' || *_marker == '\n')
             Throw(FormatException("New lines can not appear before the '=' in a mapping name/value pair", GetLocation()));
@@ -562,7 +586,7 @@ namespace Utility
             Throw(FormatException("Comments can not appear before the '=' in a mapping name/value pair", GetLocation()));
 
         if (*_marker != '=')
-            Throw(FormatException("Missing '=' to signify value for mapped item", GetLocation()));
+            Throw(FormatException("Missing '=' to signify value for keyed item", GetLocation()));
         
         // this can be followed up with either an element (ie, new element containing within
         // itself more elements, sequences, or mapped pairs) or a value. But there must be one

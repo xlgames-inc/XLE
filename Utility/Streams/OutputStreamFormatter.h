@@ -19,67 +19,23 @@ namespace Utility
 	class XL_UTILITY_API OutputStreamFormatter
 	{
 	public:
-		typedef unsigned ElementId;
+		using ElementId = unsigned;
 
-		template<typename CharType> 
-			ElementId BeginElement(StringSection<CharType> name);
+		ElementId BeginKeyedElement(StringSection<utf8> name);
+		ElementId BeginSequencedElement();
 		void EndElement(ElementId);
 
-		template<typename CharType> 
-			void WriteAttribute(
-				StringSection<CharType> name,
-				StringSection<CharType> value);
+		void WriteKeyedValue(
+			StringSection<utf8> name,
+			StringSection<utf8> value);
+		void WriteSequencedValue(
+			StringSection<utf8> value);
 		
 		void Flush();
 		void NewLine();
 
 		OutputStreamFormatter(OutputStream& stream);
 		~OutputStreamFormatter();
-
-		///////////////////////////////////////////////////////////////////////////////////
-		//    Deprecated interface follows
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE ElementId BeginElement(const CharType* nameStart, const CharType* nameEnd)
-		{
-			return BeginElement(StringSection<CharType>{nameStart, nameEnd});
-		}
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE void WriteAttribute(
-				const CharType* nameStart, const CharType* nameEnd,
-				const CharType* valueStart, const CharType* valueEnd)
-		{
-			WriteAttribute(StringSection<CharType>{nameStart, nameEnd}, StringSection<CharType>{valueStart, valueEnd});
-		}
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE ElementId BeginElement(const CharType* nameNullTerm)
-			{
-				return BeginElement(nameNullTerm, XlStringEnd(nameNullTerm));
-			}
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE ElementId BeginElement(const std::basic_string<CharType>& name)
-			{
-				return BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
-			}
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE void WriteAttribute(const CharType* nameNullTerm, const CharType* valueNullTerm)
-			{
-				WriteAttribute(
-					nameNullTerm, XlStringEnd(nameNullTerm),
-					valueNullTerm, XlStringEnd(valueNullTerm));
-			}
-
-		template<typename CharType> 
-			DEPRECATED_ATTRIBUTE void WriteAttribute(const CharType* nameNullTerm, const std::basic_string<CharType>& value)
-			{
-				WriteAttribute(
-					nameNullTerm, XlStringEnd(nameNullTerm),
-					AsPointer(value.cbegin()), AsPointer(value.cend()));
-			}
 
 	protected:
 		OutputStream*   _stream;
@@ -94,7 +50,7 @@ namespace Utility
 			unsigned _nextElementId;
 		#endif
 
-		template<typename CharType> void DoNewLine();
+		void DoNewLine();
 	};
 
 	namespace Internal

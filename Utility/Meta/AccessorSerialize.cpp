@@ -34,9 +34,9 @@ namespace Utility
 
         for (;;) {
             switch (formatter.PeekNext()) {
-            case FormatterBlob::MappedItem:
+            case FormatterBlob::KeyedItem:
                 {
-                    auto name = RequireMappedItem(formatter);
+                    auto name = RequireKeyedItem(formatter);
 
                     if (formatter.PeekNext() == FormatterBlob::Value) {
                         auto value = RequireValue(formatter);
@@ -93,7 +93,7 @@ namespace Utility
             if (!str.has_value()) continue;
 
             auto v = str.value();
-            formatter.WriteAttribute(
+            formatter.WriteKeyedValue(
                 MakeStringSection(p.second._name),
                 MakeStringSection(str.value()));
         }

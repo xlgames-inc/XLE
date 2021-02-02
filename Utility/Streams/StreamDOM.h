@@ -299,7 +299,7 @@ namespace Utility
     template<typename Type, typename CharType>
         inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
     {
-        formatter.WriteAttribute(
+        formatter.WriteKeyedValue(
             name, 
             Conversion::Convert<std::basic_string<CharType>>(ImpliedTyping::AsString(obj, true)));
     }
@@ -307,19 +307,19 @@ namespace Utility
     template<typename CharType>
         inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
     {
-        formatter.WriteAttribute(name, str);
+        formatter.WriteKeyedValue(name, str);
     }
 
     template<typename CharType>
         inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const std::basic_string<CharType>& str)
     {
-        formatter.WriteAttribute(name, str);
+        formatter.WriteKeyedValue(name, str);
     }
 
     template<typename FirstType, typename SecondType, typename CharType>
         inline void SerializationOperator(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
     {
-        auto ele = formatter.BeginElement(name);
+        auto ele = formatter.BeginKeyedElement(name);
         SerializationOperator(formatter, "First", obj.first);
         SerializationOperator(formatter, "Second", obj.second);
         formatter.EndElement(ele);

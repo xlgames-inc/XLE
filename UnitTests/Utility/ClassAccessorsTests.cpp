@@ -274,7 +274,7 @@ namespace UnitTests
             }
 
             auto serializedString = stream.AsString();
-            REQUIRE(serializedString == "~~!Format=1; Tab=4\r\nIntMember=30; VectorMember={5, 7, 6, 5}v");
+            REQUIRE(serializedString == "~~!Format=2; Tab=4\r\nIntMember=30; VectorMember={5, 7, 6, 5}v");
         }
 
         SECTION("Deserialize") {

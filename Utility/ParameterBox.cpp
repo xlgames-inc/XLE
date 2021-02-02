@@ -482,9 +482,9 @@ namespace Utility
                 if (valueLen < 0)
                     Throw(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
-                stream.WriteAttribute(
-                    AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
-                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen);
+                stream.WriteKeyedValue(
+                    MakeStringSection(AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen),
+                    MakeStringSection(AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen));
                 continue;
             }
 
@@ -498,17 +498,17 @@ namespace Utility
                 if (valueLen < 0)
                     Throw(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
-                stream.WriteAttribute(
-                    AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
-                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen);
+                stream.WriteKeyedValue(
+                    MakeStringSection(AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen),
+                    MakeStringSection(AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen));
                 continue;
             }
 
             auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->_valueBegin, type, true);
             auto convertedString = Conversion::Convert<std::basic_string<CharType>>(stringFormat);
-            stream.WriteAttribute(
-                AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
-                AsPointer(convertedString.begin()), AsPointer(convertedString.end()));
+            stream.WriteKeyedValue(
+                MakeStringSection(AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen),
+                MakeStringSection(AsPointer(convertedString.begin()), AsPointer(convertedString.end())));
         }
     }
 
@@ -542,9 +542,9 @@ namespace Utility
             // as soon as we hit something that is not another attribute
             // (it could be a sub-element, or the end of this element)
             // then we will stop reading and return
-        while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::MappedItem) {
+        while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::KeyedItem) {
             typename InputStreamFormatter<CharType>::InteriorSection name, value;
-            bool success = stream.TryMappedItem(name) && stream.TryValue(value);
+            bool success = stream.TryKeyedItem(name) && stream.TryValue(value);
             if (!success)
                 Throw(::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization"));
 

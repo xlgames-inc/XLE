@@ -207,11 +207,11 @@ namespace Utility
 
                 if (IsNameStartChar(testChar)) {
 
-                    // openning a new element (ie <eleName...) should generate FormatterBlob::MappedItem first, then
+                    // openning a new element (ie <eleName...) should generate FormatterBlob::KeyedItem first, then
                     // FormatterBlob::BeginElement
                     _marker = mark;
                     _scopeStack.push(Scope{Scope::Type::ElementName, {}});
-                    return _primed = Blob::MappedItem;
+                    return _primed = Blob::KeyedItem;
 
                 } else if (testChar == '!') {
 
@@ -251,7 +251,7 @@ namespace Utility
 
             if (IsNameStartChar(*mark)) {
                 _marker = mark;
-                return _primed = Blob::MappedItem;
+                return _primed = Blob::KeyedItem;
             } else if (*mark == '/') {
                 ++mark;
                 _marker = mark;
@@ -267,9 +267,9 @@ namespace Utility
 
         } else if (scopeType == Scope::Type::ElementName) {
 
-            // elements will always begin with name, which we return via TryMappedItem
+            // elements will always begin with name, which we return via TryKeyedItem
             _marker = mark;
-            return _primed = Blob::MappedItem;
+            return _primed = Blob::KeyedItem;
 
         } else if (scopeType == Scope::Type::PendingBeginElement) {
 
@@ -324,9 +324,9 @@ namespace Utility
         }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryMappedItem(StringSection<CharType>& name)
+        bool XmlInputStreamFormatter<CharType>::TryKeyedItem(StringSection<CharType>& name)
         {
-            if (PeekNext() != Blob::MappedItem) return false;
+            if (PeekNext() != Blob::KeyedItem) return false;
 
             auto scopeType = _scopeStack.top()._type;
             if (scopeType == Scope::Type::ElementName) {
@@ -369,7 +369,7 @@ namespace Utility
                 _primed = Blob::None;
                 return true;
             } else {
-                Throw(FormatException("Unexpected scoped while reading mapped item name", _marker.GetLocation()));
+                Throw(FormatException("Unexpected scoped while reading keyed item name", _marker.GetLocation()));
             }
         }
 

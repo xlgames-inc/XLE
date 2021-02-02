@@ -52,7 +52,7 @@ namespace Utility
 
 	enum class FormatterBlob
 	{
-		MappedItem,
+		KeyedItem,
 		Value,
 		BeginElement,
 		EndElement,
@@ -68,7 +68,7 @@ namespace Utility
 
 		bool TryBeginElement();
 		bool TryEndElement();
-		bool TryMappedItem(StringSection<CharType>& name);
+		bool TryKeyedItem(StringSection<CharType>& name);
 		bool TryValue(StringSection<CharType>& value);
 		bool TryCharacterData(StringSection<CharType>&);
 
@@ -127,16 +127,16 @@ namespace Utility
 				--subtreeEle;
 				break;
 
-			case FormatterBlob::MappedItem:
-				if (!formatter.TryMappedItem(dummy0))
+			case FormatterBlob::KeyedItem:
+				if (!formatter.TryKeyedItem(dummy0))
 					Throw(FormatException(
-						"Malformed mapped item while skipping forward", formatter.GetLocation()));
+						"Malformed keyed item while skipping forward", formatter.GetLocation()));
 				break;
 
 			case FormatterBlob::Value:
 				if (!formatter.TryValue(dummy0))
 					Throw(FormatException(
-						"Malformed mapped item while skipping forward", formatter.GetLocation()));
+						"Malformed keyed item while skipping forward", formatter.GetLocation()));
 				break;
 
 			default:
@@ -161,11 +161,11 @@ namespace Utility
 	}
 
 	template<typename Formatter>
-		typename Formatter::InteriorSection RequireMappedItem(Formatter& formatter)
+		typename Formatter::InteriorSection RequireKeyedItem(Formatter& formatter)
 	{
 		typename Formatter::InteriorSection name;
-		if (!formatter.TryMappedItem(name))
-			Throw(Utility::FormatException("Expecting mapped item", formatter.GetLocation()));
+		if (!formatter.TryKeyedItem(name))
+			Throw(Utility::FormatException("Expecting keyed item", formatter.GetLocation()));
 		return name;
 	}
 
