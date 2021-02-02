@@ -24,7 +24,7 @@ namespace Assets
 		Formatter ConfigFileContainer<Formatter>::GetRootFormatter() const
 	{
 		if (!_fileData) return Formatter {};
-		return Formatter(MemoryMappedInputStream(MakeIteratorRange(*_fileData)));
+		return Formatter(MakeIteratorRange(*_fileData).template Cast<const void*>());
 	}
 
 	template<typename Formatter>
@@ -33,7 +33,7 @@ namespace Assets
 		if (!_fileData) return Formatter {};
 
 		// search through for the specific element we need (ignoring other elements)
-		Formatter formatter(MemoryMappedInputStream(MakeIteratorRange(*_fileData)));
+		Formatter formatter(MakeIteratorRange(*_fileData).template Cast<const void*>());
 
 		auto immediateConfigName = configName;
 		immediateConfigName._end = std::find(immediateConfigName.begin(), configName.end(), ':');

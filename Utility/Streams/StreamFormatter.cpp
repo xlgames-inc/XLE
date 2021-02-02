@@ -18,14 +18,6 @@
 
 namespace Utility
 {
-    MemoryMappedInputStream::MemoryMappedInputStream(const void* start, const void* end) 
-    {
-        _start = _ptr = start;
-        _end = end;
-    }
-
-    MemoryMappedInputStream::~MemoryMappedInputStream() {}
-
     static const unsigned TabWidth = 4;
     
     template<typename CharType>
@@ -233,51 +225,51 @@ namespace Utility
         : ::Exceptions::BasicLabel("Format Exception: (%s) at line (%i), char (%i)", label, location._lineIndex, location._charIndex) {}
 
     template<typename CharType, int Count>
-        bool TryEat(MemoryMappedInputStream& stream, CharType (&pattern)[Count])
+        bool TryEat(TextStreamMarker<CharType>& marker, const CharType (&pattern)[Count])
     {
-        if (stream.RemainingBytes() < (sizeof(CharType)*Count))
+        if (marker.Remaining() < Count)
             return false;
 
-        const auto* test = (const CharType*)stream.ReadPointer();
+        const auto* test = marker.Pointer();
         for (unsigned c=0; c<Count; ++c)
-            if (test[c] != pattern[c])
+            if (marker[c] != pattern[c])
                 return false;
         
-        stream.AdvancePointer(sizeof(CharType)*Count);
+        marker += Count;
         return true;
     }
 
     template<typename CharType, int Count>
-        void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], StreamLocation location)
+        void Eat(TextStreamMarker<CharType>& marker, const CharType (&pattern)[Count], StreamLocation location)
     {
-        if (stream.RemainingBytes() < (sizeof(CharType)*Count))
+        if (marker.Remaining() < Count)
             Throw(FormatException("Blob prefix clipped", location));
 
-        const auto* test = (const CharType*)stream.ReadPointer();
+        const auto* test = marker.Pointer();
         for (unsigned c=0; c<Count; ++c)
-            if (test[c] != pattern[c])
+            if (marker[c] != pattern[c])
                 Throw(FormatException("Malformed blob prefix", location));
         
-        stream.AdvancePointer(sizeof(CharType)*Count);
+        marker += Count;
     }
 
     template<typename CharType>
         const CharType* ReadToStringEnd(
-            MemoryMappedInputStream& stream, bool protectedStringMode, bool allowEquals,
+            TextStreamMarker<CharType>& marker, bool protectedStringMode, bool allowEquals,
             StreamLocation location)
     {
         const auto pattern = FormatterConstants<CharType>::ProtectedNamePostfix;
         const auto patternLength = dimof(FormatterConstants<CharType>::ProtectedNamePostfix);
 
         if (protectedStringMode) {
-            const auto* end = ((const CharType*)stream.End()) - patternLength;
-            const auto* ptr = (const CharType*)stream.ReadPointer();
+            const auto* end = marker.End() - patternLength;
+            const auto* ptr = marker.Pointer();
             while (ptr <= end) {
                 for (unsigned c=0; c<patternLength; ++c)
                     if (ptr[c] != pattern[c])
                         goto advptr;
 
-                stream.SetPointer(ptr + patternLength);
+                marker.SetPointer(ptr + patternLength);
                 return ptr;
             advptr:
                 ++ptr;
@@ -288,13 +280,13 @@ namespace Utility
         } else {
                 // we must read forward until we hit a formatting character
                 // the end of the string will be the last non-whitespace before that formatting character
-            const auto* end = ((const CharType*)stream.End());
-            const auto* ptr = (const CharType*)stream.ReadPointer();
+            const auto* end = marker.End();
+            const auto* ptr = marker.Pointer();
             const auto* stringEnd = ptr;
             for (;;) {
                     // here, hitting EOF is the same as hitting a formatting char
                 if (ptr == end || (FormattingChar(*ptr) && (!allowEquals || *ptr != '='))) {
-                    stream.SetPointer(ptr);
+                    marker.SetPointer(ptr);
                     return stringEnd;
                 } else if (!WhitespaceChar(*ptr)) {
                     stringEnd = ptr+1;
@@ -305,13 +297,13 @@ namespace Utility
     }
 
     template<typename CharType>
-        void EatWhitespace(MemoryMappedInputStream& stream)
+        void EatWhitespace(TextStreamMarker<CharType>& marker)
     {
             // eat all whitespace (excluding new line)
-        const auto* end = ((const CharType*)stream.End());
-        const auto* ptr = (const CharType*)stream.ReadPointer();
+        const auto* end = marker.End();
+        const auto* ptr = marker.Pointer();
         while (ptr < end && WhitespaceChar(*ptr)) ++ptr;
-        stream.SetPointer(ptr);
+        marker.SetPointer(ptr);
     }
 
     template<typename CharType>
@@ -323,23 +315,23 @@ namespace Utility
         
         if (_pendingHeader) {
                 // attempt to read file header
-            if (TryEat(_stream, Consts::HeaderPrefix))
+            if (TryEat(_marker, Consts::HeaderPrefix))
                 ReadHeader();
 
             _pendingHeader = false;
         }
 
-        while (_stream.RemainingBytes() >= sizeof(CharType)) {
-            const auto* next = (const CharType*)_stream.ReadPointer();
+        while (_marker.Remaining()) {
+            const auto* next = _marker.Pointer();
 
             switch (unsigned(*next))
             {
             case '\t':
-                _stream.AdvancePointer(sizeof(CharType));
+                ++_marker;
                 _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, _tabWidth);
                 break;
             case ' ': 
-                _stream.AdvancePointer(sizeof(CharType));
+                ++_marker;
                 ++_activeLineSpaces; 
                 break;
 
@@ -355,26 +347,14 @@ namespace Utility
                 Throw(FormatException("Unsupported white space character", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
-                _stream.AdvancePointer(sizeof(CharType));
-                if (    _stream.RemainingBytes() > sizeof(CharType)
-                    &&  *(const CharType*)_stream.ReadPointer() == '\n')
-                    _stream.AdvancePointer(sizeof(CharType));
-
-                    // don't adjust _expected line spaces here -- we want to be sure 
-                    // that lines with just whitespace don't affect _activeLineSpaces
-                _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream.ReadPointer();
-                break;
-
             case '\n':  // (independant new line. A following /r will be treated as another new line)
-                _stream.AdvancePointer(sizeof(CharType));
+                _marker.AdvanceCheckNewLine();
                 _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream.ReadPointer();
                 break;
 
             case ';':
                     // deliminator is ignored here
-                _stream.AdvancePointer(sizeof(CharType));
+                ++_marker;
                 break;
 
             case '=':
@@ -383,8 +363,8 @@ namespace Utility
                     return _primed = FormatterBlob::EndElement;
                 }
 
-                _stream.AdvancePointer(sizeof(CharType));
-                EatWhitespace<CharType>(_stream);
+                ++_marker;
+                EatWhitespace<CharType>(_marker);
 
                 // This is a sequence item. In other words, it's just the value part of a key/value pair
                 // It functions like an element in an array
@@ -400,33 +380,33 @@ namespace Utility
                 //
                 // So, we just call EatWhitespace (which jumps over any non-new-line whitespace) and expect
                 // to find either a 
-                if (_stream.RemainingBytes() < sizeof(CharType))
+                if (!_marker.Remaining())
                     Throw(FormatException("Unexpected end of file in the middle of mapping pair", GetLocation()));
 
-                if (*(const CharType*)_stream.ReadPointer() == '\r' || *(const CharType*)_stream.ReadPointer() == '\n')
+                if (*_marker == '\r' || *_marker == '\n')
                     Throw(FormatException("The value for a key/pair mapping pair must follow immediate after the '='. New lines can not appear here", GetLocation()));
 
-                if (TryEat(_stream, Consts::CommentPrefix))
+                if (TryEat(_marker, Consts::CommentPrefix))
                     Throw(FormatException("The value for a key/pair mapping pair must follow immediate after the '='. Comments can not appear here", GetLocation()));
 
-                if (*(const CharType*)_stream.ReadPointer() == '~') {
+                if (*_marker == '~') {
                     _protectedStringMode = false;
-                    _stream.AdvancePointer(sizeof(CharType));
+                    ++_marker;
                     return _primed = FormatterBlob::BeginElement;
                 } else {
-                    _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                    _protectedStringMode = TryEat(_marker, Consts::ProtectedNamePrefix);
                     return _primed = FormatterBlob::Value;
                 }
 
             case '~':
-                if (TryEat(_stream, Consts::CommentPrefix)) {
+                if (TryEat(_marker, Consts::CommentPrefix)) {
                         // this is a comment... Read forward until the end of the line
-                    _stream.AdvancePointer(2*sizeof(CharType));
+                    _marker += 2;
                     {
-                        const auto* end = ((const CharType*)_stream.End());
-                        const auto* ptr = (const CharType*)_stream.ReadPointer();
+                        const auto* end = _marker.End();
+                        const auto* ptr = _marker.Pointer();
                         while (ptr < end && *ptr!='\r' && *ptr!='\n') ++ptr;
-                        _stream.SetPointer(ptr);
+                        _marker.SetPointer(ptr);
                     }
                     break;
                 }
@@ -437,7 +417,7 @@ namespace Utility
                     return _primed = FormatterBlob::EndElement;
                 }
 
-                _stream.AdvancePointer(sizeof(CharType));
+                ++_marker;
                 return _primed = FormatterBlob::BeginElement;
 
             default:
@@ -451,7 +431,7 @@ namespace Utility
                     // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
                     // more indented than it's parent will become it's child
                     // let's see if there's a fully formed blob here
-                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                _protectedStringMode = TryEat(_marker, Consts::ProtectedNamePrefix);
                 return _primed = FormatterBlob::MappedItem;
             }
         }
@@ -468,14 +448,13 @@ namespace Utility
         const CharType* aNameStart = nullptr;
         const CharType* aNameEnd = nullptr;
 
-        while (_stream.RemainingBytes() >= sizeof(CharType)) {
-            const auto* next = (const CharType*)_stream.ReadPointer();
-            switch (unsigned(*next))
+        while (_marker.Remaining()) {
+            switch (*_marker)
             {
             case '\t':
             case ' ': 
             case ';':
-                _stream.AdvancePointer(sizeof(CharType));
+                ++_marker;
                 break;
 
             case 0x0B: case 0x0C: case 0x85: case 0xA0:
@@ -489,12 +468,12 @@ namespace Utility
                 return;
 
             case '=':
-                _stream.AdvancePointer(sizeof(CharType));
-                EatWhitespace<CharType>(_stream);
+                ++_marker;
+                EatWhitespace<CharType>(_marker);
                 
                 {
-                    const auto* aValueStart = (const CharType*)_stream.ReadPointer();
-                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, true, GetLocation());
+                    const auto* aValueStart = _marker.Pointer();
+                    const auto* aValueEnd = ReadToStringEnd<CharType>(_marker, false, true, GetLocation());
 
                     char convBuffer[12];
                     Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
@@ -511,8 +490,8 @@ namespace Utility
                 break;
 
             default:
-                aNameStart = next;
-                aNameEnd = ReadToStringEnd<CharType>(_stream, false, false, GetLocation());
+                aNameStart = _marker.Pointer();
+                aNameEnd = ReadToStringEnd<CharType>(_marker, false, false, GetLocation());
                 break;
             }
         }
@@ -555,9 +534,9 @@ namespace Utility
     {
         if (PeekNext() != FormatterBlob::MappedItem) return false;
 
-        name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
-        EatWhitespace<CharType>(_stream);
+        name._start = _marker.Pointer();
+        name._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode, false, GetLocation());
+        EatWhitespace<CharType>(_marker);
 
         _primed = FormatterBlob::None;
         _protectedStringMode = false;
@@ -572,17 +551,16 @@ namespace Utility
         // 
         // The same rules also apply for between the '=" and the start of the element/value
 
-        if (_stream.RemainingBytes() < sizeof(CharType))
+        if (!_marker.Remaining())
             Throw(FormatException("Unexpected end of file while looking for a '=' to signify value for mapped item", GetLocation()));
 
-        if (*(const CharType*)_stream.ReadPointer() == '\r' || *(const CharType*)_stream.ReadPointer() == '\n')
+        if (*_marker == '\r' || *_marker == '\n')
             Throw(FormatException("New lines can not appear before the '=' in a mapping name/value pair", GetLocation()));
 
-        if (TryEat(_stream, FormatterConstants<CharType>::CommentPrefix))
+        if (TryEat(_marker, FormatterConstants<CharType>::CommentPrefix))
             Throw(FormatException("Comments can not appear before the '=' in a mapping name/value pair", GetLocation()));
 
-        const auto* next = (const CharType*)_stream.ReadPointer();
-        if (*next != '=')
+        if (*_marker != '=')
             Throw(FormatException("Missing '=' to signify value for mapped item", GetLocation()));
         
         // this can be followed up with either an element (ie, new element containing within
@@ -603,9 +581,9 @@ namespace Utility
     {
         if (PeekNext() != FormatterBlob::Value) return false;
 
-        value._start = (const CharType*)_stream.ReadPointer();
-        value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, false, GetLocation());
-        EatWhitespace<CharType>(_stream);
+        value._start = _marker.Pointer();
+        value._end = ReadToStringEnd<CharType>(_marker, _protectedStringMode, false, GetLocation());
+        EatWhitespace<CharType>(_marker);
 
         _primed = FormatterBlob::None;
         _protectedStringMode = false;
@@ -624,22 +602,17 @@ namespace Utility
     template<typename CharType>
         StreamLocation InputStreamFormatter<CharType>::GetLocation() const
     {
-        StreamLocation result;
-        result._charIndex = 1 + unsigned((size_t(_stream.ReadPointer()) - size_t(_lineStart)) / sizeof(CharType));
-        result._lineIndex = 1 + _lineIndex;
-        return result;
+        return _marker.GetLocation();
     }
 
     template<typename CharType>
-        InputStreamFormatter<CharType>::InputStreamFormatter(const MemoryMappedInputStream& stream) 
-        : _stream(stream)
+        InputStreamFormatter<CharType>::InputStreamFormatter(const TextStreamMarker<CharType>& marker) 
+        : _marker(marker)
     {
         _primed = FormatterBlob::None;
         _activeLineSpaces = 0;
         _parentBaseLine = -1;
         _baseLineStackPtr = 0;
-        _lineIndex = 0;
-        _lineStart = _stream.ReadPointer();
         _protectedStringMode = false;
         _tabWidth = TabWidth;
         _pendingHeader = true;
@@ -651,16 +624,12 @@ namespace Utility
 
 	template<typename CharType>
 		InputStreamFormatter<CharType>::InputStreamFormatter()
-		: _stream(nullptr, nullptr)
 	{
 		_primed = FormatterBlob::None;
 		_activeLineSpaces = _parentBaseLine = 0;
 
 		for (signed& s:_baseLineStack) s = 0;
 		_baseLineStackPtr = 0u;
-
-		_lineIndex = 0u;
-		_lineStart = nullptr;
 
 		_protectedStringMode = false;
 		_format = _tabWidth = 0u;
@@ -669,13 +638,11 @@ namespace Utility
 
 	template<typename CharType>
 		InputStreamFormatter<CharType>::InputStreamFormatter(const InputStreamFormatter& cloneFrom)
-	: _stream(cloneFrom._stream)
+	: _marker(cloneFrom._marker)
 	, _primed(cloneFrom._primed)
 	, _activeLineSpaces(cloneFrom._activeLineSpaces)
 	, _parentBaseLine(cloneFrom._parentBaseLine)
 	, _baseLineStackPtr(cloneFrom._baseLineStackPtr)
-	, _lineIndex(cloneFrom._lineIndex)
-	, _lineStart(cloneFrom._lineStart)
 	, _protectedStringMode(cloneFrom._protectedStringMode)
 	, _format(cloneFrom._format)
 	, _tabWidth(cloneFrom._tabWidth)
@@ -688,15 +655,13 @@ namespace Utility
 	template<typename CharType>
 		InputStreamFormatter<CharType>& InputStreamFormatter<CharType>::operator=(const InputStreamFormatter& cloneFrom)
 	{
-		_stream = cloneFrom._stream;
+		_marker = cloneFrom._marker;
 		_primed = cloneFrom._primed;
 		_activeLineSpaces = cloneFrom._activeLineSpaces;
 		_parentBaseLine = cloneFrom._parentBaseLine;
 		_baseLineStackPtr = cloneFrom._baseLineStackPtr;
 		for (unsigned c=0; c<dimof(_baseLineStack); ++c)
 			_baseLineStack[c] = cloneFrom._baseLineStack[c];
-		_lineIndex = cloneFrom._lineIndex;
-		_lineStart = cloneFrom._lineStart;
 		_protectedStringMode = cloneFrom._protectedStringMode;
 		_format = cloneFrom._format;
 		_tabWidth = cloneFrom._tabWidth;
@@ -704,6 +669,67 @@ namespace Utility
 		return *this;
 	}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename CharType>
+        StreamLocation TextStreamMarker<CharType>::GetLocation() const
+    {
+        StreamLocation result;
+        result._charIndex = 1 + unsigned(_ptr - _lineStart);
+        result._lineIndex = 1 + _lineIndex;
+        return result;
+    }
+
+    template<typename CharType>
+        inline void TextStreamMarker<CharType>::AdvanceCheckNewLine()
+    {
+        assert(Remaining() >= 1);
+
+            // as per xml spec, 0xd0xa, 0xa or 0xd are all considered single new lines
+        if (*_ptr == 0xd || *_ptr == 0xa) {
+            if (Remaining()>=2 && *_ptr == 0xd && *(_ptr+1)==0xa) ++_ptr;
+            _lineStart = _ptr+1;
+            ++_lineIndex;
+        }
+                    
+        ++_ptr;
+    }
+
+    template<typename CharType>
+        TextStreamMarker<CharType>::TextStreamMarker(StringSection<CharType> source)
+    : _ptr(source.begin())
+    , _end(source.end())
+    {
+        _lineIndex = 0;
+        _lineStart = _ptr;
+    }
+
+    template<typename CharType>
+        TextStreamMarker<CharType>::TextStreamMarker(IteratorRange<const void*> source)
+    : _ptr((const CharType*)source.begin())
+    , _end((const CharType*)source.end())
+    {
+        assert((source.size() % sizeof(CharType)) == 0);
+        _lineIndex = 0;
+        _lineStart = _ptr;
+    }
+
+    template<typename CharType>
+        TextStreamMarker<CharType>::TextStreamMarker()
+    : _ptr(nullptr)
+    , _end(nullptr)
+    {
+        _lineIndex = 0;
+        _lineStart = nullptr;
+    }
+
+    template<typename CharType>
+        TextStreamMarker<CharType>::~TextStreamMarker()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     template class InputStreamFormatter<utf8>;
+    template class TextStreamMarker<utf8>;
 }
 

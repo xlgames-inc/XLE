@@ -278,7 +278,7 @@ namespace UnitTests
 
         SECTION("Deserialize") {
             std::string input{"IntMember = -342i; VectorMember = {30, 31, 32, 33}"};
-            InputStreamFormatter<char> formatter(MakeIteratorRange(AsPointer(input.begin()), AsPointer(input.end())));
+            InputStreamFormatter<char> formatter(MakeStringSection(input));
             TestClass ex{};
             AccessorDeserialize(formatter, &ex, accessors);
 

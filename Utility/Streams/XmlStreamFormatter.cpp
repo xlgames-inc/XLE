@@ -8,44 +8,6 @@
 
 namespace Utility
 {
-    template<typename CharType>
-        StreamLocation TextStreamMarker<CharType>::GetLocation() const
-    {
-        StreamLocation result;
-        result._charIndex = 1 + unsigned(_ptr - _lineStart);
-        result._lineIndex = 1 + _lineIndex;
-        return result;
-    }
-
-    template<typename CharType>
-        inline void TextStreamMarker<CharType>::AdvanceCheckNewLine()
-    {
-        assert(Remaining() >= 1);
-
-            // as per xml spec, 0xd0xa, 0xa or 0xd are all considered single new lines
-        if (*_ptr == 0xd || *_ptr == 0xa) {
-            if (Remaining()>=2 && *_ptr == 0xd && *(_ptr+1)==0xa) ++_ptr;
-            _lineStart = _ptr+1;
-            ++_lineIndex;
-        }
-                    
-        ++_ptr;
-    }
-
-    template<typename CharType>
-        TextStreamMarker<CharType>::TextStreamMarker(const MemoryMappedInputStream& stream)
-    : _ptr((const CharType*)stream.ReadPointer())
-    , _end((const CharType*)stream.End())
-    {
-        _lineIndex = 0;
-        _lineStart = (const CharType*)stream.ReadPointer();
-    }
-
-    template<typename CharType>
-        TextStreamMarker<CharType>::~TextStreamMarker()
-    {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename CharType>
         bool IsWhitespace(CharType chr)
@@ -530,16 +492,8 @@ namespace Utility
     }
 
     template<typename CharType>
-        XmlInputStreamFormatter<CharType>::XmlInputStreamFormatter(StringSection<CharType> inputData)
-    : XmlInputStreamFormatter{
-        TextStreamMarker<CharType>{ MemoryMappedInputStream{inputData.begin(), inputData.end() }} }
-    {
-    }
-
-    template<typename CharType>
         XmlInputStreamFormatter<CharType>::~XmlInputStreamFormatter() {}
 
     template class XmlInputStreamFormatter<utf8>;
-    template class TextStreamMarker<utf8>;
 }
 

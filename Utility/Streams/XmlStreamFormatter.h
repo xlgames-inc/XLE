@@ -11,30 +11,6 @@
 
 namespace Utility
 {
-    template<typename CharType>
-        class TextStreamMarker
-    {
-    public:
-        CharType operator*() const                      { return *_ptr; }
-        CharType operator[](size_t offset) const        { assert((_ptr+offset) < _end); return *(_ptr+offset); }
-        ptrdiff_t Remaining() const                     { return (_end - _ptr); }
-        const TextStreamMarker<CharType>& operator++()  { _ptr++; assert(_ptr<=_end); return *this; }
-        const CharType* Pointer() const                 { return _ptr; }
-        void SetPointer(const CharType* newPtr)         { assert(newPtr <= _end); _ptr = newPtr; }
-
-        StreamLocation GetLocation() const;
-        void AdvanceCheckNewLine();
-
-        TextStreamMarker(const MemoryMappedInputStream& stream);
-        ~TextStreamMarker();
-    protected:
-        const CharType* _ptr;
-        const CharType* _end;
-
-        unsigned _lineIndex;
-        const CharType* _lineStart;
-    };
-
     /// <summary>Deserializes element and attribute data from xml</summary>
     /// This is an input deserializer for xml data that handles just element and
     /// attributes. The interface is compatible with InputStreamFormatter, and
@@ -69,7 +45,6 @@ namespace Utility
         bool _allowCharacterData = false;
 
         XmlInputStreamFormatter(const TextStreamMarker<CharType>& marker);
-        XmlInputStreamFormatter(StringSection<CharType> inputData);
         ~XmlInputStreamFormatter();
     protected:
         TextStreamMarker<CharType> _marker;

@@ -103,29 +103,36 @@ namespace Utility
         template<typename CharType> void DoNewLine();
     };
 
-    class MemoryMappedInputStream
+    class StreamLocation { public: unsigned _charIndex, _lineIndex; };
+
+    template<typename CharType>
+        class TextStreamMarker
     {
     public:
-        const void* ReadPointer() const { return _ptr; }
-        ptrdiff_t RemainingBytes() const { return ptrdiff_t(_end) - ptrdiff_t(_ptr); }
-        void AdvancePointer(ptrdiff_t offset);
-        void SetPointer(const void* newPtr);
-        const void* Start() const { return _start; }
-        const void* End() const { return _end; }
+        CharType operator*() const                      { return *_ptr; }
+        CharType operator[](size_t offset) const        { assert((_ptr+offset) < _end); return *(_ptr+offset); }
+        ptrdiff_t Remaining() const                     { return (_end - _ptr); }
+        const TextStreamMarker<CharType>& operator++()  { _ptr++; assert(_ptr<=_end); return *this; }
+        const TextStreamMarker<CharType>& operator+=(size_t advancement)  { _ptr+=advancement; assert(_ptr<=_end); return *this; }
+        const CharType* Pointer() const                 { return _ptr; }
+        const CharType* End() const                     { return _end; }
+        void SetPointer(const CharType* newPtr)         { assert(newPtr <= _end); _ptr = newPtr; }
 
-        MemoryMappedInputStream(const void* start, const void* end);
-        ~MemoryMappedInputStream();
+        StreamLocation GetLocation() const;
+        void AdvanceCheckNewLine();
 
-		template<typename Type>
-			MemoryMappedInputStream(IteratorRange<Type*> range)
-				: MemoryMappedInputStream(range.begin(), range.end()) {}
+        TextStreamMarker(StringSection<CharType> source);
+        TextStreamMarker(IteratorRange<const void*> source);
+        TextStreamMarker();
+        ~TextStreamMarker();
     protected:
-        const void* _start;
-        const void* _end;
-        const void* _ptr;
+        const CharType* _ptr;
+        const CharType* _end;
+
+        unsigned _lineIndex;
+        const CharType* _lineStart;
     };
 
-    class StreamLocation { public: unsigned _charIndex, _lineIndex; };
     class FormatException : public ::Exceptions::BasicLabel
     {
     public:
@@ -160,24 +167,20 @@ namespace Utility
         using InteriorSection = StringSection<CharType>;
         using Blob = FormatterBlob;
 
-        InputStreamFormatter(const MemoryMappedInputStream& stream);
-		InputStreamFormatter(StringSection<CharType> inputData) : InputStreamFormatter(MemoryMappedInputStream{inputData.begin(), inputData.end()}) {}
+        InputStreamFormatter(const TextStreamMarker<CharType>& marker);
         ~InputStreamFormatter();
 
 		InputStreamFormatter();
 		InputStreamFormatter(const InputStreamFormatter& cloneFrom);
 		InputStreamFormatter& operator=(const InputStreamFormatter& cloneFrom);
     protected:
-        MemoryMappedInputStream _stream;
+        TextStreamMarker<CharType> _marker;
         FormatterBlob _primed;
         signed _activeLineSpaces;
         signed _parentBaseLine;
 
         signed _baseLineStack[32];
         unsigned _baseLineStackPtr;
-
-        unsigned _lineIndex;
-        const void* _lineStart;
 
         bool _protectedStringMode;
 
@@ -187,19 +190,6 @@ namespace Utility
 
         void ReadHeader();
     };
-
-
-    inline void MemoryMappedInputStream::AdvancePointer(ptrdiff_t offset) 
-    { 
-        assert(PtrAdd(_ptr, offset) <= _end && PtrAdd(_ptr, offset) >= _start);
-        _ptr = PtrAdd(_ptr, offset);
-    }
-
-    inline void MemoryMappedInputStream::SetPointer(const void* newPtr)
-    {
-        assert(newPtr <= _end && newPtr >= _start);
-        _ptr = newPtr;
-    }
 
 	namespace Internal
     {

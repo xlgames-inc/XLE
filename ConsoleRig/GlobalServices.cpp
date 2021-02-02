@@ -305,7 +305,7 @@ namespace ConsoleRig
         if (!file.get() || !fileSize)
             return std::make_pair(nullptr, nullptr);
         
-        InputStreamFormatter<char> fmtr(MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
+        InputStreamFormatter<char> fmtr(MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), fileSize)));
         auto depVal = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(depVal, fn);
         return std::make_pair(
