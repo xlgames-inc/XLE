@@ -19,12 +19,12 @@
 [submodule "Foreign/future"]
 	path = Foreign/future
 	url = git@github.com:jbelloncastro/future.git
-[submodule "Foreign/Catch2"]
-	path = Foreign/Catch2
-	url = git@github.com:catchorg/Catch2
 [submodule "Foreign/freetype2"]
 	path = Foreign/freetype2
 	url = git@github.com:freetype/freetype2
 [submodule "Foreign/thousandeyes-futures"]
 	path = Foreign/thousandeyes-futures
 	url = git@github.com:thousandeyes/thousandeyes-futures
+[submodule "Foreign/Catch2"]
+	path = Foreign/Catch2
+	url = git@github.com:catchorg/Catch2
