@@ -6,6 +6,7 @@
 #include "../../Utility/Meta/ClassAccessorsImpl.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Math/Vector.h"
 #include "../../Math/MathSerialization.h"

@@ -17,6 +17,7 @@
 #include "../OSServices/RawFS.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/OutputStreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/SerializationUtils.h"

@@ -13,6 +13,7 @@
 #include "../../../ConsoleRig/GlobalServices.h"			// for ConsoleRig::GetLibVersionDesc()
 #include "../../../Utility/Streams/StreamTypes.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
+#include "../../../Utility/Streams/OutputStreamFormatter.h"
 
 namespace UnitTests
 {

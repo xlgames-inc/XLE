@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "StreamFormatter.h"
+#include "OutputStreamFormatter.h"
 #include "Stream.h"
 #include "../BitUtils.h"
 #include "../PtrUtils.h"

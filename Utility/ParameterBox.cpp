@@ -13,6 +13,7 @@
 #include "StringFormat.h"
 #include "Conversion.h"
 #include "Streams/StreamFormatter.h"
+#include "Streams/OutputStreamFormatter.h"
 #include <algorithm>
 #include <utility>
 #include <sstream>

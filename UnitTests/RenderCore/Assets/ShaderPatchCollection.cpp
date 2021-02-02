@@ -25,6 +25,7 @@
 #include "../../../OSServices/FileSystemMonitor.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
+#include "../../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../../Utility/Streams/StreamTypes.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "catch2/catch_test_macros.hpp"

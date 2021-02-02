@@ -10,6 +10,7 @@
 
 #include "../../OSServices/Log.h"
 #include "../Streams/StreamFormatter.h"
+#include "../Streams/OutputStreamFormatter.h"
 #include "../StringFormat.h"
 #include "../ParameterBox.h"
 #include "../MemoryUtils.h"

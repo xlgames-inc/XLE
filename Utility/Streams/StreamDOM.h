@@ -7,6 +7,7 @@
 #pragma once
 
 #include "StreamFormatter.h"
+#include "OutputStreamFormatter.h"
 #include "../StringUtils.h"     // (for StringSection)
 #include "../Optional.h"
 #include <vector>
