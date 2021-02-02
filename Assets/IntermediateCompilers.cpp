@@ -193,7 +193,7 @@ namespace Assets
         auto backgroundOp = std::make_shared<ArtifactCollectionFuture>();
         backgroundOp->SetDebugLabel(_initializers.ArchivableName());
 
-		const bool allowBackgroundOps = false;
+		const bool allowBackgroundOps = true;
 		if (allowBackgroundOps) {
 			// Unfortunately we have to copy _initializers here, because we 
 			// must allow for this marker to be reused (and both InvokeCompile 

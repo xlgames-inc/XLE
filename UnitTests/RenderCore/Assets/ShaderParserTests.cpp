@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../ReusableDataFiles.h"
+#include "../../UnitTestHelper.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../ShaderParser/ShaderSignatureParser.h"
 #include "../../../ShaderParser/NodeGraphSignature.h"
@@ -16,9 +17,10 @@
 #include "../../../Assets/MemoryFile.h"
 #include "../../../Assets/AssetTraits.h"
 #include "../../../ConsoleRig/Console.h"
-#include "../../../OSServices/Log.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
+#include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../OSServices/RawFS.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Conversion.h"
 #include <cctype>
@@ -239,8 +241,9 @@ static const int NonPreprocessorLine0 = 0;
 
 	TEST_CASE( "ShaderParser-BindShaderToTechnique", "[shader_parser]" )
 	{
-		LocalHelper localHelper;
-		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto utDataMount = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("/home/davidj/code/XLE/Working/Game/xleres", globalServices->GetPollingThread()));
 
 		// Given some shader (either straight-up shader code, or something generated from a shader graph)
 		// bind it to a technique, and produce both the final shader text and required meta-data
@@ -279,6 +282,9 @@ static const int NonPreprocessorLine0 = 0;
 			auto relevanceTable = AnalyzeSelectors(expanded._processedSource);
 			(void)relevanceTable;
 		}
+
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(utDataMount);
 	}
 
 }

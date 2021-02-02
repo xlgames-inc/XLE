@@ -224,6 +224,8 @@ namespace ConsoleRig
     GlobalServices::~GlobalServices() 
     {
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
+        _pimpl->_assetsSetsManager = nullptr;
+        _pimpl->_compileAndAsyncManager = nullptr;
     }
 
 	void GlobalServices::LoadDefaultPlugins()

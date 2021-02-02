@@ -21,7 +21,7 @@ namespace Assets
 	class IntermediatesStore;
 	class DependencyValidation;
 
-    class IntermediateCompilers : public std::enable_shared_from_this<IntermediateCompilers>
+    class IntermediateCompilers
     {
     public:
         std::shared_ptr<IIntermediateCompileMarker> Prepare(
