@@ -2,9 +2,12 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING
+
 #include "../../OSServices/PollingThread.h"
 #include "../../OSServices/FileSystemMonitor.h"
 #include "../../OSServices/RawFS.h"
+#include "../../OSServices/TimeUtils.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "catch2/catch_test_macros.hpp"
@@ -15,20 +18,23 @@
 #include <iostream>
 #include <random>
 #include <filesystem>
+#include <functional>
 
-// linux specific...
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
-#include <unistd.h>
+#if PLATFORMOS_TARGET == PLATFORMOS_LINUX
+    // linux specific...
+    #include <sys/epoll.h>
+    #include <sys/eventfd.h>
+    #include <unistd.h>
 
-namespace OSServices
-{
-	class IConduit_Linux
-	{
-	public:
-		virtual IOPlatformHandle GetPlatformHandle() const = 0;
-	};
-}
+    namespace OSServices
+    {
+        class IConduit_Linux
+        {
+        public:
+            virtual IOPlatformHandle GetPlatformHandle() const = 0;
+        };
+    }
+#endif
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -42,41 +48,72 @@ namespace UnitTests
 
         SECTION("RespondOnce with stall")
         {
-            auto testEvent = eventfd(0, EFD_NONBLOCK);
+            auto testEvent = CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
             
             // Here, the event trigger is going to happen before we call RespondOnce
-            uint64_t t = 1;
-            write(testEvent, &t, sizeof(t));
+            testEvent->IncreaseCounter();
             
             auto resString = thousandeyes::futures::then(
                 pollingThread.RespondOnce(testEvent),
                 [](auto) {
-                    return "String returned from future";
+                    return std::string{"String returned from future"};
                 }).get();
 
             REQUIRE(resString == "String returned from future");
-            close(testEvent);
         }
         
         SECTION("RespondOnce with continuation")
         {
-            auto testEvent = eventfd(0, EFD_NONBLOCK);
+            auto testEvent = CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
             volatile bool trigger = false;
             auto future = thousandeyes::futures::then(
                 pollingThread.RespondOnce(testEvent),
                 [&trigger](auto) {
                     trigger = true;
-                    return "String returned from future";
+                    return std::string{"String returned from future"};
                 });
 
             Threading::Sleep(1000);
-            uint64_t t = 1;
-            write(testEvent, &t, sizeof(t));
+            testEvent->IncreaseCounter();
 
             auto resString = future.get();
             REQUIRE(resString == "String returned from future");
             REQUIRE(trigger == true);
-            close(testEvent);
+        }
+
+        SECTION("Event reset")
+        {
+            // Ensuring that events are getting reset after usage correctly.
+            // If events are correctly getting reset to their unsignaled state
+            // after they have been signalled; then this should take around 5500
+            // milliseconds to complete. However, if they don't get reset, it will
+            // be much faster -- perhaps around 500 milliseconds (or we could even
+            // get a crash, because we aren't waiting for the background threads to finish)
+            auto startTime = OSServices::Millisecond_Now();
+
+            auto event = OSServices::CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
+            std::thread{
+                [&]() {
+                    Threading::Sleep(500); 
+                    event->IncreaseCounter(); }}.detach();
+
+            unsigned iterations = 10;
+            for (unsigned i=0; i<iterations; ++i) {
+                pollingThread.RespondOnce(event).wait();
+                event->DecreaseCounter();
+                std::thread{
+                    [&]() {
+                        Threading::Sleep(500); 
+                        event->IncreaseCounter(); }}.detach();
+            }
+
+            // wait for the last one -- 
+            pollingThread.RespondOnce(event).wait();
+            event->DecreaseCounter();
+
+            auto elapsed = OSServices::Millisecond_Now() - startTime;
+            REQUIRE(elapsed > 5000);
+            std::cout << "Event reset test took " << elapsed << " milliseconds" << std::endl;
         }
 
         SECTION("Thrash RespondOnce")
@@ -87,72 +124,88 @@ namespace UnitTests
             const unsigned iterations = 1000;
 
             std::atomic<signed> eventsInFlight(0);
-            std::vector<int> events;
-            LockFreeFixedSizeQueue<int, 500> eventPool;
+            Threading::Mutex eventsLock;
+            std::vector<std::shared_ptr<OSServices::PollableEvent>> events;
+            std::vector<std::shared_ptr<OSServices::PollableEvent>> pendingTriggerEvents;
+            std::deque<std::shared_ptr<OSServices::PollableEvent>> eventPool;
             std::vector<std::future<unsigned>> futures;
-            events.reserve(500);
-            for (unsigned c=0; c<500; ++c) {
-                auto event = eventfd(0, EFD_NONBLOCK);
+
+            auto onTrigger = [&](OSServices::PollableEvent* triggeredHandle, const std::future<OSServices::PollingEventType::BitField>&) {
+                --eventsInFlight;
+                ScopedLock(eventsLock);
+                auto i = std::find_if(
+                    pendingTriggerEvents.begin(), pendingTriggerEvents.end(), 
+                    [triggeredHandle](auto& e) { return e.get() == triggeredHandle; });
+                assert(i != pendingTriggerEvents.end());
+                eventPool.push_back(std::move(*i));
+                pendingTriggerEvents.erase(i);
+                return 0u;
+            };
+            using namespace std::placeholders;
+
+            // Windows has a very low number of events that can be waited on from a single thread
+            // (only 64). We have to start spawning new threads to wait on more events than that.
+            // However; this doesn't appear to apply to completion routines...?
+            events.reserve(60);
+            for (unsigned c=0; c<60; ++c) {
+                auto event = OSServices::CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
                 ++eventsInFlight;
                 auto future = thousandeyes::futures::then(
                     pollingThread.RespondOnce(event),
-                    [&, event](auto) { 
-                        eventPool.push_overflow(event); --eventsInFlight; return 0u; 
-                    });
+                    std::bind(onTrigger, event.get(), _1));
                 futures.push_back(std::move(future));
-                events.push_back(event);
+                events.push_back(std::move(event));
             }
 
             std::mt19937 rng;
             for (unsigned c=0; c<iterations; ++c) {
+                Threading::Sleep(1);
+
+                ScopedLock(eventsLock);
                 auto eventsToEnd = std::uniform_int_distribution<unsigned>(0, 5)(rng);
                 auto eventsToBegin = std::uniform_int_distribution<unsigned>(0, 5)(rng);
 
                 for (auto e=0; e<eventsToEnd && !events.empty(); ++e) {
                     auto i = events.begin() + std::uniform_int_distribution<unsigned>(0, events.size()-1)(rng);
-                    uint64_t t = 1;
-                    write(*i, &t, sizeof(t));
+                    pendingTriggerEvents.push_back(std::move(*i));
                     events.erase(i);
+                    (*(pendingTriggerEvents.end()-1))->IncreaseCounter();
                 }
 
                 for (auto e=0; e<eventsToBegin; ++e) {
                     int* front = nullptr;
-                    if (!eventPool.try_front(front))
-                        continue;
+                    if (eventPool.empty())
+                        break;
 
-                    auto reusableEvent = *front;
+                    auto reusableEvent = std::move(*eventPool.begin());
+                    eventPool.erase(eventPool.begin());
+
                     ++eventsInFlight;
                     auto future = thousandeyes::futures::then(
                         pollingThread.RespondOnce(reusableEvent),
-                        [&, reusableEvent](auto) { eventPool.push_overflow(reusableEvent); --eventsInFlight; return 0u; });
+                        std::bind(onTrigger, reusableEvent.get(), _1));
                     futures.push_back(std::move(future));
-                    events.push_back(reusableEvent);
-                    eventPool.pop();
+                    events.push_back(std::move(reusableEvent));
                 }
             }
 
             // finish remaining events
-            for (auto e:events) {
-                uint64_t t = 1;
-                write(e, &t, sizeof(t));
+            {
+                ScopedLock(eventsLock);
+                while (!events.empty()) {
+                    pendingTriggerEvents.push_back(std::move(*(events.end()-1)));
+                    events.erase(events.end()-1);
+                    (*(pendingTriggerEvents.end()-1))->IncreaseCounter();
+                }
             }
-            events.clear();
 
             for (auto&f:futures)
                 f.get();
 
             REQUIRE(eventsInFlight.load() == 0);
-
-            for (;;) {
-                int* front = nullptr;
-                if (!eventPool.try_front(front))
-                    break;
-                auto ret = close(*front);
-                assert(ret == 0);
-                eventPool.pop();
-            }
         }
 
+#if PLATFORMOS_TARGET == PLATFORMOS_LINUX
         SECTION("Conduit for eventfd")
         {
             class EventFDConduit : public OSServices::IConduit, public OSServices::IConduit_Linux
@@ -204,6 +257,7 @@ namespace UnitTests
             REQUIRE(conduit->_exceptionCount == 0);
             REQUIRE(conduit->_eventCount == writeCount);
         }
+#endif
     }
 
     TEST_CASE( "PollingThread-FileChangeNotification", "[osservices]" )
@@ -211,48 +265,50 @@ namespace UnitTests
         auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
         thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
 
-        auto pollingThread = std::make_shared<OSServices::PollingThread>();
-
         auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
         std::filesystem::create_directories(tempDirPath);
 
-        class CountChanges : public OSServices::OnChangeCallback
         {
-        public:
-            signed _changes = 0;
-            void OnChange() override { ++_changes; }
-        };
+            auto pollingThread = std::make_shared<OSServices::PollingThread>();
+            class CountChanges : public OSServices::OnChangeCallback
+            {
+            public:
+                signed _changes = 0;
+                void OnChange() override { ++_changes; }
+            };
 
-        OSServices::RawFSMonitor monitor(pollingThread);
-        auto changesToOne = std::make_shared<CountChanges>();
-        monitor.Attach(MakeStringSection(tempDirPath.string() + "/one.txt"), changesToOne);
+            OSServices::RawFSMonitor monitor(pollingThread);
+            auto changesToOne = std::make_shared<CountChanges>();
+            monitor.Attach(MakeStringSection(tempDirPath.string() + "/one.txt"), changesToOne);
 
-        auto changesToTwo = std::make_shared<CountChanges>();
-        monitor.Attach(MakeStringSection(tempDirPath.string() + "/two.txt"), changesToTwo);
+            auto changesToTwo = std::make_shared<CountChanges>();
+            monitor.Attach(MakeStringSection(tempDirPath.string() + "/two.txt"), changesToTwo);
 
-        auto changesToThree = std::make_shared<CountChanges>();
-        monitor.Attach(MakeStringSection(tempDirPath.string() + "/three.txt"), changesToThree);
+            auto changesToThree = std::make_shared<CountChanges>();
+            monitor.Attach(MakeStringSection(tempDirPath.string() + "/three.txt"), changesToThree);
 
-        SECTION("Detect file writes")
-        {
-            char strToWrite[] = "This is a string written by XLE unit tests";
-            OSServices::BasicFile{(tempDirPath.string() + "/one.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
-            OSServices::BasicFile{(tempDirPath.string() + "/three.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
+            SECTION("Detect file writes")
+            {
+                char strToWrite[] = "This is a string written by XLE unit tests";
+                OSServices::BasicFile{(tempDirPath.string() + "/one.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
+                OSServices::BasicFile{(tempDirPath.string() + "/three.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
 
-            // give a little bit of time incase the background thread needs to catchup to all of the writes
-            Threading::Sleep(1000);
-            REQUIRE(changesToOne->_changes > 0);
-            REQUIRE(changesToTwo->_changes == 0);
-            REQUIRE(changesToThree->_changes > 0);
-            auto midwayChangesToThree = changesToThree->_changes;
+                // give a little bit of time incase the background thread needs to catchup to all of the writes
+                Threading::Sleep(1000);
+                REQUIRE(changesToOne->_changes > 0);
+                REQUIRE(changesToTwo->_changes == 0);
+                REQUIRE(changesToThree->_changes > 0);
+                auto midwayChangesToThree = changesToThree->_changes;
 
-            OSServices::BasicFile{(tempDirPath.string() + "/two.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
-            OSServices::BasicFile{(tempDirPath.string() + "/three.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
-            Threading::Sleep(1000);
-            REQUIRE(changesToTwo->_changes > 0);
-            REQUIRE(changesToThree->_changes > midwayChangesToThree);
+                OSServices::BasicFile{(tempDirPath.string() + "/two.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
+                OSServices::BasicFile{(tempDirPath.string() + "/three.txt").c_str(), "wb", 0}.Write(strToWrite, 1, sizeof(strToWrite));
+                Threading::Sleep(1000);
+                REQUIRE(changesToTwo->_changes > 0);
+                REQUIRE(changesToThree->_changes > midwayChangesToThree);
+            }
         }
 
+        // note that we don't want the RawFSMonitor to still be alive when we do this (because it will end up triggering everything again!)
         std::filesystem::remove_all(tempDirPath);
     }
 }

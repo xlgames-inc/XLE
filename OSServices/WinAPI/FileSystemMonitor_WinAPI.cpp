@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -7,6 +5,8 @@
 #include "System_WinAPI.h"
 #include "IncludeWindows.h"
 #include "../FileSystemMonitor.h"
+#include "../PollingThread.h"
+#include "../Log.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
@@ -16,359 +16,309 @@
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Core/Exceptions.h"
 #include <vector>
 #include <memory>
 #include <cctype>
 #include <thread>
+#include <any>
 
 // Character set note -- we're using utf16 characters in this file. We're going to
 // assume that Windows is working with utf16 as well (as opposed to ucs2). This windows documentation
 // suggest that it is expecting utf16 behaviour... But maybe there seems to be a lack of clarity as
 // to how complete that support is.
 
-namespace Utility
+namespace OSServices
 {
+	class MonitorDirectoryConduit : public IConduitProducer_CompletionRoutine
+	{
+	public:
+		struct ConduitResult
+		{
+			std::vector<std::u16string> _changedFiles;
+		};
 
-    class MonitoredDirectory
-    {
-    public:
-        MonitoredDirectory(const std::basic_string<utf16>& directoryName);
-        ~MonitoredDirectory();
+		void BeginOperation(OVERLAPPED* overlapped, ConduitCompletionRoutine completionRoutine) override
+		{
+			assert(!_cancelled);
+			if (_directoryHandle == INVALID_HANDLE_VALUE) {
+				_directoryHandle = CreateFileW(
+					(LPCWSTR)_directoryName.c_str(), FILE_LIST_DIRECTORY,
+					FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+					nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
+			}
 
-        static uint64   HashFilename(StringSection<utf16> filename);
-		static uint64   HashFilename(StringSection<utf8> filename);
+			if (_directoryHandle != INVALID_HANDLE_VALUE) {
+				_bytesReturned = 0;
+				XlSetMemory(_resultBuffer, dimof(_resultBuffer), 0);
 
-        void            AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback);
-        void            OnTriggered();
+				auto hresult = ReadDirectoryChangesW(
+					_directoryHandle, _resultBuffer, sizeof(_resultBuffer),
+					FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
+					nullptr, overlapped, completionRoutine);
+				if (!hresult) {
+					auto errorAsString = SystemErrorCodeAsString(GetLastError());
+					Throw(std::runtime_error("ReadDirectoryChangesW failed with the error: " + errorAsString));
+				}
+			}
+		}
 
-        void                BeginMonitoring();
-        XlHandle            GetEventHandle() { return _overlapped.hEvent; }
-        const OVERLAPPED*   GetOverlappedPtr() const { return &_overlapped; }
-        unsigned            GetCreationOrderId() const { return _monitoringUpdateId; }
+		void CancelOperation(OVERLAPPED* overlapped) override
+		{
+			_cancelled = true;
+			if (_directoryHandle != INVALID_HANDLE_VALUE) {
+				#if _WIN32_WINNT >= _WIN32_WINNT_VISTA
+					CancelIoEx(_directoryHandle, overlapped);
+				#endif
+				CloseHandle(_directoryHandle);
+				_directoryHandle = INVALID_HANDLE_VALUE;
+			}
+		}
 
-        void OnChange(StringSection<utf16> filename);
-    private:
-        std::vector<std::pair<uint64, std::weak_ptr<OnChangeCallback>>>  _callbacks;
-        Threading::Mutex	_callbacksLock;
-        XlHandle			_directoryHandle;
-        uint8				_resultBuffer[1024];
-        DWORD				_bytesReturned;
-        OVERLAPPED			_overlapped;
+		std::any OnTrigger(unsigned numberOfBytesReturned) override
+		{
+			assert(!_cancelled);
+			FILE_NOTIFY_INFORMATION* notifyInformation = 
+				(FILE_NOTIFY_INFORMATION*)_resultBuffer;
+			auto* end = PtrAdd(notifyInformation, numberOfBytesReturned);
+			ConduitResult results;
+			while (notifyInformation < end) {
+					//  Most editors just change the last write date when a file changes
+					//  But some (like Visual Studio) will actually rename and replace the
+					//  file (for error safety). To catch these cases, we need to look for
+					//  file renames (also creation/deletion events would be useful)
+				if (    notifyInformation->Action == FILE_ACTION_MODIFIED
+					||  notifyInformation->Action == FILE_ACTION_ADDED
+					||  notifyInformation->Action == FILE_ACTION_REMOVED
+					||  notifyInformation->Action == FILE_ACTION_RENAMED_OLD_NAME
+					||  notifyInformation->Action == FILE_ACTION_RENAMED_NEW_NAME) {
+					results._changedFiles.push_back({
+						(const utf16*)notifyInformation->FileName,
+						(const utf16*)PtrAdd(notifyInformation->FileName, notifyInformation->FileNameLength)});
+				}
+
+				if (!notifyInformation->NextEntryOffset) {
+					break;
+				}
+				notifyInformation = PtrAdd(notifyInformation, notifyInformation->NextEntryOffset);
+			}
+
+			assert(!results._changedFiles.empty());
+			return results;
+		}
+
+		MonitorDirectoryConduit(const std::basic_string<utf16>& directoryName)
+		: _directoryName(directoryName)
+		, _cancelled(false)
+		{
+			_directoryHandle = INVALID_HANDLE_VALUE;
+			_bytesReturned = 0;
+			std::memset(_resultBuffer, 0, dimof(_resultBuffer));
+		}
+
+		~MonitorDirectoryConduit()
+		{
+			_cancelled = true;
+			if (_directoryHandle != INVALID_HANDLE_VALUE)
+				CloseHandle(_directoryHandle);
+		}
+
+		MonitorDirectoryConduit(const MonitorDirectoryConduit&) = delete;
+		MonitorDirectoryConduit& operator=(const MonitorDirectoryConduit&) = delete;
+
+	private:
 		std::basic_string<utf16>	_directoryName;
-        unsigned			_monitoringUpdateId;
+		XlHandle			_directoryHandle;
+		uint8				_resultBuffer[1024];
+		DWORD				_bytesReturned;
+		bool				_cancelled;
+	};
 
-        static void CALLBACK CompletionRoutine(
-            DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-            LPOVERLAPPED lpOverlapped);
-    };
-
-    static Utility::Threading::Mutex MonitoredDirectoriesLock;
-    static std::vector<std::pair<uint64, std::unique_ptr<MonitoredDirectory>>>  MonitoredDirectories;
-    static unsigned CreationOrderId_Foreground = 0;
-    static unsigned CreationOrderId_Background = 0;
-
-    static XlHandle                                     RestartMonitoringEvent = INVALID_HANDLE_VALUE;
-    static std::unique_ptr<std::thread>                 MonitoringThread;
-    static Utility::Threading::Mutex                    MonitoringThreadLock;
-    static bool                                         MonitoringQuit = false;
-
-    MonitoredDirectory::MonitoredDirectory(const std::basic_string<utf16>& directoryName)
-    : _directoryName(directoryName)
+	class MonitoredDirectory : public IConduitConsumer
 	{
-        _overlapped.Internal = _overlapped.InternalHigh = 0;
-        _overlapped.Offset = _overlapped.OffsetHigh = 0;
-        _overlapped.hEvent = INVALID_HANDLE_VALUE; // XlCreateEvent(false);
-        _directoryHandle = INVALID_HANDLE_VALUE;
-        _bytesReturned = 0;
-        _monitoringUpdateId = CreationOrderId_Foreground;
-        XlSetMemory(_resultBuffer, dimof(_resultBuffer), 0);
-    }
+	public:
+		MonitoredDirectory();
+		~MonitoredDirectory();
 
-    MonitoredDirectory::~MonitoredDirectory()
-    {
-        if (_directoryHandle != INVALID_HANDLE_VALUE) {
-            #if _WIN32_WINNT >= _WIN32_WINNT_VISTA
-                CancelIoEx(_directoryHandle, &_overlapped);
-            #endif
-            CloseHandle(_directoryHandle);
-        }
-        CloseHandle(_overlapped.hEvent);
-    }
-	
-	uint64 MonitoredDirectory::HashFilename(StringSection<utf16> filename)
-    {
-		return Utility::HashFilename(filename);
-    }
+		void AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback);
 
-	uint64 MonitoredDirectory::HashFilename(StringSection<utf8> filename)
+		void OnEvent(const std::any& payload) override;
+		void OnException(const std::exception_ptr& exception) override;
+
+		void OnChange(uint64_t filenameHash);
+	private:
+		Threading::Mutex	_callbacksLock;
+		std::vector<std::pair<uint64, std::weak_ptr<OnChangeCallback>>>  _callbacks;
+	};
+
+	MonitoredDirectory::MonitoredDirectory()
 	{
-		return Utility::HashFilename(filename);
 	}
 
-    void MonitoredDirectory::AttachCallback(
-        uint64 filenameHash, 
-        std::shared_ptr<OnChangeCallback> callback)
-    {
-        ScopedLock(_callbacksLock);
-        _callbacks.insert(
-            LowerBound(_callbacks, filenameHash),
-            std::make_pair(filenameHash, std::move(callback)));
-    }
-
-    void            MonitoredDirectory::OnTriggered()
-    {
-        FILE_NOTIFY_INFORMATION* notifyInformation = 
-            (FILE_NOTIFY_INFORMATION*)_resultBuffer;
-        for (;;) {
-
-                //  Most editors just change the last write date when a file changes
-                //  But some (like Visual Studio) will actually rename and replace the
-                //  file (for error safety). To catch these cases, we need to look for
-                //  file renames (also creation/deletion events would be useful)
-            if (    notifyInformation->Action == FILE_ACTION_MODIFIED
-                ||  notifyInformation->Action == FILE_ACTION_ADDED
-                ||  notifyInformation->Action == FILE_ACTION_REMOVED
-                ||  notifyInformation->Action == FILE_ACTION_RENAMED_OLD_NAME
-                ||  notifyInformation->Action == FILE_ACTION_RENAMED_NEW_NAME) {
-                OnChange(StringSection<utf16>((const utf16*)notifyInformation->FileName, (const utf16*)PtrAdd(notifyInformation->FileName, notifyInformation->FileNameLength)));
-            }
-
-            if (!notifyInformation->NextEntryOffset) {
-                break;
-            }
-            notifyInformation = PtrAdd(notifyInformation, notifyInformation->NextEntryOffset);
-        }
-
-            //      Restart searching
-        _bytesReturned = 0;
-        XlSetMemory(_resultBuffer, dimof(_resultBuffer), 0);
-        BeginMonitoring();
-    }
-
-    void MonitoredDirectory::OnChange(StringSection<utf16> filename)
-    {
-        auto hash = MonitoredDirectory::HashFilename(filename);
-        ScopedLock(_callbacksLock);
-        #if 0 //(STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
-            auto range = std::_Equal_range(
-                _callbacks.begin(), _callbacks.end(), hash, 
-                CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>(),
-                _Dist_type(_callbacks.begin()));
-        #else
-            auto range = std::equal_range(
-                _callbacks.begin(), _callbacks.end(), 
-                hash, CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>());
-        #endif
-
-        bool foundExpired = false;
-        for (auto i2=range.first; i2!=range.second; ++i2) {
-                // todo -- what happens if OnChange() results in a change to _callbacks?
-            auto l = i2->second.lock();
-            if (l) l->OnChange();
-            else foundExpired = true;
-        }
-
-        if (foundExpired) {
-                // Remove any pointers that have expired
-                // (note that we only check matching pointers. Non-matching pointers
-                // that have expired are untouched)
-            _callbacks.erase(
-                std::remove_if(range.first, range.second, 
-                    [](std::pair<uint64, std::weak_ptr<OnChangeCallback>>& i)
-                    { return i.second.expired(); }),
-                range.second);
-        }
-    }
-
-    void CALLBACK MonitoredDirectory::CompletionRoutine(
-        DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-        LPOVERLAPPED lpOverlapped )
-    {
-            //  when a completion routine triggers, we need to look for the directory
-            //  monitor that matches the overlapped ptr
-        if (dwErrorCode == ERROR_SUCCESS) {
-            ScopedLock(MonitoredDirectoriesLock);
-            for (auto i=MonitoredDirectories.begin(); i!=MonitoredDirectories.end(); ++i) {
-                if (i->second->GetOverlappedPtr() == lpOverlapped) {
-                    i->second->OnTriggered();
-                }
-            }
-        }
-    }
-
-    void MonitoredDirectory::BeginMonitoring()
-    {
-        if (_directoryHandle == INVALID_HANDLE_VALUE) {
-            _directoryHandle = CreateFileW(
-                (LPCWSTR)_directoryName.c_str(), FILE_LIST_DIRECTORY,
-                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
-        }
-
-        auto hresult = ReadDirectoryChangesW(
-            _directoryHandle, _resultBuffer, sizeof(_resultBuffer),
-            FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
-            /*&_bytesReturned*/nullptr, &_overlapped, &CompletionRoutine);
-        /*assert(hresult);*/ (void)hresult;
-    }
-
-    unsigned int MonitoringEntryPoint)
-    {
-        while (!MonitoringQuit) {
-            {
-                ScopedLock(MonitoredDirectoriesLock);
-                auto newId = CreationOrderId_Background;
-                for (auto i=MonitoredDirectories.begin(); i!=MonitoredDirectories.end(); ++i) {
-                    auto updateId = i->second->GetCreationOrderId();
-                    if (updateId > CreationOrderId_Background) {
-                        i->second->BeginMonitoring();
-                        newId = std::max(newId, updateId);
-                    }
-                }
-                CreationOrderId_Background = newId;
-            }
-
-            XlWaitForMultipleSyncObjects(
-                1, &RestartMonitoringEvent, 
-                false, XL_INFINITE, true);
-        }
-
-        return 0;
-    }
-
-    static void RestartMonitoring()
-    {
-        ScopedLock(MonitoringThreadLock);
-        if (!MonitoringThread) {
-            RestartMonitoringEvent = XlCreateEvent(false);
-            MonitoringThread = std::make_unique<std::thread>(MonitoringEntryPoint);
-        }
-        XlSetEvent(RestartMonitoringEvent);
-    }
-
-    void TerminateFileSystemMonitoring()
-    {
-        {
-            ScopedLock(MonitoringThreadLock);
-            if (MonitoringThread) {
-                MonitoringQuit = true;
-                XlSetEvent(RestartMonitoringEvent);
-                MonitoringThread->join();
-                MonitoringThread.reset();
-            }
-        }
-        {
-            ScopedLock(MonitoredDirectoriesLock);
-            MonitoredDirectories.clear();
-        }
-    }
-
-	/*static void CheckExists(const utf16* dirName)
+	MonitoredDirectory::~MonitoredDirectory()
 	{
-		#if defined(_DEBUG)
-            {
-                    // verify that it exists
-                auto handle = CreateFileW(
-                    (LPCWSTR)dirName, FILE_LIST_DIRECTORY,
-                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
-                assert(handle != INVALID_HANDLE_VALUE);
-                CloseHandle(handle);
-            }
-        #endif
-	}*/
-
-    void AttachFileSystemMonitor(
-        StringSection<utf16> directoryName,
-        StringSection<utf16> filename,
-        std::shared_ptr<OnChangeCallback> callback)
-    {
-        ScopedLock(MonitoredDirectoriesLock);
-        if (directoryName.IsEmpty())
-            directoryName = StringSection<utf16>(u"./");
-
-        auto hash = MonitoredDirectory::HashFilename(directoryName);
-        auto i = std::lower_bound(
-            MonitoredDirectories.cbegin(), MonitoredDirectories.cend(), 
-            hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-        if (i != MonitoredDirectories.cend() && i->first == hash) {
-            i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
-            return;
-        }
-
-            // we must have a null terminated string -- so use a temp buffer
-        auto dirNameCopy = directoryName.AsString();
-		// CheckExists(dirNameCopy.c_str());
-
-        ++CreationOrderId_Foreground;
-        auto i2 = MonitoredDirectories.insert(
-            i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(dirNameCopy)));
-        i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
-
-            //  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
-            //  (that operation must begin and be handled in the same thread when using completion routines)
-        RestartMonitoring();
-    }
-
-	void AttachFileSystemMonitor(
-		StringSection<utf8> directoryName,
-		StringSection<utf8> filename,
+	}
+	
+	void MonitoredDirectory::AttachCallback(
+		uint64 filenameHash, 
 		std::shared_ptr<OnChangeCallback> callback)
 	{
-		ScopedLock(MonitoredDirectoriesLock);
-		if (directoryName.IsEmpty())
-			directoryName = StringSection<utf8>("./");
+		ScopedLock(_callbacksLock);
+		_callbacks.insert(
+			LowerBound(_callbacks, filenameHash),
+			std::make_pair(filenameHash, std::move(callback)));
+	}
 
-		auto hash = MonitoredDirectory::HashFilename(directoryName);
-		auto i = std::lower_bound(
-			MonitoredDirectories.cbegin(), MonitoredDirectories.cend(),
-			hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-		if (i != MonitoredDirectories.cend() && i->first == hash) {
-			i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
+	void MonitoredDirectory::OnEvent(const std::any& inputData)
+	{
+		const auto& conduitResult = std::any_cast<const MonitorDirectoryConduit::ConduitResult&>(inputData);
+		for (const auto&f:conduitResult._changedFiles)
+			OnChange(HashFilename(MakeStringSection(f)));
+	}
+
+	void MonitoredDirectory::OnException(const std::exception_ptr& exception)
+	{
+		TRY
+		{
+			std::rethrow_exception(exception);
+		}
+		CATCH(const std::exception& e)
+		{
+			Log(Error) << "Raw file system monitoring cancelled because of exception: " << e.what() << std::endl;
+		} 
+		CATCH(...)
+		{
+			Log(Error) << "Raw file system monitoring cancelled because of unknown exception" << std::endl;
+		}
+		CATCH_END
+	}
+
+	void MonitoredDirectory::OnChange(uint64_t filenameHash)
+	{
+		ScopedLock(_callbacksLock);
+		auto range = std::equal_range(
+			_callbacks.begin(), _callbacks.end(), 
+			filenameHash, CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>());
+
+		bool foundExpired = false;
+		for (auto i2=range.first; i2!=range.second; ++i2) {
+				// todo -- what happens if OnChange() results in a change to _callbacks?
+			auto l = i2->second.lock();
+			if (l) l->OnChange();
+			else foundExpired = true;
+		}
+
+		if (foundExpired) {
+				// Remove any pointers that have expired
+				// (note that we only check matching pointers. Non-matching pointers
+				// that have expired are untouched)
+			_callbacks.erase(
+				std::remove_if(range.first, range.second, 
+					[](std::pair<uint64, std::weak_ptr<OnChangeCallback>>& i)
+					{ return i.second.expired(); }),
+				range.second);
+		}
+	}
+
+	class RawFSMonitor::Pimpl
+	{
+	public:
+		std::shared_ptr<PollingThread> _pollingThread;
+
+		Utility::Threading::Mutex _monitoredDirectoriesLock;
+		struct DirAndConduit
+		{
+			std::shared_ptr<MonitoredDirectory> _monitoredDirectory;
+			std::shared_ptr<MonitorDirectoryConduit> _conduit;
+		};
+		std::vector<std::pair<uint64_t, DirAndConduit>> _monitoredDirectories;
+	};
+
+	void    RawFSMonitor::Attach(StringSection<utf8> filenameWithPath, std::shared_ptr<OnChangeCallback> callback) 
+	{
+		auto splitter = MakeFileNameSplitter(filenameWithPath);
+		auto directoryName = splitter.DriveAndPath();
+		auto dirHash = HashFilename(directoryName);
+
+		ScopedLock(_pimpl->_monitoredDirectoriesLock);
+		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
+		if (i != _pimpl->_monitoredDirectories.cend() && i->first == dirHash) {
+			i->second._monitoredDirectory->AttachCallback(HashFilename(splitter.FileAndExtension()), std::move(callback));
 			return;
 		}
 
-		// we must have a null terminated string -- so use a temp buffer
-		auto dirNameCopy = Conversion::Convert<std::basic_string<utf16>>(directoryName.AsString());
-		// CheckExists(dirNameCopy.c_str());
-
-		++CreationOrderId_Foreground;
-		auto i2 = MonitoredDirectories.insert(
-			i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(dirNameCopy)));
-		i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
-
-		//  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
-		//  (that operation must begin and be handled in the same thread when using completion routines)
-		RestartMonitoring();
+		Pimpl::DirAndConduit newDir;
+		newDir._monitoredDirectory = std::make_unique<MonitoredDirectory>();
+		newDir._monitoredDirectory->AttachCallback(HashFilename(splitter.FileAndExtension()), std::move(callback));
+		newDir._conduit = std::make_shared<MonitorDirectoryConduit>(Conversion::Convert<std::u16string>(directoryName));
+		_pimpl->_pollingThread->Connect(newDir._conduit, newDir._monitoredDirectory);
+		_pimpl->_monitoredDirectories.insert(i, std::make_pair(dirHash, std::move(newDir)));
 	}
 
-    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename)
-    {
-        ScopedLock(MonitoredDirectoriesLock);
-        auto hash = MonitoredDirectory::HashFilename(directoryName);
-        auto i = std::lower_bound(
-            MonitoredDirectories.cbegin(), MonitoredDirectories.cend(), 
-            hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-        if (i != MonitoredDirectories.cend() && i->first == hash) {
-            i->second->OnChange(filename);
-        }
-    }
-
-	void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename)
+	void    RawFSMonitor::Attach(StringSection<utf16> filenameWithPath, std::shared_ptr<OnChangeCallback> callback)
 	{
-		ScopedLock(MonitoredDirectoriesLock);
-		auto hash = MonitoredDirectory::HashFilename(directoryName);
-		auto i = std::lower_bound(
-			MonitoredDirectories.cbegin(), MonitoredDirectories.cend(),
-			hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-		if (i != MonitoredDirectories.cend() && i->first == hash) {
-			auto u16name = Conversion::Convert<std::basic_string<utf16>>(filename);
-			i->second->OnChange(MakeStringSection(u16name));
+		auto splitter = MakeFileNameSplitter(filenameWithPath);
+		auto directoryName = splitter.DriveAndPath();
+		auto dirHash = HashFilename(directoryName);
+
+		ScopedLock(_pimpl->_monitoredDirectoriesLock);
+		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
+		if (i != _pimpl->_monitoredDirectories.cend() && i->first == dirHash) {
+			i->second._monitoredDirectory->AttachCallback(HashFilename(splitter.FileAndExtension()), std::move(callback));
+			return;
 		}
+
+		Pimpl::DirAndConduit newDir;
+		newDir._monitoredDirectory = std::make_unique<MonitoredDirectory>();
+		newDir._monitoredDirectory->AttachCallback(HashFilename(splitter.FileAndExtension()), std::move(callback));
+		newDir._conduit = std::make_shared<MonitorDirectoryConduit>(directoryName.AsString());
+		_pimpl->_pollingThread->Connect(newDir._conduit, newDir._monitoredDirectory);
+		_pimpl->_monitoredDirectories.insert(i, std::make_pair(dirHash, std::move(newDir)));
 	}
 
+	void    RawFSMonitor::FakeFileChange(StringSection<utf8> filenameWithPath)
+	{
+		auto splitter = MakeFileNameSplitter(filenameWithPath);
+		auto directoryName = splitter.DriveAndPath();
+		auto dirHash = HashFilename(directoryName);
 
-    OnChangeCallback::~OnChangeCallback() {}
-    
+		ScopedLock(_pimpl->_monitoredDirectoriesLock);
+		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
+		if (i != _pimpl->_monitoredDirectories.cend() && i->first == dirHash)
+			i->second._monitoredDirectory->OnChange(HashFilename(splitter.FileAndExtension()));
+	}
+
+	void    RawFSMonitor::FakeFileChange(StringSection<utf16> filenameWithPath) 
+	{
+		auto splitter = MakeFileNameSplitter(filenameWithPath);
+		auto directoryName = splitter.DriveAndPath();
+		auto dirHash = HashFilename(directoryName);
+
+		ScopedLock(_pimpl->_monitoredDirectoriesLock);
+		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
+		if (i != _pimpl->_monitoredDirectories.cend() && i->first == dirHash)
+			i->second._monitoredDirectory->OnChange(HashFilename(splitter.FileAndExtension()));
+	}
+
+	RawFSMonitor::RawFSMonitor(const std::shared_ptr<PollingThread>& pollingThread)
+	{
+		_pimpl = std::make_shared<Pimpl>();
+		_pimpl->_pollingThread = pollingThread;
+	}
+
+	RawFSMonitor::~RawFSMonitor()
+	{
+		std::vector<std::future<void>> futuresToWaitOn;
+		{
+			ScopedLock(_pimpl->_monitoredDirectoriesLock);
+			futuresToWaitOn.reserve(_pimpl->_monitoredDirectories.size());
+			for (const auto& dir:_pimpl->_monitoredDirectories)
+				futuresToWaitOn.push_back(
+					_pimpl->_pollingThread->Disconnect(dir.second._conduit));
+		}
+
+		for (const auto& wait:futuresToWaitOn)
+			wait.wait();
+	}
 }
 

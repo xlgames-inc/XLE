@@ -11,7 +11,7 @@ set(Headers
     )
 
 if (WIN32)
-    set(WinAPISrc WinAPI/System_WinAPI.cpp WinAPI/FileSystemMonitor_WinAPI.cpp WinAPI/RawFS_WinAPI.cpp)
+    set(WinAPISrc WinAPI/System_WinAPI.cpp WinAPI/FileSystemMonitor_WinAPI.cpp WinAPI/RawFS_WinAPI.cpp WinAPI/PollingThread_WinAPI.cpp)
 elseif (NOT APPLE)
     set(LinuxSrc Linux/System_Linux.cpp Linux/FileSystemMonitor_Linux.cpp Linux/RawFS_Linux.cpp Linux/PollingThread_Linux.cpp RawFS_stdio.cpp)
 endif()

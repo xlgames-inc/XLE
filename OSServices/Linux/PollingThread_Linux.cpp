@@ -19,6 +19,7 @@ namespace OSServices
 	{
 	public:
 		virtual IOPlatformHandle GetPlatformHandle() const = 0;
+		virtual ~IConduit_Linux() = default;
 	};
 
 	static struct epoll_event EPollEvent(PollingEventType::BitField types, bool oneShot = true)
@@ -68,13 +69,6 @@ namespace OSServices
 		};
 		std::vector<PendingOnceInitiate> _pendingOnceInitiates;
 
-		struct ActiveOnceEvent
-		{
-			IOPlatformHandle _platformHandle;
-			std::promise<PollingEventType::BitField> _promise;
-		};
-		std::vector<ActiveOnceEvent> _activeOnceEvents;
-
 		////////////////////////////////////////////////////////
 
 		struct ChangeEvent
@@ -86,13 +80,6 @@ namespace OSServices
 		};
 		std::vector<ChangeEvent> _pendingEventConnects;
 		std::vector<ChangeEvent> _pendingEventDisconnects;
-
-		struct ActiveEvent
-		{
-			IOPlatformHandle _platformHandle;
-			std::weak_ptr<IConduit> _conduit;
-		};
-		std::vector<ActiveEvent> _activeEvents;
 
 		////////////////////////////////////////////////////////
 
@@ -141,9 +128,22 @@ namespace OSServices
 					Throw(std::runtime_error("Failure when adding interrupt event to epoll queue"));
 			}
 
+			struct ActiveOnceEvent
+			{
+				IOPlatformHandle _platformHandle;
+				std::promise<PollingEventType::BitField> _promise;
+			};
+			std::vector<ActiveOnceEvent> activeOnceEvents;
+			struct ActiveEvent
+			{
+				IOPlatformHandle _platformHandle;
+				std::weak_ptr<IConduit> _conduit;
+			};
+			std::vector<ActiveEvent> activeEvents;
+
 			struct epoll_event events[32];
 			while (!_pendingShutdown.load()) {
-				// "add" all events that are pending
+				// add/remove all events that are pending a state change
 				{
 					std::vector<std::promise<void>> pendingPromisesToTrigger;
 					std::vector<std::pair<std::promise<void>, std::exception_ptr>> pendingExceptionsToPropagate1;
@@ -152,11 +152,11 @@ namespace OSServices
 						ScopedLock(_interfaceLock);
 						for (auto& event:_pendingOnceInitiates) {
 							auto existing = std::find_if(
-								_activeOnceEvents.begin(), _activeOnceEvents.end(),
+								activeOnceEvents.begin(), activeOnceEvents.end(),
 								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
-							if (existing != _activeOnceEvents.end()) {
+							if (existing != activeOnceEvents.end()) {
 								// We can't queue multiple poll operations on the same platform handle, because we will be using
-								// the platform handle to lookup events in _activeOnceEvents (this would otherwise make it ambigious)
+								// the platform handle to lookup events in activeOnceEvents (this would otherwise make it ambigious)
 								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Multiple asynchronous events queued for the same platform handle"))});
 								continue;
 							}
@@ -170,18 +170,18 @@ namespace OSServices
 								ActiveOnceEvent activeEvent;
 								activeEvent._platformHandle = event._platformHandle;
 								activeEvent._promise = std::move(event._promise);
-								_activeOnceEvents.push_back(std::move(activeEvent));
+								activeOnceEvents.push_back(std::move(activeEvent));
 							}
 						}
 						_pendingOnceInitiates.clear();
 
 						for (auto& event:_pendingEventConnects) {
 							auto existing = std::find_if(
-								_activeEvents.begin(), _activeEvents.end(),
+								activeEvents.begin(), activeEvents.end(),
 								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
-							if (existing != _activeEvents.end()) {
+							if (existing != activeEvents.end()) {
 								// We can't queue multiple poll operations on the same platform handle, because we will be using
-								// the platform handle to lookup events in _activeOnceEvents (this would otherwise make it ambigious)
+								// the platform handle to lookup events in activeOnceEvents (this would otherwise make it ambigious)
 								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Multiple asynchronous events queued for the same platform handle"))});
 								continue;
 							}
@@ -203,7 +203,7 @@ namespace OSServices
 								ActiveEvent activeEvent;
 								activeEvent._platformHandle = event._platformHandle;
 								activeEvent._conduit = std::move(conduit);
-								_activeEvents.push_back(std::move(activeEvent));
+								activeEvents.push_back(std::move(activeEvent));
 								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
 							}
 						}
@@ -211,9 +211,9 @@ namespace OSServices
 
 						for (auto& event:_pendingEventDisconnects) {
 							auto existing = std::find_if(
-								_activeEvents.begin(), _activeEvents.end(),
+								activeEvents.begin(), activeEvents.end(),
 								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
-							if (existing == _activeEvents.end()) {
+							if (existing == activeEvents.end()) {
 								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Attempting to disconnect an event that is not currently connected"))});
 								continue;
 							}
@@ -226,7 +226,7 @@ namespace OSServices
 								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
 							}
 
-							_activeEvents.erase(existing);
+							activeEvents.erase(existing);
 						}
 						_pendingEventDisconnects.clear();
 
@@ -234,12 +234,12 @@ namespace OSServices
 						// epoll context. It's better to get an explicit disconnect, but this at least cleans
 						// up anything hanging. Note that we're expecting the conduit to have destroyed the 
 						// platform handle when it was cleaned up (in other words, that platform handle is now dangling)
-						for (auto i=_activeEvents.begin(); i!=_activeEvents.end();) {
+						for (auto i=activeEvents.begin(); i!=activeEvents.end();) {
 							if (i->_conduit.expired()) {
 								auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, i->_platformHandle, nullptr);
 								if (ret < 0)
 									Log(Error) << "Got error return from epoll_ctl when removing expired event" << std::endl;
-								i = _activeEvents.erase(i);
+								i = activeEvents.erase(i);
 							} else
 								++i;
 						}
@@ -265,8 +265,33 @@ namespace OSServices
 					// thread calls _backgroundThread.join(), it seems to trigger an interrupt event on the epoll system
 					// automatically. In that case, errno will be EINTR. Since this happens during normal usage,
 					// we can't treat this as an error.
-					if (errno != EINTR)
-						Throw(std::runtime_error("Failure in epoll_wait"));
+					auto e = errno;
+					if (e != EINTR) {
+						// This is a low-level failure. No further operations will be processed; so let's propage
+						// exception messages to everything waiting. Most importantly, promised will not be completed,
+						// so we must set them into exception state
+						auto msgToPropagate = "PollingThread received an error message during wait: " + std::to_string(errno);
+						for (auto&e:activeOnceEvents)
+							e._promise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+						for (auto&e:activeEvents) {
+							auto consumer = e._consumer.lock();
+							if (consumer)
+								consumer->OnException(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+						}
+						{
+							ScopedLock(_interfaceLock);
+							for (auto& e:_pendingOnceInitiates)
+								e._promise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+							for (auto& e:_pendingEventConnects)
+								e._onChangePromise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+							for (auto& e:_pendingEventDisconnects)
+								e._onChangePromise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+							_pendingOnceInitiates.clear();
+							_pendingEventConnects.clear();
+							_pendingEventDisconnects.clear();
+						}
+						Throw(std::runtime_error("Failure in epoll_wait: " + std::to_string(errno)));
+					}
 					break;
 				}
 
@@ -283,16 +308,16 @@ namespace OSServices
 					}
 
 					auto onceEvent = std::find_if(
-						_activeOnceEvents.begin(), _activeOnceEvents.end(),
+						activeOnceEvents.begin(), activeOnceEvents.end(),
 						[&triggeredEvent](const auto& ae) { return ae._platformHandle == triggeredEvent.data.fd; });
-					if (onceEvent != _activeOnceEvents.end()) {
+					if (onceEvent != activeOnceEvents.end()) {
 						if (triggeredEvent.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
 							// this is a disconnection or error event. We should return an exception and also remove
 							// the event from both the queue and our list of active events
 							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
 							assert(ret == 0);
 							auto promise = std::move(onceEvent->_promise);
-							_activeOnceEvents.erase(onceEvent);
+							activeOnceEvents.erase(onceEvent);
 							
 							promise.set_exception(std::make_exception_ptr(std::runtime_error("")));
 						} else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
@@ -303,7 +328,7 @@ namespace OSServices
 							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
 							assert(ret == 0);
 							auto promise = std::move(onceEvent->_promise);
-							_activeOnceEvents.erase(onceEvent);
+							activeOnceEvents.erase(onceEvent);
 
 							promise.set_value(AsPollingEventType(triggeredEvent.events));
 						} else {
@@ -314,16 +339,16 @@ namespace OSServices
 					}
 
 					auto evnt = std::find_if(
-						_activeEvents.begin(), _activeEvents.end(),
+						activeEvents.begin(), activeEvents.end(),
 						[&triggeredEvent](const auto& ae) { return ae._platformHandle == triggeredEvent.data.fd; });
-					if (evnt != _activeEvents.end()) {
+					if (evnt != activeEvents.end()) {
 						if (triggeredEvent.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
 							// After any of these error cases, we always remove the event from the list of active events
 							// The client must reconnect the conduit if they want to receive anything new from it
 							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
 							assert(ret == 0);
 							auto conduit = evnt->_conduit.lock();
-							_activeEvents.erase(evnt);
+							activeEvents.erase(evnt);
 							if (conduit)
 								conduit->OnException(std::make_exception_ptr(std::runtime_error("")));
 						} else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
@@ -339,6 +364,21 @@ namespace OSServices
 
 					Log(Error) << "Got an event for a platform handle that isn't in our activeEvents list" << std::endl;
 				}
+			}
+
+			// We're ending all waiting. We must set any remainding promises to exception status, because they
+			// will never be completed
+			auto msgToPropagate = "Event cannot complete because PollingThread is shutting down";
+			for (auto&e:activeOnceEvents)
+				e._promise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+			{
+				ScopedLock(_interfaceLock);
+				for (auto& e:_pendingOnceInitiates)
+					e._promise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+				for (auto& e:_pendingEventConnects)
+					e._onChangePromise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
+				for (auto& e:_pendingEventDisconnects)
+					e._onChangePromise.set_exception(std::make_exception_ptr(std::runtime_error(msgToPropagate)));
 			}
 		}
 
@@ -376,7 +416,7 @@ namespace OSServices
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::ChangeEvent change;
 			change._eventTypes = eventTypes;
-			change._platformHandle = dynamic_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
+			change._platformHandle = checked_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
 			change._conduit = conduit;
 			result = change._onChangePromise.get_future();
 			_pimpl->_pendingEventConnects.push_back(std::move(change));
@@ -393,7 +433,7 @@ namespace OSServices
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::ChangeEvent change;
 			change._eventTypes = 0;
-			change._platformHandle = dynamic_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
+			change._platformHandle = checked_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
 			change._conduit = conduit;
 			result = change._onChangePromise.get_future();
 			_pimpl->_pendingEventDisconnects.push_back(std::move(change));
@@ -410,6 +450,51 @@ namespace OSServices
 	PollingThread::~PollingThread()
 	{
 
+	}
+
+
+	void PollableEvent::WriteCounter()
+	{
+		uint64_t eventFdCounter = 1;
+		auto ret = write(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
+		assert(ret > 0);
+	}
+
+	void PollableEvent::ReadCounter()
+	{
+		uint64_t eventFdCounter=0;
+		auto ret = read(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
+		assert(ret > 0);
+	}
+
+	PollableEvent::PollableEvent(Type type)
+	{
+		if (type == Type::Semaphore) {
+			_platformHandle = eventfd(0, EFD_NONBLOCK|EFD_SEMAPHORE);
+		} else {
+			_platformHandle = eventfd(0, EFD_NONBLOCK);
+		}
+	}
+
+	PollableEvent::~PollableEvent()
+	{
+		if (_platformHandle != -1)
+			close(_platformHandle);
+	}
+
+	PollableEvent& PollableEvent::operator=(PollableEvent&& moveFrom) never_throws
+	{
+		if (_platformHandle != -1)
+			close(_platformHandle);
+		_platformHandle = moveFrom._platformHandle;
+		moveFrom._platformHandle = -1;
+		return *this;
+	}
+	
+	PollableEvent::PollableEvent(PollableEvent&& moveFrom) never_throws
+	{
+		_platformHandle = moveFrom._platformHandle;
+		moveFrom._platformHandle = -1;
 	}
 
 }

@@ -4,14 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../Core/Prefix.h"
-#include "../../Core/Types.h"
-#include "../Threading/LockFree.h"
-#include "../StringUtils.h"
-#include "../StringFormat.h"
+#include "System_WinAPI.h"
 #include "../RawFS.h"
 #include "../TimeUtils.h"
-#include "../../OSServices/WinAPI/IncludeWindows.h"
+#include "../../Core/Prefix.h"
+#include "../../Core/Types.h"
+#include "../../Utility/Threading/LockFree.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/StringFormat.h"
+#include "IncludeWindows.h"
 #include <process.h>
 #include <share.h>
 #include <time.h>
@@ -96,26 +97,29 @@ ModuleId GetCurrentModuleId()
 bool XlIsCriticalSectionLocked(void* cs) 
 {
     CRITICAL_SECTION* csPtr = reinterpret_cast<CRITICAL_SECTION*>(cs);
-    return csPtr->RecursionCount > 0 && csPtr->OwningThread == (HANDLE)GetCurrentThreadId();
+    return csPtr->RecursionCount > 0 && csPtr->OwningThread == (HANDLE)(size_t)GetCurrentThreadId();
 }
 
-static uint32 FromWinWaitResult(uint32 winResult)
+static uint32_t FromWinWaitResult(uint32_t winResult)
 {
     switch(winResult) {
-    case WAIT_OBJECT_0:
-        return XL_WAIT_OBJECT_0;
-
-    case WAIT_ABANDONED:
-        return XL_WAIT_ABANDONED;
-
     case WAIT_TIMEOUT:
         return XL_WAIT_TIMEOUT;
 
+    case WAIT_FAILED:
+        return XL_WAIT_FAILED;
+
+    case WAIT_IO_COMPLETION:
+        return XL_WAIT_IO_COMPLETION;
+
     default:
-        if (winResult - WAIT_OBJECT_0 < XL_MAX_WAIT_OBJECTS) {
-            return winResult;
+        if (winResult >= WAIT_OBJECT_0 && winResult < WAIT_OBJECT_0+XL_MAX_WAIT_OBJECTS) {
+            return winResult - WAIT_OBJECT_0 + XL_WAIT_OBJECT_0;
         }
-        return XL_WAIT_ABANDONED;
+        if (winResult >= WAIT_ABANDONED_0 && winResult < WAIT_ABANDONED_0+XL_MAX_WAIT_OBJECTS) {
+            return winResult - WAIT_ABANDONED_0 + XL_WAIT_ABANDONED_0;
+        }
+        return XL_WAIT_FAILED;
     }
 }
 
@@ -139,12 +143,15 @@ void XlGetNumCPUs(int* physical, int* logical, int* avail)
 
 }
 
-uint32 XlGetCurrentProcessId()
+uint32_t XlGetCurrentProcessId()
 {
     return GetCurrentProcessId();
 }
 
-bool GetCurrentDirectory(uint32 nBufferLength, char lpBuffer[])
+#if defined(GetCurrentDirectory)
+    #error GetCurrentDirectory is macro'ed, which will cause a linker error here
+#endif
+bool GetCurrentDirectory(uint32_t nBufferLength, char lpBuffer[])
 {
 	return GetCurrentDirectoryA((DWORD)nBufferLength, lpBuffer) != FALSE;
 }
@@ -155,7 +162,7 @@ bool XlCloseSyncObject(XlHandle h)
     return closeResult != FALSE;
 }
 
-uint32 XlWaitForSyncObject(XlHandle h, uint32 waitTime)
+uint32_t XlWaitForSyncObject(XlHandle h, uint32_t waitTime)
 {
     return FromWinWaitResult(WaitForSingleObject(h, waitTime));
 }
@@ -203,8 +210,9 @@ bool XlPulseEvent(XlHandle h)
     return PulseEvent(h) != FALSE;
 }
 
-uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable)
+uint32_t XlWaitForMultipleSyncObjects(uint32_t waitCount, XlHandle waitObjects[], bool waitAll, uint32_t waitTime, bool alterable)
 {
+    static_assert(sizeof(XlHandle) == sizeof(HANDLE));
     return FromWinWaitResult(WaitForMultipleObjectsEx(waitCount, waitObjects, waitAll ? TRUE : FALSE, waitTime, alterable));
 }
 
@@ -221,6 +229,9 @@ void MoveFile(const utf8 destination[], const utf8 source[])
     MoveFileA((const char*)source, (const char*)destination);
 }
 
+#if defined(GetCommandLine)
+    #error GetCommandLine is macro'ed, which will cause a linker error here
+#endif
 const char* GetCommandLine()
 {
     return GetCommandLineA();
@@ -291,15 +302,15 @@ void XlStartSelfProcess(const char* commandLine, int delaySec, bool terminateSel
     if (IS_VALID_XLHFILE(file)) {
         char buf[2048];
         XlFormatString(buf, dimof(buf), "sleep %d\r\n", delaySec);
-        XlWriteFile(file, buf, (uint32)XlStringSize(buf));
+        XlWriteFile(file, buf, (uint32_t)XlStringSize(buf));
 
         char processImage[1024];
         GetModuleFileNameExA(XlGetCurrentProcess(), NULL, processImage, dimof(processImage));
         XlFormatString(buf, dimof(buf), "start %s %s\r\n", processImage, commandLine);
-        XlWriteFile(file, buf, (uint32)XlStringSize(buf));
+        XlWriteFile(file, buf, (uint32_t)XlStringSize(buf));
 
         XlFormatString(buf, dimof(buf), "sleep 10\r\n", delaySec);
-        XlWriteFile(file, buf, (uint32)XlStringSize(buf));
+        XlWriteFile(file, buf, (uint32_t)XlStringSize(buf));
 
         XlCloseFile(file);
         ShellExecute(NULL, NULL, tempFilePathName, NULL, NULL, SW_SHOW);
