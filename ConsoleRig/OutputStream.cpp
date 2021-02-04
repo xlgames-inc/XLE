@@ -12,6 +12,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Conversion.h"
+#include "../Core/Prefix.h"
 #include <assert.h>
 #include <algorithm>
 

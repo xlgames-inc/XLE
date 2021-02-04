@@ -153,7 +153,7 @@ namespace OSServices
 	}
 	std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
 
-    bool GetCurrentDirectory(uint32 dim, char dst[]);
+    bool GetCurrentDirectory(uint32_t dim, char dst[]);
     void ChDir(const utf8 path[]);
 
     void GetProcessPath(utf8 dst[], size_t bufferCount);

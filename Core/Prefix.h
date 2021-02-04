@@ -30,7 +30,13 @@
     #define attribute_packed	__attribute__((packed))
 	#define expect_evaluation(X, Y)	__builtin_expect(X, Y)
 
-    #define dll_export      __attribute__((visibility("default")))
+    // _MSC_VER is defined with clang when microsoft extensions are enabled
+    #if defined(_MSC_VER)
+        #define dll_export      __declspec(dllexport)
+        #define dll_import      __declspec(dllimport)
+    #else
+        #define dll_export      __attribute__((visibility("default")))
+    #endif
 
     #if !defined(__cplusplus) && !defined(thread_local)
 		#define thread_local    _Thread_local

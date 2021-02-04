@@ -4,15 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../FileUtils.h"
-#include "../PathUtils.h"
-#include "../../StringUtils.h"
-#include "../../Conversion.h"
+#include "../RawFS.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/Conversion.h"
+#include "../../Utility/Optional.h"
 #include <assert.h>
 #include <utility>
-// #include <optional>
 
-#include "../../../OSServices/WinAPI/IncludeWindows.h"
+#include "IncludeWindows.h"
 
 namespace OSServices 
 {
@@ -189,97 +189,92 @@ namespace OSServices
 		Throw(except);
 	}
 
-	namespace RawFS
+	BasicFile::BasicFile(   const utf8 filename[], const char openMode[], 
+							FileShareMode::BitField shareMode)
 	{
-		BasicFile::BasicFile(   const utf8 filename[], const char openMode[], 
-								FileShareMode::BitField shareMode)
-		{
-			assert(filename && filename[0]);
-			assert(openMode);
+		assert(filename && filename[0]);
+		assert(openMode);
 
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 
-			auto handle = CreateFileA(
-				(const char*)filename, 
-				underlyingOpenMode._underlyingAccessMode,
-				underlyingShareMode,
-				nullptr, underlyingOpenMode._creationDisposition,
-				underlyingOpenMode._underlyingFlags, nullptr);
-        
-			if (handle == INVALID_HANDLE_VALUE)
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
+		auto handle = CreateFileA(
+			(const char*)filename, 
+			underlyingOpenMode._underlyingAccessMode,
+			underlyingShareMode,
+			nullptr, underlyingOpenMode._creationDisposition,
+			underlyingOpenMode._underlyingFlags, nullptr);
+	
+		if (handle == INVALID_HANDLE_VALUE)
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
 
-			_file = (void*)handle;
-		}
+		_file = (void*)handle;
+	}
 
-		BasicFile::BasicFile(   const utf16 filename[], const char openMode[], 
-								FileShareMode::BitField shareMode)
-		{
-			assert(filename && filename[0]);
-			assert(openMode);
+	BasicFile::BasicFile(   const utf16 filename[], const char openMode[], 
+							FileShareMode::BitField shareMode)
+	{
+		assert(filename && filename[0]);
+		assert(openMode);
 
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 
-			auto handle = CreateFileW(
-				(const wchar_t*)filename, 
-				underlyingOpenMode._underlyingAccessMode,
-				underlyingShareMode,
-				nullptr, underlyingOpenMode._creationDisposition,
-				underlyingOpenMode._underlyingFlags, nullptr);
+		auto handle = CreateFileW(
+			(const wchar_t*)filename, 
+			underlyingOpenMode._underlyingAccessMode,
+			underlyingShareMode,
+			nullptr, underlyingOpenMode._creationDisposition,
+			underlyingOpenMode._underlyingFlags, nullptr);
 
-			if (handle == INVALID_HANDLE_VALUE)
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
+		if (handle == INVALID_HANDLE_VALUE)
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
 
-			_file = (void*)handle;
-		}
+		_file = (void*)handle;
+	}
 
-		auto BasicFile::TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws -> Exceptions::IOException::Reason
-		{
-			assert(_file == INVALID_HANDLE_VALUE);
-			assert(filename && filename[0]);
-			assert(openMode);
+	auto BasicFile::TryOpen(const utf8 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws -> Exceptions::IOException::Reason
+	{
+		assert(_file == INVALID_HANDLE_VALUE);
+		assert(filename && filename[0]);
+		assert(openMode);
 
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 
-			_file = CreateFileA(
-				(const char*)filename, 
-				underlyingOpenMode._underlyingAccessMode,
-				underlyingShareMode,
-				nullptr, underlyingOpenMode._creationDisposition,
-				underlyingOpenMode._underlyingFlags, nullptr);
+		_file = CreateFileA(
+			(const char*)filename, 
+			underlyingOpenMode._underlyingAccessMode,
+			underlyingShareMode,
+			nullptr, underlyingOpenMode._creationDisposition,
+			underlyingOpenMode._underlyingFlags, nullptr);
 
-			if (_file != INVALID_HANDLE_VALUE && _file != nullptr)
-				return Exceptions::IOException::Reason::Success;
+		if (_file != INVALID_HANDLE_VALUE && _file != nullptr)
+			return Exceptions::IOException::Reason::Success;
 
-			return AsExceptionReason(GetLastError());
-		}
+		return AsExceptionReason(GetLastError());
+	}
 
-		auto BasicFile::TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws -> Exceptions::IOException::Reason
-		{
-			assert(_file == INVALID_HANDLE_VALUE);
-			assert(filename && filename[0]);
-			assert(openMode);
+	auto BasicFile::TryOpen(const utf16 filename[], const char openMode[], FileShareMode::BitField shareMode) never_throws -> Exceptions::IOException::Reason
+	{
+		assert(_file == INVALID_HANDLE_VALUE);
+		assert(filename && filename[0]);
+		assert(openMode);
 
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 
-			_file = CreateFileW(
-				(const wchar_t*)filename, 
-				underlyingOpenMode._underlyingAccessMode,
-				underlyingShareMode,
-				nullptr, underlyingOpenMode._creationDisposition,
-				underlyingOpenMode._underlyingFlags, nullptr);
+		_file = CreateFileW(
+			(const wchar_t*)filename, 
+			underlyingOpenMode._underlyingAccessMode,
+			underlyingShareMode,
+			nullptr, underlyingOpenMode._creationDisposition,
+			underlyingOpenMode._underlyingFlags, nullptr);
 
-			if (_file != INVALID_HANDLE_VALUE && _file != nullptr)
-				return Exceptions::IOException::Reason::Success;
+		if (_file != INVALID_HANDLE_VALUE && _file != nullptr)
+			return Exceptions::IOException::Reason::Success;
 
-			return AsExceptionReason(GetLastError());
-		}
-
-		BasicFile::BasicFile() {}
+		return AsExceptionReason(GetLastError());
 	}
 
     BasicFile::BasicFile(BasicFile&& moveFrom) never_throws
@@ -411,304 +406,293 @@ namespace OSServices
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	namespace RawFS
+	bool DoesFileExist(StringSection<char> filename)
 	{
-		bool DoesFileExist(StringSection<char> filename)
-		{
-			char buffer[MAX_PATH];
-			XlCopyString(buffer, filename);	// copy to get the null terminator
-			DWORD dwAttrib = GetFileAttributesA(buffer);
-			return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
-		}
+		char buffer[MAX_PATH];
+		XlCopyString(buffer, filename);	// copy to get the null terminator
+		DWORD dwAttrib = GetFileAttributesA(buffer);
+		return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
+	}
 
-		bool DoesDirectoryExist(StringSection<char> filename)
-		{
-			char buffer[MAX_PATH];
-			XlCopyString(buffer, filename);	// copy to get the null terminator
-			DWORD dwAttrib = GetFileAttributesA(buffer);
-			return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
-		}
+	bool DoesDirectoryExist(StringSection<char> filename)
+	{
+		char buffer[MAX_PATH];
+		XlCopyString(buffer, filename);	// copy to get the null terminator
+		DWORD dwAttrib = GetFileAttributesA(buffer);
+		return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
+	}
 
-		void CreateDirectory_Int(const char* dn)    { CreateDirectoryA(dn, nullptr); }
-		void CreateDirectory_Int(const utf8* dn)    { CreateDirectoryA((const char*)dn, nullptr); }
-		void CreateDirectory_Int(const wchar_t* dn) { CreateDirectoryW(dn, nullptr); }
-		void CreateDirectory_Int(const utf16* dn)	{ CreateDirectoryW((const wchar_t*)dn, nullptr); }
+	void CreateDirectory_Int(const char* dn)    { CreateDirectoryA(dn, nullptr); }
+	void CreateDirectory_Int(const wchar_t* dn) { CreateDirectoryW(dn, nullptr); }
+	void CreateDirectory_Int(const utf16* dn)	{ CreateDirectoryW((const wchar_t*)dn, nullptr); }
 
-		template<typename Char>
-			void CreateDirectoryRecursive_Int(StringSection<Char> filename)
-		{
-					// note that because our input string may not have a null 
-					// terminator at the very end, we have to copy at least
-					// once... So might as well copy and then we can safely
-					// modify the copy as we go through
-			Char buffer[MaxPath];
-			XlCopyString(buffer, filename);
+	template<typename Char>
+		void CreateDirectoryRecursive_Int(StringSection<Char> filename)
+	{
+				// note that because our input string may not have a null 
+				// terminator at the very end, we have to copy at least
+				// once... So might as well copy and then we can safely
+				// modify the copy as we go through
+		Char buffer[MaxPath];
+		XlCopyString(buffer, filename);
 
-			SplitPath<Char> split(buffer);
-			for (const auto& section:split.GetSections()) {
-				Char q = 0;
-				std::swap(q, *const_cast<Char*>(section.end()));
-				CreateDirectory_Int(buffer);
-				std::swap(q, *const_cast<Char*>(section.end()));
-			}
-		}
-
-		void CreateDirectoryRecursive(StringSection<utf8> filename)
-		{
-			CreateDirectoryRecursive_Int(filename);
-		}
-
-		void CreateDirectoryRecursive(StringSection<utf16> filename)
-		{
-			CreateDirectoryRecursive_Int(filename);
-		}
-
-		static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
-
-		static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& attribs)
-		{
-			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
-		}
-
-		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
-		{
-			WIN32_FILE_ATTRIBUTE_DATA attribs;
-			auto result = GetFileAttributesExA(
-				(const char*)filename, 
-				GetFileExInfoStandard,
-				&attribs);
-			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
-		}
-
-		std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
-		{
-			WIN32_FILE_ATTRIBUTE_DATA attribs;
-			auto result = GetFileAttributesExW(
-				(const wchar_t*)filename, 
-				GetFileExInfoStandard,
-				&attribs);
-			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
-		}
-
-		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
-		{
-			std::vector<std::string> result;
-
-			char buffer[256];
-			XlDirname(buffer, dimof(buffer), searchPath.c_str());
-			std::string basePath = buffer;
-			if (!basePath.empty() && basePath[basePath.size()-1]!='/' && basePath[basePath.size()-1]!='\\') {
-				basePath += "/";
-			}
-			WIN32_FIND_DATAA findData;
-			memset(&findData, 0, sizeof(findData));
-			HANDLE findHandle = FindFirstFileA(searchPath.c_str(), &findData);
-			if (findHandle != INVALID_HANDLE_VALUE) {
-				do {
-					bool isDir = !!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
-					if (filter & (1<<unsigned(isDir))) {
-						result.push_back(basePath + findData.cFileName);
-					}
-				} while (FindNextFileA(findHandle, &findData));
-				FindClose(findHandle);
-			}
-
-			return std::move(result);
+		SplitPath<Char> split(buffer);
+		for (const auto& section:split.GetSections()) {
+			Char q = 0;
+			std::swap(q, *const_cast<Char*>(section.end()));
+			CreateDirectory_Int(buffer);
+			std::swap(q, *const_cast<Char*>(section.end()));
 		}
 	}
 
-	namespace RawFS
+	void CreateDirectoryRecursive(StringSection<utf8> filename)
 	{
-		static size_t GetFileSize(HANDLE fileHandle)
-		{
-			LARGE_INTEGER fileSize;
-			GetFileSizeEx(fileHandle, &fileSize);
-			return (size_t)fileSize.QuadPart;
+		CreateDirectoryRecursive_Int(filename);
+	}
+
+	void CreateDirectoryRecursive(StringSection<utf16> filename)
+	{
+		CreateDirectoryRecursive_Int(filename);
+	}
+
+	static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& attribs)
+	{
+		return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
+	}
+
+	std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
+	{
+		WIN32_FILE_ATTRIBUTE_DATA attribs;
+		auto result = GetFileAttributesExA(
+			(const char*)filename, 
+			GetFileExInfoStandard,
+			&attribs);
+		return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
+	}
+
+	std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
+	{
+		WIN32_FILE_ATTRIBUTE_DATA attribs;
+		auto result = GetFileAttributesExW(
+			(const wchar_t*)filename, 
+			GetFileExInfoStandard,
+			&attribs);
+		return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
+	}
+
+	std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
+	{
+		std::vector<std::string> result;
+
+		char buffer[256];
+		Legacy::XlDirname(buffer, dimof(buffer), searchPath.c_str());
+		std::string basePath = buffer;
+		if (!basePath.empty() && basePath[basePath.size()-1]!='/' && basePath[basePath.size()-1]!='\\') {
+			basePath += "/";
+		}
+		WIN32_FIND_DATAA findData;
+		memset(&findData, 0, sizeof(findData));
+		HANDLE findHandle = FindFirstFileA(searchPath.c_str(), &findData);
+		if (findHandle != INVALID_HANDLE_VALUE) {
+			do {
+				bool isDir = !!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+				if (filter & (1<<unsigned(isDir))) {
+					result.push_back(basePath + findData.cFileName);
+				}
+			} while (FindNextFileA(findHandle, &findData));
+			FindClose(findHandle);
 		}
 
-		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
-			const utf8 filename[], uint64 size, const char openMode[], 
-			FileShareMode::BitField shareMode) never_throws
-		{
-			assert(_data.empty() && !_closeFn);
+		return std::move(result);
+	}
 
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+	static size_t GetFileSize(HANDLE fileHandle)
+	{
+		LARGE_INTEGER fileSize;
+		GetFileSizeEx(fileHandle, &fileSize);
+		return (size_t)fileSize.QuadPart;
+	}
 
-			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
-				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+	Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
+		const utf8 filename[], uint64 size, const char openMode[], 
+		FileShareMode::BitField shareMode) never_throws
+	{
+		assert(_data.empty() && !_closeFn);
 
-			auto fileHandle = CreateFileA(
-				(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
-				underlyingShareMode, 
-				nullptr, underlyingOpenMode._creationDisposition, 
-				underlyingOpenMode._underlyingFlags, nullptr);
-			if (fileHandle == INVALID_HANDLE_VALUE)
-				return AsExceptionReason(GetLastError());
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
-			auto mapping = CreateFileMappingA(
-				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
-			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
-				CloseHandle(fileHandle);
-				return AsExceptionReason(GetLastError());
-			}
+		if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+			underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
 
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
-			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
-			if (!mappingStart) {
+		auto fileHandle = CreateFileA(
+			(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
+			underlyingShareMode, 
+			nullptr, underlyingOpenMode._creationDisposition, 
+			underlyingOpenMode._underlyingFlags, nullptr);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			return AsExceptionReason(GetLastError());
+
+		unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
+		auto mapping = CreateFileMappingA(
+			fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
+		if (!mapping || mapping == INVALID_HANDLE_VALUE) {
+			CloseHandle(fileHandle);
+			return AsExceptionReason(GetLastError());
+		}
+
+		unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
+		auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
+		if (!mappingStart) {
+			CloseHandle(mapping);
+			CloseHandle(fileHandle);
+			return AsExceptionReason(GetLastError());
+		}
+
+		_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+		_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
+			{
+				assert(!data.empty());
+				UnmapViewOfFile(data.begin());
 				CloseHandle(mapping);
 				CloseHandle(fileHandle);
-				return AsExceptionReason(GetLastError());
-			}
+			};
+		return Exceptions::IOException::Reason::Success;
+	}
 
-			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
-			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
-				{
-					assert(!data.empty());
-					UnmapViewOfFile(data.begin());
-					CloseHandle(mapping);
-					CloseHandle(fileHandle);
-				};
-			return Exceptions::IOException::Reason::Success;
+	Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
+		const utf16 filename[], uint64 size, const char openMode[],
+		FileShareMode::BitField shareMode) never_throws
+	{
+		assert(_data.empty() && !_closeFn);
+
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+
+		if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+			underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
+		auto fileHandle = CreateFileW(
+			(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 
+			underlyingShareMode, 
+			nullptr, underlyingOpenMode._creationDisposition, 
+			underlyingOpenMode._underlyingFlags, nullptr);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			return AsExceptionReason(GetLastError());
+
+		unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
+		auto mapping = CreateFileMappingA(
+			fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
+		if (!mapping || mapping == INVALID_HANDLE_VALUE) {
+			CloseHandle(fileHandle);
+			return AsExceptionReason(GetLastError());
 		}
 
-		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
-			const utf16 filename[], uint64 size, const char openMode[],
-			FileShareMode::BitField shareMode) never_throws
-		{
-			assert(_data.empty() && !_closeFn);
+		unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
+		auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
+		if (!mappingStart) {
+			CloseHandle(mapping);
+			CloseHandle(fileHandle);
+			return AsExceptionReason(GetLastError());
+		}
 
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-
-			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
-				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
-
-			auto fileHandle = CreateFileW(
-				(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 
-				underlyingShareMode, 
-				nullptr, underlyingOpenMode._creationDisposition, 
-				underlyingOpenMode._underlyingFlags, nullptr);
-			if (fileHandle == INVALID_HANDLE_VALUE)
-				return AsExceptionReason(GetLastError());
-
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
-			auto mapping = CreateFileMappingA(
-				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
-			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
-				CloseHandle(fileHandle);
-				return AsExceptionReason(GetLastError());
-			}
-
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
-			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
-			if (!mappingStart) {
+		_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+		_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
+			{
+				assert(!data.empty());
+				UnmapViewOfFile(data.begin());
 				CloseHandle(mapping);
 				CloseHandle(fileHandle);
-				return AsExceptionReason(GetLastError());
-			}
+			};
+		return Exceptions::IOException::Reason::Success;
+	}
 
-			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
-			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
-				{
-					assert(!data.empty());
-					UnmapViewOfFile(data.begin());
-					CloseHandle(mapping);
-					CloseHandle(fileHandle);
-				};
-			return Exceptions::IOException::Reason::Success;
+	MemoryMappedFile::MemoryMappedFile(
+		const utf8 filename[], uint64 size, const char openMode[], 
+		FileShareMode::BitField shareMode)
+	{
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+
+		if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+			underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
+		auto fileHandle = CreateFileA(
+			(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
+			underlyingShareMode, 
+			nullptr, underlyingOpenMode._creationDisposition, 
+			underlyingOpenMode._underlyingFlags, nullptr);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
+
+		unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
+		auto mapping = CreateFileMappingA(
+			fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
+		if (!mapping || mapping == INVALID_HANDLE_VALUE) {
+			CloseHandle(fileHandle);
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
 		}
 
-		MemoryMappedFile::MemoryMappedFile(
-			const utf8 filename[], uint64 size, const char openMode[], 
-			FileShareMode::BitField shareMode)
-		{
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
+		auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
+		if (!mappingStart) {
+			CloseHandle(mapping);
+			CloseHandle(fileHandle);
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
+		}
 
-			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
-				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
-
-			auto fileHandle = CreateFileA(
-				(const char*)filename, underlyingOpenMode._underlyingAccessMode, 
-				underlyingShareMode, 
-				nullptr, underlyingOpenMode._creationDisposition, 
-				underlyingOpenMode._underlyingFlags, nullptr);
-			if (fileHandle == INVALID_HANDLE_VALUE)
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
-			auto mapping = CreateFileMappingA(
-				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
-			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
-				CloseHandle(fileHandle);
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-			}
-
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
-			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
-			if (!mappingStart) {
+		_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+		_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
+			{
+				assert(!data.empty());
+				UnmapViewOfFile(data.begin());
 				CloseHandle(mapping);
 				CloseHandle(fileHandle);
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-			}
+			};
+	}
 
-			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
-			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
-				{
-					assert(!data.empty());
-					UnmapViewOfFile(data.begin());
-					CloseHandle(mapping);
-					CloseHandle(fileHandle);
-				};
+	MemoryMappedFile::MemoryMappedFile(
+		const utf16 filename[], uint64 size, const char openMode[],
+		FileShareMode::BitField shareMode)
+	{
+		auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+		auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+
+		if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
+			underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
+
+		auto fileHandle = CreateFileW(
+			(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 
+			underlyingShareMode, 
+			nullptr, underlyingOpenMode._creationDisposition, 
+			underlyingOpenMode._underlyingFlags, nullptr);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
+
+		unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
+		auto mapping = CreateFileMappingA(
+			fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
+		if (!mapping || mapping == INVALID_HANDLE_VALUE) {
+			CloseHandle(fileHandle);
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
 		}
 
-		MemoryMappedFile::MemoryMappedFile(
-			const utf16 filename[], uint64 size, const char openMode[],
-			FileShareMode::BitField shareMode)
-		{
-			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
-			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+		unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
+		auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
+		if (!mappingStart) {
+			CloseHandle(mapping);
+			CloseHandle(fileHandle);
+			ThrowFileOpenException(MakeStringSection(filename), openMode);
+		}
 
-			if (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA)		// writable memory mapped files must have read access enabled, so the CreateFileMapping will succeed
-				underlyingOpenMode._underlyingAccessMode |= FILE_GENERIC_READ;
-
-			auto fileHandle = CreateFileW(
-				(const wchar_t*)filename, underlyingOpenMode._underlyingAccessMode, 
-				underlyingShareMode, 
-				nullptr, underlyingOpenMode._creationDisposition, 
-				underlyingOpenMode._underlyingFlags, nullptr);
-			if (fileHandle == INVALID_HANDLE_VALUE)
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-
-			unsigned pageAccessMode = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? PAGE_READWRITE : PAGE_READONLY;
-			auto mapping = CreateFileMappingA(
-				fileHandle, nullptr, pageAccessMode, DWORD(size>>32), DWORD(size), nullptr);
-			if (!mapping || mapping == INVALID_HANDLE_VALUE) {
-				CloseHandle(fileHandle);
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-			}
-
-			unsigned mapAccess = (underlyingOpenMode._underlyingAccessMode & FILE_WRITE_DATA) ? FILE_MAP_WRITE : FILE_MAP_READ;
-			auto mappingStart = MapViewOfFile(mapping, mapAccess, 0, 0, 0);
-			if (!mappingStart) {
+		_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+		_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
+			{
+				assert(!data.empty());
+				UnmapViewOfFile(data.begin());
 				CloseHandle(mapping);
 				CloseHandle(fileHandle);
-				ThrowFileOpenException(MakeStringSection(filename), openMode);
-			}
-
-			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
-			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
-				{
-					assert(!data.empty());
-					UnmapViewOfFile(data.begin());
-					CloseHandle(mapping);
-					CloseHandle(fileHandle);
-				};
-		}
-
-		MemoryMappedFile::MemoryMappedFile() {}
+			};
 	}
 }
 

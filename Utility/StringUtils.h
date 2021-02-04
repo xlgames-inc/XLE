@@ -252,9 +252,6 @@ namespace Utility
     XL_UTILITY_API bool     XlIsUpper(ucs4 c);
     XL_UTILITY_API bool     XlIsLower(ucs4 c);
 
-    XL_UTILITY_API char*    XlTrimRight(char* str);
-    XL_UTILITY_API char*    XlRemoveAllSpace(char* str);
-
     // <string <==> numeric> conversion
     XL_UTILITY_API bool     XlAtoBool(const char* str, const char** end_ptr = 0);
     XL_UTILITY_API int32    XlAtoI32 (const char* str, const char** end_ptr = 0, int radix = 10);

@@ -5,6 +5,7 @@
 #include "FastParseValue.h"
 #include "ArithmeticUtils.h"
 #include <math.h>
+#include <cmath>
 
 namespace Utility
 {

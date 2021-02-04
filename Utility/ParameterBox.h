@@ -62,6 +62,9 @@ namespace Utility
 
         void            SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type);
 		void			RemoveParameter(ParameterName name);
+
+        // avoid ambiguity
+        void            SetParameter(StringSection<utf8> name, const char* stringData) { SetParameter(name, MakeStringSection(stringData)); }
         
         ////////////////////////////////////////////////////////////////////////////////////////
             //      G E T                                                   //

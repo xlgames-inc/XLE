@@ -19,6 +19,7 @@
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/OutputStreamFormatter.h"
 #include "../Utility/Streams/Stream.h"
+#include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/SerializationUtils.h"
 #include "../Utility/Threading/Mutex.h"
@@ -29,8 +30,10 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/Conversion.h"
+#include "../Utility/FastParseValue.h"
 #include <filesystem>
 #include <set>
+#include <sstream>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	#include "../OSServices/WinAPI/IncludeWindows.h"
@@ -164,7 +167,7 @@ namespace Assets
 	{
 	public:
 		mutable std::string _resolvedBaseDirectory;
-		mutable std::unique_ptr<OSServices::BasicFile> _markerFile;
+		mutable std::unique_ptr<IFileInterface> _markerFile;
 
 		struct ConstructorOptions
 		{
@@ -619,89 +622,66 @@ namespace Assets
 			//  We want a directory that isn't currently being used, and
 			//  that matches the version string.
 
-		ResChar buffer[MaxPath];
-		(void)buffer;
-
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-		_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str());
-
+		auto cfgDir = _constructorOptions._baseDir + "/.int-" + _constructorOptions._configString;
 		std::string goodBranchDir;
 
 			//  Look for existing directories that could match the version
 			//  string we have. 
-		WIN32_FIND_DATAA findData;
-		XlZeroMemory(findData);
-		HANDLE findHandle = FindFirstFileA(buffer, &findData);
-		if (findHandle != INVALID_HANDLE_VALUE) {
-			do {
-				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-					_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", _constructorOptions._baseDir.c_str(), findData.cFileName);
-						// Note --  Ideally we want to prevent two different instances of the
-						//          same app from using the same intermediate assets store.
-						//          We can do this by use a "non-shareable" file mode when
-						//          we load these files. 
-					OSServices::BasicFile markerFile;
-					auto ioReason = MainFileSystem::TryOpen(markerFile, buffer, "rb", 0);
-					if (ioReason != IFileSystem::IOReason::Success)
-						continue;
+		std::set<unsigned> indicesUsed;
+		auto searchPath = MainFileSystem::BeginWalk(cfgDir);
+		for (auto candidateDirectory=searchPath.begin_directories(); candidateDirectory!=searchPath.end_directories(); ++candidateDirectory) {
+			auto candidateName = candidateDirectory.Name();
+			
+			unsigned asInt = 0;
+			if (FastParseValue(MakeStringSection(candidateName), asInt) == AsPointer(candidateName.end()))
+				indicesUsed.insert(asInt);
 
-					auto fileSize = markerFile.GetSize();
-					if (fileSize != 0) {
-						auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
-						markerFile.Read(rawData.get(), 1, size_t(fileSize));
+			auto markerFileName = cfgDir + "/" + candidateName + "/.store";
+			std::unique_ptr<IFileInterface> markerFile;
+			auto ioReason = MainFileSystem::TryOpen(markerFile, markerFileName, "rb", 0);
+			if (ioReason != IFileSystem::IOReason::Success)
+				continue;
 
-						InputStreamFormatter<utf8> formatter(
-							MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
-						StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
+			auto fileSize = markerFile->GetSize();
+			if (fileSize != 0) {
+				auto rawData = std::unique_ptr<char[]>(new char[int(fileSize)]);
+				markerFile->Read(rawData.get(), 1, size_t(fileSize));
 
-						auto compareVersion = doc.Attribute("VersionString").Value();
-						if (XlEqString(compareVersion, (const utf8*)_constructorOptions._versionString.c_str())) {
-							// this branch is already present, and is good... so use it
-							goodBranchDir = _constructorOptions._baseDir + "/" + findData.cFileName;
-							_markerFile = std::make_unique<OSServices::BasicFile>(std::move(markerFile));
-							break;
-						}
+				InputStreamFormatter<> formatter(MakeStringSection(rawData.get(), PtrAdd(rawData.get(), fileSize)));
+				StreamDOM<InputStreamFormatter<>> doc(formatter);
 
-						// it's a store for some other version of the executable. Try the next one
-						continue;
-					}
+				auto compareVersion = doc.RootElement().Attribute("VersionString").Value();
+				if (XlEqString(compareVersion, _constructorOptions._versionString)) {
+					// this branch is already present, and is good... so use it
+					goodBranchDir = cfgDir + "/" + candidateName;
+					_markerFile = std::move(markerFile);
+					break;
 				}
-			} while (FindNextFileA(findHandle, &findData));
-
-			FindClose(findHandle);
+			}
 		}
 
 		if (goodBranchDir.empty()) {
 				// if we didn't find an existing folder we can use, we need to create a new one
 				// search through to find the first unused directory
 			for (unsigned d=0;;++d) {
-				_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str(), d);
-				DWORD dwAttrib = GetFileAttributesA(buffer);
-				if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
+				if (indicesUsed.find(d) != indicesUsed.end())
 					continue;
-				}
 
-				OSServices::CreateDirectoryRecursive(buffer);
-				goodBranchDir = buffer;
+				goodBranchDir = cfgDir + "/" + std::to_string(d);
+				std::filesystem::create_directories(goodBranchDir);
 
-				_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str(), d);
+				auto markerFileName = goodBranchDir + "/.store";
 
 					// Opening without sharing to prevent other instances of XLE apps from using
 					// the same directory.
-				_markerFile = std::make_unique<OSServices::BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
-					
+				_markerFile = MainFileSystem::OpenFileInterface(markerFileName, "wb", 0);
 				auto outStr = std::string("VersionString=") + _constructorOptions._versionString + "\n";
 				_markerFile->Write(outStr.data(), 1, outStr.size());
-					
 				break;
 			}
 		}
-#else
-		auto goodBranchDir = _constructorOptions._baseDir;
-#endif
 
 		_resolvedBaseDirectory = goodBranchDir;
-		std::filesystem::create_directories(_resolvedBaseDirectory);
 	}
 
 	auto IntermediatesStore::RegisterCompileProductsGroup(StringSection<> name) -> CompileProductsGroupId
@@ -723,7 +703,7 @@ namespace Assets
 			// This is the "universal" store directory. A single directory is used by all
 			// versions of the game.
 			ResChar buffer[MaxPath];
-			snprintf(buffer, dimof(buffer), "%s/u", baseDirectory);
+			snprintf(buffer, dimof(buffer), "%s/.int/u", baseDirectory);
 			_pimpl->_resolvedBaseDirectory = buffer;
 		} else {
 			_pimpl->_constructorOptions._baseDir = baseDirectory;

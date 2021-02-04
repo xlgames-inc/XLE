@@ -43,7 +43,9 @@ macro(xle_internal_configure_compiler TargetName)
         # We must use -fPIC to enable relocation for any code that might be linked into a shared library
         # In theory, this might only need to be done for the code that ends up in a shared library. But in
         # practice it's only really practical to enable it for everything
-        target_compile_options(${TargetName} PRIVATE -fPIC)
+        if (UNIX OR ANDROID)
+            target_compile_options(${TargetName} PRIVATE -fPIC)
+        endif()
 
         if (NOT XLE_IMPLICIT_SHARED_LIBRARIES)
             target_compile_options(${TargetName} PRIVATE -fvisibility=hidden)

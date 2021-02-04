@@ -24,7 +24,7 @@ namespace OSServices
         return NSEC_PER_SEC;
     }
 
-    bool GetCurrentDirectory(uint32 dim, char dst[])
+    bool GetCurrentDirectory(uint32_t dim, char dst[])
     {
         if (dim > 0) dst[0] = '\0';
         return false;

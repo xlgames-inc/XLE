@@ -35,6 +35,11 @@
 #undef CreateSemaphore
 #undef CreateEvent
 #undef ERROR
+#undef GetCommandLine
+#undef GetCurrentDirectory
+#undef MoveFile
+#undef DeleteFile
+#undef GetProcessPath
 #pragma pop_macro("ERROR")
 #pragma pop_macro("LOG")
 #endif

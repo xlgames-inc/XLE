@@ -40,7 +40,9 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
-                    SetYieldToPoolFunction([this]() {
+                    SetYieldToPoolFunction([this](std::chrono::steady_clock::time_point waitUntilTime) {
+                        assert(0);      // "waitUntilTime" must be respected
+
                         bool gotTask = false;
                         std::function<void()> task;
 

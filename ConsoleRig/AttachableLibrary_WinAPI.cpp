@@ -9,11 +9,12 @@
 #include "AttachablePtr.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/WinAPI/IncludeWindows.h"
+#include "../OSServices/WinAPI/System_WinAPI.h"
 #include <string>
 #include <sstream>
 #include <assert.h>
 
-#include "../Utility/WinAPI/WinAPIWrapper.h"
+#include "../OSServices/WinAPI/WinAPIWrapper.h"
 
 namespace ConsoleRig
 {
@@ -34,7 +35,7 @@ namespace ConsoleRig
     {
         if (!_pimpl->_attachCount) {
             assert(_pimpl->_library == LibraryHandle_Invalid);
-            _pimpl->_library = (*Windows::Fn_LoadLibrary)(_pimpl->_filename.c_str());
+            _pimpl->_library = (*OSServices::Windows::Fn_LoadLibrary)(_pimpl->_filename.c_str());
 
             if (!_pimpl->_library) _pimpl->_library = LibraryHandle_Invalid;
 
@@ -52,7 +53,7 @@ namespace ConsoleRig
 					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code 192, which usually means that the platform or instruction set for the DLL doesn't match this executable (for example, 64 bit app loading 32 bit dll)";
 					break;
 				default:
-					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code " << errorCode << ", which is unknown but translates to (" << SystemErrorCodeAsString(errorCode) << ")";
+					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code " << errorCode << ", which is unknown but translates to (" << OSServices::SystemErrorCodeAsString(errorCode) << ")";
 					break;
 				}
 
@@ -65,8 +66,8 @@ namespace ConsoleRig
                 // If either is missing, we still succeed. The AttachLibrary
                 // function is only required for dlls that want to use our
                 // global services (like logging, console, etc)
-            auto attachFn = (void (*)(ConsoleRig::CrossModule&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
-            auto getVersionInfoFn = (LibVersionDesc (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_library, "GetVersionInformation");
+            auto attachFn = (void (*)(ConsoleRig::CrossModule&))(*OSServices::Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
+            auto getVersionInfoFn = (LibVersionDesc (*)())(*OSServices::Windows::Fn_GetProcAddress)(_pimpl->_library, "GetVersionInformation");
             if (attachFn) {
 				(*attachFn)(ConsoleRig::CrossModule::GetInstance());
 			}
@@ -91,12 +92,12 @@ namespace ConsoleRig
 
                 // If there is a "DetachLibrary" function, we should
                 // call it now.
-			auto detachFn = (void (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_library, "DetachLibrary");
+			auto detachFn = (void (*)())(*OSServices::Windows::Fn_GetProcAddress)(_pimpl->_library, "DetachLibrary");
 			if (detachFn) {
 				(*detachFn)();
 			}
 
-			(*Windows::FreeLibrary)(_pimpl->_library);
+			(*OSServices::Windows::FreeLibrary)(_pimpl->_library);
             _pimpl->_library = LibraryHandle_Invalid;
         }
     }
@@ -110,7 +111,7 @@ namespace ConsoleRig
     void* AttachableLibrary::GetFunctionAddress(const char name[])
     {
         if (_pimpl->_attachCount <= 0) return nullptr;
-        return (*Windows::Fn_GetProcAddress)(_pimpl->_library, name);
+        return (void*)(*OSServices::Windows::Fn_GetProcAddress)(_pimpl->_library, name);
     }
 
     AttachableLibrary::AttachableLibrary(StringSection<CharType> filename)

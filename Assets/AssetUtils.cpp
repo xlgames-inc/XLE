@@ -24,7 +24,6 @@
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../OSServices/RawFS.h"
-#include "../OSServices/RawFS.h"     // for GetCurrentDirectory
 #include <vector>
 #include <algorithm>
 #include <sstream>

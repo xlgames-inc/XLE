@@ -45,7 +45,8 @@ namespace Utility
         class BlockSerializerAllocator : public std::allocator<Type>
     {
     public:
-        typename std::allocator<Type>::pointer allocate(typename std::allocator<Type>::size_type n, std::allocator<void>::const_pointer ptr= 0)
+		using BaseAllocatorTraits = std::allocator_traits<std::allocator<Type>>;
+        typename BaseAllocatorTraits::pointer allocate(typename BaseAllocatorTraits::size_type n, typename BaseAllocatorTraits::const_void_pointer ptr= 0)
         {
             if (_fromFixedStorage) {
                 Throw(std::invalid_argument("Cannot allocate from a BlockSerializerAllocator than has been serialized in from a fixed block"));
@@ -54,7 +55,7 @@ namespace Utility
             return std::allocator<Type>::allocate(n, ptr);
         }
 
-        void deallocate(typename std::allocator<Type>::pointer p, typename std::allocator<Type>::size_type n)
+        void deallocate(typename BaseAllocatorTraits::pointer p, typename BaseAllocatorTraits::size_type n)
         {
             if (!_fromFixedStorage) {
                 std::allocator<Type>::deallocate(p, n);

@@ -415,17 +415,17 @@ void     XlCatString(utf8* dst, size_t size, const utf8* src)
         assert(0);
         return 0;
     }
-
-    XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src)
-    {
-        assert(0);
-    }
-	XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length)
-    {
-        assert(0);
-    }
     
 #endif
+
+XL_UTILITY_API void     XlCopyString(utf16* dst, size_t size, const utf16* src)
+{
+    assert(0);
+}
+XL_UTILITY_API void     XlCopyNString(utf16* dst, size_t count, const utf16*src, size_t length)
+{
+    assert(0);
+}
 
 // count is buffer size in ucs4
 void XlCopyString(ucs4* dst, size_t count, const ucs4* src)
@@ -1259,42 +1259,6 @@ utf16 XlToUpper(utf16 c)
         return (utf16)__upper_table[(uint8)c];
     }
     return c;
-}
-
-char* XlTrimRight(char* str)
-{
-    size_t len = XlStringSize(str);
-    if (len < 1) {
-        return str;
-    }
-
-    char* pos = str + len - 1;
-    while (pos >= str && XlIsSpace(*pos)) {
-        --pos;
-    }
-    *(pos + 1) = 0;
-    return str;
-}
-
-char* XlRemoveAllSpace(char* str)
-{
-    std::basic_string<char> customstr;
-
-    while (size_t offset = XlGetOffset(str, 1)) {
-        if (offset == 1) {
-            if (XlIsSpace(str[0]) == false) {
-                customstr.push_back(str[0]);
-            }
-        } else {
-            char tempChar[64];
-            memcpy(tempChar, str, offset);
-            customstr += tempChar;
-        }
-
-        str += offset;        
-    }
-
-    return (char*)customstr.c_str();
 }
 
 struct UnicharEng {
