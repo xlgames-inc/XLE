@@ -22,6 +22,73 @@ add_library(RenderCore_OpenGLES STATIC ${Src} ${Headers})
 xle_configure_library(RenderCore_OpenGLES)
 target_link_libraries(RenderCore_OpenGLES PUBLIC RenderCore Utility ForeignMisc)
 
-if (UNIX)
-    target_link_libraries(RenderCore_OpenGLES PUBLIC GLESv2 EGL)
-endif ()
+############################################################################################################################################
+set(XLE_OPENGLES_INCLUDE_DIR "" CACHE PATH "Include directory to use for OpenGLES/EGL")
+set(XLE_OPENGLES_LIBRARY_DIR "" CACHE PATH "Library directory to use for OpenGLES/EGL")
+
+macro(find_opengles)
+
+    # First find "EGL"
+    find_path(INTERNAL_FOUND_EGL_INCLUDE_DIR EGL/egl.h HINT ${XLE_OPENGLES_INCLUDE_DIR})
+    find_library(INTERNAL_FOUND_EGL_LIBRARY EGL HINTS ${XLE_OPENGLES_LIBRARY_DIR})
+
+    # If we've failed, try to fill in using find_package(OpenGL)
+    if (INTERNAL_FOUND_EGL_INCLUDE_DIR STREQUAL INTERNAL_FOUND_EGL_INCLUDE_DIR-NOTFOUND
+        OR INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND)
+    
+        SET(OpenGL_GL_PREFERENCE GLVND) # set to quiet CMP0072. We don't actually care -- we want EGL, but not OpenGL
+        find_package(OpenGL)
+
+        if (OPENGL_egl_LIBRARY AND INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND)
+            # OPENGL_egl_LIBRARY set by OpenGL package
+            SET(INTERNAL_FOUND_EGL_LIBRARY ${OPENGL_egl_LIBRARY})
+        endif()
+
+        if (OPENGL_EGL_INCLUDE_DIRS AND INTERNAL_FOUND_EGL_INCLUDE_DIR STREQUAL INTERNAL_FOUND_EGL_INCLUDE_DIR-NOTFOUND)
+            # OPENGL_EGL_INCLUDE_DIRS set by OpenGL package
+            SET(INTERNAL_FOUND_EGL_INCLUDE_DIR ${OPENGL_EGL_INCLUDE_DIRS})
+        endif()
+    endif()
+
+    # Search for the static project angle versions instead
+    if (INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND)
+        find_library(INTERNAL_FOUND_EGL_LIBRARY EGL_static ${XLE_OPENGLES_LIBRARY_DIR})
+    endif ()
+
+    # Now find GLES itself. Note that we need the gles3 headers, even if we drop
+    # back to gles2 at runtime
+    # There isn't a module built into cmake for this. So we have to do everything manually
+    # Basic search for headers and libraries
+    find_path(INTERNAL_FOUND_OPENGLES_INCLUDE_DIR GLES3/gl3.h HINT ${XLE_OPENGLES_INCLUDE_DIR})
+    find_library(INTERNAL_FOUND_OPENGLES_LIBRARY GLESv2 ${XLE_OPENGLES_LIBRARY_DIR})
+
+    # Search for the static project angle versions instead
+    if (INTERNAL_FOUND_OPENGLES_LIBRARY STREQUAL INTERNAL_FOUND_OPENGLES_LIBRARY-NOTFOUND)
+        find_library(INTERNAL_FOUND_OPENGLES_LIBRARY GLESv2_static ${XLE_OPENGLES_LIBRARY_DIR})
+    endif ()
+
+    if (INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND 
+        OR INTERNAL_FOUND_EGL_INCLUDE_DIR STREQUAL INTERNAL_FOUND_EGL_INCLUDE_DIR-NOTFOUND 
+        OR INTERNAL_FOUND_OPENGLES_LIBRARY STREQUAL INTERNAL_FOUND_OPENGLES_LIBRARY-NOTFOUND 
+        OR INTERNAL_FOUND_OPENGLES_INCLUDE_DIR STREQUAL INTERNAL_FOUND_OPENGLES_INCLUDE_DIR-NOTFOUND)
+
+        # If we fail, spit out an error message
+        # Most of the time, the remedy will be to just set XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR in the cmake cache
+        # note that on Windows you must use Angle project to provide an OpenGLES implementation.
+        # Usually this will come from here: https://github.com/google/angle
+        message("INTERNAL_FOUND_EGL_LIBRARY: ${INTERNAL_FOUND_EGL_LIBRARY}")
+        message("INTERNAL_FOUND_EGL_INCLUDE_DIR: ${INTERNAL_FOUND_EGL_INCLUDE_DIR}")
+        message("INTERNAL_FOUND_OPENGLES_LIBRARY: ${INTERNAL_FOUND_OPENGLES_LIBRARY}")
+        message("INTERNAL_FOUND_OPENGLES_INCLUDE_DIR: ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR}")
+        message("XLE_OPENGLES_INCLUDE_DIR: ${XLE_OPENGLES_INCLUDE_DIR}")
+        message("XLE_OPENGLES_LIBRARY_DIR: ${XLE_OPENGLES_LIBRARY_DIR}")
+        message(FATAL_ERROR "Could not find OpenGLES headers and libraries. Either compile without this target included, or set the XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR cache directories to the correct directories.")
+    endif ()
+
+endmacro()
+############################################################################################################################################
+
+find_opengles()
+target_link_libraries(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_EGL_LIBRARY} ${INTERNAL_FOUND_OPENGLES_LIBRARY})
+target_include_directories(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR} ${INTERNAL_FOUND_EGL_INCLUDE_DIR})
+
