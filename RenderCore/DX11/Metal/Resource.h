@@ -213,20 +213,19 @@ namespace RenderCore { namespace Metal_DX11
 	Resource& AsResource(IResource& res);
 }}
 
-#pragma warning(push)
-#pragma warning(disable:4231)   // nonstandard extension used : 'extern' before template explicit instantiation
+	/// \cond INTERNAL
+	//
+	//      Implement the intrusive_ptr for resources in only one CPP file. 
+	//      Note this means that AddRef/Release are pulled out-of-line
+	//
+	//      But this is required, otherwise each use of intrusive_ptr<Render::Underlying::Resource>
+	//      requires #include <d3d11.h>
+	//
 
-        /// \cond INTERNAL
-        //
-        //      Implement the intrusive_ptr for resources in only one CPP file. 
-        //      Note this means that AddRef/Release are pulled out-of-line
-        //
-        //      But this is required, otherwise each use of intrusive_ptr<Render::Underlying::Resource>
-        //      requires #include <d3d11.h>
-        //
+namespace Utility
+{
+	void intrusive_ptr_add_ref(ID3D::Resource*);
+	void intrusive_ptr_release(ID3D::Resource*);
+}
 
-    extern template Utility::intrusive_ptr<ID3D::Resource>;
-
-        /// \endcond
-#pragma warning(pop)
-
+	/// \endcond

@@ -8,6 +8,11 @@
 
 #include "Exceptions.h"
 #include "../Utility/StringUtils.h"
+#include "../Core/SelectConfiguration.h"
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    // Antlr includes windows.h; so get in before it can
+    #include "../OSServices/WinAPI/IncludeWindows.h"
+#endif
 #include <antlr3defs.h>
 #include <antlr3interfaces.h>
 #include <antlr3basetree.h>

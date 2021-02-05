@@ -16,6 +16,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Prefix.h"
+#include <functional>
 
 namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; class VertexBufferView; }
 namespace Assets { class DependencyValidation; }
@@ -225,8 +226,6 @@ namespace RenderCore { namespace Metal_DX11
 		friend void BeginRenderPass(
 			DeviceContext& context,
 			FrameBuffer& frameBuffer,
-			const FrameBufferDesc& layout,
-			const FrameBufferProperties& props,
 			IteratorRange<const ClearValue*> clearValues);
 		friend void EndRenderPass(DeviceContext& context);
 

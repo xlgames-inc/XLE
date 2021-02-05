@@ -215,14 +215,14 @@ namespace PlatformRig
         wc.hIconSm          = NULL;
 
             //       (Ignore class registration failure errors)
-        (*Windows::Fn_RegisterClassEx)(&wc);
+        (*OSServices::Windows::Fn_RegisterClassEx)(&wc);
 
             //
             //      ---<>--- Create the window itself ---<>---
             //
         DWORD windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
         DWORD windowStyleEx = 0;
-        _pimpl->_hwnd = (*Windows::Fn_CreateWindowEx)(
+        _pimpl->_hwnd = (*OSServices::Windows::Fn_CreateWindowEx)(
             windowStyleEx, windowClassName.c_str(), 
             NULL, windowStyle, 
             32, 32, 1280, 720, 
@@ -249,7 +249,7 @@ namespace PlatformRig
 		_pimpl->_inputTranslator.reset();
         ::DestroyWindow(_pimpl->_hwnd);
         auto windowClassName = Conversion::Convert<std::string>(CurrentModule::GetInstance().HashId());
-        (*Windows::Fn_UnregisterClass)(windowClassName.c_str(), CurrentModule::GetInstance().Handle());
+        (*OSServices::Windows::Fn_UnregisterClass)(windowClassName.c_str(), CurrentModule::GetInstance().Handle());
     }
 
     const void* OverlappedWindow::GetUnderlyingHandle() const

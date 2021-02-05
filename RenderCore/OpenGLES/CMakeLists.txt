@@ -1,7 +1,5 @@
 
 set(Src
-    Device_EGL.cpp
-    EGLUtils.cpp
     Metal/Buffer.cpp
     Metal/DeviceContext.cpp
     Metal/FakeGLES.cpp
@@ -18,9 +16,16 @@ set(Src
     Metal/State.cpp
     Metal/TextureView.cpp)
 
-add_library(RenderCore_OpenGLES STATIC ${Src} ${Headers})
+if (WIN32 OR ANDROID OR LINUX)
+    LIST(APPEND Src
+        Device_EGL.cpp
+        EGLUtils.cpp)
+endif ()
+
+add_library(RenderCore_OpenGLES STATIC ${Src})
 xle_configure_library(RenderCore_OpenGLES)
 target_link_libraries(RenderCore_OpenGLES PUBLIC RenderCore Utility ForeignMisc)
+target_sources(RenderCore_OpenGLES INTERFACE ${CMAKE_CURRENT_LIST_DIR}/RegisterGLES.cpp)
 
 ############################################################################################################################################
 set(XLE_OPENGLES_INCLUDE_DIR "" CACHE PATH "Include directory to use for OpenGLES/EGL")

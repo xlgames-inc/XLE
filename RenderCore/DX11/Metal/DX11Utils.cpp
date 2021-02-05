@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DX11Utils.h"
-#include "../../../Utility/ParameterBox.h"
+#include "../../../Utility/ImpliedTyping.h"
 
 #include <d3d11shader.h>        // D3D11_SHADER_TYPE_DESC
 
@@ -39,4 +39,11 @@ namespace RenderCore { namespace Metal_DX11
 }}
 
     // instantiate this ptr type
-template Utility::intrusive_ptr<ID3D::Resource>;
+namespace Utility
+{
+	void intrusive_ptr_add_ref(ID3D::Resource* ptr) { ptr->AddRef(); }
+	void intrusive_ptr_release(ID3D::Resource* ptr) { ptr->Release(); }
+
+    void intrusive_ptr_add_ref(ID3D::ShaderReflection* ptr) { ptr->AddRef(); }
+	void intrusive_ptr_release(ID3D::ShaderReflection* ptr) { ptr->Release(); }
+}

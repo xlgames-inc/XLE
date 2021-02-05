@@ -12,7 +12,7 @@
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Assets/Assets.h"
-#include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../../../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
@@ -28,7 +28,7 @@
 #include <set>
 #include <sstream>
 
-#include "../../../Utility/WinAPI/WinAPIWrapper.h"
+#include "../../../OSServices/WinAPI/WinAPIWrapper.h"
 #include "IncludeDX11.h"
 #include <D3D11Shader.h>
 #include <D3Dcompiler.h>
@@ -177,9 +177,9 @@ namespace RenderCore { namespace Metal_DX11
         const std::vector<::Assets::DependentFileState>& GetIncludeFiles() const { return _includeFiles; }
         const std::basic_string<utf8>& GetBaseDirectory() const { return _baseDirectory; }
 
-        IncludeHandler(const utf8 baseDirectory[]) : _baseDirectory(baseDirectory) 
+        IncludeHandler(StringSection<> baseDirectory) : _baseDirectory(baseDirectory.AsString()) 
         {
-            _searchDirectories.push_back(baseDirectory);
+            _searchDirectories.push_back(_baseDirectory);
 			_searchDirectories.push_back("");
         }
         ~IncludeHandler() {}
@@ -608,7 +608,7 @@ namespace RenderCore { namespace Metal_DX11
         auto compiler = D3DShaderCompiler::GetInstance();
         auto hresult = compiler->D3DCreateFunctionLinkingGraph_Wrapper(0, &graphRaw);
         if (!SUCCEEDED(hresult))
-            Throw(::Exceptions::BasicLabel::BasicLabel("Failure while creating D3D function linking graph"));
+            Throw(::Exceptions::BasicLabel("Failure while creating D3D function linking graph"));
         _graph = moveptr(graphRaw);
 
 		_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
@@ -1274,9 +1274,7 @@ namespace RenderCore { namespace Metal_DX11
 
         } else {
 
-            ::Assets::ResChar directoryName[MaxPath];
-            XlDirname(directoryName, dimof(directoryName), shaderPath._filename);
-            IncludeHandler includeHandler((const utf8*)directoryName);
+            IncludeHandler includeHandler(MakeFileNameSplitter(shaderPath._filename).DriveAndPath());
 
             auto hresult = D3DCompile_Wrapper(
                 sourceCode, sourceCodeLength,
@@ -1314,7 +1312,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ScopedLock(_moduleLock);
         if (_module == INVALID_HANDLE_VALUE)
-            _module = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
+            _module = (*OSServices::Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
         return _module;
     }
 
@@ -1333,9 +1331,9 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef HRESULT WINAPI D3DReflect_Fn(LPCVOID, SIZE_T, REFIID, void**);
 
-        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DReflect");
+        auto fn = (D3DReflect_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DReflect");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1373,9 +1371,9 @@ namespace RenderCore { namespace Metal_DX11
             const D3D_SHADER_MACRO*, ID3DInclude*, LPCSTR, LPCSTR,
             UINT, UINT, ID3DBlob**, ID3DBlob**);
 
-        auto fn = (D3DCompile_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCompile");
+        auto fn = (D3DCompile_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DCompile");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1395,9 +1393,9 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef HRESULT WINAPI D3DCreateFunctionLinkingGraph_Fn(UINT, ID3D11FunctionLinkingGraph**);
 
-        auto fn = (D3DCreateFunctionLinkingGraph_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCreateFunctionLinkingGraph");
+        auto fn = (D3DCreateFunctionLinkingGraph_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DCreateFunctionLinkingGraph");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1415,9 +1413,9 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef HRESULT WINAPI D3DCreateLinker_Fn(ID3D11Linker**);
 
-        auto fn = (D3DCreateLinker_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCreateLinker");
+        auto fn = (D3DCreateLinker_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DCreateLinker");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1437,9 +1435,9 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef HRESULT WINAPI D3DLoadModule_Fn(LPCVOID, SIZE_T, ID3D11Module**);
 
-        auto fn = (D3DLoadModule_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DLoadModule");
+        auto fn = (D3DLoadModule_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DLoadModule");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1461,9 +1459,9 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef HRESULT WINAPI D3DReflectLibrary_Fn(LPCVOID, SIZE_T, REFIID, LPVOID);
 
-        auto fn = (D3DReflectLibrary_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DReflectLibrary");
+        auto fn = (D3DReflectLibrary_Fn*)(*OSServices::Windows::Fn_GetProcAddress)(compiler, "D3DReflectLibrary");
         if (!fn) {
-            (*Windows::FreeLibrary)(compiler);
+            (*OSServices::Windows::FreeLibrary)(compiler);
             compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
@@ -1551,7 +1549,7 @@ namespace RenderCore { namespace Metal_DX11
             //          safe is to make sure all reflection objects are destroyed
             //          before unloading the dll
         if (_module != INVALID_HANDLE_VALUE) {
-            (*Windows::FreeLibrary)(_module);
+            (*OSServices::Windows::FreeLibrary)(_module);
             _module = (HMODULE)INVALID_HANDLE_VALUE;
         }
     }

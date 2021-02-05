@@ -206,8 +206,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         #endif
 
-        const GLchar* shaderSourcePointers[4] { versionDecl, definesPreambleStr.c_str(), (const GLchar*)sourceCode };
-        GLint shaderSourceLengths[4] = { (GLint)std::strlen(versionDecl), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
+        const GLchar* shaderSourcePointers[3] { versionDecl, definesPreambleStr.c_str(), (const GLchar*)sourceCode };
+        GLint shaderSourceLengths[3] = { (GLint)std::strlen(versionDecl), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 
         Log(Verbose) << "Compiling: " << shaderPath._filename << std::endl;
 

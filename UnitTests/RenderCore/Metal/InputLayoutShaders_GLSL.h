@@ -13,6 +13,8 @@ namespace UnitTests
                 #define ATTRIBUTE in
                 #if defined(FRAGMENT_SHADER)
                     #define VARYING in
+                    out vec4 main_out_color;
+                    #define gl_FragColor main_out_color
                 #else
                     #define VARYING out
                 #endif
@@ -191,7 +193,11 @@ namespace UnitTests
             uniform sampler2D Texture;
             void main()
             {
-                gl_FragColor = texture2D(Texture, a_texCoord);
+                #if __VERSION__ >= 300
+                    main_out_color = texture(Texture, a_texCoord);
+                #else
+                    gl_FragColor = texture2D(Texture, a_texCoord);
+                #endif
             }
         )";
 }

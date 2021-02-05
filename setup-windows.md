@@ -26,3 +26,9 @@ is what I tend to do:
 * you also need to setup the path to git in settings.json for vscode ("git.path": "C:\\tools\\Cmder\\vendor\\git-for-windows\\bin\\git.exe")
 
 
+For RenderCore you'll need a little more
+* To get the OpenGLES target running, you'll need an implementation of OpenGLES for windows. Use google's project angle: https://github.com/google/angle/blob/master/doc/DevSetup.md
+* Google's instructions failed for me the first time -- I had to explicitly set the env variable "vs2019_install" (my VS install is not on drive C:)
+* After the first cmake configure, you should get an error message saying GLES could not be found. There's no default location for windows, you must configure it manually
+* set the cmake cache variables XLE_OPENGLES_INCLUDE_DIR & XLE_OPENGLES_LIBRARY_DIR
+* install java jre (choco install javaruntime)

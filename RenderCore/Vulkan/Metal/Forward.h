@@ -33,8 +33,6 @@ namespace RenderCore { namespace Metal_Vulkan
     class DeviceContext;
     class ObjectFactory;
 
-	class ViewportDesc;
-
     using ConstantBufferPacket = SharedPkt;
 	using ConstantBuffer = Buffer;
 

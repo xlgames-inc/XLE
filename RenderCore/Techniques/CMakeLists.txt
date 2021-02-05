@@ -54,6 +54,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     add_library(RenderCoreTechniques-${metal_name} STATIC ${Src} ${Headers})
     xle_configure_library(RenderCoreTechniques-${metal_name})
     target_compile_definitions(RenderCoreTechniques-${metal_name} PUBLIC ${metal_macro})
-    target_link_libraries(RenderCoreTechniques-${metal_name} PUBLIC RenderCoreAssets RenderCore Utility ForeignMisc)
+    target_link_libraries(RenderCoreTechniques-${metal_name} PUBLIC RenderCoreAssets RenderCore_${metal_name} RenderCore Utility ForeignMisc)
 
 endforeach()

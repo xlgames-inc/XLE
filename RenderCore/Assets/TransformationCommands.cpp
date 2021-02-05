@@ -1136,6 +1136,8 @@ namespace RenderCore { namespace Assets
                 break;
 
             case TransformStackCommand::RotateX_Static:
+            case TransformStackCommand::RotateY_Static:
+            case TransformStackCommand::RotateZ_Static:
                 i++;
                 break;
 

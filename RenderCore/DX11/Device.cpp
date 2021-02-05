@@ -19,11 +19,11 @@
 #include "Metal/Shader.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../OSServices/Log.h"
-#include "../../ConsoleRig/LogUtil.h"
+#include "../../OSServices/LogUtil.h"
+#include "../../OSServices/WinAPI/WinAPIWrapper.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/PtrUtils.h"
-#include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
@@ -72,15 +72,15 @@ namespace RenderCore { namespace ImplDX11
 
         static HMODULE module = (HMODULE)INVALID_HANDLE_VALUE;
         if (module == INVALID_HANDLE_VALUE) {
-            module = (*Windows::Fn_LoadLibrary)("d3d11.dll");
+            module = (*OSServices::Windows::Fn_LoadLibrary)("d3d11.dll");
         }
         if (!module || module == INVALID_HANDLE_VALUE) {
             Throw(::Exceptions::BasicLabel("Could not load D3D11 library"));
         }
 
-        auto fn = (PFN_D3D11_CREATE_DEVICE)(*Windows::Fn_GetProcAddress)(module, "D3D11CreateDevice");
+        auto fn = (PFN_D3D11_CREATE_DEVICE)(*OSServices::Windows::Fn_GetProcAddress)(module, "D3D11CreateDevice");
         if (!fn) {
-            (*Windows::FreeLibrary)(module);
+            (*OSServices::Windows::FreeLibrary)(module);
             module = (HMODULE)INVALID_HANDLE_VALUE;
             Throw(::Exceptions::BasicLabel("D3D11 library appears corrupt"));
         }
@@ -143,7 +143,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
-        _mainFactory = ConsoleRig::MakeAttachablePtr<Metal_DX11::ObjectFactory>(std::ref(*underlying));
+        _mainFactory = std::make_shared<Metal_DX11::ObjectFactory>(std::ref(*underlying));
 
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
@@ -153,7 +153,7 @@ namespace RenderCore { namespace ImplDX11
 
     Device::~Device()
     {
-        _mainFactory.reset();
+        _mainFactory = nullptr;
         Metal_DX11::ObjectFactory::ReleaseDevice(*_underlying);
 
         _immediateThreadContext.reset();
@@ -612,13 +612,6 @@ namespace RenderCore { namespace ImplDX11
     {}
 
     ThreadContextDX11::~ThreadContextDX11() {}
-
-
-	void RegisterCreation()
-	{
-		static_constructor<&RegisterCreation>::c;
-		RegisterDeviceCreationFunction(UnderlyingAPI::DX11, &CreateDevice);
-	}
 
 }}
 

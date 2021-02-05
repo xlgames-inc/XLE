@@ -118,8 +118,10 @@ namespace Utility
         T* _ptr;
     };
 
-    templ void intrusive_ptr_add_ref(T* p) { p->AddRef(); }
-    templ void intrusive_ptr_release(T* p) { p->Release(); }
+    template<typename T, decltype(&T::AddRef)* =nullptr>
+        void intrusive_ptr_add_ref(T* p) { p->AddRef(); }
+    template<typename T, decltype(&T::Release)* =nullptr>
+        void intrusive_ptr_release(T* p) { p->Release(); }
 
     templ intrusive_ptr<T>::intrusive_ptr() never_throws : _ptr(nullptr) {}
     templ intrusive_ptr<T>::intrusive_ptr(T* copyOrMoveFrom, bool takeNewReference)

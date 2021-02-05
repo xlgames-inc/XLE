@@ -798,12 +798,6 @@ namespace RenderCore { namespace ImplOpenGLES
         return std::make_shared<Device>();
     }
 
-    void RegisterCreation()
-    {
-        static_constructor<&RegisterCreation>::c;
-        RegisterDeviceCreationFunction(UnderlyingAPI::OpenGLES, &CreateDevice);
-    }
-
 } }
 
 namespace RenderCore

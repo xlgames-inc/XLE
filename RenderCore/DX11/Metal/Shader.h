@@ -138,8 +138,8 @@ namespace RenderCore { namespace Metal_DX11
 		intrusive_ptr<ID3D::HullShader>			_hullShader;
 		intrusive_ptr<ID3D::DomainShader>		_domainShader;
 
-		CompiledShaderByteCode _compiledCode[ShaderStage::Max];
-		intrusive_ptr<ID3D::ClassLinkage> _classLinkage[ShaderStage::Max];
+		CompiledShaderByteCode _compiledCode[(unsigned)ShaderStage::Max];
+		intrusive_ptr<ID3D::ClassLinkage> _classLinkage[(unsigned)ShaderStage::Max];
 		std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 
 		uint64_t _guid;
@@ -185,8 +185,6 @@ namespace RenderCore { namespace Metal_DX11
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
-
-	extern template intrusive_ptr<ID3D::ShaderReflection>;
     intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode);
 }}
 

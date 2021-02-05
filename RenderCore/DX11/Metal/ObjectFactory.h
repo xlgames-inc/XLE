@@ -64,7 +64,7 @@ namespace RenderCore { namespace Metal_DX11
 
         /// @{
         /// Shader dynamic linking
-        intrusive_ptr<ID3D::ClassLinkage> ObjectFactory::CreateClassLinkage() const;
+        intrusive_ptr<ID3D::ClassLinkage> CreateClassLinkage() const;
         /// @}
 
         /// @{

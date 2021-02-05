@@ -19,4 +19,19 @@ set(Src
 
 add_library(RenderCore_DX11 STATIC ${Src} ${Headers})
 xle_configure_library(RenderCore_DX11)
-target_link_libraries(RenderCore_DX11 PRIVATE ForeignMisc)
+target_link_libraries(RenderCore_DX11 PRIVATE RenderCore OSServices ConsoleRig Utility ForeignMisc)
+target_sources(RenderCore_DX11 INTERFACE ${CMAKE_CURRENT_LIST_DIR}/RegisterDX11.cpp)
+target_link_libraries(RenderCore_DX11 PUBLIC dxguid.lib)
+
+# Attach "d3dcompiler_47" as a required DLL
+if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+    set(X64_OR_X86 "x64")
+else ()
+    set(X64_OR_X86 "x86")
+endif ()
+
+find_file(
+    D3D11COMPILERDLL-SRC d3dcompiler_47.dll
+    HINTS
+        "$ENV{WindowsSdkVerBinPath}/${X64_OR_X86}")
+set_property(TARGET RenderCore_DX11 APPEND PROPERTY RequiredDLLs ${D3D11COMPILERDLL-SRC})

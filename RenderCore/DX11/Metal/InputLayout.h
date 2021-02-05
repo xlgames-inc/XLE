@@ -22,6 +22,12 @@
 
 namespace RenderCore { class VertexBufferView; class CompiledShaderByteCode; }
 
+namespace Utility
+{
+	void intrusive_ptr_add_ref(ID3D::ShaderReflection*);
+	void intrusive_ptr_release(ID3D::ShaderReflection*);
+}
+
 namespace RenderCore { namespace Metal_DX11
 {
 	namespace Internal
@@ -142,7 +148,7 @@ namespace RenderCore { namespace Metal_DX11
 			StageBinding& operator=(const StageBinding& copyFrom) = default;
         };
 
-        StageBinding    _stageBindings[ShaderStage::Max];
+        StageBinding    _stageBindings[(unsigned)ShaderStage::Max];
 
 		class InterfaceResourcesHelper;
 
@@ -189,7 +195,7 @@ namespace RenderCore { namespace Metal_DX11
             std::vector<intrusive_ptr<ID3D::ClassInstance>> _classInstanceArray;
         };
 
-        StageBinding    _stageBindings[ShaderStage::Max];
+        StageBinding    _stageBindings[(unsigned)ShaderStage::Max];
 
 		uint64_t _guid;
     };

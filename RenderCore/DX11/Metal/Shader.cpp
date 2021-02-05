@@ -334,7 +334,5 @@ namespace RenderCore { namespace Metal_DX11
 			});
 	}
 
-	template intrusive_ptr<ID3D::ShaderReflection>;
-
 }}
 
