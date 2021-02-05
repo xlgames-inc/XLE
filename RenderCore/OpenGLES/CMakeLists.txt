@@ -28,9 +28,32 @@ set(XLE_OPENGLES_LIBRARY_DIR "" CACHE PATH "Library directory to use for OpenGLE
 
 macro(find_opengles)
 
+    # CMake never reruns find_path, find_library, etc, while there's still a value in the 
+    # variable we're making. This is a problem because the result of those operations can
+    # depend on the value of other variables. To get around this, we can reset the values
+    # when we detect a change
+    if ((NOT INTERNAL_LAST_XLE_OPENGLES_INCLUDE_DIR STREQUAL ${XLE_OPENGLES_INCLUDE_DIR})
+        OR (NOT INTERNAL_LAST_XLE_OPENGLES_LIBRARY_DIR STREQUAL ${XLE_OPENGLES_LIBRARY_DIR}))
+
+        message("Detected change in GLES configuration, searching again")
+
+        set(INTERNAL_FOUND_EGL_LIBRARY)
+        set(INTERNAL_FOUND_EGL_INCLUDE_DIR)
+        set(INTERNAL_FOUND_OPENGLES_LIBRARY)
+        set(INTERNAL_FOUND_OPENGLES_INCLUDE_DIR)
+
+        set(INTERNAL_LAST_XLE_OPENGLES_INCLUDE_DIR ${XLE_OPENGLES_INCLUDE_DIR} CACHE PATH INTERNAL FORCE)
+        set(INTERNAL_LAST_XLE_OPENGLES_LIBRARY_DIR ${XLE_OPENGLES_LIBRARY_DIR} CACHE PATH INTERNAL FORCE)
+    endif ()
+
     # First find "EGL"
     find_path(INTERNAL_FOUND_EGL_INCLUDE_DIR EGL/egl.h HINT ${XLE_OPENGLES_INCLUDE_DIR})
     find_library(INTERNAL_FOUND_EGL_LIBRARY EGL HINTS ${XLE_OPENGLES_LIBRARY_DIR})
+
+    # check for .dll alternative
+    if (INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND)
+        find_library(INTERNAL_FOUND_EGL_LIBRARY EGL.dll HINTS ${XLE_OPENGLES_LIBRARY_DIR})
+    endif ()
 
     # If we've failed, try to fill in using find_package(OpenGL)
     if (INTERNAL_FOUND_EGL_INCLUDE_DIR STREQUAL INTERNAL_FOUND_EGL_INCLUDE_DIR-NOTFOUND
@@ -50,11 +73,6 @@ macro(find_opengles)
         endif()
     endif()
 
-    # Search for the static project angle versions instead
-    if (INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND)
-        find_library(INTERNAL_FOUND_EGL_LIBRARY EGL_static ${XLE_OPENGLES_LIBRARY_DIR})
-    endif ()
-
     # Now find GLES itself. Note that we need the gles3 headers, even if we drop
     # back to gles2 at runtime
     # There isn't a module built into cmake for this. So we have to do everything manually
@@ -62,9 +80,9 @@ macro(find_opengles)
     find_path(INTERNAL_FOUND_OPENGLES_INCLUDE_DIR GLES3/gl3.h HINT ${XLE_OPENGLES_INCLUDE_DIR})
     find_library(INTERNAL_FOUND_OPENGLES_LIBRARY GLESv2 ${XLE_OPENGLES_LIBRARY_DIR})
 
-    # Search for the static project angle versions instead
+    # check for .dll alternative
     if (INTERNAL_FOUND_OPENGLES_LIBRARY STREQUAL INTERNAL_FOUND_OPENGLES_LIBRARY-NOTFOUND)
-        find_library(INTERNAL_FOUND_OPENGLES_LIBRARY GLESv2_static ${XLE_OPENGLES_LIBRARY_DIR})
+        find_library(INTERNAL_FOUND_OPENGLES_LIBRARY GLESv2.dll ${XLE_OPENGLES_LIBRARY_DIR})
     endif ()
 
     if (INTERNAL_FOUND_EGL_LIBRARY STREQUAL INTERNAL_FOUND_EGL_LIBRARY-NOTFOUND 
@@ -85,6 +103,13 @@ macro(find_opengles)
         message(FATAL_ERROR "Could not find OpenGLES headers and libraries. Either compile without this target included, or set the XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR cache directories to the correct directories.")
     endif ()
 
+    mark_as_advanced(INTERNAL_FOUND_EGL_LIBRARY)
+    mark_as_advanced(INTERNAL_FOUND_EGL_INCLUDE_DIR)
+    mark_as_advanced(INTERNAL_FOUND_OPENGLES_LIBRARY)
+    mark_as_advanced(INTERNAL_FOUND_OPENGLES_INCLUDE_DIR)
+    mark_as_advanced(INTERNAL_LAST_XLE_OPENGLES_INCLUDE_DIR)
+    mark_as_advanced(INTERNAL_LAST_XLE_OPENGLES_LIBRARY_DIR)
+
 endmacro()
 ############################################################################################################################################
 
@@ -92,3 +117,25 @@ find_opengles()
 target_link_libraries(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_EGL_LIBRARY} ${INTERNAL_FOUND_OPENGLES_LIBRARY})
 target_include_directories(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR} ${INTERNAL_FOUND_EGL_INCLUDE_DIR})
 
+# If our library files are actually DLLs, we have to mark them as required DLLs (and any client projects must be careful to
+# copy them to the correct location)
+# We do this by setting a list called "RequiredDLLs" in the target properties for this target
+# I'm not sure if there's a more straightforward way to mark this dependency and have it automatically handled by the final
+# executable... We don't really want to use install steps or anything like that; 
+string(FIND ${INTERNAL_FOUND_EGL_LIBRARY} ".dll.lib" DLLTEMP)
+if (DLLTEMP)
+    string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_EGL_LIBRARY})
+    set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
+endif ()
+string(FIND ${INTERNAL_FOUND_OPENGLES_LIBRARY} ".dll.lib" DLLTEMP)
+if (DLLTEMP)
+    string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_OPENGLES_LIBRARY})
+    set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
+endif ()
+unset(DLLTEMP)
+
+# For Release Angle, we need libEGL.dll & libGLESv2.dll copied to the output directory
+# for Debug Angle, we also need absl.dll, zlib.dll & libc++.dll (however, maybe we can avoid some of those dependencies by compiling in MSVC mode for windows, rather than clang)
+
+# If everything is configured exactly right, it might be possible to define KHRONOS_STATIC here to
+# use the static versions of project angle on windows

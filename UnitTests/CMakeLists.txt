@@ -54,6 +54,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCore)
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCore_${metal_name})
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})
+    xle_executable_post_build(UnitTests-RenderCore-${metal_name})
 
 endforeach()
 
@@ -81,5 +82,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCore)
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCore_${metal_name})
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})
+    xle_executable_post_build(UnitTests-RenderCoreAssetsTechniques-${metal_name})
 
 endforeach()
