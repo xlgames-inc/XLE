@@ -166,6 +166,7 @@ namespace RenderCore
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
         virtual IResourcePtr        CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = ResourceInitializer()) = 0;
+        IResourcePtr                CreateResource(const ResourceDesc& desc, const SubResourceInitData& initData);
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
         // Block until the GPU has caught up to (at least) the end of the previous frame
@@ -190,7 +191,6 @@ namespace RenderCore
     };
 
     using Resource = IResource;     // old naming compatibility
-
 
 ////////////////////////////////////////////////////////////////////////////////
 }

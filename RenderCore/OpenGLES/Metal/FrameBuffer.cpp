@@ -140,7 +140,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             sp._resolveWidth = sp._resolveHeight = 0;
 			for (unsigned r = 0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc.GetOutputs()[r];
-				auto resource = namedResources.GetResource(attachmentView._resourceName);
+                const auto& attachmentDesc = fbDesc.GetAttachments()[attachmentView._resourceName]._desc;
+				auto resource = namedResources.GetResource(attachmentView._resourceName, attachmentDesc);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
 
@@ -167,7 +168,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             sp._dsvHasDepth = sp._dsvHasStencil = false;
 
 			if (spDesc.GetDepthStencil()._resourceName != ~0u) {
-				auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName);
+				const auto& attachmentDesc = fbDesc.GetAttachments()[spDesc.GetDepthStencil()._resourceName]._desc;
+                auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName, attachmentDesc);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
 
@@ -275,7 +277,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 for (unsigned c=0; c<spDesc.GetResolveOutputs().size(); ++c) {
                     const auto& attachmentView = spDesc.GetResolveOutputs()[c];
-                    auto resource = namedResources.GetResource(attachmentView._resourceName);
+                    const auto& attachmentDesc = fbDesc.GetAttachments()[attachmentView._resourceName]._desc;
+                    auto resource = namedResources.GetResource(attachmentView._resourceName, attachmentDesc);
                     if (!resource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
 
@@ -297,7 +300,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 if (spDesc.GetResolveDepthStencil()._resourceName != ~0) {
                     const auto& attachmentView = spDesc.GetResolveDepthStencil();
-                    auto resource = namedResources.GetResource(attachmentView._resourceName);
+                    const auto& attachmentDesc = fbDesc.GetAttachments()[attachmentView._resourceName]._desc;
+                    auto resource = namedResources.GetResource(attachmentView._resourceName, attachmentDesc);
                     if (!resource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
 

@@ -205,10 +205,11 @@ namespace RenderCore
 	class INamedAttachments
 	{
 	public:
-		virtual IResourcePtr GetResource(AttachmentName resName) const = 0;
-		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
-		virtual const FrameBufferProperties& GetFrameBufferProperties() const = 0;
+		virtual IResourcePtr GetResource(AttachmentName resName, const AttachmentDesc& requestDesc) const = 0;
 		virtual ~INamedAttachments();
+
+        // note -- considering removing this. The Metal layer only needs it for MSAA configuration data
+        // virtual const FrameBufferProperties& GetFrameBufferProperties() const = 0;
 	};
 
 	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect = TextureViewDesc::Aspect::UndefinedAspect);

@@ -42,7 +42,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         UnitTests-RenderCore-${metal_name}
         RenderCore/Metal/CoordinateSpaces.cpp
         RenderCore/Metal/InputLayout.cpp
-        RenderCore/Metal/MetalUnitTest.cpp
+        RenderCore/Metal/MetalTestHelper.cpp
         #RenderCore/Metal/QueryPool.cpp
         #RenderCore/Metal/ResourceUpdateAndReadBack.cpp
         #RenderCore/Metal/StreamOutput.cpp
@@ -53,7 +53,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE Catch2WithMain)
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCore)
     target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCore_${metal_name})
-    target_link_libraries(UnitTests-RenderCore-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})
     xle_executable_post_build(UnitTests-RenderCore-${metal_name})
 
 endforeach()
@@ -72,7 +71,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/RenderCoreCompilerTests.cpp
         RenderCore/Assets/FakeModelCompiler.cpp
 		RenderCore/Assets/ShaderCompilation.cpp
-        RenderCore/Metal/MetalUnitTest.cpp
+        RenderCore/Metal/MetalTestHelper.cpp
         )
 
     xle_configure_executable(UnitTests-RenderCoreAssetsTechniques-${metal_name})

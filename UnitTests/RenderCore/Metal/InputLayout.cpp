@@ -2,14 +2,18 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-// #include "UnitTestHelper.h"
-#include "MetalUnitTest.h"
+#include "MetalTestHelper.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Metal/State.h"
 #include "../../../RenderCore/Metal/PipelineLayout.h"
+#include "../../../RenderCore/Metal/DeviceContext.h"
 #include "../../../RenderCore/ResourceDesc.h"
+#include "../../../RenderCore/Format.h"
+#include "../../../RenderCore/ResourceUtils.h"
+#include "../../../RenderCore/BufferView.h"
 #include "../../../Math/Vector.h"
+#include "../../../Utility/MemoryUtils.h"
 #include <map>
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
@@ -134,9 +138,9 @@ namespace UnitTests
 	{
 		ColorBreakdown result;
 
-		auto data = fbHelper._target->ReadBack(threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBack(threadContext);
 
-		assert(data.size() == (size_t)RenderCore::ByteCount(fbHelper._target->GetDesc()));
+		assert(data.size() == (size_t)RenderCore::ByteCount(fbHelper.GetMainTarget()->GetDesc()));
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 		for (auto p:pixels) {
 			if (p == 0xff000000) { ++result._blackPixels; continue; }
@@ -170,8 +174,8 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -213,8 +217,8 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -258,14 +262,14 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 
 		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_4Boxes));
 		auto vertexBuffer1 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_colors));
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 			InputElementDesc inputEles[] = {
 				InputElementDesc { "position", 0, Format::R32G32_SINT, 0 },
@@ -299,7 +303,7 @@ namespace UnitTests
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 			MiniInputElementDesc miniInputElePC1[] { { Hash64("position"), Format::R32G32_SINT } };
 			MiniInputElementDesc miniInputElePC2[] { { Hash64("color"), Format::R8G8B8A8_UNORM } };
@@ -351,8 +355,8 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -410,8 +414,8 @@ namespace UnitTests
 										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 										"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
 		REQUIRE(inputLayout.AllAttributesBound());
@@ -438,8 +442,8 @@ namespace UnitTests
 										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 										"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		InputElementDesc inputEles[] = {
 			InputElementDesc { "position", 0, Format::R32G32_SINT, 0 },
@@ -478,8 +482,8 @@ namespace UnitTests
 			"temporary-out");
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -508,7 +512,7 @@ namespace UnitTests
 		rpi = {};     // end RPI
 
 		// we should have written the same color to every pixel, based on the uniform inputs we gave
-		auto colorBreakdown = fbHelper.GetFullColorBreakdown();
+		auto colorBreakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 		REQUIRE(colorBreakdown.size() == (size_t)1);
 		REQUIRE(ColorsMatch(colorBreakdown.begin()->first, 0xff198066));
 		REQUIRE(colorBreakdown.begin()->second == targetDesc._textureDesc._width * targetDesc._textureDesc._height);
@@ -516,7 +520,7 @@ namespace UnitTests
 		////////////////////////////////////////////////////////////////////////////////////////
 		//  Do it again, this time with the full CB layout provided in the binding call
 
-		rpi = fbHelper.BeginRenderPass();
+		rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		{
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
@@ -539,7 +543,7 @@ namespace UnitTests
 		rpi = {};     // end RPI
 
 		// we should have written the same color to every pixel, based on the uniform inputs we gave
-		colorBreakdown = fbHelper.GetFullColorBreakdown();
+		colorBreakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 		REQUIRE(colorBreakdown.size() == (size_t)1);
 		REQUIRE(ColorsMatch(colorBreakdown.begin()->first, 0xffccb219));
 		REQUIRE(colorBreakdown.begin()->second == targetDesc._textureDesc._width * targetDesc._textureDesc._height);
@@ -561,8 +565,8 @@ namespace UnitTests
 			"temporary-out");
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		metalContext.Bind(shaderProgram);
 
@@ -682,8 +686,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
@@ -786,8 +790,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
@@ -892,8 +896,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -931,7 +935,7 @@ namespace UnitTests
 		// We're expecting the output texture to directly match the input, just scaled up by
 		// the dimensional difference. Since we're using point sampling, there should be no
 		// filtering applied
-		auto data = fbHelper._target->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
 		assert(data.size() == (size_t)RenderCore::ByteCount(targetDesc));
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 
@@ -962,8 +966,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass();
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -996,12 +1000,12 @@ namespace UnitTests
 
 		rpi = {};     // end RPI
 
-		auto breakdown = fbHelper.GetFullColorBreakdown();
+		auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 		REQUIRE(breakdown.size() == 2);       // if point sampling is working, we should have two colors
 
 		////////////////////////////////////////////////////////////////////////////////////////
 
-		rpi = fbHelper.BeginRenderPass();
+		rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -1034,7 +1038,7 @@ namespace UnitTests
 
 		rpi = {};     // end RPI
 
-		breakdown = fbHelper.GetFullColorBreakdown();
+		breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 		REQUIRE(breakdown.size() > 2);       // if filtering is working, we will get a large variety of colors
 	}
 

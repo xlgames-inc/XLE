@@ -2,15 +2,18 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "MetalUnitTest.h"
-// #include "../../UnitTestHelper.h"
+#include "MetalTestHelper.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Metal/State.h"
 #include "../../../RenderCore/Metal/TextureView.h"
 #include "../../../RenderCore/Metal/PipelineLayout.h"
+#include "../../../RenderCore/Metal/DeviceContext.h"
 #include "../../../RenderCore/ResourceDesc.h"
+#include "../../../RenderCore/Format.h"
+#include "../../../RenderCore/BufferView.h"
 #include "../../../Math/Vector.h"
+#include "../../../Utility/MemoryUtils.h"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
 
@@ -139,13 +142,13 @@ namespace UnitTests
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
 		}
 
-		auto data = fbHelper._target->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
 		unsigned lastPixel = *(unsigned*)PtrAdd(AsPointer(data.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel = *(unsigned*)data.data();
 
@@ -174,14 +177,14 @@ namespace UnitTests
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
 		}
 
-		auto breakdown0 = fbHelper.GetFullColorBreakdown();
+		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		// For scissor rect, draw red on top half of screen and blue on bottom.
 		REQUIRE(breakdown0.size() == (size_t)2);
@@ -200,7 +203,7 @@ namespace UnitTests
 
 		auto TestScissor = [&](float x, float y, float w, float h, bool originIsUpperLeft)
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
 			SetScissorRect(x, y, w, h, originIsUpperLeft);
@@ -219,32 +222,32 @@ namespace UnitTests
 		{
 			// {16, 48, 32, 16} with origin at lower-left should result in less 0xff0000ff (red) than 0xffff0000 (blue)
 			TestScissor(16, 48, 32, 16, false);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE((size_t)breakdown[0xffffffff] == (size_t)32*16);
 			REQUIRE(breakdown[0xff0000ff] < breakdown[0xffff0000]);
 		}
 		{
 			// {16, 24, 32, 16} with origin at lower-left should result in equal 0xffff0000 (blue) and 0xff0000ff (red)
 			TestScissor(16, 24, 32, 16, false);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown[0xff0000ff] == breakdown[0xffff0000]);
 		}
 		{
 			// {16, 24, 32, 16} with origin at upper-left should result in equal 0xffff0000 (blue) and 0xff0000ff (red)
 			TestScissor(16, 24, 32, 16, true);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown[0xff0000ff] == breakdown[0xffff0000]);
 		}
 		{
 			// {16, 40, 32, 16} with origin at upper-left should result in less 0xffff0000 (blue) than 0xff0000ff (red)
 			TestScissor(16, 40, 32, 16, true);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown[0xffff0000] < breakdown[0xff0000ff]);
 		}
 		{
 			// {0, 32, 64, 32} with origin at lower-left should have no 0xff0000ff (red)
 			TestScissor(0, 32, 64, 32, false);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown.size() == (size_t)2);
 			REQUIRE((size_t)breakdown[0xffffffff] == (size_t)64*32);
 			REQUIRE((size_t)breakdown[0xffff0000] == (size_t)64*32);
@@ -252,7 +255,7 @@ namespace UnitTests
 		{
 			// {0, 32, 64, 32} with origin at upper-left should have no 0xffff0000 (blue)
 			TestScissor(0, 32, 64, 32, true);
-			auto breakdown = fbHelper.GetFullColorBreakdown();
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown.size() == (size_t)2);
 			REQUIRE((size_t)breakdown[0xffffffff] == (size_t)64*32);
 			REQUIRE((size_t)breakdown[0xff0000ff] == (size_t)64*32);
@@ -262,7 +265,7 @@ namespace UnitTests
 		// We may be clipping to framebuffer bounds, so there should be no validation errors.
 		{
 			// origin is lower-left
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			REQUIRE_THROWS(
 				[SetScissorRect]() {
 					SetScissorRect(0, 0, 0, 0, false); // zero size, we throw in this case
@@ -292,18 +295,18 @@ namespace UnitTests
 			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
-		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CCW});
 		}
-		auto breakdown0 = fbHelper.GetFullColorBreakdown();
+		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
 		}
-		auto breakdown1 = fbHelper.GetFullColorBreakdown();
+		auto breakdown1 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		// The differences in the window coordinate definition does not impact the winding
 		// mode. Even though the handiness of window coordinates is different, the winding
@@ -320,10 +323,10 @@ namespace UnitTests
 		// of the pixels. And we should get the same results regardless of API and regardless
 		// of window coordinate space definition
 		{
-			auto rpi = fbHelper.BeginRenderPass();
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), Metal::RasterizationDesc{CullMode::None});
 		}
-		auto breakdown2 = fbHelper.GetFullColorBreakdown();
+		auto breakdown2 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		REQUIRE(breakdown2.size() == (size_t)2);
 		REQUIRE(breakdown2[0xff000000] == 2080u);
@@ -336,7 +339,7 @@ namespace UnitTests
 		// not supported
 		#if GFXAPI_TARGET != GFXAPI_OPENGLES
 			{
-				auto rpi = fbHelper.BeginRenderPass();
+				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderCore::Viewport viewports[1];
 				viewports[0] = RenderCore::Viewport{ 0.f, (float)targetDesc._textureDesc._height, (float)targetDesc._textureDesc._width, -(float)targetDesc._textureDesc._height };
 				viewports[0].OriginIsUpperLeft = false;
@@ -346,7 +349,7 @@ namespace UnitTests
 				metalContext.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
 				RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
 			}
-			auto breakdown3 = fbHelper.GetFullColorBreakdown();
+			auto breakdown3 = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown3.size() == (size_t)1);
 			REQUIRE(breakdown3.begin()->first == 0xffffffff);
 		#endif
@@ -368,9 +371,9 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::ShaderResource, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
-		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
+		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
 		{
-			auto rpi = fbHelper0.BeginRenderPass();
+			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
 		}
 
@@ -378,10 +381,10 @@ namespace UnitTests
 			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
-		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);
+		UnitTestFBHelper fbHelper1(*testHelper->_device, targetDesc1);
 		{
-			auto rpi = fbHelper1.BeginRenderPass();
-			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), fbHelper0._target };
+			auto rpi = fbHelper1.BeginRenderPass(*threadContext);
+			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), fbHelper0.GetMainTarget() };
 			Metal::SamplerState samplerState { FilterMode::Point };
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None}, &srv, &samplerState);
 		}
@@ -391,8 +394,8 @@ namespace UnitTests
 		// The copy is done via a draw operation, with this orientation
 		//      clip space { -1, -1, 0, 1 } maps to tex coord { 0, 0 }
 		//      clip space {  1,  1, 0, 1 } maps to tex coord { 1, 1 }
-		auto data0 = fbHelper0._target->ReadBack(*threadContext);
-		auto data1 = fbHelper1._target->ReadBack(*threadContext);
+		auto data0 = fbHelper0.GetMainTarget()->ReadBack(*threadContext);
+		auto data1 = fbHelper1.GetMainTarget()->ReadBack(*threadContext);
 		unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel0 = *(unsigned*)data0.data();
 		unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));
@@ -436,9 +439,9 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::TransferSrc, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
-		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
+		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
 		{
-			auto rpi = fbHelper0.BeginRenderPass();
+			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
 		}
 
@@ -446,19 +449,19 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::TransferDst, CPUAccess::Read, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
-		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);
+		UnitTestFBHelper fbHelper1(*testHelper->_device, targetDesc1);
 		{
 			Metal::BlitPass blitPass(*threadContext);
 			blitPass.Copy(
-				Metal::BlitPass::CopyPartial_Dest { fbHelper1._target.get() },
-				Metal::BlitPass::CopyPartial_Src { fbHelper0._target.get(), {}, {0,0,0}, {64, 64, 1} });
+				Metal::BlitPass::CopyPartial_Dest { fbHelper1.GetMainTarget().get() },
+				Metal::BlitPass::CopyPartial_Src { fbHelper0.GetMainTarget().get(), {}, {0,0,0}, {64, 64, 1} });
 		}
 
 		// The data in fpHelper1 is should now be the same as what we got through the
 		// WindowCoordSpaceOrientation test; except that we've added another copy in the middle
 		// The copy is done via a full texture blit operation
-		auto data0 = fbHelper0._target->ReadBack(*threadContext);
-		auto data1 = fbHelper1._target->ReadBack(*threadContext);
+		auto data0 = fbHelper0.GetMainTarget()->ReadBack(*threadContext);
+		auto data1 = fbHelper1.GetMainTarget()->ReadBack(*threadContext);
 		unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel0 = *(unsigned*)data0.data();
 		unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));
