@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MetalTestHelper.h"
+#include "MetalTestShaders.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Metal/State.h"
@@ -12,21 +13,12 @@
 #include "../../../RenderCore/Format.h"
 #include "../../../RenderCore/ResourceUtils.h"
 #include "../../../RenderCore/BufferView.h"
+#include "../../../RenderCore/IDevice.h"
 #include "../../../Math/Vector.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <map>
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
-
-#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-	#include "InputLayoutShaders_MSL.h"
-#elif GFXAPI_TARGET == GFXAPI_OPENGLES
-	#include "InputLayoutShaders_GLSL.h"
-#elif GFXAPI_TARGET == GFXAPI_DX11
-	#include "InputLayoutShaders_HLSL.h"
-#else
-	#error Unit test shaders not written for this graphics API
-#endif
 
 using namespace Catch::literals;
 namespace UnitTests

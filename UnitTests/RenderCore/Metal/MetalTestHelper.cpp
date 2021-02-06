@@ -5,9 +5,11 @@
 #include "MetalTestHelper.h"
 #include "../../../RenderCore/Metal/FrameBuffer.h"
 #include "../../../RenderCore/Metal/DeviceContext.h"
+#include "../../../RenderCore/Metal/ObjectFactory.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IThreadContext.h"
 #include "../../../RenderCore/OpenGLES/IDeviceOpenGLES.h"
+#include "../../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/ResourceUtils.h"
 #include "../../../Assets/AssetUtils.h"
@@ -41,8 +43,18 @@ namespace UnitTests
 		if (glesDevice)
 			glesDevice->InitializeRootContextHeadless();
 
+		std::shared_ptr<RenderCore::ILowLevelCompiler> shaderCompiler;
+		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)_device->QueryInterface(typeid(RenderCore::IDeviceVulkan*).hash_code());
+		if (vulkanDevice) {
+			// Vulkan allows for multiple ways for compiling shaders. The tests currently use a HLSL to GLSL to SPIRV 
+			// cross compilation approach
+		 	shaderCompiler = vulkanDevice->CreateShaderCompiler(RenderCore::VulkanShaderMode::HLSLCrossCompiled);
+		} else {
+			shaderCompiler = _device->CreateShaderCompiler();
+		}
+
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
-		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_device->CreateShaderCompiler());
+		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
 		_shaderService->SetShaderSource(_shaderSource);
 	}
 
@@ -68,12 +80,16 @@ namespace UnitTests
 			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
 		#elif GFXAPI_TARGET == GFXAPI_OPENGLES
 			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
+		#elif GFXAPI_TARGET == GFXAPI_VULKAN
+			return std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::Vulkan);
 		#elif GFXAPI_TARGET == GFXAPI_DX11
 			auto res = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
 			// hack -- required for D3D11 currently
 			auto metalContext = RenderCore::Metal::DeviceContext::Get(*res->_device->GetImmediateContext());
 			metalContext->Bind(RenderCore::Metal::RasterizerState{RenderCore::CullMode::None});
 			return res;
+		#else
+			#error GFX-API not handled in MakeTestHelper()
 		#endif
 	}
 

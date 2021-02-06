@@ -76,7 +76,7 @@ namespace UnitTests
 
 		StreamOutput()
 		{
-			_testHelper = std::make_unique<MetalTestHelper>(RenderCore::Techniques::GetTargetAPI());
+			_testHelper = MakeTestHelper();
 			_mountedFS = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
 		}
 

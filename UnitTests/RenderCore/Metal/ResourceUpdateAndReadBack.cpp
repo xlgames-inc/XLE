@@ -4,6 +4,7 @@
 
 #include "UnitTestHelper.h"
 #include "MetalUnitTest.h"
+#include "MetalTestShaders.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -25,16 +26,6 @@
 	#define XCTestCase unsigned
 	static const unsigned self = 0;
 	#pragma warning(disable:4459)
-#endif
-
-#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-    #include "InputLayoutShaders_MSL.h"
-#elif GFXAPI_TARGET == GFXAPI_OPENGLES
-    #include "InputLayoutShaders_GLSL.h"
-#elif GFXAPI_TARGET == GFXAPI_DX11
-	#include "InputLayoutShaders_HLSL.h"
-#else
-    #error Unit test shaders not written for this graphics API
 #endif
 
 namespace UnitTests
@@ -105,13 +96,7 @@ namespace UnitTests
 
 		ResourceUpdateAndReadBack()
 		{
-			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-			#elif GFXAPI_TARGET == GFXAPI_DX11
-				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::DX11);
-			#else
-				_testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-			#endif
+            _testHelper = MakeTestHelper();
 		}
 
 		~ResourceUpdateAndReadBack()

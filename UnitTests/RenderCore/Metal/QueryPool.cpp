@@ -4,6 +4,7 @@
 
 #include "UnitTestHelper.h"
 #include "MetalUnitTest.h"
+#include "MetalTestShaders.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -21,17 +22,6 @@
     #include <CppUnitTest.h>
     using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 	#define ThrowsException ExpectException<std::runtime_error>
-#endif
-
-#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-    #include "InputLayoutShaders_MSL.h"
-    #include "../RenderCore/AppleMetal/IDeviceAppleMetal.h"
-#elif GFXAPI_TARGET == GFXAPI_OPENGLES
-    #include "InputLayoutShaders_GLSL.h"
-#elif GFXAPI_TARGET == GFXAPI_DX11
-	#include "InputLayoutShaders_HLSL.h"
-#else
-    #error Unit test shaders not written for this graphics API
 #endif
 
 namespace UnitTests
@@ -85,11 +75,7 @@ namespace UnitTests
 
 		QueryPool()
 		{
-            #if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-			    _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::AppleMetal);
-           #else
-                _testHelper = std::make_unique<MetalTestHelper>(RenderCore::UnderlyingAPI::OpenGLES);
-           #endif
+            _testHelper = MakeTestHelper();
 		}
 
 		~QueryPool()

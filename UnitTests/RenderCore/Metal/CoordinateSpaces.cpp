@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MetalTestHelper.h"
+#include "MetalTestShaders.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Metal/State.h"
@@ -16,16 +17,6 @@
 #include "../../../Utility/MemoryUtils.h"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
-
-#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
-	#include "InputLayoutShaders_MSL.h"
-#elif GFXAPI_TARGET == GFXAPI_OPENGLES
-	#include "InputLayoutShaders_GLSL.h"
-#elif GFXAPI_TARGET == GFXAPI_DX11
-	#include "InputLayoutShaders_HLSL.h"
-#else
-	#error Unit test shaders not written for this graphics API
-#endif
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -92,7 +83,7 @@ namespace UnitTests
 		MetalTestHelper& testHelper,
 		RenderCore::Metal::DeviceContext& metalContext,
 		IteratorRange<const VertexPCT*> vertices,
-		const RenderCore::Metal::RasterizationDesc& rasterizationDesc,
+		const RenderCore::RasterizationDesc& rasterizationDesc,
 		const RenderCore::Metal::ShaderResourceView* srv = nullptr,
 		const RenderCore::Metal::SamplerState* samplerState = nullptr)
 	{
@@ -145,7 +136,7 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
@@ -180,8 +171,8 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
 		}
 
 		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -204,10 +195,10 @@ namespace UnitTests
 		auto TestScissor = [&](float x, float y, float w, float h, bool originIsUpperLeft)
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), Metal::RasterizationDesc{CullMode::None});
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
 			SetScissorRect(x, y, w, h, originIsUpperLeft);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::None});
 		};
 
 		{
@@ -298,13 +289,13 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CCW});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CCW});
 		}
 		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CW});
 		}
 		auto breakdown1 = fbHelper.GetFullColorBreakdown(*threadContext);
 
@@ -324,7 +315,7 @@ namespace UnitTests
 		// of window coordinate space definition
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), RasterizationDesc{CullMode::None});
 		}
 		auto breakdown2 = fbHelper.GetFullColorBreakdown(*threadContext);
 
@@ -347,7 +338,7 @@ namespace UnitTests
 				scissorRects[0] = RenderCore::ScissorRect{ 0, 0, targetDesc._textureDesc._width, targetDesc._textureDesc._height };
 				scissorRects[0].OriginIsUpperLeft = false;
 				metalContext.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
-				RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), Metal::RasterizationDesc{CullMode::Back, FaceWinding::CW});
+				RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CW});
 			}
 			auto breakdown3 = fbHelper.GetFullColorBreakdown(*threadContext);
 			REQUIRE(breakdown3.size() == (size_t)1);
@@ -374,7 +365,7 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto targetDesc1 = CreateDesc(
@@ -386,7 +377,7 @@ namespace UnitTests
 			auto rpi = fbHelper1.BeginRenderPass(*threadContext);
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), fbHelper0.GetMainTarget() };
 			Metal::SamplerState samplerState { FilterMode::Point };
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None}, &srv, &samplerState);
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None}, &srv, &samplerState);
 		}
 
 		// The data in fpHelper1 is should now be the same as what we got through the
@@ -442,7 +433,7 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), Metal::RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto targetDesc1 = CreateDesc(
