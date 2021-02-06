@@ -113,7 +113,7 @@ namespace RenderCore { namespace ImplVulkan
 
 	class EventBasedTracker;
 
-    class ThreadContext : public IThreadContext
+    class ThreadContext : public IThreadContext, public IThreadContextVulkan
     {
     public:
 		void	        Present(IPresentationChain&) override;
@@ -130,6 +130,9 @@ namespace RenderCore { namespace ImplVulkan
         VkQueue                     GetQueue()                  { return _queue; }
 
 		IAnnotator&					GetAnnotator() override;
+
+        virtual void*   QueryInterface(size_t guid) override;
+        const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() override;
 
 		void SetGPUTracker(const std::shared_ptr<EventBasedTracker>&);
 		void AttachDestroyer(const std::shared_ptr<Metal_Vulkan::IDestructionQueue>&);
@@ -158,24 +161,9 @@ namespace RenderCore { namespace ImplVulkan
 		std::shared_ptr<Metal_Vulkan::IDestructionQueue> _destrQueue;
     };
 
-    class ThreadContextVulkan : public ThreadContext, public IThreadContextVulkan
-    {
-    public:
-        virtual void*   QueryInterface(size_t guid) override;
-        const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() override;
-
-		ThreadContextVulkan(
-			std::shared_ptr<Device> device,
-			VkQueue queue,
-            Metal_Vulkan::CommandPool&& cmdPool,
-			Metal_Vulkan::CommandBufferType cmdBufferType,
-			std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace);
-        ~ThreadContextVulkan();
-    };
-
 ////////////////////////////////////////////////////////////////////////////////
 
-	class Device : public IDevice, public std::enable_shared_from_this<Device>
+	class Device : public IDevice, public IDeviceVulkan, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(
@@ -186,8 +174,9 @@ namespace RenderCore { namespace ImplVulkan
         std::shared_ptr<IThreadContext>         GetImmediateContext() override;
         std::unique_ptr<IThreadContext>         CreateDeferredContext() override;
 
-        Metal_Vulkan::GlobalPools&              GetGlobalPools() { return _pools; }
+        Metal_Vulkan::GlobalPools&              GetGlobalPools() override { return _pools; }
 		Metal_Vulkan::ObjectFactory&			GetObjectFactory() { return _objectFactory; }
+        VkDevice	                            GetUnderlyingDevice() override { return _underlying.get(); }
 
 		IResourcePtr CreateResource(
 			const ResourceDesc& desc, 
@@ -196,9 +185,12 @@ namespace RenderCore { namespace ImplVulkan
 
 		void			Stall() override;
 
-		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
-
 		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() override;
+        std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler(VulkanShaderMode) override;
+
+        virtual void*   QueryInterface(size_t guid) override;
+		VkInstance	    GetVulkanInstance() override;
+        VkQueue         GetRenderingQueue() override;
 
         Device();
         ~Device();
@@ -209,22 +201,9 @@ namespace RenderCore { namespace ImplVulkan
 		Metal_Vulkan::ObjectFactory		    _objectFactory;
         Metal_Vulkan::GlobalPools           _pools;
 
-		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
+		std::shared_ptr<ThreadContext>	_foregroundPrimaryContext;
 
         void DoSecondStageInit(VkSurfaceKHR surface = nullptr);
-    };
-
-    class DeviceVulkan : public Device, public IDeviceVulkan
-    {
-    public:
-        virtual void*   QueryInterface(size_t guid);
-		VkInstance	    GetVulkanInstance();
-		VkDevice	    GetUnderlyingDevice();
-        VkQueue         GetRenderingQueue();
-        Metal_Vulkan::GlobalPools& GetGlobalPools();
-        
-        DeviceVulkan();
-        ~DeviceVulkan();
     };
 
 ////////////////////////////////////////////////////////////////////////////////

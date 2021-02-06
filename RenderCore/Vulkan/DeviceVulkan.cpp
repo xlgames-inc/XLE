@@ -618,7 +618,7 @@ namespace RenderCore { namespace ImplVulkan
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
 			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
-            _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
+            _foregroundPrimaryContext = std::make_shared<ThreadContext>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
@@ -783,7 +783,7 @@ namespace RenderCore { namespace ImplVulkan
         // we will not verify the selected physical device against a
         // presentation surface.
         DoSecondStageInit();
-		return std::make_unique<ThreadContextVulkan>(
+		return std::make_unique<ThreadContext>(
             shared_from_this(), 
             nullptr, 
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, nullptr),
@@ -804,7 +804,12 @@ namespace RenderCore { namespace ImplVulkan
 
 	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
 	{
-		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this);
+		return CreateShaderCompiler(VulkanShaderMode::GLSLToSPIRV);
+	}
+
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler(VulkanShaderMode shaderMode)
+	{
+		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this, shaderMode);
 	}
 
 	void Device::Stall()
@@ -822,27 +827,22 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void*   DeviceVulkan::QueryInterface(size_t guid)
+	void*   Device::QueryInterface(size_t guid)
 	{
 		if (guid == typeid(IDeviceVulkan).hash_code())
 			return (IDeviceVulkan*)this;
+		if (guid == typeid(Device).hash_code())
+			return (Device*)this;
+		if (guid == typeid(IDevice).hash_code())
+			return (IDevice*)this;
 		return nullptr;
 	}
 
-	VkInstance DeviceVulkan::GetVulkanInstance() { return _instance.get(); }
-	VkDevice DeviceVulkan::GetUnderlyingDevice() { return _underlying.get(); }
-    VkQueue DeviceVulkan::GetRenderingQueue()
+	VkInstance Device::GetVulkanInstance() { return _instance.get(); }
+    VkQueue Device::GetRenderingQueue()
     {
         return GetQueue(_underlying.get(), _physDev._renderingQueueFamily, 0);
     }
-
-    Metal_Vulkan::GlobalPools&      DeviceVulkan::GetGlobalPools()
-    {
-        return Device::GetGlobalPools();
-    }
-
-	DeviceVulkan::DeviceVulkan() { }
-	DeviceVulkan::~DeviceVulkan() { }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1007,9 +1007,12 @@ namespace RenderCore { namespace ImplVulkan
         _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
 
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));
-		_desc = std::make_shared<PresentationChainDesc>(
-            _bufferDesc._width, _bufferDesc._height,
-            _bufferDesc._format, _bufferDesc._samples);
+		_desc = std::make_shared<PresentationChainDesc>();
+		_desc->_width = _bufferDesc._width;
+		_desc->_height = _bufferDesc._height;
+        _desc->_format = _bufferDesc._format;
+		_desc->_samples = _bufferDesc._samples;
+		_desc->_bindFlags = BindFlag::RenderTarget;
 
         // We need to get pointers to each image and build the synchronization semaphores
         BuildImages();
@@ -1102,7 +1105,7 @@ namespace RenderCore { namespace ImplVulkan
 
     render_dll_export std::shared_ptr<IDevice>    CreateDevice()
     {
-        return std::make_shared<DeviceVulkan>();
+        return std::make_shared<Device>();
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1292,30 +1295,18 @@ namespace RenderCore { namespace ImplVulkan
         ++_frameId;
     }
 
-    void*   ThreadContextVulkan::QueryInterface(size_t guid)
+    void*   ThreadContext::QueryInterface(size_t guid)
     {
         if (guid == typeid(IThreadContextVulkan).hash_code()) { return (IThreadContextVulkan*)this; }
+		if (guid == typeid(ThreadContext).hash_code()) { return (ThreadContext*)this; }
+		if (guid == typeid(IThreadContext).hash_code()) { return (IThreadContext*)this; }
         return nullptr;
     }
 
-    const std::shared_ptr<Metal_Vulkan::DeviceContext>& ThreadContextVulkan::GetMetalContext()
+    const std::shared_ptr<Metal_Vulkan::DeviceContext>& ThreadContext::GetMetalContext()
     {
         return _metalContext;
     }
-
-    ThreadContextVulkan::ThreadContextVulkan(
-		std::shared_ptr<Device> device,
-		VkQueue queue,
-        Metal_Vulkan::CommandPool&& cmdPool,
-		Metal_Vulkan::CommandBufferType cmdBufferType,
-		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
-    : ThreadContext(
-        std::move(device), queue, 
-        std::move(cmdPool), cmdBufferType,
-		std::move(tempBufferSpace))
-    {}
-
-	ThreadContextVulkan::~ThreadContextVulkan() {}
 }}
 
 namespace RenderCore

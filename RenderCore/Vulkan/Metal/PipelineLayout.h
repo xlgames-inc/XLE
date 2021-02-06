@@ -126,7 +126,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		class LegacyRegisterBinding;
 		class DescriptorSetVerboseDescription;
 		std::ostream& WriteDescriptorSet(
-			std::ostream& stream,
+			std::ostream&& stream,
 			const DescriptorSetVerboseDescription& bindingDescription,
 			const DescriptorSetSignature& signature,
 			const LegacyRegisterBinding& legacyRegisterBinding,

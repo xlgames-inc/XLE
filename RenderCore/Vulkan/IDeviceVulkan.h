@@ -13,31 +13,39 @@
 
 namespace RenderCore
 {
-    namespace Metal_Vulkan { class DeviceContext; class GlobalPools; class PipelineLayout; }
+	namespace Metal_Vulkan { class DeviceContext; class GlobalPools; class PipelineLayout; }
 
-    ////////////////////////////////////////////////////////////////////////////////
+	enum class VulkanShaderMode
+	{
+		GLSLToSPIRV,
+		HLSLToSPIRV,
+		HLSLCrossCompiled
+	};
 
-    /// <summary>IDevice extension for DX11</summary>
-    /// Use IDevice::QueryInterface to query for this type from a
-    /// plain IDevice.
-    class IDeviceVulkan
-    {
-    public:
-        virtual VkInstance	GetVulkanInstance() = 0;
+	////////////////////////////////////////////////////////////////////////////////
+
+	/// <summary>IDevice extension for DX11</summary>
+	/// Use IDevice::QueryInterface to query for this type from a
+	/// plain IDevice.
+	class IDeviceVulkan
+	{
+	public:
+		virtual VkInstance	GetVulkanInstance() = 0;
 		virtual VkDevice	GetUnderlyingDevice() = 0;
 		virtual VkQueue     GetRenderingQueue() = 0;
 		virtual Metal_Vulkan::GlobalPools& GetGlobalPools() = 0;
+		virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler(VulkanShaderMode shaderMode) = 0;
 		~IDeviceVulkan();
-    };
+	};
 
-    ////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>IThreadContext extension for DX11</summary>
-    class IThreadContextVulkan
-    {
-    public:
+	/// <summary>IThreadContext extension for DX11</summary>
+	class IThreadContextVulkan
+	{
+	public:
 		virtual const std::shared_ptr<Metal_Vulkan::DeviceContext>& GetMetalContext() = 0;
 		~IThreadContextVulkan();
-    };
+	};
 
 }

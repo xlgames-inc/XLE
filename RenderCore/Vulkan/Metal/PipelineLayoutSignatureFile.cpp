@@ -4,12 +4,13 @@
 
 #include "PipelineLayoutSignatureFile.h"
 #include "../../../Assets/DepVal.h"
-#include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../../../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../OSServices/RawFS.h"
+#include <stdexcept>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -282,9 +283,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		case RegisterType::ShaderResource: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_srvRegisters_boundToBuffer) : MakeIteratorRange(_srvRegisters);
 		case RegisterType::ConstantBuffer: return MakeIteratorRange(_constantBufferRegisters);
 		case RegisterType::UnorderedAccess: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_uavRegisters_boundToBuffer) : MakeIteratorRange(_uavRegisters);
+		default:
+			assert(0);
+			return {};
 		}
-
-		return {};
 	}
 
 	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType)
@@ -294,8 +296,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		case LegacyRegisterBinding::RegisterType::ShaderResource: return 't';
 		case LegacyRegisterBinding::RegisterType::ConstantBuffer: return 'b';
 		case LegacyRegisterBinding::RegisterType::UnorderedAccess: return 'u';
+		default:
+			assert(0);
+			return ' ';
 		}
-		return ' ';
 	}
 
 	const RootSignature*								PipelineLayoutSignatureFile::GetRootSignature(uint64_t name) const
@@ -345,11 +349,9 @@ namespace RenderCore { namespace Metal_Vulkan
 				Throw(::Exceptions::BasicLabel("Failure while attempting to load descriptor set signature file (%s)", filename.AsString().c_str()));
 
 			_dependentFileState = Assets::IntermediatesStore::GetDependentFileState(filename);
-        
 
-			InputStreamFormatter<char> formatter(
-				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
-			StreamDOM<InputStreamFormatter<char>> doc(formatter);
+			InputStreamFormatter<char> formatter{MakeStringSection((char*)block.get(), (char*)PtrAdd(block.get(), fileSize))};
+			StreamDOM<InputStreamFormatter<char>> doc{formatter};
 
 			_mainRootSignature = doc.RootElement().Attribute("MainRootSignature").Value().AsString();
 			if (_mainRootSignature.empty())

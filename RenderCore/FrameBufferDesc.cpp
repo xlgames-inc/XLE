@@ -16,9 +16,11 @@ namespace RenderCore
 
 	FrameBufferDesc::FrameBufferDesc(
         std::vector<Attachment>&& attachments,
-        std::vector<SubpassDesc>&& subpasses)
+        std::vector<SubpassDesc>&& subpasses,
+        const FrameBufferProperties& props)
 	: _attachments(std::move(attachments))
     , _subpasses(std::move(subpasses))
+    , _props(props)
 	{
         // Calculate the hash value for this description by combining
         // together the hashes of the members.
@@ -27,6 +29,7 @@ namespace RenderCore
             _hash = HashCombine(_hash, HashCombine(a._semantic, a._desc.CalculateHash()));
         for (const auto&sp:_subpasses)
             _hash = HashCombine(_hash, sp.CalculateHash());
+        _hash = HashCombine(_hash, _props.CalculateHash());
     }
 
 	FrameBufferDesc::FrameBufferDesc()
@@ -101,6 +104,14 @@ namespace RenderCore
         // result = Hash64(AsPointer(_preserve.begin()), AsPointer(_preserve.end()), result);
         result = Hash64(&_resolveDepthStencil, &_resolveDepthStencil+1, result);
         return result;
+    }
+
+    uint64_t FrameBufferProperties::CalculateHash() const
+    {
+        return uint64_t(_outputWidth) 
+            ^ (uint64_t(_outputHeight) << 16ull)
+            ^ (uint64_t(_samples._sampleCount) < 48ull)
+            ^ (uint64_t(_samples._samplingQuality) < 56ull);
     }
 
 	FrameBufferDesc SeparateSingleSubpass(const FrameBufferDesc& input, unsigned subpassIdx)

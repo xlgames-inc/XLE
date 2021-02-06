@@ -12,7 +12,7 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    static Format s_vkToGenericTable[VK_FORMAT_END_RANGE];
+    static Format s_vkToGenericTable[256];
     static VkFormat_ s_genericToVkTable[(int)Format::Max];
     static bool s_lookupTablesInitialized = false;
 

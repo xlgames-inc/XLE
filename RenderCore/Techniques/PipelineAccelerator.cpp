@@ -39,7 +39,7 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
-			RenderCore::Topology topology,
+			Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet);
 		~PipelineAccelerator();
 	
@@ -61,16 +61,16 @@ namespace RenderCore { namespace Techniques
 		ParameterBox _geoSelectors;
 
 		std::vector<InputElementDesc> _inputAssembly;
-		RenderCore::Topology _topology;
+		Topology _topology;
 		RenderCore::Assets::RenderStateSet _stateSet;
 
 		unsigned _ownerPoolId;
 
 		std::shared_ptr<Metal::GraphicsPipeline> InternalCreatePipeline(
 			const Metal::ShaderProgram& shader,
-			const RenderCore::DepthStencilDesc& depthStencil,
-			const RenderCore::AttachmentBlendDesc& blend,
-			const RenderCore::RasterizationDesc& rasterization,
+			const DepthStencilDesc& depthStencil,
+			const AttachmentBlendDesc& blend,
+			const RasterizationDesc& rasterization,
 			const SequencerConfig& sequencerCfg,
 			const FrameBufferProperties& fbProps)
 		{
@@ -180,7 +180,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
-		RenderCore::Topology topology,
+		Topology topology,
 		const RenderCore::Assets::RenderStateSet& stateSet)
 	: _shaderPatches(shaderPatches)
 	, _materialSelectors(materialSelectors)
@@ -243,7 +243,7 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
-			RenderCore::Topology topology,
+			Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet);
 
 		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
@@ -377,7 +377,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
-		RenderCore::Topology topology,
+		Topology topology,
 		const RenderCore::Assets::RenderStateSet& stateSet)
 	{
 		uint64_t hash = HashCombine(materialSelectors.GetHash(), materialSelectors.GetParameterNamesHash());

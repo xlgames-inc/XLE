@@ -58,9 +58,9 @@ namespace RenderCore { namespace Techniques
 	*/
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegateLegacy(
 		unsigned techniqueIndex,
-		const RenderCore::AttachmentBlendDesc& blend,
-		const RenderCore::RasterizationDesc& rasterization,
-		const RenderCore::DepthStencilDesc& depthStencil);
+		const AttachmentBlendDesc& blend,
+		const RasterizationDesc& rasterization,
+		const DepthStencilDesc& depthStencil);
 
 	RasterizationDesc BuildDefaultRastizerDesc(const Assets::RenderStateSet& states);
 
@@ -70,7 +70,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping;
+		StringSection<> definesTable) -> ISourceCodePreprocessor::SourceCodeWithRemapping;
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
 		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,

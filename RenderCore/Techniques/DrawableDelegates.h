@@ -83,11 +83,11 @@ namespace RenderCore { namespace Techniques
 	public:
 		struct ResolvedTechnique
 		{
-			::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> _shaderProgram;
+			::Assets::FuturePtr<Metal::ShaderProgram> _shaderProgram;
 
-			RenderCore::DepthStencilDesc	_depthStencil;
-			RenderCore::AttachmentBlendDesc _blend;
-			RenderCore::RasterizationDesc	_rasterization;
+			DepthStencilDesc	_depthStencil;
+			AttachmentBlendDesc _blend;
+			RasterizationDesc	_rasterization;
 		};
 
 		virtual ResolvedTechnique Resolve(

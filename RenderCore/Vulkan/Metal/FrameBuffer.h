@@ -38,12 +38,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkFramebuffer> _underlying;
         VulkanSharedPtr<VkRenderPass> _layout;
 		unsigned _subpassCount;
+        VectorPattern<int, 2> _defaultOffset;
+        VectorPattern<unsigned, 2> _defaultExtent;
+
+        friend void BeginRenderPass(DeviceContext&, FrameBuffer&, IteratorRange<const ClearValue*>);
 	};
 
     void BeginRenderPass(
         DeviceContext& context,
         FrameBuffer& frameBuffer,
-        IteratorRange<const ClearValue*> clearValues);
+        IteratorRange<const ClearValue*> clearValues = {});
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
 	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);

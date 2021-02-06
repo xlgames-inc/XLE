@@ -85,7 +85,7 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<PipelineLayoutSignatureFile>		_computePipelineLayout;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
-        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice&, VulkanShaderMode);
     };
 
         ////////////////////////////////////////////////////////////
@@ -617,22 +617,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
     }
 
-    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device, VulkanShaderMode shaderMode)
     {
         auto result = HLSLToSPIRVCompiler::s_instance.lock();
         if (result) return std::move(result);
 
         auto* vulkanDevice = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
         if (!vulkanDevice) return nullptr;
-        
-        auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();
 
-        result = std::make_shared<HLSLToSPIRVCompiler>(
-            hlslCompiler, 
-            VulkanGlobalsTemp::GetInstance()._graphicsRootSignatureFile,
-            VulkanGlobalsTemp::GetInstance()._computeRootSignatureFile);
-        HLSLToSPIRVCompiler::s_instance = result;
-        return std::move(result);
+        if (shaderMode == VulkanShaderMode::HLSLCrossCompiled) {
+            auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();
+
+            result = std::make_shared<HLSLToSPIRVCompiler>(
+                hlslCompiler, 
+                VulkanGlobalsTemp::GetInstance()._graphicsRootSignatureFile,
+                VulkanGlobalsTemp::GetInstance()._computeRootSignatureFile);
+            HLSLToSPIRVCompiler::s_instance = result;
+            return std::move(result);
+        } else {
+            // todo -- alternative shader compilation modes not implemented yet!
+            assert(0);
+        }
     }
 
 }}

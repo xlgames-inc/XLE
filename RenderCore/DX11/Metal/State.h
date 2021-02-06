@@ -14,13 +14,6 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-	// Old place for these types, before they got shifted up to the generic RenderCore namespace
-	using StencilDesc = RenderCore::StencilDesc;
-	using DepthStencilDesc = RenderCore::DepthStencilDesc;
-	using RasterizationDesc = RenderCore::RasterizationDesc;
-	using SamplerStateDesc = RenderCore::SamplerStateDesc;
-	using AttachmentBlendDesc = RenderCore::AttachmentBlendDesc;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class DeviceContext;

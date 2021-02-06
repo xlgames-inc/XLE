@@ -15,10 +15,7 @@
 // Vulkan SDK includes -- 
 #pragma push_macro("new")
 #undef new
-// #include <glslang/SPIRV/spirv.hpp>
-// #include <glslang/SPIRV/doc.h>
-#include <../../../Foreign/vulkan/spirv.hpp>
-// #include <../../../Foreign/vulkan/doc.h>
+#include "../../../Foreign/glslang/SPIRV/spirv.hpp"
 #pragma pop_macro("new")
 
 namespace RenderCore { namespace Metal_Vulkan

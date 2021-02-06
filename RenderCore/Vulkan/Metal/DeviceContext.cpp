@@ -151,9 +151,9 @@ namespace RenderCore { namespace Metal_Vulkan
         if (gs) shaderStages[shaderStageCount++] = BuildShaderStage(gs.get(), VK_SHADER_STAGE_GEOMETRY_BIT);
 		if (ps) shaderStages[shaderStageCount++] = BuildShaderStage(ps.get(), VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
+        VkDynamicState dynamicStateEnables[4];
         VkPipelineDynamicStateCreateInfo dynamicState = {};
-        memset(dynamicStateEnables, 0, sizeof dynamicStateEnables);
+        memset(dynamicStateEnables, 0, sizeof(dynamicStateEnables));
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicState.pNext = nullptr;
         dynamicState.pDynamicStates = dynamicStateEnables;

@@ -216,6 +216,9 @@ namespace RenderCore { namespace Metal_Vulkan
                 case DescriptorType::UnorderedAccessTexture:
                     ++result._storageImageCount;
                     break;
+
+                default:
+                    break;
                 }
             }
             return result;

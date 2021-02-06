@@ -719,12 +719,16 @@ namespace RenderCore
     IResourcePtr IDevice::CreateResource(const ResourceDesc& desc, const SubResourceInitData& initData)
     {
         // Utility function to make creating single-subresource resources a little easier
-        return CreateResource(
-            desc,
-            [&initData](SubResourceId subResId) -> SubResourceInitData {
-                assert(subResId._mip == 0 && subResId._arrayLayer == 0);
-                return initData;
-            });
+        if (initData._data.size()) {
+            return CreateResource(
+                desc,
+                [&initData](SubResourceId subResId) -> SubResourceInitData {
+                    assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+                    return initData;
+                });
+        } else {
+            return CreateResource(desc, ResourceInitializer{});
+        }
     }
 
     IDevice::~IDevice() {}

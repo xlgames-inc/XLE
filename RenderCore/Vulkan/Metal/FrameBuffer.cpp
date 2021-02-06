@@ -169,6 +169,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 		struct WorkingAttachment
 		{
+			AttachmentDesc _desc;
 			AttachmentUsage _lastSubpassWrite;
 			AttachmentUsage _lastSubpassRead;
 			TextureViewDesc::FormatFilter _formatFilter;
@@ -205,8 +206,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				const auto&r = *spa.first;
 				auto resource = r._resourceName;
 				auto i = LowerBound(workingAttachments, resource);
-				if (i == workingAttachments.end() || i->first != resource)
+				if (i == workingAttachments.end() || i->first != resource) {
 					i = workingAttachments.insert(i, {resource, WorkingAttachment{}});
+					assert(resource < layout.GetAttachments().size());
+					i->second._desc = layout.GetAttachments()[resource]._desc;
+				}
 
 				AttachmentUsage loadUsage { spIdx, spa.second, r._loadFromPreviousPhase };
 				AttachmentUsage storeUsage { spIdx, spa.second, r._storeToNextPhase };
@@ -246,14 +250,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<VkAttachmentDescription> attachmentDesc;
         attachmentDesc.reserve(workingAttachments.size());
         for (auto&a:workingAttachments) {
-            const auto* resourceDesc = namedResources.GetDesc(a.first);
-            assert(resourceDesc);
+            const auto& resourceDesc = a.second._desc;
 
             auto formatFilter = a.second._formatFilter;
             FormatUsage formatUsage = FormatUsage::SRV;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::Output) formatUsage = FormatUsage::RTV;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = FormatUsage::DSV;
-            auto resolvedFormat = ResolveFormat(resourceDesc->_format, formatFilter, formatUsage);
+            auto resolvedFormat = ResolveFormat(resourceDesc._format, formatFilter, formatUsage);
 
 			// look through the subpass dependencies to find the load operation for the first reference to this resource
 			LoadStore originalLoad = LoadStore::DontCare;
@@ -290,7 +293,7 @@ namespace RenderCore { namespace Metal_Vulkan
             //
             // However, if there are multiple writing render passes, followed by a shader
             // read at some later point, then this may switch to shader read layout redundantly
-            if (resourceDesc->_flags & AttachmentDesc::Flags::ShaderResource) {
+            if (resourceDesc._flags & AttachmentDesc::Flags::ShaderResource) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             }
@@ -298,12 +301,12 @@ namespace RenderCore { namespace Metal_Vulkan
             // desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-            if (resourceDesc->_flags & AttachmentDesc::Flags::PresentationSource) {
+            if (resourceDesc._flags & AttachmentDesc::Flags::PresentationSource) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } 
             
-            if (resourceDesc->_flags & AttachmentDesc::Flags::Multisampled)
+            if (resourceDesc._flags & AttachmentDesc::Flags::Multisampled)
                 desc.samples = (VkSampleCountFlagBits)AsSampleCountFlagBits(samples);
 
             // note --  do we need to set VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL or 
@@ -478,28 +481,25 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned _layers = 0;
 	};
 
-	static void BuildMaxDims(MaxDims& result, AttachmentName attachment, const INamedAttachments& namedResources, const FrameBufferProperties& props)
+	static void BuildMaxDims(MaxDims& result, const AttachmentDesc& desc, const INamedAttachments& namedResources, const FrameBufferProperties& props)
 	{
 		// This is annoying -- we need to look for any resources with
         // array layers. Ideally all our resources should have the same
         // array layer count (if they don't, we just end up selecting the
         // largest value)
-        auto* desc = namedResources.GetDesc(attachment);
-        if (desc) {
-            result._layers = std::max(result._layers, desc->_arrayLayerCount);
-            unsigned resWidth = 0u, resHeight = 0u;
-                
-            if (desc->_dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
-                resWidth = unsigned(desc->_width);
-                resHeight = unsigned(desc->_height);
-            } else {
-                resWidth = unsigned(std::floor(props._outputWidth * desc->_width + 0.5f));
-                resHeight = unsigned(std::floor(props._outputHeight * desc->_height + 0.5f));
-            }
+		result._layers = std::max(result._layers, desc._arrayLayerCount);
+		unsigned resWidth = 0u, resHeight = 0u;
+			
+		if (desc._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+			resWidth = unsigned(desc._width);
+			resHeight = unsigned(desc._height);
+		} else {
+			resWidth = unsigned(std::floor(props._outputWidth * desc._width + 0.5f));
+			resHeight = unsigned(std::floor(props._outputHeight * desc._height + 0.5f));
+		}
 
-            result._width = std::max(result._width, resWidth);
-            result._height = std::max(result._height, resHeight);
-        }
+		result._width = std::max(result._width, resWidth);
+		result._height = std::max(result._height, resHeight);
 	}
 
     FrameBuffer::FrameBuffer(
@@ -507,11 +507,10 @@ namespace RenderCore { namespace Metal_Vulkan
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
     {
-		const auto& props = namedResources.GetFrameBufferProperties();
 		// todo --	we shouldn't create the render pass every time.
 		//			we need to be able to share equivalent vkRenderPasses, so that
 		//			there are fewer pipeline objects required
-		_layout = CreateRenderPass(factory, fbDesc, namedResources, props._samples);
+		_layout = CreateRenderPass(factory, fbDesc, namedResources, fbDesc.GetProperties()._samples);
 
         // We must create the frame buffer, including all views required.
         // We need to order the list of views in VkFramebufferCreateInfo in the
@@ -521,24 +520,25 @@ namespace RenderCore { namespace Metal_Vulkan
         MaxDims maxDims;
 		std::vector<std::pair<AttachmentName, Internal::AttachmentUsageType::BitField>> attachments;
 		attachments.reserve(subpasses.size()*4);	// estimate
+		auto fbAttachments = fbDesc.GetAttachments();
 		for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 
 			for (const auto& r:spDesc.GetOutputs()) {
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Output});
-				BuildMaxDims(maxDims, r._resourceName, namedResources, props);
+				BuildMaxDims(maxDims, fbAttachments[r._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
 
 			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName) {
 				attachments.push_back({spDesc.GetDepthStencil()._resourceName, Internal::AttachmentUsageType::DepthStencil});
-				BuildMaxDims(maxDims, spDesc.GetDepthStencil()._resourceName, namedResources, props);
+				BuildMaxDims(maxDims, fbAttachments[spDesc.GetDepthStencil()._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
 
 			for (const auto& r:spDesc.GetInputs()) {
 				// todo -- these srvs also need to be exposed to the caller, so they can be bound to
 				// the shader during the subpass
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Input});
-				BuildMaxDims(maxDims, r._resourceName, namedResources, props);
+				BuildMaxDims(maxDims, fbAttachments[r._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
         }
 
@@ -565,7 +565,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (const auto&a:uniqueAttachments) {
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
 			// the same resource being used with more than one view
-			auto resource = namedResources.GetResource(a.first);
+			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc);
 			auto* rtv = viewPool.GetView(resource, TextureViewDesc{});
 			rawViews[rawViewCount++] = rtv->GetImageView();
         }
@@ -596,12 +596,9 @@ namespace RenderCore { namespace Metal_Vulkan
         FrameBuffer& frameBuffer,
         IteratorRange<const ClearValue*> clearValues)
     {
-		// todo -- we need offset & extent information here -- 
-		// const FrameBufferDesc& layout,
-        // const FrameBufferProperties& props,
         context.BeginRenderPass(
             frameBuffer, TextureSamples::Create(),
-            {0u, 0u}, {props._outputWidth, props._outputHeight},
+            frameBuffer._defaultOffset, frameBuffer._defaultExtent,
             clearValues);
     }
 

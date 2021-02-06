@@ -14,12 +14,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     class DeviceContext;
 
-    using StencilDesc = RenderCore::StencilDesc;
-	using DepthStencilDesc = RenderCore::DepthStencilDesc;
-	using RasterizationDesc = RenderCore::RasterizationDesc;
-	using SamplerStateDesc = RenderCore::SamplerStateDesc;
-	using AttachmentBlendDesc = RenderCore::AttachmentBlendDesc;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class Resource;

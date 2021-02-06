@@ -154,6 +154,15 @@ namespace RenderCore
 		unsigned BufferSpaceUsed() const { return _outputAttachmentCount+_inputAttachmentCount+_resolveOutputAttachmentCount; }
     };
 
+    class FrameBufferProperties
+    {
+    public:
+        unsigned _outputWidth = 0, _outputHeight = 0;
+        TextureSamples _samples = TextureSamples::Create();
+
+        uint64_t CalculateHash() const;
+    };
+
     class FrameBufferDesc
 	{
 	public:
@@ -166,11 +175,14 @@ namespace RenderCore
         };
         auto    GetAttachments() const -> IteratorRange<const Attachment*> { return MakeIteratorRange(_attachments); }
 
+        const FrameBufferProperties& GetProperties() const { return _props; }
+
         uint64_t    GetHash() const { return _hash; }
 
 		FrameBufferDesc(
             std::vector<Attachment>&& attachments,
-            std::vector<SubpassDesc>&& subpasses);
+            std::vector<SubpassDesc>&& subpasses,
+            const FrameBufferProperties& props = {});
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
@@ -179,15 +191,9 @@ namespace RenderCore
 	private:
         std::vector<Attachment>         _attachments;
         std::vector<SubpassDesc>        _subpasses;
+        FrameBufferProperties           _props;
         uint64_t                        _hash;
 	};
-
-    class FrameBufferProperties
-    {
-    public:
-        unsigned _outputWidth = 0, _outputHeight = 0;
-        TextureSamples _samples = TextureSamples::Create();
-    };
 
     union ClearValue
     {

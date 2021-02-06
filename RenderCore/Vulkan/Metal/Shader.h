@@ -8,6 +8,7 @@
 
 #include "VulkanCore.h"
 #include "PipelineLayout.h"
+#include "../IDeviceVulkan.h"		// for VulkanShaderMode
 #include "../../Types.h"
 #include "../../ShaderService.h"
 #include "../../../Assets/AssetsCore.h"
@@ -129,5 +130,5 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device, VulkanShaderMode);
 }}

@@ -36,7 +36,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping
+		StringSection<> definesTable) -> ISourceCodePreprocessor::SourceCodeWithRemapping
 	{
 		// We can assemble the final shader in 3 fragments:
 		//  1) the source code in CompiledShaderPatchCollection
@@ -92,7 +92,7 @@ namespace RenderCore { namespace Techniques
 				output << i->_scaffoldInFunction;
 		}
 
-		RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		ISourceCodePreprocessor::SourceCodeWithRemapping result;
 		result._processedSource = output.str();
 		/*result._dependencies.insert(
 			result._dependencies.end(),
@@ -104,18 +104,18 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	static auto AssembleDirectFromFile(StringSection<> filename) -> RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping
+	static auto AssembleDirectFromFile(StringSection<> filename) -> ISourceCodePreprocessor::SourceCodeWithRemapping
 	{
 		assert(!XlEqString(filename, "-0"));
 
 		// Fall back to loading the file directly (without any real preprocessing)
-		RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		ISourceCodePreprocessor::SourceCodeWithRemapping result;
 		result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
 
 		size_t sizeResult = 0;
 		auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
 		result._processedSource = std::string((char*)blob.get(), (char*)PtrAdd(blob.get(), sizeResult));
-		result._lineMarkers.push_back(RenderCore::ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
+		result._lineMarkers.push_back(ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
 		return result;
 	}
 
@@ -151,7 +151,7 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	class CompiledShaderByteCode_InstantiateShaderGraph : public RenderCore::CompiledShaderByteCode
+	class CompiledShaderByteCode_InstantiateShaderGraph : public CompiledShaderByteCode
 	{
 	public:
 		static const uint64 CompileProcessType = CompileProcess_InstantiateShaderGraph;
@@ -276,14 +276,14 @@ namespace RenderCore { namespace Techniques
 				auto finalDefines = defines.AsString() + _soExtraDefines;
 				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, finalDefines);
 
-				return RenderCore::Techniques::CreateShaderProgramFromByteCode(
+				return CreateShaderProgramFromByteCode(
 					vsCode, gsCode, psCode,
 					StreamOutputInitializers {
 						MakeIteratorRange(_soElements), MakeIteratorRange(_soStrides)
 					},
 					"ShaderPatchFactory");
 			} else {
-				return RenderCore::Techniques::CreateShaderProgramFromByteCode(vsCode, psCode, "ShaderPatchFactory");
+				return CreateShaderProgramFromByteCode(vsCode, psCode, "ShaderPatchFactory");
 			}
 		}
 
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Techniques
 					rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
 				}
 				_soExtraDefines = str.str();
-				_soElements = std::vector<RenderCore::InputElementDesc>(so._outputElements.begin(), so._outputElements.end());
+				_soElements = std::vector<InputElementDesc>(so._outputElements.begin(), so._outputElements.end());
 				_soStrides = std::vector<unsigned>(so._outputBufferStrides.begin(), so._outputBufferStrides.end());
 
 				_factoryGuid = HashCombine(Hash64(_soExtraDefines), _factoryGuid);
@@ -323,7 +323,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<uint64_t> _patchExpansions;
 
 		std::string _soExtraDefines;
-		std::vector<RenderCore::InputElementDesc> _soElements;
+		std::vector<InputElementDesc> _soElements;
 		std::vector<unsigned> _soStrides;
 	};
 
@@ -339,15 +339,15 @@ namespace RenderCore { namespace Techniques
 
 		TechniqueDelegate_Legacy(
 			unsigned techniqueIndex,
-			const RenderCore::AttachmentBlendDesc& blend,
-			const RenderCore::RasterizationDesc& rasterization,
-			const RenderCore::DepthStencilDesc& depthStencil);
+			const AttachmentBlendDesc& blend,
+			const RasterizationDesc& rasterization,
+			const DepthStencilDesc& depthStencil);
 		~TechniqueDelegate_Legacy();
 	private:
 		unsigned _techniqueIndex;
-		RenderCore::AttachmentBlendDesc _blend;
-		RenderCore::RasterizationDesc _rasterization;
-		RenderCore::DepthStencilDesc _depthStencil;
+		AttachmentBlendDesc _blend;
+		RasterizationDesc _rasterization;
+		DepthStencilDesc _depthStencil;
 
 		struct VariationSet
 		{
@@ -374,8 +374,8 @@ namespace RenderCore { namespace Techniques
 		} else {
 			std::vector<ParameterBox> selectorsCopy;
 			for (const auto&sel:selectors) selectorsCopy.push_back(*sel);
-			result._shaderProgram = std::make_shared<::Assets::AssetFuture<RenderCore::Metal::ShaderProgram>>("ShaderPendingVariationSet");
-			::Assets::WhenAll(_variationSetFuture).ThenConstructToFuture<RenderCore::Metal::ShaderProgram>(
+			result._shaderProgram = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPendingVariationSet");
+			::Assets::WhenAll(_variationSetFuture).ThenConstructToFuture<Metal::ShaderProgram>(
 				*result._shaderProgram,
 				[techniqueIndex{_techniqueIndex}, selectorsCopy](const std::shared_ptr<VariationSet>& variationSet) {
 					const ParameterBox* selectorPtrs[ShaderSelectorFiltering::Source::Max] = {};
@@ -392,9 +392,9 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueDelegate_Legacy::TechniqueDelegate_Legacy(
 		unsigned techniqueIndex,
-		const RenderCore::AttachmentBlendDesc& blend,
-		const RenderCore::RasterizationDesc& rasterization,
-		const RenderCore::DepthStencilDesc& depthStencil)
+		const AttachmentBlendDesc& blend,
+		const RasterizationDesc& rasterization,
+		const DepthStencilDesc& depthStencil)
 	: _techniqueIndex(techniqueIndex)
 	, _blend(blend)
 	, _rasterization(rasterization)
@@ -420,9 +420,9 @@ namespace RenderCore { namespace Techniques
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegateLegacy(
 		unsigned techniqueIndex,
-		const RenderCore::AttachmentBlendDesc& blend,
-		const RenderCore::RasterizationDesc& rasterization,
-		const RenderCore::DepthStencilDesc& depthStencil)
+		const AttachmentBlendDesc& blend,
+		const RasterizationDesc& rasterization,
+		const DepthStencilDesc& depthStencil)
 	{
 		return std::make_shared<TechniqueDelegate_Legacy>(techniqueIndex, blend, rasterization, depthStencil);
 	}
@@ -434,7 +434,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_Base : public ITechniqueDelegate
 	{
 	protected:
-		::Assets::FuturePtr<RenderCore::Metal::ShaderProgram> ResolveVariation(
+		::Assets::FuturePtr<Metal::ShaderProgram> ResolveVariation(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
 			const TechniqueEntry& techEntry,
@@ -454,7 +454,7 @@ namespace RenderCore { namespace Techniques
 		}
 
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;
-		std::vector<RenderCore::InputElementDesc> _soElements;
+		std::vector<InputElementDesc> _soElements;
 		std::vector<unsigned> _soStrides;
 	};
 
@@ -807,7 +807,7 @@ namespace RenderCore { namespace Techniques
 		: _techniqueSet(techniqueSet)
 		{
 			_sharedResources = sharedResources;
-			_soElements = std::vector<RenderCore::InputElementDesc>(soInit._outputElements.begin(), soInit._outputElements.end());
+			_soElements = std::vector<InputElementDesc>(soInit._outputElements.begin(), soInit._outputElements.end());
 			_soStrides = std::vector<unsigned>(soInit._outputBufferStrides.begin(), soInit._outputBufferStrides.end());
 
 			const auto noPatchesHash = Hash64("RayTest_NoPatches");

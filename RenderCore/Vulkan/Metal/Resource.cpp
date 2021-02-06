@@ -430,10 +430,19 @@ namespace RenderCore { namespace Metal_Vulkan
 		return {};
 	}
 
+	static std::function<SubResourceInitData(SubResourceId)> AsResInitializer(const SubResourceInitData& initData)
+	{
+		if (initData._data.size()) {
+			return [&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; };
+		 } else {
+			 return {};
+		 }
+	}
+
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
-	: Resource(factory, desc, (initData._data.size()) ? ([&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(SubResourceId)>())
+	: Resource(factory, desc, AsResInitializer(initData))
 	{}
 
     Resource::Resource(VkImage image, const Desc& desc)
@@ -478,12 +487,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		class ResourceAllocator : public std::allocator<Metal_Vulkan::Resource>
 		{
 		public:
-			pointer allocate(size_type n, std::allocator<void>::const_pointer ptr)
+			using BaseAllocatorTraits = std::allocator_traits<std::allocator<Metal_Vulkan::Resource>>;
+			typename BaseAllocatorTraits::pointer allocate(typename BaseAllocatorTraits::size_type n, typename BaseAllocatorTraits::const_void_pointer ptr)
 			{
 				Throw(::Exceptions::BasicLabel("Allocation attempted via ResourceAllocator"));
 			}
 
-			void deallocate(pointer p, size_type n)
+			void deallocate(typename BaseAllocatorTraits::pointer p, typename BaseAllocatorTraits::size_type n)
 			{
 				delete (Metal_Vulkan::Resource*)p;
 			}
