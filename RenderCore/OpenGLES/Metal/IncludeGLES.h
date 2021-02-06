@@ -10,6 +10,15 @@
 	// Emulate GLES using desktop GL
 	#include <OpenGL/gl.h>
     #include <OpenGL/glext.h>
+	using PFNGLLABELOBJECTEXTPROC = decltype(&glLabelObjectEXT);
+	using PFNGLDRAWARRAYSINSTANCEDEXTPROC = decltype(&glDrawArraysInstancedARB);
+	using PFNGLDRAWELEMENTSINSTANCEDEXTPROC = decltype(&glDrawElementsInstancedARB);
+	using PFNGLPUSHGROUPMARKEREXTPROC = decltype(&glPushGroupMarkerEXT);
+	using PFNGLPOPGROUPMARKEREXTPROC = decltype(&glPopGroupMarkerEXT);
+	using PFNGLBINDVERTEXARRAYOESPROC = decltype(&glBindVertexArrayAPPLE);
+	using PFNGLDELETEVERTEXARRAYSOESPROC = decltype(&glDeleteVertexArraysAPPLE);
+	using PFNGLGENVERTEXARRAYSOESPROC = decltype(&glGenVertexArraysAPPLE);
+	using PFNGLISVERTEXARRAYOESPROC = decltype(&glIsVertexArrayAPPLE);
 #elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
 	// For linux we could choose to emulate using desktop GL, or use
 	// an implementation of GLES (either via Mesa or Angle)

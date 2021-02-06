@@ -8,12 +8,18 @@ if (WIN32)
 	file(GLOB StackWalkerSrc "StackWalker/*.cpp")
 endif()
 file(GLOB PlustacheSrc "plustache/*.cpp")
-file(GLOB ZLibSrc "zlib/*.c" "zlib/*.h")
+if (NOT APPLE)
+    file(GLOB ZLibSrc "zlib/*.c" "zlib/*.h")
+endif ()
 set(StamSimpleFluidSrc StamSimpleFluid/solver.c)
 set(CParseSource cparse/containers.cpp cparse/functions.cpp cparse/packToken.cpp cparse/shunting-yard.cpp)
 
 add_library(ForeignMisc STATIC ${LuaSrc} ${HashSrc} ${FmtSrc} ${StackWalkerSrc} ${PlustacheSrc} ${StamSimpleFluidSrc} ${ZLibSrc} ${AntlrSrc} ${CParseSource})
 xle_configure_library(ForeignMisc)
+
+if (APPLE)
+    target_link_libraries(ForeignMisc PUBLIC z)
+endif ()
 
 # Ensure we export the necessary include folders from this target
 # Most other targets list this target as a dependency, so they should inherit these include folders

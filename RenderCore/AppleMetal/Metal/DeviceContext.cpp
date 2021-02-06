@@ -14,8 +14,8 @@
 #include "../../Types.h"
 #include "../../FrameBufferDesc.h"
 #include "../../../OSServices/Log.h"
-#include "../../../ConsoleRig/LogUtil.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../OSServices/LogUtil.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 #include "../../../Utility/MemoryUtils.h"
 #include <assert.h>
 #include <map>
@@ -244,7 +244,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         // TODO -- we should also enable specifying the sample count via a MSAA sampling state structure
 
         unsigned msaaAttachments = 0, singleSampleAttachments = 0;
-        for (const auto&a:subpass._output) {
+        for (const auto&a:subpass.GetOutputs()) {
             if (a._window._flags & TextureViewDesc::Flags::ForceSingleSample) {
                 ++singleSampleAttachments;
             } else {
@@ -288,10 +288,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         // Figure out the pixel formats for each of the attachments (including depth/stencil)
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
-            if (i < subpass._output.size()) {
-                assert(subpass._output[i]._resourceName <= fbDesc.GetAttachments().size());
-                const auto& window = subpass._output[i]._window;
-                const auto& attachment = fbDesc.GetAttachments()[subpass._output[i]._resourceName]._desc;
+            if (i < subpass.GetOutputs().size()) {
+                assert(subpass.GetOutputs()[i]._resourceName <= fbDesc.GetAttachments().size());
+                const auto& window = subpass.GetOutputs()[i]._window;
+                const auto& attachment = fbDesc.GetAttachments()[subpass.GetOutputs()[i]._resourceName]._desc;
                 auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::RTV);
                 auto mtlFormat = AsMTLPixelFormat(finalFormat);
                 _pimpl->_pipelineDescriptor.get().colorAttachments[i].pixelFormat = mtlFormat;
@@ -304,10 +304,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_pipelineDescriptor.get().depthAttachmentPixelFormat = MTLPixelFormatInvalid;
         _pimpl->_pipelineDescriptor.get().stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
 
-        if (subpass._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
-            assert(subpass._depthStencil._resourceName <= fbDesc.GetAttachments().size());
-            const auto& window = subpass._depthStencil._window;
-            const auto& attachment = fbDesc.GetAttachments()[subpass._depthStencil._resourceName]._desc;
+        if (subpass.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName) {
+            assert(subpass.GetDepthStencil()._resourceName <= fbDesc.GetAttachments().size());
+            const auto& window = subpass.GetDepthStencil()._window;
+            const auto& attachment = fbDesc.GetAttachments()[subpass.GetDepthStencil()._resourceName]._desc;
             auto finalFormat = ResolveFormat(attachment._format, window._format, FormatUsage::DSV);
 
             auto components = GetComponents(finalFormat);

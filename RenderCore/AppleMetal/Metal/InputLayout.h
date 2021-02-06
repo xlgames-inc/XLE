@@ -7,7 +7,7 @@
 #include "../../UniformsStream.h"
 #include "../../Types.h"
 #include "../../../Utility/IteratorUtils.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 
 @class MTLVertexDescriptor;
 @class MTLRenderPipelineReflection;
@@ -49,7 +49,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             const ShaderProgram& program);
 
         bool AllAttributesBound() const { return _allAttributesBound; }
-        MTLVertexDescriptor* GetVertexDescriptor() const { return _vertexDescriptor; }
+        MTLVertexDescriptor* GetVertexDescriptor() const { return _vertexDescriptor.get(); }
 
     private:
         TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;

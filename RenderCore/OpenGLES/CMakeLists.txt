@@ -111,7 +111,7 @@ macro(find_opengles)
         message("XLE_OPENGLES_LIBRARY_DIR: ${XLE_OPENGLES_LIBRARY_DIR}")
         message(FATAL_ERROR "Could not find OpenGLES headers and libraries. Either compile without this target included, or set the XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR cmake cache variables to the correct directories.")
     endif ()
-
+    
     mark_as_advanced(INTERNAL_FOUND_EGL_LIBRARY)
     mark_as_advanced(INTERNAL_FOUND_EGL_INCLUDE_DIR)
     mark_as_advanced(INTERNAL_FOUND_OPENGLES_LIBRARY)
@@ -122,29 +122,56 @@ macro(find_opengles)
 endmacro()
 ############################################################################################################################################
 
-find_opengles()
-target_link_libraries(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_EGL_LIBRARY} ${INTERNAL_FOUND_OPENGLES_LIBRARY})
-target_include_directories(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR} ${INTERNAL_FOUND_EGL_INCLUDE_DIR})
-
-# If our library files are actually DLLs, we have to mark them as required DLLs (and any client projects must be careful to
-# copy them to the correct location)
-# We do this by setting a list called "RequiredDLLs" in the target properties for this target
-# I'm not sure if there's a more straightforward way to mark this dependency and have it automatically handled by the final
-# executable... We don't really want to use install steps or anything like that; 
-string(FIND ${INTERNAL_FOUND_EGL_LIBRARY} ".dll.lib" DLLTEMP)
-if (DLLTEMP)
-    string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_EGL_LIBRARY})
-    set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
+set(FAKE_GLES_USING_DESKTOP_GL NO)
+if (APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(FAKE_GLES_USING_DESKTOP_GL YES)
 endif ()
-string(FIND ${INTERNAL_FOUND_OPENGLES_LIBRARY} ".dll.lib" DLLTEMP)
-if (DLLTEMP)
-    string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_OPENGLES_LIBRARY})
-    set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
-endif ()
-unset(DLLTEMP)
 
-# For Release Angle, we need libEGL.dll & libGLESv2.dll copied to the output directory
-# for Debug Angle, we also need absl.dll, zlib.dll & libc++.dll (however, maybe we can avoid some of those dependencies by compiling in MSVC mode for windows, rather than clang)
+if (NOT FAKE_GLES_USING_DESKTOP_GL)
+    # this is the normal case. We're using OpenGLES
+    find_opengles()
+    target_link_libraries(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_EGL_LIBRARY} ${INTERNAL_FOUND_OPENGLES_LIBRARY})
+    target_include_directories(RenderCore_OpenGLES PUBLIC ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR} ${INTERNAL_FOUND_EGL_INCLUDE_DIR})
 
-# If everything is configured exactly right, it might be possible to define KHRONOS_STATIC here to
-# use the static versions of project angle on windows
+    # If our library files are actually DLLs, we have to mark them as required DLLs (and any client projects must be careful to
+    # copy them to the correct location)
+    # We do this by setting a list called "RequiredDLLs" in the target properties for this target
+    # I'm not sure if there's a more straightforward way to mark this dependency and have it automatically handled by the final
+    # executable... We don't really want to use install steps or anything like that; 
+    string(FIND ${INTERNAL_FOUND_EGL_LIBRARY} ".dll.lib" DLLTEMP)
+    if (DLLTEMP)
+        string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_EGL_LIBRARY})
+        set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
+    endif ()
+    string(FIND ${INTERNAL_FOUND_OPENGLES_LIBRARY} ".dll.lib" DLLTEMP)
+    if (DLLTEMP)
+        string(REPLACE ".dll.lib" ".dll" DLLTEMP ${INTERNAL_FOUND_OPENGLES_LIBRARY})
+        set_property(TARGET RenderCore_OpenGLES APPEND PROPERTY RequiredDLLs ${DLLTEMP})
+    endif ()
+    unset(DLLTEMP)
+
+    # For Release Angle, we need libEGL.dll & libGLESv2.dll copied to the output directory
+    # for Debug Angle, we also need absl.dll, zlib.dll & libc++.dll (however, maybe we can avoid some of those dependencies by compiling in MSVC mode for windows, rather than clang)
+
+    # If everything is configured exactly right, it might be possible to define KHRONOS_STATIC here to
+    # use the static versions of project angle on windows
+
+else()
+
+    # this is the FAKE_GLES_USING_DESKTOP_GL case. We actually only need to find OpenGL, not OpenGLES
+    find_package(OpenGL)
+
+    if (NOT OPENGL_FOUND)
+        message("OPENGL_FOUND: ${OPENGL_FOUND}")
+        message("OPENGL_INCLUDE_DIR : ${OPENGL_INCLUDE_DIR}")
+        message("OPENGL_gl_LIBRARY : ${OPENGL_gl_LIBRARY}")
+        message("OPENGL_opengl_LIBRARY : ${OPENGL_opengl_LIBRARY}")
+        message("OPENGL_LIBRARIES : ${OPENGL_LIBRARIES}")
+        message("OpenGL_OpenGL_FOUND : ${OpenGL_OpenGL_FOUND}")
+        message(FATAL_ERROR "Desktop OpenGL was not found by cmake's package system. On this platform we default to desktop gl to emulate OpenGLES.")
+    endif ()
+
+    target_link_libraries(RenderCore_OpenGLES PUBLIC OpenGL::GL)
+    target_compile_definitions(RenderCore_OpenGLES PUBLIC FAKE_GLES_USING_DESKTOP_GL)
+endif()
+

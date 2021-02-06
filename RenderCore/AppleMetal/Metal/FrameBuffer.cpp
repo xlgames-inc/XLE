@@ -164,10 +164,10 @@ namespace RenderCore { namespace Metal_AppleMetal
             auto* desc = _subpasses[p]._renderPassDescriptor.get();
             const auto& spDesc = subpasses[p];
             const unsigned maxColorAttachments = 4u;
-            assert(spDesc._output.size() <= maxColorAttachments); // MTLRenderPassDescriptor supports up to four color attachments
+            assert(spDesc.GetOutputs().size() <= maxColorAttachments); // MTLRenderPassDescriptor supports up to four color attachments
             auto colorAttachmentsCount = (unsigned)std::min((unsigned)spDesc._output.size(), maxColorAttachments);
             for (unsigned o=0; o<colorAttachmentsCount; ++o) {
-                const auto& attachmentView = spDesc._output[o];
+                const auto& attachmentView = spDesc.GetOutputs()[o];
                 auto resource = namedResources.GetResource(attachmentView._resourceName);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for color attachment in FrameBuffer::FrameBuffer"));
@@ -182,8 +182,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     _subpasses[p]._rasterCount,
                     (unsigned)resource->GetDesc()._textureDesc._samples._sampleCount);
 
-                if (o < spDesc._resolve.size() && spDesc._resolve[o]._resourceName != ~0u) {
-                    auto resolveResource = namedResources.GetResource(spDesc._resolve[o]._resourceName);
+                if (o < spDesc.GetResolveOutputs().size() && spDesc.GetResolveOutputs()[o]._resourceName != ~0u) {
+                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveOutputs()[o]._resourceName);
                     if (!resolveResource)
                         Throw(::Exceptions::BasicLabel("Could not find resolve texture for color attachment in FrameBuffer::FrameBuffer"));
 
@@ -199,8 +199,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                 }
             }
 
-            if (spDesc._depthStencil._resourceName != ~0u) {
-                auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
+            if (spDesc.GetDepthStencil()._resourceName != ~0u) {
+                auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil attachment in FrameBuffer::FrameBuffer"));
 
@@ -211,15 +211,15 @@ namespace RenderCore { namespace Metal_AppleMetal
 
                 if (components == FormatComponents::Depth || components == FormatComponents::DepthStencil) {
                     desc.depthAttachment.texture = res.GetTexture();
-                    desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                    desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc.GetDepthStencil()._loadFromPreviousPhase);
+                    desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc.GetDepthStencil()._storeToNextPhase);
                     // clearDepth is set when binding subpass
                 }
 
                 if (components == FormatComponents::Stencil || components == FormatComponents::DepthStencil) {
                     desc.stencilAttachment.texture = res.GetTexture();
-                    desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                    desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc.GetDepthStencil()._loadFromPreviousPhase);
+                    desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc.GetDepthStencil()._storeToNextPhase);
                     // clearStencil is set when binding subpass
                 }
 
@@ -227,8 +227,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     _subpasses[p]._rasterCount,
                     (unsigned)resource->GetDesc()._textureDesc._samples._sampleCount);
 
-                if (spDesc._depthStencilResolve._resourceName != ~0u) {
-                    auto resolveResource = namedResources.GetResource(spDesc._depthStencilResolve._resourceName);
+                if (spDesc.GetResolveDepthStencil()._resourceName != ~0u) {
+                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveDepthStencil()._resourceName);
                     if (!resolveResource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil resolve attachment in FrameBuffer::FrameBuffer"));
 
@@ -236,7 +236,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     assert(AsResource(resolveResource).GetTexture().get().pixelFormat == AsResource(resource).GetTexture().get().pixelFormat);
 
                     desc.depthAttachment.resolveTexture = AsResource(resolveResource).GetTexture();
-                    if (HasRetain(spDesc._depthStencil._storeToNextPhase)) {
+                    if (HasRetain(spDesc.GetResolveDepthStencil()._storeToNextPhase)) {
                         desc.depthAttachment.storeAction = MTLStoreActionStoreAndMultisampleResolve;
                     } else {
                         desc.depthAttachment.storeAction = MTLStoreActionMultisampleResolve;

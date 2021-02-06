@@ -3,8 +3,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Shader.h"
-#include "Device.h"
 #include "ObjectFactory.h"
+#include "../Device.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include "../../Types.h"

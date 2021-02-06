@@ -33,10 +33,13 @@ macro(xle_internal_configure_compiler TargetName)
     target_compile_features(${TargetName} PUBLIC cxx_std_17)
     set_property(TARGET ${TargetName} PROPERTY CXX_EXTENSIONS OFF)
 
+    # Some CMake kits set _DEBUG and NDEBUG automatically, but others don't seem to
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(${TargetName} PUBLIC XL_DEBUG)
-    elseif ( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-        target_compile_definitions(${TargetName} PUBLIC XL_RELEASE)
+        target_compile_definitions(${TargetName} PUBLIC XL_DEBUG _DEBUG)
+    elseif ((CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        target_compile_definitions(${TargetName} PUBLIC XL_RELEASE NDEBUG)
+    else ()
+        message(WARNING "Unknown CMAKE_BUILD_TYPE. Compiler configuration settings may not be setup correctly")
     endif ()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -96,7 +99,7 @@ macro(xle_configure_executable ExeName)
 
     xle_internal_configure_compiler(${ExeName})
 
-    if (NOT XLE_IMPLICIT_SHARED_LIBRARIES)
+    if (NOT XLE_IMPLICIT_SHARED_LIBRARIES AND UNIX AND NOT APPLE)
         if (NOT XLE_MEMORY_SANITIZER AND NOT XLE_ADDRESS_SANITIZER AND NOT XLE_THREAD_SANITIZER)
             target_link_options(${ExeName} PRIVATE -Wl,--unresolved-symbols=report-all)
         endif()
@@ -119,7 +122,7 @@ macro(xle_configure_dll DllName)
 
     xle_internal_configure_compiler(${DllName})
 
-    if (NOT XLE_IMPLICIT_SHARED_LIBRARIES)
+    if (NOT XLE_IMPLICIT_SHARED_LIBRARIES AND UNIX AND NOT APPLE)
         if (NOT XLE_MEMORY_SANITIZER AND NOT XLE_ADDRESS_SANITIZER AND NOT XLE_THREAD_SANITIZER)
             target_link_options(${DllName} PRIVATE -Wl,--unresolved-symbols=report-all)
         endif ()
@@ -148,8 +151,13 @@ macro(xle_select_default_rendercore_metal TargetName)
     endif()
 endmacro()
 
-list(APPEND MetalSelectMacros SELECT_OPENGL SELECT_VULKAN)
-list(APPEND MetalSelectName OpenGLES Vulkan)
+list(APPEND MetalSelectMacros SELECT_OPENGL)
+list(APPEND MetalSelectName OpenGLES)
+
+if (NOT APPLE)
+    list(APPEND MetalSelectMacros SELECT_VULKAN)
+    list(APPEND MetalSelectName Vulkan)
+endif ()
 
 if (WIN32)
     list(APPEND MetalSelectMacros SELECT_DX)

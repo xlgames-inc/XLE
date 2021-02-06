@@ -6,7 +6,7 @@
 
 #include "QueryPool.h"
 #include "DeviceContext.h"
-#include "Device.h"
+#include "../Device.h"
 
 #pragma GCC diagnostic ignored "-Wunguarded-availability-new"
 

@@ -9,7 +9,6 @@
 #include "PtrUtils.h"
 #include "../Core/SelectConfiguration.h"
 #include <algorithm>
-#include <cuchar>
 
 namespace Conversion
 {

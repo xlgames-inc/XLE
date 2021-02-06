@@ -9,7 +9,7 @@
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
 #include "Metal/FeatureSet.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 #include <memory>
 
 @class CAMetalLayer;

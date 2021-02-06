@@ -6,7 +6,7 @@
 
 #include "../../../Assets/AssetsCore.h"
 #include "../../ShaderService.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 
 namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 

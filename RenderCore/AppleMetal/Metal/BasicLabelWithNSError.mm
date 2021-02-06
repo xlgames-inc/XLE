@@ -6,7 +6,7 @@
 //
 
 #import "BasicLabelWithNSError.h"
-#import "../../../../Externals/Misc/OCPtr.h"
+#import "../../../../Foreign/OCPtr/OCPtr.hpp"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {

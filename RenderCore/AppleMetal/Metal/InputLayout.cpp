@@ -14,7 +14,7 @@
 #include "../../Format.h"
 #include "../../BufferView.h"
 #include "../../../OSServices/Log.h"
-#include "../../../ConsoleRig/LogUtil.h"
+#include "../../../OSServices/LogUtil.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"

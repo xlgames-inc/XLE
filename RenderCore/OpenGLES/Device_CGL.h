@@ -6,7 +6,7 @@
 #include "../ResourceDesc.h"
 #include "Metal/ObjectFactory.h"
 #include "../../Utility/IntrusivePtr.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 
 namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; } }
 

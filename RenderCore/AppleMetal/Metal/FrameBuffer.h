@@ -6,7 +6,7 @@
 
 #include "TextureView.h"
 #include "../../FrameBufferDesc.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 
 @class MTLRenderPassDescriptor;
 

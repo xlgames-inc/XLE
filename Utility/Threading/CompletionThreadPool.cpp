@@ -261,7 +261,7 @@ namespace Utility
         }
     }
 
-    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction)
+    void SetYieldToPoolFunction(const std::function<void(std::chrono::steady_clock::time_point)>& yieldToPoolFunction)
     {
         s_threadPoolYieldFunction.allocate(yieldToPoolFunction);
     }

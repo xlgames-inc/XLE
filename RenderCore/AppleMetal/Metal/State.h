@@ -5,17 +5,12 @@
 #pragma once
 
 #include "../../Types.h"
+#include "../../StateDesc.h"
 #include "../../../Core/Exceptions.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
     class DeviceContext;
-
-    using StencilDesc = RenderCore::StencilDesc;
-	using DepthStencilDesc = RenderCore::DepthStencilDesc;
-	using RasterizationDesc = RenderCore::RasterizationDesc;
-	using SamplerStateDesc = RenderCore::SamplerStateDesc;
-	using AttachmentBlendDesc = RenderCore::AttachmentBlendDesc;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

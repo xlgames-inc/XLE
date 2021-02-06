@@ -8,7 +8,7 @@
 #pragma once
 
 #include "FeatureSet.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 #include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
 

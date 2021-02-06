@@ -5,7 +5,7 @@
 #include "IDeviceOpenGLES.h"
 #include "ObjectFactory.h"
 #include "../../Utility/IntrusivePtr.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 #include <memory>
 
 @class EAGLContext;

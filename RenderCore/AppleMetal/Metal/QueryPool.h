@@ -7,7 +7,7 @@
 #include "../../IAnnotator.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
-#include "../../../Externals/Misc/OCPtr.h"
+#include "../../../Foreign/OCPtr/OCPtr.hpp"
 #include <algorithm>
 #include <memory>
 

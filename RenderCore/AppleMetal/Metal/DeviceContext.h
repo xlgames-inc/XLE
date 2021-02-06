@@ -23,7 +23,7 @@
 @protocol MTLFunction;
 @protocol MTLDepthStencilState;
 
-namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
+namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; class AttachmentBlendDesc; }
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -33,8 +33,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     class BoundInputLayout;
     class ShaderProgram;
 
-    class RasterizationDesc;
-    class DepthStencilDesc;
     class UnboundInterface;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
