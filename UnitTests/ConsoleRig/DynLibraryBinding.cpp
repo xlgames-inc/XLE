@@ -19,12 +19,21 @@
 using namespace Catch::literals;
 namespace UnitTests
 {
+	static std::string GetUnitTestLibraryName()
+	{
+		#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+			return "UnitTestDynLibrary.dll";
+		#else
+			return "libUnitTestDynLibrary.so";
+		#endif
+	}
+
 	TEST_CASE("DynLibraryBinding-StartupShutdown", "[consoleRig]")
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{"<<configured-template>>"});
 
-		ConsoleRig::AttachableLibrary testLibrary("libUnitTestDynLibrary.so");
+		ConsoleRig::AttachableLibrary testLibrary(GetUnitTestLibraryName());
 		std::string attachErrorMsg;
 		auto tryAttachResult = testLibrary.TryAttach(attachErrorMsg);
 		REQUIRE(tryAttachResult == true);
@@ -61,7 +70,7 @@ namespace UnitTests
 		ConsoleRig::AttachablePtr<SingletonSharedFromAttachedModule> singletonFromAttachedModule;
 
 		{
-			ConsoleRig::AttachableLibrary testLibrary("libUnitTestDynLibrary.so");
+			ConsoleRig::AttachableLibrary testLibrary(GetUnitTestLibraryName());
 			std::string attachErrorMsg;
 			auto tryAttachResult = testLibrary.TryAttach(attachErrorMsg);
 			REQUIRE(tryAttachResult == true);

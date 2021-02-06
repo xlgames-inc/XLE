@@ -4,7 +4,13 @@
 
 #include "AttachablePtr.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Core/SelectConfiguration.h"
 #include <vector>
+#include <stdexcept>
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+	#include "../OSServices/WinAPI/IncludeWindows.h"
+#endif
 
 namespace ConsoleRig
 {
@@ -181,6 +187,10 @@ namespace ConsoleRig
 		std::vector<std::pair<uint64_t, CannonicalPtr>> _cannonicalPtrs;
 		std::vector<std::pair<RegisteredInfraModuleManagerId, Internal::InfraModuleManager*>> _moduleSpecificManagers;
 		RegisteredInfraModuleManagerId _nextInfraModuleManagerRegistration = 1u;
+
+		#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+			static dll_export CrossModule* RealCrossModuleGetInstance() asm("RealCrossModuleGetInstance");
+		#endif
 	};
 
 	auto CrossModule::Get(uint64_t id) -> std::shared_ptr<void>
@@ -229,11 +239,54 @@ namespace ConsoleRig
 			_pimpl->_moduleSpecificManagers.erase(i);
 	}
 
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+	CrossModule* CrossModule::Pimpl::RealCrossModuleGetInstance()
+	{
+		static CrossModule wholeProcessInstance;
+		return &wholeProcessInstance;
+	}
+
+	CrossModule& CrossModule::GetInstance()
+	{
+		// Here's a little bit of Windows funkiness; a small thing that makes a lot of big things happen
+		// We need to have a least one thing that shared between all modules: the CrossModule object.
+		//
+		// The CrossModule object is essentially a table of singleton pointers that can be shared between
+		// modules; so by sharing this one thing, we can also share as much as we need. But there's a
+		// slight caveat in that we need to be able to get it at any time, including during static 
+		// initialization. So it's not as trival as just waiting until the dll is fully loaded and then
+		// pushing it in.
+		//
+		// The CrossModule object is exported by the host process and every shared library that's loaded
+		// because a client of that object.
+		//
+		// On posix/unix-style platforms, ld basically takes care of this itself using the visibility
+		// attributes. Functions that are visible on the host process are linked into loaded shared libraries.
+		// So, when we call CrossModule::GetInstance() we actually do end up calling the version of the
+		// function from the host process, and everything just works out.
+		//
+		// With the windows linker, that doesn't seem to work that way, even with the clang toolset. Instead
+		// we get a more windows-like behaviour where modules general just use versions of functions linked
+		// into the local module.
+		//
+		// However, we can get the HMODULE to the host executable... and from that we can access the it's
+		// own export table. In effect, we can explicitly call a function from the host module. We only need
+		// to do this from this one place; but once we do, we effectively have the keys to the kingdom
+		// (assuming, you know, code compatibility)
+		using RealCrossModuleGetInstanceFn = CrossModule*(*)();
+		auto* realGetInstance = (RealCrossModuleGetInstanceFn)GetProcAddress(GetModuleHandleA(nullptr), "RealCrossModuleGetInstance");
+		if (!realGetInstance)
+			Throw(std::runtime_error("CrossModule instance not detected in host process"));
+
+		return *(realGetInstance)();
+	}
+#else
 	CrossModule& CrossModule::GetInstance()
 	{
 		static CrossModule wholeProcessInstance;
 		return wholeProcessInstance;
 	}
+#endif
 	
 	CrossModule::CrossModule()
 	{
