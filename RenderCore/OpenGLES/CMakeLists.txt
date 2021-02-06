@@ -16,6 +16,10 @@ set(Src
     Metal/State.cpp
     Metal/TextureView.cpp)
 
+IF(UNIX AND NOT APPLE)
+	set(LINUX TRUE)
+ENDIF()
+
 if (WIN32 OR ANDROID OR LINUX)
     LIST(APPEND Src
         Device_EGL.cpp
@@ -37,8 +41,8 @@ macro(find_opengles)
     # variable we're making. This is a problem because the result of those operations can
     # depend on the value of other variables. To get around this, we can reset the values
     # when we detect a change
-    if ((NOT INTERNAL_LAST_XLE_OPENGLES_INCLUDE_DIR STREQUAL ${XLE_OPENGLES_INCLUDE_DIR})
-        OR (NOT INTERNAL_LAST_XLE_OPENGLES_LIBRARY_DIR STREQUAL ${XLE_OPENGLES_LIBRARY_DIR}))
+    if ((NOT INTERNAL_LAST_XLE_OPENGLES_INCLUDE_DIR STREQUAL XLE_OPENGLES_INCLUDE_DIR)
+        OR (NOT INTERNAL_LAST_XLE_OPENGLES_LIBRARY_DIR STREQUAL XLE_OPENGLES_LIBRARY_DIR))
 
         message("Detected change in GLES configuration, searching again")
 
@@ -105,7 +109,7 @@ macro(find_opengles)
         message("INTERNAL_FOUND_OPENGLES_INCLUDE_DIR: ${INTERNAL_FOUND_OPENGLES_INCLUDE_DIR}")
         message("XLE_OPENGLES_INCLUDE_DIR: ${XLE_OPENGLES_INCLUDE_DIR}")
         message("XLE_OPENGLES_LIBRARY_DIR: ${XLE_OPENGLES_LIBRARY_DIR}")
-        message(FATAL_ERROR "Could not find OpenGLES headers and libraries. Either compile without this target included, or set the XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR cache directories to the correct directories.")
+        message(FATAL_ERROR "Could not find OpenGLES headers and libraries. Either compile without this target included, or set the XLE_OPENGLES_INCLUDE_DIR and XLE_OPENGLES_LIBRARY_DIR cmake cache variables to the correct directories.")
     endif ()
 
     mark_as_advanced(INTERNAL_FOUND_EGL_LIBRARY)

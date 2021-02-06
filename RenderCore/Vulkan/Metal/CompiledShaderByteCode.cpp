@@ -22,7 +22,7 @@
 
 // HLSL cross compiler includes --
 #define EXCLUDE_PSTDINT
-#include "hlslcc.hpp"
+#include "../../../Foreign/HLSLCC/include/hlslcc.hpp"
 
 #define HAS_SPIRV_HEADERS
 #if defined(HAS_SPIRV_HEADERS)
@@ -34,9 +34,9 @@
 #undef _ENFORCE_MATCHING_ALLOCATORS
 #define _ENFORCE_MATCHING_ALLOCATORS 0
 #undef strdup
-#include <glslang/glslang/Public/ShaderLang.h>
-#include <glslang/glslang/Include/InitializeGlobals.h>
-#include <glslang/SPIRV/GlslangToSpv.h>
+#include "glslang/glslang/Public/ShaderLang.h"
+#include "glslang/glslang/Include/InitializeGlobals.h"
+#include "glslang/SPIRV/GlslangToSpv.h"
 
 // #include <glslang/SPIRV/disassemble.h>
 // #include <sstream>

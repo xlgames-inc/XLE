@@ -1316,13 +1316,6 @@ namespace RenderCore { namespace ImplVulkan
     {}
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}
-
-
-	void RegisterCreation()
-	{
-		static_constructor<&RegisterCreation>::c;
-		RegisterDeviceCreationFunction(UnderlyingAPI::Vulkan, &CreateDevice);
-	}
 }}
 
 namespace RenderCore
