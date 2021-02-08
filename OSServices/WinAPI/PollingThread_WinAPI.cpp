@@ -505,12 +505,6 @@ namespace OSServices
 		}
 	}
 
-	void UserEvent::DecreaseCounter()
-	{
-		// auto-decrease in Win32
-		// Infact, for semaphore types decrease can only happen when a waiting thread is released
-	}
-
 	std::shared_ptr<UserEvent> CreateUserEvent(UserEvent::Type type)
 	{
 		RealPollableEvent* result = new RealPollableEvent(type);

@@ -142,7 +142,7 @@ namespace OSServices
 
 		void AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback);
 
-		void OnEvent(const std::any& payload) override;
+		void OnEvent(std::any&& payload) override;
 		void OnException(const std::exception_ptr& exception) override;
 
 		void OnChange(uint64_t filenameHash);
@@ -169,7 +169,7 @@ namespace OSServices
 			std::make_pair(filenameHash, std::move(callback)));
 	}
 
-	void MonitoredDirectory::OnEvent(const std::any& inputData)
+	void MonitoredDirectory::OnEvent(std::any&& inputData)
 	{
 		const auto& conduitResult = std::any_cast<const MonitorDirectoryConduit::ConduitResult&>(inputData);
 		for (const auto&f:conduitResult._changedFiles)

@@ -86,7 +86,7 @@ namespace RenderCore { namespace Techniques
     class NamedAttachmentsWrapper : public INamedAttachments
     {
     public:
-		virtual IResourcePtr GetResource(AttachmentName resName) const;
+		virtual IResourcePtr GetResource(AttachmentName resName, const AttachmentDesc& requestDesc) const override;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
 		virtual const FrameBufferProperties& GetFrameBufferProperties() const;
 
@@ -99,10 +99,22 @@ namespace RenderCore { namespace Techniques
         const std::vector<AttachmentName>* _poolMapping;
     };
 
-    IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName) const
+    IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName, const AttachmentDesc& requestDesc) const
     {
         assert(resName < _poolMapping->size());
-        return _pool->GetResource((*_poolMapping)[resName]);
+        auto result = _pool->GetResource((*_poolMapping)[resName]);
+
+        // Validate that the "desc" for the returned resource matches what the caller was requesting
+        auto expectedDesc = RenderCore::AsAttachmentDesc(result->GetDesc());
+        assert(requestDesc._format == expectedDesc._format);
+        assert(requestDesc._width == expectedDesc._width);
+        assert(requestDesc._height == expectedDesc._height);
+        assert(requestDesc._arrayLayerCount == expectedDesc._arrayLayerCount);
+        assert(requestDesc._dimsMode == expectedDesc._dimsMode);
+        assert(requestDesc._flags == expectedDesc._flags);
+        assert(requestDesc.CalculateHash() == expectedDesc.CalculateHash());
+
+        return result;
     }
 
     auto NamedAttachmentsWrapper::GetDesc(AttachmentName resName) const -> const AttachmentDesc*

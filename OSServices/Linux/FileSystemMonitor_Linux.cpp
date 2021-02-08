@@ -2,6 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "System_Linux.h"
 #include "../FileSystemMonitor.h"
 #include "../PollingThread.h"
 #include "../Log.h"
@@ -87,27 +88,27 @@ namespace OSServices
 		}
 	}
 
-	class IConduit_Linux
-	{
-	public:
-		virtual IOPlatformHandle GetPlatformHandle() const = 0;
-	};
-
 	class RawFSMonitor::Pimpl
 	{
 	public:
-		class Conduit : public IConduit, public IConduit_Linux
+		class Conduit : public IConduitProducer, public IConduitProducer_PlatformHandle
 		{
 		public:
-			Utility::Threading::Mutex _monitoredDirectoriesLock;
-			std::vector<std::pair<uint64_t, std::unique_ptr<MonitoredDirectory>>> _monitoredDirectories;
 			int _inotify_fd = -1;
 
-			IOPlatformHandle GetPlatformHandle() const { return (IOPlatformHandle)_inotify_fd; }
+			IOPlatformHandle GetPlatformHandle() const override { return (IOPlatformHandle)_inotify_fd; }
+			PollingEventType::BitField GetListenTypes() const override { return PollingEventType::Input; }
 
-			void OnEvent(PollingEventType::BitField)
+			struct ChangeData
 			{
-				ScopedLock(_monitoredDirectoriesLock);
+				int _wd;
+				std::string _name;
+			};
+
+			std::any GeneratePayload(PollingEventType::BitField triggeredEvents) override
+			{
+				std::vector<ChangeData> changedFiles;
+				assert(triggeredEvents & PollingEventType::Input);
 				char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
 				for (;;) {
 					/* Read some events. */
@@ -118,13 +119,32 @@ namespace OSServices
 					const struct inotify_event *event;
 					for (auto* ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + event->len) {
 						event = (const struct inotify_event *) ptr;
-						for (const auto&m:_monitoredDirectories)
-							if (m.second->wd() == event->wd)
-								m.second->OnChange(event->name);		// note that we've got _monitoredDirectoriesLock locked while calling this
+						changedFiles.push_back({event->wd, event->name});
 					}
 				}
+
+				return changedFiles;
 			}
-			void OnException(const std::exception_ptr& exception)
+		};
+
+		class ConduitConsumer : public IConduitConsumer
+		{
+		public:
+			Utility::Threading::Mutex _monitoredDirectoriesLock;
+			std::vector<std::pair<uint64_t, std::unique_ptr<MonitoredDirectory>>> _monitoredDirectories;
+
+			void OnEvent(std::any&& payload) override
+			{
+				auto& changedFiles = std::any_cast<const std::vector<Conduit::ChangeData>&>(payload);
+				// Unfortunately our list of monitored directories and files isn't sorted in
+				// a way to help us with the following lookup
+				ScopedLock(_monitoredDirectoriesLock);
+				for (const auto&change:changedFiles)
+					for (const auto&m:_monitoredDirectories)
+						if (m.second->wd() == change._wd)
+							m.second->OnChange(change._name);		// note that we've got _monitoredDirectoriesLock locked while calling this
+			}
+			void OnException(const std::exception_ptr& exception) override
 			{
 				TRY
 				{
@@ -149,6 +169,7 @@ namespace OSServices
 		// conduiting holds the last reference to the PollingThread
 		std::shared_ptr<PollingThread> _pollingThread;
 		std::shared_ptr<Conduit> _conduit;
+		std::shared_ptr<ConduitConsumer> _conduitConsumer;
 	};
 
 	void RawFSMonitor::Attach(
@@ -167,14 +188,14 @@ namespace OSServices
 		auto split = MakeFileNameSplitter(filename);
 		utf8 directoryName[MaxPath];
 		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-		auto hash = HashFilenameAndPath(directoryName);
+		auto hash = HashFilenameAndPath(MakeStringSection(directoryName));
 
 		{
-			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);			
+			ScopedLock(_pimpl->_conduitConsumer->_monitoredDirectoriesLock);			
 			auto i = std::lower_bound(
-				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
+				_pimpl->_conduitConsumer->_monitoredDirectories.cbegin(), _pimpl->_conduitConsumer->_monitoredDirectories.cend(),
 				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-			if (i != _pimpl->_conduit->_monitoredDirectories.cend() && i->first == hash) {
+			if (i != _pimpl->_conduitConsumer->_monitoredDirectories.cend() && i->first == hash) {
 				i->second->AttachCallback(HashFilename(split.FileAndExtension()), std::move(callback));
 				return;
 			}
@@ -188,13 +209,13 @@ namespace OSServices
 			auto wd = inotify_add_watch(_pimpl->_conduit->_inotify_fd, directoryName, IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
 			assert(wd > 0);
 
-			auto i2 = _pimpl->_conduit->_monitoredDirectories.insert(
+			auto i2 = _pimpl->_conduitConsumer->_monitoredDirectories.insert(
 				i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName, wd)));
 			i2->second->AttachCallback(HashFilename(split.FileAndExtension()), std::move(callback));
 		}
 
 		if (startMonitoring) {
-			_pimpl->_pollingThread->Connect(_pimpl->_conduit);
+			_pimpl->_pollingThread->Connect(_pimpl->_conduit, _pimpl->_conduitConsumer);
 		}
 	}
 
@@ -210,12 +231,12 @@ namespace OSServices
 		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
 
 		{
-			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);
-			auto hash = HashFilenameAndPath(directoryName);
+			ScopedLock(_pimpl->_conduitConsumer->_monitoredDirectoriesLock);
+			auto hash = HashFilenameAndPath(MakeStringSection(directoryName));
 			auto i = std::lower_bound(
-				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
+				_pimpl->_conduitConsumer->_monitoredDirectories.cbegin(), _pimpl->_conduitConsumer->_monitoredDirectories.cend(),
 				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
-			if (i != _pimpl->_conduit->_monitoredDirectories.cend() && i->first == hash) {
+			if (i != _pimpl->_conduitConsumer->_monitoredDirectories.cend() && i->first == hash) {
 				i->second->OnChange(split.FileAndExtension());
 				return;
 			}
@@ -226,6 +247,7 @@ namespace OSServices
 	{
 		_pimpl = std::make_shared<Pimpl>();
 		_pimpl->_conduit = std::make_shared<Pimpl::Conduit>();
+		_pimpl->_conduitConsumer = std::make_shared<Pimpl::ConduitConsumer>();
 		_pimpl->_pollingThread = pollingThread;
 	}
 

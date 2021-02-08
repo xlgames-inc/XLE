@@ -1161,15 +1161,6 @@ size_t XlDecodeUrl(char* dst, size_t count, const char* encoded)
     return d - dst;
 }
 
-void XlSwapMemory(void* a, void* b, size_t size)
-{
-    uint8 buf[256];
-    assert(size < 256);
-    memcpy(buf, a, size);
-    memcpy(a, b, size);
-    memcpy(b, buf, size);
-}
-
 bool XlIsAlnum(char c)
 {
 	return __alphanum_table[(uint8)c] != 0x00;

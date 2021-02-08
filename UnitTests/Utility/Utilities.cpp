@@ -253,12 +253,11 @@ namespace UnitTests
         REQUIRE( fns.Has<int(int)>(1) );
         REQUIRE( !fns.Has<int(int)>(2) );
 
-        bool hitException = false;
-        TRY { fns.Has<int(int, int)>(1); }
-        CATCH(const VariantFunctions::SignatureMismatch&) { hitException = true; }
-        CATCH_END
-
-        REQUIRE( hitException );
+        REQUIRE_THROWS_AS(
+            [&]() {
+                fns.Has<int(int, int)>(1);
+            }(),
+            VariantFunctions::SignatureMismatch);
 
             // heavy load test (will crash if there are any failures)
         for (auto i=0u; i<100; ++i)

@@ -464,7 +464,7 @@ namespace OSServices
 		class MonitoredDirectory : public IConduitConsumer
 		{
 		public:
-			virtual void OnEvent(const std::any& payload)
+			virtual void OnEvent(std::any&& payload)
 			{
 				auto& changes = std::any_cast<const std::vector<std::string>&>(payload);
 				for (auto c:changes)

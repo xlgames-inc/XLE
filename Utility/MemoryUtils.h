@@ -32,16 +32,6 @@ namespace Utility
         void XlZeroMemory(Type& destination)
             { XlClearMemory(&destination, sizeof(Type)); }
 
-        // swap two memory regions
-    template<int Count>
-        inline void XlSwapMemory(void* a, void* b)
-        {
-            uint8 buf[Count];
-            XlCopyMemory(buf, a, Count);
-            XlCopyMemory(a, b, Count);
-            XlCopyMemory(b, buf, Count);
-        }
-
         ////////////   A L I G N E D   A L L O C A T E   ////////////
 
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC || defined(__MINGW32__)

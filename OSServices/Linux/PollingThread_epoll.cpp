@@ -2,6 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "System_Linux.h"
 #include "../PollingThread.h"
 #include "../../OSServices/Log.h"
 #include "../../Utility/Threading/Mutex.h"
@@ -15,12 +16,8 @@
 
 namespace OSServices
 {
-	class IConduit_Linux
-	{
-	public:
-		virtual IOPlatformHandle GetPlatformHandle() const = 0;
-		virtual ~IConduit_Linux() = default;
-	};
+	template<typename Ptr1, typename Ptr2>
+		bool PointersEquivalent(const Ptr1& lhs, const Ptr2& rhs) { return !lhs.owner_before(rhs) && !rhs.owner_before(lhs); }
 
 	static struct epoll_event EPollEvent(PollingEventType::BitField types, bool oneShot = true)
 	{
@@ -63,9 +60,8 @@ namespace OSServices
 
 		struct PendingOnceInitiate
 		{
-			PollingEventType::BitField _eventTypes;
-			IOPlatformHandle _platformHandle;
-			std::promise<PollingEventType::BitField> _promise;
+			std::shared_ptr<IConduitProducer> _producer;
+			std::promise<std::any> _promise;
 		};
 		std::vector<PendingOnceInitiate> _pendingOnceInitiates;
 
@@ -73,9 +69,8 @@ namespace OSServices
 
 		struct ChangeEvent
 		{
-			std::weak_ptr<IConduit> _conduit;
-			PollingEventType::BitField _eventTypes;
-			IOPlatformHandle _platformHandle;
+			std::shared_ptr<IConduitProducer> _producer;
+			std::weak_ptr<IConduitConsumer> _consumer;
 			std::promise<void> _onChangePromise;
 		};
 		std::vector<ChangeEvent> _pendingEventConnects;
@@ -130,14 +125,16 @@ namespace OSServices
 
 			struct ActiveOnceEvent
 			{
+				std::shared_ptr<IConduitProducer> _producer;
+				std::promise<std::any> _promise;
 				IOPlatformHandle _platformHandle;
-				std::promise<PollingEventType::BitField> _promise;
 			};
 			std::vector<ActiveOnceEvent> activeOnceEvents;
 			struct ActiveEvent
 			{
+				std::shared_ptr<IConduitProducer> _producer;
+				std::weak_ptr<IConduitConsumer> _consumer;
 				IOPlatformHandle _platformHandle;
-				std::weak_ptr<IConduit> _conduit;
 			};
 			std::vector<ActiveEvent> activeEvents;
 
@@ -147,13 +144,33 @@ namespace OSServices
 				{
 					std::vector<std::promise<void>> pendingPromisesToTrigger;
 					std::vector<std::pair<std::promise<void>, std::exception_ptr>> pendingExceptionsToPropagate1;
-					std::vector<std::pair<std::promise<PollingEventType::BitField>, std::exception_ptr>> pendingExceptionsToPropagate2;
+					std::vector<std::pair<std::promise<std::any>, std::exception_ptr>> pendingExceptionsToPropagate2;
 					{
 						ScopedLock(_interfaceLock);
 						for (auto& event:_pendingOnceInitiates) {
 							auto existing = std::find_if(
 								activeOnceEvents.begin(), activeOnceEvents.end(),
-								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+								[&event](const auto& ae) { return PointersEquivalent(event._producer, ae._producer); });
+							if (existing != activeOnceEvents.end()) {
+								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Attempting to connect a producer that is already connected"))});
+								continue;
+							}
+							
+							auto* conduitPlatformHandle = dynamic_cast<IConduitProducer_PlatformHandle*>(event._producer.get());
+							if (!conduitPlatformHandle) {
+								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Unknown conduit producer type"))});
+								continue;
+							}
+
+							auto platformHandle = conduitPlatformHandle->GetPlatformHandle();
+							if (platformHandle < 0) {
+								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Invalid platform handle on conduit passed to RespondOnce"))});
+								continue;
+							}
+
+							existing = std::find_if(
+								activeOnceEvents.begin(), activeOnceEvents.end(),
+								[platformHandle](const auto& ae) { return ae._platformHandle == platformHandle; });
 							if (existing != activeOnceEvents.end()) {
 								// We can't queue multiple poll operations on the same platform handle, because we will be using
 								// the platform handle to lookup events in activeOnceEvents (this would otherwise make it ambigious)
@@ -161,15 +178,16 @@ namespace OSServices
 								continue;
 							}
 
-							auto evt = EPollEvent(event._eventTypes);
-							evt.data.fd = event._platformHandle;
-							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, event._platformHandle, &evt);
+							auto evt = EPollEvent(conduitPlatformHandle->GetListenTypes());
+							evt.data.fd = platformHandle;
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, platformHandle, &evt);
 							if (ret < 0) {
 								pendingExceptionsToPropagate2.push_back({std::move(event._promise), std::make_exception_ptr(std::runtime_error("Failed to add asyncronous event to epoll queue"))});
 							} else {
 								ActiveOnceEvent activeEvent;
-								activeEvent._platformHandle = event._platformHandle;
+								activeEvent._platformHandle = platformHandle;
 								activeEvent._promise = std::move(event._promise);
+								activeEvent._producer = std::move(event._producer);
 								activeOnceEvents.push_back(std::move(activeEvent));
 							}
 						}
@@ -178,7 +196,35 @@ namespace OSServices
 						for (auto& event:_pendingEventConnects) {
 							auto existing = std::find_if(
 								activeEvents.begin(), activeEvents.end(),
-								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+								[&event](const auto& ae) { return PointersEquivalent(event._producer, ae._producer); });
+							if (existing != activeEvents.end()) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Attempting to connect a producer that is already connected"))});
+								continue;
+							}
+
+							// If the conduit is already expired, the system will just end up removing the event immediately
+							// so let's not even bother adding it in that case
+							auto conduit = event._consumer.lock();
+							if (!conduit) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Conduit ptr already expired before connection"))});
+								continue;
+							}
+
+							auto* conduitPlatformHandle = dynamic_cast<IConduitProducer_PlatformHandle*>(event._producer.get());
+							if (!conduitPlatformHandle) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Unknown conduit producer type"))});
+								continue;
+							}
+
+							auto platformHandle = conduitPlatformHandle->GetPlatformHandle();
+							if (platformHandle < 0) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Invalid platform handle on conduit passed to Connect"))});
+								continue;
+							}
+
+							existing = std::find_if(
+								activeEvents.begin(), activeEvents.end(),
+								[platformHandle](const auto& ae) { return ae._platformHandle == platformHandle; });
 							if (existing != activeEvents.end()) {
 								// We can't queue multiple poll operations on the same platform handle, because we will be using
 								// the platform handle to lookup events in activeOnceEvents (this would otherwise make it ambigious)
@@ -186,23 +232,16 @@ namespace OSServices
 								continue;
 							}
 
-							// If the conduit is already expired, the system will just end up removing the event immediately
-							// so let's not even bother adding it in that case
-							auto conduit = event._conduit.lock();
-							if (!conduit) {
-								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Conduit ptr already expired before connection"))});
-								continue;
-							}
-
-							auto evt = EPollEvent(event._eventTypes, false);
-							evt.data.fd = event._platformHandle;
-							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, event._platformHandle, &evt);
+							auto evt = EPollEvent(conduitPlatformHandle->GetListenTypes(), false);
+							evt.data.fd = platformHandle;
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_ADD, platformHandle, &evt);
 							if (ret < 0) {
 								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Failed to add asyncronous event to epoll queue"))});
 							} else {
 								ActiveEvent activeEvent;
-								activeEvent._platformHandle = event._platformHandle;
-								activeEvent._conduit = std::move(conduit);
+								activeEvent._platformHandle = platformHandle;
+								activeEvent._producer = std::move(event._producer);
+								activeEvent._consumer = std::move(event._consumer);
 								activeEvents.push_back(std::move(activeEvent));
 								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
 							}
@@ -212,14 +251,13 @@ namespace OSServices
 						for (auto& event:_pendingEventDisconnects) {
 							auto existing = std::find_if(
 								activeEvents.begin(), activeEvents.end(),
-								[&event](const auto& ae) { return ae._platformHandle == event._platformHandle; });
+								[&event](const auto& ae) { return PointersEquivalent(event._producer, ae._producer); });
 							if (existing == activeEvents.end()) {
 								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Attempting to disconnect an event that is not currently connected"))});
 								continue;
 							}
 
-							assert(event._eventTypes == 0);		// field not used for disconnect
-							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, event._platformHandle, nullptr);
+							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, existing->_platformHandle, nullptr);
 							if (ret < 0) {
 								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Failed to remove asyncronous event to epoll queue"))});
 							} else {
@@ -235,7 +273,7 @@ namespace OSServices
 						// up anything hanging. Note that we're expecting the conduit to have destroyed the 
 						// platform handle when it was cleaned up (in other words, that platform handle is now dangling)
 						for (auto i=activeEvents.begin(); i!=activeEvents.end();) {
-							if (i->_conduit.expired()) {
+							if (i->_consumer.expired()) {
 								auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, i->_platformHandle, nullptr);
 								if (ret < 0)
 									Log(Error) << "Got error return from epoll_ctl when removing expired event" << std::endl;
@@ -328,11 +366,25 @@ namespace OSServices
 							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
 							assert(ret == 0);
 							auto promise = std::move(onceEvent->_promise);
+							auto producer = std::move(onceEvent->_producer);
 							activeOnceEvents.erase(onceEvent);
 
-							promise.set_value(AsPollingEventType(triggeredEvent.events));
+							std::any payload;
+							auto* conduitPlatformHandle = dynamic_cast<IConduitProducer_PlatformHandle*>(producer.get());
+							if (conduitPlatformHandle) {
+								TRY {
+									payload = conduitPlatformHandle->GeneratePayload(AsPollingEventType(triggeredEvent.events));
+								} CATCH(...) {
+									promise.set_exception(std::current_exception());
+									continue;
+								} CATCH_END
+							} else {
+								payload = AsPollingEventType(triggeredEvent.events);
+							}
+							
+							promise.set_value(std::move(payload));
 						} else {
-							Throw(std::runtime_error("Unexpected event trigger value"));
+							Log(Error) << "Unexpected event trigger value in PollingThread" << std::endl;
 						}
 
 						continue;
@@ -347,15 +399,38 @@ namespace OSServices
 							// The client must reconnect the conduit if they want to receive anything new from it
 							auto ret = epoll_ctl(epollContext, EPOLL_CTL_DEL, triggeredEvent.data.fd, nullptr);
 							assert(ret == 0);
-							auto conduit = evnt->_conduit.lock();
+							auto conduit = evnt->_consumer.lock();
 							activeEvents.erase(evnt);
 							if (conduit)
-								conduit->OnException(std::make_exception_ptr(std::runtime_error("")));
+								conduit->OnException(std::make_exception_ptr(std::runtime_error("Received a low level hangup or error message")));
 						} else if (triggeredEvent.events & (EPOLLIN | EPOLLOUT)) {
 							// Ready for read/write. We don't remove the event from the epoll context in this case
-							auto conduit = evnt->_conduit.lock();
-							if (conduit)
-								conduit->OnEvent(AsPollingEventType(triggeredEvent.events));
+							auto consumer = evnt->_consumer.lock();
+							if (consumer) {
+
+								std::any payload;
+								auto* conduitPlatformHandle = dynamic_cast<IConduitProducer_PlatformHandle*>(evnt->_producer.get());
+								if (conduitPlatformHandle) {
+									TRY {
+										payload = conduitPlatformHandle->GeneratePayload(AsPollingEventType(triggeredEvent.events));
+									} CATCH(...) {
+										consumer->OnException(std::current_exception());
+										continue;
+									} CATCH_END
+								} else {
+									payload = AsPollingEventType(triggeredEvent.events);
+								}
+
+								TRY {
+									consumer->OnEvent(std::move(payload));
+								} CATCH(const std::exception& e) {
+								Log(Error) << "Suppressed exception from IConduitConsumer: " << e.what() << std::endl;
+							} CATCH(...) {
+								Log(Error) << "Suppressed unknown exception from IConduitConsumer" << std::endl;
+							} CATCH_END
+							} else {
+								Log(Verbose) << "PollingThread event generated for consumer that is expired" << std::endl;
+							}
 						} else {
 							Throw(std::runtime_error("Unexpected event trigger value"));
 						}
@@ -392,14 +467,13 @@ namespace OSServices
 		}
 	};
 
-	auto PollingThread::RespondOnce(IOPlatformHandle platformHandle, PollingEventType::BitField typesToWaitFor) -> std::future<PollingEventType::BitField>
+	auto PollingThread::RespondOnce(const std::shared_ptr<IConduitProducer>& producer) -> std::future<std::any>
 	{
-		std::future<PollingEventType::BitField> result;
+		std::future<std::any> result;
 		{
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::PendingOnceInitiate pendingInit;
-			pendingInit._eventTypes = typesToWaitFor;
-			pendingInit._platformHandle = platformHandle;
+			pendingInit._producer = producer;
 			result = pendingInit._promise.get_future();
 			_pimpl->_pendingOnceInitiates.push_back(std::move(pendingInit));
 		}
@@ -408,16 +482,15 @@ namespace OSServices
 	}
 
 	std::future<void> PollingThread::Connect(
-		const std::shared_ptr<IConduit>& conduit, 
-		PollingEventType::BitField eventTypes)
+		const std::shared_ptr<IConduitProducer>& producer, 
+		const std::shared_ptr<IConduitConsumer>& consumer)
 	{
 		std::future<void> result;
 		{
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::ChangeEvent change;
-			change._eventTypes = eventTypes;
-			change._platformHandle = checked_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
-			change._conduit = conduit;
+			change._producer = producer;
+			change._consumer = consumer;
 			result = change._onChangePromise.get_future();
 			_pimpl->_pendingEventConnects.push_back(std::move(change));
 		}
@@ -426,15 +499,13 @@ namespace OSServices
 	}
 
 	std::future<void> PollingThread::Disconnect(
-		const std::shared_ptr<IConduit>& conduit)
+		const std::shared_ptr<IConduitProducer>& producer)
 	{
 		std::future<void> result;
 		{
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::ChangeEvent change;
-			change._eventTypes = 0;
-			change._platformHandle = checked_cast<IConduit_Linux*>(conduit.get())->GetPlatformHandle();
-			change._conduit = conduit;
+			change._producer = producer;
 			result = change._onChangePromise.get_future();
 			_pimpl->_pendingEventDisconnects.push_back(std::move(change));
 		}
@@ -452,51 +523,74 @@ namespace OSServices
 
 	}
 
-
-	void UserEvent::WriteCounter()
+	class RealUserEvent : public IConduitProducer, public IConduitProducer_PlatformHandle
 	{
-		uint64_t eventFdCounter = 1;
-		auto ret = write(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
-		assert(ret > 0);
-	}
+	public:
+		int _platformHandle;
 
-	void UserEvent::ReadCounter()
-	{
-		uint64_t eventFdCounter=0;
-		auto ret = read(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
-		assert(ret > 0);
-	}
-
-	UserEvent::UserEvent(Type type)
-	{
-		if (type == Type::Semaphore) {
-			_platformHandle = eventfd(0, EFD_NONBLOCK|EFD_SEMAPHORE);
-		} else {
-			_platformHandle = eventfd(0, EFD_NONBLOCK);
+		IOPlatformHandle GetPlatformHandle() const override { return _platformHandle; }
+		PollingEventType::BitField GetListenTypes() const override { return PollingEventType::Input; }
+		std::any GeneratePayload(PollingEventType::BitField triggeredEvents) override 
+		{
+			// Unlike Windows, eventfd will not automatically decrease the counter in an
+			// event or semaphore. We need to explicitly read it to decrease it. We should
+			// do this in the same thread that waits in order to ensure that we can return
+			// to an unsignalled state before the next wait,
+			// In effect this will replicate the same behaviour as windows -- ie there's
+			// one automatic decrease for per thread wake-up
+			uint64_t eventFdCounter=0;
+			auto ret = read(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
+			assert(ret > 0);
+			return eventFdCounter; 
 		}
+
+		RealUserEvent(UserEvent::Type type)
+		{
+			if (type == UserEvent::Type::Semaphore) {
+				_platformHandle = eventfd(0, EFD_NONBLOCK|EFD_SEMAPHORE);
+			} else {
+				_platformHandle = eventfd(0, EFD_NONBLOCK);
+			}
+		}
+
+		~RealUserEvent()
+		{
+			if (_platformHandle != -1)
+				close(_platformHandle);
+		}
+
+		RealUserEvent& operator=(RealUserEvent&& moveFrom) never_throws
+		{
+			if (_platformHandle != -1)
+				close(_platformHandle);
+			_platformHandle = moveFrom._platformHandle;
+			moveFrom._platformHandle = -1;
+			return *this;
+		}
+		
+		RealUserEvent(RealUserEvent&& moveFrom) never_throws
+		{
+			_platformHandle = moveFrom._platformHandle;
+			moveFrom._platformHandle = -1;
+		}
+	};
+
+	void UserEvent::IncreaseCounter()
+	{
+		auto* that = (RealUserEvent*)this;
+		uint64_t eventFdCounter = 1;
+		auto ret = write(that->_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
+		assert(ret > 0);
 	}
 
-	UserEvent::~UserEvent()
+	std::shared_ptr<UserEvent> CreateUserEvent(UserEvent::Type type)
 	{
-		if (_platformHandle != -1)
-			close(_platformHandle);
-	}
-
-	UserEvent& UserEvent::operator=(UserEvent&& moveFrom) never_throws
-	{
-		if (_platformHandle != -1)
-			close(_platformHandle);
-		_platformHandle = moveFrom._platformHandle;
-		moveFrom._platformHandle = -1;
-		return *this;
+		RealUserEvent* result = new RealUserEvent(type);
+		// Little trick here -- UserEventactually a dummy class that only provides
+		// it's method signatures
+		return std::shared_ptr<UserEvent>((UserEvent*)result);
 	}
 	
-	UserEvent::UserEvent(UserEvent&& moveFrom) never_throws
-	{
-		_platformHandle = moveFrom._platformHandle;
-		moveFrom._platformHandle = -1;
-	}
-
 }
 
 

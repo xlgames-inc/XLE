@@ -481,6 +481,8 @@ namespace OSServices
 							} CATCH(...) {
 								Log(Error) << "Suppressed unknown exception from IConduitConsumer" << std::endl;
 							} CATCH_END
+						} else {
+							Log(Verbose) << "PollingThread event generated for consumer that is expired" << std::endl;
 						}
 						continue;
 					}
@@ -599,12 +601,6 @@ namespace OSServices
 			auto keventRes = kevent(that->_kqueueContext, &eventChange, 1, nullptr, 0, nullptr);
 			assert(keventRes == 0);
 		}
-	}
-
-	void UserEvent::DecreaseCounter()
-	{
-		// auto-decrease in Win32
-		// Infact, for semaphore types decrease can only happen when a waiting thread is released
 	}
 
 	std::shared_ptr<UserEvent> CreateUserEvent(UserEvent::Type type)

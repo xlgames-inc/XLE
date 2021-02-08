@@ -131,7 +131,7 @@ namespace ConsoleRig
 	public:
 		VariantFunctions _services;
 
-		static CrossModule& GetInstance() __attribute__((visibility("default")));
+		static CrossModule& GetInstance();
 	private:
 		friend class Internal::InfraModuleManager;
 		using RegisteredInfraModuleManagerId = unsigned;

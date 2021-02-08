@@ -31,7 +31,7 @@ namespace OSServices
 	class IConduitConsumer
 	{
 	public:
-		virtual void OnEvent(const std::any& payload) = 0;
+		virtual void OnEvent(std::any&& payload) = 0;
 		virtual void OnException(const std::exception_ptr& exception) = 0;
 	};
 
@@ -68,7 +68,7 @@ namespace OSServices
 	public:
 		// Simple event type -- just tell me when something happens. One-off, with
 		// no explicit cancel mechanism
-		std::future<PollingEventType::BitField> RespondOnce(
+		std::future<std::any> RespondOnce(
 			const std::shared_ptr<IConduitProducer>& producer);
 
 		std::future<void> Connect(
@@ -91,7 +91,6 @@ namespace OSServices
 		enum class Type { Binary, Semaphore };
 
 		void IncreaseCounter();
-		void DecreaseCounter();
 
 		UserEvent& operator=(const UserEvent&) = delete;
 		UserEvent(const UserEvent&) = delete;

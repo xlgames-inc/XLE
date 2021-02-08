@@ -22,18 +22,10 @@
 
 #if PLATFORMOS_TARGET == PLATFORMOS_LINUX
     // linux specific...
+    #include "../../OSServices/Linux/System_Linux.h"
     #include <sys/epoll.h>
     #include <sys/eventfd.h>
     #include <unistd.h>
-
-    namespace OSServices
-    {
-        class IConduit_Linux
-        {
-        public:
-            virtual IOPlatformHandle GetPlatformHandle() const = 0;
-        };
-    }
 #endif
 
 using namespace Catch::literals;
@@ -100,7 +92,6 @@ namespace UnitTests
             unsigned iterations = 10;
             for (unsigned i=0; i<iterations; ++i) {
                 pollingThread.RespondOnce(event).wait();
-                event->DecreaseCounter();
                 std::thread{
                     [&]() {
                         Threading::Sleep(500); 
@@ -109,7 +100,6 @@ namespace UnitTests
 
             // wait for the last one -- 
             pollingThread.RespondOnce(event).wait();
-            event->DecreaseCounter();
 
             auto elapsed = std::chrono::steady_clock::now() - startTime;
             REQUIRE(OSServices::AsMilliseconds(elapsed) > 5000);
@@ -130,7 +120,7 @@ namespace UnitTests
             std::deque<std::shared_ptr<OSServices::UserEvent>> eventPool;
             std::vector<std::future<unsigned>> futures;
 
-            auto onTrigger = [&](OSServices::UserEvent* triggeredHandle, const std::future<OSServices::PollingEventType::BitField>&) {
+            auto onTrigger = [&](OSServices::UserEvent* triggeredHandle, const std::future<std::any>&) {
                 --eventsInFlight;
                 ScopedLock(eventsLock);
                 auto i = std::find_if(
@@ -208,27 +198,20 @@ namespace UnitTests
 #if PLATFORMOS_TARGET == PLATFORMOS_LINUX
         SECTION("Conduit for eventfd")
         {
-            class EventFDConduit : public OSServices::IConduit, public OSServices::IConduit_Linux
+            class EventFDConduit : public OSServices::IConduitProducer, public OSServices::IConduitProducer_PlatformHandle
             {
             public:
                 int _platformHandle = 0;
-                int _eventCount = 0;
-                int _exceptionCount = 0;
 
-                void OnEvent(OSServices::PollingEventType::BitField)
-                {
+                OSServices::IOPlatformHandle GetPlatformHandle() const override { return _platformHandle; }
+                OSServices::PollingEventType::BitField GetListenTypes() const override { return OSServices::PollingEventType::Input; }
+		        std::any GeneratePayload(OSServices::PollingEventType::BitField) override 
+                { 
                     uint64_t eventFdCounter=0;
                     auto ret = read(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
                     assert(ret > 0);
-                    _eventCount += eventFdCounter;
+                    return eventFdCounter;
                 }
-
-		        void OnException(const std::exception_ptr& exception)
-                {
-                    ++_exceptionCount;
-                }
-
-                OSServices::IOPlatformHandle GetPlatformHandle() const { return _platformHandle; }
 
                 EventFDConduit()
                 {
@@ -241,8 +224,26 @@ namespace UnitTests
                 }
             };
 
+            class ConduitConsumer : public OSServices::IConduitConsumer
+            {
+            public:
+                int _eventCount = 0;
+                int _exceptionCount = 0;
+
+                void OnEvent(std::any&& payload) override
+                {                    
+                    _eventCount += std::any_cast<uint64_t>(payload);
+                }
+
+		        void OnException(const std::exception_ptr& exception) override
+                {
+                    ++_exceptionCount;
+                }
+            };
+
             auto conduit = std::make_shared<EventFDConduit>();
-            auto connectionFuture = pollingThread.Connect(conduit);
+            auto consumer = std::make_shared<ConduitConsumer>();
+            auto connectionFuture = pollingThread.Connect(conduit, consumer);
             connectionFuture.get();            
 
             const unsigned writeCount = 15;
@@ -254,8 +255,8 @@ namespace UnitTests
             auto disconnectionFuture = pollingThread.Disconnect(conduit);
             disconnectionFuture.get();
 
-            REQUIRE(conduit->_exceptionCount == 0);
-            REQUIRE(conduit->_eventCount == writeCount);
+            REQUIRE(consumer->_exceptionCount == 0);
+            REQUIRE(consumer->_eventCount == writeCount);
         }
 #endif
     }
