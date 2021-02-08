@@ -25,20 +25,6 @@ namespace OSServices
 
 //////////////////////////////////////////////////////////////////////////
 
-Millisecond Millisecond_Now()
-{
-    return GetTickCount();      //  Very inaccurate windows timer!
-}
-
-Microsecond Microsecond_Now()
-{
-        //  obviously this implementation is stupid!
-        //  Pending more accurate implementation
-        //  (this is only accurate to a few milliseconds)
-        //  see also other sources for timers in windows (eg, the multi media system timer)
-    return 1000ull * uint64(Millisecond_Now());
-}
-
 uint64 GetPerformanceCounter()
 {
     LARGE_INTEGER i;

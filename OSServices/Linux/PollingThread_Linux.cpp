@@ -453,21 +453,21 @@ namespace OSServices
 	}
 
 
-	void PollableEvent::WriteCounter()
+	void UserEvent::WriteCounter()
 	{
 		uint64_t eventFdCounter = 1;
 		auto ret = write(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
 		assert(ret > 0);
 	}
 
-	void PollableEvent::ReadCounter()
+	void UserEvent::ReadCounter()
 	{
 		uint64_t eventFdCounter=0;
 		auto ret = read(_platformHandle, &eventFdCounter, sizeof(eventFdCounter));
 		assert(ret > 0);
 	}
 
-	PollableEvent::PollableEvent(Type type)
+	UserEvent::UserEvent(Type type)
 	{
 		if (type == Type::Semaphore) {
 			_platformHandle = eventfd(0, EFD_NONBLOCK|EFD_SEMAPHORE);
@@ -476,13 +476,13 @@ namespace OSServices
 		}
 	}
 
-	PollableEvent::~PollableEvent()
+	UserEvent::~UserEvent()
 	{
 		if (_platformHandle != -1)
 			close(_platformHandle);
 	}
 
-	PollableEvent& PollableEvent::operator=(PollableEvent&& moveFrom) never_throws
+	UserEvent& UserEvent::operator=(UserEvent&& moveFrom) never_throws
 	{
 		if (_platformHandle != -1)
 			close(_platformHandle);
@@ -491,7 +491,7 @@ namespace OSServices
 		return *this;
 	}
 	
-	PollableEvent::PollableEvent(PollableEvent&& moveFrom) never_throws
+	UserEvent::UserEvent(UserEvent&& moveFrom) never_throws
 	{
 		_platformHandle = moveFrom._platformHandle;
 		moveFrom._platformHandle = -1;

@@ -101,7 +101,7 @@ namespace UnitTests
 					DeleteFile((utf8*)intermediateFile);
 				}
 
-				auto startTime = Millisecond_Now();
+				auto startTime = std::chrono::steady_clock::now();
 				for (;;) {
 					TRY {
 						auto& scaffold = Assets::Legacy::GetAssetComp<ModelScaffold>(sampleAsset);
@@ -111,7 +111,8 @@ namespace UnitTests
                     CATCH(const Assets::Exceptions::PendingAsset&) {}
 					CATCH_END
 
-					if ((Millisecond_Now() - startTime) > 30 * 1000) {
+					auto elapsed = std::chrono::steady_clock::now() - startTime;
+                    if (elapsed > std::chrono::seconds(30)) {
 						Assert::IsTrue(false, L"Timeout while compiling asset in ColladaConversion test! Test failed.");
 						break;
 					}

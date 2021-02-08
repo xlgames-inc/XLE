@@ -85,7 +85,7 @@ namespace OSServices
 		std::shared_ptr<Pimpl> _pimpl;
 	};
 
-	class PollableEvent : public IConduitProducer
+	class UserEvent : public IConduitProducer
 	{
 	public:
 		enum class Type { Binary, Semaphore };
@@ -93,11 +93,11 @@ namespace OSServices
 		void IncreaseCounter();
 		void DecreaseCounter();
 
-		PollableEvent& operator=(const PollableEvent&) = delete;
-		PollableEvent(const PollableEvent&) = delete;
-		PollableEvent() never_throws = delete;
+		UserEvent& operator=(const UserEvent&) = delete;
+		UserEvent(const UserEvent&) = delete;
+		UserEvent() never_throws = delete;
 	};
 
-	std::shared_ptr<PollableEvent> CreatePollableEvent(PollableEvent::Type = PollableEvent::Type::Binary);
+	std::shared_ptr<UserEvent> CreateUserEvent(UserEvent::Type = UserEvent::Type::Binary);
 }
 

@@ -48,7 +48,7 @@ namespace UnitTests
 
         SECTION("RespondOnce with stall")
         {
-            auto testEvent = CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
+            auto testEvent = CreateUserEvent(OSServices::UserEvent::Type::Binary);
             
             // Here, the event trigger is going to happen before we call RespondOnce
             testEvent->IncreaseCounter();
@@ -64,7 +64,7 @@ namespace UnitTests
         
         SECTION("RespondOnce with continuation")
         {
-            auto testEvent = CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
+            auto testEvent = CreateUserEvent(OSServices::UserEvent::Type::Binary);
             volatile bool trigger = false;
             auto future = thousandeyes::futures::then(
                 pollingThread.RespondOnce(testEvent),
@@ -89,9 +89,9 @@ namespace UnitTests
             // milliseconds to complete. However, if they don't get reset, it will
             // be much faster -- perhaps around 500 milliseconds (or we could even
             // get a crash, because we aren't waiting for the background threads to finish)
-            auto startTime = OSServices::Millisecond_Now();
+            auto startTime = std::chrono::steady_clock::now();
 
-            auto event = OSServices::CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
+            auto event = OSServices::CreateUserEvent(OSServices::UserEvent::Type::Binary);
             std::thread{
                 [&]() {
                     Threading::Sleep(500); 
@@ -111,9 +111,9 @@ namespace UnitTests
             pollingThread.RespondOnce(event).wait();
             event->DecreaseCounter();
 
-            auto elapsed = OSServices::Millisecond_Now() - startTime;
-            REQUIRE(elapsed > 5000);
-            std::cout << "Event reset test took " << elapsed << " milliseconds" << std::endl;
+            auto elapsed = std::chrono::steady_clock::now() - startTime;
+            REQUIRE(OSServices::AsMilliseconds(elapsed) > 5000);
+            std::cout << "Event reset test took " << OSServices::AsMilliseconds(elapsed) << " milliseconds" << std::endl;
         }
 
         SECTION("Thrash RespondOnce")
@@ -125,12 +125,12 @@ namespace UnitTests
 
             std::atomic<signed> eventsInFlight(0);
             Threading::Mutex eventsLock;
-            std::vector<std::shared_ptr<OSServices::PollableEvent>> events;
-            std::vector<std::shared_ptr<OSServices::PollableEvent>> pendingTriggerEvents;
-            std::deque<std::shared_ptr<OSServices::PollableEvent>> eventPool;
+            std::vector<std::shared_ptr<OSServices::UserEvent>> events;
+            std::vector<std::shared_ptr<OSServices::UserEvent>> pendingTriggerEvents;
+            std::deque<std::shared_ptr<OSServices::UserEvent>> eventPool;
             std::vector<std::future<unsigned>> futures;
 
-            auto onTrigger = [&](OSServices::PollableEvent* triggeredHandle, const std::future<OSServices::PollingEventType::BitField>&) {
+            auto onTrigger = [&](OSServices::UserEvent* triggeredHandle, const std::future<OSServices::PollingEventType::BitField>&) {
                 --eventsInFlight;
                 ScopedLock(eventsLock);
                 auto i = std::find_if(
@@ -148,7 +148,7 @@ namespace UnitTests
             // However; this doesn't appear to apply to completion routines...?
             events.reserve(60);
             for (unsigned c=0; c<60; ++c) {
-                auto event = OSServices::CreatePollableEvent(OSServices::PollableEvent::Type::Binary);
+                auto event = OSServices::CreateUserEvent(OSServices::UserEvent::Type::Binary);
                 ++eventsInFlight;
                 auto future = thousandeyes::futures::then(
                     pollingThread.RespondOnce(event),

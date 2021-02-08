@@ -1,5 +1,9 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
-#include "RawFS.h"
+#include "../RawFS.h"
+#include "../TimeUtils.h"
 #include "../../Core/SelectConfiguration.h"
 #include "../../Core/Types.h"
 #include <cstdio>
@@ -10,7 +14,7 @@
 #include <pthread/pthread.h>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
-#include "Mutex.h"
+#include "../../Utility/Threading/Mutex.h"
 
 #include <libgen.h>
 #include <dirent.h>
@@ -40,9 +44,8 @@ namespace OSServices
     }
 }
 
-#include "FileSystemMonitor.h"
-#include "FileUtils.h"
-#include "../StringUtils.h"
+#include "../FileSystemMonitor.h"
+#include "../Utility/StringUtils.h"
 
 namespace OSServices
 {
@@ -424,9 +427,6 @@ namespace OSServices
 
     void DeleteFile(const utf8 path[])
     {
-        std::remove((const char*)path);
+        std::remove(path);
     }
-
 }
-
-

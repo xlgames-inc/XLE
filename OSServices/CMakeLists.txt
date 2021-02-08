@@ -13,10 +13,12 @@ set(Headers
 if (WIN32)
     set(WinAPISrc WinAPI/System_WinAPI.cpp WinAPI/FileSystemMonitor_WinAPI.cpp WinAPI/RawFS_WinAPI.cpp WinAPI/PollingThread_WinAPI.cpp)
 elseif (NOT APPLE)
-    set(LinuxSrc Linux/System_Linux.cpp Linux/FileSystemMonitor_Linux.cpp Linux/RawFS_Linux.cpp Linux/PollingThread_Linux.cpp RawFS_stdio.cpp)
+    set(LinuxSrc Linux/System_Linux.cpp Linux/FileSystemMonitor_Linux.cpp Linux/PollingThread_Linux.cpp RawFS_Posix.cpp RawFS_stdio.cpp)
+elseif (APPLE)
+    set(AppleSrc Apple/System_Apple.cpp Apple/PollingThread_kqueue.cpp RawFS_Posix.cpp RawFS_stdio.cpp)
 endif()
 
-add_library(OSServices STATIC ${Src} ${Headers} ${WinAPISrc} ${LinuxSrc})
+add_library(OSServices STATIC ${Src} ${Headers} ${WinAPISrc} ${LinuxSrc} ${AppleSrc})
 xle_configure_library(OSServices)
 target_link_libraries(OSServices PRIVATE ForeignMisc Utility)
 
