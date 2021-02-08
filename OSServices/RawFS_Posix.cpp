@@ -89,7 +89,7 @@ namespace OSServices
 	{
 		std::vector<std::string> fileList;
 
-		DIR *dir = dir = opendir(searchPath.c_str());
+		DIR *dir = opendir(searchPath.c_str());
 		if (dir != NULL) {
 			struct dirent *entry;
 			while ((entry = readdir(dir)) != NULL) {

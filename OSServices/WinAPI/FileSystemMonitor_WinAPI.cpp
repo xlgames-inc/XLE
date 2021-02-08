@@ -238,7 +238,7 @@ namespace OSServices
 	{
 		auto splitter = MakeFileNameSplitter(filenameWithPath);
 		auto directoryName = splitter.DriveAndPath();
-		auto dirHash = HashFilename(directoryName);
+		auto dirHash = HashFilenameAndPath(directoryName);
 
 		ScopedLock(_pimpl->_monitoredDirectoriesLock);
 		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
@@ -259,7 +259,7 @@ namespace OSServices
 	{
 		auto splitter = MakeFileNameSplitter(filenameWithPath);
 		auto directoryName = splitter.DriveAndPath();
-		auto dirHash = HashFilename(directoryName);
+		auto dirHash = HashFilenameAndPath(directoryName);
 
 		ScopedLock(_pimpl->_monitoredDirectoriesLock);
 		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
@@ -280,7 +280,7 @@ namespace OSServices
 	{
 		auto splitter = MakeFileNameSplitter(filenameWithPath);
 		auto directoryName = splitter.DriveAndPath();
-		auto dirHash = HashFilename(directoryName);
+		auto dirHash = HashFilenameAndPath(directoryName);
 
 		ScopedLock(_pimpl->_monitoredDirectoriesLock);
 		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);
@@ -292,7 +292,7 @@ namespace OSServices
 	{
 		auto splitter = MakeFileNameSplitter(filenameWithPath);
 		auto directoryName = splitter.DriveAndPath();
-		auto dirHash = HashFilename(directoryName);
+		auto dirHash = HashFilenameAndPath(directoryName);
 
 		ScopedLock(_pimpl->_monitoredDirectoriesLock);
 		auto i = LowerBound(_pimpl->_monitoredDirectories, dirHash);

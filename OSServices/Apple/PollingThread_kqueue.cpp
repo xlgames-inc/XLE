@@ -2,6 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "System_Apple.h"
 #include "../PollingThread.h"
 #include "../Log.h"
 #include "../../Utility/FunctionUtils.h"
@@ -179,7 +180,6 @@ namespace OSServices
 			{
 				std::shared_ptr<IConduitProducer> _producer;
 				std::promise<PollingEventType::BitField> _promise;
-				uintptr_t _ident;
 			};
 			struct ActiveEvent
 			{
@@ -251,7 +251,7 @@ namespace OSServices
 								.flags = EV_ADD | EV_RECEIPT | EV_CLEAR | EV_ONESHOT,
 								.fflags = 0,
 								.data = 0,
-								.udata = 0
+								.udata = event._producer.get()	// note that for user events, this is actually ignored. What matters is the udata ptr when we trigger the event, not when we register the listener here
 							};
 							struct kevent receiveError;
 							auto keventRes = kevent(_kqueueContext, &eventChange, 1, &receiveError, 1, nullptr);
@@ -262,7 +262,6 @@ namespace OSServices
 							ActiveOnceEvent activeEvent;
 							activeEvent._producer = event._producer;
 							activeEvent._promise = std::move(event._promise);
-							activeEvent._ident = platformHandleProducer->_userEventId;
 							activeOnceEvents.push_back(std::move(activeEvent));
 						}
 						_pendingOnceInitiates.clear();
@@ -278,24 +277,30 @@ namespace OSServices
 								continue;
 							}
 
+							auto* keventProducer = dynamic_cast<Internal::KEvent*>(event._producer.get());
+							if (keventProducer) {
+								struct kevent eventChange {
+									.ident = keventProducer->_ident,
+									.filter = keventProducer->_filter,
+									.flags = EV_ADD | EV_RECEIPT | EV_CLEAR | EV_ENABLE,
+									.fflags = keventProducer->_fflags,
+									.data = 0,
+									.udata = event._producer.get()
+								};
+								struct kevent receiveError;
+								auto keventRes = kevent(_kqueueContext, &eventChange, 1, &receiveError, 1, nullptr);
+								assert(keventRes == 1);
+								assert(receiveError.flags & EV_ERROR);
+								assert(receiveError.data == 0);
+							} else {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Unknown conduit producer type"))});
+								continue;
+							}
+							
 							ActiveEvent activeEvent;
 							activeEvent._producer = std::move(event._producer);
 							activeEvent._consumer = std::move(event._consumer);
-							
-							/*auto* completionRoutine = dynamic_cast<IConduitProducer_CompletionRoutine*>(activeEvent._producer.get());
-							if (completionRoutine) {
-								activeEvent._overlapped = std::make_unique<SpecialOverlapped>();
-								std::memset((OVERLAPPED*)activeEvent._overlapped.get(), 0, sizeof(OVERLAPPED));
-								activeEvent._overlapped->_manager = weak_from_this();
-								TRY {
-									completionRoutine->BeginOperation(activeEvent._overlapped.get(), CompletionRoutineFunction);
-								} CATCH (...) {
-									pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::current_exception()});
-									continue;
-								} CATCH_END
-							}
-							
-							activeEvents.push_back(std::move(activeEvent));*/
+							activeEvents.push_back(std::move(activeEvent));
 							pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
 						}
 						_pendingEventConnects.clear();
@@ -309,17 +314,25 @@ namespace OSServices
 								continue;
 							}
 
-							/*auto* completionRoutine = dynamic_cast<IConduitProducer_CompletionRoutine*>(event._producer.get());
-							if (completionRoutine) {
-								TRY {
-									completionRoutine->CancelOperation(existing->_overlapped.get());
-									pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
-								} CATCH (...) {
-									pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::current_exception()});
-								} CATCH_END
+							auto* keventProducer = dynamic_cast<Internal::KEvent*>(existing->_producer.get());
+							if (keventProducer) {
+								struct kevent eventChange {
+									.ident = keventProducer->_ident,
+									.filter = keventProducer->_filter,
+									.flags = EV_DELETE | EV_RECEIPT,
+									.fflags = keventProducer->_fflags,
+									.data = 0,
+									.udata = 0
+								};
+								struct kevent receiveError;
+								auto keventRes = kevent(_kqueueContext, &eventChange, 1, &receiveError, 1, nullptr);
+								assert(keventRes == 1);
+								assert(receiveError.flags & EV_ERROR);
+								assert(receiveError.data == 0);
 							} else {
-								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
-							}*/
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Unknown conduit producer type"))});
+								continue;
+							}
 
 							activeEvents.erase(existing);
 						}
@@ -331,16 +344,24 @@ namespace OSServices
 						// platform handle when it was cleaned up (in other words, that platform handle is now dangling)
 						for (auto i=activeEvents.begin(); i!=activeEvents.end();) {
 							if (i->_consumer.expired()) {
-								/*auto* completionRoutine = dynamic_cast<IConduitProducer_CompletionRoutine*>(i->_producer.get());
-								if (completionRoutine) {
-									TRY {
-										completionRoutine->CancelOperation(i->_overlapped.get());
-									} CATCH (const std::exception& e) {
-										Log(Error) << "Suppressed exception while cancelling expired conduit: " << e.what() << std::endl;
-									} CATCH (...) {
-										Log(Error) << "Suppressed unknown exception while cancelling expired conduit" << std::endl;
-									} CATCH_END
-								}*/
+								auto* keventProducer = dynamic_cast<Internal::KEvent*>(i->_producer.get());
+								if (keventProducer) {
+									struct kevent eventChange {
+										.ident = keventProducer->_ident,
+										.filter = keventProducer->_filter,
+										.flags = EV_DELETE | EV_RECEIPT,
+										.fflags = keventProducer->_fflags,
+										.data = 0,
+										.udata = 0
+									};
+									struct kevent receiveError;
+									auto keventRes = kevent(_kqueueContext, &eventChange, 1, &receiveError, 1, nullptr);
+									assert(keventRes == 1);
+									assert(receiveError.flags & EV_ERROR);
+									assert(receiveError.data == 0);
+								} else {
+									Log(Error) << "Unknown producer type when removing event due to consumer begin expired" << std::endl;
+								}
 								i = activeEvents.erase(i);
 							} else
 								++i;
@@ -399,72 +420,73 @@ namespace OSServices
 				for (const auto& evnt : MakeIteratorRange(triggeredEvents, &triggeredEvents[std::min(completedEventCount, (int)dimof(triggeredEvents))])) {
 					auto isError = evnt.flags & EV_ERROR;
 
-					if (evnt.filter == EVFILT_USER) {
-						if (evnt.ident == _interruptUserEventId) {
+					if (evnt.filter == EVFILT_USER && evnt.ident == _interruptUserEventId) {
+						if (isError)
+							Log(Error) << "Recieved error while waiting on queue thread interrupt event" << std::endl;
+						continue;
+					}
 
-							if (isError)
-								Log(Error) << "Recieved error while waiting on queue thread interrupt event" << std::endl;
+					// We use the "udata" field to lookup the activeEvent or activeOnceEvent
 
+					auto a = std::find_if(
+						activeOnceEvents.begin(), activeOnceEvents.end(),
+						[&evnt](const auto &c) { return c._producer.get() == evnt.udata; });
+					if (a != activeOnceEvents.end()) {
+						TryThreadRelease(*a->_producer);
+
+						if (isError) {
+							a->_promise.set_exception(std::make_exception_ptr(std::runtime_error("Event failed in low level kqueue service")));
 						} else {
-							auto a = std::find_if(
-								activeOnceEvents.begin(), activeOnceEvents.end(),
-								[&evnt](const auto &c) { return c._ident == evnt.ident; });
-							if (a == activeOnceEvents.end()) {
-								Log(Error) << "Received an event for a USER event that is not begin tracked in our active event list" << std::endl;
-								continue;
-							}
-
-							TryThreadRelease(*a->_producer);
-
-							if (isError) {
-								a->_promise.set_exception(std::make_exception_ptr(std::runtime_error("Event failed in low level kqueue service")));
-							} else {
-								a->_promise.set_value(PollingEventType::Input);
-							}
-							// The event is marked as one shot in it's registration; it gets removed from kqueue automatically
-							assert(evnt.flags & EV_ONESHOT);
-							activeOnceEvents.erase(a);
+							a->_promise.set_value(PollingEventType::Input);
 						}
-					}
-				}
-				
-				/*handlesToWaitOn.clear();
-				handlesToWaitOn.reserve(_activeOnceEvents.size() + 1);
-				for (const auto&e:_activeOnceEvents) handlesToWaitOn.push_back(e._platformHandle);
-				handlesToWaitOn.push_back(_interruptPollEvent);
-				
-				assert(handlesToWaitOn.size() < XL_MAX_WAIT_OBJECTS);
-				auto res = XlWaitForMultipleSyncObjects(
-					handlesToWaitOn.size(), handlesToWaitOn.data(),
-					false, timeoutInMilliseconds, true);
-
-				if (res >= XL_WAIT_OBJECT_0 && res < (XL_WAIT_OBJECT_0+handlesToWaitOn.size())) {
-					auto triggeredHandle = handlesToWaitOn[res-XL_WAIT_OBJECT_0];
-
-					if (triggeredHandle == _interruptPollEvent) {
+						// The event is marked as one shot in it's registration; it gets removed from kqueue automatically
+						assert(evnt.flags & EV_ONESHOT);
+						activeOnceEvents.erase(a);
 						continue;
 					}
 
-					auto onceEvent = std::find_if(
-						_activeOnceEvents.begin(), _activeOnceEvents.end(),
-						[triggeredHandle](const auto& ae) { return ae._platformHandle == triggeredHandle; });
-					if (onceEvent != _activeOnceEvents.end()) {
-						auto promise = std::move(onceEvent->_promise);
-						_activeOnceEvents.erase(onceEvent);
-						// Windows disguish a "read" interrupt from a "write" interruption
-						// so we'll just have to assume it's for read
-						promise.set_value(PollingEventType::Input);
+					auto a2 = std::find_if(
+						activeEvents.begin(), activeEvents.end(),
+						[&evnt](const auto &c) { return c._producer.get() == evnt.udata; });
+					if (a2 != activeEvents.end()) {
+						TryThreadRelease(*a2->_producer);
+
+						auto consumer = a2->_consumer.lock();
+						if (consumer) {
+							Internal::KEventTriggerPayload triggerPayload { evnt.flags, evnt.fflags };
+							std::any payload;
+
+							if (!isError) {
+								TRY {
+									auto* kevent = dynamic_cast<Internal::KEvent*>(a2->_producer.get());
+									if (kevent) {
+										payload = kevent->GeneratePayload(triggerPayload);
+									} else {
+										payload = triggerPayload;
+									}
+								} CATCH(...) {
+									consumer->OnException(std::current_exception());
+									continue;
+								} CATCH_END
+							}
+
+							TRY {
+								if (!isError) {
+									consumer->OnEvent(payload);
+								} else {
+									consumer->OnException(nullptr);
+								}
+							} CATCH(const std::exception& e) {
+								Log(Error) << "Suppressed exception from IConduitConsumer: " << e.what() << std::endl;
+							} CATCH(...) {
+								Log(Error) << "Suppressed unknown exception from IConduitConsumer" << std::endl;
+							} CATCH_END
+						}
 						continue;
 					}
 
-					Log(Error) << "Got an event for a platform handle that isn't in our _activeEvents list" << std::endl;
+					Log(Error) << "Received an event for an event that could not be found in our active event list" << std::endl;
 				}
-
-				// XL_WAIT_IO_COMPLETION is normal; this just happens when a completion routine was called during
-				// the wait
-				if (res != XL_WAIT_IO_COMPLETION) {
-					Log(Error) << "Unexpected return code from XlWaitForMultipleSyncObjects: " << res << std::endl;
-				}*/
 			}
 
 			// We're ending all waiting. We must set any remainding promises to exception status, because they
@@ -572,7 +594,7 @@ namespace OSServices
 				.flags = 0,
 				.fflags = NOTE_TRIGGER,
 				.data = 0,
-				.udata = 0
+				.udata = (IConduitProducer*)this		// since we use the producer* to lookup the item, we have to set it here. Note that it matters here, not where we register the event
 			};
 			auto keventRes = kevent(that->_kqueueContext, &eventChange, 1, nullptr, 0, nullptr);
 			assert(keventRes == 0);

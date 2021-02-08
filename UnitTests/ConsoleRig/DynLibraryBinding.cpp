@@ -23,6 +23,8 @@ namespace UnitTests
 	{
 		#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 			return "UnitTestDynLibrary.dll";
+		#elif (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+			return "libUnitTestDynLibrary.dylib";
 		#else
 			return "libUnitTestDynLibrary.so";
 		#endif

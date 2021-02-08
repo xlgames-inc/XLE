@@ -30,9 +30,6 @@ namespace OSServices
 		void            OnChange(StringSection<> filename);
 		int             wd() const { return _wd; }
 
-		static uint64_t HashFilename(StringSection<utf16> filename);
-		static uint64_t HashFilename(StringSection<utf8> filename);
-
 		MonitoredDirectory(const std::string& directoryName, int wd);
 		~MonitoredDirectory();
 	private:
@@ -52,9 +49,6 @@ namespace OSServices
 	{
 	}
 
-	uint64_t MonitoredDirectory::HashFilename(StringSection<utf16> filename)  { return Utility::HashFilename(filename); }
-	uint64_t MonitoredDirectory::HashFilename(StringSection<utf8> filename) { return Utility::HashFilename(filename); }
-
 	void MonitoredDirectory::AttachCallback(
 		uint64 filenameHash,
 		std::shared_ptr<OnChangeCallback> callback)
@@ -67,7 +61,7 @@ namespace OSServices
 
 	void MonitoredDirectory::OnChange(StringSection<> filename)
 	{
-		auto hash = MonitoredDirectory::HashFilename(filename);
+		auto hash = HashFilename(filename);
 		ScopedLock(_callbacksLock);
 		auto range = std::equal_range(
 			_callbacks.begin(), _callbacks.end(),
@@ -173,17 +167,15 @@ namespace OSServices
 		auto split = MakeFileNameSplitter(filename);
 		utf8 directoryName[MaxPath];
 		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-		if (!directoryName[0])
-			std::strcpy(directoryName, "./");
+		auto hash = HashFilenameAndPath(directoryName);
 
 		{
-			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);
-			auto hash = MonitoredDirectory::HashFilename(directoryName);
+			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);			
 			auto i = std::lower_bound(
 				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
 				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
 			if (i != _pimpl->_conduit->_monitoredDirectories.cend() && i->first == hash) {
-				i->second->AttachCallback(MonitoredDirectory::HashFilename(split.FileAndExtension()), std::move(callback));
+				i->second->AttachCallback(HashFilename(split.FileAndExtension()), std::move(callback));
 				return;
 			}
 
@@ -198,7 +190,7 @@ namespace OSServices
 
 			auto i2 = _pimpl->_conduit->_monitoredDirectories.insert(
 				i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName, wd)));
-			i2->second->AttachCallback(MonitoredDirectory::HashFilename(split.FileAndExtension()), std::move(callback));
+			i2->second->AttachCallback(HashFilename(split.FileAndExtension()), std::move(callback));
 		}
 
 		if (startMonitoring) {
@@ -216,12 +208,10 @@ namespace OSServices
 		auto split = MakeFileNameSplitter(filename);
 		utf8 directoryName[MaxPath];
 		MakeSplitPath(split.DriveAndPath()).Simplify().Rebuild(directoryName);
-		if (!directoryName[0])
-			std::strcpy(directoryName, "./");
 
 		{
 			ScopedLock(_pimpl->_conduit->_monitoredDirectoriesLock);
-			auto hash = MonitoredDirectory::HashFilename(directoryName);
+			auto hash = HashFilenameAndPath(directoryName);
 			auto i = std::lower_bound(
 				_pimpl->_conduit->_monitoredDirectories.cbegin(), _pimpl->_conduit->_monitoredDirectories.cend(),
 				hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());

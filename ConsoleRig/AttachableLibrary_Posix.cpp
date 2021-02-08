@@ -6,6 +6,7 @@
 #include "GlobalServices.h"
 #include "AttachablePtr.h"
 #include "../OSServices/Log.h"
+#include "../Utility/Streams/PathUtils.h"
 #include <dlfcn.h>
 #include <assert.h>
 
@@ -30,6 +31,16 @@ namespace ConsoleRig
 
             assert(_pimpl->_library == nullptr);
             _pimpl->_library = dlopen(_pimpl->_filename.c_str(), RTLD_NOW | RTLD_LOCAL);
+
+            // On Apple platforms we must explicitly check the same folder as the executable
+            #if (PLATFORMOS_TARGET == PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_IOS)
+                if (!_pimpl->_library) {
+                    char processPath[PATH_MAX];
+                    OSServices::GetProcessPath(processPath, dimof(processPath));
+                    std::string testPath = MakeFileNameSplitter(MakeStringSection(processPath)).DriveAndPath().AsString() + "/" + _pimpl->_filename;
+                    _pimpl->_library = dlopen(testPath.c_str(), RTLD_NOW | RTLD_LOCAL);
+                }
+            #endif
 
             if (!_pimpl->_library) {
                 errorMsg = dlerror();

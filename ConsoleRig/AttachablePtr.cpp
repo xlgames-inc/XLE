@@ -8,8 +8,12 @@
 #include <vector>
 #include <stdexcept>
 
+
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	#include "../OSServices/WinAPI/IncludeWindows.h"
+#elif PLATFORMOS_TARGET == PLATFORMOS_OSX
+	#include <dlfcn.h>
+	#include <mach-o/dyld.h>
 #endif
 
 namespace ConsoleRig
@@ -189,7 +193,12 @@ namespace ConsoleRig
 		RegisteredInfraModuleManagerId _nextInfraModuleManagerRegistration = 1u;
 
 		#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-			static dll_export CrossModule* RealCrossModuleGetInstance() asm("RealCrossModuleGetInstance");
+			static dll_export CrossModule* RealCrossModuleGetInstance() asm("RealCrossModuleGetInstance") __attribute__((visibility("default")));
+		#else
+			// There's something odd going on here on OSX. We must prepend the exported symbol with "_", but when
+			// we go to lookup that symbol with dlsym, we don't include the extra underscore. It seems like there's
+			// no way to lookup symbols that don't begin with an underscore
+			static dll_export CrossModule* RealCrossModuleGetInstance() asm("_RealCrossModuleGetInstance") __attribute__((visibility("default")));
 		#endif
 	};
 
@@ -281,10 +290,21 @@ namespace ConsoleRig
 		return *(realGetInstance)();
 	}
 #else
-	CrossModule& CrossModule::GetInstance()
+	CrossModule* CrossModule::Pimpl::RealCrossModuleGetInstance()
 	{
 		static CrossModule wholeProcessInstance;
-		return wholeProcessInstance;
+		return &wholeProcessInstance;
+	}
+
+	CrossModule& CrossModule::GetInstance()
+	{
+		using RealCrossModuleGetInstanceFn = CrossModule*(*)();
+		auto defaultBind = (RealCrossModuleGetInstanceFn)dlsym(RTLD_MAIN_ONLY, "RealCrossModuleGetInstance");
+		if (defaultBind) {
+			return *(*defaultBind)();
+		} else {
+			return *CrossModule::Pimpl::RealCrossModuleGetInstance();
+		}
 	}
 #endif
 	
