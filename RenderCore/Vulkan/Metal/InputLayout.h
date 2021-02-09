@@ -16,7 +16,7 @@ namespace RenderCore
 {
 	class UniformsStream;
 	class UniformsStreamInterface;
-	class VertexBufferView;
+	// class VertexBufferView;
 	class InputElementDesc;
 	class MiniInputElementDesc;
 	class CompiledShaderByteCode;
@@ -34,7 +34,9 @@ namespace RenderCore { namespace Metal_Vulkan
     class BoundInputLayout
     {
     public:
-		void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+		// void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+
+		bool AllAttributesBound() const;
 
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader);
@@ -59,16 +61,18 @@ namespace RenderCore { namespace Metal_Vulkan
 
         const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
 		const IteratorRange<const VkVertexInputBindingDescription*> GetVBBindings() const { return MakeIteratorRange(_vbBindingDescriptions); }
+		uint64_t GetPipelineRelevantHash() const { return _pipelineRelevantHash; }
     private:
         std::vector<VkVertexInputAttributeDescription>	_attributes;
 		std::vector<VkVertexInputBindingDescription>	_vbBindingDescriptions;
+		uint64_t _pipelineRelevantHash;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class BoundUniformsHelper;
 	class DescriptorSetSignature;
-	class PipelineLayoutShaderConfig;
+	class PartialPipelineDescriptorsLayout;
 	class BoundPipelineLayout;
 
 	class PipelineLayoutConfig
@@ -131,22 +135,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::string _debuggingDescription;
 		#endif
 
-		void SetupDescriptorSets(const PipelineLayoutShaderConfig& pipelineLayoutHelper);
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class BoundClassInterfaces
-    {
-    public:
-        void Bind(uint64_t hashName, unsigned bindingArrayIndex, const char instance[]) {}
-
-        BoundClassInterfaces(const ShaderProgram& shader) {}
-        BoundClassInterfaces() {}
-        ~BoundClassInterfaces() {}
-
-        BoundClassInterfaces(BoundClassInterfaces&& moveFrom) {}
-        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom) { return *this; }
+		void SetupDescriptorSets(const PartialPipelineDescriptorsLayout& pipelineLayoutHelper);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

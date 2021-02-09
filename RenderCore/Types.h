@@ -169,34 +169,34 @@ namespace RenderCore
     class Viewport
     {
     public:
-        float X, Y;
-        float Width, Height;
-        float MinDepth, MaxDepth;
-        bool OriginIsUpperLeft;
+        float _x, _y;
+        float _width, _height;
+        float _minDepth, _maxDepth;
+        bool _originIsUpperLeft;
 
         Viewport(float x=0.f, float y=0.f, float width=0.f, float height=0.f, float minDepth=0.f, float maxDepth=1.f, bool originIsUpperLeft=true)
-        : X(x), Y(y)
-        , Width(width), Height(height)
-        , MinDepth(minDepth), MaxDepth(maxDepth)
-        , OriginIsUpperLeft(originIsUpperLeft)
+        : _x(x), _y(y)
+        , _width(width), _height(height)
+        , _minDepth(minDepth), _maxDepth(maxDepth)
+        , _originIsUpperLeft(originIsUpperLeft)
         {
             // To avoid confusion that might stem from flipped viewports, disallow them.  Viewport size must be non-negative.
-            assert(Width >= 0.f);
-            assert(Height >= 0.f);
+            assert(_width >= 0.f);
+            assert(_height >= 0.f);
         }
     };
 
     class ScissorRect
     {
     public:
-        int X, Y;
-        unsigned Width, Height;
-        bool OriginIsUpperLeft;
+        int _x, _y;
+        unsigned _width, _height;
+        bool _originIsUpperLeft;
 
         ScissorRect(int x=0, int y=0, unsigned width=0, unsigned height=0, bool originIsUpperLeft=true)
-        : X(x), Y(y)
-        , Width(width), Height(height)
-        , OriginIsUpperLeft(originIsUpperLeft)
+        : _x(x), _y(y)
+        , _width(width), _height(height)
+        , _originIsUpperLeft(originIsUpperLeft)
         {}
     };
 }

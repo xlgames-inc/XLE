@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class BoundClassInterfaces;
 	class GraphicsPipelineBuilder;
-	class PipelineLayoutSignatureFile;
+	class DescriptorSetSignatureFile;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,12 +85,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
-		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
+		std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
 
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
-		std::shared_ptr<PipelineLayoutSignatureFile> _descriptorSetSignatureFile;
+		std::shared_ptr<DescriptorSetSignatureFile> _descriptorSetSignatureFile;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
@@ -119,13 +119,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> codeName,
 			StringSection<::Assets::ResChar> definesTable = {});
 
-		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
+		std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
 
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
-		std::shared_ptr<PipelineLayoutSignatureFile>			_descriptorSetSignatureFile;
+		std::shared_ptr<DescriptorSetSignatureFile>			_descriptorSetSignatureFile;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

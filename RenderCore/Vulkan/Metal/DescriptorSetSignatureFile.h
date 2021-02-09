@@ -74,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		LegacyBindingReference _legacyBindings;
 	};
         
-    class PipelineLayoutSignatureFile
+    class DescriptorSetSignatureFile
     {
     public:
         std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
@@ -91,8 +91,8 @@ namespace RenderCore { namespace Metal_Vulkan
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-        PipelineLayoutSignatureFile(StringSection<> filename);
-        ~PipelineLayoutSignatureFile();
+        DescriptorSetSignatureFile(StringSection<> filename);
+        ~DescriptorSetSignatureFile();
     private:
         ::Assets::DependentFileState _dependentFileState;
         ::Assets::DepValPtr _depVal;

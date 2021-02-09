@@ -87,7 +87,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void Bind(Topology topology);
         void Bind(const RasterizationDesc& rasterizer);
 
-        DepthStencilDesc ActiveDepthStencilDesc();
+        // DepthStencilDesc ActiveDepthStencilDesc();
 
         void SetInputLayout(const BoundInputLayout& inputLayout);
         void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);

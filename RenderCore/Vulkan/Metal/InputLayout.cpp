@@ -9,7 +9,7 @@
 #include "Shader.h"
 #include "Format.h"
 #include "PipelineLayout.h"
-#include "PipelineLayoutSignatureFile.h"
+#include "DescriptorSetSignatureFile.h"
 #include "DeviceContext.h"
 #include "Pools.h"
 #include "../../Format.h"
@@ -71,6 +71,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned b=0; b<(unsigned)vertexStrides.size(); ++b)
 			_vbBindingDescriptions.push_back({b, vertexStrides[b], VK_VERTEX_INPUT_RATE_VERTEX});
 
+		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));
+		_pipelineRelevantHash = Hash64(AsPointer(_vbBindingDescriptions.begin()), AsPointer(_vbBindingDescriptions.end()), _pipelineRelevantHash);
+
         // todo -- check if any input slots are not bound to anything
     }
 
@@ -113,6 +116,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (boundAtLeastOne)
 				_vbBindingDescriptions.push_back({slot, accumulatingOffset, VK_VERTEX_INPUT_RATE_VERTEX});
 		}
+
+		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));
+		_pipelineRelevantHash = Hash64(AsPointer(_vbBindingDescriptions.begin()), AsPointer(_vbBindingDescriptions.end()), _pipelineRelevantHash);
 	}
 
 	BoundInputLayout::BoundInputLayout(
@@ -122,7 +128,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	}
 
-    BoundInputLayout::BoundInputLayout() {}
+    BoundInputLayout::BoundInputLayout() : _pipelineRelevantHash(0ull) {}
     BoundInputLayout::~BoundInputLayout() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +408,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
 	}
 
-	void BoundUniforms::SetupDescriptorSets(const PipelineLayoutShaderConfig& pipelineLayoutHelper)
+	void BoundUniforms::SetupDescriptorSets(const PartialPipelineDescriptorsLayout& pipelineLayoutHelper)
 	{
 		for (const auto&desc:pipelineLayoutHelper._descriptorSets) {
 			if (desc._type != (unsigned)RootSignature::DescriptorSetType::Adaptive)

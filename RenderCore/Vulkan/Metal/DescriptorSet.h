@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TextureView;
 	class GlobalPools;
 	class DescriptorSetSignature;
-	class PipelineLayoutSignatureFile;
+	class DescriptorSetSignatureFile;
 
 	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 		class DescriptorSetVerboseDescription

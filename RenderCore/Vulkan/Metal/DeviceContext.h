@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -9,111 +7,130 @@
 #include "Forward.h"
 #include "State.h"
 #include "InputLayout.h"		// for NumericUniformsInterface
-#include "PipelineLayout.h"		// for PipelineLayoutBuilder
+#include "PipelineLayout.h"		// for PipelineDescriptorsLayoutBuilder
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../ResourceDesc.h"
 #include "../../FrameBufferDesc.h"
 #include "../../IDevice_Forward.h"
 #include "../../Types_Forward.h"
-#include "../../Types_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <sstream>
 
+namespace RenderCore { class VertexBufferView; class IndexBufferView; }
+
 namespace RenderCore { namespace Metal_Vulkan
 {
-    static const unsigned s_maxBoundVBs = 4;
+	static const unsigned s_maxBoundVBs = 4;
 
-    class GlobalPools;
-    class FrameBuffer;
-    class PipelineLayout;
-    class DescriptorSetSignature;
+	class GlobalPools;
+	class FrameBuffer;
+	class PipelineLayout;
+	class DescriptorSetSignature;
 	class CommandPool;
 	class DescriptorPool;
 	class DummyResources;
 	enum class CommandBufferType;
 	class TemporaryBufferSpace;
 	class Resource;
-	class PipelineLayoutShaderConfig;
+	class PartialPipelineDescriptorsLayout;
 
-    class GraphicsPipelineBuilder
-    {
-    public:
-        void        Bind(const RasterizerState& rasterizer);
-        void        Bind(const BlendState& blendState);
-        void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
+	class GraphicsPipeline : public VulkanUniquePtr<VkPipeline>
+	{
+	public:
+		uint64_t GetGUID() const;
+	};
 
+	class ComputePipeline : public VulkanUniquePtr<VkPipeline>
+	{
+	public:
+		uint64_t GetGUID() const;
+	};
+
+	class GraphicsPipelineBuilder
+	{
+	public:
+		// --------------- Cross-GFX-API interface --------------- 
 		void        Bind(const ShaderProgram& shaderProgram);
-		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
-        
-        void        Bind(Topology topology);
+		
+		void        Bind(IteratorRange<const AttachmentBlendDesc*> blendStates);
+		void        Bind(const DepthStencilDesc& depthStencilState);
+		void        Bind(const RasterizationDesc& rasterizer);
 
+		void 		Bind(const BoundInputLayout& inputLayout, Topology topology);
 		void		UnbindInputLayout();
 
-        VulkanUniquePtr<VkPipeline> CreatePipeline(
-            ObjectFactory& factory, VkPipelineCache pipelineCache,
-            VkRenderPass renderPass, unsigned subpass, 
-            TextureSamples samples);
-        bool IsPipelineStale() const { return _pipelineStale; }
+		void 		SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+		uint64_t 	GetRenderPassConfigurationHash() const;
 
-		const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
+		std::shared_ptr<GraphicsPipeline> CreatePipeline(
+			ObjectFactory& factory, VkPipelineCache pipelineCache);
+		bool IsPipelineStale() const { return _pipelineStale; }
 
-		PipelineLayoutBuilder _pipelineLayoutBuilder;
+		// const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
 
-        GraphicsPipelineBuilder();
-        ~GraphicsPipelineBuilder();
+		// --------------- Vulkan specific interface --------------- 
 
-        GraphicsPipelineBuilder(const GraphicsPipelineBuilder&);
-        GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&);
-    private:
-        RasterizerState         _rasterizerState;
-        BlendState              _blendState;
-        DepthStencilState       _depthStencilState;
-        VkPrimitiveTopology     _topology;
+		GraphicsPipelineBuilder();
+		~GraphicsPipelineBuilder();
 
-        const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
-        const ShaderProgram*    _shaderProgram;
+	private:
+		Internal::VulkanRasterizerState		_rasterizerState;
+		Internal::VulkanBlendState			_blendState;
+		Internal::VulkanDepthStencilState	_depthStencilState;
+		VkPrimitiveTopology     			_topology;
 
-        bool                    _pipelineStale;
+		std::vector<VkVertexInputAttributeDescription> _iaAttributes;
+		std::vector<VkVertexInputBindingDescription> _iaVBBindings;
+		uint64_t _iaHash;
 
-		void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
+		const ShaderProgram*    _shaderProgram;
+
+		bool                    _pipelineStale;
+
+		/*void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
 		friend class BoundInputLayout;
-		friend class ShaderProgram;
-    };
+		friend class ShaderProgram;*/
 
-    class ComputePipelineBuilder
-    {
-    public:
-        void        Bind(const ComputeShader& shader);
+	protected:
+		GraphicsPipelineBuilder(const GraphicsPipelineBuilder&);
+		GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&);
+	};
 
-        VulkanUniquePtr<VkPipeline> CreatePipeline(
-            ObjectFactory& factory, VkPipelineCache pipelineCache);
-        bool IsPipelineStale() const { return _pipelineStale; }
+	class ComputePipelineBuilder
+	{
+	public:
+		// --------------- Cross-GFX-API interface --------------- 
+		void        Bind(const ComputeShader& shader);
 
-		const ComputeShader* GetBoundComputeShader() const { return _shader; }
+		std::shared_ptr<ComputePipeline> CreatePipeline(
+			ObjectFactory& factory, VkPipelineCache pipelineCache);
+		bool IsPipelineStale() const { return _pipelineStale; }
 
-		PipelineLayoutBuilder _pipelineLayoutBuilder;
+		// const ComputeShader* GetBoundComputeShader() const { return _shader; }
 
-        ComputePipelineBuilder();
-        ~ComputePipelineBuilder();
+		// --------------- Vulkan specific interface --------------- 
 
-        ComputePipelineBuilder(const ComputePipelineBuilder&);
-        ComputePipelineBuilder& operator=(const ComputePipelineBuilder&);
+		ComputePipelineBuilder();
+		~ComputePipelineBuilder();
 
-    private:
-        const ComputeShader*    _shader;
-        bool                    _pipelineStale;
-    };
+		ComputePipelineBuilder(const ComputePipelineBuilder&);
+		ComputePipelineBuilder& operator=(const ComputePipelineBuilder&);
 
-    class DescriptorCollection
-    {
-    public:
-        NumericUniformsInterface			_numericBindings;
-        unsigned                            _numericBindingsSlot = ~0u;
+	private:
+		const ComputeShader*    _shader;
+		bool                    _pipelineStale;
+	};
 
-        std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
-        bool                                _hasSetsAwaitingFlush = false;
+	class DescriptorCollection
+	{
+	public:
+		NumericUniformsInterface			_numericBindings;
+		unsigned                            _numericBindingsSlot = ~0u;
+
+		std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
+		bool                                _hasSetsAwaitingFlush = false;
 
 		struct DescInfo 
 		{
@@ -132,64 +149,65 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkShaderStageFlags stageFlags,
 			unsigned descriptorSetIndex);
 
-        DescriptorCollection(
-            const ObjectFactory&    factory, 
-            GlobalPools&            globalPools,
+		DescriptorCollection(
+			const ObjectFactory&    factory, 
+			GlobalPools&            globalPools,
 			unsigned				descriptorSetCount);
 
 	private:
 		const ObjectFactory*    _factory;
-        GlobalPools*			_globalPools;
-    };
+		GlobalPools*			_globalPools;
+	};
 
 	class CommandList
 	{
 	public:
+		// --------------- Vulkan specific interface --------------- 
 		void UpdateBuffer(
-            VkBuffer buffer, VkDeviceSize offset, 
-            VkDeviceSize byteCount, const void* data);
-        void BindDescriptorSets(
-            VkPipelineBindPoint pipelineBindPoint,
-            VkPipelineLayout layout,
-            uint32_t firstSet,
-            uint32_t descriptorSetCount,
-            const VkDescriptorSet* pDescriptorSets,
-            uint32_t dynamicOffsetCount,
-            const uint32_t* pDynamicOffsets);
-        void CopyBuffer(
-            VkBuffer srcBuffer,
-            VkBuffer dstBuffer,
-            uint32_t regionCount,
-            const VkBufferCopy* pRegions);
-        void CopyImage(
-            VkImage srcImage,
-            VkImageLayout srcImageLayout,
-            VkImage dstImage,
-            VkImageLayout dstImageLayout,
-            uint32_t regionCount,
-            const VkImageCopy* pRegions);
-        void CopyBufferToImage(
-            VkBuffer srcBuffer,
-            VkImage dstImage,
-            VkImageLayout dstImageLayout,
-            uint32_t regionCount,
-            const VkBufferImageCopy* pRegions);
-        void PipelineBarrier(
-            VkPipelineStageFlags            srcStageMask,
-            VkPipelineStageFlags            dstStageMask,
-            VkDependencyFlags               dependencyFlags,
-            uint32_t                        memoryBarrierCount,
-            const VkMemoryBarrier*          pMemoryBarriers,
-            uint32_t                        bufferMemoryBarrierCount,
-            const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
-            uint32_t                        imageMemoryBarrierCount,
-            const VkImageMemoryBarrier*     pImageMemoryBarriers);
-        void PushConstants(
-            VkPipelineLayout layout,
-            VkShaderStageFlags stageFlags,
-            uint32_t offset,
-            uint32_t size,
-            const void* pValues);
+			VkBuffer buffer, VkDeviceSize offset, 
+			VkDeviceSize byteCount, const void* data);
+		void BindDescriptorSets(
+			VkPipelineBindPoint pipelineBindPoint,
+			VkPipelineLayout layout,
+			uint32_t firstSet,
+			uint32_t descriptorSetCount,
+			const VkDescriptorSet* pDescriptorSets,
+			uint32_t dynamicOffsetCount,
+			const uint32_t* pDynamicOffsets);
+		void CopyBuffer(
+			VkBuffer srcBuffer,
+			VkBuffer dstBuffer,
+			uint32_t regionCount,
+			const VkBufferCopy* pRegions);
+		void CopyImage(
+			VkImage srcImage,
+			VkImageLayout srcImageLayout,
+			VkImage dstImage,
+			VkImageLayout dstImageLayout,
+			uint32_t regionCount,
+			const VkImageCopy* pRegions);
+		void CopyBufferToImage(
+			VkBuffer srcBuffer,
+			VkImage dstImage,
+			VkImageLayout dstImageLayout,
+			uint32_t regionCount,
+			const VkBufferImageCopy* pRegions);
+		void PipelineBarrier(
+			VkPipelineStageFlags            srcStageMask,
+			VkPipelineStageFlags            dstStageMask,
+			VkDependencyFlags               dependencyFlags,
+			uint32_t                        memoryBarrierCount,
+			const VkMemoryBarrier*          pMemoryBarriers,
+			uint32_t                        bufferMemoryBarrierCount,
+			const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
+			uint32_t                        imageMemoryBarrierCount,
+			const VkImageMemoryBarrier*     pImageMemoryBarriers);
+		void PushConstants(
+			VkPipelineLayout layout,
+			VkShaderStageFlags stageFlags,
+			uint32_t offset,
+			uint32_t size,
+			const void* pValues);
 		void WriteTimestamp(
 			VkPipelineStageFlagBits pipelineStage, 
 			VkQueryPool queryPool, uint32_t query);
@@ -217,34 +235,104 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkCommandBuffer> _underlying;
 	};
 
-    using CommandListPtr = std::shared_ptr<CommandList>;
+	struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
 
-	class DeviceContext : public GraphicsPipelineBuilder, ComputePipelineBuilder
-    {
-    public:
-		void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
-        void        Bind(const ViewportDesc& viewport);
-        const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
+	class SharedGraphicsEncoder
+	{
+	public:
+		//	------ Draw & Clear -------
+		void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour);
+		void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
+		void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour);
+		void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour);
+		void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
-        using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
-        using ComputePipelineBuilder::Bind;
+		//	------ Non-pipeline states (that can be changed mid-render pass) -------
+		void 		Bind(IteratorRange<const VertexBufferView*> vertexBuffers);
+		void        Bind(const IndexBufferView& ibView);
+		void		SetStencilRef(unsigned stencilRef);
+		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
-        void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
-        void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-        void        DrawAuto();
-        void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
+		// --------------- Vulkan specific interface --------------- 
+		void		BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+		void		PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
 
-        void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour) {}
-        struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
-        void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil) {}
-        void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour) {}
-        void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
-        void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
+	protected:
+		SharedGraphicsEncoder(const SharedGraphicsEncoder&);		// (hide these to avoid slicing in derived types)
+		SharedGraphicsEncoder& operator=(const SharedGraphicsEncoder&);
 
+		CommandList _commandList;
+	};
+	
+	class GraphicsEncoder_ProgressivePipeline : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
+	{
+	public:
+		//	------ Draw & Clear -------
+		void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
+		void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0);
+		void    	DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+		void    	DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
+		void        DrawAuto();
+
+	protected:
+		bool 		BindGraphicsPipeline();
+		VulkanUniquePtr<VkPipeline>         _currentGraphicsPipeline;
+	};
+
+	class GraphicsEncoder : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
+	{
+	public:
+		//	------ Draw & Clear -------
+		void        Draw(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned startVertexLocation=0);
+		void        DrawIndexed(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned startIndexLocation=0);
+		void    	DrawInstances(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
+		void    	DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
+		void        DrawAuto(const GraphicsPipeline& pipeline);
+	};
+
+	class ComputeEncoder_ProgressivePipeline : public ComputePipelineBuilder
+	{
+	public:
+		void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
+
+	protected:
+		bool 		BindComputePipeline();
+		VulkanUniquePtr<VkPipeline>         _currentComputePipeline;
+	};
+
+	class DeviceContext
+	{
+	public:
+		// --------------- Cross-GFX-API interface --------------- 
+
+		void BeginRenderPass(
+			FrameBuffer& frameBuffer,
+			IteratorRange<const ClearValue*> clearValues = {});
+		void BeginNextSubpass(FrameBuffer& frameBuffer);
+		void EndRenderPass();
+		unsigned GetCurrentSubpassIndex();
+
+		GraphicsEncoder BeginGraphicsEncoder();
+		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline();
+		ComputeEncoder_ProgressivePipeline BeginComputeEncoder();
+
+		// void        Bind(const ViewportDesc& viewport);
+		// const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
+
+		// using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
+		// using ComputePipelineBuilder::Bind;
+
+		static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
+
+		// --------------- Vulkan specific interface --------------- 
+
+		void        BeginRenderPass(
+			const FrameBuffer& fb,
+			TextureSamples samples,
+			VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
+			IteratorRange<const ClearValue*> clearValues);
+		
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
-
-        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
-		std::shared_ptr<DeviceContext> Fork();
 
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
@@ -256,74 +344,64 @@ namespace RenderCore { namespace Metal_Vulkan
 			using BitField = unsigned;
 		};
 		void		QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags = 0);
-		auto        ResolveCommandList() -> CommandListPtr;
-		bool		IsImmediate() { return false; }
+		auto        ResolveCommandList() -> std::shared_ptr<CommandList>;
 
 		CommandList& GetActiveCommandList();
 		bool HasActiveCommandList();
-		
-		void			InvalidateCachedState() {}
-		static void		PrepareForDestruction(IDevice*, IPresentationChain*);
 
-		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
-		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
-
-        GlobalPools&    GetGlobalPools();
-        VkDevice        GetUnderlyingDevice();
+		GlobalPools&    GetGlobalPools();
+		VkDevice        GetUnderlyingDevice();
 		ObjectFactory&	GetFactory() const				{ return *_factory; }
 		TemporaryBufferSpace& GetTemporaryBufferSpace()		{ return *_tempBufferSpace; }
 
-        void BeginRenderPass(
-            const FrameBuffer& fb,
-            TextureSamples samples,
-            VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
-            IteratorRange<const ClearValue*> clearValues);
-        void EndRenderPass();
-        bool IsInRenderPass() const;
+		void BeginRenderPass(
+			const FrameBuffer& fb,
+			TextureSamples samples,
+			VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
+			IteratorRange<const ClearValue*> clearValues);
+		void EndRenderPass();
+		bool IsInRenderPass() const;
 		void NextSubpass(VkSubpassContents);
 		unsigned RenderPassSubPassIndex() const { return _renderPassSubpass; }
 
-		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
-        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
-
-        DeviceContext(
-            ObjectFactory& factory, 
-            GlobalPools& globalPools,
+		DeviceContext(
+			ObjectFactory& factory, 
+			GlobalPools& globalPools,
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
-    private:
-        CommandList							_commandList;
-        GlobalPools*                        _globalPools;
-        ObjectFactory*						_factory;
+		// --------------- Legacy interface --------------- 
+		void			InvalidateCachedState() {}
+		static void		PrepareForDestruction(IDevice*, IPresentationChain*);
+		bool			IsImmediate() { return false; }
 
-        VkRenderPass                        _renderPass;
-        TextureSamples                      _renderPassSamples;
-        unsigned                            _renderPassSubpass;
-        ViewportDesc                        _boundViewport;
+	private:
+		CommandList							_commandList;
+		GlobalPools*                        _globalPools;
+		ObjectFactory*						_factory;
 
-        VulkanUniquePtr<VkPipeline>         _currentGraphicsPipeline;
-        VulkanUniquePtr<VkPipeline>         _currentComputePipeline;
+		VkRenderPass                        _renderPass;
+		TextureSamples                      _renderPassSamples;
+		unsigned                            _renderPassSubpass;
 
-        DescriptorCollection                _graphicsDescriptors;
-        DescriptorCollection                _computeDescriptors;
+		DescriptorCollection                _graphicsDescriptors;
+		DescriptorCollection                _computeDescriptors;
 
-        CommandPool*                        _cmdPool;
+		CommandPool*                        _cmdPool;
 		CommandBufferType					_cmdBufferType;
 
 		TemporaryBufferSpace*				_tempBufferSpace;
 
 		VulkanUniquePtr<VkFence>			_utilityFence;
 
-        bool BindGraphicsPipeline();
-        bool BindComputePipeline();
+		
 		void LogPipeline(PipelineType pipeline);
 		void RebindNumericDescriptorSet(PipelineType pipelineType);
 		void SetupPipelineBuilders();
-    };
+	};
 
 	inline CommandList& DeviceContext::GetActiveCommandList()
 	{
@@ -335,12 +413,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		return _commandList.GetUnderlying() != nullptr;
 	}
-
-	template<int Count> 
-		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) {}
-    template<int Count1, int Count2> 
-		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
-		{}
 
 }}
 

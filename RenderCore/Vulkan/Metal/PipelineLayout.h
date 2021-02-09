@@ -21,7 +21,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
 	class DescriptorSetSignature;
-    class PipelineLayoutSignatureFile;
+    class DescriptorSetSignatureFile;
 	class RootSignature;
 	class BoundPipelineLayout;
 	class LegacyRegisterBinding;
@@ -37,22 +37,14 @@ namespace RenderCore { namespace Metal_Vulkan
         Unknown
     };
 
+#if 0
     class BoundSignatureFile
     {
     public:
-		struct DescriptorSet
-		{
-			VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
-			VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
-			
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				DescriptorSetVerboseDescription _blankBindingsDescription;
-				std::string _name;
-			#endif
-		};
+		
 
         const DescriptorSet*	GetDescriptorSet(uint64_t signatureFile, uint64_t hashName) const;
-		void					RegisterSignatureFile(uint64_t hashName, const PipelineLayoutSignatureFile& signatureFile);
+		void					RegisterSignatureFile(uint64_t hashName, const DescriptorSetSignatureFile& signatureFile);
 
         BoundSignatureFile(ObjectFactory& objectFactory, GlobalPools& globalPools, VkShaderStageFlags stageFlags);
         ~BoundSignatureFile();
@@ -60,18 +52,29 @@ namespace RenderCore { namespace Metal_Vulkan
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+#endif
 
-	class PipelineLayoutShaderConfig
+	struct CompiledDescriptorSetLayout
+	{
+		VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
+		VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
+		
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription _blankBindingsDescription;
+			std::string _name;
+		#endif
+	};
+
+	class PartialPipelineDescriptorsLayout
 	{
 	public:
 		class DescriptorSet
 		{
 		public:
-			BoundSignatureFile::DescriptorSet			_bound;
+			CompiledDescriptorSetLayout					_bound;
 			std::shared_ptr<DescriptorSetSignature>		_signature;
 			unsigned									_pipelineLayoutBindingIndex;
-			// RootSignature::DescriptorSetType			_type;
-			unsigned _type;
+			unsigned 									_type;		// RootSignature::DescriptorSetType
 			unsigned									_uniformStream;
 			std::string									_name;
 		};
@@ -79,19 +82,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<PushConstantsRangeSigniture>	_pushConstants;
 		std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
 
-		mutable VulkanUniquePtr<VkPipelineLayout>	_cachedPipelineLayout;
-		mutable unsigned							_cachedPipelineLayoutId = 0;
-		mutable unsigned							_cachedDescriptorSetCount = 0;
+		PartialPipelineDescriptorsLayout();
+		~PartialPipelineDescriptorsLayout();
 
-		PipelineLayoutShaderConfig();
-		PipelineLayoutShaderConfig(ObjectFactory& factory, const PipelineLayoutSignatureFile& signatureFile, uint64_t boundId, PipelineType pipelineType);
-		~PipelineLayoutShaderConfig();
-
-		PipelineLayoutShaderConfig& operator=(PipelineLayoutShaderConfig&& moveFrom) = default;
-		PipelineLayoutShaderConfig(PipelineLayoutShaderConfig&& moveFrom) = default;
+		PartialPipelineDescriptorsLayout& operator=(PartialPipelineDescriptorsLayout&& moveFrom) = default;
+		PartialPipelineDescriptorsLayout(PartialPipelineDescriptorsLayout&& moveFrom) = default;
 	};
 
-	class PipelineLayoutBuilder
+	std::shared_ptr<PartialPipelineDescriptorsLayout>  CreatePartialPipelineDescriptorsLayout(
+		ObjectFactory& factory,
+		const DescriptorSetSignatureFile& signatureFile, uint64_t boundId, PipelineType pipelineType);
+
+	VulkanUniquePtr<VkPipelineLayout> CreateVulkanPipelineLayout(
+		ObjectFactory& factory,
+		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts);
+
+	/*mutable VulkanUniquePtr<VkPipelineLayout>	_cachedPipelineLayout;
+	mutable unsigned							_cachedPipelineLayoutId = 0;
+	mutable unsigned							_cachedDescriptorSetCount = 0;*/
+
+#if 0
+	class PipelineDescriptorsLayoutBuilder
 	{
 	public:
 		struct FixedDescriptorSetLayout
@@ -104,18 +115,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VkPipelineLayout	GetPipelineLayout() const { return _pipelineLayout; }
 		unsigned			GetDescriptorSetCount() const { return _descriptorSetCount; }
-		void				SetShaderBasedDescriptorSets(const PipelineLayoutShaderConfig&);
+		void				SetShaderBasedDescriptorSets(const PartialPipelineDescriptorsLayout&);
 
 		unsigned			_shaderStageMask = 0u;
 		ObjectFactory*		_factory = nullptr;
 
-		PipelineLayoutBuilder();
-		~PipelineLayoutBuilder();
+		PipelineDescriptorsLayoutBuilder();
+		~PipelineDescriptorsLayoutBuilder();
 	private:
 		VkPipelineLayout	_pipelineLayout;
 		unsigned			_descriptorSetCount = 0u;
 		unsigned			_pipelineLayoutId = 1u;
 	};
+#endif
 
 	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 
@@ -139,23 +151,28 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class ShaderProgram;
+	class ComputeShader;
+
 	class VulkanGlobalsTemp
 	{
 	public:
-		std::shared_ptr<PipelineLayoutSignatureFile> _graphicsRootSignatureFile;
-		std::shared_ptr<PipelineLayoutSignatureFile> _computeRootSignatureFile;
+		std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
+		std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
 
 		GlobalPools* _globalPools;
 
 		static VulkanGlobalsTemp& GetInstance();
 
-		std::shared_ptr<BoundSignatureFile> _boundGraphicsSignatures;
-		std::shared_ptr<BoundSignatureFile> _boundComputeSignatures;
+		// std::shared_ptr<BoundSignatureFile> _boundGraphicsSignatures;
+		// std::shared_ptr<BoundSignatureFile> _boundComputeSignatures;
+		// static const unsigned s_mainSignature = 1;
 
-		static const unsigned s_mainSignature = 1;
+		std::shared_ptr<PartialPipelineDescriptorsLayout> _mainGraphicsConfig;
+		std::shared_ptr<PartialPipelineDescriptorsLayout> _mainComputeConfig;
 
-		std::shared_ptr<PipelineLayoutShaderConfig> _mainGraphicsConfig;
-		std::shared_ptr<PipelineLayoutShaderConfig> _mainComputeConfig;
+		VkPipelineLayout GetPipelineLayout(const ShaderProgram&);
+		VkPipelineLayout GetPipelineLayout(const ComputeShader&);
 
 		VulkanGlobalsTemp();
 		~VulkanGlobalsTemp();

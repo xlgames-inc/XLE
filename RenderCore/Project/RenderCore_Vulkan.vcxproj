@@ -98,7 +98,7 @@
     <ClCompile Include="..\Vulkan\Metal\NumericInterface.cpp" />
     <ClCompile Include="..\Vulkan\Metal\ObjectFactory.cpp" />
     <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
-    <ClCompile Include="..\Vulkan\Metal\PipelineLayoutSignatureFile.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\DescriptorSetSignatureFile.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Pools.cpp" />
     <ClCompile Include="..\Vulkan\Metal\QueryPool.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Resource.cpp" />
@@ -117,7 +117,7 @@
     <ClInclude Include="..\Vulkan\Metal\Format.h" />
     <ClInclude Include="..\Vulkan\Metal\Forward.h" />
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
-    <ClInclude Include="..\Vulkan\Metal\PipelineLayoutSignatureFile.h" />
+    <ClInclude Include="..\Vulkan\Metal\DescriptorSetSignatureFile.h" />
     <ClInclude Include="..\Vulkan\Metal\QueryPool.h" />
     <ClInclude Include="..\Vulkan\Metal\IncludeVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\InputLayout.h" />

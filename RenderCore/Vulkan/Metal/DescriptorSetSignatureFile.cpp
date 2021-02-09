@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "PipelineLayoutSignatureFile.h"
+#include "DescriptorSetSignatureFile.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
@@ -302,7 +302,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	const RootSignature*								PipelineLayoutSignatureFile::GetRootSignature(uint64_t name) const
+	const RootSignature*								DescriptorSetSignatureFile::GetRootSignature(uint64_t name) const
 	{
 		for (const auto&r:_rootSignatures)
 			if (r._hashName == name)
@@ -310,7 +310,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return nullptr;
 	}
 
-	const std::shared_ptr<LegacyRegisterBinding>&		PipelineLayoutSignatureFile::GetLegacyRegisterBinding(uint64_t name) const
+	const std::shared_ptr<LegacyRegisterBinding>&		DescriptorSetSignatureFile::GetLegacyRegisterBinding(uint64_t name) const
 	{
 		for (const auto&r:_legacyRegisterBindingSettings)
 			if (r->_hashName == name)
@@ -319,7 +319,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return dummy;
 	}
 
-	const PushConstantsRangeSigniture*					PipelineLayoutSignatureFile::GetPushConstantsRangeSigniture(uint64_t name) const
+	const PushConstantsRangeSigniture*					DescriptorSetSignatureFile::GetPushConstantsRangeSigniture(uint64_t name) const
 	{
 		for (const auto&r:_pushConstantRanges)
 			if (r._hashName == name)
@@ -327,7 +327,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return nullptr;
 	}
 
-	const std::shared_ptr<DescriptorSetSignature>&		PipelineLayoutSignatureFile::GetDescriptorSet(uint64_t name) const
+	const std::shared_ptr<DescriptorSetSignature>&		DescriptorSetSignatureFile::GetDescriptorSet(uint64_t name) const
 	{
 		static std::shared_ptr<DescriptorSetSignature> dummy;
 		for (const auto&d:_descriptorSets)
@@ -336,7 +336,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return dummy;
 	}
 
-    PipelineLayoutSignatureFile::PipelineLayoutSignatureFile(StringSection<> filename)
+    DescriptorSetSignatureFile::DescriptorSetSignatureFile(StringSection<> filename)
     {
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, filename);
@@ -380,7 +380,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		} CATCH_END
     }
 
-    PipelineLayoutSignatureFile::~PipelineLayoutSignatureFile() {}
+    DescriptorSetSignatureFile::~DescriptorSetSignatureFile() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

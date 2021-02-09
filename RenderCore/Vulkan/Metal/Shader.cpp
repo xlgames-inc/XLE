@@ -8,7 +8,7 @@
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "PipelineLayout.h"
-#include "PipelineLayoutSignatureFile.h"		// (just to get depval)
+#include "DescriptorSetSignatureFile.h"		// (just to get depval)
 #include "../../ShaderService.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
@@ -104,7 +104,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         if (pipeline._shaderProgram != this) {
             pipeline._shaderProgram = this;
-			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
+			pipeline._PipelineDescriptorsLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
             pipeline._pipelineStale = true;
         }
     }
@@ -113,7 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		if (pipeline._shaderProgram != this) {
             pipeline._shaderProgram = this;
-			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
+			pipeline._PipelineDescriptorsLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
             pipeline._pipelineStale = true;
         }
 	}

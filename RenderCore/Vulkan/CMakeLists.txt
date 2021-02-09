@@ -12,7 +12,7 @@ set(Src
 	Metal/NumericInterface.cpp
 	Metal/ObjectFactory.cpp
 	Metal/PipelineLayout.cpp
-	Metal/PipelineLayoutSignatureFile.cpp
+	Metal/DescriptorSetSignatureFile.cpp
 	Metal/Pools.cpp
 	Metal/QueryPool.cpp
 	Metal/Resource.cpp

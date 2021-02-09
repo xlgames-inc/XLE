@@ -6,7 +6,7 @@
 
 #include "Shader.h"
 #include "DeviceContext.h"
-#include "PipelineLayoutSignatureFile.h"
+#include "DescriptorSetSignatureFile.h"
 #include "ShaderReflection.h"		// (for metrics string)
 #include "IncludeVulkan.h"
 #include "../IDeviceVulkan.h"
@@ -75,14 +75,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         HLSLToSPIRVCompiler(
             std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
-            const std::shared_ptr<PipelineLayoutSignatureFile>& graphicsPipelineLayout,
-			const std::shared_ptr<PipelineLayoutSignatureFile>& computePipelineLayout);
+            const std::shared_ptr<DescriptorSetSignatureFile>& graphicsPipelineLayout,
+			const std::shared_ptr<DescriptorSetSignatureFile>& computePipelineLayout);
         ~HLSLToSPIRVCompiler();
 
     private:
         std::shared_ptr<ILowLevelCompiler>				_hlslCompiler;
-        std::shared_ptr<PipelineLayoutSignatureFile>		_graphicsPipelineLayout;
-        std::shared_ptr<PipelineLayoutSignatureFile>		_computePipelineLayout;
+        std::shared_ptr<DescriptorSetSignatureFile>		_graphicsPipelineLayout;
+        std::shared_ptr<DescriptorSetSignatureFile>		_computePipelineLayout;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
         friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice&, VulkanShaderMode);
@@ -528,7 +528,7 @@ namespace RenderCore { namespace Metal_Vulkan
         if (!hlslGood) return false;
 
         // We need to load the root signature and add it as a dependency
-        std::shared_ptr<PipelineLayoutSignatureFile> rootSig;
+        std::shared_ptr<DescriptorSetSignatureFile> rootSig;
         if (shaderPath._shaderModel[0] == 'c' || shaderPath._shaderModel[0] == 'C') {
             rootSig = _computePipelineLayout;
         } else {
@@ -595,8 +595,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
     HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(
         std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
-        const std::shared_ptr<PipelineLayoutSignatureFile>& graphicsPipelineLayout,
-        const std::shared_ptr<PipelineLayoutSignatureFile>& computePipelineLayout) 
+        const std::shared_ptr<DescriptorSetSignatureFile>& graphicsPipelineLayout,
+        const std::shared_ptr<DescriptorSetSignatureFile>& computePipelineLayout) 
     : _hlslCompiler(std::move(hlslCompiler))
     , _graphicsPipelineLayout(graphicsPipelineLayout)
     , _computePipelineLayout(computePipelineLayout)

@@ -65,6 +65,9 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkSampler> _sampler;
     };
 
+    namespace Internal
+    {
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>States used while rasterising triangles</summary>
@@ -94,19 +97,11 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class RasterizerState : public VkPipelineRasterizationStateCreateInfo
+    class VulkanRasterizerState : public VkPipelineRasterizationStateCreateInfo
     {
     public:
-        RasterizerState(CullMode cullmode = CullMode::Back, bool frontCounterClockwise = true);
-        RasterizerState(
-            CullMode cullmode, bool frontCounterClockwise,
-            FillMode fillmode,
-            int depthBias, float depthBiasClamp, float slopeScaledBias);
-
-		static RasterizerState Null() { return RasterizerState(); }
-
-        using UnderlyingType = const RasterizerState*;
-        UnderlyingType GetUnderlying() const { return this; }
+        VulkanRasterizerState(const RasterizationDesc& desc);
+        VulkanRasterizerState();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,50 +141,17 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class BlendState : public VkPipelineColorBlendStateCreateInfo
+    class VulkanBlendState : public VkPipelineColorBlendStateCreateInfo
     {
     public:
-        BlendState( BlendOp blendingOperation = BlendOp::Add, 
-                    Blend srcBlend = Blend::SrcAlpha,
-                    Blend dstBlend = Blend::InvSrcAlpha,
-                    BlendOp alphaBlendingOperation = BlendOp::NoBlending,
-                    Blend alphaSrcBlend = Blend::One,
-                    Blend alphaDstBlend = Blend::Zero);
-
-        BlendState(const BlendState&);
-        BlendState& operator=(const BlendState&);
-
-		static BlendState Null() { return BlendState(); }
-
-        using UnderlyingType = const BlendState*;
-        UnderlyingType GetUnderlying() const { return this; }
+        VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates);
+        VulkanBlendState();
 
     private:
         VkPipelineColorBlendAttachmentState _attachments[s_mrtLimit];
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class StencilMode
-    {
-    public:
-		CompareOp _comparison;
-        StencilOp _onPass;
-        StencilOp _onDepthFail;
-        StencilOp _onStencilFail;
-        StencilMode(
-			CompareOp comparison     = CompareOp::Always,
-            StencilOp onPass          = StencilOp::Replace,
-            StencilOp onStencilFail   = StencilOp::DontWrite,
-            StencilOp onDepthFail     = StencilOp::DontWrite)
-            : _comparison(comparison)
-            , _onPass(onPass)
-            , _onStencilFail(onStencilFail)
-            , _onDepthFail(onDepthFail) {}
-
-        static StencilMode NoEffect;
-        static StencilMode AlwaysWrite;
-    };
 
     /// <summary>States used reading and writing to the depth buffer</summary>
     ///
@@ -224,54 +186,13 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class DepthStencilState : public VkPipelineDepthStencilStateCreateInfo
+    class VulkanDepthStencilState : public VkPipelineDepthStencilStateCreateInfo
     {
     public:
-        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, CompareOp comparison = CompareOp::LessEqual);
-        DepthStencilState(
-            bool depthTestEnabled, bool writeEnabled, 
-            unsigned stencilReadMask, unsigned stencilWriteMask,
-            const StencilMode& frontFaceStencil = StencilMode::NoEffect,
-            const StencilMode& backFaceStencil = StencilMode::NoEffect);
-
-        using UnderlyingType = const DepthStencilState*;
-        UnderlyingType GetUnderlying() const { return this; }
+        VulkanDepthStencilState(const DepthStencilDesc& depthStencilState);
+        VulkanDepthStencilState();
     };
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>Utility for querying low level viewport</summary>
-    ///
-    ///     Pass the device context to the constructor of "ViewportDesc" to
-    ///     query the current low level viewport.
-    ///
-    ///     For example:
-    ///         <code>
-    ///             ViewportDesc currentViewport0(*context);
-    ///             auto width = currentViewport0.Width;
-    ///         </code>
-    ///
-    ///     Note that the type is designed for compatibility with the D3D11 type,
-    ///     D3D11_VIEWPORT (for convenience).
-    ///
-    ///     There can actually be multiple viewports in D3D11. But usually only
-    ///     the 0th viewport is used.
-    class ViewportDesc
-    {
-    public:
-            // (compatible with D3D11_VIEWPORT)
-        float TopLeftX;
-        float TopLeftY;
-        float Width;
-        float Height;
-        float MinDepth;
-        float MaxDepth;
-
-        ViewportDesc(float topLeftX, float topLeftY, float width, float height, float minDepth=0.f, float maxDepth=1.f)
-            : TopLeftX(topLeftX), TopLeftY(topLeftY), Width(width), Height(height)
-            , MinDepth(minDepth), MaxDepth(maxDepth) {}
-        ViewportDesc(const DeviceContext& context);
-        ViewportDesc();
-    };
+    }
 }}
 
