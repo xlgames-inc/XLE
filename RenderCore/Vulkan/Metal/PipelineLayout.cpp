@@ -4,6 +4,7 @@
 
 #include "PipelineLayout.h"
 #include "DescriptorSet.h"
+#include "DescriptorSetSignatureFile.h"
 #include "ObjectFactory.h"
 #include "Pools.h"
 #include "DescriptorSetSignatureFile.h"
@@ -11,45 +12,8 @@
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/MemoryUtils.h"
 
-namespace RenderCore { namespace Metal_Vulkan
+namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 {
-	static void ValidateRootSignature(
-		VkPhysicalDevice physDev,
-		const DescriptorSetSignatureFile& signatureFile);
-
-	VkDescriptorType_ AsVkDescriptorType(DescriptorType type)
-	{
-		switch (type) {
-		case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
-		case DescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		case DescriptorType::ConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		case DescriptorType::UnorderedAccessTexture:	return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		case DescriptorType::UnorderedAccessBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		default:										return VK_DESCRIPTOR_TYPE_SAMPLER;
-		}
-	}
-
-	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
-		const ObjectFactory& factory, 
-		const DescriptorSetSignature& srcLayout,
-		VkShaderStageFlags stageFlags)
-	{
-		// The "root signature" bindings correspond very closely with the
-		// DescriptorSetLayout
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-		bindings.reserve(srcLayout._bindings.size());
-		for (unsigned bIndex=0; bIndex<(unsigned)srcLayout._bindings.size(); ++bIndex) {
-			VkDescriptorSetLayoutBinding dstBinding = {};
-			dstBinding.binding = bIndex;
-			dstBinding.descriptorType = (VkDescriptorType)AsVkDescriptorType(srcLayout._bindings[bIndex]);
-			dstBinding.descriptorCount = 1;
-			dstBinding.stageFlags = stageFlags;
-			dstBinding.pImmutableSamplers = nullptr;
-			bindings.push_back(dstBinding);
-		}
-		return factory.CreateDescriptorSetLayout(MakeIteratorRange(bindings));
-	}
-
 #if 0
 	class BoundSignatureFile::Pimpl
 	{
@@ -123,7 +87,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	VulkanUniquePtr<VkPipelineLayout> CreateVulkanPipelineLayout(
 		ObjectFactory& factory,
-		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts);
+		CompiledDescriptorSetLayoutCache& cache,
+		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
+		VkShaderStageFlags stageFlags)
 	{
 		VkDescriptorSetLayout rawDescriptorSetLayouts[s_maxDescriptorSetCount] = {};
 		unsigned descriptorSetCount = 0;
@@ -133,18 +99,21 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (auto& desc:partial._descriptorSets) {
 				assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
 				assert(!rawDescriptorSetLayouts[desc._pipelineLayoutBindingIndex]);
-				rawDescriptorSetLayouts[desc._pipelineLayoutBindingIndex] = desc._bound._layout.get();
-				descriptorSetCount = std::max(descriptorSetCount, desc._pipelineLayoutBindingIndex+1);
+
+				auto* compiled = cache.CompileDescriptorSetLayout(*desc._signature, stageFlags);
+				if (compiled) {
+					rawDescriptorSetLayouts[desc._pipelineLayoutBindingIndex] = compiled->_layout.get();
+					descriptorSetCount = std::max(descriptorSetCount, desc._pipelineLayoutBindingIndex+1);
+				}
 			}
 
 			rawPushConstantRanges.reserve(rawPushConstantRanges.size() + partial._pushConstants.size());
-			for (const auto& s:partial._pushConstants) {
-				if (s._stages & _shaderStageMask)
-					rawPushConstantRanges.push_back(VkPushConstantRange{s._stages & _shaderStageMask, s._rangeStart, s._rangeSize});
-			}
+			for (const auto& s:partial._pushConstants)
+				rawPushConstantRanges.push_back(VkPushConstantRange{s._stages, s._rangeStart, s._rangeSize});
 		}
 
 		// todo -- we should check if there's any overlaps between push constant ranges
+		// todo -- we also need a way to return the blank bindings back to the caller
 		return factory.CreatePipelineLayout(
 			MakeIteratorRange(rawDescriptorSetLayouts, &rawDescriptorSetLayouts[descriptorSetCount]),
 			MakeIteratorRange(rawPushConstantRanges));
@@ -257,29 +226,34 @@ namespace RenderCore { namespace Metal_Vulkan
 		return s_instance;
 	}
 
+	VkPipelineLayout VulkanGlobalsTemp::GetPipelineLayout(const ShaderProgram&)
+	{
+		return _graphicsPipelineLayout.get();
+	}
+	VkPipelineLayout VulkanGlobalsTemp::GetPipelineLayout(const ComputeShader&)
+	{
+		return _computePipelineLayout.get();
+	}
+
 	VulkanGlobalsTemp::VulkanGlobalsTemp() {}
 	VulkanGlobalsTemp::~VulkanGlobalsTemp() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	PartialPipelineDescriptorsLayout::PartialPipelineDescriptorsLayout() {}
-	PartialPipelineDescriptorsLayout::~PartialPipelineDescriptorsLayout() {}
-
-	std::shared_ptr<PartialPipelineDescriptorsLayout>  CreatePartialPipelineDescriptorsLayout(
-		ObjectFactory& factory, 
-		const DescriptorSetSignatureFile& signatureFile, uint64_t boundId, PipelineType pipelineType)
+	std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
+		const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType)
 	{
+		auto result = std::make_shared<PartialPipelineDescriptorsLayout>();
+
 		auto& globals = VulkanGlobalsTemp::GetInstance();
 		const auto& root = *signatureFile.GetRootSignature(Hash64(signatureFile._mainRootSignature));
-		const auto* bound = (pipelineType == PipelineType::Compute) ? globals._boundComputeSignatures.get() : globals._boundGraphicsSignatures.get();
-		_descriptorSets.reserve(root._descriptorSets.size());
+		result->_descriptorSets.reserve(root._descriptorSets.size());
 		for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
 			const auto&d = root._descriptorSets[c];
 			if (d._type == RootSignature::DescriptorSetType::Numeric)
 				continue;
-			_descriptorSets.emplace_back(
-				DescriptorSet {
-					*bound->GetDescriptorSet(boundId, d._hashName),
+			result->_descriptorSets.emplace_back(
+				PartialPipelineDescriptorsLayout::DescriptorSet {
 					signatureFile.GetDescriptorSet(d._hashName),
 					c,
 					(unsigned)d._type,
@@ -288,12 +262,25 @@ namespace RenderCore { namespace Metal_Vulkan
 				});
 		}
 
-		for (unsigned c=0; c<root._pushConstants.size(); ++c) {
-			_pushConstants.push_back(*signatureFile.GetPushConstantsRangeSigniture(Hash64(root._pushConstants[c])));
+		auto shaderStageMask = 0;
+		if (pipelineType == PipelineType::Graphics) {
+			shaderStageMask = VK_SHADER_STAGE_ALL_GRAPHICS;
+		} else {
+			shaderStageMask = VK_SHADER_STAGE_COMPUTE_BIT;
 		}
 
-		_legacyRegisterBinding = signatureFile.GetLegacyRegisterBinding(Hash64(root._legacyBindings));
+		for (unsigned c=0; c<root._pushConstants.size(); ++c) {
+			auto* sig = signatureFile.GetPushConstantsRangeSignature(Hash64(root._pushConstants[c]));
+			if (sig && (sig->_stages & shaderStageMask)) {
+				auto newSig = *sig;
+				newSig._stages &= shaderStageMask;
+				result->_pushConstants.push_back(std::move(newSig));
+			}
+		}
+
+		result->_legacyRegisterBinding = signatureFile.GetLegacyRegisterBinding(Hash64(root._legacyBindings));
+		return result;
 	}
 	
-}}
+}}}
 

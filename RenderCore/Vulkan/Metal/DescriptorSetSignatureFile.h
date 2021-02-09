@@ -4,19 +4,34 @@
 
 #pragma once
 
-#include "PipelineLayout.h"
+// #include "PipelineLayout.h"
+#include "../../../Assets/AssetUtils.h"		// for Assets::DependentFileState
 #include <string>
 #include <vector>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	enum class DescriptorType
+	{
+		Sampler,
+		Texture,
+		ConstantBuffer,
+		UnorderedAccessTexture,
+		UnorderedAccessBuffer,
+		Unknown
+	};
+
+	const char* AsString(DescriptorType type);
+	
 	class DescriptorSetSignature
-    {
-    public:
+	{
+	public:
 		std::string						_name;
-		uint64_t						_hashName = 0;
-        std::vector<DescriptorType>		_bindings;
-    };
+		uint64_t						_hashName = 0;		// todo -- move these out? Just use vectors of pairs / unordered maps below?
+		std::vector<DescriptorType>		_bindings;
+
+		uint64_t GetHash() const;		// hash of content, not including name
+	};
 
 	class LegacyRegisterBinding
 	{
@@ -42,15 +57,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		IteratorRange<const Entry*>	GetEntries(RegisterType type, RegisterQualifier qualifier) const;
 	};
 
-    class PushConstantsRangeSigniture
-    {
-    public:
-        std::string     _name;
+	class PushConstantsRangeSignature
+	{
+	public:
+		std::string     _name;
 		uint64_t		_hashName = 0;
-        unsigned        _rangeStart = 0u;
-        unsigned        _rangeSize = 0u;
-        unsigned        _stages = 0u;
-    };
+		unsigned        _rangeStart = 0u;
+		unsigned        _rangeSize = 0u;
+		unsigned        _stages = 0u;
+	};
 
 	class RootSignature
 	{
@@ -59,7 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		struct DescriptorSetReference
 		{
-	        DescriptorSetType	_type = DescriptorSetType::Unknown;
+			DescriptorSetType	_type = DescriptorSetType::Unknown;
 			unsigned			_uniformStream;
 			std::string			_name;
 			uint64_t			_hashName;
@@ -73,30 +88,30 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<PushConstantsReference> _pushConstants;
 		LegacyBindingReference _legacyBindings;
 	};
-        
-    class DescriptorSetSignatureFile
-    {
-    public:
-        std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
-        std::vector<PushConstantsRangeSigniture>				_pushConstantRanges;
+		
+	class DescriptorSetSignatureFile
+	{
+	public:
+		std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
+		std::vector<PushConstantsRangeSignature>				_pushConstantRanges;
 		std::vector<std::shared_ptr<LegacyRegisterBinding>>		_legacyRegisterBindingSettings;
 		std::vector<RootSignature>					_rootSignatures;
 		std::string									_mainRootSignature;
 
 		const RootSignature*								GetRootSignature(uint64_t name) const;
 		const std::shared_ptr<LegacyRegisterBinding>&		GetLegacyRegisterBinding(uint64_t) const;
-		const PushConstantsRangeSigniture*					GetPushConstantsRangeSigniture(uint64_t) const;
+		const PushConstantsRangeSignature*					GetPushConstantsRangeSignature(uint64_t) const;
 		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSet(uint64_t) const;
 
-        const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-        DescriptorSetSignatureFile(StringSection<> filename);
-        ~DescriptorSetSignatureFile();
-    private:
-        ::Assets::DependentFileState _dependentFileState;
-        ::Assets::DepValPtr _depVal;
-    };
+		DescriptorSetSignatureFile(StringSection<> filename);
+		~DescriptorSetSignatureFile();
+	private:
+		::Assets::DependentFileState _dependentFileState;
+		::Assets::DepValPtr _depVal;
+	};
 
 	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
 }}

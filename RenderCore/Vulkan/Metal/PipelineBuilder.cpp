@@ -10,6 +10,7 @@
 #include "State.h"
 #include "Pools.h"
 #include "ShaderReflection.h"
+#include "PipelineLayout.h"
 #include "../../Format.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -119,11 +120,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	std::shared_ptr<GraphicsPipeline> GraphicsPipelineBuilder::CreatePipeline(
-		ObjectFactory& factory, VkPipelineCache pipelineCache)
+		ObjectFactory& factory, VkPipelineCache pipelineCache,
+		VkRenderPass renderPass, unsigned subpass, 
+		TextureSamples samples)
 	{
-		// VkRenderPass renderPass, unsigned subpass, 
-		// TextureSamples samples
-
 		assert(_shaderProgram && renderPass);
 
 		VkPipelineShaderStageCreateInfo shaderStages[3];
@@ -184,7 +184,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkGraphicsPipelineCreateInfo pipeline = {};
 		pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
-		pipeline.layout = VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shaderProgram);
+		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shaderProgram);
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
@@ -202,9 +202,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		pipeline.renderPass = renderPass;
 		pipeline.subpass = subpass;
 
-		auto result = factory.CreateGraphicsPipeline(pipelineCache, pipeline);
+		auto vkPipeline = factory.CreateGraphicsPipeline(pipelineCache, pipeline);
+		auto result = std::make_shared<GraphicsPipeline>(std::move(vkPipeline));
 		_pipelineStale = false;
-		return std::move(result);
+		return result;
 	}
 
 	GraphicsPipelineBuilder::GraphicsPipelineBuilder()
@@ -252,16 +253,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		pipeline.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
-		pipeline.layout = VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shader);
+		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shader);
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 
 		assert(_shader);
 		pipeline.stage = BuildShaderStage(_shader->GetModule().get(), VK_SHADER_STAGE_COMPUTE_BIT);
 
-		auto result = factory.CreateComputePipeline(pipelineCache, pipeline);
+		auto vkPipeline = factory.CreateComputePipeline(pipelineCache, pipeline);
+		auto result = std::make_shared<ComputePipeline>(std::move(vkPipeline));
 		_pipelineStale = false;
-		return std::move(result);
+		return result;
 	}
 
 	ComputePipelineBuilder::ComputePipelineBuilder()
@@ -282,5 +284,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		_pipelineStale = cloneFrom._pipelineStale;
 		return *this;
 	}
+
+	uint64_t GraphicsPipeline::GetGUID() const
+	{
+		assert(0);
+		return 0;
+	}
+
+	GraphicsPipeline::GraphicsPipeline(VulkanUniquePtr<VkPipeline>&& pipeline)
+	: VulkanUniquePtr<VkPipeline>(std::move(pipeline))
+	{}
+	GraphicsPipeline::~GraphicsPipeline() {}
+
+	uint64_t ComputePipeline::GetGUID() const
+	{
+		assert(0);
+		return 0;
+	}
+
+	ComputePipeline::ComputePipeline(VulkanUniquePtr<VkPipeline>&& pipeline)
+	: VulkanUniquePtr<VkPipeline>(std::move(pipeline))
+	{}
+	ComputePipeline::~ComputePipeline() {}
 }}
 

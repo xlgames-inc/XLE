@@ -407,7 +407,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	struct EvaluateBindingData
 	{
-		const PushConstantsRangeSigniture* _pushConstantRanges = nullptr;
+		const PushConstantsRangeSignature* _pushConstantRanges = nullptr;
 		const LegacyRegisterBinding* _legacyRegisterBindings = nullptr;
 		std::vector<std::pair<uint64_t, unsigned>> _soOffsets;
 
@@ -476,7 +476,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // First, check to see if it has been assigned as push constants
         if (type == LegacyRegisterBinding::RegisterType::ConstantBuffer && name && userData->_pushConstantRanges) {
-			IteratorRange<const PushConstantsRangeSigniture *const*> pushConstantRanges { &userData->_pushConstantRanges, &userData->_pushConstantRanges+1 };
+			IteratorRange<const PushConstantsRangeSignature *const*> pushConstantRanges { &userData->_pushConstantRanges, &userData->_pushConstantRanges+1 };
             for (unsigned rangeIndex=0; rangeIndex<(unsigned)pushConstantRanges.size(); ++rangeIndex) {
                 if (XlEqString(pushConstantRanges[rangeIndex]->_name, name)) {
                     assert(srcCBBinding);
@@ -556,7 +556,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(root && root->_pushConstants.size() <= 1);
 		bd._legacyRegisterBindings = rootSig->GetLegacyRegisterBinding(Hash64(root->_legacyBindings)).get();
 		if (root->_pushConstants.size() == 1)
-			bd._pushConstantRanges = rootSig->GetPushConstantsRangeSigniture(Hash64(root->_pushConstants[0]));
+			bd._pushConstantRanges = rootSig->GetPushConstantsRangeSignature(Hash64(root->_pushConstants[0]));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             hlslccFlags,

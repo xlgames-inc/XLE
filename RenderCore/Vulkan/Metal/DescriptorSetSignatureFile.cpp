@@ -12,6 +12,8 @@
 #include "../../../OSServices/RawFS.h"
 #include <stdexcept>
 
+#include "IncludeVulkan.h"		// for VK_SHADER_STAGE_ stuff below
+
 namespace RenderCore { namespace Metal_Vulkan
 {
 	static const char* s_descriptorTypeNames[] = {
@@ -224,9 +226,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-    static PushConstantsRangeSigniture ReadPushConstRange(StreamDOMElement<InputStreamFormatter<char>>& element)
+    static PushConstantsRangeSignature ReadPushConstRange(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
-        PushConstantsRangeSigniture result;
+        PushConstantsRangeSignature result;
         for (auto a:element.attributes()) {
             if (a.Name().IsEmpty()) continue;
 
@@ -319,7 +321,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return dummy;
 	}
 
-	const PushConstantsRangeSigniture*					DescriptorSetSignatureFile::GetPushConstantsRangeSigniture(uint64_t name) const
+	const PushConstantsRangeSignature*					DescriptorSetSignatureFile::GetPushConstantsRangeSignature(uint64_t name) const
 	{
 		for (const auto&r:_pushConstantRanges)
 			if (r._hashName == name)

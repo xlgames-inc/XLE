@@ -40,12 +40,18 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		uint64_t GetGUID() const;
+
+		GraphicsPipeline(VulkanUniquePtr<VkPipeline>&&);
+		~GraphicsPipeline();
 	};
 
 	class ComputePipeline : public VulkanUniquePtr<VkPipeline>
 	{
 	public:
 		uint64_t GetGUID() const;
+
+		ComputePipeline(VulkanUniquePtr<VkPipeline>&&);
+		~ComputePipeline();
 	};
 
 	class GraphicsPipelineBuilder
@@ -65,7 +71,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t 	GetRenderPassConfigurationHash() const;
 
 		std::shared_ptr<GraphicsPipeline> CreatePipeline(
-			ObjectFactory& factory, VkPipelineCache pipelineCache);
+			ObjectFactory& factory, VkPipelineCache pipelineCache,
+			VkRenderPass renderPass, unsigned subpass, 
+			TextureSamples samples);
 		bool IsPipelineStale() const { return _pipelineStale; }
 
 		// const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
@@ -237,6 +245,27 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
 
+	class VulkanEncoderSharedState
+	{
+	public:
+		void* 			_activeEncoder;
+		CommandList 	_commandList;
+
+		VkRenderPass	_renderPass;
+		TextureSamples	_renderPassSamples;
+		unsigned		_renderPassSubpass;
+
+		float			_renderTargetWidth;
+		float			_renderTargetHeight;
+
+		DescriptorCollection	_graphicsDescriptors;
+		DescriptorCollection	_computeDescriptors;
+
+		void* _currentEncoder;
+		enum class EncoderType { None, Graphics, ProgressiveGraphics, ProgressiveCompute };
+		EncoderType _currentEncoderType;
+	};
+
 	class SharedGraphicsEncoder
 	{
 	public:
@@ -254,14 +283,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
 		// --------------- Vulkan specific interface --------------- 
-		void		BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
 		void		PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
+		void		RebindNumericDescriptorSet();
 
 	protected:
+		SharedGraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
+		~SharedGraphicsEncoder();
 		SharedGraphicsEncoder(const SharedGraphicsEncoder&);		// (hide these to avoid slicing in derived types)
 		SharedGraphicsEncoder& operator=(const SharedGraphicsEncoder&);
 
-		CommandList _commandList;
+		VkPipelineLayout GetPipelineLayout();
+		unsigned GetDescriptorSetCount();
+
+		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
 	};
 	
 	class GraphicsEncoder_ProgressivePipeline : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
@@ -275,8 +310,18 @@ namespace RenderCore { namespace Metal_Vulkan
 		void        DrawAuto();
 
 	protected:
+		GraphicsEncoder_ProgressivePipeline(
+			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+			ObjectFactory& objectFactory,
+			GlobalPools& globalPools);
+		~GraphicsEncoder_ProgressivePipeline();
+	
 		bool 		BindGraphicsPipeline();
-		VulkanUniquePtr<VkPipeline>         _currentGraphicsPipeline;
+		std::shared_ptr<GraphicsPipeline>	_currentGraphicsPipeline;
+		ObjectFactory*						_factory;
+		GlobalPools*                        _globalPools;
+
+		friend class DeviceContext;
 	};
 
 	class GraphicsEncoder : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
@@ -288,6 +333,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawInstances(const GraphicsPipeline& pipeline, unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
 		void    	DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto(const GraphicsPipeline& pipeline);
+
+	protected:
+		GraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
+		~GraphicsEncoder();
+
+		friend class DeviceContext;
 	};
 
 	class ComputeEncoder_ProgressivePipeline : public ComputePipelineBuilder
@@ -295,9 +346,27 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
+		// --------------- Vulkan specific interface --------------- 
+		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+		void		RebindNumericDescriptorSet();
+
 	protected:
 		bool 		BindComputePipeline();
-		VulkanUniquePtr<VkPipeline>         _currentComputePipeline;
+		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
+		std::shared_ptr<ComputePipeline> 	_currentComputePipeline;
+		ObjectFactory*						_factory;
+		GlobalPools*                        _globalPools;
+
+		VkPipelineLayout GetPipelineLayout();
+		unsigned GetDescriptorSetCount();
+
+		ComputeEncoder_ProgressivePipeline(
+			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+			ObjectFactory& objectFactory,
+			GlobalPools& globalPools);
+		~ComputeEncoder_ProgressivePipeline();
+
+		friend class DeviceContext;
 	};
 
 	class DeviceContext
@@ -310,23 +379,17 @@ namespace RenderCore { namespace Metal_Vulkan
 			IteratorRange<const ClearValue*> clearValues = {});
 		void BeginNextSubpass(FrameBuffer& frameBuffer);
 		void EndRenderPass();
-		unsigned GetCurrentSubpassIndex();
+		unsigned GetCurrentSubpassIndex() const;
 
 		GraphicsEncoder BeginGraphicsEncoder();
 		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline();
 		ComputeEncoder_ProgressivePipeline BeginComputeEncoder();
 
-		// void        Bind(const ViewportDesc& viewport);
-		// const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
-
-		// using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
-		// using ComputePipelineBuilder::Bind;
-
 		static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 
 		// --------------- Vulkan specific interface --------------- 
 
-		void        BeginRenderPass(
+		void BeginRenderPass(
 			const FrameBuffer& fb,
 			TextureSamples samples,
 			VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
@@ -359,10 +422,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			TextureSamples samples,
 			VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
 			IteratorRange<const ClearValue*> clearValues);
-		void EndRenderPass();
 		bool IsInRenderPass() const;
 		void NextSubpass(VkSubpassContents);
-		unsigned RenderPassSubPassIndex() const { return _renderPassSubpass; }
 
 		DeviceContext(
 			ObjectFactory& factory, 
@@ -379,16 +440,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool			IsImmediate() { return false; }
 
 	private:
-		CommandList							_commandList;
-		GlobalPools*                        _globalPools;
 		ObjectFactory*						_factory;
+		GlobalPools*                        _globalPools;
 
-		VkRenderPass                        _renderPass;
-		TextureSamples                      _renderPassSamples;
-		unsigned                            _renderPassSubpass;
-
-		DescriptorCollection                _graphicsDescriptors;
-		DescriptorCollection                _computeDescriptors;
+		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
 
 		CommandPool*                        _cmdPool;
 		CommandBufferType					_cmdBufferType;
@@ -397,21 +452,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VulkanUniquePtr<VkFence>			_utilityFence;
 
-		
-		void LogPipeline(PipelineType pipeline);
-		void RebindNumericDescriptorSet(PipelineType pipelineType);
 		void SetupPipelineBuilders();
+		void ResetDescriptorSetState();
 	};
 
 	inline CommandList& DeviceContext::GetActiveCommandList()
 	{
-		assert(_commandList.GetUnderlying());
-		return _commandList;
+		assert(_sharedState->_commandList.GetUnderlying());
+		return _sharedState->_commandList;
 	}
 
 	inline bool DeviceContext::HasActiveCommandList()
 	{
-		return _commandList.GetUnderlying() != nullptr;
+		return _sharedState->_commandList.GetUnderlying() != nullptr;
 	}
 
 }}

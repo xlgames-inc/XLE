@@ -542,5 +542,76 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	#endif
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
+		const ObjectFactory& factory, 
+		const DescriptorSetSignature& srcLayout,
+		VkShaderStageFlags stageFlags)
+	{
+		// The "root signature" bindings correspond very closely with the
+		// DescriptorSetLayout
+		std::vector<VkDescriptorSetLayoutBinding> bindings;
+		bindings.reserve(srcLayout._bindings.size());
+		for (unsigned bIndex=0; bIndex<(unsigned)srcLayout._bindings.size(); ++bIndex) {
+			VkDescriptorSetLayoutBinding dstBinding = {};
+			dstBinding.binding = bIndex;
+			dstBinding.descriptorType = (VkDescriptorType)AsVkDescriptorType(srcLayout._bindings[bIndex]);
+			dstBinding.descriptorCount = 1;
+			dstBinding.stageFlags = stageFlags;
+			dstBinding.pImmutableSamplers = nullptr;
+			bindings.push_back(dstBinding);
+		}
+		return factory.CreateDescriptorSetLayout(MakeIteratorRange(bindings));
+	}
+
+	VkDescriptorType_ AsVkDescriptorType(DescriptorType type)
+	{
+		switch (type) {
+		case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
+		case DescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		case DescriptorType::ConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case DescriptorType::UnorderedAccessTexture:	return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		case DescriptorType::UnorderedAccessBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		default:										return VK_DESCRIPTOR_TYPE_SAMPLER;
+		}
+	}
+
+	const CompiledDescriptorSetLayout*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
+		const DescriptorSetSignature& signature,
+		VkShaderStageFlags stageFlags) const
+	{
+		auto hash = HashCombine(signature.GetHash(), stageFlags);
+		auto i = LowerBound(_cache, hash);
+		if (i != _cache.end() && i->first == hash)
+			return i->second.get();
+
+		auto ds = std::make_unique<CompiledDescriptorSetLayout>();
+		ds->_layout = CreateDescriptorSetLayout(*_objectFactory, signature, stageFlags);
+		
+		{
+			DescriptorSetBuilder builder(*_globalPools);
+			builder.BindDummyDescriptors(signature, (1ull<<uint64_t(signature._bindings.size()))-1ull);
+			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout.get());
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
+			builder.FlushChanges(
+				_objectFactory->GetDevice().get(),
+				ds->_blankBindings.get(),
+				0, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, ds->_blankBindingsDescription));
+		}
+
+		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_name = s->_name);
+
+		i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
+		return i->second.get();
+	}
+
+	CompiledDescriptorSetLayoutCache::CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools)
+	: _objectFactory(&objectFactory)
+	, _globalPools(&globalPools)
+	{}
+
+	CompiledDescriptorSetLayoutCache::~CompiledDescriptorSetLayoutCache() {}
+
 }}
 
