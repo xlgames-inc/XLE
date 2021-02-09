@@ -6,8 +6,8 @@
 
 #include "../Utility/FunctionUtils.h"
 #include <memory>
-
-#include <iostream>		// temporary
+#include <typeinfo>
+#include <typeindex>
 
 namespace ConsoleRig
 {
@@ -19,6 +19,9 @@ namespace ConsoleRig
 
 	namespace Internal
 	{
+		using TypeKey = std::type_index;
+		template<typename Obj> TypeKey KeyForType() { return std::type_index(typeid(Obj)); }
+
 		class InfraModuleManager
 		{
 		public:
@@ -30,11 +33,11 @@ namespace ConsoleRig
 				virtual void ManagerShuttingDown() = 0;
 				virtual ~IRegistrablePointer() = default;
 			};
-			RegisteredPointerId Register(uint64_t id, IRegistrablePointer* ptr);
+			RegisteredPointerId Register(TypeKey id, IRegistrablePointer* ptr);
 			void Deregister(RegisteredPointerId);
 
 			void ConfigureType(
-				uint64_t id,
+				TypeKey id,
 				std::function<void(const std::shared_ptr<void>&)>&& attachModuleFn,
 				std::function<void(const std::shared_ptr<void>&)>&& detachModuleFn);
 
@@ -47,7 +50,7 @@ namespace ConsoleRig
 			std::unique_ptr<Pimpl> _pimpl;
 
 			friend class ConsoleRig::CrossModule;
-			void PropagateChange(uint64_t id, const std::shared_ptr<void>& obj);
+			void PropagateChange(TypeKey id, const std::shared_ptr<void>& obj);
 			void CrossModuleShuttingDown();
 
 			InfraModuleManager();
@@ -56,8 +59,8 @@ namespace ConsoleRig
 			template<typename Obj>
 				friend class ConsoleRig::AttachablePtr;
 
-			auto Get(uint64_t id) -> std::shared_ptr<void>;
-			void Reset(uint64_t id, const std::shared_ptr<void>& obj);
+			auto Get(TypeKey id) -> std::shared_ptr<void>;
+			void Reset(TypeKey id, const std::shared_ptr<void>& obj);
 		};
 	}
 
@@ -135,8 +138,8 @@ namespace ConsoleRig
 		RegisteredInfraModuleManagerId Register(Internal::InfraModuleManager* ptr);
 		void Deregister(RegisteredInfraModuleManagerId);
 
-		auto Get(uint64_t id) -> std::shared_ptr<void>;
-		void Reset(uint64_t id, const std::shared_ptr<void>& obj, RegisteredInfraModuleManagerId owner);
+		auto Get(Internal::TypeKey id) -> std::shared_ptr<void>;
+		void Reset(Internal::TypeKey id, const std::shared_ptr<void>& obj, RegisteredInfraModuleManagerId owner);
 
 		CrossModule();
 		~CrossModule();
@@ -181,8 +184,8 @@ namespace ConsoleRig
 		AttachablePtr<Obj>::AttachablePtr(const std::shared_ptr<Obj>& copyFrom)
 	{
 		TryConfigureType();
-		_managerRegistry = Internal::InfraModuleManager::GetInstance().Register(typeid(Obj).hash_code(), this);
-		Internal::InfraModuleManager::GetInstance().Reset(typeid(Obj).hash_code(), copyFrom);
+		_managerRegistry = Internal::InfraModuleManager::GetInstance().Register(Internal::KeyForType<Obj>(), this);
+		Internal::InfraModuleManager::GetInstance().Reset(Internal::KeyForType<Obj>(), copyFrom);
 	}
 
 	template<typename Obj>
@@ -190,7 +193,7 @@ namespace ConsoleRig
 	{
 		if (copyFrom.get() != get()) {
 			auto oldValue = std::move(_internalPointer);
-			Internal::InfraModuleManager::GetInstance().Reset(typeid(Obj).hash_code(), copyFrom);
+			Internal::InfraModuleManager::GetInstance().Reset(Internal::KeyForType<Obj>(), copyFrom);
 
 			// We don't actually release our reference on the old _internal pointer until after all of the 
 			// pointer changes have propaged through. This is generally preferable with singleton type objects,
@@ -220,8 +223,8 @@ namespace ConsoleRig
 	{
 		TryConfigureType();
 		auto& man = Internal::InfraModuleManager::GetInstance();
-		_managerRegistry = man.Register(typeid(Obj).hash_code(), this);
-		_internalPointer = std::static_pointer_cast<Obj>(man.Get(typeid(Obj).hash_code()));
+		_managerRegistry = man.Register(Internal::KeyForType<Obj>(), this);
+		_internalPointer = std::static_pointer_cast<Obj>(man.Get(Internal::KeyForType<Obj>()));
 	}
    
 	template<typename Obj>
@@ -240,7 +243,7 @@ namespace ConsoleRig
 		static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
 		if (!s_typeConfigured) {
 			Internal::InfraModuleManager::GetInstance().ConfigureType(
-				typeid(Obj).hash_code(),
+				Internal::KeyForType<Obj>(),
 				[](const std::shared_ptr<void>& singleton) {
 					Internal::TryAttachCurrentModule(*static_cast<Obj*>(singleton.get()));
 				},

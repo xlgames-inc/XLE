@@ -8,7 +8,6 @@
 #include <vector>
 #include <stdexcept>
 
-
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	#include "../OSServices/WinAPI/IncludeWindows.h"
 #elif PLATFORMOS_TARGET == PLATFORMOS_OSX
@@ -28,7 +27,7 @@ namespace ConsoleRig
 				IRegistrablePointer* _ptr = nullptr;
 				RegisteredPointerId _id = 0; 
 			};
-			std::vector<std::pair<uint64_t, RegisteredPtr>> _registeredPointers;
+			std::vector<std::pair<TypeKey, RegisteredPtr>> _registeredPointers;
 
 			struct RegisteredType
 			{
@@ -37,13 +36,13 @@ namespace ConsoleRig
 				std::function<void(const std::shared_ptr<void>&)> _attachModuleFn;
 				std::function<void(const std::shared_ptr<void>&)> _detachModuleFn;
 			};
-			std::vector<std::pair<uint64_t, RegisteredType>> _registeredTypes;
+			std::vector<std::pair<TypeKey, RegisteredType>> _registeredTypes;
 
 			RegisteredPointerId _nextRegisteredPointerId = 1;
 			CrossModule::RegisteredInfraModuleManagerId _crossModuleRegistration = ~0u;
 		};
 
-		void InfraModuleManager::PropagateChange(uint64_t id, const std::shared_ptr<void>& obj)
+		void InfraModuleManager::PropagateChange(TypeKey id, const std::shared_ptr<void>& obj)
 		{
 			auto i2 = LowerBound(_pimpl->_registeredTypes, id);
 			// If there are no pointers currently referencing this type, we will just early out now
@@ -62,7 +61,7 @@ namespace ConsoleRig
 				i2->second._attachModuleFn(i2->second._currentValue);
 		}
 
-		auto InfraModuleManager::Register(uint64_t id, IRegistrablePointer* ptr) -> RegisteredPointerId
+		auto InfraModuleManager::Register(TypeKey id, IRegistrablePointer* ptr) -> RegisteredPointerId
 		{
 			auto result = _pimpl->_nextRegisteredPointerId++;
 			auto i = LowerBound(_pimpl->_registeredPointers, id);
@@ -101,7 +100,7 @@ namespace ConsoleRig
 		}
 
 		void InfraModuleManager::ConfigureType(
-			uint64_t id,
+			TypeKey id,
 			std::function<void(const std::shared_ptr<void>&)>&& attachModuleFn,
 			std::function<void(const std::shared_ptr<void>&)>&& detachModuleFn)
 		{
@@ -118,7 +117,7 @@ namespace ConsoleRig
 				i2->second._attachModuleFn(i2->second._currentValue);
 		}
 
-		auto InfraModuleManager::Get(uint64_t id) -> std::shared_ptr<void>
+		auto InfraModuleManager::Get(TypeKey id) -> std::shared_ptr<void>
 		{
 			auto cannonicalValue = CrossModule::GetInstance().Get(id);
 			auto i2 = LowerBound(_pimpl->_registeredTypes, id);
@@ -135,7 +134,7 @@ namespace ConsoleRig
 			return cannonicalValue;
 		}
 
-		void InfraModuleManager::Reset(uint64_t id, const std::shared_ptr<void>& obj)
+		void InfraModuleManager::Reset(TypeKey id, const std::shared_ptr<void>& obj)
 		{
 			// flow will return here via PropagateChange
 			CrossModule::GetInstance().Reset(id, obj, _pimpl->_crossModuleRegistration);
@@ -188,7 +187,7 @@ namespace ConsoleRig
 			std::weak_ptr<void> _ptr;
 			CrossModule::RegisteredInfraModuleManagerId _owningInfraModuleManager = ~0u;
 		};
-		std::vector<std::pair<uint64_t, CannonicalPtr>> _cannonicalPtrs;
+		std::vector<std::pair<Internal::TypeKey, CannonicalPtr>> _cannonicalPtrs;
 		std::vector<std::pair<RegisteredInfraModuleManagerId, Internal::InfraModuleManager*>> _moduleSpecificManagers;
 		RegisteredInfraModuleManagerId _nextInfraModuleManagerRegistration = 1u;
 
@@ -202,7 +201,7 @@ namespace ConsoleRig
 		#endif
 	};
 
-	auto CrossModule::Get(uint64_t id) -> std::shared_ptr<void>
+	auto CrossModule::Get(Internal::TypeKey id) -> std::shared_ptr<void>
 	{
 		auto i = LowerBound(_pimpl->_cannonicalPtrs, id);
 		if (i != _pimpl->_cannonicalPtrs.end() && i->first == id)
@@ -210,7 +209,7 @@ namespace ConsoleRig
 		return nullptr;
 	}
 
-	void CrossModule::Reset(uint64_t id, const std::shared_ptr<void>& obj, RegisteredInfraModuleManagerId owner)
+	void CrossModule::Reset(Internal::TypeKey id, const std::shared_ptr<void>& obj, RegisteredInfraModuleManagerId owner)
 	{
 		// Note that there's not any threading protection during this set
 		// So if another thread is reading the value at the same time, it
