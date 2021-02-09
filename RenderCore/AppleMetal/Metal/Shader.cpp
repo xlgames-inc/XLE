@@ -15,6 +15,7 @@
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/Conversion.h"
+#include "../../../Utility/Threading/ThreadingUtils.h"
 #include <iostream>
 #include <unordered_map>
 #include <sstream>
@@ -75,7 +76,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ShaderCompiler(id<MTLDevice> device);
         ~ShaderCompiler();
 
-        TBC::OCPtr<id> _device; // MTLDevice
+        IdPtr _device; // MTLDevice
         std::shared_ptr<AsyncCallbackData> _asyncCallbackData;
     };
 
@@ -258,7 +259,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 ScopedLock(objectFactory._compiledShadersLock);
                 while (objectFactory._compiledShaders.find(hashCode) != objectFactory._compiledShaders.end())
                     ++hashCode;     // uniquify this hash. There are some edge cases where we can end up compiling the same shader twice; it's better to tread safely here
-                objectFactory._compiledShaders.emplace(std::make_pair(hashCode, TBC::moveptr(newLibrary)));
+                objectFactory._compiledShaders.emplace(std::make_pair(hashCode, moveptr(newLibrary)));
             }
 
             struct OutputBlob
@@ -447,7 +448,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
 
-        TBC::OCPtr<id> vs, fs;
+        IdPtr vs, fs;
         auto& objectFactory = GetObjectFactory();
         {
             ScopedLock(objectFactory._compiledShadersLock);
@@ -468,14 +469,14 @@ namespace RenderCore { namespace Metal_AppleMetal
             Ideally we should get these entrypoint names from the original shader request (ie, the ShaderService::ResId)
             But we've lost that information by now (it's not carried in the CompiledShaderByteCode)
         */
-        _vf = TBC::moveptr([vertexLibrary newFunctionWithName:@"vs_framework_entry"]);
-        _ff = TBC::moveptr([fragmentLibrary newFunctionWithName:@"fs_framework_entry"]);
+        _vf = moveptr([vertexLibrary newFunctionWithName:@"vs_framework_entry"]);
+        _ff = moveptr([fragmentLibrary newFunctionWithName:@"fs_framework_entry"]);
 
         // METAL_TODO: use consistent rules for entry point functions
         if (!_vf)
-            _vf = TBC::moveptr([vertexLibrary newFunctionWithName:[[vertexLibrary functionNames] firstObject]]);
+            _vf = moveptr([vertexLibrary newFunctionWithName:[[vertexLibrary functionNames] firstObject]]);
         if (!_ff)
-            _ff = TBC::moveptr([fragmentLibrary newFunctionWithName:[[fragmentLibrary functionNames] firstObject]]);
+            _ff = moveptr([fragmentLibrary newFunctionWithName:[[fragmentLibrary functionNames] firstObject]]);
 
 #if defined(_DEBUG)
         [_vf setLabel:[[_vf.get() name] stringByAppendingFormat:@" (%@)", vertexLibrary.label]];
@@ -497,7 +498,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         /* this function can be useful on an ad-hoc basis, but otherwise, could remove it */
         assert(s_defaultLibrary);
-        _vf = TBC::moveptr([s_defaultLibrary newFunctionWithName:[NSString stringWithCString:vertexFunctionName.c_str() encoding:NSUTF8StringEncoding]]);
+        _vf = moveptr([s_defaultLibrary newFunctionWithName:[NSString stringWithCString:vertexFunctionName.c_str() encoding:NSUTF8StringEncoding]]);
         if (!_vf) {
             std::stringstream str;
             str << "Could not create ShaderProgram because vertex shader with name (" << vertexFunctionName << ") was not found in the shader library" << std::endl;
@@ -508,7 +509,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             Throw(std::runtime_error(str.str()));
         }
 
-        _ff = TBC::moveptr([s_defaultLibrary newFunctionWithName:[NSString stringWithCString:fragmentFunctionName.c_str() encoding:NSUTF8StringEncoding]]);
+        _ff = moveptr([s_defaultLibrary newFunctionWithName:[NSString stringWithCString:fragmentFunctionName.c_str() encoding:NSUTF8StringEncoding]]);
         if (!_ff) {
             std::stringstream str;
             str << "Could not create ShaderProgram because fragment shader with name (" << fragmentFunctionName << ") was not found in the shader library" << std::endl;

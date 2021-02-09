@@ -130,7 +130,7 @@ namespace UnitTests
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    C O D E
 
-    TBC::OCPtr<MTLRenderPipelineReflection> MakeDefaultReflection(const RenderCore::Metal::ShaderProgram& shaderProgram)
+    OCPtr<MTLRenderPipelineReflection> MakeDefaultReflection(const RenderCore::Metal::ShaderProgram& shaderProgram)
     {
         using namespace RenderCore;
         FrameBufferProperties fbProps { 1024, 1024, TextureSamples::Create() };

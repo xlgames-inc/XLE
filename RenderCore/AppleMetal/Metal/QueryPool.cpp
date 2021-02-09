@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         std::shared_ptr<SyncEvent> lastCompletedEvent = _lastCompletedEvent;
 
         if (@available(iOS 12, macOS 10.14, *)) {
-            TBC::OCPtr<id> event(TBC::moveptr([device newSharedEvent]));
+            IdPtr event(moveptr([device newSharedEvent]));
             assert(event);
             [event.get() notifyListener:_listener.get() atValue:1 block:^(id<MTLSharedEvent> sharedEvent, uint64_t value) {
                 if (result > *lastCompletedEvent)

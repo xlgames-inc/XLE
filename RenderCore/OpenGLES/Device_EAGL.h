@@ -1,3 +1,7 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
 #pragma once
 
 #include "../IDevice.h"
@@ -5,7 +9,7 @@
 #include "IDeviceOpenGLES.h"
 #include "ObjectFactory.h"
 #include "../../Utility/IntrusivePtr.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 #include <memory>
 
 @class EAGLContext;
@@ -29,7 +33,7 @@ namespace RenderCore { namespace ImplOpenGLES
         ~PresentationChain();
 
     private:
-        TBC::OCPtr<EAGLContext> _eaglContext;
+        OCPtr<EAGLContext> _eaglContext;
         std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
         std::shared_ptr<PresentationChainDesc> _desc;
     };
@@ -63,9 +67,9 @@ namespace RenderCore { namespace ImplOpenGLES
         std::weak_ptr<Device> _device; // (must be weak, because Device holds a shared_ptr to the immediate context)
         std::unique_ptr<IAnnotator> _annotator;
 
-        TBC::OCPtr<EAGLContext> _activeFrameContext;
-        TBC::OCPtr<EAGLContext> _deferredContext;
-        TBC::OCPtr<EAGLContext> _sharedContext;
+        OCPtr<EAGLContext> _activeFrameContext;
+        OCPtr<EAGLContext> _deferredContext;
+        OCPtr<EAGLContext> _sharedContext;
 
         std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
@@ -116,7 +120,7 @@ namespace RenderCore { namespace ImplOpenGLES
     protected:
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-        TBC::OCPtr<EAGLContext> _sharedContext;
+        OCPtr<EAGLContext> _sharedContext;
 
         #if defined(_DEBUG)
             std::unique_ptr<BoundContextVerification> _boundContextVerification;

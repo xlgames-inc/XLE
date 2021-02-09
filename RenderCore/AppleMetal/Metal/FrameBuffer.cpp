@@ -158,17 +158,18 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         _subpasses.resize(subpasses.size());
         for (unsigned p=0; p<(unsigned)subpasses.size(); ++p) {
-            _subpasses[p]._renderPassDescriptor = TBC::moveptr([[MTLRenderPassDescriptor alloc] init]);
+            _subpasses[p]._renderPassDescriptor = moveptr([[MTLRenderPassDescriptor alloc] init]);
             _subpasses[p]._rasterCount = 1;
 
             auto* desc = _subpasses[p]._renderPassDescriptor.get();
             const auto& spDesc = subpasses[p];
             const unsigned maxColorAttachments = 4u;
             assert(spDesc.GetOutputs().size() <= maxColorAttachments); // MTLRenderPassDescriptor supports up to four color attachments
-            auto colorAttachmentsCount = (unsigned)std::min((unsigned)spDesc._output.size(), maxColorAttachments);
+            auto colorAttachmentsCount = (unsigned)std::min((unsigned)spDesc.GetOutputs().size(), maxColorAttachments);
             for (unsigned o=0; o<colorAttachmentsCount; ++o) {
                 const auto& attachmentView = spDesc.GetOutputs()[o];
-                auto resource = namedResources.GetResource(attachmentView._resourceName);
+                auto& attachmentDesc = fbDesc.GetAttachments()[attachmentView._resourceName]._desc;
+                auto resource = namedResources.GetResource(attachmentView._resourceName, attachmentDesc);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for color attachment in FrameBuffer::FrameBuffer"));
 
@@ -183,7 +184,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     (unsigned)resource->GetDesc()._textureDesc._samples._sampleCount);
 
                 if (o < spDesc.GetResolveOutputs().size() && spDesc.GetResolveOutputs()[o]._resourceName != ~0u) {
-                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveOutputs()[o]._resourceName);
+                    auto& attachmentDesc = fbDesc.GetAttachments()[spDesc.GetResolveOutputs()[o]._resourceName]._desc;
+                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveOutputs()[o]._resourceName, attachmentDesc);
                     if (!resolveResource)
                         Throw(::Exceptions::BasicLabel("Could not find resolve texture for color attachment in FrameBuffer::FrameBuffer"));
 
@@ -200,7 +202,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 
             if (spDesc.GetDepthStencil()._resourceName != ~0u) {
-                auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName);
+                auto& attachmentDesc = fbDesc.GetAttachments()[spDesc.GetDepthStencil()._resourceName]._desc;
+                auto resource = namedResources.GetResource(spDesc.GetDepthStencil()._resourceName, attachmentDesc);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil attachment in FrameBuffer::FrameBuffer"));
 
@@ -228,7 +231,8 @@ namespace RenderCore { namespace Metal_AppleMetal
                     (unsigned)resource->GetDesc()._textureDesc._samples._sampleCount);
 
                 if (spDesc.GetResolveDepthStencil()._resourceName != ~0u) {
-                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveDepthStencil()._resourceName);
+                    auto& attachmentDesc = fbDesc.GetAttachments()[spDesc.GetResolveDepthStencil()._resourceName]._desc;
+                    auto resolveResource = namedResources.GetResource(spDesc.GetResolveDepthStencil()._resourceName, attachmentDesc);
                     if (!resolveResource)
                         Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil resolve attachment in FrameBuffer::FrameBuffer"));
 

@@ -1,3 +1,6 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device_CGL.h"
 #include "Metal/DeviceContext.h"
@@ -212,7 +215,7 @@ namespace RenderCore { namespace ImplOpenGLES
             assert(context);
             CGLReleasePixelFormat(pixelFormat);
 
-            _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
+            _nsContext = moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
             CGLReleaseContext(context);
 
             #pragma clang diagnostic push
@@ -449,9 +452,3 @@ namespace RenderCore { namespace ImplOpenGLES
     }
 
 } }
-
-namespace RenderCore
-{
-    IDeviceOpenGLES::~IDeviceOpenGLES() {}
-    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
-}

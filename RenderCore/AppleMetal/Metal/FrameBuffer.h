@@ -6,7 +6,7 @@
 
 #include "TextureView.h"
 #include "../../FrameBufferDesc.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 
 @class MTLRenderPassDescriptor;
 
@@ -38,7 +38,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         class Subpass
         {
         public:
-            TBC::OCPtr<MTLRenderPassDescriptor> _renderPassDescriptor;
+            OCPtr<MTLRenderPassDescriptor> _renderPassDescriptor;
 
 #if 0
             /* KenD -- Metal TODO -- clear values - the iterator has to be stored within the subpass;

@@ -6,7 +6,7 @@
 //
 
 #import "BasicLabelWithNSError.h"
-#import "../../../../Foreign/OCPtr/OCPtr.hpp"
+#import "../../../Utility/OCUtils.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -15,7 +15,7 @@ using ::Exceptions::BasicLabel;
 struct BasicLabelWithNSError::_Pimpl {
 public:
     _Pimpl(NSError *error) : _error(error) {}
-    TBC::OCPtr<NSError> _error;
+    OCPtr<NSError> _error;
 };
 
 BasicLabelWithNSError::BasicLabelWithNSError(NSError *error, const char format[], ...) never_throws : BasicLabel(), _pimpl(std::make_shared<_Pimpl>(error)) {

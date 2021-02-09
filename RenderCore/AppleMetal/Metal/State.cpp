@@ -45,8 +45,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     class SamplerState::Pimpl
     {
     public:
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerMipmaps; // <MTLSamplerState>
-        TBC::OCPtr<AplMtlSamplerState> _underlyingSamplerNoMipmaps; // <MTLSamplerState>
+        OCPtr<AplMtlSamplerState> _underlyingSamplerMipmaps; // <MTLSamplerState>
+        OCPtr<AplMtlSamplerState> _underlyingSamplerNoMipmaps; // <MTLSamplerState>
         bool _enableMipmaps = true;
     };
 
@@ -59,7 +59,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl = std::make_shared<Pimpl>();
         _pimpl->_enableMipmaps = enableMipmaps;
 
-        TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
+        OCPtr<MTLSamplerDescriptor> desc = moveptr([[MTLSamplerDescriptor alloc] init]);
 
         desc.get().rAddressMode = AsMTLenum(addressW);
         desc.get().sAddressMode = AsMTLenum(addressU);

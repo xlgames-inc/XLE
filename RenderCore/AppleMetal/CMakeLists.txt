@@ -22,3 +22,6 @@ xle_configure_library(RenderCore_AppleMetal)
 target_compile_options(RenderCore_AppleMetal PUBLIC -ObjC++)            
 target_link_libraries(RenderCore_AppleMetal PRIVATE ForeignMisc)
 target_sources(RenderCore_AppleMetal INTERFACE ${CMAKE_CURRENT_LIST_DIR}/RegisterAppleMetal.cpp)
+target_link_libraries(RenderCore_AppleMetal PUBLIC "-framework Foundation" "-framework Metal" objc)
+target_link_libraries(RenderCore_AppleMetal PRIVATE "-framework Cocoa" "-framework QuartzCore")
+

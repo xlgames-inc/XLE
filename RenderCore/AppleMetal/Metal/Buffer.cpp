@@ -29,12 +29,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             Throw(::Exceptions::BasicLabel("Buffer::Update synchronized can only be called between render passes."));
         }
 
-        TBC::OCPtr<id> buffer = (AplMtlBuffer*)GetBuffer().get(); // id<MTLBuffer>
+        IdPtr buffer = (AplMtlBuffer*)GetBuffer().get(); // id<MTLBuffer>
         // METAL_TODO: Implementing this for managed-mode buffers is simple, but those only exist on macOS, so we probably never have them.
         assert([buffer.get() storageMode] == MTLStorageModeShared);
 
         assert(dataSize < MAX_INT);
-        TBC::OCPtr<id> commandBuffer(context.RetrieveCommandBuffer());
+        IdPtr commandBuffer(context.RetrieveCommandBuffer());
         id<MTLBuffer> blitBuffer = [GetObjectFactory().CreateBuffer((const unsigned char *)data, (unsigned)dataSize).get() retain];
         [commandBuffer addCompletedHandler:^(id){ [blitBuffer release]; }];
 

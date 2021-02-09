@@ -12,7 +12,7 @@
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
-    TBC::OCPtr<AplMtlTexture> ObjectFactory::CreateTexture(MTLTextureDescriptor* textureDesc)
+    OCPtr<AplMtlTexture> ObjectFactory::CreateTexture(MTLTextureDescriptor* textureDesc)
     {
         /* KenD -- this is actually creating Metal textures.
          * Other methods create Resources from MTLTextures (keeping a reference to a MTLTexture),
@@ -22,11 +22,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
 
         assert(textureDesc.width != 0);
-        auto obj = TBC::OCPtr<AplMtlTexture>(TBC::moveptr([device newTextureWithDescriptor:textureDesc]));
-        return obj;
+        return moveptr([device newTextureWithDescriptor:textureDesc]);
     }
 
-    TBC::OCPtr<AplMtlBuffer> ObjectFactory::CreateBuffer(const void* bytes, unsigned length)
+    OCPtr<AplMtlBuffer> ObjectFactory::CreateBuffer(const void* bytes, unsigned length)
     {
         /* KenD -- ideally we could use a private storage mode if the buffer is only meant to be read by the GPU...
          * Documentation for `newBufferWithBytes`:
@@ -38,16 +37,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
 
         if (bytes) {
-            return TBC::OCPtr<AplMtlBuffer>(TBC::moveptr([device newBufferWithBytes:bytes
+            return moveptr([device newBufferWithBytes:bytes
                 length:length
-                options:MTLResourceStorageModeShared]));
+                options:MTLResourceStorageModeShared]);
         } else {
-            return TBC::OCPtr<AplMtlBuffer>(TBC::moveptr([device newBufferWithLength:length
-                options:MTLResourceStorageModeShared]));
+            return moveptr([device newBufferWithLength:length
+                options:MTLResourceStorageModeShared]);
         }
     }
 
-    TBC::OCPtr<AplMtlSamplerState> ObjectFactory::CreateSamplerState(MTLSamplerDescriptor* samplerDesc)
+    OCPtr<AplMtlSamplerState> ObjectFactory::CreateSamplerState(MTLSamplerDescriptor* samplerDesc)
     {
         assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
@@ -55,15 +54,15 @@ namespace RenderCore { namespace Metal_AppleMetal
             assert(samplerDesc.compareFunction == MTLCompareFunctionNever);
         }
 
-        return TBC::OCPtr<AplMtlSamplerState>(TBC::moveptr([device newSamplerStateWithDescriptor:samplerDesc]));
+        return moveptr([device newSamplerStateWithDescriptor:samplerDesc]);
     }
 
-    TBC::OCPtr<AplMtlDepthStencilState> ObjectFactory::CreateDepthStencilState(MTLDepthStencilDescriptor* dss)
+    OCPtr<AplMtlDepthStencilState> ObjectFactory::CreateDepthStencilState(MTLDepthStencilDescriptor* dss)
     {
         assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
 
-        return TBC::OCPtr<AplMtlDepthStencilState>(TBC::moveptr([device newDepthStencilStateWithDescriptor:dss]));
+        return moveptr([device newDepthStencilStateWithDescriptor:dss]);
     }
 
     auto ObjectFactory::CreateRenderPipelineState(MTLRenderPipelineDescriptor* desc, bool makeReflection) -> RenderPipelineState
@@ -81,14 +80,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         assert(reflection);
 
-        return RenderPipelineState { TBC::moveptr(pipelineState), error, reflection };
+        return RenderPipelineState { moveptr(pipelineState), error, reflection };
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static TBC::OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory, bool isDepth)
+    static OCPtr<AplMtlTexture> CreateStandIn2DTexture(ObjectFactory& factory, bool isDepth)
     {
-        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        OCPtr<MTLTextureDescriptor> textureDesc = moveptr([[MTLTextureDescriptor alloc] init]);
         textureDesc.get().textureType = MTLTextureType2D;
         textureDesc.get().width = 4;
         textureDesc.get().height = 4;
@@ -119,9 +118,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         return tex;
     }
 
-    static TBC::OCPtr<AplMtlTexture> CreateStandInCubeTexture(ObjectFactory& factory)
+    static OCPtr<AplMtlTexture> CreateStandInCubeTexture(ObjectFactory& factory)
     {
-        TBC::OCPtr<MTLTextureDescriptor> textureDesc = TBC::moveptr([[MTLTextureDescriptor alloc] init]);
+        OCPtr<MTLTextureDescriptor> textureDesc = moveptr([[MTLTextureDescriptor alloc] init]);
         textureDesc.get().textureType = MTLTextureTypeCube;
         textureDesc.get().pixelFormat = MTLPixelFormatRGBA8Unorm;
         textureDesc.get().width = 4;
@@ -144,9 +143,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         return tex;
     }
 
-    static TBC::OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory)
+    static OCPtr<AplMtlSamplerState> CreateStandInSamplerState(ObjectFactory& factory)
     {
-        TBC::OCPtr<MTLSamplerDescriptor> desc = TBC::moveptr([[MTLSamplerDescriptor alloc] init]);
+        OCPtr<MTLSamplerDescriptor> desc = moveptr([[MTLSamplerDescriptor alloc] init]);
         desc.get().rAddressMode = MTLSamplerAddressModeRepeat;
         desc.get().sAddressMode = MTLSamplerAddressModeRepeat;
         desc.get().tAddressMode = MTLSamplerAddressModeRepeat;
@@ -184,10 +183,10 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
     ObjectFactory::~ObjectFactory()
     {
-        _standIn2DTexture = TBC::OCPtr<AplMtlTexture>();
-        _standIn2DDepthTexture = TBC::OCPtr<AplMtlTexture>();
-        _standInCubeTexture = TBC::OCPtr<AplMtlTexture>();
-        _standInSamplerState = TBC::OCPtr<AplMtlSamplerState>();
+        _standIn2DTexture = OCPtr<AplMtlTexture>();
+        _standIn2DDepthTexture = OCPtr<AplMtlTexture>();
+        _standInCubeTexture = OCPtr<AplMtlTexture>();
+        _standInSamplerState = OCPtr<AplMtlSamplerState>();
 
         {
             ScopedLock(_compiledShadersLock);
@@ -198,7 +197,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         s_objectFactory_instance = nullptr;
     }
     
-    const TBC::OCPtr<AplMtlTexture>& ObjectFactory::GetStandInTexture(unsigned typeInt, bool isDepth) {
+    const OCPtr<AplMtlTexture>& ObjectFactory::GetStandInTexture(unsigned typeInt, bool isDepth) {
         MTLTextureType type = (MTLTextureType)typeInt;
         assert(type == MTLTextureType2D || (type == MTLTextureTypeCube && !isDepth));
         if (type == MTLTextureTypeCube) {

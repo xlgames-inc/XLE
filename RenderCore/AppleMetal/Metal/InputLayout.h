@@ -7,7 +7,7 @@
 #include "../../UniformsStream.h"
 #include "../../Types.h"
 #include "../../../Utility/IteratorUtils.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 
 @class MTLVertexDescriptor;
 @class MTLRenderPipelineReflection;
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         MTLVertexDescriptor* GetVertexDescriptor() const { return _vertexDescriptor.get(); }
 
     private:
-        TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
+        OCPtr<MTLVertexDescriptor> _vertexDescriptor;
         bool _allAttributesBound = true; // Metal HACK - Metal validation can help determine that bindings are correct
         uint64_t _hash = 0;
 

@@ -1,3 +1,7 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
 #pragma once
 
 #include "IDeviceOpenGLES.h"
@@ -6,7 +10,7 @@
 #include "../ResourceDesc.h"
 #include "Metal/ObjectFactory.h"
 #include "../../Utility/IntrusivePtr.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 
 namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; } }
 
@@ -24,13 +28,13 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual void Resize(unsigned newWidth, unsigned newHeight) override;
         virtual const std::shared_ptr<PresentationChainDesc>& GetDesc() const override { return _desc; }
 
-        const TBC::OCPtr<NSOpenGLContext>& GetUnderlying() { return _nsContext; }
+        const OCPtr<NSOpenGLContext>& GetUnderlying() { return _nsContext; }
 
         PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc);
         ~PresentationChain();
 
     private:
-        TBC::OCPtr<NSOpenGLContext> _nsContext;
+        OCPtr<NSOpenGLContext> _nsContext;
         CGLContextObj _sharedContext;
         const void* _platformValue;
         std::shared_ptr<PresentationChainDesc> _desc;

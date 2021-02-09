@@ -7,7 +7,7 @@
 #include "../../IAnnotator.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Core/Types.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 #include <algorithm>
 #include <memory>
 
@@ -67,7 +67,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         IThreadContext *_context;
         SyncEvent _nextEvent;
         std::shared_ptr<SyncEvent> _lastCompletedEvent;
-        TBC::OCPtr<id> _listener;
+        IdPtr _listener;
     };
 
     #if defined(GPUANNOTATIONS_ENABLE)

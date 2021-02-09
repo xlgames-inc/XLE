@@ -6,14 +6,14 @@
 
 #include "Resource.h"
 #include "ObjectFactory.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
     class ShaderResourceView
     {
     public:
-        const TBC::OCPtr<AplMtlTexture>&    GetUnderlying() const { return _resource->GetTexture(); }
+        const OCPtr<AplMtlTexture>&    GetUnderlying() const { return _resource->GetTexture(); }
         bool                                IsGood() const { return _resource != nullptr && _resource->GetTexture().get() != nullptr; }
         bool                                HasMipMaps() const { return _hasMipMaps; }
         const std::shared_ptr<Resource>& GetResource() const { return _resource; }

@@ -136,6 +136,7 @@ namespace UnitTests
 
 		~RenderPassToken()
 		{
+			RenderCore::Metal::EndSubpass(*_devContext, *_fb);
 			RenderCore::Metal::EndRenderPass(*_devContext);
 		}
 	};
@@ -174,7 +175,7 @@ namespace UnitTests
 
 		// Create a resource that matches the given desc, and then also create
 		// a framebuffer with a single subpass rendering into that resource;
-		std::vector<uint8_t> initBuffer(ByteCount(mainFBDesc), 0xdd);
+		std::vector<uint8_t> initBuffer(RenderCore::ByteCount(mainFBDesc), 0xdd);
 		SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(mainFBDesc._textureDesc) };
 		_pimpl->_mainTarget = device.CreateResource(mainFBDesc, initData);
 		_pimpl->_originalMainTargetDesc = mainFBDesc;

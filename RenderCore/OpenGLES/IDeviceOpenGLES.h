@@ -30,7 +30,7 @@ namespace RenderCore
         virtual void InitializeRootContextHeadless(
             Format pbufferFmt = Format(0),
             TextureSamples samples = TextureSamples::Create()) = 0;
-        virtual ~IDeviceOpenGLES();
+        virtual ~IDeviceOpenGLES() = default;
     };
 
     class IThreadContextOpenGLES
@@ -44,7 +44,7 @@ namespace RenderCore
 
         virtual std::shared_ptr<IThreadContext> Clone() = 0;
 
-        virtual ~IThreadContextOpenGLES();
+        virtual ~IThreadContextOpenGLES() = default;
     };
 
 }

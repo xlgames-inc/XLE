@@ -15,7 +15,7 @@
 #include "../../FrameBufferDesc.h"
 #include "../../../OSServices/Log.h"
 #include "../../../OSServices/LogUtil.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <assert.h>
 #include <map>
@@ -194,11 +194,11 @@ namespace RenderCore { namespace Metal_AppleMetal
     class GraphicsPipelineBuilder::Pimpl
     {
     public:
-        TBC::OCPtr<MTLRenderPipelineDescriptor> _pipelineDescriptor; // For the current draw
+        OCPtr<MTLRenderPipelineDescriptor> _pipelineDescriptor; // For the current draw
         AttachmentBlendDesc _attachmentBlendDesc;
         MTLPrimitiveType _activePrimitiveType;
         DepthStencilDesc _activeDepthStencilDesc;
-        TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
+        OCPtr<MTLVertexDescriptor> _vertexDescriptor;
 
         uint32_t _shaderGuid = 0;
         uint64_t _rpHash = 0;
@@ -417,7 +417,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_dssHash = _pimpl->_activeDepthStencilDesc.Hash();
     }
 
-    TBC::OCPtr<NSObject<MTLDepthStencilState>> GraphicsPipelineBuilder::CreateDepthStencilState(ObjectFactory& factory)
+    OCPtr<NSObject<MTLDepthStencilState>> GraphicsPipelineBuilder::CreateDepthStencilState(ObjectFactory& factory)
     {
         auto depthAttachmentPixelFormat = [_pimpl->_pipelineDescriptor depthAttachmentPixelFormat];
         // METAL_TODO: Should this account for things like MTLPixelFormatStencil8 (which have stencil but no depth) or MTLPixelFormatX24_Stencil8 (that have 24 bits set aside for, but not used for, depth)? I've never seen us use those formats with a depth buffer (unlike Invalid), but that's no guarantee that we can't ever do so.
@@ -436,11 +436,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         }
 
-        TBC::OCPtr<MTLDepthStencilDescriptor> mtlDesc = TBC::moveptr([[MTLDepthStencilDescriptor alloc] init]);
+        OCPtr<MTLDepthStencilDescriptor> mtlDesc = moveptr([[MTLDepthStencilDescriptor alloc] init]);
         mtlDesc.get().depthCompareFunction = AsMTLCompareFunction(desc._depthTest);
         mtlDesc.get().depthWriteEnabled = desc._depthWrite;
 
-        TBC::OCPtr<MTLStencilDescriptor> frontStencilDesc = TBC::moveptr([[MTLStencilDescriptor alloc] init]);
+        OCPtr<MTLStencilDescriptor> frontStencilDesc = moveptr([[MTLStencilDescriptor alloc] init]);
         frontStencilDesc.get().stencilCompareFunction = AsMTLCompareFunction(desc._frontFaceStencil._comparisonOp);
         frontStencilDesc.get().stencilFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._failOp);
         frontStencilDesc.get().depthFailureOperation = AsMTLStencilOperation(desc._frontFaceStencil._depthFailOp);
@@ -449,7 +449,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         frontStencilDesc.get().writeMask = desc._stencilWriteMask;
         mtlDesc.get().frontFaceStencil = frontStencilDesc;
 
-        TBC::OCPtr<MTLStencilDescriptor> backStencilDesc = TBC::moveptr([[MTLStencilDescriptor alloc] init]);
+        OCPtr<MTLStencilDescriptor> backStencilDesc = moveptr([[MTLStencilDescriptor alloc] init]);
         backStencilDesc.get().stencilCompareFunction = AsMTLCompareFunction(desc._backFaceStencil._comparisonOp);
         backStencilDesc.get().stencilFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._failOp);
         backStencilDesc.get().depthFailureOperation = AsMTLStencilOperation(desc._backFaceStencil._depthFailOp);
@@ -541,7 +541,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         if (!renderPipelineState._renderPipelineState) {
             if (renderPipelineState._error) {
-                Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error << std::endl;
+                Log(Error) << "Failed to create render pipeline state: " << renderPipelineState._error.get() << std::endl;
                 Throw(BasicLabelWithNSError(renderPipelineState._error, "PipelineState failed with error: %s", renderPipelineState._error.get().description.UTF8String));
             } else {
                 Throw(::Exceptions::BasicLabel("PipelineState failed with no error code msg"));
@@ -571,7 +571,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     GraphicsPipelineBuilder::GraphicsPipelineBuilder()
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_pipelineDescriptor = TBC::moveptr([[MTLRenderPipelineDescriptor alloc] init]);
+        _pimpl->_pipelineDescriptor = moveptr([[MTLRenderPipelineDescriptor alloc] init]);
         _pimpl->_activePrimitiveType = MTLPrimitiveTypeTriangle;
         _dirty = true;
     }
@@ -590,14 +590,14 @@ namespace RenderCore { namespace Metal_AppleMetal
         // each time we release one (in Present or CommitHeadless) we get
         // a new one instantly. And the only other way to create a device
         // context is with a command buffer that you had lying around.
-        TBC::OCPtr<id> _commandBuffer; // For the duration of the frame
+        IdPtr _commandBuffer; // For the duration of the frame
 
         // Only one encoder (of either type) can exist, not both. Within a
         // render pass, each subpass corresponds with one render encoder.
         // Outside of render passes, encoders should only be created, used,
         // and immediately destroyed, e.g., in a On... callback.
-        TBC::OCPtr<id> _commandEncoder; // For the current subpass
-        TBC::OCPtr<id> _blitCommandEncoder;
+        IdPtr _commandEncoder; // For the current subpass
+        IdPtr _blitCommandEncoder;
 
         bool _inRenderPass;
 
@@ -620,13 +620,13 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         CapturedStates _capturedStates;
 
-        TBC::OCPtr<id> _activeIndexBuffer; // MTLBuffer
+        IdPtr _activeIndexBuffer; // MTLBuffer
 
         MTLIndexType _indexType;
         unsigned _indexFormatBytes;
         unsigned _indexBufferOffsetBytes;
 
-        TBC::OCPtr<MTLRenderPipelineReflection> _graphicsPipelineReflection;
+        OCPtr<MTLRenderPipelineReflection> _graphicsPipelineReflection;
         uint64_t _boundVSArgs = 0ull, _boundPSArgs = 0ull;
 
         const GraphicsPipeline* _boundGraphicsPipeline = nullptr;

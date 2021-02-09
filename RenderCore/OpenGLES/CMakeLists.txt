@@ -26,6 +26,14 @@ if (WIN32 OR ANDROID OR LINUX)
         EGLUtils.cpp)
 endif ()
 
+if (UNIX AND APPLE)
+    LIST(APPEND Src Device_CGL.mm)     # OSX
+endif ()
+
+if (NOT UNIX AND APPLE)
+    LIST(APPEND Src Device_EAGL.mm)    # IOS
+endif ()
+
 add_library(RenderCore_OpenGLES STATIC ${Src})
 xle_configure_library(RenderCore_OpenGLES)
 target_link_libraries(RenderCore_OpenGLES PUBLIC RenderCore Utility ForeignMisc)

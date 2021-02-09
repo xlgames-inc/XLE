@@ -13,6 +13,7 @@
 #include "../../BufferView.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include <assert.h>
+#include <Foundation/NSObject.h>
 
 @class MTLRenderPassDescriptor;
 @class MTLRenderPipelineReflection;
@@ -21,6 +22,8 @@
 @protocol MTLDevice;
 @protocol MTLRenderCommandEncoder;
 @protocol MTLFunction;
+@protocol MTLDepthStencilState;
+@protocol MTLRenderPipelineState;
 @protocol MTLDepthStencilState;
 
 namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; class AttachmentBlendDesc; }
@@ -58,9 +61,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     class GraphicsPipeline
     {
     public:
-        TBC::OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
-        TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
-        TBC::OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
+        OCPtr<NSObject<MTLRenderPipelineState>> _underlying;
+        OCPtr<MTLRenderPipelineReflection> _reflection;
+        OCPtr<NSObject<MTLDepthStencilState>> _depthStencilState;
         unsigned _primitiveType;              // MTLPrimitiveType
         unsigned _stencilReferenceValue;        // todo -- separate stencil reference value from DepthStencilDesc
         unsigned _cullMode;
@@ -103,7 +106,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned _cullMode;
         unsigned _faceWinding;
 
-        TBC::OCPtr<NSObject<MTLDepthStencilState>> CreateDepthStencilState(ObjectFactory& factory);
+        OCPtr<NSObject<MTLDepthStencilState>> CreateDepthStencilState(ObjectFactory& factory);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

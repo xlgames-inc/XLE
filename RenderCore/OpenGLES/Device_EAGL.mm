@@ -1,3 +1,6 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device_EAGL.h"
 #include "Metal/DeviceContext.h"
@@ -162,7 +165,7 @@ namespace RenderCore { namespace ImplOpenGLES
             Log(Debug) << "Falling back to OpenGLES2.0 because GLES3.0 context failed to be constructed" << std::endl;
             t = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
         }
-        _sharedContext = TBC::moveptr(t);
+        _sharedContext = moveptr(t);
         [EAGLContext setCurrentContext:_sharedContext.get()];
         #if defined(_DEBUG)
             _boundContextVerification = std::make_unique<BoundContextVerification>();
@@ -416,7 +419,7 @@ namespace RenderCore { namespace ImplOpenGLES
     void ThreadContext::MakeDeferredContext()
     {
         auto* t = [[EAGLContext alloc] initWithAPI:_sharedContext.get().API sharegroup:_sharedContext.get().sharegroup];
-        _deferredContext = TBC::moveptr(t);
+        _deferredContext = moveptr(t);
 
         // All of the contexts within the same share group must have a matching "multiThreaded" flag
         // without this, we can get strange crashes & unexpected opengl errors
@@ -517,8 +520,3 @@ namespace RenderCore { namespace ImplOpenGLES
 
 } }
 
-namespace RenderCore
-{
-    IDeviceOpenGLES::~IDeviceOpenGLES() {}
-    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
-}

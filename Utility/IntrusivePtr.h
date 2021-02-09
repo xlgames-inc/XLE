@@ -9,6 +9,11 @@
 #include "../Core/Exceptions.h"
 #include <utility>      // (for std::forward)
 
+template<typename T, decltype(&T::AddRef)* =nullptr>
+    void intrusive_ptr_add_ref(T* p) { p->AddRef(); }
+template<typename T, decltype(&T::Release)* =nullptr>
+    void intrusive_ptr_release(T* p) { p->Release(); }
+    
 namespace Utility
 {
     #define templ template<typename T>    // (it improves readability so much just to do this)
@@ -61,7 +66,7 @@ namespace Utility
             // constructors / destructors
         intrusive_ptr() never_throws;
         intrusive_ptr(T* copyOrMoveFrom, bool takeNewReference = true);
-        intrusive_ptr(MovePTRHelper<T> moveFrom) never_throws;
+        template<typename Y> intrusive_ptr(MovePTRHelper<Y> moveFrom) never_throws;
         intrusive_ptr(const intrusive_ptr& copyFrom);
         intrusive_ptr(intrusive_ptr&& moveFrom) never_throws;
         template<typename Y> intrusive_ptr(const intrusive_ptr<Y>& copyFrom);
@@ -72,7 +77,7 @@ namespace Utility
         intrusive_ptr& operator=(const intrusive_ptr& copyFrom);
         template<typename Y> intrusive_ptr& operator=(const intrusive_ptr<Y>& copyFrom);
         intrusive_ptr& operator=(T* copyFrom);
-        intrusive_ptr& operator=(MovePTRHelper<T> moveFrom) never_throws;
+        template<typename Y> intrusive_ptr& operator=(MovePTRHelper<Y> moveFrom) never_throws;
         intrusive_ptr& operator=(intrusive_ptr&& moveFrom) never_throws;
         template<typename Y> intrusive_ptr& operator=(intrusive_ptr<Y>&& moveFrom) never_throws;
 
@@ -84,6 +89,8 @@ namespace Utility
         T& operator*() const never_throws;
         T* operator->() const never_throws;
         T* get() const never_throws;
+
+        operator T*() const never_throws { return get(); }
 
             // cast for if(ptr) checks
         operator bool() const never_throws;
@@ -118,11 +125,6 @@ namespace Utility
         T* _ptr;
     };
 
-    template<typename T, decltype(&T::AddRef)* =nullptr>
-        void intrusive_ptr_add_ref(T* p) { p->AddRef(); }
-    template<typename T, decltype(&T::Release)* =nullptr>
-        void intrusive_ptr_release(T* p) { p->Release(); }
-
     templ intrusive_ptr<T>::intrusive_ptr() never_throws : _ptr(nullptr) {}
     templ intrusive_ptr<T>::intrusive_ptr(T* copyOrMoveFrom, bool takeNewReference)
         : _ptr(copyOrMoveFrom)
@@ -131,7 +133,8 @@ namespace Utility
             intrusive_ptr_add_ref(_ptr);
         }
     }
-    templ intrusive_ptr<T>::intrusive_ptr(MovePTRHelper<T> moveFrom) never_throws : _ptr(moveFrom.Adopt()) {}
+    templ template<typename Y> 
+        intrusive_ptr<T>::intrusive_ptr(MovePTRHelper<Y> moveFrom) never_throws : _ptr(moveFrom.Adopt()) {}
     templ intrusive_ptr<T>::intrusive_ptr(const intrusive_ptr& copyFrom)
         : _ptr(copyFrom._ptr)
     {
@@ -193,7 +196,8 @@ namespace Utility
         return *this;
     }
 
-    templ intrusive_ptr<T>& intrusive_ptr<T>::operator=(MovePTRHelper<T> moveFrom) never_throws
+    templ template<typename Y>
+        intrusive_ptr<T>& intrusive_ptr<T>::operator=(MovePTRHelper<Y> moveFrom) never_throws
     {
         intrusive_ptr(moveFrom).swap(*this);
         return *this;

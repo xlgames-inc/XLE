@@ -39,9 +39,9 @@ namespace UnitTests
             //      we'll find the working directory relative to
             //      that.
     	    //
-    	char appDir[MaxPath];
+    	/*char appDir[MaxPath];
     	OSServices::GetCurrentDirectory(dimof(appDir), appDir);
-    	OSServices::ChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());
+    	OSServices::ChDir((const utf8*)(std::basic_string<char>(appDir) + "\\..\\Working").c_str());*/
     }
     
 }

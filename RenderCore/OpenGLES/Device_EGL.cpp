@@ -799,11 +799,3 @@ namespace RenderCore { namespace ImplOpenGLES
     }
 
 } }
-
-namespace RenderCore
-{
-    IDeviceOpenGLES::~IDeviceOpenGLES() {}
-    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
-    void *IThreadContext::QueryInterface(size_t guid) { return nullptr; }
-}
-

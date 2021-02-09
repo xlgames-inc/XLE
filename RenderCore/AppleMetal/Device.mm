@@ -214,7 +214,7 @@ namespace RenderCore { namespace ImplAppleMetal
     }
 
     void Device::Stall() {
-        TBC::OCPtr<id> buffer = [_immediateCommandQueue commandBuffer];
+        IdPtr buffer = [_immediateCommandQueue commandBuffer];
         [buffer commit];
         [buffer waitUntilCompleted];
     }
@@ -299,18 +299,12 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    render_dll_export std::shared_ptr<IDevice> TryCreateDevice()
+    render_dll_export std::shared_ptr<IDevice> CreateDevice()
     {
         auto* underlyingDevice = MTLCreateSystemDefaultDevice();
         if (!underlyingDevice)
             return nullptr;
         return std::make_shared<Device>(underlyingDevice);
-    }
-
-    void RegisterCreation()
-    {
-        static_constructor<&RegisterCreation>::c;
-        RegisterDeviceCreationFunction(UnderlyingAPI::AppleMetal, &TryCreateDevice);
     }
 
 }}

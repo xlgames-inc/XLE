@@ -8,9 +8,11 @@
 #pragma once
 
 #include "FeatureSet.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
+#import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSObject.h>
 
 @protocol MTLDevice;
 @protocol MTLTexture;
@@ -27,7 +29,7 @@
 /* KenD -- could switch all of these typedefs from NSObject with a protocol to simply `id`
  * However, cannot have `OCPtr<id<MTLTexture>>` because OCPtr will not work; ObjType will be `id<MTLTexture> *`, which is
  * off because `id` is already a pointer.  `OCPtr<NSObject<MTLTexture>>` is fine because ObjType will be `NSObject<MTLTexture> *`, which is fine.
- * `OCPtr<id>` is also fine.
+ * `IdPtr` is also fine.
  */
 typedef NSObject<MTLTexture> AplMtlTexture;
 typedef NSObject<MTLBuffer> AplMtlBuffer;
@@ -47,29 +49,29 @@ namespace RenderCore { namespace Metal_AppleMetal
     class ObjectFactory
     {
     public:
-        TBC::OCPtr<AplMtlTexture> CreateTexture(MTLTextureDescriptor* textureDesc); // <MTLTexture>
-        TBC::OCPtr<AplMtlBuffer> CreateBuffer(const void* bytes, unsigned length); // <MTLBuffer>
-        TBC::OCPtr<AplMtlSamplerState> CreateSamplerState(MTLSamplerDescriptor* samplerDesc); // <MTLSamplerState>
-        TBC::OCPtr<AplMtlDepthStencilState> CreateDepthStencilState(MTLDepthStencilDescriptor* dss); // <MTLDepthStencilState>
+        OCPtr<AplMtlTexture> CreateTexture(MTLTextureDescriptor* textureDesc); // <MTLTexture>
+        OCPtr<AplMtlBuffer> CreateBuffer(const void* bytes, unsigned length); // <MTLBuffer>
+        OCPtr<AplMtlSamplerState> CreateSamplerState(MTLSamplerDescriptor* samplerDesc); // <MTLSamplerState>
+        OCPtr<AplMtlDepthStencilState> CreateDepthStencilState(MTLDepthStencilDescriptor* dss); // <MTLDepthStencilState>
 
         struct RenderPipelineState
         {
-            TBC::OCPtr<AplMtlRenderPipelineState> _renderPipelineState;
-            TBC::OCPtr<NSError> _error;
-            TBC::OCPtr<MTLRenderPipelineReflection> _reflection;
+            OCPtr<AplMtlRenderPipelineState> _renderPipelineState;
+            OCPtr<NSError> _error;
+            OCPtr<MTLRenderPipelineReflection> _reflection;
         };
         RenderPipelineState CreateRenderPipelineState(
             MTLRenderPipelineDescriptor* desc,
             bool makeReflection = false);
 
-        const TBC::OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
-        const TBC::OCPtr<AplMtlTexture>& StandIn2DDepthTexture() { return _standIn2DDepthTexture; }
-        const TBC::OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
-        const TBC::OCPtr<AplMtlSamplerState>& StandInSamplerState() { return _standInSamplerState; }
-        const TBC::OCPtr<AplMtlTexture>& GetStandInTexture(unsigned type, bool isDepth);
+        const OCPtr<AplMtlTexture>& StandIn2DTexture()     { return _standIn2DTexture; }
+        const OCPtr<AplMtlTexture>& StandIn2DDepthTexture() { return _standIn2DDepthTexture; }
+        const OCPtr<AplMtlTexture>& StandInCubeTexture()   { return _standInCubeTexture; }
+        const OCPtr<AplMtlSamplerState>& StandInSamplerState() { return _standInSamplerState; }
+        const OCPtr<AplMtlTexture>& GetStandInTexture(unsigned type, bool isDepth);
 
         Threading::Mutex _compiledShadersLock;
-        std::unordered_map<uint64_t, TBC::OCPtr<id>> _compiledShaders;
+        std::unordered_map<uint64_t, IdPtr> _compiledShaders;
 
         FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
 
@@ -80,13 +82,13 @@ namespace RenderCore { namespace Metal_AppleMetal
         ObjectFactory& operator=(const ObjectFactory&) = delete;
         ObjectFactory(const ObjectFactory&) = delete;
     private:
-        TBC::OCPtr<AplMtlDevice> _mtlDevice; // <MTLDevice>
+        OCPtr<AplMtlDevice> _mtlDevice; // <MTLDevice>
         FeatureSet::BitField _featureSet;
 
-        TBC::OCPtr<AplMtlTexture> _standIn2DTexture;
-        TBC::OCPtr<AplMtlTexture> _standIn2DDepthTexture;
-        TBC::OCPtr<AplMtlTexture> _standInCubeTexture;
-        TBC::OCPtr<AplMtlSamplerState> _standInSamplerState;
+        OCPtr<AplMtlTexture> _standIn2DTexture;
+        OCPtr<AplMtlTexture> _standIn2DDepthTexture;
+        OCPtr<AplMtlTexture> _standInCubeTexture;
+        OCPtr<AplMtlSamplerState> _standInSamplerState;
     };
 
     class DeviceContext;

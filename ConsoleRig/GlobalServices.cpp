@@ -109,16 +109,6 @@ namespace ConsoleRig
 			OSServices::ChDir(assetRoot.c_str());
 
 		serv.Add<std::basic_string<utf8>()>(Fn_GetAssetRoot, [assetRoot](){ return assetRoot; });
-
-            //
-            //      We need to initialize logging output.
-            //      The "int" directory stands for "intermediate." We cache processed 
-            //      models and textures in this directory
-            //      But it's also a convenient place for log files (since it's excluded from
-            //      git and it contains only temporary data).
-            //      Note that we overwrite the log file every time, destroying previous data.
-            //
-        OSServices::CreateDirectoryRecursive("int");
     }
 
     static void MainRig_Attach()

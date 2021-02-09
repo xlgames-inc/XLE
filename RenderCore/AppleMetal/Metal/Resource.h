@@ -25,11 +25,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         Desc GetDesc() const override        { return _desc; }
 
-        const TBC::OCPtr<AplMtlTexture>& GetTexture() const { return _underlyingTexture; }; // <MTLTexture>
-        const TBC::OCPtr<AplMtlBuffer>& GetBuffer() const { return _underlyingBuffer; }; // <MTLBuffer>
+        const OCPtr<AplMtlTexture>& GetTexture() const { return _underlyingTexture; }; // <MTLTexture>
+        const OCPtr<AplMtlBuffer>& GetBuffer() const { return _underlyingBuffer; }; // <MTLBuffer>
 
         /* KenD -- GetRenderBuffer() is not necessary for Metal implementation at this point */
-        //TBC::OCPtr<id> GetRenderBuffer() const { return _underlyingRenderBuffer; }; // <MTLTexture>
+        //IdPtr GetRenderBuffer() const { return _underlyingRenderBuffer; }; // <MTLTexture>
 
         const bool IsBackBuffer() { return false; }
 
@@ -54,9 +54,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         static uint64_t ReserveGUID();
 
     protected:
-        TBC::OCPtr<AplMtlBuffer> _underlyingBuffer; // id<MTLBuffer>
-        TBC::OCPtr<AplMtlTexture> _underlyingTexture; // id<MTLTexture>
-        //TBC::OCPtr<id> _underlyingRenderBuffer; // id<MTLTexture>
+        OCPtr<AplMtlBuffer> _underlyingBuffer; // id<MTLBuffer>
+        OCPtr<AplMtlTexture> _underlyingTexture; // id<MTLTexture>
+        //IdPtr _underlyingRenderBuffer; // id<MTLTexture>
         Desc _desc;
         uint64_t _guid;
     };

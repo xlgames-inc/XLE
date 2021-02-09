@@ -9,7 +9,7 @@
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
 #include "Metal/FeatureSet.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../Utility/OCUtils.h"
 #include <memory>
 
 @class CAMetalLayer;
@@ -43,7 +43,7 @@ namespace RenderCore { namespace ImplAppleMetal
         std::vector<std::pair<id, uint64_t>> _drawableTextureGUIDMapping;
 
     private:
-        TBC::OCPtr<CAMetalLayer> _layer;
+        OCPtr<CAMetalLayer> _layer;
         std::shared_ptr<PresentationChainDesc> _desc;
     };
 
@@ -88,12 +88,12 @@ namespace RenderCore { namespace ImplAppleMetal
         ~ThreadContext();
 
     private:
-        TBC::OCPtr<id> _immediateCommandQueue;      // (id<MTLCommandQueue>)
+        IdPtr _immediateCommandQueue;      // (id<MTLCommandQueue>)
         std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
 
-        TBC::OCPtr<id> _activeFrameDrawable;        // (id<MTLDrawable>)
+        IdPtr _activeFrameDrawable;        // (id<MTLDrawable>)
         // TODO: Should this be managed implicitly by the DeviceContext?
-        TBC::OCPtr<id> _commandBuffer;              // (id<MTLCommandBuffer>)
+        IdPtr _commandBuffer;              // (id<MTLCommandBuffer>)
 
         std::shared_ptr<IAnnotator> _annotator;
 
@@ -123,16 +123,16 @@ namespace RenderCore { namespace ImplAppleMetal
 
         Metal_AppleMetal::FeatureSet::BitField GetFeatureSet();
 
-        id<MTLDevice> GetUnderlying() const { return _underlying; }
+        id<MTLDevice> GetUnderlying() const { return (id<MTLDevice>)_underlying.get(); }
 
         Device();
         explicit Device(id<MTLDevice> underlying);
         ~Device();
 
     protected:
-        TBC::OCPtr<id> _underlying;                 // id<MTLDevice>
+        IdPtr _underlying;                 // id<MTLDevice>
         std::shared_ptr<Metal_AppleMetal::ObjectFactory> _objectFactory;
-        TBC::OCPtr<id> _immediateCommandQueue;      // id<MTLCommandQueue>
+        IdPtr _immediateCommandQueue;      // id<MTLCommandQueue>
         std::shared_ptr<ThreadContext> _immediateContext;
     };
 
@@ -162,7 +162,7 @@ namespace RenderCore
     // when running in Xcode, or your shell/user defaults/system defaults
     // otherwise. It must be called before MTLCreateSystemDefaultDevice
     // (normally called by cocos3d's CreateXLEDevice, which calls
-    // RenderCore's TryCreateDevice), or it will have no effect.
+    // RenderCore's CreateDevice), or it will have no effect.
     //
     // The values are the same as above.
     void ForceAppleMetalAPIValidation(int level);

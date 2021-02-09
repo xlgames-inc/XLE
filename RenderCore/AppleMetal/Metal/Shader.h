@@ -6,7 +6,7 @@
 
 #include "../../../Assets/AssetsCore.h"
 #include "../../ShaderService.h"
-#include "../../../Foreign/OCPtr/OCPtr.hpp"
+#include "../../../Utility/OCUtils.h"
 
 namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
@@ -28,8 +28,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         /* KenD -- Metal TODO -- shader construction will need to account for shader variants and conditional compilation, possibly with function constants */
         ShaderProgram(const std::string& vertexFunctionName, const std::string& fragmentFunctionName);
-        TBC::OCPtr<id> _vf; // MTLFunction
-        TBC::OCPtr<id> _ff; // MTLFunction
+        IdPtr _vf; // MTLFunction
+        IdPtr _ff; // MTLFunction
 
     private:
         ::Assets::DepValPtr                     _depVal;

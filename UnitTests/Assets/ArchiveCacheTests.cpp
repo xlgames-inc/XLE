@@ -193,6 +193,15 @@ namespace UnitTests
 			REQUIRE(::Assets::AsString(resolvedRequests[1]._sharedBlob) == "item-two-replacement-artifact-two-contents");
 
 			cacheSet.FlushToDisk();
+
+			// Commit ObjectOne again, except this time with no dependency
+			// information. This sets us up to reload just below. Since our dependencies
+			// are fake files (ie, they don't actually exist anywhere), the asset gets
+			// considered invalidated when it's loaded
+			archive->Commit(
+				objectOneId, "Object",
+				MakeIteratorRange(s_artifactsObj1),
+				{});
 		}
 
 		{

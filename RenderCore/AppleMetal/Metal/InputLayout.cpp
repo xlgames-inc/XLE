@@ -106,7 +106,7 @@ namespace RenderCore { namespace Metal_AppleMetal
          */
 
         // Create a MTLVertexDescriptor to describe the input format for vertices
-        _vertexDescriptor = TBC::OCPtr<MTLVertexDescriptor>(TBC::moveptr([[MTLVertexDescriptor alloc] init]));
+        _vertexDescriptor = OCPtr<MTLVertexDescriptor>(moveptr([[MTLVertexDescriptor alloc] init]));
         auto* desc = _vertexDescriptor.get();
 
         // Map each vertex attribute's semantic hash to its attribute index
@@ -181,7 +181,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         id<MTLFunction> vf = program._vf.get();
 
         // Create a MTLVertexDescriptor to describe the input format for vertices
-        _vertexDescriptor = TBC::OCPtr<MTLVertexDescriptor>(TBC::moveptr([[MTLVertexDescriptor alloc] init]));
+        _vertexDescriptor = OCPtr<MTLVertexDescriptor>(moveptr([[MTLVertexDescriptor alloc] init]));
         auto* desc = _vertexDescriptor.get();
 
         unsigned maxSlot = 0;
@@ -464,7 +464,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                     if (interfaces[streamIndex]->_cbBindings[c]._hashName == argHash) {
 
                         #if defined(_DEBUG)
-                            if (arg.bufferStructType) {
+                            if (arg.bufferStructType && !interfaces[streamIndex]->_cbBindings[c]._elements.empty()) {
                                 ValidateCBElements(
                                     MakeIteratorRange(interfaces[streamIndex]->_cbBindings[c]._elements),
                                     arg.bufferStructType);
