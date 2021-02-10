@@ -35,7 +35,7 @@ macro(find_vulkan)
 		message("Detected change in Vulkan configuration, searching again")
 		set(INTERNAL_FOUND_VULKAN_INCLUDE_DIR)
 		set(INTERNAL_FOUND_VULKAN_LIBRARY)
-		set(INTERNAL_LAST_XLE_VULKAN_SDK_DIR ${XLE_VULKAN_SDK_DIR} CACHE PATH INTERNAL FORCE)
+		set(INTERNAL_LAST_XLE_VULKAN_SDK_DIR ${XLE_VULKAN_SDK_DIR} CACHE STRING INTERNAL FORCE)
 	endif ()
 
 	# attempt to use "find_package(Vulkan)" to locate Vulkan
