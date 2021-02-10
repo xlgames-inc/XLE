@@ -179,7 +179,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_currentGraphicsPipeline);
 		LogPipeline();
 
-		#if defined(_DEBUG)
+		#if 0 // defined(_DEBUG)
 			// check for unbound descriptor sets
 			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
 			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
@@ -213,7 +213,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_currentComputePipeline);
 		LogPipeline();
 
-		#if defined(_DEBUG)
+		#if 0 // defined(_DEBUG)
 			// check for unbound descriptor sets
 			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
 			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
@@ -665,7 +665,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		{
 			#if defined(_DEBUG)
-				ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._graphicsRootSignatureFile);
+				Internal::ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._graphicsRootSignatureFile);
 			#endif
 
 			auto partialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
@@ -684,7 +684,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		{
 			#if defined(_DEBUG)
-				ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._computePipelineLayout);
+				Internal::ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._computeRootSignatureFile);
 			#endif
 
 			auto partialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
@@ -782,13 +782,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	, _globalPools(&globalPools)
 	, _tempBufferSpace(&tempBufferSpace)
 	{
-		_sharedState = std::make_shared<VulkanEncoderSharedState>();
-		_sharedState->_graphicsDescriptors = DescriptorCollection(factory, globalPools, 4);
-		_sharedState->_computeDescriptors = DescriptorCollection(factory, globalPools, 4);
-		_sharedState->_renderPass = nullptr;
-		_sharedState->_renderPassSubpass = 0u;
-		_sharedState->_renderPassSamples = TextureSamples::Create();
-
+		_sharedState = std::make_shared<VulkanEncoderSharedState>(*_factory, *_globalPools);
 		_utilityFence = _factory->CreateFence(0);
 
 		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
@@ -809,6 +803,18 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
+
+	VulkanEncoderSharedState::VulkanEncoderSharedState(
+		const ObjectFactory&    factory, 
+		GlobalPools&            globalPools)
+	: _graphicsDescriptors(factory, globalPools, 4)
+	, _computeDescriptors(factory, globalPools, 4)
+	{
+		_renderPass = nullptr;
+		_renderPassSubpass = 0u;
+		_renderPassSamples = TextureSamples::Create();		
+	}
+	VulkanEncoderSharedState::~VulkanEncoderSharedState() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

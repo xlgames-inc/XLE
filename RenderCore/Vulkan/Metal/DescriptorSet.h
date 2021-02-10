@@ -19,6 +19,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class TextureView;
 	class GlobalPools;
+	class ObjectFactory;
 	class DescriptorSetSignature;
 	class DescriptorSetSignatureFile;
 
@@ -107,7 +108,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		const CompiledDescriptorSetLayout*	CompileDescriptorSetLayout(
 			const DescriptorSetSignature& signature,
-			VkShaderStageFlags stageFlags) const;
+			VkShaderStageFlags stageFlags);
 
 		CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
 		~CompiledDescriptorSetLayoutCache();
@@ -134,7 +135,5 @@ namespace RenderCore { namespace Metal_Vulkan
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound);
 	#endif
-
-	VkDescriptorType_ AsVkDescriptorType(DescriptorType type);
 
 }}

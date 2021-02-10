@@ -604,7 +604,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer)
     {
-		if ((context.RenderPassSubPassIndex()+1) < frameBuffer.GetSubpassCount())
+		if ((context.GetCurrentSubpassIndex()+1) < frameBuffer.GetSubpassCount())
 			context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
     }
 
@@ -619,7 +619,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	unsigned GetCurrentSubpassIndex(DeviceContext& context)
 	{
-		return context.RenderPassSubPassIndex();
+		return context.GetCurrentSubpassIndex();
 	}
 
 }}

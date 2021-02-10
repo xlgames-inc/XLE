@@ -139,6 +139,9 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		VkPipelineLayout GetPipelineLayout(const ShaderProgram&);
 		VkPipelineLayout GetPipelineLayout(const ComputeShader&);
 
+		PartialPipelineDescriptorsLayout* GetPipelineLayoutCfg(const ShaderProgram&);
+		PartialPipelineDescriptorsLayout* GetPipelineLayoutCfg(const ComputeShader&);
+
 		VulkanGlobalsTemp();
 		~VulkanGlobalsTemp();
 	};

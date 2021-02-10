@@ -26,6 +26,7 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	/*
 	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
 	{
         VkBuffer buffers[s_maxBoundVBs];
@@ -39,6 +40,7 @@ namespace RenderCore { namespace Metal_Vulkan
         context.GetActiveCommandList().BindVertexBuffers(0, count, buffers, offsets);
 		context.SetBoundInputLayout(*this);
 	}
+	*/
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
@@ -281,7 +283,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
-	void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIdx)
+	void BoundUniforms::UnbindShaderResources(DeviceContext& context, SharedGraphicsEncoder& encoder, unsigned streamIdx)
 	{
 		assert(0);		// todo -- unimplemented
 	}
@@ -300,7 +302,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*shader._pipelineLayoutConfig);
+		SetupDescriptorSets(*Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayoutCfg(shader), VK_SHADER_STAGE_ALL_GRAPHICS);
 
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -323,7 +325,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*shader._pipelineLayoutConfig);
+		SetupDescriptorSets(*Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayoutCfg(shader), VK_SHADER_STAGE_COMPUTE_BIT);
 
 		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -408,7 +410,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
 	}
 
-	void BoundUniforms::SetupDescriptorSets(const PartialPipelineDescriptorsLayout& pipelineLayoutHelper)
+	void BoundUniforms::SetupDescriptorSets(const Internal::PartialPipelineDescriptorsLayout& pipelineLayoutHelper, unsigned shaderStateMask)
 	{
 		for (const auto&desc:pipelineLayoutHelper._descriptorSets) {
 			if (desc._type != (unsigned)RootSignature::DescriptorSetType::Adaptive)
@@ -417,8 +419,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (desc._uniformStream >= s_streamCount)
 				continue;
 
+			auto vkLayout = Internal::VulkanGlobalsTemp::GetInstance()._compiledDescriptorSetLayoutCache->CompileDescriptorSetLayout(
+				*desc._signature, shaderStateMask);
+
 			_descriptorSetSig[desc._uniformStream] = desc._signature;
-			_underlyingLayouts[desc._uniformStream] = desc._bound._layout;
+			_underlyingLayouts[desc._uniformStream] = vkLayout->_layout;
 			_descriptorSetBindingPoint[desc._uniformStream] = desc._pipelineLayoutBindingIndex;
 		}
 	}
@@ -502,8 +507,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::string{"BoundUniforms3"}
 	};
 
-    void BoundUniforms::Apply(  
+    void BoundUniforms::Apply(
 		DeviceContext& context,
+		SharedGraphicsEncoder& encoder,
         unsigned streamIdx,
         const UniformsStream& stream) const
     {
@@ -581,8 +587,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, verboseDescription));
 			}
         
-			context.BindDescriptorSet(
-				pipelineType, _descriptorSetBindingPoint[streamIdx], descriptorSet.get()
+			encoder.BindDescriptorSet(
+				_descriptorSetBindingPoint[streamIdx], descriptorSet.get()
 				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(verboseDescription)));
 
 			if (requiresTemporaryBufferBarrier)
@@ -592,13 +598,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (_vsPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
 			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			context.PushConstants(VK_SHADER_STAGE_VERTEX_BIT, cb._packet.AsIteratorRange());
+			encoder.PushConstants(VK_SHADER_STAGE_VERTEX_BIT, cb._packet.AsIteratorRange());
 		}
 
 		if (_psPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
 			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			context.PushConstants(VK_SHADER_STAGE_FRAGMENT_BIT, cb._packet.AsIteratorRange());
+			encoder.PushConstants(VK_SHADER_STAGE_FRAGMENT_BIT, cb._packet.AsIteratorRange());
 		}
     }
 

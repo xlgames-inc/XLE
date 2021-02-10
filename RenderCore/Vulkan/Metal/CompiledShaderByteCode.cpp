@@ -630,8 +630,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
             result = std::make_shared<HLSLToSPIRVCompiler>(
                 hlslCompiler, 
-                VulkanGlobalsTemp::GetInstance()._graphicsRootSignatureFile,
-                VulkanGlobalsTemp::GetInstance()._computeRootSignatureFile);
+                Internal::VulkanGlobalsTemp::GetInstance()._graphicsRootSignatureFile,
+                Internal::VulkanGlobalsTemp::GetInstance()._computeRootSignatureFile);
             HLSLToSPIRVCompiler::s_instance = result;
             return std::move(result);
         } else {

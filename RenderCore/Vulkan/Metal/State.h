@@ -9,6 +9,7 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"      // required because we're deriving from Vulkan types
 #include "../../StateDesc.h"
+#include "../../../Utility/IteratorUtils.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -101,7 +102,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         VulkanRasterizerState(const RasterizationDesc& desc);
-        VulkanRasterizerState();
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,8 +145,8 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates);
-        VulkanBlendState();
-
+        VulkanBlendState(const VulkanBlendState& cloneFrom);
+        VulkanBlendState& operator=(const VulkanBlendState& cloneFrom);
     private:
         VkPipelineColorBlendAttachmentState _attachments[s_mrtLimit];
     };
@@ -190,7 +190,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         VulkanDepthStencilState(const DepthStencilDesc& depthStencilState);
-        VulkanDepthStencilState();
     };
 
     }

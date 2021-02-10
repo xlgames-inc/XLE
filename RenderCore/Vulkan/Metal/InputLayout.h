@@ -23,6 +23,10 @@ namespace RenderCore
 	template <typename Type, int Count> class ResourceList;
 }
 
+namespace RenderCore { namespace Metal_Vulkan { namespace Internal {
+	class PartialPipelineDescriptorsLayout;
+}}}
+
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class ShaderProgram;
@@ -72,8 +76,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	class BoundUniformsHelper;
 	class DescriptorSetSignature;
-	class PartialPipelineDescriptorsLayout;
 	class BoundPipelineLayout;
+	class SharedGraphicsEncoder;
 
 	class PipelineLayoutConfig
 	{
@@ -84,11 +88,12 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
 		void Apply(
-            DeviceContext& context,
+			DeviceContext& context,
+            SharedGraphicsEncoder& encoder,
             unsigned streamIdx,
             const UniformsStream& stream) const;
 
-		void UnbindShaderResources(DeviceContext& context, unsigned streamIdx);
+		void UnbindShaderResources(DeviceContext& context, SharedGraphicsEncoder& encoder, unsigned streamIdx);
 
 		uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
@@ -135,7 +140,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::string _debuggingDescription;
 		#endif
 
-		void SetupDescriptorSets(const PartialPipelineDescriptorsLayout& pipelineLayoutHelper);
+		void SetupDescriptorSets(const Internal::PartialPipelineDescriptorsLayout& pipelineLayoutHelper, unsigned shaderStateMask);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

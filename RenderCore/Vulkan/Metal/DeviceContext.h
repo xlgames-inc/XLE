@@ -34,7 +34,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	enum class CommandBufferType;
 	class TemporaryBufferSpace;
 	class Resource;
-	class PartialPipelineDescriptorsLayout;
 
 	class GraphicsPipeline : public VulkanUniquePtr<VkPipeline>
 	{
@@ -264,6 +263,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		void* _currentEncoder;
 		enum class EncoderType { None, Graphics, ProgressiveGraphics, ProgressiveCompute };
 		EncoderType _currentEncoderType;
+
+		VulkanEncoderSharedState(
+			const ObjectFactory&    factory, 
+			GlobalPools&            globalPools);
+		~VulkanEncoderSharedState();
 	};
 
 	class SharedGraphicsEncoder
@@ -389,12 +393,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// --------------- Vulkan specific interface --------------- 
 
-		void BeginRenderPass(
-			const FrameBuffer& fb,
-			TextureSamples samples,
-			VectorPattern<int, 2> offset, VectorPattern<unsigned, 2> extent,
-			IteratorRange<const ClearValue*> clearValues);
-		
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 
 		void		BeginCommandList();

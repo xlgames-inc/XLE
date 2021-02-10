@@ -54,8 +54,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool DynamicLinkingEnabled() const;
 
-		void Apply(GraphicsPipelineBuilder& pipeline) const;
-		void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
+		// void Apply(GraphicsPipelineBuilder& pipeline) const;
+		// void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -85,7 +85,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
-		std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
+		// std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
 
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
@@ -119,7 +119,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> codeName,
 			StringSection<::Assets::ResChar> definesTable = {});
 
-		std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
+		// std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
 
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;

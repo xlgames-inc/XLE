@@ -33,8 +33,6 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		return nullptr;
 	}
 
-	static std::string s_dummyDescriptorSetName = "<DummyDescriptorSet>";
-
 	void BoundSignatureFile::RegisterSignatureFile(uint64_t hashName, const DescriptorSetSignatureFile& signatureFile)
 	{
 		// Each descriptor set layout is initialized from the root signature

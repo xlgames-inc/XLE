@@ -1130,7 +1130,7 @@ namespace RenderCore { namespace ImplVulkan
 
 			_metalContext->BeginCommandList(std::move(cmdList));
 		}
-        _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
+        // _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->GetResource();
 	}
 
@@ -1237,8 +1237,10 @@ namespace RenderCore { namespace ImplVulkan
 
     auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
     {
-        const auto& view = _metalContext->GetBoundViewport();
-        return ThreadContextStateDesc { {(unsigned)view.Width, (unsigned)view.Height}, _frameId };
+		// note; we can't get the viewport state here; or at least it's a bit ambigious (since we could have multiple viewports)
+        // const auto& view = _metalContext->GetBoundViewport();
+        // return ThreadContextStateDesc { {(unsigned)view.Width, (unsigned)view.Height}, _frameId };
+		return ThreadContextStateDesc { {0, 0}, _frameId };
     }
 
 	void ThreadContext::InvalidateCachedState() const {}

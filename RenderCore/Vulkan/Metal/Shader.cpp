@@ -48,9 +48,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
 		}
 
-		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
-		Assets::RegisterAssetDependency(_validationCallback, globals._graphicsRootSignatureFile->GetDependencyValidation());
-		_pipelineLayoutConfig = globals._mainGraphicsConfig;
+		// auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
+		// Assets::RegisterAssetDependency(_validationCallback, globals._graphicsRootSignatureFile->GetDependencyValidation());
+		// _pipelineLayoutConfig = globals._mainGraphicsConfig;
     }
     
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
@@ -100,7 +100,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     bool ShaderProgram::DynamicLinkingEnabled() const { return false; }
 
-	void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline) const
+	/*void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline) const
     {
         if (pipeline._shaderProgram != this) {
             pipeline._shaderProgram = this;
@@ -116,7 +116,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			pipeline._PipelineDescriptorsLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
             pipeline._pipelineStale = true;
         }
-	}
+	}*/
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,9 +131,9 @@ namespace RenderCore { namespace Metal_Vulkan
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
 
-		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
-		Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
-		_pipelineLayoutConfig = globals._mainComputeConfig;
+		// auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
+		// Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
+		// _pipelineLayoutConfig = globals._mainComputeConfig;
     }
 
     ComputeShader::ComputeShader() {}
