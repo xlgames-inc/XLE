@@ -75,7 +75,7 @@ namespace OSServices
 			}
 		}
 
-		std::any OnTrigger(unsigned numberOfBytesReturned) override
+		std::any GeneratePayload(unsigned numberOfBytesReturned) override
 		{
 			assert(!_cancelled);
 			FILE_NOTIFY_INFORMATION* notifyInformation = 

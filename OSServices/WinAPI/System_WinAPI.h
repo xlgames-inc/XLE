@@ -21,7 +21,7 @@ namespace OSServices
 	public:
 		virtual void BeginOperation(OVERLAPPED* overlapped, ConduitCompletionRoutine completionRoutine) = 0;
         virtual void CancelOperation(OVERLAPPED* overlapped) = 0;
-        virtual std::any OnTrigger(unsigned numberOfBytesReturned) = 0;
+        virtual std::any GeneratePayload(unsigned numberOfBytesReturned) = 0;
 	};
 
     class IConduitProducer_PlatformHandle : public IConduitProducer

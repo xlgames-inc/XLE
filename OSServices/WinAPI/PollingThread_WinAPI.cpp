@@ -28,7 +28,7 @@ namespace OSServices
 		struct PendingOnceInitiate
 		{
 			std::shared_ptr<IConduitProducer> _producer;
-			std::promise<PollingEventType::BitField> _promise;
+			std::promise<std::any> _promise;
 		};
 		std::vector<PendingOnceInitiate> _pendingOnceInitiates;
 
@@ -47,7 +47,7 @@ namespace OSServices
 		{
 			std::shared_ptr<IConduitProducer> _producer;
 			XlHandle _platformHandle;
-			std::promise<PollingEventType::BitField> _promise;
+			std::promise<std::any> _promise;
 		};
 		std::vector<ActiveOnceEvent> _activeOnceEvents;
 		
@@ -105,12 +105,12 @@ namespace OSServices
 
 			std::any res;
 			TRY {
-				// Note that if we get an exception on OnTrigger, we will call IConduitConsumer::OnException,
+				// Note that if we get an exception in GeneratePayload, we will call IConduitConsumer::OnException,
 				// and we will not restart waiting for this conduit
-				res = conduitCompletion->OnTrigger(dwNumberOfBytesTransfered);
+				res = conduitCompletion->GeneratePayload(dwNumberOfBytesTransfered);
 
 				TRY {
-					consumer->OnEvent(res);
+					consumer->OnEvent(std::move(res));
 				} CATCH (const std::exception& e) {
 					// We must suppress any exceptions raised by IConduitConsumer::OnEvent. Passing it to
 					// IConduitConsumer::OnException makes no sense, and there's nowhere else to send it
@@ -172,7 +172,7 @@ namespace OSServices
 				{
 					std::vector<std::promise<void>> pendingPromisesToTrigger;
 					std::vector<std::pair<std::promise<void>, std::exception_ptr>> pendingExceptionsToPropagate1;
-					std::vector<std::pair<std::promise<PollingEventType::BitField>, std::exception_ptr>> pendingExceptionsToPropagate2;
+					std::vector<std::pair<std::promise<std::any>, std::exception_ptr>> pendingExceptionsToPropagate2;
 					{
 						ScopedLock(_interfaceLock);
 						for (auto& event:_pendingOnceInitiates) {
@@ -384,10 +384,10 @@ namespace OSServices
 		}
 	};
 
-	auto PollingThread::RespondOnce(const std::shared_ptr<IConduitProducer>& producer) -> std::future<PollingEventType::BitField>
+	auto PollingThread::RespondOnce(const std::shared_ptr<IConduitProducer>& producer) -> std::future<std::any>
 	{
 		assert(producer);
-		std::future<PollingEventType::BitField> result;
+		std::future<std::any> result;
 		{
 			ScopedLock(_pimpl->_interfaceLock);
 			Pimpl::PendingOnceInitiate pendingInit;
