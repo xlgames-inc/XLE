@@ -59,8 +59,6 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		public:
 			std::shared_ptr<DescriptorSetSignature>		_signature;
 			unsigned									_pipelineLayoutBindingIndex;
-			unsigned 									_type;		// RootSignature::DescriptorSetType
-			unsigned									_uniformStream;
 			std::string									_name;
 		};
 		std::vector<DescriptorSet>					_descriptorSets;
@@ -71,11 +69,42 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 	std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
 		const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType);
 
-	VulkanUniquePtr<VkPipelineLayout> CreateVulkanPipelineLayout(
-		ObjectFactory& factory,
-		CompiledDescriptorSetLayoutCache& cache,
-		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
-		VkShaderStageFlags stageFlags);
+	class CompiledDescriptorSetLayoutCache;
+
+	class VulkanPipelineLayout
+	{
+	public:
+		using DescriptorSetBinding = unsigned;
+		using DescriptorSetLayoutPtr = VulkanSharedPtr<VkDescriptorSetLayout>;
+		using DescriptorSetPtr = VulkanSharedPtr<VkDescriptorSet>;
+		
+		VkPipelineLayout			GetUnderlying() const;
+		const DescriptorSetLayoutPtr&	GetUnderlyingDescriptorSetLayout(DescriptorSetBinding) const;
+		const DescriptorSetPtr&			GetBlankDescriptorSet(DescriptorSetBinding) const;
+		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSetSignature(DescriptorSetBinding) const;
+		unsigned 					GetDescriptorSetCount() const;
+
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			const DescriptorSetVerboseDescription& GetDescriptorSetVerboseDescription(DescriptorSetBinding) const;
+		#endif
+
+		VulkanPipelineLayout(
+			ObjectFactory& factory,
+			CompiledDescriptorSetLayoutCache& cache,
+			IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
+			VkShaderStageFlags stageFlags);
+	private:
+		
+		DescriptorSetLayoutPtr	_descriptorSetLayouts[s_maxDescriptorSetCount];
+		DescriptorSetPtr		_blankDescriptorSets[s_maxDescriptorSetCount];
+		std::shared_ptr<DescriptorSetSignature> _descriptorSetSignature[s_maxDescriptorSetCount];
+		unsigned				_descriptorSetCount;
+		VulkanUniquePtr<VkPipelineLayout> _pipelineLayout;
+
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription _verboseDescriptions[s_maxDescriptorSetCount];
+		#endif
+	};
 
 	void ValidateRootSignature(
 		VkPhysicalDevice physDev,
@@ -114,6 +143,8 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
+
 	class VulkanGlobalsTemp
 	{
 	public:
@@ -131,20 +162,51 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		// std::shared_ptr<PartialPipelineDescriptorsLayout> _mainGraphicsConfig;
 		// std::shared_ptr<PartialPipelineDescriptorsLayout> _mainComputeConfig;
 
+			// note -- move this into GlobalPools?
 		std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
 
-		VulkanUniquePtr<VkPipelineLayout> _graphicsPipelineLayout;
-		VulkanUniquePtr<VkPipelineLayout> _computePipelineLayout;
+		std::shared_ptr<VulkanPipelineLayout> _graphicsPipelineLayout;
+		std::shared_ptr<VulkanPipelineLayout> _computePipelineLayout;
 
-		VkPipelineLayout GetPipelineLayout(const ShaderProgram&);
-		VkPipelineLayout GetPipelineLayout(const ComputeShader&);
+		const std::shared_ptr<VulkanPipelineLayout>& GetPipelineLayout(const ShaderProgram&);
+		const std::shared_ptr<VulkanPipelineLayout>& GetPipelineLayout(const ComputeShader&);
 
-		PartialPipelineDescriptorsLayout* GetPipelineLayoutCfg(const ShaderProgram&);
-		PartialPipelineDescriptorsLayout* GetPipelineLayoutCfg(const ComputeShader&);
+		unsigned _graphicsUniformStreamToDescriptorSetBinding[4];
+		unsigned _computeUniformStreamToDescriptorSetBinding[4];
 
 		VulkanGlobalsTemp();
 		~VulkanGlobalsTemp();
 	};
+
+
+	inline VkPipelineLayout VulkanPipelineLayout::GetUnderlying() const { return _pipelineLayout.get(); }
+	inline auto VulkanPipelineLayout::GetUnderlyingDescriptorSetLayout(DescriptorSetBinding binding) const -> const DescriptorSetLayoutPtr&
+	{
+		assert(binding < _descriptorSetCount);
+		return _descriptorSetLayouts[binding];
+	}
+	inline auto VulkanPipelineLayout::GetBlankDescriptorSet(DescriptorSetBinding binding) const -> const DescriptorSetPtr&
+	{
+		assert(binding < _descriptorSetCount);
+		return _blankDescriptorSets[binding];
+	}
+	inline const std::shared_ptr<DescriptorSetSignature>& VulkanPipelineLayout::GetDescriptorSetSignature(DescriptorSetBinding binding) const
+	{
+		assert(binding < _descriptorSetCount);
+		return _descriptorSetSignature[binding];
+	}
+	inline unsigned VulkanPipelineLayout::GetDescriptorSetCount() const
+	{
+		return _descriptorSetCount;
+	}
+
+	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+		inline const DescriptorSetVerboseDescription& VulkanPipelineLayout::GetDescriptorSetVerboseDescription(DescriptorSetBinding binding) const
+		{
+			assert(binding < _descriptorSetCount);
+			return _verboseDescriptions[binding];
+		}
+	#endif
 
 }}}
 

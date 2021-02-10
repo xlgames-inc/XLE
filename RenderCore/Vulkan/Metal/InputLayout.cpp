@@ -39,8 +39,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
         context.GetActiveCommandList().BindVertexBuffers(0, count, buffers, offsets);
 		context.SetBoundInputLayout(*this);
+	}*/
+
+	bool BoundInputLayout::AllAttributesBound() const
+	{
+		return true;	// todo -- track this
 	}
-	*/
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
@@ -302,7 +306,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayoutCfg(shader), VK_SHADER_STAGE_ALL_GRAPHICS);
+		SetupDescriptorSets(
+			*Internal::VulkanGlobalsTemp::GetInstance()._graphicsPipelineLayout, 
+			MakeIteratorRange(Internal::VulkanGlobalsTemp::GetInstance()._graphicsUniformStreamToDescriptorSetBinding));
 
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -325,7 +331,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayoutCfg(shader), VK_SHADER_STAGE_COMPUTE_BIT);
+		SetupDescriptorSets(
+			*Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout,
+			MakeIteratorRange(Internal::VulkanGlobalsTemp::GetInstance()._computeUniformStreamToDescriptorSetBinding));
 
 		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -410,21 +418,21 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
 	}
 
-	void BoundUniforms::SetupDescriptorSets(const Internal::PartialPipelineDescriptorsLayout& pipelineLayoutHelper, unsigned shaderStateMask)
+	void BoundUniforms::SetupDescriptorSets(const Internal::VulkanPipelineLayout& pipelineLayout, IteratorRange<const unsigned*> descriptorSetIndices)
 	{
-		for (const auto&desc:pipelineLayoutHelper._descriptorSets) {
-			if (desc._type != (unsigned)RootSignature::DescriptorSetType::Adaptive)
-				continue;
+		for (unsigned c=0; c<s_streamCount; ++c) {
+			_descriptorSetSig[c] = nullptr;
+			_underlyingLayouts[c] = nullptr;
+			_descriptorSetBindingPoint[c] = ~0u;
+		}
 
-			if (desc._uniformStream >= s_streamCount)
-				continue;
+		for (unsigned c=0; c<(unsigned)std::min(descriptorSetIndices.size(), (size_t)s_streamCount); ++c) {
+			auto binding = descriptorSetIndices[c];
+			if (binding == ~0u) continue;
 
-			auto vkLayout = Internal::VulkanGlobalsTemp::GetInstance()._compiledDescriptorSetLayoutCache->CompileDescriptorSetLayout(
-				*desc._signature, shaderStateMask);
-
-			_descriptorSetSig[desc._uniformStream] = desc._signature;
-			_underlyingLayouts[desc._uniformStream] = vkLayout->_layout;
-			_descriptorSetBindingPoint[desc._uniformStream] = desc._pipelineLayoutBindingIndex;
+			_descriptorSetSig[c] = pipelineLayout.GetDescriptorSetSignature(binding);
+			_underlyingLayouts[c] = pipelineLayout.GetUnderlyingDescriptorSetLayout(binding);
+			_descriptorSetBindingPoint[c] = binding;
 		}
 	}
 

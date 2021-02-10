@@ -359,7 +359,7 @@ namespace RenderCore { namespace ImplDX11
 
 	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
 	{
-		return Metal_DX11::CreateLowLevelShaderCompiler(*this);
+		return Metal_DX11::CreateLowLevelShaderCompiler(*this, _featureLevel);
 	}
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

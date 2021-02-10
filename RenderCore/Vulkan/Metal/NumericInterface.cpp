@@ -83,6 +83,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    NumericUniformsInterface::BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
+		assert(_pimpl);
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
             assert((startingPoint + c) < Pimpl::s_maxBindings);
 			if  (!resources[c]) continue;
@@ -109,6 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    NumericUniformsInterface::BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
+		assert(_pimpl);
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
 			assert((startingPoint + c) < Pimpl::s_maxBindings);
 			if  (!resources[c]) continue;
@@ -137,6 +139,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    NumericUniformsInterface::BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
     {
+		assert(_pimpl);
         for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
             if (!uniformBuffers[c]) continue;
 
@@ -152,6 +155,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    NumericUniformsInterface::BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers)
     {
+		assert(_pimpl);
         for (unsigned c=0; c<unsigned(samplers.size()); ++c) {
             if (!samplers[c]) continue;
 
@@ -169,6 +173,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		IteratorRange<VkDescriptorSet*> dst
 		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, IteratorRange<DescriptorSetVerboseDescription**> descriptions))
     {
+		assert(_pimpl);
         // If we've had any changes this last time, we must create new
         // descriptor sets. We will use vkUpdateDescriptorSets to fill in these
         // sets with the latest changes. Note that this will require copy across the
@@ -201,21 +206,25 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void    NumericUniformsInterface::Reset()
 	{
-		_pimpl->_descSet.Reset();
+		if (_pimpl)
+			_pimpl->_descSet.Reset();
 	}
 
 	bool	NumericUniformsInterface::HasChanges() const
 	{
+		if (!_pimpl) return false;
 		return _pimpl->_descSet._builder.HasChanges();
 	}
 
 	const DescriptorSetSignature& NumericUniformsInterface::GetSignature() const
 	{
+		assert(_pimpl);
 		return *_pimpl->_descSet._signature;
 	}
 
 	const LegacyRegisterBinding& NumericUniformsInterface::GetLegacyRegisterBindings() const
 	{
+		assert(_pimpl);
 		return _pimpl->_legacyRegisterBindings;
 	}
 

@@ -92,33 +92,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	struct CompiledDescriptorSetLayout
-	{
-		VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
-		VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
-		
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription _blankBindingsDescription;
-			std::string _name;
-		#endif
-	};
-
-	class CompiledDescriptorSetLayoutCache
-	{
-	public:
-		const CompiledDescriptorSetLayout*	CompileDescriptorSetLayout(
-			const DescriptorSetSignature& signature,
-			VkShaderStageFlags stageFlags);
-
-		CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
-		~CompiledDescriptorSetLayoutCache();
-	private:
-		ObjectFactory*	_objectFactory;
-		GlobalPools*	_globalPools;
-
-		std::vector<std::pair<uint64_t, std::unique_ptr<CompiledDescriptorSetLayout>>> _cache;
-	};
-
 	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
 		const ObjectFactory& factory, 
 		const DescriptorSetSignature& srcLayout,

@@ -184,7 +184,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device, D3D_FEATURE_LEVEL featureLevel);
     intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode);
 }}
 

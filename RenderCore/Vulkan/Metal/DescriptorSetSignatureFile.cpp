@@ -238,14 +238,17 @@ namespace RenderCore { namespace Metal_Vulkan
                 continue;
             }
 
+			if (!XlEqStringI(a.Name(), "slots"))
+				continue;
+
             char* endPt = nullptr;
-            auto start = std::strtoul(a.Name().begin(), &endPt, 10);
+            auto start = std::strtoul(a.Value().begin(), &endPt, 10);
             auto end = start;
             if (endPt && endPt[0] == '.' && endPt[1] == '.')
                 end = std::strtoul(endPt+2, &endPt, 10);
 
 			if (start != end) {
-				result._stages |= AsShaderStageMask(StringSection<char>(endPt, a.Name().end()));
+				result._stages |= AsShaderStageMask(StringSection<char>(endPt, a.Value().end()));
 				result._rangeStart = start;
 				result._rangeSize = end-start;
 			}
@@ -304,6 +307,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	uint64_t DescriptorSetSignature::GetHash() const
+	{
+		return Hash64(AsPointer(_bindings.begin()), AsPointer(_bindings.end()));
+
+	}
+
 	const RootSignature*								DescriptorSetSignatureFile::GetRootSignature(uint64_t name) const
 	{
 		for (const auto&r:_rootSignatures)
@@ -338,10 +347,37 @@ namespace RenderCore { namespace Metal_Vulkan
 		return dummy;
 	}
 
+	DescriptorSetSignatureFile::DescriptorSetSignatureFile(InputStreamFormatter<> formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
+	{
+		StreamDOM<InputStreamFormatter<char>> doc{formatter};
+
+		_mainRootSignature = doc.RootElement().Attribute("MainRootSignature").Value().AsString();
+		if (_mainRootSignature.empty())
+			Throw(::Exceptions::BasicLabel("Main root root signature not specified while loading file"));
+
+		for (auto a:doc.RootElement().children()) {
+			if (XlEqString(a.Name(), "DescriptorSet")) {
+				_descriptorSets.emplace_back(ReadDescriptorSet(a));
+			} else if (XlEqString(a.Name(), "LegacyBinding")) {
+				std::vector<StringSection<>> descriptorSetNames;
+				descriptorSetNames.reserve(_descriptorSets.size());
+				for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d->_name);
+				_legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
+			} else if (XlEqString(a.Name(), "PushConstants")) {
+				_pushConstantRanges.emplace_back(ReadPushConstRange(a));
+			} else if (XlEqString(a.Name(), "RootSignature")) {
+				_rootSignatures.emplace_back(ReadRootSignature(a));
+			} else {
+				Throw(::Exceptions::BasicLabel("Unexpected element type (%s) while loading descriptor set signature file", a.Name().AsString().c_str()));
+			}
+		}
+	}
+
     DescriptorSetSignatureFile::DescriptorSetSignatureFile(StringSection<> filename)
     {
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_depVal, filename);
+		auto depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(depVal, filename);
 
 		TRY {
 			// attempt to load the source file and extract the root signature
@@ -350,35 +386,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (!block || !fileSize)
 				Throw(::Exceptions::BasicLabel("Failure while attempting to load descriptor set signature file (%s)", filename.AsString().c_str()));
 
-			_dependentFileState = Assets::IntermediatesStore::GetDependentFileState(filename);
-
 			InputStreamFormatter<char> formatter{MakeStringSection((char*)block.get(), (char*)PtrAdd(block.get(), fileSize))};
-			StreamDOM<InputStreamFormatter<char>> doc{formatter};
+			DescriptorSetSignatureFile(formatter, {}, depVal);
 
-			_mainRootSignature = doc.RootElement().Attribute("MainRootSignature").Value().AsString();
-			if (_mainRootSignature.empty())
-				Throw(::Exceptions::BasicLabel("Main root root signature not specified while loading file (%s)", filename.AsString().c_str()));
-
-			for (auto a:doc.RootElement().children()) {
-				if (XlEqString(a.Name(), "DescriptorSet")) {
-					_descriptorSets.emplace_back(ReadDescriptorSet(a));
-				} else if (XlEqString(a.Name(), "LegacyBinding")) {
-					std::vector<StringSection<>> descriptorSetNames;
-					descriptorSetNames.reserve(_descriptorSets.size());
-					for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d->_name);
-					_legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
-				} else if (XlEqString(a.Name(), "PushConstants")) {
-					_pushConstantRanges.emplace_back(ReadPushConstRange(a));
-				} else if (XlEqString(a.Name(), "RootSignature")) {
-					_rootSignatures.emplace_back(ReadRootSignature(a));
-				} else {
-					Throw(::Exceptions::BasicLabel("Unexpected element type (%s) while loading descriptor set signature file", a.Name().AsString().c_str(), filename.AsString().c_str()));
-				}
-			}
+			_dependentFileState = Assets::IntermediatesStore::GetDependentFileState(filename);
+			
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
-			Throw(::Assets::Exceptions::ConstructionError(e, _depVal));
+			Throw(::Assets::Exceptions::ConstructionError(e, depVal));
 		} CATCH(const std::exception& e) {
-			Throw(::Assets::Exceptions::ConstructionError(e, _depVal));
+			Throw(::Assets::Exceptions::ConstructionError(e, depVal));
 		} CATCH_END
     }
 

@@ -101,7 +101,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class VulkanRasterizerState : public VkPipelineRasterizationStateCreateInfo
     {
     public:
-        VulkanRasterizerState(const RasterizationDesc& desc);
+        VulkanRasterizerState(const RasterizationDesc& desc = {});
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class VulkanBlendState : public VkPipelineColorBlendStateCreateInfo
     {
     public:
-        VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates);
+        VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates = {});
         VulkanBlendState(const VulkanBlendState& cloneFrom);
         VulkanBlendState& operator=(const VulkanBlendState& cloneFrom);
     private:
@@ -189,7 +189,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class VulkanDepthStencilState : public VkPipelineDepthStencilStateCreateInfo
     {
     public:
-        VulkanDepthStencilState(const DepthStencilDesc& depthStencilState);
+        VulkanDepthStencilState(const DepthStencilDesc& depthStencilState = {});
     };
 
     }

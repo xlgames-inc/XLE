@@ -578,42 +578,5 @@ namespace RenderCore { namespace Metal_Vulkan
 		default:										return VK_DESCRIPTOR_TYPE_SAMPLER;
 		}
 	}
-
-	const CompiledDescriptorSetLayout*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
-		const DescriptorSetSignature& signature,
-		VkShaderStageFlags stageFlags)
-	{
-		auto hash = HashCombine(signature.GetHash(), stageFlags);
-		auto i = LowerBound(_cache, hash);
-		if (i != _cache.end() && i->first == hash)
-			return i->second.get();
-
-		auto ds = std::make_unique<CompiledDescriptorSetLayout>();
-		ds->_layout = CreateDescriptorSetLayout(*_objectFactory, signature, stageFlags);
-		
-		{
-			DescriptorSetBuilder builder(*_globalPools);
-			builder.BindDummyDescriptors(signature, (1ull<<uint64_t(signature._bindings.size()))-1ull);
-			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout.get());
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
-			builder.FlushChanges(
-				_objectFactory->GetDevice().get(),
-				ds->_blankBindings.get(),
-				0, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, ds->_blankBindingsDescription));
-		}
-
-		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_name = signature._name);
-
-		i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
-		return i->second.get();
-	}
-
-	CompiledDescriptorSetLayoutCache::CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools)
-	: _objectFactory(&objectFactory)
-	, _globalPools(&globalPools)
-	{}
-
-	CompiledDescriptorSetLayoutCache::~CompiledDescriptorSetLayoutCache() {}
-
 }}
 

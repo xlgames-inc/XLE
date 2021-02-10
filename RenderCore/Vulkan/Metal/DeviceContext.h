@@ -224,11 +224,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
 		void SetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
 		void ResetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
-		void BindVertexBuffers(
-			uint32_t            firstBinding,
-			uint32_t            bindingCount,
-			const VkBuffer*     pBuffers,
-			const VkDeviceSize*	pOffsets);
 
 		const VulkanSharedPtr<VkCommandBuffer>& GetUnderlying() const { return _underlying; }
 
@@ -247,7 +242,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class VulkanEncoderSharedState
 	{
 	public:
-		void* 			_activeEncoder;
 		CommandList 	_commandList;
 
 		VkRenderPass	_renderPass;
@@ -263,6 +257,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		void* _currentEncoder;
 		enum class EncoderType { None, Graphics, ProgressiveGraphics, ProgressiveCompute };
 		EncoderType _currentEncoderType;
+
+		bool _ibBound;		// (for debugging, validates that an index buffer actually is bound when calling DrawIndexed & alternatives)
 
 		VulkanEncoderSharedState(
 			const ObjectFactory&    factory, 
@@ -281,8 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
 		//	------ Non-pipeline states (that can be changed mid-render pass) -------
-		void 		Bind(IteratorRange<const VertexBufferView*> vertexBuffers);
-		void        Bind(const IndexBufferView& ibView);
+		void        Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView);
 		void		SetStencilRef(unsigned stencilRef);
 		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
@@ -313,12 +308,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto();
 
+		using SharedGraphicsEncoder::Bind;
+		using GraphicsPipelineBuilder::Bind;
+
+		~GraphicsEncoder_ProgressivePipeline();
 	protected:
 		GraphicsEncoder_ProgressivePipeline(
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
 			ObjectFactory& objectFactory,
 			GlobalPools& globalPools);
-		~GraphicsEncoder_ProgressivePipeline();
 	
 		bool 		BindGraphicsPipeline();
 		std::shared_ptr<GraphicsPipeline>	_currentGraphicsPipeline;
@@ -338,9 +336,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto(const GraphicsPipeline& pipeline);
 
+		~GraphicsEncoder();
 	protected:
 		GraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
-		~GraphicsEncoder();
+		
 
 		friend class DeviceContext;
 	};
@@ -354,6 +353,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
 		void		RebindNumericDescriptorSet();
 
+		~ComputeEncoder_ProgressivePipeline();
 	protected:
 		bool 		BindComputePipeline();
 		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
@@ -368,7 +368,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
 			ObjectFactory& objectFactory,
 			GlobalPools& globalPools);
-		~ComputeEncoder_ProgressivePipeline();
 
 		friend class DeviceContext;
 	};

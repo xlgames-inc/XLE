@@ -84,6 +84,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 	};
 
+	namespace Internal { class VulkanPipelineLayout; }
+
     class BoundUniforms
     {
     public:
@@ -140,7 +142,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::string _debuggingDescription;
 		#endif
 
-		void SetupDescriptorSets(const Internal::PartialPipelineDescriptorsLayout& pipelineLayoutHelper, unsigned shaderStateMask);
+		void SetupDescriptorSets(const Internal::VulkanPipelineLayout&, IteratorRange<const unsigned*> descriptorSetIndices);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

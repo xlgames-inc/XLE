@@ -1128,7 +1128,8 @@ namespace RenderCore { namespace ImplVulkan
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
 
-			_metalContext->BeginCommandList(std::move(cmdList));
+			if (!_metalContext->HasActiveCommandList())
+				_metalContext->BeginCommandList(std::move(cmdList));
 		}
         // _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->GetResource();

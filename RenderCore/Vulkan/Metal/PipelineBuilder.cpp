@@ -15,6 +15,44 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	static VkPrimitiveTopology AsNative(Topology topo)
+	{
+		switch (topo)
+		{
+		case Topology::PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case Topology::LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case Topology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+		default:
+		case Topology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		case Topology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+		case Topology::LineListAdj: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+
+		case Topology::PatchList1:
+		/*case Topology::PatchList2:
+		case Topology::PatchList3:
+		case Topology::PatchList4:
+		case Topology::PatchList5:
+		case Topology::PatchList6:
+		case Topology::PatchList7:
+		case Topology::PatchList8:
+		case Topology::PatchList9:
+		case Topology::PatchList10:
+		case Topology::PatchList11:
+		case Topology::PatchList12:
+		case Topology::PatchList13:
+		case Topology::PatchList14:
+		case Topology::PatchList15:
+		case Topology::PatchList16:*/
+			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+		}
+
+		// other Vulkan topologies:
+		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
+		// VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY
+		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY
+		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
+	}
+
 	void        GraphicsPipelineBuilder::Bind(const RasterizationDesc& rasterizer)
 	{
 		_pipelineStale = true;
@@ -65,45 +103,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
 	{
-		shaderProgram.Apply(*this);
-	}
-
-	static VkPrimitiveTopology AsNative(Topology topo)
-	{
-		switch (topo)
-		{
-		case Topology::PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		case Topology::LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-		case Topology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-		default:
-		case Topology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		case Topology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-		case Topology::LineListAdj: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
-
-		case Topology::PatchList1:
-		/*case Topology::PatchList2:
-		case Topology::PatchList3:
-		case Topology::PatchList4:
-		case Topology::PatchList5:
-		case Topology::PatchList6:
-		case Topology::PatchList7:
-		case Topology::PatchList8:
-		case Topology::PatchList9:
-		case Topology::PatchList10:
-		case Topology::PatchList11:
-		case Topology::PatchList12:
-		case Topology::PatchList13:
-		case Topology::PatchList14:
-		case Topology::PatchList15:
-		case Topology::PatchList16:*/
-			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+		if (_shaderProgram != &shaderProgram) {
+			_shaderProgram = &shaderProgram;
+			_pipelineStale = true;
 		}
-
-		// other Vulkan topologies:
-		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
-		// VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY
-		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY
-		// VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
 	}
 
 	static VkPipelineShaderStageCreateInfo BuildShaderStage(VkShaderModule shader, VkShaderStageFlagBits stage)
@@ -184,7 +187,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkGraphicsPipelineCreateInfo pipeline = {};
 		pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
-		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shaderProgram);
+		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shaderProgram)->GetUnderlying();
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
@@ -253,7 +256,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		pipeline.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
-		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shader);
+		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shader)->GetUnderlying();
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 

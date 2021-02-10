@@ -9,6 +9,12 @@
 #include <string>
 #include <vector>
 
+namespace Assets { class DirectorySearchRules; }
+namespace Utility
+{
+	template<typename CharType> class InputStreamFormatter;
+}
+
 namespace RenderCore { namespace Metal_Vulkan
 {
 	enum class DescriptorType
@@ -107,6 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
 		DescriptorSetSignatureFile(StringSection<> filename);
+		DescriptorSetSignatureFile(InputStreamFormatter<char> formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
 		~DescriptorSetSignatureFile();
 	private:
 		::Assets::DependentFileState _dependentFileState;

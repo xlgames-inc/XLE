@@ -11,6 +11,7 @@ set(Src
 	Metal/InputLayout.cpp
 	Metal/NumericInterface.cpp
 	Metal/ObjectFactory.cpp
+	Metal/PipelineBuilder.cpp
 	Metal/PipelineLayout.cpp
 	Metal/DescriptorSetSignatureFile.cpp
 	Metal/Pools.cpp
@@ -19,7 +20,9 @@ set(Src
 	Metal/Shader.cpp
 	Metal/ShaderReflection.cpp
 	Metal/State.cpp
-	Metal/TextureView.cpp)
+	Metal/TextureView.cpp
+	../DX11/Metal/CompiledShaderByteCode.cpp
+	)
 
 add_library(RenderCore_Vulkan STATIC ${Src} ${Headers})
 xle_configure_library(RenderCore_Vulkan)
@@ -44,8 +47,9 @@ macro(find_vulkan)
 	endif()
 
 	if (Vulkan_FOUND)
-		set(INTERNAL_FOUND_VULKAN_INCLUDE_DIR Vulkan_INCLUDE_DIRS)
-		set(INTERNAL_FOUND_VULKAN_LIBRARY Vulkan_LIBRARY)
+		set(INTERNAL_FOUND_VULKAN_INCLUDE_DIR ${Vulkan_INCLUDE_DIRS})
+		set(INTERNAL_FOUND_VULKAN_LIBRARY ${Vulkan_LIBRARY})
+		message("Found Vulkan via cmake module: ${Vulkan_INCLUDE_DIRS}, ${Vulkan_LIBRARY}")
 	else ()
 		find_path(INTERNAL_FOUND_VULKAN_INCLUDE_DIR vulkan/vulkan.h HINT "${XLE_VULKAN_SDK_DIR}/Include")
 		if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -76,3 +80,41 @@ endmacro ()
 find_vulkan()
 target_link_libraries(RenderCore_Vulkan PUBLIC ${INTERNAL_FOUND_VULKAN_LIBRARY})
 target_include_directories(RenderCore_Vulkan PUBLIC ${INTERNAL_FOUND_VULKAN_INCLUDE_DIR})
+
+message("todo -- nicer way to find vulkan & libHLSLcc lib files!")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_link_libraries(
+		RenderCore_Vulkan PUBLIC 
+			${Vulkan_INCLUDE_DIRS}/../Lib/glslangd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/GenericCodeGend.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/MachineIndependentd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/OGLCompilerd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/OSDependentd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRVd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Toolsd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-optd.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-reduced.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-sharedd.lib
+		)
+else ()
+target_link_libraries(
+	RenderCore_Vulkan PUBLIC 
+		${Vulkan_INCLUDE_DIRS}/../Lib/glslang.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/GenericCodeGen.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/MachineIndependent.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/OGLCompiler.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/OSDependent.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-opt.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-reduce.lib
+		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-shared.lib
+	)
+endif ()
+
+target_link_libraries(RenderCore_Vulkan PUBLIC dxguid.lib)
+
+target_link_libraries(
+	RenderCore_Vulkan PUBLIC 
+		${CMAKE_CURRENT_LIST_DIR}/../../Foreign/HLSLCC/lib64/Debug/libHLSLcc.lib
+	)

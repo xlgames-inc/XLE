@@ -6,7 +6,6 @@
 
 #include "Shader.h"
 #include "DeviceContext.h"
-#include "ObjectFactory.h"
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/AssetUtils.h"
@@ -92,7 +91,7 @@ namespace RenderCore { namespace Metal_DX11
             REFIID  riid,
             LPVOID  *ppReflector) const;
 
-        D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines);
+        D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines, D3D_FEATURE_LEVEL featureLevel);
         ~D3DShaderCompiler();
 
         static std::shared_ptr<D3DShaderCompiler> GetInstance() { return s_instance.lock(); }
@@ -103,9 +102,10 @@ namespace RenderCore { namespace Metal_DX11
         HMODULE GetShaderCompileModule() const;
 
         static std::weak_ptr<D3DShaderCompiler> s_instance;
-        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice&, D3D_FEATURE_LEVEL);
 
         std::vector<D3D10_SHADER_MACRO> _fixedDefines;
+        D3D_FEATURE_LEVEL _featureLevel;
     };
 
         ////////////////////////////////////////////////////////////
@@ -125,12 +125,11 @@ namespace RenderCore { namespace Metal_DX11
                 //      with the current device
                 //
             if (inputShaderModel[length-1] == '*') {
-                auto featureLevel = GetObjectFactory().GetUnderlying()->GetFeatureLevel();
                 const char* bestShaderModel;
-                if (featureLevel >= D3D_FEATURE_LEVEL_11_0)         { bestShaderModel = "5_0"; } 
-                else if (featureLevel >= D3D_FEATURE_LEVEL_10_0)    { bestShaderModel = "4_0"; } 
-                else if (featureLevel >= D3D_FEATURE_LEVEL_9_3)     { bestShaderModel = "4_0_level_9_3"; } 
-                else if (featureLevel >= D3D_FEATURE_LEVEL_9_2)     { bestShaderModel = "4_0_level_9_2"; } 
+                if (_featureLevel >= D3D_FEATURE_LEVEL_11_0)         { bestShaderModel = "5_0"; } 
+                else if (_featureLevel >= D3D_FEATURE_LEVEL_10_0)    { bestShaderModel = "4_0"; } 
+                else if (_featureLevel >= D3D_FEATURE_LEVEL_9_3)     { bestShaderModel = "4_0_level_9_3"; } 
+                else if (_featureLevel >= D3D_FEATURE_LEVEL_9_2)     { bestShaderModel = "4_0_level_9_2"; } 
                 else                                                { bestShaderModel = "4_0_level_9_1"; }
             
                 if (destination != inputShaderModel.begin()) 
@@ -1533,8 +1532,9 @@ namespace RenderCore { namespace Metal_DX11
 
     std::weak_ptr<D3DShaderCompiler> D3DShaderCompiler::s_instance;
 
-    D3DShaderCompiler::D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines)
+    D3DShaderCompiler::D3DShaderCompiler(IteratorRange<D3D10_SHADER_MACRO*> fixedDefines, D3D_FEATURE_LEVEL featureLevel)
     : _fixedDefines(fixedDefines.begin(), fixedDefines.end())
+    , _featureLevel(featureLevel)
     {
         _module = (HMODULE)INVALID_HANDLE_VALUE;
     }
@@ -1573,7 +1573,7 @@ namespace RenderCore { namespace Metal_DX11
         return moveptr(reflectionTemp);
     }
 
-    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device, D3D_FEATURE_LEVEL featureLevel)
     {
         auto result = D3DShaderCompiler::s_instance.lock();
         if (result) return std::move(result);
@@ -1584,7 +1584,7 @@ namespace RenderCore { namespace Metal_DX11
                 , MakeShaderMacro("_DEBUG", "1")
             #endif
         };
-        result = std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines));
+        result = std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines), featureLevel);
         D3DShaderCompiler::s_instance = result;
         return std::move(result);
     }
@@ -1597,7 +1597,7 @@ namespace RenderCore { namespace Metal_DX11
                 , MakeShaderMacro("_DEBUG", "1")
             #endif
         };
-        return std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines));
+        return std::make_shared<D3DShaderCompiler>(MakeIteratorRange(fixedDefines), D3D_FEATURE_LEVEL_11_0);
     }
 
 }}
