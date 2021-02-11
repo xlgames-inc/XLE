@@ -379,8 +379,9 @@ namespace RenderCore { namespace ImplOpenGLES
         }
     }
 
-    void ThreadContext::CommitHeadless()
+    void ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
     {
+        assert(flags==0);
         assert(!_activeFrameContext); // If you're actively rendering, you need Present instead
         if (EAGLContext.currentContext) {
             glFlush();

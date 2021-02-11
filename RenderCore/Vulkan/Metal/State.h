@@ -144,7 +144,8 @@ namespace RenderCore { namespace Metal_Vulkan
     class VulkanBlendState : public VkPipelineColorBlendStateCreateInfo
     {
     public:
-        VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates = {});
+        VulkanBlendState(IteratorRange<const AttachmentBlendDesc*> blendStates);
+        VulkanBlendState();
         VulkanBlendState(const VulkanBlendState& cloneFrom);
         VulkanBlendState& operator=(const VulkanBlendState& cloneFrom);
     private:

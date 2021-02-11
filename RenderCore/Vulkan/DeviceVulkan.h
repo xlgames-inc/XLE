@@ -118,7 +118,7 @@ namespace RenderCore { namespace ImplVulkan
     public:
 		void	        Present(IPresentationChain&) override;
 		IResourcePtr	BeginFrame(IPresentationChain& presentationChain) override;
-		void			CommitHeadless() override;
+		void			CommitCommands(CommitCommandsFlags::BitField) override;
 
         bool                        IsImmediate() const override;
         ThreadContextStateDesc      GetStateDesc() const override;
@@ -159,6 +159,15 @@ namespace RenderCore { namespace ImplVulkan
 
 		std::shared_ptr<EventBasedTracker>	_gpuTracker;
 		std::shared_ptr<Metal_Vulkan::IDestructionQueue> _destrQueue;
+
+        VulkanUniquePtr<VkSemaphore>		_interimCommandBufferComplete;
+        VulkanUniquePtr<VkFence>			_utilityFence;
+        bool                                _nextQueueShouldWaitOnInterimBuffer = false;
+        VkSemaphore                         _nextQueueShouldWaitOnAcquire = VK_NULL_HANDLE;
+
+        void QueuePrimaryContext(
+		    IteratorRange<const VkSemaphore*> completionSignals,
+		    VkFence fence = VK_NULL_HANDLE);
     };
 
 ////////////////////////////////////////////////////////////////////////////////

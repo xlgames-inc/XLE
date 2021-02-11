@@ -587,7 +587,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         // This should always exist. In a device context for an immediate
         // thread context, we'll be given a command buffer at startup, and
-        // each time we release one (in Present or CommitHeadless) we get
+        // each time we release one (in Present or CommitCommands) we get
         // a new one instantly. And the only other way to create a device
         // context is with a command buffer that you had lying around.
         IdPtr _commandBuffer; // For the duration of the frame

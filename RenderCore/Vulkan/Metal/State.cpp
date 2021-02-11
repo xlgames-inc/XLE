@@ -181,6 +181,11 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		blendConstants[3] = 1.0f;
 	}
 
+	static AttachmentBlendDesc s_defaultBlendDesc[] = { AttachmentBlendDesc{} };
+	VulkanBlendState::VulkanBlendState()
+	: VulkanBlendState(MakeIteratorRange(s_defaultBlendDesc))
+	{}
+
 	VulkanBlendState::VulkanBlendState(const VulkanBlendState& cloneFrom)
 	{
 		*(VkPipelineColorBlendStateCreateInfo*)this = *(VkPipelineColorBlendStateCreateInfo*)&cloneFrom;

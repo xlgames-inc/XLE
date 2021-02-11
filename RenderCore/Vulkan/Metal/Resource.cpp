@@ -12,6 +12,7 @@
 #include "../IDeviceVulkan.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/BitUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 
@@ -64,9 +65,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (bindFlags & BindFlag::UnorderedAccess) result |= VK_IMAGE_USAGE_STORAGE_BIT;
         if (bindFlags & BindFlag::TransferSrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (bindFlags & BindFlag::TransferDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-		if ((bindFlags & (BindFlag::RenderTarget|BindFlag::DepthStencil)) && (bindFlags & BindFlag::ShaderResource))
-			result |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+		if (bindFlags & BindFlag::InputAttachment) result |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
 		// Other Vulkan flags:
 		// VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT
@@ -90,7 +89,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 	}
 
-	static VkImageLayout AsVkImageLayout(ImageLayout input) { return (VkImageLayout)input; }
+	static VkImageLayout AsVkImageLayout(Internal::ImageLayout input) { return (VkImageLayout)input; }
 
 	VkSampleCountFlagBits_ AsSampleCountFlagBits(TextureSamples samples)
 	{
@@ -114,6 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     static VkAccessFlags GetAccessForOldLayout(VkImageLayout oldImageLayout)
     {
         VkAccessFlags flags = 0;
@@ -193,50 +193,197 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
         return flags;
     }
+#endif
 
-	void SetImageLayouts(
-		DeviceContext& context, 
-        IteratorRange<const LayoutTransition*> changes)
+	namespace Internal
 	{
-        VkImageMemoryBarrier barriers[16];
-        assert(changes.size() > 0 && changes.size() < dimof(barriers));
+		void SetImageLayouts(
+			DeviceContext& context, 
+			IteratorRange<const LayoutTransition*> changes)
+		{
+			VkImageMemoryBarrier barriers[16];
+			assert(changes.size() > 0 && changes.size() < dimof(barriers));
 
-        unsigned barrierCount = 0;
-        for (unsigned c=0; c<(unsigned)changes.size(); ++c) {
-		    auto& r = AsResource(*changes[c]._res);
-		    assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
-            if (!r.GetImage()) continue;   // (staging buffer case)
+			unsigned barrierCount = 0;
+			for (unsigned c=0; c<(unsigned)changes.size(); ++c) {
+				auto& r = AsResource(*changes[c]._res);
+				assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
+				if (!r.GetImage()) continue;   // (staging buffer case)
 
-            auto& b = barriers[barrierCount++];
+				auto& b = barriers[barrierCount++];
 
-		    // unforunately, we can't just blanket aspectMask with all bits enabled.
-		    // We must select a correct aspect mask. The nvidia drivers seem to be fine with all
-		    // bits enabled, but the documentation says that this is not allowed
-            const auto& desc = r.GetDesc();
+				// unforunately, we can't just blanket aspectMask with all bits enabled.
+				// We must select a correct aspect mask. The nvidia drivers seem to be fine with all
+				// bits enabled, but the documentation says that this is not allowed
+				const auto& desc = r.GetDesc();
 
-            b = {};
-		    b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		    b.pNext = nullptr;
-		    b.oldLayout = AsVkImageLayout(changes[c]._oldLayout);
-		    b.newLayout = AsVkImageLayout(changes[c]._newLayout);
-            b.srcAccessMask = GetAccessForOldLayout(b.oldLayout);
-		    b.dstAccessMask = GetAccessForNewLayout(b.newLayout);
-		    b.image = r.GetImage();
-		    b.subresourceRange.aspectMask = AsImageAspectMask(desc._textureDesc._format);
-		    b.subresourceRange.baseMipLevel = 0;
-		    b.subresourceRange.levelCount = std::max(1u, (unsigned)desc._textureDesc._mipCount);
-		    b.subresourceRange.layerCount = std::max(1u, (unsigned)desc._textureDesc._arrayCount);
-        }
+				b = {};
+				b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				b.pNext = nullptr;
+				b.oldLayout = AsVkImageLayout(changes[c]._oldLayout);
+				b.newLayout = AsVkImageLayout(changes[c]._newLayout);
+				b.srcAccessMask = changes[c]._oldAccessMask;
+				b.dstAccessMask = changes[c]._newAccessMask;
+				b.image = r.GetImage();
+				b.subresourceRange.aspectMask = AsImageAspectMask(desc._textureDesc._format);
+				b.subresourceRange.baseMipLevel = 0;
+				b.subresourceRange.levelCount = std::max(1u, (unsigned)desc._textureDesc._mipCount);
+				b.subresourceRange.layerCount = std::max(1u, (unsigned)desc._textureDesc._arrayCount);
+			}
 
-        if (barrierCount) {
-            const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-            const VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            context.GetActiveCommandList().PipelineBarrier(
-                src_stages, dest_stages,
-                0, 
-                0, nullptr, 0, nullptr,
-                barrierCount, barriers);
-        }
+			if (barrierCount) {
+				const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+				const VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+				context.GetActiveCommandList().PipelineBarrier(
+					src_stages, dest_stages,
+					0, 
+					0, nullptr, 0, nullptr,
+					barrierCount, barriers);
+			}
+		}
+
+		void SetImageLayout(
+			DeviceContext& context, Resource& res, 
+			ImageLayout oldLayout, unsigned oldAccessMask, 
+			ImageLayout newLayout, unsigned newAccessMask)
+		{
+			LayoutTransition transition { &res, oldLayout, oldAccessMask, newLayout, newAccessMask };
+			SetImageLayouts(context, MakeIteratorRange(&transition, &transition+1));
+		}
+
+		class CaptureForBindRecords
+		{
+		public:
+			struct Record { IResource* _resource; ImageLayout _layout; unsigned _accessMask; };
+			std::vector<Record> _captures;
+		};
+
+		struct ImageLayoutMode
+		{
+			ImageLayout _optimalLayout;
+			unsigned _accessFlags;
+			unsigned _pipelineStageFlags;
+		};
+
+		ImageLayoutMode GetLayoutForBindType(BindFlag::Enum bindType)
+		{
+			switch (bindType) {
+			case BindFlag::TransferSrc:
+				return { ImageLayout::TransferSrcOptimal, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+			case BindFlag::TransferDst:
+				return { ImageLayout::TransferDstOptimal, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+			case BindFlag::ShaderResource:
+				// VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+				// VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+				// VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+				// VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+				// VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+				// VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+				return { 
+					ImageLayout::ShaderReadOnlyOptimal,
+					VK_ACCESS_SHADER_READ_BIT,
+					VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+					| VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+				};
+			case BindFlag::RenderTarget:
+				return { ImageLayout::ColorAttachmentOptimal, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+			case BindFlag::DepthStencil:
+				return { ImageLayout::DepthStencilAttachmentOptimal, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT };
+			default:
+				assert(0);
+				return { ImageLayout::General, 0, 0 };
+			}
+		}
+
+		CaptureForBind::CaptureForBind(DeviceContext& context, IResource& resource, BindFlag::Enum bindType)
+		: _context(&context), _resource(&resource), _bindType(bindType), _releaseCapture(true)
+		{
+			if (!context._captureForBindRecords)
+				context._captureForBindRecords = std::make_shared<Internal::CaptureForBindRecords>();
+
+			auto newMode = Internal::GetLayoutForBindType(bindType);
+			auto* res = checked_cast<Resource*>(&resource);
+
+			// try to mix this with the steady state from the resource
+			auto steadyLayout = res->_steadyStateLayout;
+			auto steadyAccessMask = res->_steadyStateAccessMask;
+			if ((steadyLayout == newMode._optimalLayout || steadyLayout == Internal::ImageLayout::General) 
+				&& (res->_steadyStateAccessMask & newMode._accessFlags) == newMode._accessFlags) {
+
+				// The steady state is already compatible with what we want
+				// we still consider this a capture, but we don't actually have to change the layout or
+				// access mode at all
+				_capturedLayout = steadyLayout;
+				_capturedAccessMask = steadyAccessMask;
+				_releaseCapture = false;
+			} else {
+				// We do have to change the layout. Prefer to swap to the optimal layout if we can
+				_capturedLayout = newMode._optimalLayout;
+				_capturedAccessMask = newMode._accessFlags;
+			}
+
+			auto existing = std::find_if(
+				context._captureForBindRecords->_captures.begin(), context._captureForBindRecords->_captures.end(),
+				[&resource](const auto& i) { return i._resource == &resource; });
+			if (existing != context._captureForBindRecords->_captures.end()) {
+				// We're allowed to nest captures so long as they are of the same type,
+				// and we release them in opposite order to creation order (ie shoes and socks order)
+				if (existing->_layout != _capturedLayout)
+					Throw(std::runtime_error("Attempting to CaptureForBind a resource that is already captured in another state"));
+				_capturedLayout = existing->_layout;
+				_capturedAccessMask = existing->_accessMask;
+				_releaseCapture = false;
+				return;
+			}
+
+			context._captureForBindRecords->_captures.push_back(
+				{&resource, _capturedLayout, _capturedAccessMask});
+
+			if (_releaseCapture) {
+				Internal::SetImageLayout(
+					*_context, *res,
+					res->_steadyStateLayout, res->_steadyStateAccessMask,
+					_capturedLayout, _capturedAccessMask);
+			}
+		}
+
+		CaptureForBind::~CaptureForBind()
+		{
+			if (!_context) return;
+
+			auto* res = checked_cast<Resource*>(_resource);
+			auto existing = std::find_if(
+				_context->_captureForBindRecords->_captures.begin(), _context->_captureForBindRecords->_captures.end(),
+				[res](const auto& i) { return i._resource == res; });
+			if (existing == _context->_captureForBindRecords->_captures.end()) {
+				// You might get here if you have multiple nested CaptureForBind with the same constructor parameters, 
+				// but they get destroyed in the wrong order
+				Log(Error) << "Missing capture record in CaptureForBind destructor" << std::endl;
+				assert(0);
+			} else {
+				if (existing->_layout != _capturedLayout || existing->_accessMask != _capturedAccessMask)
+					Log(Error) << "Missing capture record unexpected type in CaptureForBind destructor" << std::endl;	// this implies some kind of corruption
+				if (_releaseCapture)
+					_context->_captureForBindRecords->_captures.erase(existing);
+			}
+
+			// always return back to the "steady state" layout for this resource
+			if (_releaseCapture) {
+				Internal::SetImageLayout(
+					*_context, *res,
+					_capturedLayout, _capturedAccessMask,
+					res->_steadyStateLayout, res->_steadyStateAccessMask);
+			}
+		}
+
+		void SetupInitialLayout(DeviceContext& devContext, IResource& ires)
+		{
+			auto& res = *checked_cast<Resource*>(&ires);
+			SetImageLayout(
+				devContext, res,
+				ImageLayout::Undefined, res._steadyStateAccessMask,
+				res._steadyStateLayout, res._steadyStateAccessMask);
+		}
 	}
 
     static VulkanSharedPtr<VkDeviceMemory> AllocateDeviceMemory(
@@ -258,6 +405,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		// These correspond to the 2 types of Desc
 		// We need to create the buffer/image first, so we can called vkGetXXXMemoryRequirements
 		const bool hasInitData = !!initData;
+
+		_steadyStateLayout = Internal::ImageLayout::Undefined;
+		_steadyStateAccessMask = 0;
 
 		VkMemoryRequirements mem_reqs = {}; 
 		if (desc._type == Desc::Type::LinearBuffer) {
@@ -374,6 +524,34 @@ namespace RenderCore { namespace Metal_Vulkan
     			_underlyingImage = factory.CreateImage(image_create_info);
 	    		vkGetImageMemoryRequirements(factory.GetDevice().get(), _underlyingImage.get(), &mem_reqs);
             }
+
+			// Determine the steady state layout for this resource. If we have only one
+			// usage type selected, we will default to the optimal layout for that usage method.
+			// Otherwise we will fall back to "general"
+			_steadyStateLayout = Internal::ImageLayout::Undefined;
+			_steadyStateAccessMask = 0;
+			using lyt = Internal::ImageLayout;
+			if (desc._bindFlags & BindFlag::ShaderResource) {
+				_steadyStateLayout = lyt::ShaderReadOnlyOptimal;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._accessFlags;
+			}
+			if (desc._bindFlags & BindFlag::RenderTarget) {
+				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::ColorAttachmentOptimal : lyt::General;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._accessFlags;
+			}
+			if (desc._bindFlags & BindFlag::DepthStencil) {
+				// Note that DepthStencilReadOnlyOptimal can't be accessed here
+				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::DepthStencilAttachmentOptimal : lyt::General;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::DepthStencil)._accessFlags;
+			}
+			if (desc._bindFlags & BindFlag::TransferSrc) {
+				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferSrcOptimal : lyt::General;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._accessFlags;
+			}
+			if (desc._bindFlags & BindFlag::TransferDst) {
+				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferDstOptimal : lyt::General;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._accessFlags;
+			}
 		}
 
         const auto hostVisibleReqs = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -426,8 +604,43 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	std::vector<uint8_t>    Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
 	{
-		assert(0);		// unimplemented
-		return {};
+		bool requiresDestaging = !_desc._cpuAccess;
+		if (requiresDestaging) {
+			// todo -- we could destaging only a single sub resource...?
+			auto stagingCopyDesc = _desc;
+			stagingCopyDesc._gpuAccess = 0;
+			stagingCopyDesc._cpuAccess = CPUAccess::Read;
+			stagingCopyDesc._bindFlags = BindFlag::TransferDst;
+			Resource destaging { GetObjectFactory(), stagingCopyDesc };
+
+			auto& ctx = *DeviceContext::Get(context);
+			{
+				Internal::SetupInitialLayout(ctx, destaging);
+				Internal::CaptureForBind capture(ctx, *const_cast<Resource*>(this), BindFlag::TransferSrc);
+				Copy(ctx, destaging, *const_cast<Resource*>(this), destaging._steadyStateLayout, capture.GetLayout());
+			}
+
+			return destaging.ReadBack(context, subRes);
+		}
+
+		// Commit all commands up to this point, and wait for completion
+		// Technically, we don't need to wait for all commands. We only really need to wait for
+		// any commands that might write to this resource (including the destaging copy)
+		// In theory, using render passes & blt passes, etc we could do that. But that seems 
+		// like an over-optimization, ReadBack is not intended for use in performance critical
+		// scenarios. Clients that need to guarantee best possible readback performance would be
+		// better off with a custom rolled solution that tracks the specific operations involved
+		context.CommitCommands(CommitCommandsFlags::WaitForCompletion);
+
+		ResourceMap map(
+			checked_cast<IDeviceVulkan*>(context.GetDevice().get())->GetUnderlyingDevice(),
+			*const_cast<Resource*>(this),
+			ResourceMap::Mode::Read,
+			subRes);
+
+		return std::vector<uint8_t>{
+			(const uint8_t*)map.GetData().begin(),
+			(const uint8_t*)map.GetData().end()};
 	}
 
 	static std::function<SubResourceInitData(SubResourceId)> AsResInitializer(const SubResourceInitData& initData)
@@ -522,7 +735,49 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
+	static std::vector<VkBufferImageCopy> GenerateBufferImageCopyOps(
+		const ResourceDesc& imageDesc, const ResourceDesc& bufferDesc)
+	{
+		// VkBufferImageCopy is used for image -> buffer as well as buffer -> image
+		// In this case, we don't care which input is the src or dst; one of them is
+		// considered the "buffer" while the other is considered the "image"
+		assert(imageDesc._type == Resource::Desc::Type::Texture);
+		assert(bufferDesc._type == Resource::Desc::Type::Texture);
+
+		auto arrayCount = std::max(1u, (unsigned)imageDesc._textureDesc._arrayCount);
+		auto mips = std::max(1u, (unsigned)std::min(imageDesc._textureDesc._mipCount, bufferDesc._textureDesc._mipCount));
+		unsigned width = imageDesc._textureDesc._width, height = imageDesc._textureDesc._height, depth = imageDesc._textureDesc._depth;
+		auto minDims = (GetCompressionType(imageDesc._textureDesc._format) == FormatCompressionType::BlockCompression) ? 4u : 1u;
+		auto dstAspectMask = AsImageAspectMask(bufferDesc._textureDesc._format);
+
+		assert(bufferDesc._textureDesc._width == width);
+		assert(bufferDesc._textureDesc._height == height);
+		assert(bufferDesc._textureDesc._depth == depth);
+
+		std::vector<VkBufferImageCopy> result;
+		result.resize(mips*arrayCount);
+
+		for (unsigned m=0; m<mips; ++m) {
+			auto mipOffset = GetSubResourceOffset(imageDesc._textureDesc, m, 0);
+			for (unsigned a=0; a<arrayCount; ++a) {
+				auto& c = result[m+a*mips];
+				c.bufferOffset = mipOffset._offset + mipOffset._pitches._arrayPitch * a;
+				c.bufferRowLength = std::max(width, minDims);
+				c.bufferImageHeight = std::max(height, minDims);
+				c.imageSubresource = VkImageSubresourceLayers{ dstAspectMask, m, a, 1 };
+				c.imageOffset = VkOffset3D{0,0,0};
+				c.imageExtent = VkExtent3D{std::max(width, minDims), std::max(height, minDims), std::max(depth, 1u)};
+			}
+
+			width >>= 1u;
+			height >>= 1u;
+			depth >>= 1u;
+		}
+
+		return result;
+	}
+
+	void Copy(DeviceContext& context, Resource& dst, Resource& src, Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
 	{
         if (dst.GetImage() && src.GetImage()) {
             // image to image copy
@@ -597,58 +852,27 @@ namespace RenderCore { namespace Metal_Vulkan
             if (src.GetDesc()._type != ResourceDesc::Type::Texture)
                 Throw(::Exceptions::BasicLabel("Buffer to image copy not implemented, except for staging resources"));
 
-            const auto& srcDesc = src.GetDesc();
-		    const auto& dstDesc = dst.GetDesc();
-		    assert(srcDesc._type == Resource::Desc::Type::Texture);
-		    assert(dstDesc._type == Resource::Desc::Type::Texture);
-
-            auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
-
-            VkBufferImageCopy copyOps[96];
-
-            auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
-		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
-            unsigned width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
-            auto minDims = (GetCompressionType(srcDesc._textureDesc._format) == FormatCompressionType::BlockCompression) ? 4u : 1u;
-
-            assert(dstDesc._textureDesc._width == width);
-            assert(dstDesc._textureDesc._height == height);
-            assert(dstDesc._textureDesc._depth == depth);
-		    assert(mips*arrayCount <= dimof(copyOps));
-
-            for (unsigned m=0; m<mips; ++m) {
-                auto mipOffset = GetSubResourceOffset(srcDesc._textureDesc, m, 0);
-                for (unsigned a=0; a<arrayCount; ++a) {
-                    auto& c = copyOps[m+a*mips];
-                    c.bufferOffset = mipOffset._offset + mipOffset._pitches._arrayPitch * a;
-                    c.bufferRowLength = std::max(width, minDims);
-                    c.bufferImageHeight = std::max(height, minDims);
-                    c.imageSubresource = VkImageSubresourceLayers{ dstAspectMask, m, a, 1 };
-                    c.imageOffset = VkOffset3D{0,0,0};
-                    c.imageExtent = VkExtent3D{std::max(width, minDims), std::max(height, minDims), std::max(depth, 1u)};
-                }
-
-                width >>= 1u;
-                height >>= 1u;
-                depth >>= 1u;
-            }
-
-            const auto copyOperations = mips*arrayCount;
+            auto copyOps = GenerateBufferImageCopyOps(src.GetDesc(), dst.GetDesc());
             context.GetActiveCommandList().CopyBufferToImage(
                 src.GetBuffer(),
                 dst.GetImage(), AsVkImageLayout(dstLayout),
-                copyOperations, copyOps);
+                (uint32_t)copyOps.size(), copyOps.data());
         } else {
-            // copies from buffer to image, or image to buffer are supported by Vulkan, but
-            // not implemented here.
-            Throw(::Exceptions::BasicLabel("Image to buffer copy not implemented"));
+            if (dst.GetDesc()._type != ResourceDesc::Type::Texture)
+                Throw(::Exceptions::BasicLabel("Image to buffer copy not implemented, except for destaging resources"));
+            
+            auto copyOps = GenerateBufferImageCopyOps(dst.GetDesc(), src.GetDesc());
+            context.GetActiveCommandList().CopyImageToBuffer(
+                src.GetImage(), AsVkImageLayout(srcLayout),
+				dst.GetBuffer(),
+                (uint32_t)copyOps.size(), copyOps.data());
         }
 	}
 
     void CopyPartial(
         DeviceContext& context, 
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
-        ImageLayout dstLayout, ImageLayout srcLayout)
+        Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
     {
         assert(src._resource && dst._resource);
         if (dst._resource->GetImage() && src._resource->GetImage()) {
@@ -867,9 +1091,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		Mode mapMode,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
+	: ResourceMap(context.GetUnderlyingDevice(), resource, mapMode, subResource, offset, size)
 	{
-        auto dev = context.GetUnderlyingDevice();
+	}
 
+	ResourceMap::ResourceMap(
+		VkDevice dev, Resource& resource,
+		Mode mapMode,
+        SubResourceId subResource,
+		VkDeviceSize offset, VkDeviceSize size)
+	{
         VkDeviceSize finalOffset = offset, finalSize = size;
         _pitches = TexturePitches { unsigned(size), unsigned(size) };
 

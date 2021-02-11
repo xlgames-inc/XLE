@@ -85,8 +85,10 @@ namespace RenderCore
             StreamOutput        = 1<<8,     ///< Used as a stream-output buffer from the geomtry shader (ie, SOSetTargets)
             DrawIndirectArgs    = 1<<9,     ///< Used with DrawInstancedIndirect or DrawIndexedInstancedIndirect
             RawViews            = 1<<10,    ///< Enables use of raw shader resource views
-            TransferSrc         = 1<<11,    ///< Primarily used as the source resource in a copy operation (typically for staging texture)
-            TransferDst         = 1<<12     ///< Primarily used as the destination resource in a copy operation (typically for readback textures)
+            InputAttachment     = 1<<11,    ///< Used as an input attachment for a render pass (usually appears in combination with ShaderResource as well as some other output oriented flags)
+            TransferSrc         = 1<<12,    ///< Primarily used as the source resource in a copy operation (typically for staging texture)
+            TransferDst         = 1<<13,    ///< Primarily used as the destination resource in a copy operation (typically for readback textures)
+            PresentationSrc     = 1<<14     ///< Part of a swap chain that can be presented to the screen
         };
         typedef unsigned BitField;
     }

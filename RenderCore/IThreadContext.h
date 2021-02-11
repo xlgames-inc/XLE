@@ -19,6 +19,12 @@ namespace RenderCore
         unsigned _frameId;
     };
 
+    namespace CommitCommandsFlags
+    {
+        enum Flags { WaitForCompletion };
+        using BitField = unsigned;
+    }
+
     class IAnnotator;
 
     ///
@@ -89,14 +95,14 @@ namespace RenderCore
         /// an offscreen surface, you don't want to call BeginFrame and Present, but
         /// you do still need a way to tell Metal, and the GPU, when you're done.
         ///
-        /// To do this, call CommitHeadless().
+        /// To do this, call CommitCommands().
         ///
         /// Do not call this method if you're between a BeginFrame and Present. A
         /// presentation frame must be ended with a Present.
         ///
         /// You never need to call both Present and this method; Present already
         /// takes care of committing work and starting the next frame.
-        virtual void            CommitHeadless() = 0;
+        virtual void            CommitCommands(CommitCommandsFlags::BitField=0) = 0;
 
         virtual void*           QueryInterface(size_t guid) = 0;
         virtual bool            IsImmediate() const = 0;

@@ -972,6 +972,20 @@ namespace RenderCore { namespace Metal_Vulkan
 			regionCount, pRegions);
 	}
 
+	void CommandList::CopyImageToBuffer(
+		VkImage srcImage,
+		VkImageLayout srcImageLayout,
+		VkBuffer dstBuffer,
+		uint32_t regionCount,
+		const VkBufferImageCopy* pRegions)
+	{
+		vkCmdCopyImageToBuffer(
+			_underlying.get(),
+			srcImage, srcImageLayout,
+			dstBuffer,
+			regionCount, pRegions);
+	}
+
 	void CommandList::PipelineBarrier(
 		VkPipelineStageFlags            srcStageMask,
 		VkPipelineStageFlags            dstStageMask,

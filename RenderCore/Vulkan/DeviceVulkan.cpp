@@ -69,7 +69,7 @@ namespace RenderCore { namespace ImplVulkan
 			"VK_LAYER_LUNARG_object_tracker",
 			"VK_LAYER_LUNARG_parameter_validation",
 			// "VK_LAYER_LUNARG_screenshot",
-			"VK_LAYER_LUNARG_standard_validation"
+			"VK_LAYER_LUNARG_standard_validation",
 
 		    "VK_LAYER_LUNARG_device_limits",
 		    "VK_LAYER_LUNARG_draw_state",
@@ -86,6 +86,8 @@ namespace RenderCore { namespace ImplVulkan
             // "VK_LAYER_RENDERDOC_Capture",
 
 			// "VK_LAYER_NV_optimus",
+
+			"VK_LAYER_KHRONOS_validation"
 	    };
 
 	    static const char* s_deviceLayers[] =
@@ -98,7 +100,7 @@ namespace RenderCore { namespace ImplVulkan
 			"VK_LAYER_LUNARG_object_tracker",
 			"VK_LAYER_LUNARG_parameter_validation",
 			// "VK_LAYER_LUNARG_screenshot",
-			"VK_LAYER_LUNARG_standard_validation"
+			"VK_LAYER_LUNARG_standard_validation",
 
 		    "VK_LAYER_LUNARG_device_limits",
 		    "VK_LAYER_LUNARG_draw_state",
@@ -115,6 +117,8 @@ namespace RenderCore { namespace ImplVulkan
             // "VK_LAYER_RENDERDOC_Capture",
 
 			// "VK_LAYER_NV_optimus",
+
+			"VK_LAYER_KHRONOS_validation"
 	    };
 
         static std::vector<VkLayerProperties> EnumerateLayers()
@@ -980,7 +984,7 @@ namespace RenderCore { namespace ImplVulkan
 				TextureViewDesc::SubResourceRange{0, _bufferDesc._arrayCount},
 				_bufferDesc._dimensionality};
             auto resDesc = CreateDesc(
-                BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
+                BindFlag::PresentationSrc, 0u, GPUAccess::Read|GPUAccess::Write, 
                 _bufferDesc, "presentationimage");
             auto resPtr = IResourcePtr(
 				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
@@ -1110,10 +1114,72 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
+	void ThreadContext::QueuePrimaryContext(
+		IteratorRange<const VkSemaphore*> completionSignals,
+		VkFence fence)
+	{
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+
+		VkSemaphore waitSema[2];
+		VkPipelineStageFlags waitStages[2];
+		unsigned waitCount = 0;
+		if (_nextQueueShouldWaitOnAcquire != VK_NULL_HANDLE) {
+			waitSema[waitCount] = _nextQueueShouldWaitOnAcquire;
+			waitStages[waitCount] = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			++waitCount;
+		}
+		if (_nextQueueShouldWaitOnInterimBuffer) {
+			waitSema[waitCount] = _interimCommandBufferComplete.get();
+			waitStages[waitCount] = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			++waitCount;
+		}
+		submitInfo.waitSemaphoreCount = waitCount;
+		submitInfo.pWaitSemaphores = waitSema;
+		submitInfo.pWaitDstStageMask = waitStages;
+
+		submitInfo.signalSemaphoreCount = completionSignals.size();
+		submitInfo.pSignalSemaphores = completionSignals.begin();
+
+		auto immediateCommands = _metalContext->ResolveCommandList();
+		VkCommandBuffer rawCmdBuffers[] = { immediateCommands->GetUnderlying().get() };
+		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+		submitInfo.pCommandBuffers = rawCmdBuffers;
+	
+		auto res = vkQueueSubmit(_queue, 1, &submitInfo, fence);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+		_nextQueueShouldWaitOnAcquire = VK_NULL_HANDLE;
+		_nextQueueShouldWaitOnInterimBuffer = false;
+	}
+
 	IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
-		if (_gpuTracker)
-			_gpuTracker->IncrementProducerFrame();
+		// Our immediate context may have command list already, if it's been used
+		// either before the first frame, or between 2 frames. Normally we switch
+		// the immediate metal context over to using the "primary buffer" associated
+		// with the swap chain.
+		//
+		// So if we have any existing command list content, that's got to be submitted
+		// to the queue, and it must be processed before we get onto the main primary
+		// buffer content. That requires some more submit and 
+		//
+		// Most clients would be better off using a different DeviceContext for the commands
+		// in this buffer. These commands might be (for example) for initialization, or
+		// even drawing to a shadow texture or something like that. If so, we don't necessarily
+		// want to delay all commands in the primary buffer until this one is complete. It
+		// would be better to synchronize only those parts that rely on the resources
+		// writen to by this buffer. That's something we can do, by separating it out
+		// into a different context
+		if (_metalContext->HasActiveCommandList()) {
+			if (!_interimCommandBufferComplete)
+				_interimCommandBufferComplete = _factory->CreateSemaphore();
+			VkSemaphore signalSema[] = { _interimCommandBufferComplete.get() };
+			QueuePrimaryContext(MakeIteratorRange(signalSema));
+			_nextQueueShouldWaitOnInterimBuffer = true;
+		}
 
 		#if defined(HACK_FORCE_SYNC)
 			// Hack -- complete GPU synchronize
@@ -1122,15 +1188,19 @@ namespace RenderCore { namespace ImplVulkan
 
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
+		_nextQueueShouldWaitOnAcquire = swapChain->GetSyncs()._onAcquireComplete.get();
+
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame();
+
 		{
 			auto cmdList = swapChain->SharePrimaryBuffer();
 			auto res = vkResetCommandBuffer(cmdList.get(), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
-
-			if (!_metalContext->HasActiveCommandList())
-				_metalContext->BeginCommandList(std::move(cmdList));
+			_metalContext->BeginCommandList(std::move(cmdList));
 		}
+
         // _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->GetResource();
 	}
@@ -1161,28 +1231,10 @@ namespace RenderCore { namespace ImplVulkan
 			if (!trackingSeparateCommandBuffer)
 				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
 
-			auto mainCmdBuffer = _metalContext->ResolveCommandList();
-
-			VkSubmitInfo submitInfo;
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.pNext = nullptr;
-
-			VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
 			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get(), syncs._onCommandBufferComplete2.get() };
-			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer->GetUnderlying().get() };
-			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-			submitInfo.waitSemaphoreCount = dimof(waitSema);
-			submitInfo.pWaitSemaphores = waitSema;
-			submitInfo.signalSemaphoreCount = trackingSeparateCommandBuffer ? 2 : 1;
-			submitInfo.pSignalSemaphores = signalSema;
-			submitInfo.pWaitDstStageMask = &stage;
-			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
-			submitInfo.pCommandBuffers = rawCmdBuffers;
-		
-			auto res = vkQueueSubmit(_queue, 1, &submitInfo, syncs._presentFence.get());
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
-
+			QueuePrimaryContext(
+				MakeIteratorRange(signalSema, &signalSema[trackingSeparateCommandBuffer ? 2 : 1]), 
+				syncs._presentFence.get());
 			syncs._fenceHasBeenQueued = true;
 		}
 
@@ -1226,9 +1278,33 @@ namespace RenderCore { namespace ImplVulkan
 		swapChain->PresentToQueue(_queue);
 	}
 
-	void	ThreadContext::CommitHeadless()
+	void	ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
 	{
-		assert(0);
+		// Queue any commands that are prepared, and wait for the GPU to complete
+		// processing them
+		//
+		// Note that we want to wait not just for any commands that are in _metalContext
+		// now; but also any other command buffers that have already been submitted
+		// and are still being processed
+		if (!_interimCommandBufferComplete)
+			_interimCommandBufferComplete = _factory->CreateSemaphore();
+		bool waitForCompletion = !!(flags & CommitCommandsFlags::WaitForCompletion);
+		if (!_utilityFence && waitForCompletion)
+			_utilityFence = _factory->CreateFence(0);
+
+		VkSemaphore signalSema[] = { _interimCommandBufferComplete.get() };
+		QueuePrimaryContext(MakeIteratorRange(signalSema), waitForCompletion ? _utilityFence.get() : VK_NULL_HANDLE);
+		_nextQueueShouldWaitOnInterimBuffer = true;
+
+		if (waitForCompletion) {
+			VkFence fences[] = { _utilityFence.get() };
+			auto res = vkWaitForFences(_underlyingDevice, dimof(fences), fences, true, UINT64_MAX);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
+			res = vkResetFences(_underlyingDevice, dimof(fences), fences);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
+		}
 	}
 
     bool ThreadContext::IsImmediate() const

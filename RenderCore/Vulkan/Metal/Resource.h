@@ -21,19 +21,22 @@ namespace RenderCore { namespace Metal_Vulkan
 	class Resource;
 	class TextureView;
 
-	enum class ImageLayout
+	namespace Internal
 	{
-		Undefined						= 0, // VK_IMAGE_LAYOUT_UNDEFINED,
-		General							= 1, // VK_IMAGE_LAYOUT_GENERAL,
-		ColorAttachmentOptimal			= 2, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		DepthStencilAttachmentOptimal	= 3, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		DepthStencilReadOnlyOptimal		= 4, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-		ShaderReadOnlyOptimal			= 5, // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		TransferSrcOptimal				= 6, // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		TransferDstOptimal				= 7, // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
-		PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	};
+		enum class ImageLayout
+		{
+			Undefined						= 0, // VK_IMAGE_LAYOUT_UNDEFINED,
+			General							= 1, // VK_IMAGE_LAYOUT_GENERAL,
+			ColorAttachmentOptimal			= 2, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			DepthStencilAttachmentOptimal	= 3, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			DepthStencilReadOnlyOptimal		= 4, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+			ShaderReadOnlyOptimal			= 5, // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			TransferSrcOptimal				= 6, // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			TransferDstOptimal				= 7, // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
+			PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		};
+	}
 
 	/// <summary>Abstraction for a device memory resource</summary>
 	/// A Resource can either be a buffer or an image. In Vulkan, both types reference a VkDeviceMemory
@@ -69,6 +72,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes) const override;
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
+
+		Internal::ImageLayout _steadyStateLayout;
+		unsigned _steadyStateAccessMask;
 	protected:
 		VulkanSharedPtr<VkDeviceMemory> _mem;
 
@@ -115,6 +121,11 @@ namespace RenderCore { namespace Metal_Vulkan
             Mode mapMode,
 			SubResourceId subResource = {},
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
+		ResourceMap(
+			VkDevice dev, Resource& resource,
+            Mode mapMode,
+			SubResourceId subResource = {},
+			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap();
 		~ResourceMap();
 
@@ -140,7 +151,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	void Copy(
         DeviceContext&, 
         Resource& dst, Resource& src, 
-        ImageLayout dstLayout = ImageLayout::TransferDstOptimal, ImageLayout srcLayout = ImageLayout::TransferSrcOptimal);
+        Internal::ImageLayout dstLayout = Internal::ImageLayout::TransferDstOptimal,
+		Internal::ImageLayout srcLayout = Internal::ImageLayout::TransferSrcOptimal);
 
     using UInt3Pattern = VectorPattern<unsigned, 3>;
 
@@ -177,7 +189,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void CopyPartial(
         DeviceContext&, 
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
-        ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
+        Internal::ImageLayout dstLayout = Internal::ImageLayout::Undefined, Internal::ImageLayout srcLayout = Internal::ImageLayout::Undefined);
 
 	IResourcePtr Duplicate(ObjectFactory&, Resource& inputResource);
 	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
@@ -204,14 +216,45 @@ namespace RenderCore { namespace Metal_Vulkan
         //      U T I L S       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class LayoutTransition
-    {
-    public:
-        Resource* _res = nullptr;
-		ImageLayout _oldLayout = ImageLayout::Undefined;
-		ImageLayout _newLayout = ImageLayout::Undefined;
-    };
-	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
+	namespace Internal
+	{
+		class LayoutTransition
+		{
+		public:
+			Resource* _res = nullptr;
+			ImageLayout _oldLayout = ImageLayout::Undefined;
+			unsigned _oldAccessMask = 0;
+			ImageLayout _newLayout = ImageLayout::Undefined;
+			unsigned _newAccessMask = 0;
+		};
+		void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
+		void SetImageLayout(
+			DeviceContext& context, Resource& res, 
+			ImageLayout oldLayout, unsigned oldAccessMask, 
+			ImageLayout newLayout, unsigned newAccessMask);
+
+		class CaptureForBindRecords;
+		void ValidateIsEmpty(CaptureForBindRecords&);
+
+		class CaptureForBind
+		{
+		public:
+			Internal::ImageLayout GetLayout() { return _capturedLayout; }
+			CaptureForBind(DeviceContext&, IResource&, BindFlag::Enum bindType);
+			~CaptureForBind();
+			CaptureForBind(const CaptureForBind&) = delete;
+			CaptureForBind& operator=(const CaptureForBind&) = delete;
+		private:
+			DeviceContext* _context;
+			IResource* _resource;
+			BindFlag::Enum _bindType;
+			Internal::ImageLayout _capturedLayout;
+			unsigned _capturedAccessMask;
+			bool _releaseCapture;
+		};
+
+		void SetupInitialLayout(DeviceContext&, IResource&);
+	}
 
     VkSampleCountFlagBits_	AsSampleCountFlagBits(TextureSamples samples);
     VkImageAspectFlags      AsImageAspectMask(Format fmt);

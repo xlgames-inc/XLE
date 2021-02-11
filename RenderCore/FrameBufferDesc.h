@@ -46,34 +46,17 @@ namespace RenderCore
         float _width = 1.0f, _height = 1.0f;
         unsigned _arrayLayerCount = 0u;
 
-        enum class DimensionsMode
-        {
-            Absolute,                   ///< _width and _height define absolute pixel values
-            OutputRelative              ///< _width and _height are multipliers applied to the defined "output" dimensions (ie, specify 1.f to create buffers the same size as the output)
-        };
-        DimensionsMode _dimsMode = DimensionsMode::OutputRelative;
-
         struct Flags
         {
             enum Enum
             {
-                Multisampled		= 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
-                ShaderResource		= 1<<1,     ///< allow binding as a shader resource after the render pass has finished
-                TransferSource		= 1<<2,     ///< allow binding as a transfer source after the render pass has finished
-                RenderTarget		= 1<<3,
-                DepthStencil		= 1<<4,
-				PresentationSource	= 1<<5
+                Multisampled		            = 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
+                OutputRelativeDimensions        = 1<<1,     ///< _width and _height are multipliers applied to the defined "output" dimensions (ie, specify 1.f to create buffers the same size as the output)
             };
             using BitField = unsigned;
         };
         Flags::BitField _flags = 0u;
-
-        static AttachmentDesc FromFlags(Flags::BitField flags)
-        {
-            AttachmentDesc result;
-            result._flags = flags;
-            return result;
-        }
+        BindFlag::BitField _bindFlagsForFinalLayout = 0u;  ///< we use this to select the optimal final layout of the resource. This is how the resource is left post-renderpass (for example, for presentation targets)
 
         uint64_t CalculateHash() const;
 

@@ -79,8 +79,9 @@ namespace RenderCore { namespace ImplAppleMetal
         EndHeadlessFrame();
     }
 
-    void        ThreadContext::CommitHeadless()
+    void        ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
     {
+        assert(flags==0);
         EndHeadlessFrame();
     }
 
@@ -97,7 +98,7 @@ namespace RenderCore { namespace ImplAppleMetal
     void        ThreadContext::EndHeadlessFrame()
     {
         assert(_commandBuffer);
-        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present/CommitHeadless on the "immediate" context
+        assert(_immediateCommandQueue);     // we can only do BeginFrame/Present/CommitCommands on the "immediate" context
         
         [_commandBuffer.get() commit];
         GetDeviceContext()->ReleaseCommandBuffer();

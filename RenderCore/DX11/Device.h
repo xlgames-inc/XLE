@@ -51,7 +51,7 @@ namespace RenderCore { namespace ImplDX11
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
         void    Present(IPresentationChain& presentationChain) override;
-		void	CommitHeadless() override;
+		void	CommitCommands(CommitCommandsFlags::BitField=0) override;
 
         bool                        IsImmediate() const override;
         ThreadContextStateDesc      GetStateDesc() const override;

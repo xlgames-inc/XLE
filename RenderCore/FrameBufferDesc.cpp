@@ -47,11 +47,8 @@ namespace RenderCore
             desc._textureDesc._format,
             (float)desc._textureDesc._width, (float)desc._textureDesc._height,
             0u,
-            RenderCore::AttachmentDesc::DimensionsMode::Absolute,
-              ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
-            | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
-            | ((desc._bindFlags & BindFlag::DepthStencil) ? AttachmentDesc::Flags::DepthStencil : 0u)
-            | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
+            0u,
+            desc._bindFlags
         };
     }
 
@@ -87,8 +84,8 @@ namespace RenderCore
         uint64_t t0 =
                 uint64_t(_format)
             |   (uint64_t(_arrayLayerCount) << 8ull)
-            |   (uint64_t(_dimsMode) << 15ull)
             |   (uint64_t(_flags) << 16ull)
+            |   (uint64_t(_bindFlagsForFinalLayout) << 32ull)
             ;
         uint64_t t1 =
                 uint64_t(*(uint32_t*)&_width)

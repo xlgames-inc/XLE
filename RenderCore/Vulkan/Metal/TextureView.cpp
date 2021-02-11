@@ -71,16 +71,23 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.subresourceRange.baseArrayLayer = window._arrayLayerRange._min;
         view_info.subresourceRange.layerCount = std::max(1u, (unsigned)window._arrayLayerRange._count);
 
-        view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
         switch (window._format._aspect) {
         case TextureViewDesc::Depth:
-            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT;
+            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             break;
         case TextureViewDesc::DepthStencil:
-            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
             break;
         case TextureViewDesc::Stencil:
-            view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_STENCIL_BIT;
+            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            break;
+        case TextureViewDesc::ColorLinear:
+        case TextureViewDesc::ColorSRGB:
+            view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
+            break;
+
+        default:
+            view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
             break;
         }
 

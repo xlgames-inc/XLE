@@ -61,7 +61,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
         virtual void Present(IPresentationChain& presentationChain) override;
-        virtual void CommitHeadless() override;
+        virtual void CommitCommands(CommitCommandsFlags::BitField=0) override;
 
         virtual bool IsImmediate() const override { return false; }
         virtual std::shared_ptr<IDevice> GetDevice() const override;

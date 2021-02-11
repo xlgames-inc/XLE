@@ -367,6 +367,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	    case RTYPE_TBUFFER:
 		    assert(0); // Need to find out which group this belongs to
 		    return RGROUP_TEXTURE;
+
+        default:
+            break;
 	    }
 
 	    assert(0);
@@ -384,6 +387,8 @@ namespace RenderCore { namespace Metal_Vulkan
         case RGROUP_TEXTURE:    return LegacyRegisterBinding::RegisterType::ShaderResource;
         case RGROUP_SAMPLER:    return LegacyRegisterBinding::RegisterType::Sampler;
         case RGROUP_UAV:        return LegacyRegisterBinding::RegisterType::UnorderedAccess;
+        default:
+            break;
         }
         return LegacyRegisterBinding::RegisterType::Unknown;
     }
@@ -637,6 +642,7 @@ namespace RenderCore { namespace Metal_Vulkan
         } else {
             // todo -- alternative shader compilation modes not implemented yet!
             assert(0);
+            return nullptr;
         }
     }
 

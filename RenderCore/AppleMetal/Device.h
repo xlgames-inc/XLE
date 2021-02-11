@@ -56,10 +56,10 @@ namespace RenderCore { namespace ImplAppleMetal
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
         void        Present(IPresentationChain& presentationChain) /*override*/;
-        void        CommitHeadless() /*override*/;
+        void        CommitCommands(CommitCommandsFlags::BitField=0) /*override*/;
 
         // METAL_TODO: These could become private, as they should only be called
-        // by BeginFrame/Present/CommitHeadless and startup and shutdown, but
+        // by BeginFrame/Present/CommitCommands and startup and shutdown, but
         // probably better to just inline them and eliminate them.
     private:
         void        BeginHeadlessFrame();

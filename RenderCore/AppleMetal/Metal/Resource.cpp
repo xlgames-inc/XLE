@@ -60,7 +60,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
         #endif
 
-        context.CommitHeadless();
+        context.CommitCommands();
         metalContext->GetDevice()->Stall();
 
         if (_underlyingTexture) {

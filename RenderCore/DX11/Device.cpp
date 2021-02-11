@@ -524,8 +524,9 @@ namespace RenderCore { namespace ImplDX11
         swapChain->GetUnderlying()->Present(0, 0);
     }
 
-	void	ThreadContext::CommitHeadless()
+	void	ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
 	{
+        assert(flags==0);
 		// We essentially just want to trigger the execution of the command list we're building
 		// on the GPU.
 		_underlying->GetUnderlying()->Flush();

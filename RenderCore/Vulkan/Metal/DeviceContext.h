@@ -24,6 +24,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	static const unsigned s_maxBoundVBs = 4;
 
+	namespace Internal { class CaptureForBindRecords; }
+
 	class GlobalPools;
 	class FrameBuffer;
 	class PipelineLayout;
@@ -197,6 +199,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkBuffer srcBuffer,
 			VkImage dstImage,
 			VkImageLayout dstImageLayout,
+			uint32_t regionCount,
+			const VkBufferImageCopy* pRegions);
+		void CopyImageToBuffer(
+			VkImage srcImage,
+			VkImageLayout srcImageLayout,
+			VkBuffer dstBuffer,
 			uint32_t regionCount,
 			const VkBufferImageCopy* pRegions);
 		void PipelineBarrier(
@@ -430,6 +438,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			TemporaryBufferSpace& tempBufferSpace);
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
+
+		std::shared_ptr<Internal::CaptureForBindRecords> _captureForBindRecords;
 
 		// --------------- Legacy interface --------------- 
 		void			InvalidateCachedState() {}

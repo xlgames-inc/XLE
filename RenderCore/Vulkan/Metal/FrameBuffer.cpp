@@ -278,33 +278,52 @@ namespace RenderCore { namespace Metal_Vulkan
 			desc.storeOp = AsStoreOp(finalStore);
             desc.stencilStoreOp = AsStoreOpStencil(finalStore);
 
-            desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			// If the attachment explicitly requests a specific final layout, let's use that
+			// This needs to mirror the logic for "steady state" layouts for resources
+			//    -- that is, where a resource is used in multiple ways, we will tend to
+			//		default to just the "general" layout
+			// Otherwise we default to keeping the layout that corresponds to how we where
+			// using it in the render pass
+			if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::ShaderResource) {
+				desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::TransferSrc) {
+				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::TransferDst) {
+				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::PresentationSrc) {
+				desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			} else if (resourceDesc._bindFlagsForFinalLayout != 0) {
+				desc.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+				desc.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+			} else {
+				bool isDepthStencil = !!(a.second._attachmentUsage & unsigned(Internal::AttachmentUsageType::DepthStencil));
+				bool isColorOutput = !!(a.second._attachmentUsage & unsigned(Internal::AttachmentUsageType::Output));
+				bool isAttachmentInput = !!(a.second._attachmentUsage & unsigned(Internal::AttachmentUsageType::Input));
+				if (isDepthStencil) {
+					assert(!isColorOutput);
+					assert(!isAttachmentInput);
+					desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				} else if (isColorOutput) {
+					desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				} else if (isAttachmentInput) {
+					desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				} else {
+					assert(0);
+					desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				}
+			}
 
-            bool isDepthStencil = !!(a.second._attachmentUsage & unsigned(Internal::AttachmentUsageType::DepthStencil));// !!(resourceDesc->_flags & AttachmentDesc::Flags::DepthStencil);
-            if (isDepthStencil) {
-                desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            }
-
-            // Assume that that attachments marked "ShaderResource" will begin and end in the 
-            // shader read layout. This should be fine for cases where a single render pass
-            // is used to write to a texture, and then it is read subsequentially. 
-            //
-            // However, if there are multiple writing render passes, followed by a shader
-            // read at some later point, then this may switch to shader read layout redundantly
-            if (resourceDesc._flags & AttachmentDesc::Flags::ShaderResource) {
-                desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            }
-
-            // desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-            if (resourceDesc._flags & AttachmentDesc::Flags::PresentationSource) {
-                desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-                desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            } 
+			// Just setting the initial layout across the board to "VK_IMAGE_LAYOUT_UNDEFINED" might be
+			// handy here; just not sure what the consequences would be
+			// desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             
             if (resourceDesc._flags & AttachmentDesc::Flags::Multisampled)
                 desc.samples = (VkSampleCountFlagBits)AsSampleCountFlagBits(samples);
@@ -490,7 +509,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		result._layers = std::max(result._layers, desc._arrayLayerCount);
 		unsigned resWidth = 0u, resHeight = 0u;
 			
-		if (desc._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+		if (!(desc._flags & AttachmentDesc::Flags::OutputRelativeDimensions)) {
 			resWidth = unsigned(desc._width);
 			resHeight = unsigned(desc._height);
 		} else {
