@@ -580,6 +580,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ViewPool<TextureView> viewPool;
         VkImageView rawViews[16];
 		unsigned rawViewCount = 0;
+		_clearValuesOrdering.reserve(uniqueAttachments.size());
 
         for (const auto&a:uniqueAttachments) {
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
@@ -587,6 +588,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc);
 			auto* rtv = viewPool.GetView(resource, TextureViewDesc{});
 			rawViews[rawViewCount++] = rtv->GetImageView();
+
+			ClearValue defaultClearValue = MakeClearValue(0.f, 0.f, 0.f, 1.f);
+			if (a.second & Internal::AttachmentUsageType::DepthStencil)
+				defaultClearValue = MakeClearValue(1.0f, 0);
+			_clearValuesOrdering.push_back({a.first, defaultClearValue});
         }
 
         VkFramebufferCreateInfo fb_info = {};
@@ -603,6 +609,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // todo --  do we need to create a "patch up" command buffer to assign the starting image layouts
         //          for all of the images we created?
+
+		_defaultOffset = {0,0};
+		_defaultExtent = {maxDims._width, maxDims._height};
     }
 
 	FrameBuffer::FrameBuffer() : _subpassCount(0) {}

@@ -34,6 +34,13 @@ namespace RenderCore { namespace Metal_Vulkan
             const INamedAttachments& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
+
+        struct ClearValueOrdering
+        {
+            unsigned _originalAttachmentIndex;
+            ClearValue _defaultClearValue;
+        };
+        std::vector<ClearValueOrdering> _clearValuesOrdering;
 	private:
 		VulkanSharedPtr<VkFramebuffer> _underlying;
         VulkanSharedPtr<VkRenderPass> _layout;

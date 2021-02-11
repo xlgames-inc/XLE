@@ -646,18 +646,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		rp_begin.renderArea.extent.width = extent[0];
 		rp_begin.renderArea.extent.height = extent[1];
 		
-		rp_begin.pClearValues = (const VkClearValue*)clearValues.begin();
-		rp_begin.clearValueCount = (uint32_t)clearValues.size();
-
-		// hack -- todo -- properly support cases where in the number of entries in "clearValues" is too few
-		// for this renderpass
-		VkClearValue temp[8];
-		rp_begin.pClearValues = temp;
-		rp_begin.clearValueCount = 8;
-		for (unsigned c=0; c<8; ++c) {
-			temp[c].depthStencil.depth = 1.0f;
-			temp[c].depthStencil.stencil = 0;
+		VkClearValue vkClearValues[fb._clearValuesOrdering.size()];
+		for (unsigned c=0; c<fb._clearValuesOrdering.size(); ++c) {
+			if (fb._clearValuesOrdering[c]._originalAttachmentIndex < clearValues.size()) {
+				vkClearValues[c] = *(const VkClearValue*)&clearValues[fb._clearValuesOrdering[c]._originalAttachmentIndex];
+			} else {
+				vkClearValues[c] = *(const VkClearValue*)&fb._clearValuesOrdering[c]._defaultClearValue;
+			}
 		}
+		rp_begin.pClearValues = vkClearValues;
+		rp_begin.clearValueCount = (uint32_t)fb._clearValuesOrdering.size();
 
 		vkCmdBeginRenderPass(_sharedState->_commandList.GetUnderlying().get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 		_sharedState->_renderPass = fb.GetLayout();
