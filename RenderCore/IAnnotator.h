@@ -16,8 +16,8 @@ namespace RenderCore
 	class IAnnotator
 	{
 	public:
-		virtual void	Frame_Begin(IThreadContext& primaryContext, unsigned frameID) = 0;
-		virtual void	Frame_End(IThreadContext& primaryContext) = 0;
+		virtual void	Frame_Begin(unsigned frameID) = 0;
+		virtual void	Frame_End() = 0;
 
 		struct EventTypes
 		{
@@ -28,11 +28,15 @@ namespace RenderCore
 			};
 			using BitField = unsigned;
 		};
-		virtual void	Event(IThreadContext& context, const char name[], EventTypes::BitField types) = 0;
+		virtual void	Event(const char name[], EventTypes::BitField types) = 0;
 
 		using EventListener = std::function<void(const void* eventBufferBegin, const void* eventBufferEnd)>;
 		virtual unsigned	AddEventListener(const EventListener& callback) = 0;
 		virtual void		RemoveEventListener(unsigned listenerId) = 0;
+
+		virtual bool		IsCaptureToolAttached() = 0;
+		virtual void		BeginFrameCapture() = 0;
+		virtual void		EndFrameCapture() = 0;
 
 		virtual ~IAnnotator();
 	};
@@ -43,12 +47,12 @@ namespace RenderCore
         GPUProfilerBlock(IThreadContext& context, const char name[])
         : _context(&context), _name(name)
         {
-            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
+            _context->GetAnnotator().Event(_name, IAnnotator::EventTypes::ProfileBegin);
         }
 
         ~GPUProfilerBlock()
         {
-            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileEnd);
+            _context->GetAnnotator().Event(_name, IAnnotator::EventTypes::ProfileEnd);
         }
 
         GPUProfilerBlock(const GPUProfilerBlock&) = delete;
@@ -64,12 +68,12 @@ namespace RenderCore
         GPUAnnotation(IThreadContext& context, const char name[])
         : _context(&context), _name(name)
         {
-            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerBegin);
+            _context->GetAnnotator().Event(_name, IAnnotator::EventTypes::MarkerBegin);
         }
 
         ~GPUAnnotation()
         {
-            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerEnd);
+            _context->GetAnnotator().Event(_name, IAnnotator::EventTypes::MarkerEnd);
         }
 
         GPUAnnotation(const GPUAnnotation&) = delete;

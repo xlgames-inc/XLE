@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../IAnnotator.h"
+#include "../IThreadContext.h"
 #include "../Utility/Threading/Mutex.h"
+#include "../Core/SelectConfiguration.h"
 #include "../Core/Types.h"
 #include <vector>
 #include <deque>
@@ -15,6 +17,12 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/ObjectFactory.h"
 
+#include "../../Foreign/RenderDoc/renderdoc_app.h"
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+	#include "../../OSServices/WinAPI/IncludeWindows.h"
+#endif
+
 namespace RenderCore { namespace ImplVulkan
 {
 	namespace Metal = RenderCore::Metal_Vulkan;
@@ -22,17 +30,21 @@ namespace RenderCore { namespace ImplVulkan
 	class AnnotatorImpl : public IAnnotator
 	{
 	public:
-		void    Event(IThreadContext& context, const char name[], EventTypes::BitField types);
-		void    Frame_Begin(IThreadContext& context, unsigned frameId);
-		void    Frame_End(IThreadContext& context);
+		void    Event(const char name[], EventTypes::BitField types) override;
+		void    Frame_Begin(unsigned frameId) override;
+		void    Frame_End() override;
 		void	FlushFinishedQueries(Metal::DeviceContext& context);
 
 		std::pair<uint64, uint64> CalculateSynchronisation(Metal::DeviceContext& context);
 
-		unsigned	AddEventListener(const EventListener& callback);
-		void		RemoveEventListener(unsigned id);
+		unsigned	AddEventListener(const EventListener& callback) override;
+		void		RemoveEventListener(unsigned id) override;
 
-		AnnotatorImpl(Metal::ObjectFactory&);
+		bool		IsCaptureToolAttached() override;
+		void		BeginFrameCapture() override;
+		void		EndFrameCapture() override;
+
+		AnnotatorImpl(Metal::ObjectFactory&, std::weak_ptr<IThreadContext>);
 		~AnnotatorImpl();
 
 	protected:
@@ -62,16 +74,22 @@ namespace RenderCore { namespace ImplVulkan
 		Threading::Mutex _listeners_Mutex;
 		std::vector<std::pair<unsigned, EventListener>> _listeners;
 		unsigned _nextListenerId;
+
+		std::weak_ptr<IThreadContext> _threadContext;
 	};
 
 	//////////////////////////////////////////////////////////////////
 
-	void    AnnotatorImpl::Event(IThreadContext& context, const char name[], EventTypes::BitField types)
+	void    AnnotatorImpl::Event(const char name[], EventTypes::BitField types)
 	{
+		auto context = _threadContext.lock();
+		if (!context) return;
+
+		auto& metalContext = *Metal::DeviceContext::Get(*context);
 		if (types & EventTypes::MarkerBegin) {
-			Metal::GPUAnnotation::Begin(*Metal::DeviceContext::Get(context), name);
+			Metal::GPUAnnotation::Begin(metalContext, name);
 		} else if (types & EventTypes::MarkerEnd) {
-			Metal::GPUAnnotation::End(*Metal::DeviceContext::Get(context));
+			Metal::GPUAnnotation::End(metalContext);
 		}
 
 		if (!(types & (EventTypes::ProfileBegin|EventTypes::ProfileEnd)))
@@ -80,31 +98,35 @@ namespace RenderCore { namespace ImplVulkan
         if (_currentQueryFrameId == Metal::TimeStampQueryPool::FrameId_Invalid)
             return;
 
-		auto metalContext = Metal::DeviceContext::Get(context);
 		EventInFlight newEvent;
 		newEvent._name = name;
 		newEvent._type = (EventTypes::Flags)types;
-		newEvent._queryIndex = _queryPool.SetTimeStampQuery(*metalContext);
+		newEvent._queryIndex = _queryPool.SetTimeStampQuery(metalContext);
 		newEvent._queryFrameId = _currentQueryFrameId;
 		_eventsInFlight.push_back(newEvent);
 	}
 
-	void    AnnotatorImpl::Frame_Begin(IThreadContext&context, unsigned frameId)
+	void    AnnotatorImpl::Frame_Begin(unsigned frameId)
 	{
+		auto context = _threadContext.lock();
+		if (!context) return;
+
 		++_frameRecursionDepth;
 		if (_currentQueryFrameId != Metal::TimeStampQueryPool::FrameId_Invalid || (_frameRecursionDepth>1)) {
 			assert(_currentQueryFrameId != Metal::TimeStampQueryPool::FrameId_Invalid && (_frameRecursionDepth>1));
 			return;
 		}
 
-		auto metalContext = Metal::DeviceContext::Get(context);
+		auto metalContext = Metal::DeviceContext::Get(*context);
 		_currentQueryFrameId = _queryPool.BeginFrame(*metalContext);
 		_currentRenderFrameId = frameId;
 	}
 
-	void    AnnotatorImpl::Frame_End(IThreadContext& context)
+	void    AnnotatorImpl::Frame_End()
 	{
-		auto metalContext = Metal::DeviceContext::Get(context);
+		auto context = _threadContext.lock();
+		if (!context) return;
+		auto metalContext = Metal::DeviceContext::Get(*context);
 
 		--_frameRecursionDepth;
 		if (_frameRecursionDepth == 0) {
@@ -252,8 +274,59 @@ namespace RenderCore { namespace ImplVulkan
 			_listeners.erase(i);
 	}
 
-	AnnotatorImpl::AnnotatorImpl(Metal::ObjectFactory& factory)
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+	static RENDERDOC_API_1_1_2 *s_rdoc_api = nullptr;
+	static bool s_attemptedRenderDocAttach = false;
+
+	static void RenderDoc_Attach()
+	{
+		if (s_attemptedRenderDocAttach) return;
+		if(HMODULE mod = GetModuleHandleA("renderdoc.dll"))
+		{
+			s_rdoc_api = nullptr;
+			pRENDERDOC_GetAPI RENDERDOC_GetAPI =
+				(pRENDERDOC_GetAPI)GetProcAddress(mod, "RENDERDOC_GetAPI");
+			int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void **)&s_rdoc_api);
+			assert(ret == 1);
+		}
+		s_attemptedRenderDocAttach = true;
+	}
+
+	bool AnnotatorImpl::IsCaptureToolAttached()
+	{
+		RenderDoc_Attach();
+		return s_rdoc_api != nullptr;
+	}
+	void AnnotatorImpl::BeginFrameCapture()
+	{
+		RenderDoc_Attach();
+		if(s_rdoc_api) {
+			auto tc = _threadContext.lock();
+			if (tc)
+				tc->CommitCommands(0);
+			s_rdoc_api->StartFrameCapture(nullptr, nullptr);
+		}
+	}
+	void AnnotatorImpl::EndFrameCapture()
+	{
+		RenderDoc_Attach();
+		if(s_rdoc_api) {
+			auto tc = _threadContext.lock();
+			if (tc)
+				tc->CommitCommands(0);
+			s_rdoc_api->EndFrameCapture(nullptr, nullptr);
+		}
+	}
+#else
+	// todo -- we could support renderdoc for other OSs as well (particularlly as it's so useful on Android)
+	bool AnnotatorImpl::IsCaptureToolAttached() { return false; }
+	void AnnotatorImpl::BeginFrameCapture() {}
+	void AnnotatorImpl::EndFrameCapture() {}
+#endif
+
+	AnnotatorImpl::AnnotatorImpl(Metal::ObjectFactory& factory, std::weak_ptr<IThreadContext> threadContext)
 	: _queryPool(factory)
+	, _threadContext(std::move(threadContext))
 	{
 		_currentRenderFrameId = ~unsigned(0);
 		_frameRecursionDepth = 0;
@@ -265,9 +338,9 @@ namespace RenderCore { namespace ImplVulkan
 	{
 	}
 
-	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device)
+	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device, std::weak_ptr<IThreadContext> threadContext)
 	{
-		return std::make_unique<AnnotatorImpl>(Metal::GetObjectFactory(device));
+		return std::make_unique<AnnotatorImpl>(Metal::GetObjectFactory(device), threadContext);
 	}
 
 }}

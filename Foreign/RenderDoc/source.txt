@@ -1,0 +1,3 @@
+RenderDoc is available from https://renderdoc.org/ -- please check it out.
+The renderdoc_app.h is part of the distribution available there; it describes the interface for the shared library that is part of the capture tool itself
+I'm using the license described on the top of the header file itself (ie, the MIT license) to include it in this distribution

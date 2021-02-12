@@ -113,7 +113,7 @@ namespace RenderCore { namespace ImplVulkan
 
 	class EventBasedTracker;
 
-    class ThreadContext : public IThreadContext, public IThreadContextVulkan
+    class ThreadContext : public IThreadContext, public IThreadContextVulkan, std::enable_shared_from_this<ThreadContext>
     {
     public:
 		void	        Present(IPresentationChain&) override;
