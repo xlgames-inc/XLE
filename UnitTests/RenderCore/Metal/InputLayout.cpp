@@ -9,6 +9,9 @@
 #include "../../../RenderCore/Metal/State.h"
 #include "../../../RenderCore/Metal/PipelineLayout.h"
 #include "../../../RenderCore/Metal/DeviceContext.h"
+#include "../../../RenderCore/Metal/Resource.h"
+#include "../../../RenderCore/Metal/TextureView.h"
+#include "../../../RenderCore/Metal/ObjectFactory.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../RenderCore/Format.h"
 #include "../../../RenderCore/ResourceUtils.h"
@@ -77,17 +80,17 @@ namespace UnitTests
 	static unsigned boxesSize = (96 - 32) * (96 - 32);
 	static Int2 boxOffsets[] = { Int2(0, 0), Int2(768, 0), Int2(0, 768), Int2(768, 768) };
 	static Int2 vertices_4Boxes[] = {
-		Int2(32, 32), Int2(96, 32), Int2(32, 96),
-		Int2(32, 96), Int2(96, 32), Int2(96, 96),
+		Int2(32, 32), Int2(32, 96), Int2(96, 32), 
+		Int2(96, 32), Int2(32, 96), Int2(96, 96),
 
-		Int2(768 + 32, 32), Int2(768 + 96, 32), Int2(768 + 32, 96),
-		Int2(768 + 32, 96), Int2(768 + 96, 32), Int2(768 + 96, 96),
+		Int2(768 + 32, 32), Int2(768 + 32, 96), Int2(768 + 96, 32), 
+		Int2(768 + 96, 32), Int2(768 + 32, 96), Int2(768 + 96, 96),
 
-		Int2(32, 768 + 32), Int2(96, 768 + 32), Int2(32, 768 + 96),
-		Int2(32, 768 + 96), Int2(96, 768 + 32), Int2(96, 768 + 96),
+		Int2(32, 768 + 32), Int2(32, 768 + 96), Int2(96, 768 + 32),
+		Int2(96, 768 + 32), Int2(32, 768 + 96), Int2(96, 768 + 96),
 
-		Int2(768 + 32, 768 + 32), Int2(768 + 96, 768 + 32), Int2(768 + 32, 768 + 96),
-		Int2(768 + 32, 768 + 96), Int2(768 + 96, 768 + 32), Int2(768 + 96, 768 + 96)
+		Int2(768 + 32, 768 + 32), Int2(768 + 32, 768 + 96), Int2(768 + 96, 768 + 32),
+		Int2(768 + 96, 768 + 32), Int2(768 + 32, 768 + 96), Int2(768 + 96, 768 + 96)
 	};
 
 	static unsigned vertices_colors[] = {
@@ -160,18 +163,42 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_clipInput, psText);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc | BindFlag::TransferDst, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		
+		/*Metal::Internal::SetupInitialLayout(
+			*Metal::DeviceContext::Get(*threadContext),
+			*fbHelper.GetMainTarget());*/
+
+		{
+			auto stagingDesc = CreateDesc(
+				BindFlag::TransferSrc, 0, 0,
+				TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+				"staging-temp");
+			std::vector<uint8_t> initBuffer(RenderCore::ByteCount(stagingDesc), 0xdd);
+			SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(stagingDesc._textureDesc) };
+			auto stagingRes = testHelper->_device->CreateResource(stagingDesc, initData);
+			{
+				auto&ctx = *Metal::DeviceContext::Get(*threadContext);
+				Metal::Internal::CaptureForBind captureDst(ctx, *fbHelper.GetMainTarget(), BindFlag::TransferDst);
+				Metal::Internal::CaptureForBind captureSrc(ctx, *stagingRes, BindFlag::TransferSrc);
+				Metal::Copy(ctx, 
+					*dynamic_cast<Metal::Resource*>(fbHelper.GetMainTarget().get()),
+					*dynamic_cast<Metal::Resource*>(stagingRes.get()),
+					captureDst.GetLayout(), captureSrc.GetLayout());
+			}
+		}
+
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_randomTriangle));
+			auto vertexBuffer = testHelper->CreateVB(MakeIteratorRange(vertices_randomTriangle));
 
 			// Using the InputElementDesc version of BoundInputLayout constructor
 			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
@@ -179,11 +206,12 @@ namespace UnitTests
 
 			VertexBufferView vbv { vertexBuffer.get() };
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
 
-			metalContext.Bind(shaderProgram);
-			metalContext.Bind(Topology::TriangleList);
-			metalContext.Draw(dimof(vertices_randomTriangle));
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(&vbv, &vbv+1), {});
+			encoder.Draw(dimof(vertices_randomTriangle));
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -203,9 +231,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_clipInput, psText);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -214,7 +242,7 @@ namespace UnitTests
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_randomTriangle));
+			auto vertexBuffer = testHelper->CreateVB(MakeIteratorRange(vertices_randomTriangle));
 
 			// Using the MiniInputElementDesc version of BoundInputLayout constructor
 			Metal::BoundInputLayout::SlotBinding slotBinding { MakeIteratorRange(miniInputElePC), 0 };
@@ -223,11 +251,12 @@ namespace UnitTests
 
 			VertexBufferView vbv { vertexBuffer.get() };
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
 
-			metalContext.Bind(shaderProgram);
-			metalContext.Bind(Topology::TriangleList);
-			metalContext.Draw(dimof(vertices_randomTriangle));
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(&vbv, &vbv+1), {});
+			encoder.Draw(dimof(vertices_randomTriangle));
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -235,6 +264,7 @@ namespace UnitTests
 
 		auto colorBreakdown = GetColorBreakdown(*threadContext, fbHelper);
 		REQUIRE(colorBreakdown._otherPixels == 0u);
+		REQUIRE(colorBreakdown._blackPixels < 1024*1024);
 		(void)colorBreakdown;
 	}
 
@@ -248,16 +278,16 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText, psText);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 
-		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_4Boxes));
-		auto vertexBuffer1 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_colors));
+		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_4Boxes));
+		auto vertexBuffer1 = testHelper->CreateVB(MakeIteratorRange(vertices_colors));
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -277,11 +307,11 @@ namespace UnitTests
 				VertexBufferView { vertexBuffer1.get() }
 			};
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
-
-			metalContext.Bind(shaderProgram);
-			metalContext.Bind(Topology::TriangleList);
-			metalContext.Draw(dimof(vertices_4Boxes));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(vbvs), {});
+			encoder.Draw(dimof(vertices_4Boxes));
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -314,11 +344,11 @@ namespace UnitTests
 				VertexBufferView { vertexBuffer1.get() }
 			};
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
-
-			metalContext.Bind(shaderProgram);
-			metalContext.Bind(Topology::TriangleList);
-			metalContext.Draw(dimof(vertices_4Boxes));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(vbvs), {});
+			encoder.Draw(dimof(vertices_4Boxes));
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -341,27 +371,27 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_Instanced, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_Instanced, psText);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
+
+		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_4Boxes));
+		auto vertexBuffer1 = testHelper->CreateVB(MakeIteratorRange(fixedColors));
+		auto vertexBuffer2 = testHelper->CreateVB(MakeIteratorRange(boxOffsets));
+
+		InputElementDesc inputEles[] = {
+			InputElementDesc { "position", 0, Format::R32G32_SINT, 0 },
+			InputElementDesc { "color", 0, Format::R8G8B8A8_UNORM, 1, ~0u, InputDataRate::PerInstance, 1 },
+			InputElementDesc { "instanceOffset", 0, Format::R32G32_SINT, 2, ~0u, InputDataRate::PerInstance, 1 }
+		};
 
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_4Boxes));
-			auto vertexBuffer1 = CreateVB(*testHelper->_device, MakeIteratorRange(fixedColors));
-			auto vertexBuffer2 = CreateVB(*testHelper->_device, MakeIteratorRange(boxOffsets));
-
-			InputElementDesc inputEles[] = {
-				InputElementDesc { "position", 0, Format::R32G32_SINT, 0 },
-				InputElementDesc { "color", 0, Format::R8G8B8A8_UNORM, 1, ~0u, InputDataRate::PerInstance, 1 },
-				InputElementDesc { "instanceOffset", 0, Format::R32G32_SINT, 2, ~0u, InputDataRate::PerInstance, 1 }
-			};
-
 			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEles), shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
 
@@ -371,17 +401,57 @@ namespace UnitTests
 				VertexBufferView { vertexBuffer2.get() },
 			};
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
 
-			metalContext.Bind(shaderProgram);
-			metalContext.Bind(Topology::TriangleList);
-			metalContext.DrawInstances(6, 4);
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(vbvs), {});
+			encoder.DrawInstances(6, 4);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		rpi = {};     // end RPI
 
 		auto colorBreakdown = GetColorBreakdown(*threadContext, fbHelper);
+		REQUIRE(colorBreakdown._otherPixels == 0u);
+		REQUIRE(colorBreakdown._coloredPixels[0] == boxesSize);
+		REQUIRE(colorBreakdown._coloredPixels[1] == boxesSize);
+		REQUIRE(colorBreakdown._coloredPixels[2] == boxesSize);
+		REQUIRE(colorBreakdown._coloredPixels[3] == boxesSize);
+		REQUIRE(colorBreakdown._blackPixels == targetDesc._textureDesc._width * targetDesc._textureDesc._height - 4 * boxesSize);
+		(void)colorBreakdown;
+
+		rpi = fbHelper.BeginRenderPass(*threadContext);
+
+		////////////////////////////////////////////////////////////////////////////////////////
+		{
+			// Same, except using an index buffer
+			unsigned idxBufferData[6];
+			for (unsigned c=0; c<dimof(idxBufferData); ++c) idxBufferData[c] = c;
+			auto idxBuffer = testHelper->CreateIB(MakeIteratorRange(idxBufferData));
+
+			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEles), shaderProgram);
+			REQUIRE(inputLayout.AllAttributesBound());
+
+			VertexBufferView vbvs[] {
+				VertexBufferView { vertexBuffer0.get() },
+				VertexBufferView { vertexBuffer1.get() },
+				VertexBufferView { vertexBuffer2.get() },
+			};
+			IndexBufferView ibv { idxBuffer, Format::R32_UINT };
+			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+
+			encoder.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleList);
+			encoder.Bind(MakeIteratorRange(vbvs), ibv);
+			encoder.DrawIndexedInstances(6, 4);
+		}
+		////////////////////////////////////////////////////////////////////////////////////////
+
+		rpi = {};     // end RPI
+
+		colorBreakdown = GetColorBreakdown(*threadContext, fbHelper);
 		REQUIRE(colorBreakdown._otherPixels == 0u);
 		REQUIRE(colorBreakdown._coloredPixels[0] == boxesSize);
 		REQUIRE(colorBreakdown._coloredPixels[1] == boxesSize);
@@ -400,9 +470,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_FullViewport, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport, psText);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 										"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
@@ -412,9 +482,10 @@ namespace UnitTests
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
 		REQUIRE(inputLayout.AllAttributesBound());
 
-		auto vertexBuffer = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_randomTriangle));
+		auto vertexBuffer = testHelper->CreateVB(MakeIteratorRange(vertices_randomTriangle));
 		VertexBufferView vbv { vertexBuffer.get() };
-		inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+		encoder.Bind(MakeIteratorRange(&vbv, &vbv+1), {});
 	}
 
 	TEST_CASE( "InputLayout-BasicBinding_BindMissingAttribute", "[rendercore_metal]" )
@@ -428,9 +499,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText, psText);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText, psText);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 										"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
@@ -446,16 +517,17 @@ namespace UnitTests
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEles), shaderProgram);
 		REQUIRE(inputLayout.AllAttributesBound());
 
-		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_4Boxes));
-		auto vertexBuffer1 = CreateVB(*testHelper->_device, MakeIteratorRange(fixedColors));
-		auto vertexBuffer2 = CreateVB(*testHelper->_device, MakeIteratorRange(boxOffsets));
+		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_4Boxes));
+		auto vertexBuffer1 = testHelper->CreateVB(MakeIteratorRange(fixedColors));
+		auto vertexBuffer2 = testHelper->CreateVB(MakeIteratorRange(boxOffsets));
 		VertexBufferView vbvs[] {
 			VertexBufferView { vertexBuffer0.get() },
 			VertexBufferView { vertexBuffer1.get() },
 			VertexBufferView { vertexBuffer2.get() },
 		};
 
-		inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+		encoder.Bind(MakeIteratorRange(vbvs), {});
 	}
 
 	TEST_CASE( "InputLayout-BasicBinding_Uniforms", "[rendercore_metal]" )
@@ -467,9 +539,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_FullViewport, psText_Uniforms);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport, psText_Uniforms);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -479,13 +551,16 @@ namespace UnitTests
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+			
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
-			inputLayout.Apply(metalContext, {});
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Bind(IteratorRange<const VertexBufferView*>{}, {});
 
 			// NOTE -- special case in AppleMetal implementation -- the shader must be bound
 			// here first, before we get to the uniform binding
-			metalContext.Bind(shaderProgram);
+			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Values")});
@@ -494,10 +569,9 @@ namespace UnitTests
 
 			Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
 			ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
-			uniforms.Apply(metalContext, 0, UniformsStream { MakeIteratorRange(cbvs) });
+			uniforms.Apply(metalContext, encoder, 0, UniformsStream { MakeIteratorRange(cbvs) });
 
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			encoder.Draw(4);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -515,10 +589,13 @@ namespace UnitTests
 		rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		{
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
-			inputLayout.Apply(metalContext, {});
-			metalContext.Bind(shaderProgram);
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Bind(IteratorRange<const VertexBufferView*>{}, {});
+			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values) });
@@ -527,9 +604,9 @@ namespace UnitTests
 
 			Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
 			ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
-			uniforms.Apply(metalContext, 0, UniformsStream { MakeIteratorRange(cbvs) });
+			uniforms.Apply(metalContext, encoder, 0, UniformsStream { MakeIteratorRange(cbvs) });
 
-			metalContext.Draw(4);
+			encoder.Draw(4);
 		}
 
 		rpi = {};     // end RPI
@@ -550,9 +627,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_Uniforms);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_Uniforms);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -560,7 +637,8 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
-		metalContext.Bind(shaderProgram);
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+		encoder.Bind(shaderProgram);
 
 		{
 			// incorrect arrangement of constant buffer elements
@@ -626,6 +704,7 @@ namespace UnitTests
 			(void)uniforms;
 		}
 
+		encoder = {};
 		rpi = {};     // end RPI
 	}
 
@@ -650,7 +729,7 @@ namespace UnitTests
 				_resDesc,
 				[this](SubResourceId subResId) {
 					assert(subResId._mip == 0 && subResId._arrayLayer == 0);
-					return SubResourceInitData { MakeIteratorRange(_initData) };
+					return SubResourceInitData { MakeIteratorRange(_initData), MakeTexturePitches(_resDesc._textureDesc) };
 				});
 		}
 	};
@@ -666,10 +745,10 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgramCB = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_Uniforms);
-		auto shaderProgramSRV = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_TextureBinding);
+		auto shaderProgramCB = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_Uniforms);
+		auto shaderProgramSRV = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_TextureBinding);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -680,17 +759,19 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
 
-		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
+		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_vIdx));
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
 		REQUIRE(inputLayout.AllAttributesBound());
 		VertexBufferView vbvs[] = { vertexBuffer0.get() };
-		inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+		encoder.Bind(MakeIteratorRange(vbvs), {});
+		encoder.Bind(inputLayout, Topology::TriangleList);
 
 		{
 			// Shader takes a CB called "Values", but we will incorrectly attempt to bind
 			// a shader resource there (and not bind the CB)
-			metalContext.Bind(shaderProgramCB);
+			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Values"));
@@ -704,13 +785,13 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, 0, uniformsStream);                
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);                
 		}
 
 		{
 			// Shader takes a SRV called "Texture", but we will incorrectly attempt to bind
 			// a constant buffer there (and not bind the SRV)
-			metalContext.Bind(shaderProgramSRV);
+			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Texture")});
@@ -719,13 +800,13 @@ namespace UnitTests
 			ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
 			UniformsStream uniformsStream;
 			uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
-			uniforms.Apply(metalContext, 0, uniformsStream);                
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);                
 		}
 
 		{
 			// Shader takes a CB called "Values", we will promise to bind it, but then not
 			// actually include it into the UniformsStream
-			metalContext.Bind(shaderProgramCB);
+			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
@@ -733,16 +814,15 @@ namespace UnitTests
 
 			REQUIRE_THROWS(
 				[&]() {
-					uniforms.Apply(metalContext, 0, UniformsStream {});
-					metalContext.Bind(Topology::TriangleStrip);
-					metalContext.Draw(4);
+					uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
+					encoder.Draw(4);
 				});
 		}
 
 		{
 			// Shader takes a SRV called "Texture", we will promise to bind it, but then not
 			// actually include it into the UniformsStream
-			metalContext.Bind(shaderProgramSRV);
+			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Texture"));
@@ -750,12 +830,12 @@ namespace UnitTests
 
 			REQUIRE_THROWS(
 				[&]() {
-					uniforms.Apply(metalContext, 0, UniformsStream {});
-					metalContext.Bind(Topology::TriangleStrip);
-					metalContext.Draw(4);
+					uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
+					encoder.Draw(4);
 				});
 		}
 
+		encoder = {};
 		rpi = {};     // end RPI
 	}
 
@@ -770,10 +850,10 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgramCB = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_Uniforms);
-		auto shaderProgramSRV = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_TextureBinding);
+		auto shaderProgramCB = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_Uniforms);
+		auto shaderProgramSRV = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_TextureBinding);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 										"temporary-out");
 
@@ -784,17 +864,18 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
 
-		auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
+		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_vIdx));
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgramCB);
 		REQUIRE(inputLayout.AllAttributesBound());
 		VertexBufferView vbvs[] = { vertexBuffer0.get() };
-		inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+		encoder.Bind(MakeIteratorRange(vbvs), {});
 
 		{
 			// Shader takes a CB called "Values", but we will incorrectly attempt to bind
 			// a shader resource there (and not bind the CB)
-			metalContext.Bind(shaderProgramCB);
+			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Values"));
@@ -808,13 +889,13 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
 		}
 
 		{
 			// Shader takes a SRV called "Texture", but we will incorrectly attempt to bind
 			// a constant buffer there (and not bind the SRV)
-			metalContext.Bind(shaderProgramSRV);
+			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Texture")});
@@ -823,13 +904,13 @@ namespace UnitTests
 			ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
 			UniformsStream uniformsStream;
 			uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
 		}
 
 		{
 			// Shader takes a CB called "Values", we will promise to bind it, but then not
 			// actually include it into the UniformsStream
-			metalContext.Bind(shaderProgramCB);
+			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
@@ -842,14 +923,14 @@ namespace UnitTests
 
 			REQUIRE_THROWS(
 									[&]() {
-										uniforms.Apply(metalContext, 0, UniformsStream {});
+										uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
 									});
 		}
 
 		{
 			// Shader takes a SRV called "Texture", we will promise to bind it, but then not
 			// actually include it into the UniformsStream
-			metalContext.Bind(shaderProgramSRV);
+			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Texture"));
@@ -862,10 +943,11 @@ namespace UnitTests
 
 			REQUIRE_THROWS(
 									[&]() {
-										uniforms.Apply(metalContext, 0, UniformsStream {});
+										uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
 									});
 		}
 
+		encoder = {};
 		rpi = {};     // end RPI
 	}
 
@@ -877,9 +959,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_TextureBinding);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_TextureBinding);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -889,19 +971,21 @@ namespace UnitTests
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
-		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+
+			auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_vIdx));
 			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
 			VertexBufferView vbvs[] = { vertexBuffer0.get() };
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+			encoder.Bind(MakeIteratorRange(vbvs), {});
 
 			// NOTE -- special case in AppleMetal implementation -- the shader must be bound
 			// here first, before we get to the uniform binding
-			metalContext.Bind(shaderProgram);
+			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Texture"));
@@ -915,14 +999,12 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
 
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Draw(4);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
-
-		rpi = {};     // end RPI
 
 		// We're expecting the output texture to directly match the input, just scaled up by
 		// the dimensional difference. Since we're using point sampling, there should be no
@@ -947,9 +1029,9 @@ namespace UnitTests
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
-		auto shaderProgram = MakeShaderProgram(*testHelper, vsText_FullViewport2, psText_TextureBinding);
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_TextureBinding);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -963,13 +1045,14 @@ namespace UnitTests
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+			auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_vIdx));
 			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
 			VertexBufferView vbvs[] = { vertexBuffer0.get() };
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+			encoder.Bind(MakeIteratorRange(vbvs), {});
 
-			metalContext.Bind(shaderProgram);
+			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Texture"));
@@ -983,10 +1066,10 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
 
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Draw(4);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1001,13 +1084,14 @@ namespace UnitTests
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto vertexBuffer0 = CreateVB(*testHelper->_device, MakeIteratorRange(vertices_vIdx));
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline();
+			auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_vIdx));
 			Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputEleVIdx), shaderProgram);
 			REQUIRE(inputLayout.AllAttributesBound());
 			VertexBufferView vbvs[] = { vertexBuffer0.get() };
-			inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+			encoder.Bind(MakeIteratorRange(vbvs), {});
 
-			metalContext.Bind(shaderProgram);
+			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("Texture"));
@@ -1021,10 +1105,10 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &linearSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
 
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Draw(4);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 

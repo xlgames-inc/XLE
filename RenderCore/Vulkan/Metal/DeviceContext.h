@@ -295,10 +295,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		RebindNumericDescriptorSet();
 
 	protected:
-		SharedGraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
+		SharedGraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState = nullptr);
 		~SharedGraphicsEncoder();
-		SharedGraphicsEncoder(const SharedGraphicsEncoder&);		// (hide these to avoid slicing in derived types)
-		SharedGraphicsEncoder& operator=(const SharedGraphicsEncoder&);
+		SharedGraphicsEncoder(SharedGraphicsEncoder&&);		// (hide these to avoid slicing in derived types)
+		SharedGraphicsEncoder& operator=(SharedGraphicsEncoder&&);
 
 		VkPipelineLayout GetPipelineLayout();
 		unsigned GetDescriptorSetCount();
@@ -319,6 +319,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		using SharedGraphicsEncoder::Bind;
 		using GraphicsPipelineBuilder::Bind;
 
+		GraphicsEncoder_ProgressivePipeline(GraphicsEncoder_ProgressivePipeline&&);
+		GraphicsEncoder_ProgressivePipeline& operator=(GraphicsEncoder_ProgressivePipeline&&);
+		GraphicsEncoder_ProgressivePipeline();
 		~GraphicsEncoder_ProgressivePipeline();
 	protected:
 		GraphicsEncoder_ProgressivePipeline(
@@ -334,7 +337,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		friend class DeviceContext;
 	};
 
-	class GraphicsEncoder : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
+	class GraphicsEncoder : public SharedGraphicsEncoder
 	{
 	public:
 		//	------ Draw & Clear -------
@@ -344,10 +347,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto(const GraphicsPipeline& pipeline);
 
+		GraphicsEncoder(GraphicsEncoder&&);
+		GraphicsEncoder& operator=(GraphicsEncoder&&);
+		GraphicsEncoder();
 		~GraphicsEncoder();
 	protected:
 		GraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
-		
 
 		friend class DeviceContext;
 	};

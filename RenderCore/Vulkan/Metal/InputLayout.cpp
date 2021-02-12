@@ -41,6 +41,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		context.SetBoundInputLayout(*this);
 	}*/
 
+	static VkVertexInputRate AsVkVertexInputRate(InputDataRate dataRate)
+	{
+		switch (dataRate) {
+		case InputDataRate::PerVertex: return VK_VERTEX_INPUT_RATE_VERTEX;
+		case InputDataRate::PerInstance: return VK_VERTEX_INPUT_RATE_INSTANCE;
+		}
+	}
+
 	bool BoundInputLayout::AllAttributesBound() const
 	{
 		return true;	// todo -- track this
@@ -49,33 +57,72 @@ namespace RenderCore { namespace Metal_Vulkan
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
         // find the vertex inputs into the shader, and match them against the input layout
-        unsigned trackingOffset = 0;
+		auto vertexStrides = CalculateVertexStrides(layout);
 
         SPIRVReflection reflection(shader.GetByteCode());
         _attributes.reserve(layout.size());
-        for (unsigned c=0; c<layout.size(); ++c) {
-            const auto& e = layout[c];
-            auto hash = Hash64(e._semanticName) + e._semanticIndex;
 
-            auto offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
-            trackingOffset = offset + BitsPerPixel(e._nativeFormat) / 8;
+		unsigned inputDataRatePerVB[vertexStrides.size()];
+		for (auto&i:inputDataRatePerVB) i = ~0u;
 
-            auto i = LowerBound(reflection._inputInterfaceQuickLookup, hash);
-            if (i == reflection._inputInterfaceQuickLookup.end() || i->first != hash)
-                continue;   // Could not be bound
+		// Build the VkVertexInputAttributeDescription in the order of the
+		// input slots to make it easy to generate the trackingOffset separately
+		// for each input
+		for (unsigned vbIndex=0; vbIndex<vertexStrides.size(); ++vbIndex) {
+			unsigned trackingOffset = 0;
+			for (unsigned c=0; c<layout.size(); ++c) {
+				const auto& e = layout[c];
+				if (e._inputSlot != vbIndex) continue;
+				
+				auto hash = Hash64(e._semanticName) + e._semanticIndex;
+				auto offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
+				trackingOffset = offset + BitsPerPixel(e._nativeFormat) / 8;
 
-            VkVertexInputAttributeDescription desc;
-            desc.location = i->second._location;
-            desc.binding = e._inputSlot;
-            desc.format = (VkFormat)AsVkFormat(e._nativeFormat);
-            desc.offset = offset;
-            _attributes.push_back(desc);
-        }
+				auto i = LowerBound(reflection._inputInterfaceQuickLookup, hash);
+				if (i == reflection._inputInterfaceQuickLookup.end() || i->first != hash)
+					continue;   // Could not be bound
 
-		auto vertexStrides = CalculateVertexStrides(layout);
+				VkVertexInputAttributeDescription desc;
+				desc.location = i->second._location;
+				desc.binding = e._inputSlot;
+				desc.format = (VkFormat)AsVkFormat(e._nativeFormat);
+				desc.offset = offset;
+				_attributes.push_back(desc);
+
+				if (inputDataRatePerVB[e._inputSlot] != ~0u) {
+					// This is a unique restriction for Vulkan -- the data rate is on the vertex buffer
+					// binding, not the attribute binding. This means that we can't mix data rates
+					// for the same input slot.
+					//
+					// We could get around this by splitting a single binding into 2 _vbBindingDescriptions
+					// (effectively binding the same VB twice, one for each data rate)
+					// Then we would also need to remap the vertex buffer assignments when they are applied
+					// via vkCmdBindVertexBuffers.
+					//
+					// However, I think this restriction is actually pretty practical. It probably makes 
+					// more sense to just enforce this idea on all gfx-apis. The client can double up their
+					// bindings if they really need to; but in practice they probably are already using
+					// a separate VB for the per-instance data anyway.
+					if (inputDataRatePerVB[e._inputSlot] != (unsigned)AsVkVertexInputRate(e._inputSlotClass))
+						Throw(std::runtime_error("In Vulkan, the data rate for all attribute bindings from a given input vertex buffer must be the same. That is, if you want to mix data rates in a draw call, you must use separate vertex buffers for each data rate."));
+				} else {
+					inputDataRatePerVB[e._inputSlot] = (unsigned)AsVkVertexInputRate(e._inputSlotClass);
+				}
+
+				if (e._inputSlotClass == InputDataRate::PerInstance && e._instanceDataStepRate != 0 && e._instanceDataStepRate != 1)
+					Throw(std::runtime_error("Instance step data rates other than 1 not supported"));
+			}
+		}
+
 		_vbBindingDescriptions.reserve(vertexStrides.size());
-		for (unsigned b=0; b<(unsigned)vertexStrides.size(); ++b)
-			_vbBindingDescriptions.push_back({b, vertexStrides[b], VK_VERTEX_INPUT_RATE_VERTEX});
+		for (unsigned b=0; b<(unsigned)vertexStrides.size(); ++b) {
+			// inputDataRatePerVB[b] will only be ~0u if there were no successful
+			// binds for this bind slot
+			if (inputDataRatePerVB[b] == ~0u)
+				continue;
+			assert(vertexStrides[b] != 0);
+			_vbBindingDescriptions.push_back({b, vertexStrides[b], (VkVertexInputRate)inputDataRatePerVB[b]});
+		}
 
 		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));
 		_pipelineRelevantHash = Hash64(AsPointer(_vbBindingDescriptions.begin()), AsPointer(_vbBindingDescriptions.end()), _pipelineRelevantHash);
@@ -119,8 +166,12 @@ namespace RenderCore { namespace Metal_Vulkan
 				boundAtLeastOne = true;
 			}
 
-			if (boundAtLeastOne)
-				_vbBindingDescriptions.push_back({slot, accumulatingOffset, VK_VERTEX_INPUT_RATE_VERTEX});
+			if (boundAtLeastOne) {
+				auto inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+				if (layouts[slot]._instanceStepDataRate != 0)
+					inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+				_vbBindingDescriptions.push_back({slot, accumulatingOffset, inputRate});
+			}
 		}
 
 		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));

@@ -44,7 +44,7 @@ namespace UnitTests
 			glesDevice->InitializeRootContextHeadless();
 
 		std::shared_ptr<RenderCore::ILowLevelCompiler> shaderCompiler;
-		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)_device->QueryInterface(typeid(RenderCore::IDeviceVulkan*).hash_code());
+		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)_device->QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 		if (vulkanDevice) {
 			// Vulkan allows for multiple ways for compiling shaders. The tests currently use a HLSL to GLSL to SPIRV 
 			// cross compilation approach
@@ -116,8 +116,8 @@ namespace UnitTests
 			assert(requestDesc._width == expectedDesc._width);
 			assert(requestDesc._height == expectedDesc._height);
 			assert(requestDesc._arrayLayerCount == expectedDesc._arrayLayerCount);
-			assert(requestDesc._dimsMode == expectedDesc._dimsMode);
 			assert(requestDesc._flags == expectedDesc._flags);
+			assert(requestDesc._bindFlagsForFinalLayout == expectedDesc._bindFlagsForFinalLayout);
 			assert(requestDesc.CalculateHash() == expectedDesc.CalculateHash());
 			return _mainTarget;
 		}
@@ -175,8 +175,9 @@ namespace UnitTests
 
 		// Create a resource that matches the given desc, and then also create
 		// a framebuffer with a single subpass rendering into that resource;
-		std::vector<uint8_t> initBuffer(RenderCore::ByteCount(mainFBDesc), 0xdd);
-		SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(mainFBDesc._textureDesc) };
+		// std::vector<uint8_t> initBuffer(RenderCore::ByteCount(mainFBDesc), 0xdd);
+		// SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(mainFBDesc._textureDesc) };
+		SubResourceInitData initData{};
 		_pimpl->_mainTarget = device.CreateResource(mainFBDesc, initData);
 		_pimpl->_originalMainTargetDesc = mainFBDesc;
 
@@ -201,10 +202,10 @@ namespace UnitTests
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    U T I L I T Y    F N S
 
-	std::shared_ptr<RenderCore::IResource> CreateVB(RenderCore::IDevice& device, IteratorRange<const void*> data)
+	std::shared_ptr<RenderCore::IResource> MetalTestHelper::CreateVB(IteratorRange<const void*> data)
     {
         using namespace RenderCore;
-        return device.CreateResource(
+        return _device->CreateResource(
             CreateDesc(
                 BindFlag::VertexBuffer, 0, GPUAccess::Read,
                 LinearBufferDesc::Create((unsigned)data.size()),
@@ -212,9 +213,20 @@ namespace UnitTests
             SubResourceInitData { data });
     }
 
-    RenderCore::Metal::ShaderProgram MakeShaderProgram(MetalTestHelper& testHelper, StringSection<> vs, StringSection<> ps)
+	std::shared_ptr<RenderCore::IResource> MetalTestHelper::CreateIB(IteratorRange<const void*> data)
     {
-        return RenderCore::Metal::ShaderProgram(RenderCore::Metal::GetObjectFactory(), testHelper.MakeShader(vs, "vs_*"), testHelper.MakeShader(ps, "ps_*"));
+        using namespace RenderCore;
+        return _device->CreateResource(
+            CreateDesc(
+                BindFlag::IndexBuffer, 0, GPUAccess::Read,
+                LinearBufferDesc::Create((unsigned)data.size()),
+                "indexBuffer"),
+            SubResourceInitData { data });
+    }
+
+    RenderCore::Metal::ShaderProgram MetalTestHelper::MakeShaderProgram(StringSection<> vs, StringSection<> ps)
+    {
+        return RenderCore::Metal::ShaderProgram(RenderCore::Metal::GetObjectFactory(), MakeShader(vs, "vs_*"), MakeShader(ps, "ps_*"));
     }
 
 }

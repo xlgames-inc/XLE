@@ -17,6 +17,10 @@ namespace UnitTests
     {
     public:
         RenderCore::CompiledShaderByteCode MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines = {});
+        RenderCore::Metal::ShaderProgram MakeShaderProgram(StringSection<> vs, StringSection<> ps);
+        
+        std::shared_ptr<RenderCore::IResource> CreateVB(IteratorRange<const void*> data);
+        std::shared_ptr<RenderCore::IResource> CreateIB(IteratorRange<const void*> data);
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		std::unique_ptr<RenderCore::ShaderService> _shaderService;
@@ -54,12 +58,6 @@ namespace UnitTests
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-            //    U T I L I T Y    F N S
-
-    std::shared_ptr<RenderCore::IResource> CreateVB(RenderCore::IDevice& device, IteratorRange<const void*> data);
-    RenderCore::Metal::ShaderProgram MakeShaderProgram(MetalTestHelper& testHelper, StringSection<> vs, StringSection<> ps);
 
 }
 

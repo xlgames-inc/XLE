@@ -48,6 +48,7 @@ namespace RenderCore
             auto compressionParam = GetCompressionParameters(mipMapDesc._format);
 
             auto sourceRowPitch = srcData._pitches._rowPitch;
+            assert(sourceRowPitch);
             auto rows = mipMapDesc._height;
             rows /= compressionParam._blockHeight;  // in block compressed formats, we're dealing with 4x4 blocks of texels
 

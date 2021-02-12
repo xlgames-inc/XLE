@@ -419,6 +419,11 @@ namespace RenderCore { namespace ImplVulkan
 
     Device::~Device()
     {
+		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._graphicsPipelineLayout = nullptr;
+		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout = nullptr;
+		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._compiledDescriptorSetLayoutCache = nullptr;
+		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._globalPools = nullptr;
+
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
 		/*
 			While exiting post a vulkan failure (eg, device lost), we will can end up in an infinite loop if we stall here
