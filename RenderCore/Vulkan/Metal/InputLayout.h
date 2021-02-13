@@ -155,7 +155,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TextureView;
 	class ObjectFactory;
 	class DescriptorSetSignature;
-	class DescriptorSetVerboseDescription;
+	class DescriptorSetDebugInfo;
 	class GlobalPools;
 	class LegacyRegisterBinding;
 
@@ -170,7 +170,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         void    GetDescriptorSets(
 			IteratorRange<VkDescriptorSet*> dst
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, IteratorRange<DescriptorSetVerboseDescription**> descriptions));
+			VULKAN_VERBOSE_DEBUG_ONLY(, IteratorRange<DescriptorSetDebugInfo**> descriptions));
         void    Reset();
 		bool	HasChanges() const;
 		

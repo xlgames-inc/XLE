@@ -23,8 +23,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DescriptorSetSignature;
 	class DescriptorSetSignatureFile;
 
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		class DescriptorSetVerboseDescription
+	#if defined(VULKAN_VERBOSE_DEBUG)
+		class DescriptorSetDebugInfo
 		{
 		public:
 			struct BindingDescription
@@ -55,7 +55,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDevice device,
 			VkDescriptorSet destination,
 			VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription& description));
+			VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo& description));
 
 		void		ValidatePendingWrites(const DescriptorSetSignature& sig);
 
@@ -78,14 +78,14 @@ namespace RenderCore { namespace Metal_Vulkan
         uint64_t		_sinceLastFlush;
 		GlobalPools*	_globalPools;
 
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription _verboseDescription;
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			DescriptorSetDebugInfo _verboseDescription;
 		#endif
 
 		template<typename BindingInfo> 
 			void WriteBinding(
 				unsigned bindingPoint, VkDescriptorType_ type, const BindingInfo& bindingInfo, bool reallocateBufferInfo
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& description));
+				VULKAN_VERBOSE_DEBUG_ONLY(, const std::string& description));
 		template<typename BindingInfo>
 			BindingInfo& AllocateInfo(const BindingInfo& init);
 	};
@@ -97,12 +97,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		const DescriptorSetSignature& srcLayout,
 		VkShaderStageFlags stageFlags);
 
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+	#if defined(VULKAN_VERBOSE_DEBUG)
 		class LegacyRegisterBinding;
-		class DescriptorSetVerboseDescription;
+		class DescriptorSetDebugInfo;
 		std::ostream& WriteDescriptorSet(
 			std::ostream&& stream,
-			const DescriptorSetVerboseDescription& bindingDescription,
+			const DescriptorSetDebugInfo& bindingDescription,
 			const DescriptorSetSignature& signature,
 			const LegacyRegisterBinding& legacyRegisterBinding,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,

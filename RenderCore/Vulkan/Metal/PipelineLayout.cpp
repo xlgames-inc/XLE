@@ -9,10 +9,12 @@
 #include "Pools.h"
 #include "DescriptorSetSignatureFile.h"
 #include "IncludeVulkan.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../xleres/FileList.h"
+#include <iostream>
 
 static const char* s_rootSignatureGraphicsDefault = R"--(
 ~~ ValidDescriptorTypes:
@@ -178,14 +180,14 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 				DescriptorSetBuilder builder(*_pimpl->_globalPools);
 				builder.BindDummyDescriptors(*s, (1ull<<uint64_t(s->_bindings.size()))-1ull);
 				ds._blankBindings = _pimpl->_globalPools->_longTermDescriptorPool.Allocate(ds._layout.get());
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds._blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
+				VULKAN_VERBOSE_DEBUG_ONLY(ds._blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
 				builder.FlushChanges(
 					_pimpl->_factory->GetDevice().get(),
 					ds._blankBindings.get(),
-					0, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, ds._blankBindingsDescription));
+					0, 0 VULKAN_VERBOSE_DEBUG_ONLY(, ds._blankBindingsDescription));
 			}
 
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds._name = s->_name);
+			VULKAN_VERBOSE_DEBUG_ONLY(ds._name = s->_name);
 			_pimpl->_descriptorSetLayouts.emplace_back(std::make_pair(HashCombine(hashName, s->_hashName), std::move(ds)));
 		}
 		std::sort(
@@ -213,8 +215,8 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
 		VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
 		
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription _blankBindingsDescription;
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			DescriptorSetDebugInfo _blankBindingsDescription;
 			std::string _name;
 		#endif
 	};
@@ -253,14 +255,14 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 			DescriptorSetBuilder builder(*_globalPools);
 			builder.BindDummyDescriptors(signature, (1ull<<uint64_t(signature._bindings.size()))-1ull);
 			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout.get());
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
+			VULKAN_VERBOSE_DEBUG_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
 			builder.FlushChanges(
 				_objectFactory->GetDevice().get(),
 				ds->_blankBindings.get(),
-				0, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, ds->_blankBindingsDescription));
+				0, 0 VULKAN_VERBOSE_DEBUG_ONLY(, ds->_blankBindingsDescription));
 		}
 
-		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds->_name = signature._name);
+		VULKAN_VERBOSE_DEBUG_ONLY(ds->_name = signature._name);
 
 		i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
 		return i->second.get();
@@ -301,9 +303,10 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 					_blankDescriptorSets[desc._pipelineLayoutBindingIndex] = compiled->_blankBindings;
 					_descriptorSetCount = std::max(_descriptorSetCount, desc._pipelineLayoutBindingIndex+1);
 					rawDescriptorSetLayouts[desc._pipelineLayoutBindingIndex] = _descriptorSetLayouts[desc._pipelineLayoutBindingIndex].get();
+					_descriptorSetSignature[desc._pipelineLayoutBindingIndex] = desc._signature;
 
-					#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-						_verboseDescriptions[desc._pipelineLayoutBindingIndex] = compiled->_blankBindingsDescription;
+					#if defined(VULKAN_VERBOSE_DEBUG)
+						_blankDescriptorSetsDebugInfo[desc._pipelineLayoutBindingIndex] = compiled->_blankBindingsDescription;
 					#endif
 				}
 			}
@@ -318,7 +321,35 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		_pipelineLayout = factory.CreatePipelineLayout(
 			MakeIteratorRange(rawDescriptorSetLayouts, &rawDescriptorSetLayouts[_descriptorSetCount]),
 			MakeIteratorRange(rawPushConstantRanges));
+
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			if (!partialLayouts.empty()) {
+				_legacyRegisterBinding = partialLayouts[0]._legacyRegisterBinding;
+			} else {
+				_legacyRegisterBinding = std::make_shared<LegacyRegisterBinding>();
+			}
+		#endif
 	}
+
+	#if defined(VULKAN_VERBOSE_DEBUG)
+		void VulkanPipelineLayout::WriteDebugInfo(
+			std::ostream&& output,
+			IteratorRange<const CompiledShaderByteCode**> shaders,
+			IteratorRange<const DescriptorSetDebugInfo*> descriptorSets)
+		{
+			Log(Verbose) << "-------------Descriptors------------" << std::endl;
+			for (unsigned descSetIdx=0; descSetIdx<s_maxDescriptorSetCount; ++descSetIdx) {
+				WriteDescriptorSet(
+					std::move(output),
+					(descSetIdx < descriptorSets.size()) ? descriptorSets[descSetIdx] : _blankDescriptorSetsDebugInfo[descSetIdx],
+					*_descriptorSetSignature[descSetIdx],
+					*_legacyRegisterBinding,
+					shaders,
+					descSetIdx,
+					descSetIdx < descriptorSets.size());
+			}
+		}
+	#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

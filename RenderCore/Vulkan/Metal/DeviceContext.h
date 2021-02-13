@@ -77,8 +77,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			TextureSamples samples);
 		bool IsPipelineStale() const { return _pipelineStale; }
 
-		// const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
-
 		// --------------- Vulkan specific interface --------------- 
 
 		GraphicsPipelineBuilder();
@@ -105,6 +103,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	protected:
 		GraphicsPipelineBuilder(const GraphicsPipelineBuilder&);
 		GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&);
+
+		const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
 	};
 
 	class ComputePipelineBuilder
@@ -117,8 +117,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			ObjectFactory& factory, VkPipelineCache pipelineCache);
 		bool IsPipelineStale() const { return _pipelineStale; }
 
-		// const ComputeShader* GetBoundComputeShader() const { return _shader; }
-
 		// --------------- Vulkan specific interface --------------- 
 
 		ComputePipelineBuilder();
@@ -130,6 +128,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	private:
 		const ComputeShader*    _shader;
 		bool                    _pipelineStale;
+
+	protected:
+		const ComputeShader* GetBoundComputeShader() const { return _shader; }
 	};
 
 	class DescriptorCollection
@@ -141,16 +142,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
 		bool                                _hasSetsAwaitingFlush = false;
 
-		struct DescInfo 
-		{
-			VulkanSharedPtr<VkDescriptorSet>	_dummy;
-
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				DescriptorSetVerboseDescription _currentlyBoundDescription;
-				DescriptorSetVerboseDescription _dummyDescription;
-			#endif
-		};
-		std::vector<DescInfo> _descInfo;
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			std::vector<DescriptorSetDebugInfo> _currentlyBoundDesc;
+		#endif
 
 		void BindNumericUniforms(
 			const std::shared_ptr<DescriptorSetSignature>& signature,
@@ -290,7 +284,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
 		// --------------- Vulkan specific interface --------------- 
-		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description));
 		void		PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
 		void		RebindNumericDescriptorSet();
 
@@ -333,6 +327,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::shared_ptr<GraphicsPipeline>	_currentGraphicsPipeline;
 		ObjectFactory*						_factory;
 		GlobalPools*                        _globalPools;
+		void LogPipeline();
 
 		friend class DeviceContext;
 	};
@@ -363,7 +358,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
 		// --------------- Vulkan specific interface --------------- 
-		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description));
 		void		RebindNumericDescriptorSet();
 
 		~ComputeEncoder_ProgressivePipeline();
@@ -376,6 +371,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VkPipelineLayout GetPipelineLayout();
 		unsigned GetDescriptorSetCount();
+		void LogPipeline();
 
 		ComputeEncoder_ProgressivePipeline(
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,

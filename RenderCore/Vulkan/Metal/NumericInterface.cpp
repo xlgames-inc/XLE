@@ -47,15 +47,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			uint64_t							_slotsFilled = 0;
 			VulkanUniquePtr<VkDescriptorSetLayout>	_layout;
 
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				DescriptorSetVerboseDescription _description;
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				DescriptorSetDebugInfo _description;
 			#endif
 
 			std::shared_ptr<DescriptorSetSignature> _signature;
 
 			DescSet(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _builder(globalPools), _layout(std::move(layout))
 			{
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				#if defined(VULKAN_VERBOSE_DEBUG)
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
 			}
@@ -65,8 +65,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				_builder.Reset();
 				_activeDescSet.reset();
 				_slotsFilled = 0;
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					_description = DescriptorSetVerboseDescription{};
+				#if defined(VULKAN_VERBOSE_DEBUG)
+					_description = DescriptorSetDebugInfo{};
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
 
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void    NumericUniformsInterface::GetDescriptorSets(
 		IteratorRange<VkDescriptorSet*> dst
-		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, IteratorRange<DescriptorSetVerboseDescription**> descriptions))
+		VULKAN_VERBOSE_DEBUG_ONLY(, IteratorRange<DescriptorSetDebugInfo**> descriptions))
     {
 		assert(_pimpl);
         // If we've had any changes this last time, we must create new
@@ -190,7 +190,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				newSets[0].get(),
 				_pimpl->_descSet._activeDescSet.get(),
 				_pimpl->_descSet._slotsFilled
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, _pimpl->_descSet._description));
+				VULKAN_VERBOSE_DEBUG_ONLY(, _pimpl->_descSet._description));
 
             _pimpl->_descSet._slotsFilled |= written;
             _pimpl->_descSet._activeDescSet = std::move(newSets[0]);
@@ -198,7 +198,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         for (unsigned c=0; c<unsigned(dst.size()); ++c) {
             dst[c] = (c < 1) ? _pimpl->_descSet._activeDescSet.get() : nullptr;
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			#if defined(VULKAN_VERBOSE_DEBUG)
 				descriptions[c] = &_pimpl->_descSet._description;
 			#endif
 		}

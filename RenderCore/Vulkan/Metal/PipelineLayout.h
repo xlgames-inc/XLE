@@ -84,8 +84,12 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSetSignature(DescriptorSetBinding) const;
 		unsigned 					GetDescriptorSetCount() const;
 
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			const DescriptorSetVerboseDescription& GetDescriptorSetVerboseDescription(DescriptorSetBinding) const;
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			const DescriptorSetDebugInfo& GetBlankDescriptorSetDebugInfo(DescriptorSetBinding) const;
+			void WriteDebugInfo(
+				std::ostream&& output,
+				IteratorRange<const CompiledShaderByteCode**> shaders,
+				IteratorRange<const DescriptorSetDebugInfo*> descriptorSets);
 		#endif
 
 		VulkanPipelineLayout(
@@ -101,8 +105,9 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		unsigned				_descriptorSetCount;
 		VulkanUniquePtr<VkPipelineLayout> _pipelineLayout;
 
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription _verboseDescriptions[s_maxDescriptorSetCount];
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			DescriptorSetDebugInfo _blankDescriptorSetsDebugInfo[s_maxDescriptorSetCount];
+			std::shared_ptr<LegacyRegisterBinding> _legacyRegisterBinding;
 		#endif
 	};
 
@@ -200,11 +205,11 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		return _descriptorSetCount;
 	}
 
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		inline const DescriptorSetVerboseDescription& VulkanPipelineLayout::GetDescriptorSetVerboseDescription(DescriptorSetBinding binding) const
+	#if defined(VULKAN_VERBOSE_DEBUG)
+		inline const DescriptorSetDebugInfo& VulkanPipelineLayout::GetBlankDescriptorSetDebugInfo(DescriptorSetBinding binding) const
 		{
 			assert(binding < _descriptorSetCount);
-			return _verboseDescriptions[binding];
+			return _blankDescriptorSetsDebugInfo[binding];
 		}
 	#endif
 

@@ -512,7 +512,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(const_cast<IResource*>(cbvs[c]._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
 				auto& res = *(Resource*)cbvs[c]._prebuiltBuffer;
 				assert(res.GetBuffer());
-				builder.BindCB(dstBinding, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "prebuilt"));
+				builder.BindCB(dstBinding, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
 			} else {
 				auto& pkt = cbvs[c]._packet;
 				// assert(bufferCount < dimof(result._bufferInfo));
@@ -522,9 +522,9 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (!tempSpace.buffer) {
 					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
 					auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
-					builder.BindCB(dstBinding, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "temporary buffer"));
+					builder.BindCB(dstBinding, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 				} else {
-					builder.BindCB(dstBinding, tempSpace VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "temporary buffer"));
+					builder.BindCB(dstBinding, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 					requiresTemporaryBufferBarrier |= true;
 				}
 			}
@@ -593,9 +593,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto& globalPools = context.GetGlobalPools();
 			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(_underlyingLayouts[streamIdx].get());
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			#if defined(VULKAN_VERBOSE_DEBUG)
 				assert(streamIdx < dimof(s_boundUniformsNames));
-				DescriptorSetVerboseDescription verboseDescription;
+				DescriptorSetDebugInfo verboseDescription;
 				verboseDescription._descriptorSetInfo = s_boundUniformsNames[streamIdx];
 			#endif
 
@@ -643,12 +643,12 @@ namespace RenderCore { namespace Metal_Vulkan
 					builder.ValidatePendingWrites(sig);
 				#endif
 
-				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, verboseDescription));
+				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DEBUG_ONLY(, verboseDescription));
 			}
         
 			encoder.BindDescriptorSet(
 				_descriptorSetBindingPoint[streamIdx], descriptorSet.get()
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(verboseDescription)));
+				VULKAN_VERBOSE_DEBUG_ONLY(, std::move(verboseDescription)));
 
 			if (requiresTemporaryBufferBarrier)
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
