@@ -1285,6 +1285,9 @@ namespace RenderCore { namespace ImplVulkan
 
 	void	ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
 	{
+		if (!_metalContext->HasActiveCommandList())
+			return;		// note tht if we don't have an active command list, and flags is WaitForCompletion, we still don't actually wait for the GPU to catchup to any previously committed command lists
+
 		// Queue any commands that are prepared, and wait for the GPU to complete
 		// processing them
 		//
