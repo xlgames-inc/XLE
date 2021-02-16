@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "Assets/PredefinedDescriptorSetLayout.h"
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 
@@ -48,7 +49,8 @@ namespace RenderCore
         };
 
         void BindConstantBuffer(unsigned slot, const CBBinding& binding);
-        void BindShaderResource(unsigned slot, uint64_t hashName);
+        void BindResource(unsigned slot, uint64_t hashName);
+        void BindSampler(unsigned slot, uint64_t hashName);
 
         uint64_t GetHash() const;
 
@@ -64,11 +66,14 @@ namespace RenderCore
         };
         std::vector<RetainedCBBinding> _cbBindings;
         std::vector<uint64_t> _srvBindings;
+        std::vector<uint64_t> _samplerBindings;
 
     private:
         mutable uint64_t _hash;
     };
     
+    using DescriptorSetSignature = RenderCore::Assets::PredefinedDescriptorSetLayout;
+    using DescriptorSet = UniformsStream;
 }
 
 

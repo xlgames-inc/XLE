@@ -47,7 +47,7 @@ namespace RenderCore { namespace Metal_Vulkan
         //
         //      Types
         //
-        enum class BasicType { Int, Float, Bool };
+        enum class BasicType { Int, Float, Bool, Image, Sampler, SampledImage };
         enum class StorageType { UniformConstant, Input, Uniform, Output, Workgroup, CrossWorkgroup, Private, Function, Generic, PushConstant, AtomicCounter, Image, Unknown };
         struct VectorType { ObjectId _componentType; unsigned _componentCount; };
         struct PointerType { ObjectId _targetType; StorageType _storage; };

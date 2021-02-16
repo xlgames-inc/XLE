@@ -638,7 +638,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void		DeviceContext::BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList)
 	{
-		SetupPipelineBuilders();
 		ResetDescriptorSetState();
 
 		assert(!_sharedState->_commandList.GetUnderlying());
@@ -904,6 +903,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
 		globals._globalPools = &globalPools;
+
+		SetupPipelineBuilders();
 
 		/*
 		globals._boundGraphicsSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_ALL_GRAPHICS);

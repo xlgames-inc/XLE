@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -21,25 +19,93 @@
 #include "../../../Utility/ArithmeticUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include <sstream>
+#include <map>
+#include <set>
 
 #include "IncludeVulkan.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	/*
-	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+	struct ReflectionVariableInformation
 	{
-        VkBuffer buffers[s_maxBoundVBs];
-		VkDeviceSize offsets[s_maxBoundVBs];
-		auto count = (unsigned)std::min(std::min(vertexBuffers.size(), dimof(buffers)), _vbBindingDescriptions.size());
-		for (unsigned c=0; c<count; ++c) {
-			offsets[c] = vertexBuffers[c]._offset;
-			assert(const_cast<IResource*>(vertexBuffers[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
-			buffers[c] = ((Resource*)vertexBuffers[c]._resource)->GetBuffer();
+		SPIRVReflection::Binding _binding = {};
+		SPIRVReflection::StorageType _storageType = SPIRVReflection::StorageType::Unknown;
+		RenderCore::DescriptorSetSignature::SlotType _slotType = RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer;
+		StringSection<> _name;
+	};
+
+	ReflectionVariableInformation GetReflectionVariableInformation(
+		const SPIRVReflection& reflection, SPIRVReflection::ObjectId objectId)
+	{
+		ReflectionVariableInformation result;
+
+		auto n = LowerBound(reflection._names, objectId);
+		if (n != reflection._names.end() && n->first == objectId)
+			result._name = n->second;
+
+		auto b = LowerBound(reflection._bindings, objectId);
+		if (b != reflection._bindings.end() && b->first == objectId)
+			result._binding = b->second;
+
+		// Using the type info in reflection, figure out what descriptor slot is associated
+		// The spir-v type system is fairly rich, but we don't really need to interpret everything
+		// in it. We just need to know enough to figure out the descriptor set slot type.
+		// We'll try to be a little flexible to try to avoid having to support all spir-v typing 
+		// exhaustively
+
+		auto v = LowerBound(reflection._variables, objectId);
+		if (v != reflection._variables.end() && v->first == objectId) {
+
+			result._storageType = v->second._storage;
+			auto typeToLookup = v->second._type;
+
+			auto p = LowerBound(reflection._pointerTypes, typeToLookup);
+			if (p != reflection._pointerTypes.end() && p->first == typeToLookup)
+				typeToLookup = p->second._targetType;
+
+			auto t = LowerBound(reflection._basicTypes, typeToLookup);
+			if (t != reflection._basicTypes.end() && t->first == typeToLookup) {
+				switch (t->second) {
+				case SPIRVReflection::BasicType::SampledImage:
+				case SPIRVReflection::BasicType::Image:
+					// image types can map onto different input slots, so we may need to be
+					// more expressive here
+					result._slotType = RenderCore::DescriptorSetSignature::SlotType::Texture;
+					break;
+
+				case SPIRVReflection::BasicType::Sampler:
+					result._slotType = RenderCore::DescriptorSetSignature::SlotType::Sampler;
+					break;
+
+				default:
+					#if defined(_DEBUG)
+						std::cout << "Could not understand type information for input " << result._name << std::endl;
+					#endif
+					break;
+				}
+			} else {
+				if (std::find(reflection._structTypes.begin(), reflection._structTypes.end(), typeToLookup) != reflection._structTypes.end()) {
+					// a structure will require some kind of buffer as input
+					result._slotType = RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer;
+
+					// In this case, the name we're interested in isn't actually the variable
+					// name itself, but instead the name of the struct type. As per HLSL, this
+					// is the name we use for binding
+					auto n = LowerBound(reflection._names, typeToLookup);
+					if (n != reflection._names.end() && n->first == typeToLookup)
+						result._name = n->second;
+				} else {
+					#if defined(_DEBUG)
+						std::cout << "Could not understand type information for input " << result._name << std::endl;
+					#endif
+				}
+			}
 		}
-        context.GetActiveCommandList().BindVertexBuffers(0, count, buffers, offsets);
-		context.SetBoundInputLayout(*this);
-	}*/
+
+		return result;
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static VkVertexInputRate AsVkVertexInputRate(InputDataRate dataRate)
 	{
@@ -49,18 +115,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	bool BoundInputLayout::AllAttributesBound() const
+	BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
 	{
-		return true;	// todo -- track this
-	}
-
-    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
-    {
-        // find the vertex inputs into the shader, and match them against the input layout
+		// find the vertex inputs into the shader, and match them against the input layout
 		auto vertexStrides = CalculateVertexStrides(layout);
 
-        SPIRVReflection reflection(shader.GetByteCode());
-        _attributes.reserve(layout.size());
+		SPIRVReflection reflection(shader.GetByteCode());
+		_attributes.reserve(layout.size());
 
 		unsigned inputDataRatePerVB[vertexStrides.size()];
 		for (auto&i:inputDataRatePerVB) i = ~0u;
@@ -126,18 +187,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));
 		_pipelineRelevantHash = Hash64(AsPointer(_vbBindingDescriptions.begin()), AsPointer(_vbBindingDescriptions.end()), _pipelineRelevantHash);
-
-        // todo -- check if any input slots are not bound to anything
-    }
+		CalculateAllAttributesBound(reflection);
+	}
 
 	BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
-    : BoundInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex))
-    {
-    }
+	: BoundInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex))
+	{
+	}
 
 	BoundInputLayout::BoundInputLayout(
-        IteratorRange<const SlotBinding*> layouts,
-        const CompiledShaderByteCode& shader)
+		IteratorRange<const SlotBinding*> layouts,
+		const CompiledShaderByteCode& shader)
 	{
 		SPIRVReflection reflection(shader.GetByteCode());
 		_vbBindingDescriptions.reserve(layouts.size());
@@ -176,405 +236,406 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		_pipelineRelevantHash = Hash64(AsPointer(_attributes.begin()), AsPointer(_attributes.end()));
 		_pipelineRelevantHash = Hash64(AsPointer(_vbBindingDescriptions.begin()), AsPointer(_vbBindingDescriptions.end()), _pipelineRelevantHash);
+		CalculateAllAttributesBound(reflection);
+	}
+
+	void BoundInputLayout::CalculateAllAttributesBound(const SPIRVReflection& reflection)
+	{
+		_allAttributesBound = true;
+		for (const auto&v:reflection._entryPoint._interface) {
+			auto reflectionVariable = GetReflectionVariableInformation(reflection, v);
+			if (reflectionVariable._storageType != SPIRVReflection::StorageType::Input) continue;
+			if (reflectionVariable._binding._location == ~0u) continue;
+			auto loc = reflectionVariable._binding._location;
+
+			auto existing = std::find_if(
+				_attributes.begin(), _attributes.end(), 
+				[loc](const auto& c) { return c.location == loc; });
+			_allAttributesBound &= (existing != _attributes.end());
+		}
 	}
 
 	BoundInputLayout::BoundInputLayout(
-        IteratorRange<const SlotBinding*> layouts,
-        const ShaderProgram& shader)
+		IteratorRange<const SlotBinding*> layouts,
+		const ShaderProgram& shader)
 	: BoundInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex))
 	{
 	}
 
-    BoundInputLayout::BoundInputLayout() : _pipelineRelevantHash(0ull) {}
-    BoundInputLayout::~BoundInputLayout() {}
+	BoundInputLayout::BoundInputLayout() : _pipelineRelevantHash(0ull), _allAttributesBound(true) {}
+	BoundInputLayout::~BoundInputLayout() {}
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class BoundUniformsHelper
-     {
-     public:
-        BoundUniformsHelper(const ShaderProgram& shader);
-		BoundUniformsHelper(const CompiledShaderByteCode& shader);
+	class BoundUniforms::ConstructionHelper
+	{
+	public:
+		std::map<unsigned, std::pair<unsigned, const RenderCore::DescriptorSetSignature*>> _fixedDescriptorSets;
+		const UniformsStreamInterface* _looseUniforms;
+		Internal::VulkanPipelineLayout* _pipelineLayout;
+			
+		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
+		std::vector<PushConstantBindingRules> _pushConstantsRules;
+		std::vector<FixedDescriptorSetBindingRules> _fixedDescriptorSetRules;
 
-		bool BindConstantBuffer(uint64 hashName, unsigned uniformsStream, unsigned slot);
-		bool BindShaderResource(uint64 hashName, unsigned uniformsStream, unsigned slot);
+		uint64_t _boundLooseUniformBuffers = 0;
+		uint64_t _boundLooseResources = 0;
+		uint64_t _boundLooseSamplerStates = 0;
 
-		SPIRVReflection			_reflection[(unsigned)ShaderStage::Max];
-
-        static const unsigned s_streamCount = 4;
-        std::vector<uint32_t>	_cbBindingIndices[s_streamCount];
-        std::vector<uint32_t>	_srvBindingIndices[s_streamCount];
-		unsigned				_vsPushConstantSlot[s_streamCount];
-		unsigned				_psPushConstantSlot[s_streamCount];
-		bool					_isComputeShader;
-
-        uint64_t				BuildShaderBindingMask(unsigned descriptorSet);
-     };
-
-    BoundUniformsHelper::BoundUniformsHelper(const ShaderProgram& shader)
-    {
-        _isComputeShader = false;
-		for (unsigned c=0; c<(unsigned)ShaderProgram::s_maxShaderStages; ++c) {
-			const auto& compiledCode = shader.GetCompiledCode((ShaderStage)c);
-			if (compiledCode.GetByteCode().size())
-				_reflection[c] = SPIRVReflection(compiledCode.GetByteCode());
-		}
-		for (unsigned c=0; c<s_streamCount; c++)
-			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
-    }
-
-	BoundUniformsHelper::BoundUniformsHelper(const CompiledShaderByteCode& shader)
-    {
-        auto stage = shader.GetStage();
-        if ((unsigned)stage < dimof(_reflection)) {
-            _reflection[(unsigned)stage] = SPIRVReflection(shader.GetByteCode());
-        }
-        _isComputeShader = stage == ShaderStage::Compute;
-		for (unsigned c=0; c<s_streamCount; c++)
-			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
-    }
-
-    uint64_t BoundUniformsHelper::BuildShaderBindingMask(unsigned descriptorSet)
-    {
-        uint64_t shaderBindingMask = 0x0ull;
-        for (unsigned r=0; r<(unsigned)ShaderStage::Max; ++r) {
-            // Look for all of the bindings in this descriptor set that are referenced by the shader
-            for(const auto&b:_reflection[r]._bindings) {
-                if (b.second._descriptorSet == descriptorSet && b.second._bindingPoint != ~0x0u)
-                    shaderBindingMask |= 1ull << uint64(b.second._bindingPoint);
-            }
-        }
-		return shaderBindingMask;
-    }
-
-    bool BoundUniformsHelper::BindConstantBuffer(uint64 hashName, unsigned stream, unsigned slot)
-    {
-        // assert(!_pipelineLayout);
-        bool gotBinding = false;
-
-        for (unsigned s=0; s<dimof(_reflection); ++s) {
-            auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
-            if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) {
-                // Could not match. This happens sometimes in normal usage.
-                // It just means the provided interface is a little too broad for this shader
-                continue;
-            }
-
-            if (i->second._descriptorSet != stream) {
-                Log(Warning) << "Constant buffer binding appears to be in the wrong descriptor set." << std::endl;
-                continue;
-            }
-
-            // Sometimes the binding isn't set. This occurs if constant buffer is actually push constants
-            // In this case, we can't bind like this -- we need to use the push constants interface.
-            if (i->second._bindingPoint == ~0x0u)
-                continue;
-
-            if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
-
-            auto descSetBindingPoint = i->second._bindingPoint;
-            assert(_cbBindingIndices[stream][slot] == ~0u || _cbBindingIndices[stream][slot] == descSetBindingPoint);
-            _cbBindingIndices[stream][slot] = descSetBindingPoint;
-
-            gotBinding = true;
-        }
-
+		void AddLooseUniformBinding(
+			RenderCore::DescriptorSetSignature::SlotType slotType,
+			unsigned outputDescriptorSet, unsigned outputDescriptorSetSlot,
+			unsigned inputUniformStreamIdx, uint32_t shaderStageMask)
 		{
-			auto i = LowerBound(_reflection[(unsigned)ShaderStage::Vertex]._pushConstantsQuickLookup, hashName);
-			if (i != _reflection[(unsigned)ShaderStage::Vertex]._pushConstantsQuickLookup.end() && i->first == hashName) {
-				if (_vsPushConstantSlot[stream] == ~0u) {
-					_vsPushConstantSlot[stream] = slot;
-					gotBinding = true;
-				} else {
-					// We can't support multiple separate constant buffers as push constants in the same shader, because the SPIRV
-					// reflection code doesn't extract offset information for subsequent buffers
-					Log(Warning) << "Got mutltiple constant buffers assigned as push constants in the same shader." << std::endl;
-				}
+			auto adaptiveSet = std::find_if(
+				_adaptiveSetRules.begin(), _adaptiveSetRules.end(),
+				[outputDescriptorSet](const auto& c) { return c._descriptorSetIdx == outputDescriptorSet; });
+			if (adaptiveSet == _adaptiveSetRules.end()) {
+				_adaptiveSetRules.push_back(
+					AdaptiveSetBindingRules { outputDescriptorSet, shaderStageMask, _pipelineLayout->GetUnderlyingDescriptorSetLayout(outputDescriptorSet) });
+				adaptiveSet = _adaptiveSetRules.end()-1;
+				adaptiveSet->_sig = _pipelineLayout->GetDescriptorSetSignature(outputDescriptorSet);
+				adaptiveSet->_shaderUsageMask = 0;
+			} else {
+				adaptiveSet->_shaderStageMask |= shaderStageMask;
+				adaptiveSet->_shaderUsageMask |= (1ull << uint64_t(outputDescriptorSetSlot));
 			}
 
-			i = LowerBound(_reflection[(unsigned)ShaderStage::Pixel]._pushConstantsQuickLookup, hashName);
-			if (i != _reflection[(unsigned)ShaderStage::Pixel]._pushConstantsQuickLookup.end() && i->first == hashName) {
-				if (_psPushConstantSlot[stream] == ~0u) {
-					_psPushConstantSlot[stream] = slot;
-					gotBinding = true;
+			if (inputUniformStreamIdx != ~0u) {
+				std::vector<LooseUniformBind>* binds;
+				if (slotType == RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer) {
+					binds = &adaptiveSet->_cbBinds;
+					_boundLooseUniformBuffers |= (1ull << uint64_t(inputUniformStreamIdx));
+				} else if (slotType == RenderCore::DescriptorSetSignature::SlotType::Texture) {
+					binds = &adaptiveSet->_srvBinds;
+					_boundLooseResources |= (1ull << uint64_t(inputUniformStreamIdx));
 				} else {
-					// We can't support multiple separate constant buffers as push constants in the same shader, because the SPIRV
-					// reflection code doesn't extract offset information for subsequent buffers
-					Log(Warning) << "Got mutltiple constant buffers assigned as push constants in the same shader." << std::endl;
+					assert(slotType == RenderCore::DescriptorSetSignature::SlotType::Sampler);
+					binds = &adaptiveSet->_samplerBinds;
+					_boundLooseSamplerStates |= (1ull << uint64_t(inputUniformStreamIdx));
+				}
+
+				auto existing = std::find_if(
+					binds->begin(), binds->end(),
+					[outputDescriptorSetSlot](const auto&c) { return c._descSetSlot == outputDescriptorSetSlot; });
+				if (existing != binds->end()) {
+					if (existing->_inputUniformStreamIdx != inputUniformStreamIdx)
+						Throw(std::runtime_error(""));		// Attempting to bind 2 different inputs a single descriptor set slot
+				} else {
+					binds->push_back({outputDescriptorSetSlot, inputUniformStreamIdx});
 				}
 			}
 		}
 
-        return gotBinding;
-    }
+		void BindReflection(const SPIRVReflection& reflection, uint32_t shaderStageMask)
+		{
+			// We'll need an input value for every binding in the shader reflection
+			for (const auto&v:reflection._variables) {
+				auto reflectionVariable = GetReflectionVariableInformation(reflection, v.first);
+				uint64_t hashName = reflectionVariable._name.IsEmpty() ? 0 : Hash64(reflectionVariable._name.begin(), reflectionVariable._name.end());
 
-    bool BoundUniformsHelper::BindShaderResource(uint64 hashName, unsigned stream, unsigned slot)
-    {
-        // assert(!_pipelineLayout);
-        bool gotBinding = false;
+				// The _descriptorSet value can be ~0u for push constants, vertex attribute inputs, etc
+				if (reflectionVariable._binding._descriptorSet != ~0u) {
+					assert(!reflectionVariable._name.IsEmpty());
+					auto fixedDescSet = _fixedDescriptorSets.find(reflectionVariable._binding._descriptorSet);
+					if (fixedDescSet == _fixedDescriptorSets.end()) {
 
-        for (unsigned s=0; s<dimof(_reflection); ++s) {
-            auto i = LowerBound(_reflection[s]._uniformQuickLookup, hashName);
-            if (i == _reflection[s]._uniformQuickLookup.end() || i->first != hashName) {
-                // Could not match. This happens sometimes in normal usage.
-                // It just means the provided interface is a little too broad for this shader
-                continue;
-            }
+						// We need to got to the pipeline layout to find the signature for the descriptor set
+						auto& descSetSig = *_pipelineLayout->GetDescriptorSetSignature(reflectionVariable._binding._descriptorSet);
 
-            if (i->second._descriptorSet != stream) {
-                Log(Warning) << "Shader resource binding appears to be in the wrong descriptor set." << std::endl;
-                continue;
-            }
+						auto srv = std::find(_looseUniforms->_srvBindings.begin(), _looseUniforms->_srvBindings.end(), hashName);
+						if (srv != _looseUniforms->_srvBindings.end()) {
 
-            if (_srvBindingIndices[stream].size() <= slot) _srvBindingIndices[stream].resize(slot+1, ~0u);
+							// We matched this shader input to a SRV in the loose uniforms input
+							// We also need to find this in the descriptor set.
+							// Since this is an adaptive descriptor set, we don't have to worry about the name
+							// assigned to the particular slot. We just need to know the that type is what
+							// we expect
 
-            assert(i->second._bindingPoint != ~0x0u);
-            auto descSetBindingPoint = i->second._bindingPoint;
-            assert(_srvBindingIndices[stream][slot] == ~0u || _srvBindingIndices[stream][slot] == descSetBindingPoint);
-            _srvBindingIndices[stream][slot] = descSetBindingPoint;
-            gotBinding = true;
-        }
+							/*if (descSetSig._layout->_slots[b.second._bindingPoint]._type != RenderCore::DescriptorSetSignature::SlotType::Texture)
+								Throw(std::runtime_error(""));*/
 
-        return gotBinding;
-    }
+							if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::Texture)
+								Throw(std::runtime_error(""));
 
-	void BoundUniforms::UnbindShaderResources(DeviceContext& context, SharedGraphicsEncoder& encoder, unsigned streamIdx)
+							if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::Texture)
+								Throw(std::runtime_error(""));
+
+							auto inputSlot = std::distance(_looseUniforms->_srvBindings.begin(), srv);
+							AddLooseUniformBinding(
+								RenderCore::DescriptorSetSignature::SlotType::Texture,
+								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+								inputSlot, shaderStageMask);
+
+						} else {
+							auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
+							if (cb != _looseUniforms->_cbBindings.end()) {
+								if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::ConstantBuffer)
+									Throw(std::runtime_error(""));
+
+								if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer)
+									Throw(std::runtime_error(""));
+
+								auto inputSlot = std::distance(_looseUniforms->_cbBindings.begin(), cb);
+								AddLooseUniformBinding(
+									RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer,
+									reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+									inputSlot, shaderStageMask);
+
+							} else {
+								auto ss = std::find(_looseUniforms->_samplerBindings.begin(), _looseUniforms->_samplerBindings.end(), hashName);
+								if (ss != _looseUniforms->_samplerBindings.end()) {
+									if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::Sampler)
+										Throw(std::runtime_error(""));
+
+									if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::Sampler)
+										Throw(std::runtime_error(""));
+
+									auto inputSlot = std::distance(_looseUniforms->_samplerBindings.begin(), ss);
+									AddLooseUniformBinding(
+										RenderCore::DescriptorSetSignature::SlotType::Sampler,
+										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+										inputSlot, shaderStageMask);
+
+								} else {
+									// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
+									AddLooseUniformBinding(
+										reflectionVariable._slotType,
+										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+										~0u, shaderStageMask);
+								}
+							}
+						}
+					} else {
+
+						// There is a fixed descriptor set assigned that covers this input
+						// Compare the slot within the fixed descriptor set to what the shader wants as input
+
+						if (reflectionVariable._binding._bindingPoint >= fixedDescSet->second.second->_slots.size())
+							Throw(std::runtime_error(""));
+						
+						auto& descSetSlot = fixedDescSet->second.second->_slots[reflectionVariable._binding._bindingPoint];
+						if (!XlEqString(reflectionVariable._name, descSetSlot._name))
+							Throw(std::runtime_error(""));		// names don't agree. It's not critical for them to agree, but we're going to be strict
+
+						if (reflectionVariable._slotType != descSetSlot._type)
+							Throw(std::runtime_error(""));		// types should agree
+
+						auto inputSlot = fixedDescSet->second.first;
+						auto existing = std::find_if(
+							_fixedDescriptorSetRules.begin(), _fixedDescriptorSetRules.end(),
+							[inputSlot](const auto& c) { return c._inputSlot == inputSlot; });
+						if (existing != _fixedDescriptorSetRules.end()) {
+							if (existing->_outputSlot != reflectionVariable._binding._bindingPoint)
+								Throw(std::runtime_error(""));		// attempting the bind the same fixed descriptor set to multiple output slots
+							existing->_shaderStageMask |= shaderStageMask;
+						} else {
+							_fixedDescriptorSetRules.push_back(
+								FixedDescriptorSetBindingRules {
+									inputSlot, reflectionVariable._binding._bindingPoint, shaderStageMask
+								});
+						}
+					}
+				} else if (reflectionVariable._storageType == SPIRVReflection::StorageType::PushConstant) {
+
+					assert(!reflectionVariable._name.IsEmpty());
+
+					// push constants must from the "loose uniforms" -- we can't extract them
+					// from a prebuilt descriptor set
+
+					auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
+					if (cb != _looseUniforms->_cbBindings.end()) {
+
+						auto existing = std::find_if(
+							_pushConstantsRules.begin(), _pushConstantsRules.end(),
+							[shaderStageMask](const auto& c) { return c._shaderStageBind == shaderStageMask; });
+						if (existing != _pushConstantsRules.end())
+							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
+						auto inputSlot = (unsigned)std::distance(_looseUniforms->_cbBindings.begin(), cb);
+						_pushConstantsRules.push_back({shaderStageMask, inputSlot});
+
+					} else {
+						Throw(std::runtime_error(""));		// missing push constants input
+					}
+				}
+			}
+		}
+	};
+
+	void BoundUniforms::UnbindLooseUniforms(DeviceContext& context, SharedGraphicsEncoder& encoder)
 	{
 		assert(0);		// todo -- unimplemented
 	}
 
-	BoundUniforms::BoundUniforms(
-        const ShaderProgram& shader,
-		const PipelineLayoutConfig& pipelineLayoutConfig,
-        const UniformsStreamInterface& interface0,
-        const UniformsStreamInterface& interface1,
-        const UniformsStreamInterface& interface2,
-        const UniformsStreamInterface& interface3)
+	static unsigned AsVkShaderStageBit(ShaderStage input)
 	{
-		for (unsigned c=0; c<s_streamCount; c++) {
-			_descriptorSetBindingMask[c] = 0;
-			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
-			_descriptorSetBindingPoint[c] = ~0u;
+		switch (input) {
+		case ShaderStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
+		case ShaderStage::Pixel: return VK_SHADER_STAGE_FRAGMENT_BIT;
+		case ShaderStage::Geometry: return VK_SHADER_STAGE_GEOMETRY_BIT;
+		case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
+
+		case ShaderStage::Hull:
+		case ShaderStage::Domain:
+			// VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+			// not supported on Vulkan yet
+			assert(0);
+			return 0;
+
+		case ShaderStage::Null:
+		default:
+			return 0;
 		}
-
-		SetupDescriptorSets(
-			*Internal::VulkanGlobalsTemp::GetInstance()._graphicsPipelineLayout, 
-			MakeIteratorRange(Internal::VulkanGlobalsTemp::GetInstance()._graphicsUniformStreamToDescriptorSetBinding));
-
-		BoundUniformsHelper helper(shader);
-		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
-		SetupBindings(helper, interfaces, dimof(interfaces));
-		assert(!helper._isComputeShader);
-		_isComputeShader = false;
 	}
 
 	BoundUniforms::BoundUniforms(
-        const ComputeShader& shader,
-		const PipelineLayoutConfig& pipelineLayoutConfig,
-        const UniformsStreamInterface& interface0,
-        const UniformsStreamInterface& interface1,
-        const UniformsStreamInterface& interface2,
-        const UniformsStreamInterface& interface3)
+		const ShaderProgram& shader,
+		IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
+		const UniformsStreamInterface& looseUniforms)
 	{
-		for (unsigned c=0; c<s_streamCount; c++) {
-			_descriptorSetBindingMask[c] = 0;
-			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
-			_descriptorSetBindingPoint[c] = ~0u;
-		}
+		_pipelineType = PipelineType::Graphics;
 
-		SetupDescriptorSets(
-			*Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout,
-			MakeIteratorRange(Internal::VulkanGlobalsTemp::GetInstance()._computeUniformStreamToDescriptorSetBinding));
-
-		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
-		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
-		SetupBindings(helper, interfaces, dimof(interfaces));
-		assert(helper._isComputeShader);
-		_isComputeShader = true;
-	}
-
-	void BoundUniforms::SetupBindings(
-		BoundUniformsHelper& helper,
-		const UniformsStreamInterface* interfaces[],
-		size_t interfaceCount)
-	{
-		for (unsigned stream=0; stream<interfaceCount; ++stream) {
-			_boundUniformBufferSlots[stream] = 0;
-			_boundResourceSlots[stream] = 0;
-			for (unsigned slot=0; slot<interfaces[stream]->_cbBindings.size(); ++slot) {
-				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_cbBindings[slot]._hashName, stream, slot);
-				if (bindSuccess)
-					_boundUniformBufferSlots[stream] |= 1ull<<uint64_t(slot);
-			}
-			for (unsigned slot=0; slot<interfaces[stream]->_srvBindings.size(); ++slot) {
-				bool bindSuccess = helper.BindShaderResource(interfaces[stream]->_srvBindings[slot], stream, slot);
-				if (bindSuccess)
-					_boundResourceSlots[stream] |= 1ull<<uint64_t(slot);
-			}
-			_cbBindingIndices[stream] = std::move(helper._cbBindingIndices[stream]);
-			_srvBindingIndices[stream] = std::move(helper._srvBindingIndices[stream]);
-			_descriptorSetBindingMask[stream] = helper.BuildShaderBindingMask(stream);
-			_vsPushConstantSlot[stream] = helper._vsPushConstantSlot[stream];
-			_psPushConstantSlot[stream] = helper._psPushConstantSlot[stream];
-		}
-
-		for (unsigned c=(unsigned)interfaceCount; c<s_streamCount; ++c)
-			_descriptorSetBindingMask[c] = 0;
-
-		#if defined(_DEBUG)
-			{
-				std::stringstream str;
-				for (unsigned stream=0; stream<interfaceCount; ++stream) {
-					str << "---------- Stream [" << stream << "] ----------" << std::endl;
-					const auto& interf = *interfaces[stream];
-					for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
-						if (slot < _cbBindingIndices[stream].size() && _cbBindingIndices[stream][slot] != ~0u) {
-							auto bindingPoint = _cbBindingIndices[stream][slot];
-							str << "[" << slot << "] binding point: " << bindingPoint;
-							for (unsigned stage=0; stage<(unsigned)dimof(helper._reflection); ++stage) {
-								auto& refl = helper._reflection[stage];
-								auto b = std::find_if(
-									refl._bindings.begin(), refl._bindings.end(),
-									[bindingPoint, stream](const std::pair<SPIRVReflection::ObjectId, SPIRVReflection::Binding>& t) {
-										return t.second._bindingPoint == bindingPoint && t.second._descriptorSet == stream;
-									});
-								if (b != refl._bindings.end()) {
-									str << " (Stage: " << AsString((ShaderStage)stage) << ", variable: ";
-									auto n = LowerBound(refl._names, b->first);
-									if (n != refl._names.end() && n->first == b->first) {
-										str << n->second << ")";
-									} else {
-										str << "<<unnamed>>)";
-									}
-								}
-							}
-							str << std::endl;
-						}
-						if (_vsPushConstantSlot[stream] == slot)
-							str << "[" << slot << "] Vertex push constants " << std::endl;
-						if (_psPushConstantSlot[stream] == slot)
-							str << "[" << slot << "] Pixel push constants " << std::endl;
-					}
+		// We need to map on the input descriptor set bindings to the slots understood
+		// by the shader's pipeline layout
+		auto& pipelineLayout = *Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(shader);
+		ConstructionHelper helper;
+		helper._looseUniforms = &looseUniforms;
+		helper._pipelineLayout = &pipelineLayout;
+		
+		for (unsigned dIdx=0; dIdx<descriptorSetBindings.size(); ++dIdx) {
+			const auto& d = descriptorSetBindings[dIdx];
+			bool foundMapping = false;
+			for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
+				// todo -- don't rehash this constantly!
+				auto hashName = Hash64(pipelineLayout.GetDescriptorSetSignature(c)->_name);
+				if (hashName == d._bindingName) {
+					// todo -- we should check compatibility between the given descriptor set and the pipeline layout
+					helper._fixedDescriptorSets.insert({c, std::make_pair(dIdx, d._layout)});
+					foundMapping = true;
+					break;
 				}
-
-				str << std::endl;
-				for (unsigned stage=0; stage<(unsigned)dimof(helper._reflection); ++stage) {
-					if (helper._reflection[stage]._entryPoint._name.IsEmpty()) continue;
-					str << "---------- Reflection [" << AsString((ShaderStage)stage) << "] ----------" << std::endl;
-					str << helper._reflection[stage];
-				}
-
-				_debuggingDescription = str.str();
 			}
-		#endif
-	}
-
-	void BoundUniforms::SetupDescriptorSets(const Internal::VulkanPipelineLayout& pipelineLayout, IteratorRange<const unsigned*> descriptorSetIndices)
-	{
-		for (unsigned c=0; c<s_streamCount; ++c) {
-			_descriptorSetSig[c] = nullptr;
-			_underlyingLayouts[c] = nullptr;
-			_descriptorSetBindingPoint[c] = ~0u;
+			#if defined(_DEBUG)
+				if (!foundMapping) {
+					std::cout << "Could not find descriptor set in pipeline layout (hash code: " << std::hex << d._bindingName << std::dec << "). Ignoring" << std::endl;
+				}
+			#endif
 		}
 
-		for (unsigned c=0; c<(unsigned)std::min(descriptorSetIndices.size(), (size_t)s_streamCount); ++c) {
-			auto binding = descriptorSetIndices[c];
-			if (binding == ~0u) continue;
-
-			_descriptorSetSig[c] = pipelineLayout.GetDescriptorSetSignature(binding);
-			_underlyingLayouts[c] = pipelineLayout.GetUnderlyingDescriptorSetLayout(binding);
-			_descriptorSetBindingPoint[c] = binding;
+		for (unsigned stage=0; stage<ShaderProgram::s_maxShaderStages; ++stage) {
+			const auto& compiledCode = shader.GetCompiledCode((ShaderStage)stage);
+			if (compiledCode.GetByteCode().size()) {
+				helper.BindReflection(SPIRVReflection(compiledCode.GetByteCode()), AsVkShaderStageBit((ShaderStage)stage));
+			}
 		}
+
+		_adaptiveSetRules = std::move(helper._adaptiveSetRules);
+		_fixedDescriptorSetRules = std::move(helper._fixedDescriptorSetRules);
+		_pushConstantsRules = std::move(helper._pushConstantsRules);
+		_boundLooseUniformBuffers = helper._boundLooseUniformBuffers;
+		_boundLooseResources = helper._boundLooseResources;
+		_boundLooseSamplerStates = helper._boundLooseSamplerStates;
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static uint64_t WriteCBBindings(
-		DescriptorSetBuilder& builder,
-		TemporaryBufferSpace& temporaryBufferSpace,
-		bool& requiresTemporaryBufferBarrier,
-		ObjectFactory& factory,
-		IteratorRange<const ConstantBufferView*> cbvs,
-		IteratorRange<const uint32_t*> bindingIndicies,
-		uint64_t shaderBindingMask)
+	class BoundUniforms::BindingHelper
 	{
-		uint64_t bindingsWrittenTo = 0u;
+	public:
+		static uint64_t WriteCBBindings(
+			DescriptorSetBuilder& builder,
+			TemporaryBufferSpace& temporaryBufferSpace,
+			bool& requiresTemporaryBufferBarrier,
+			ObjectFactory& factory,
+			IteratorRange<const ConstantBufferView*> cbvs,
+			IteratorRange<const LooseUniformBind*> bindingIndicies)
+		{
+			uint64_t bindingsWrittenTo = 0u;
 
-		auto count = std::min(cbvs.size(), bindingIndicies.size());
-		for (unsigned c=0; c<count; ++c) {
-			auto dstBinding = bindingIndicies[c];
-            if (dstBinding == ~0u) continue;
-
-			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
-			assert(!(builder.PendingWriteMask() & (1ull<<uint64(dstBinding))));
-
-			if (cbvs[c]._prebuiltBuffer) {
-				assert(const_cast<IResource*>(cbvs[c]._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
-				auto& res = *(Resource*)cbvs[c]._prebuiltBuffer;
-				assert(res.GetBuffer());
-				builder.BindCB(dstBinding, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
-			} else {
-				auto& pkt = cbvs[c]._packet;
-				// assert(bufferCount < dimof(result._bufferInfo));
-				// We must either allocate some memory from a temporary pool, or 
-				// (or we could use push constants)
-				auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
-				if (!tempSpace.buffer) {
-					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
-					auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
-					builder.BindCB(dstBinding, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+			for (auto bind:bindingIndicies) {
+				assert(bind._inputUniformStreamIdx < cbvs.size());
+				auto& cbv = cbvs[bind._inputUniformStreamIdx];
+				
+				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
+				
+				if (cbv._prebuiltBuffer) {
+					assert(const_cast<IResource*>(cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
+					auto& res = *(Resource*)cbv._prebuiltBuffer;
+					assert(res.GetBuffer());
+					builder.BindCB(bind._descSetSlot, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
 				} else {
-					builder.BindCB(dstBinding, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
-					requiresTemporaryBufferBarrier |= true;
+					auto& pkt = cbv._packet;
+					// assert(bufferCount < dimof(result._bufferInfo));
+					// We must either allocate some memory from a temporary pool, or 
+					// (or we could use push constants)
+					auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
+					if (!tempSpace.buffer) {
+						Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
+						auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
+						builder.BindCB(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+					} else {
+						builder.BindCB(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+						requiresTemporaryBufferBarrier |= true;
+					}
 				}
+
+				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
 			}
 
-			bindingsWrittenTo |= 1ull << uint64(dstBinding);
+			return bindingsWrittenTo;
 		}
 
-		return bindingsWrittenTo;
-	}
+		static uint64_t WriteSRVBindings(
+			DescriptorSetBuilder& builder,
+			IteratorRange<const ShaderResourceView*const*> srvs,
+			IteratorRange<const LooseUniformBind*> bindingIndicies)
+		{
+			uint64_t bindingsWrittenTo = 0u;
 
-	static uint64_t WriteSRVBindings(
-		DescriptorSetBuilder& builder,
-		IteratorRange<const ShaderResourceView*const*> srvs,
-		IteratorRange<const uint32_t*> bindingIndicies,
-		uint64_t shaderBindingMask)
-	{
-		uint64_t bindingsWrittenTo = 0u;
+			for (auto bind:bindingIndicies) {
+				assert(bind._inputUniformStreamIdx < srvs.size());
+				auto& srv = srvs[bind._inputUniformStreamIdx];
 
-		auto count = std::min(srvs.size(), bindingIndicies.size());
-		for (unsigned c=0; c<count; ++c) {
-			auto dstBinding = bindingIndicies[c];
-            if (dstBinding == ~0u) continue;
+				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
 
-			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
-			assert(!(builder.PendingWriteMask() & (1ull<<uint64(dstBinding))));
+				builder.BindSRV(bind._descSetSlot, srv);
 
-			builder.BindSRV(dstBinding, srvs[c]);
+				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
+			}
 
-			bindingsWrittenTo |= 1ull << uint64(dstBinding);
+			return bindingsWrittenTo;
 		}
 
-		return bindingsWrittenTo;
-	}
+		static uint64_t WriteSamplerStateBindings(
+			DescriptorSetBuilder& builder,
+			IteratorRange<const SamplerState*const*> samplerStates,
+			IteratorRange<const LooseUniformBind*> bindingIndicies)
+		{
+			uint64_t bindingsWrittenTo = 0u;
 
-	static std::string s_boundUniformsNames[4] = {
-		std::string{"BoundUniforms0"},
-		std::string{"BoundUniforms1"},
-		std::string{"BoundUniforms2"},
-		std::string{"BoundUniforms3"}
+			for (auto bind:bindingIndicies) {
+				assert(bind._inputUniformStreamIdx < samplerStates.size());
+				auto& samplerState = samplerStates[bind._inputUniformStreamIdx];
+
+				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
+
+				builder.BindSampler(bind._descSetSlot, samplerState->GetUnderlying());
+
+				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
+			}
+
+			return bindingsWrittenTo;
+		}
 	};
 
-    void BoundUniforms::Apply(
+	static std::string s_looseUniforms = "loose-uniforms";
+
+	void BoundUniforms::ApplyLooseUniforms(
 		DeviceContext& context,
 		SharedGraphicsEncoder& encoder,
-        unsigned streamIdx,
-        const UniformsStream& stream) const
-    {
-		assert(streamIdx < s_streamCount);
-		if (_descriptorSetBindingMask[streamIdx] && _underlyingLayouts[streamIdx]) {
-			assert(_descriptorSetSig[streamIdx]);
+		const UniformsStream& stream) const
+	{
+		for (const auto& adaptiveSet:_adaptiveSetRules) {
 
 			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 			// sure that all of the commands have already been completed).
@@ -589,36 +650,34 @@ namespace RenderCore { namespace Metal_Vulkan
 			// inputs and already used earlier this frame...? But that may not be worth it. It seems like it will
 			// make more sense to just create and set a full descriptor set for every call to this function.
 
-			auto pipelineType = _isComputeShader ? PipelineType::Compute : PipelineType::Graphics;
-
 			auto& globalPools = context.GetGlobalPools();
-			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(_underlyingLayouts[streamIdx].get());
+			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(adaptiveSet._underlyingLayout.get());
 			#if defined(VULKAN_VERBOSE_DEBUG)
-				assert(streamIdx < dimof(s_boundUniformsNames));
 				DescriptorSetDebugInfo verboseDescription;
-				verboseDescription._descriptorSetInfo = s_boundUniformsNames[streamIdx];
+				verboseDescription._descriptorSetInfo = s_looseUniforms;
 			#endif
 
 			bool requiresTemporaryBufferBarrier = false;
 
 			// -------- write descriptor set --------
 			DescriptorSetBuilder builder { context.GetGlobalPools() };
-			auto cbBindingFlag = WriteCBBindings(
+			auto cbBindingFlag = BindingHelper::WriteCBBindings(
 				builder,
 				context.GetTemporaryBufferSpace(),
 				requiresTemporaryBufferBarrier,
 				context.GetFactory(),
 				stream._constantBuffers,
-				MakeIteratorRange(_cbBindingIndices[streamIdx]),
-				_descriptorSetBindingMask[streamIdx]);
+				MakeIteratorRange(adaptiveSet._cbBinds));
 
-			auto srvBindingFlag = WriteSRVBindings(
+			auto srvBindingFlag = BindingHelper::WriteSRVBindings(
 				builder,
 				MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
-				MakeIteratorRange(_srvBindingIndices[streamIdx]),
-				_descriptorSetBindingMask[streamIdx]);		
+				MakeIteratorRange(adaptiveSet._srvBinds));
 
-			const auto& sig = *_descriptorSetSig[streamIdx];
+			auto ssBindingFlag = BindingHelper::WriteSamplerStateBindings(
+				builder,
+				MakeIteratorRange((const SamplerState*const*)stream._samplers.begin(), (const SamplerState*const*)stream._samplers.end()),
+				MakeIteratorRange(adaptiveSet._samplerBinds));
 
 			// Any locations referenced by the descriptor layout, by not written by the values in
 			// the streams must now be filled in with the defaults.
@@ -629,51 +688,41 @@ namespace RenderCore { namespace Metal_Vulkan
 			//
 			// In the most common case, there should be no dummy descriptors to fill in here... So we'll 
 			// optimise for that case.
-			uint64_t dummyDescWriteMask = (~(cbBindingFlag|srvBindingFlag)) & _descriptorSetBindingMask[streamIdx];
+			uint64_t dummyDescWriteMask = (~(cbBindingFlag|srvBindingFlag|ssBindingFlag)) & adaptiveSet._shaderUsageMask;
 			uint64_t dummyDescWritten = 0;
 			if (dummyDescWriteMask != 0)
-				dummyDescWritten = builder.BindDummyDescriptors(sig, dummyDescWriteMask);
+				dummyDescWritten = builder.BindDummyDescriptors(*adaptiveSet._sig, dummyDescWriteMask);
 
 			// note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
 			//          Ideally we don't really want to have to update these constantly... Once they are 
 			//          set, maybe we can just reuse them?
-			if (cbBindingFlag | srvBindingFlag | dummyDescWriteMask) {
+			if (cbBindingFlag | srvBindingFlag | ssBindingFlag | dummyDescWriteMask) {
 				#if defined(_DEBUG)
 					// Check to make sure the descriptor type matches the write operation we're performing
-					builder.ValidatePendingWrites(sig);
+					builder.ValidatePendingWrites(*adaptiveSet._sig);
 				#endif
 
 				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DEBUG_ONLY(, verboseDescription));
 			}
-        
+		
 			encoder.BindDescriptorSet(
-				_descriptorSetBindingPoint[streamIdx], descriptorSet.get()
+				adaptiveSet._descriptorSetIdx, descriptorSet.get()
 				VULKAN_VERBOSE_DEBUG_ONLY(, std::move(verboseDescription)));
 
 			if (requiresTemporaryBufferBarrier)
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
 		}
 
-		if (_vsPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
-			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
+		for (const auto&pushConstants:_pushConstantsRules) {
+			auto& cb = stream._constantBuffers[pushConstants._inputCBSlot];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			encoder.PushConstants(VK_SHADER_STAGE_VERTEX_BIT, cb._packet.AsIteratorRange());
+			encoder.PushConstants(pushConstants._shaderStageBind, cb._packet.AsIteratorRange());
 		}
-
-		if (_psPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
-			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
-			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			encoder.PushConstants(VK_SHADER_STAGE_FRAGMENT_BIT, cb._packet.AsIteratorRange());
-		}
-    }
+	}
 
 	BoundUniforms::BoundUniforms() 
 	{
-		for (unsigned c=0; c<s_streamCount; c++) {
-			_descriptorSetBindingMask[c] = 0;
-			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
-			_descriptorSetBindingPoint[c] = ~0u;
-		}
+		_pipelineType = PipelineType::Graphics;
 	}
 	BoundUniforms::~BoundUniforms() {}
 

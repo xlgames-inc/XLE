@@ -7,6 +7,7 @@
 #include "RenderUtils.h"
 #include "ResourceDesc.h"
 #include "Types.h"
+#include "StateDesc.h"
 #include "Format.h"
 
 #include "IDevice.h"

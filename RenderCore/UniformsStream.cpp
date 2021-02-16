@@ -23,11 +23,19 @@ namespace RenderCore
         _hash = 0;
     }
 
-    void UniformsStreamInterface::BindShaderResource(unsigned slot, uint64_t hashName)
+    void UniformsStreamInterface::BindResource(unsigned slot, uint64_t hashName)
     {
         if (_srvBindings.size() <= slot)
             _srvBindings.resize(slot+1);
         _srvBindings[slot] = hashName;
+        _hash = 0;
+    }
+
+    void UniformsStreamInterface::BindSampler(unsigned slot, uint64_t hashName)
+    {
+        if (_samplerBindings.size() <= slot)
+            _samplerBindings.resize(slot+1);
+        _samplerBindings[slot] = hashName;
         _hash = 0;
     }
 
@@ -41,6 +49,7 @@ namespace RenderCore
             for (const auto& c:_cbBindings)
                 _hash = HashCombine(c._hashName, _hash);
             _hash = HashCombine(Hash64(AsPointer(_srvBindings.begin()), AsPointer(_srvBindings.end())), _hash);
+            _hash = HashCombine(Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end())), _hash);
         }
 
         return _hash;

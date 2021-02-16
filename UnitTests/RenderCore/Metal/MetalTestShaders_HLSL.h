@@ -75,6 +75,9 @@ namespace UnitTests
                     a_texCoord.y * -2.0f + 1.0f,		// (note -- there's a flip here relative OGLES & Apple Metal)
                     0.0, 1.0
                 );
+                #if GFXAPI_TARGET == GFXAPI_VULKAN
+                    a_texCoord.y = 1.0f - a_texCoord.y;     // todo; more consistency around this flip
+                #endif
             }
         )";
 
@@ -92,6 +95,9 @@ namespace UnitTests
                     a_texCoord.y *  -2.0f + 1.0f,		// (note -- there's a flip here relative OGLES & Apple Metal)
                     0.0, 1.0
                 );
+                #if GFXAPI_TARGET == GFXAPI_VULKAN
+                    a_texCoord.y = 1.0f - a_texCoord.y;     // todo; more consistency around this flip
+                #endif
             }
         )";
 

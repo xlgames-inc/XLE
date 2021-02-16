@@ -19,29 +19,36 @@ namespace RenderCore { namespace Assets
 	class PredefinedDescriptorSetLayout
 	{
 	public:
-		struct ConstantBuffer
-		{
-			std::string _name;
-			std::shared_ptr<RenderCore::Assets::PredefinedCBLayout> _layout;
-			std::string _conditions;
-		};
-		std::vector<ConstantBuffer> _constantBuffers;
 
-		struct Resource
-		{
-			std::string _name;
-			std::string _conditions;
-			unsigned _arrayElementCount = 0u;
-		};
-		std::vector<Resource> _resources;
+		// We should ideally support all of the descriptor slot type below
+		// There's a bit of ambiguity, though, because the shader language
+		// itself may not need to be so explicit about the slot type
+		// Sampler = VK_DESCRIPTOR_TYPE_SAMPLER
+		// VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+		// Texture = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+		// UnorderedAccessTexture = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+		// VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+		// VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+		// ConstantBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+		// UnorderedAccessBuffer = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+		// VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+		// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
 
-		struct Sampler
+		enum class SlotType { Texture, Sampler, ConstantBuffer };
+		struct DescriptorSlot
 		{
 			std::string _name;
-			std::string _conditions;
 			unsigned _arrayElementCount = 0u;
+			SlotType _type;
+			unsigned _cbIdx;		// this is an idx into the _constantBuffers array for constant buffer types
 		};
-		std::vector<Sampler> _samplers;
+		struct ConditionalDescriptorSlot : public DescriptorSlot
+		{
+			std::string _conditions;
+		};
+		std::vector<ConditionalDescriptorSlot> _slots;
+		std::vector<std::shared_ptr<RenderCore::Assets::PredefinedCBLayout>> _constantBuffers;
 
 		PredefinedDescriptorSetLayout(
 			StringSection<> inputData,
@@ -53,9 +60,7 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
 	protected:
-		static ConstantBuffer ParseCBLayout(ConditionalProcessingTokenizer& iterator);
-		static Resource ParseResource(ConditionalProcessingTokenizer& iterator);
-		static Sampler ParseSampler(ConditionalProcessingTokenizer& iterator);
+		void ParseSlot(ConditionalProcessingTokenizer& iterator, SlotType type);
 
 		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 	};

@@ -17,6 +17,7 @@
 #include "../../../RenderCore/ResourceUtils.h"
 #include "../../../RenderCore/BufferView.h"
 #include "../../../RenderCore/IDevice.h"
+#include "../../../RenderCore/IAnnotator.h"
 #include "../../../Math/Vector.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <map>
@@ -472,9 +473,9 @@ namespace UnitTests
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport, psText);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
-										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
-										"temporary-out");
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
@@ -501,9 +502,9 @@ namespace UnitTests
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto shaderProgram = testHelper->MakeShaderProgram(vsText, psText);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
-										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
-										"temporary-out");
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
 		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
@@ -564,12 +565,12 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Values")});
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
-			REQUIRE(uniforms._boundUniformBufferSlots[0] == 1ull);
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
 			ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
-			uniforms.Apply(metalContext, encoder, 0, UniformsStream { MakeIteratorRange(cbvs) });
+			uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream { MakeIteratorRange(cbvs) });
 
 			encoder.Draw(4);
 		}
@@ -599,12 +600,12 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values) });
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
-			REQUIRE(uniforms._boundUniformBufferSlots[0] == 1ull);
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
 			ConstantBufferView cbvs[] = { MakeSharedPkt(v) };
-			uniforms.Apply(metalContext, encoder, 0, UniformsStream { MakeIteratorRange(cbvs) });
+			uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream { MakeIteratorRange(cbvs) });
 
 			encoder.Draw(4);
 		}
@@ -651,7 +652,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectBinding) });
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 			(void)uniforms;
 		}
 
@@ -664,7 +665,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_MissingValues) });
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 			(void)uniforms;
 		}
 
@@ -678,7 +679,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectFormats) });
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 			(void)uniforms;
 		}
 
@@ -693,14 +694,14 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, { Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_OverlappingValues) });
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 			(void)uniforms;
 		}
 
 		{
 			// missing CB binding
 			UniformsStreamInterface usi;
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 			(void)uniforms;
 		}
 
@@ -774,8 +775,8 @@ namespace UnitTests
 			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Values"));
-			Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Values"));
+			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
 			
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
 			Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
@@ -785,7 +786,7 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);                
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);                
 		}
 
 		{
@@ -795,12 +796,12 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Texture")});
-			Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
 			
 			ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
 			UniformsStream uniformsStream;
 			uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);                
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);                
 		}
 
 		{
@@ -810,11 +811,11 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
-			Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
 
 			REQUIRE_THROWS(
 				[&]() {
-					uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
+					uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream {});
 					encoder.Draw(4);
 				});
 		}
@@ -825,12 +826,12 @@ namespace UnitTests
 			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Texture"));
+			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
 
 			REQUIRE_THROWS(
 				[&]() {
-					uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
+					uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream {});
 					encoder.Draw(4);
 				});
 		}
@@ -853,9 +854,9 @@ namespace UnitTests
 		auto shaderProgramCB = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_Uniforms);
 		auto shaderProgramSRV = testHelper->MakeShaderProgram(vsText_FullViewport2, psText_TextureBinding);
 		auto targetDesc = CreateDesc(
-										BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
-										TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
-										"temporary-out");
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+			"temporary-out");
 
 		TestTexture testTexture(*testHelper->_device);
 
@@ -878,8 +879,8 @@ namespace UnitTests
 			encoder.Bind(shaderProgramCB);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Values"));
-			Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Values"));
+			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
 
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
 			Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
@@ -889,7 +890,7 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
 		{
@@ -899,12 +900,12 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {Hash64("Texture")});
-			Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
 
 			ConstantBufferView cbvs[] = { ConstantBufferView {  MakeSubFramePkt(Values{}) } };
 			UniformsStream uniformsStream;
 			uniformsStream._constantBuffers = MakeIteratorRange(cbvs);
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
 		{
@@ -916,15 +917,15 @@ namespace UnitTests
 			usi.BindConstantBuffer(0, {Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values)});
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 				auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+				Metal::BoundUniforms uniforms { *pipeline, {}, usi };
 			#else
-				Metal::BoundUniforms uniforms { shaderProgramCB, Metal::PipelineLayoutConfig {}, usi };
+				Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
 			#endif
 
 			REQUIRE_THROWS(
-									[&]() {
-										uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
-									});
+				[&]() {
+					uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream {});
+				});
 		}
 
 		{
@@ -933,18 +934,18 @@ namespace UnitTests
 			encoder.Bind(shaderProgramSRV);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
+			usi.BindResource(0, Hash64("Texture"));
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 				auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				Metal::BoundUniforms uniforms { *pipeline, Metal::PipelineLayoutConfig {}, usi };
+				Metal::BoundUniforms uniforms { *pipeline, {}, usi };
 			#else
-				Metal::BoundUniforms uniforms { shaderProgramSRV, Metal::PipelineLayoutConfig {}, usi };
+				Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
 			#endif
 
 			REQUIRE_THROWS(
-									[&]() {
-										uniforms.Apply(metalContext, encoder, 0, UniformsStream {});
-									});
+				[&]() {
+					uniforms.ApplyLooseUniforms(metalContext, encoder, UniformsStream {});
+				});
 		}
 
 		encoder = {};
@@ -988,8 +989,8 @@ namespace UnitTests
 			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Texture"));
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
 			Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
@@ -999,7 +1000,7 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
 			encoder.Draw(4);
@@ -1055,8 +1056,8 @@ namespace UnitTests
 			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Texture"));
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
 			Metal::SamplerState pointSampler { FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp };
@@ -1066,7 +1067,7 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &pointSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
 			encoder.Draw(4);
@@ -1094,8 +1095,9 @@ namespace UnitTests
 			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResource(0, Hash64("Texture"));
+			usi.BindSampler(0, Hash64("Texture_sampler"));
+			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
 
 			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), testTexture._res };
 			Metal::SamplerState linearSampler { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
@@ -1105,7 +1107,7 @@ namespace UnitTests
 			const Metal::SamplerState* samplers[] = { &linearSampler };
 			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
 			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplers));
-			uniforms.Apply(metalContext, encoder, 0, uniformsStream);
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
 			encoder.Draw(4);

@@ -171,6 +171,18 @@ namespace RenderCore { namespace Metal_Vulkan
                 _vectorTypes.push_back(std::make_pair(paramStart[0], VectorType{paramStart[1], paramStart[2]}));
                 break;
 
+            case OpTypeSampler:
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::Sampler));
+                break;
+
+            case OpTypeSampledImage:
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::SampledImage));
+                break;
+
+            case OpTypeImage:
+                _basicTypes.push_back(std::make_pair(paramStart[0], BasicType::Image));
+                break;
+
             case OpTypeStruct:
                 _structTypes.push_back(paramStart[0]);
                 break;
@@ -189,10 +201,10 @@ namespace RenderCore { namespace Metal_Vulkan
         // Our tables should be in near-sorted order, but are not guaranteed to be sorted.
         // So we have to sort here. Since they are near-sorted, quick sort is not ideal, but
         // 
-        std::sort(_basicTypes.begin(), _basicTypes.end(), CompareFirst<uint64_t, BasicType>());
-        std::sort(_vectorTypes.begin(), _vectorTypes.end(), CompareFirst<uint64_t, VectorType>());
-        std::sort(_pointerTypes.begin(), _pointerTypes.end(), CompareFirst<uint64_t, PointerType>());
-        std::sort(_variables.begin(), _variables.end(), CompareFirst<uint64_t, Variable>());
+        std::sort(_basicTypes.begin(), _basicTypes.end(), CompareFirst<ObjectId, BasicType>());
+        std::sort(_vectorTypes.begin(), _vectorTypes.end(), CompareFirst<ObjectId, VectorType>());
+        std::sort(_pointerTypes.begin(), _pointerTypes.end(), CompareFirst<ObjectId, PointerType>());
+        std::sort(_variables.begin(), _variables.end(), CompareFirst<ObjectId, Variable>());
 
         // build the quick lookup table, which matches hash names to binding values
         for (auto& b:_bindings) {
