@@ -89,7 +89,10 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 	}
 
-	static VkImageLayout AsVkImageLayout(Internal::ImageLayout input) { return (VkImageLayout)input; }
+	namespace Internal
+	{
+		VkImageLayout_ AsVkImageLayout(Internal::ImageLayout input) { return (VkImageLayout)input; }
+	}
 
 	VkSampleCountFlagBits_ AsSampleCountFlagBits(TextureSamples samples)
 	{
@@ -220,8 +223,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				b = {};
 				b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				b.pNext = nullptr;
-				b.oldLayout = AsVkImageLayout(changes[c]._oldLayout);
-				b.newLayout = AsVkImageLayout(changes[c]._newLayout);
+				b.oldLayout = (VkImageLayout)Internal::AsVkImageLayout(changes[c]._oldLayout);
+				b.newLayout = (VkImageLayout)Internal::AsVkImageLayout(changes[c]._newLayout);
 				b.srcAccessMask = changes[c]._oldAccessMask;
 				b.dstAccessMask = changes[c]._newAccessMask;
 				b.image = r.GetImage();
@@ -296,7 +299,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		CaptureForBind::CaptureForBind(DeviceContext& context, IResource& resource, BindFlag::Enum bindType)
-		: _context(&context), _resource(&resource), _bindType(bindType), _releaseCapture(true)
+		: _context(&context), _resource(&resource), _bindType(bindType), _releaseCapture(true), _usingCompatibleSteadyState(false)
 		{
 			if (!context._captureForBindRecords)
 				context._captureForBindRecords = std::make_shared<Internal::CaptureForBindRecords>();
@@ -315,7 +318,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				// access mode at all
 				_capturedLayout = steadyLayout;
 				_capturedAccessMask = steadyAccessMask;
-				_releaseCapture = false;
+				_usingCompatibleSteadyState = true;
 			} else {
 				// We do have to change the layout. Prefer to swap to the optimal layout if we can
 				_capturedLayout = newMode._optimalLayout;
@@ -339,7 +342,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			context._captureForBindRecords->_captures.push_back(
 				{&resource, _capturedLayout, _capturedAccessMask});
 
-			if (_releaseCapture) {
+			if (!_usingCompatibleSteadyState) {
 				Internal::SetImageLayout(
 					*_context, *res,
 					res->_steadyStateLayout, res->_steadyStateAccessMask,
@@ -362,18 +365,23 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(0);
 			} else {
 				if (existing->_layout != _capturedLayout || existing->_accessMask != _capturedAccessMask)
-					Log(Error) << "Missing capture record unexpected type in CaptureForBind destructor" << std::endl;	// this implies some kind of corruption
+					Log(Error) << "Capture record has unexpected type in CaptureForBind destructor" << std::endl;	// Likewise this might be caused by a complex set of nested captures that are destroyed in an incorrect order
 				if (_releaseCapture)
 					_context->_captureForBindRecords->_captures.erase(existing);
 			}
 
 			// always return back to the "steady state" layout for this resource
-			if (_releaseCapture) {
+			if (!_usingCompatibleSteadyState) {
 				Internal::SetImageLayout(
 					*_context, *res,
 					_capturedLayout, _capturedAccessMask,
 					res->_steadyStateLayout, res->_steadyStateAccessMask);
 			}
+		}
+
+		void ValidateIsEmpty(CaptureForBindRecords& records)
+		{
+			assert(records._captures.empty());
 		}
 
 		void SetupInitialLayout(DeviceContext& devContext, IResource& ires)
@@ -827,8 +835,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		    }
 
 		    context.GetActiveCommandList().CopyImage(
-			    src.GetImage(), AsVkImageLayout(srcLayout),
-			    dst.GetImage(), AsVkImageLayout(dstLayout),
+			    src.GetImage(), (VkImageLayout)Internal::AsVkImageLayout(srcLayout),
+			    dst.GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
 
         } else if (dst.GetBuffer() && src.GetBuffer()) {
@@ -855,7 +863,7 @@ namespace RenderCore { namespace Metal_Vulkan
             auto copyOps = GenerateBufferImageCopyOps(src.GetDesc(), dst.GetDesc());
             context.GetActiveCommandList().CopyBufferToImage(
                 src.GetBuffer(),
-                dst.GetImage(), AsVkImageLayout(dstLayout),
+                dst.GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
                 (uint32_t)copyOps.size(), copyOps.data());
         } else {
             if (dst.GetDesc()._type != ResourceDesc::Type::Texture)
@@ -863,7 +871,7 @@ namespace RenderCore { namespace Metal_Vulkan
             
             auto copyOps = GenerateBufferImageCopyOps(dst.GetDesc(), src.GetDesc());
             context.GetActiveCommandList().CopyImageToBuffer(
-                src.GetImage(), AsVkImageLayout(srcLayout),
+                src.GetImage(), (VkImageLayout)Internal::AsVkImageLayout(srcLayout),
 				dst.GetBuffer(),
                 (uint32_t)copyOps.size(), copyOps.data());
         }
@@ -906,8 +914,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			c.dstSubresource.layerCount = 1;
 
             context.GetActiveCommandList().CopyImage(
-			    src._resource->GetImage(), AsVkImageLayout(srcLayout),
-			    dst._resource->GetImage(), AsVkImageLayout(dstLayout),
+			    src._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(srcLayout),
+			    dst._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
 			    1, &c);
         } else if (dst._resource->GetBuffer() && src._resource->GetBuffer()) {
             // buffer to buffer copy
@@ -991,7 +999,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const auto copyOperations = mips*arrayCount;
             context.GetActiveCommandList().CopyBufferToImage(
                 src._resource->GetBuffer(),
-                dst._resource->GetImage(), AsVkImageLayout(dstLayout),
+                dst._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but

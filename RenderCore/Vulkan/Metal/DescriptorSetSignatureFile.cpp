@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DescriptorSetSignatureFile.h"
+#include "../../UniformsStream.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
@@ -16,32 +17,9 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	static const char* s_descriptorTypeNames[] = {
-		"Sampler",
-		"Texture",
-		"ConstantBuffer",
-		"UnorderedAccessTexture",
-		"UnorderedAccessBuffer"
-	};
-
 	static const char* s_descriptorSetTypeNames[] = {
 		"Adaptive", "Numeric", "Unknown"
 	};
-
-	const char* AsString(DescriptorType type)
-	{
-		if (unsigned(type) < dimof(s_descriptorTypeNames))
-			return s_descriptorTypeNames[unsigned(type)];
-        return "<<unknown>>";
-	}
-
-	DescriptorType AsDescriptorType(StringSection<> type)
-	{
-		for (unsigned c=0; c<dimof(s_descriptorTypeNames); ++c)
-			if (XlEqString(type, s_descriptorTypeNames[c]))
-				return (DescriptorType)c;
-		return DescriptorType::Unknown;
-	}
 
 	RootSignature::DescriptorSetType AsDescriptorSetType(StringSection<> type)
 	{
@@ -118,7 +96,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(StreamDOMElement<InputStreamFormatter<char>>& element)
+    static std::pair<std::string, std::shared_ptr<DescriptorSetSignature>> ReadDescriptorSet(StreamDOMElement<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -130,37 +108,37 @@ namespace RenderCore { namespace Metal_Vulkan
         // either a single number or an (inclusive) range.
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
         auto result = std::make_shared<DescriptorSetSignature>();
-		result->_name = element.Attribute("name").Value().AsString();
-		result->_hashName = Hash64(result->_name);
+		auto name = element.Attribute("name").Value().AsString();
 
 		for (auto e:element.children()) {
 			if (!XlEqString(e.Name(), "Descriptors"))
-				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", result->_name.c_str()));
+				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", name.c_str()));
 
 			auto type = AsDescriptorType(e.Attribute("type").Value());
 			auto slots = AsRegisterRange(e.Attribute("slots").Value());
 
 			if (type == DescriptorType::Unknown)
-				Throw(::Exceptions::BasicLabel("Descriptor type unrecognized (%s), while reading DescriptorSetSignature (%s)", e.Attribute("type").Value().AsString().c_str(), result->_name.c_str()));
+				Throw(::Exceptions::BasicLabel("Descriptor type unrecognized (%s), while reading DescriptorSetSignature (%s)", e.Attribute("type").Value().AsString().c_str(), name.c_str()));
 
 			if (slots._end <= slots._begin)
-				Throw(::Exceptions::BasicLabel("Slots attribute not property specified for descriptors in DescriptorSetSignature (%s)", result->_name.c_str()));
+				Throw(::Exceptions::BasicLabel("Slots attribute not property specified for descriptors in DescriptorSetSignature (%s)", name.c_str()));
 
             // Add bindings between the start and end (exclusive of end)
-			if (result->_bindings.size() < slots._end)
-				result->_bindings.resize(slots._end, DescriptorType::Unknown);
+			if (result->_slots.size() < slots._end)
+				result->_slots.resize(slots._end, {});
             for (auto i=slots._begin; i<slots._end; ++i) {
-				if (result->_bindings[i] != DescriptorType::Unknown)
-					Throw(::Exceptions::BasicLabel("Some descriptor slots overlap while reading DescriptorSetSignature (%s)", result->_name.c_str()));
-                result->_bindings[i] = type;
+				if (result->_slots[i]._type != DescriptorType::Unknown)
+					Throw(::Exceptions::BasicLabel("Some descriptor slots overlap while reading DescriptorSetSignature (%s)", name.c_str()));
+                result->_slots[i]._type = type;
+				result->_slots[i]._count = 1;
 			}
         }
 
-		for (const auto&t:result->_bindings)
-			if (t == DescriptorType::Unknown)
-				Throw(::Exceptions::BasicLabel("Gap between descriptor slots while reading DescriptorSetSignature (%s)", result->_name.c_str()));
+		for (const auto&t:result->_slots)
+			if (t._type == DescriptorType::Unknown)
+				Throw(::Exceptions::BasicLabel("Gap between descriptor slots while reading DescriptorSetSignature (%s)", name.c_str()));
 
-        return result;
+        return {name, result};
     }
 
 	static std::shared_ptr<LegacyRegisterBinding> ReadLegacyRegisterBinding(
@@ -307,12 +285,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	uint64_t DescriptorSetSignature::GetHash() const
-	{
-		return Hash64(AsPointer(_bindings.begin()), AsPointer(_bindings.end()));
-
-	}
-
 	const RootSignature*								DescriptorSetSignatureFile::GetRootSignature(uint64_t name) const
 	{
 		for (const auto&r:_rootSignatures)
@@ -342,8 +314,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		static std::shared_ptr<DescriptorSetSignature> dummy;
 		for (const auto&d:_descriptorSets)
-			if (d->_hashName == name)
-				return d;
+			if (Hash64(d.first) == name)
+				return d.second;
 		return dummy;
 	}
 
@@ -362,7 +334,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else if (XlEqString(a.Name(), "LegacyBinding")) {
 				std::vector<StringSection<>> descriptorSetNames;
 				descriptorSetNames.reserve(_descriptorSets.size());
-				for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d->_name);
+				for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d.first);
 				_legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
 			} else if (XlEqString(a.Name(), "PushConstants")) {
 				_pushConstantRanges.emplace_back(ReadPushConstRange(a));
@@ -389,7 +361,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			InputStreamFormatter<char> formatter{MakeStringSection((char*)block.get(), (char*)PtrAdd(block.get(), fileSize))};
 			DescriptorSetSignatureFile(formatter, {}, depVal);
 
-			_dependentFileState = Assets::IntermediatesStore::GetDependentFileState(filename);
+			_dependentFileState = ::Assets::IntermediatesStore::GetDependentFileState(filename);
 			
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
 			Throw(::Assets::Exceptions::ConstructionError(e, depVal));

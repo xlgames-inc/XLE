@@ -8,10 +8,7 @@ list(APPEND Src
     ShaderLangUtil.cpp
     ShaderService.cpp
     StateDesc.cpp
-    UniformsStream.cpp
-    Assets/PredefinedDescriptorSetLayout.cpp
-    Assets/PredefinedCBLayout.cpp
-    )
+    UniformsStream.cpp)
 file(GLOB Headers "*.h")
 
 add_library(RenderCore STATIC ${Src} ${Headers})

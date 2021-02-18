@@ -15,21 +15,16 @@ namespace RenderCore
 {
 	class UniformsStream;
 	class UniformsStreamInterface;
-	// class VertexBufferView;
 	class InputElementDesc;
 	class MiniInputElementDesc;
 	class CompiledShaderByteCode;
 	template <typename Type, int Count> class ResourceList;
 }
 
-namespace RenderCore { namespace Metal_Vulkan { namespace Internal {
-	class PartialPipelineDescriptorsLayout;
-}}}
-
 namespace RenderCore { namespace Metal_Vulkan
 {
-	class ShaderProgram;
 	class DeviceContext;
+	class ShaderProgram;
 	class ComputeShader;
 	class SPIRVReflection;
 
@@ -75,14 +70,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class BoundPipelineLayout;
 	class SharedGraphicsEncoder;
-	class PipelineLayoutConfig;
 	class GraphicsPipeline;
 	class ComputePipeline;
-	class DescriptorSetSignature;
-
-	namespace Internal { class VulkanPipelineLayout; }
+	class CompiledDescriptorSet;
+	class CompiledDescriptorSetLayout;
+	class CompiledPipelineLayout;
 
 	class BoundUniforms
 	{
@@ -96,7 +89,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void ApplyDescriptorSets(
 			DeviceContext& context,
 			SharedGraphicsEncoder& encoder,
-			IteratorRange<const DescriptorSet**> descriptorSets);
+			IteratorRange<const CompiledDescriptorSet**> descriptorSets);
 
 		uint64_t GetBoundLooseConstantBuffers() const { return _boundLooseUniformBuffers; }
 		uint64_t GetBoundLooseResources() const { return _boundLooseResources; }
@@ -138,14 +131,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		{
 			uint32_t _descriptorSetIdx = 0u;
 			uint32_t _shaderStageMask = 0u;
-			VulkanSharedPtr<VkDescriptorSetLayout> _underlyingLayout;
+			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
 
 			std::vector<LooseUniformBind> _cbBinds;
 			std::vector<LooseUniformBind> _srvBinds;
 			std::vector<LooseUniformBind> _samplerBinds;
 			
 			// these exist so we default out slots that are used by the shader, but not provided as input
-			std::shared_ptr<DescriptorSetSignature> _sig;
+			std::vector<DescriptorSlot> _sig;
 			uint64_t _shaderUsageMask = 0ull;
 		};
 		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
@@ -187,41 +180,29 @@ namespace RenderCore { namespace Metal_Vulkan
 	using ConstantBuffer = Buffer;
 	class TextureView;
 	class ObjectFactory;
-	class DescriptorSetSignature;
 	class DescriptorSetDebugInfo;
-	class GlobalPools;
 	class LegacyRegisterBinding;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
 	{
 	public:
-		void    BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-		void    BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-		void    BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
-		void    BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
-
-		void    GetDescriptorSets(
-			IteratorRange<VkDescriptorSet*> dst
-			VULKAN_VERBOSE_DEBUG_ONLY(, IteratorRange<DescriptorSetDebugInfo**> descriptions));
-		void    Reset();
-		bool	HasChanges() const;
-		
 		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
-		const DescriptorSetSignature& GetSignature() const;
-		const LegacyRegisterBinding& GetLegacyRegisterBindings() const;
+		void Reset();
+		bool HasChanges() const;
+
+		void Apply(
+			DeviceContext& context,
+			SharedGraphicsEncoder& encoder) const;
 
 		NumericUniformsInterface(
 			const ObjectFactory& factory,
-			GlobalPools& globalPools,
-			const std::shared_ptr<DescriptorSetSignature>& signature,
-			const LegacyRegisterBinding& bindings,
-			VkShaderStageFlags stageFlags,
-			unsigned descriptorSetIndex);
+			const CompiledPipelineLayout& pipelineLayout,
+			const LegacyRegisterBinding& bindings);
 		NumericUniformsInterface();
 		~NumericUniformsInterface();
 
@@ -230,6 +211,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	protected:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
+
+		void    Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+		void    Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
+		void    Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 	};
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +223,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    NumericUniformsInterface::Bind(const ResourceList<ShaderResourceView, Count>& shaderResources) 
 		{
 			auto r = MakeIteratorRange(shaderResources._buffers);
-			BindSRV(
+			Bind(
 				shaderResources._startingPoint,
 				MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
 		}
@@ -248,7 +233,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkSampler samplers[Count];
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-			BindSampler(
+			Bind(
 				samplerStates._startingPoint,
 				MakeIteratorRange(samplers));
 		}
@@ -259,7 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkBuffer buffers[Count];
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			BindCB(
+			Bind(
 				constantBuffers._startingPoint,
 				MakeIteratorRange(buffers));
 		}
@@ -268,10 +253,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    NumericUniformsInterface::Bind(const ResourceList<UnorderedAccessView, Count>& uavs)
 		{
 			auto r = MakeIteratorRange(uavs._buffers);
-			BindUAV(
+			Bind(
 				uavs._startingPoint,
 				MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
 		}
-
 }}
-

@@ -13,6 +13,7 @@
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/BitUtils.h"
 #include "../../../xleres/FileList.h"
 #include <iostream>
 
@@ -177,7 +178,7 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 			ds._layout = CreateDescriptorSetLayout(*_pimpl->_factory, *s, _pimpl->_stageFlags);
 			
 			{
-				DescriptorSetBuilder builder(*_pimpl->_globalPools);
+				ProgressiveDescriptorSetBuilder builder(*_pimpl->_globalPools);
 				builder.BindDummyDescriptors(*s, (1ull<<uint64_t(s->_bindings.size()))-1ull);
 				ds._blankBindings = _pimpl->_globalPools->_longTermDescriptorPool.Allocate(ds._layout.get());
 				VULKAN_VERBOSE_DEBUG_ONLY(ds._blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
@@ -210,9 +211,9 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	struct CompiledDescriptorSetLayout
+	struct DescriptorSetCacheResult
 	{
-		VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
+		std::shared_ptr<CompiledDescriptorSetLayout> _layout;
 		VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
 		
 		#if defined(VULKAN_VERBOSE_DEBUG)
@@ -224,8 +225,9 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 	class CompiledDescriptorSetLayoutCache
 	{
 	public:
-		const CompiledDescriptorSetLayout*	CompileDescriptorSetLayout(
-			const DescriptorSetSignature& signature,
+		const DescriptorSetCacheResult*	CompileDescriptorSetLayout(
+			const std::shared_ptr<DescriptorSetSignature>& signature,
+			const std::string& name,
 			VkShaderStageFlags stageFlags);
 
 		CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
@@ -234,27 +236,28 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		ObjectFactory*	_objectFactory;
 		GlobalPools*	_globalPools;
 
-		std::vector<std::pair<uint64_t, std::unique_ptr<CompiledDescriptorSetLayout>>> _cache;
+		std::vector<std::pair<uint64_t, std::unique_ptr<DescriptorSetCacheResult>>> _cache;
 	};
 
 	static const std::string s_dummyDescriptorString{"<DummyDescriptor>"};
 
-	const CompiledDescriptorSetLayout*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
-		const DescriptorSetSignature& signature,
+	const DescriptorSetCacheResult*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
+		const std::shared_ptr<DescriptorSetSignature>& signature,
+		const std::string& name,
 		VkShaderStageFlags stageFlags)
 	{
-		auto hash = HashCombine(signature.GetHash(), stageFlags);
+		auto hash = HashCombine(signature->GetHash(), stageFlags);
 		auto i = LowerBound(_cache, hash);
 		if (i != _cache.end() && i->first == hash)
 			return i->second.get();
 
-		auto ds = std::make_unique<CompiledDescriptorSetLayout>();
-		ds->_layout = CreateDescriptorSetLayout(*_objectFactory, signature, stageFlags);
+		auto ds = std::make_unique<DescriptorSetCacheResult>();
+		ds->_layout = std::make_unique<CompiledDescriptorSetLayout>(*_objectFactory, MakeIteratorRange(signature->_slots), stageFlags);
 		
 		{
-			DescriptorSetBuilder builder(*_globalPools);
-			builder.BindDummyDescriptors(signature, (1ull<<uint64_t(signature._bindings.size()))-1ull);
-			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout.get());
+			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(signature->_slots) };
+			builder.BindDummyDescriptors(*_globalPools, (1ull<<uint64_t(signature->_slots.size()))-1ull);
+			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout->GetUnderlying());
 			VULKAN_VERBOSE_DEBUG_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
 			builder.FlushChanges(
 				_objectFactory->GetDevice().get(),
@@ -262,7 +265,7 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 				0, 0 VULKAN_VERBOSE_DEBUG_ONLY(, ds->_blankBindingsDescription));
 		}
 
-		VULKAN_VERBOSE_DEBUG_ONLY(ds->_name = signature._name);
+		VULKAN_VERBOSE_DEBUG_ONLY(ds->_name = name);
 
 		i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
 		return i->second.get();
@@ -280,59 +283,52 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		return std::make_shared<CompiledDescriptorSetLayoutCache>(objectFactory, globalPools);
 	}
 
-	VulkanPipelineLayout::VulkanPipelineLayout(
+}}}
+
+namespace RenderCore { namespace Metal_Vulkan
+{
+	CompiledPipelineLayout::CompiledPipelineLayout(
 		ObjectFactory& factory,
-		CompiledDescriptorSetLayoutCache& cache,
-		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
-		VkShaderStageFlags stageFlags)
+		IteratorRange<const DescriptorSetBinding*> descriptorSets,
+		IteratorRange<const PushConstantsBinding*> pushConstants)
 	{
-		_descriptorSetCount = 0;
-		std::vector<VkPushConstantRange> rawPushConstantRanges;
+		for (auto&c:_descriptorSetBindingNames) c = 0;
+		for (auto&c:_pushConstantBufferBindingNames) c = 0;
+
+		_descriptorSetCount = std::min((unsigned)descriptorSets.size(), s_maxDescriptorSetCount);
+		_pushConstantBufferCount = std::min((unsigned)pushConstants.size(), s_maxPushConstantBuffers);
+		VkPushConstantRange rawPushConstantRanges[s_maxPushConstantBuffers];
 		VkDescriptorSetLayout rawDescriptorSetLayouts[s_maxDescriptorSetCount];
+		for (unsigned c=0; c<_descriptorSetCount; ++c) {
+			_descriptorSetLayouts[c] = descriptorSets[c]._layout;
+			rawDescriptorSetLayouts[c] = _descriptorSetLayouts[c]->GetUnderlying();
+			_blankDescriptorSets[c] = descriptorSets[c]._blankDescriptorSet;
+			_descriptorSetBindingNames[c] = Hash64(descriptorSets[c]._name);
 
-		for (const auto&partial:partialLayouts) {
-			for (auto& desc:partial._descriptorSets) {
-				assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
-				assert(!_descriptorSetLayouts[desc._pipelineLayoutBindingIndex]);
-
-				auto* compiled = cache.CompileDescriptorSetLayout(*desc._signature, stageFlags);
-				if (compiled) {
-					// todo -- check for multiples bound to the same index
-					assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
-					_descriptorSetLayouts[desc._pipelineLayoutBindingIndex] = compiled->_layout;
-					_blankDescriptorSets[desc._pipelineLayoutBindingIndex] = compiled->_blankBindings;
-					_descriptorSetCount = std::max(_descriptorSetCount, desc._pipelineLayoutBindingIndex+1);
-					rawDescriptorSetLayouts[desc._pipelineLayoutBindingIndex] = _descriptorSetLayouts[desc._pipelineLayoutBindingIndex].get();
-					_descriptorSetSignature[desc._pipelineLayoutBindingIndex] = desc._signature;
-
-					#if defined(VULKAN_VERBOSE_DEBUG)
-						_blankDescriptorSetsDebugInfo[desc._pipelineLayoutBindingIndex] = compiled->_blankBindingsDescription;
-					#endif
-				}
-			}
-
-			rawPushConstantRanges.reserve(rawPushConstantRanges.size() + partial._pushConstants.size());
-			for (const auto& s:partial._pushConstants)
-				rawPushConstantRanges.push_back(VkPushConstantRange{s._stages, s._rangeStart, s._rangeSize});
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				_blankDescriptorSetsDebugInfo[c] = descriptorSets[c]._blankDescriptorSetDebugInfo;
+				_descriptorSetStringNames[c] = descriptorSets[c]._name;
+			#endif
 		}
 
-		// todo -- we should check if there's any overlaps between push constant ranges
-		// todo -- we also need a way to return the blank bindings back to the caller
+		unsigned pushConstantIterator = 0;
+		for (unsigned c=0; c<_pushConstantBufferCount; ++c) {
+			assert(pushConstantIterator == CeilToMultiplePow2(pushConstantIterator, 4));
+			assert(pushConstants[c]._cbSize != 0);
+			assert(pushConstants[c]._stageFlags != 0);
+			auto size = CeilToMultiplePow2(pushConstants[c]._cbSize, 4);
+			rawPushConstantRanges[c] = VkPushConstantRange { pushConstants[c]._stageFlags, pushConstantIterator, size };
+			pushConstantIterator += size;
+			_pushConstantBufferBindingNames[c] = Hash64(pushConstants[c]._name);
+		}
+
 		_pipelineLayout = factory.CreatePipelineLayout(
 			MakeIteratorRange(rawDescriptorSetLayouts, &rawDescriptorSetLayouts[_descriptorSetCount]),
 			MakeIteratorRange(rawPushConstantRanges));
-
-		#if defined(VULKAN_VERBOSE_DEBUG)
-			if (!partialLayouts.empty()) {
-				_legacyRegisterBinding = partialLayouts[0]._legacyRegisterBinding;
-			} else {
-				_legacyRegisterBinding = std::make_shared<LegacyRegisterBinding>();
-			}
-		#endif
 	}
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
-		void VulkanPipelineLayout::WriteDebugInfo(
+		void CompiledPipelineLayout::WriteDebugInfo(
 			std::ostream&& output,
 			IteratorRange<const CompiledShaderByteCode**> shaders,
 			IteratorRange<const DescriptorSetDebugInfo*> descriptorSets)
@@ -342,14 +338,64 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 				WriteDescriptorSet(
 					std::move(output),
 					(descSetIdx < descriptorSets.size()) ? descriptorSets[descSetIdx] : _blankDescriptorSetsDebugInfo[descSetIdx],
-					*_descriptorSetSignature[descSetIdx],
-					*_legacyRegisterBinding,
+					_descriptorSetLayouts[descSetIdx]->GetDescriptorSlots(),
+					_descriptorSetStringNames[descSetIdx],
+					Internal::VulkanGlobalsTemp::GetInstance().GetLegacyRegisterBinding(),
 					shaders,
 					descSetIdx,
 					descSetIdx < descriptorSets.size());
 			}
 		}
 	#endif
+
+}}
+
+namespace RenderCore { namespace Metal_Vulkan { namespace Internal
+{
+	std::shared_ptr<CompiledPipelineLayout> CreateCompiledPipelineLayout(
+		ObjectFactory& factory,
+		CompiledDescriptorSetLayoutCache& cache,
+		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
+		VkShaderStageFlags stageFlags)
+	{
+		std::vector<CompiledPipelineLayout::DescriptorSetBinding> descriptorSetBindings;
+		std::vector<CompiledPipelineLayout::PushConstantsBinding> pushConstantBindings;
+
+		for (const auto&partial:partialLayouts) {
+			for (auto& desc:partial._descriptorSets) {
+				assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
+				assert(desc._pipelineLayoutBindingIndex <= descriptorSetBindings.size() || !descriptorSetBindings[desc._pipelineLayoutBindingIndex]._layout);
+
+				auto* compiled = cache.CompileDescriptorSetLayout(desc._signature, desc._name, stageFlags);
+				if (compiled) {
+					// todo -- check for multiples bound to the same index
+					assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
+
+					CompiledPipelineLayout::DescriptorSetBinding binding;
+					binding._name = desc._name;
+					binding._layout = compiled->_layout;
+					binding._blankDescriptorSet = compiled->_blankBindings;
+
+					#if defined(VULKAN_VERBOSE_DEBUG)
+						binding._blankDescriptorSetDebugInfo = compiled->_blankBindingsDescription;
+					#endif
+
+					if (descriptorSetBindings.size() <= desc._pipelineLayoutBindingIndex)
+						descriptorSetBindings.resize(desc._pipelineLayoutBindingIndex+1);
+					descriptorSetBindings[desc._pipelineLayoutBindingIndex] = std::move(binding);
+				}
+			}
+
+			pushConstantBindings.reserve(partial._pushConstants.size());
+			for (const auto& s:partial._pushConstants)
+				pushConstantBindings.push_back(CompiledPipelineLayout::PushConstantsBinding{s._name, s._rangeSize, stageFlags});
+		}
+
+		return std::make_shared<CompiledPipelineLayout>(
+			factory,
+			MakeIteratorRange(descriptorSetBindings),
+			MakeIteratorRange(pushConstantBindings));
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -378,26 +424,26 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		static DescSetLimits BuildLimits(const DescriptorSetSignature& setSig)
 		{
 			DescSetLimits result = {};
-			for (auto& b:setSig._bindings) {
-				switch (b) {
+			for (auto& b:setSig._slots) {
+				switch (b._type) {
 				case DescriptorType::Sampler:
-					++result._samplerCount;
+					result._samplerCount += b._count;
 					break;
 
 				case DescriptorType::Texture:
-					++result._sampledImageCount;
+					result._sampledImageCount += b._count;
 					break;
 
 				case DescriptorType::ConstantBuffer:
-					++result._uniformBufferCount;
+					result._uniformBufferCount += b._count;
 					break;
 
 				case DescriptorType::UnorderedAccessBuffer:
-					++result._storageBufferCount;
+					result._storageBufferCount += b._count;
 					break;
 
 				case DescriptorType::UnorderedAccessTexture:
-					++result._storageImageCount;
+					result._storageImageCount += b._count;
 					break;
 
 				default:
@@ -430,7 +476,7 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 			// Here, we are assuming all descriptors apply equally to all stages.
 			DescSetLimits totalLimits = {};
 			for (const auto& s:signatureFile._descriptorSets) {
-				auto ds = BuildLimits(*s);
+				auto ds = BuildLimits(*s.second);
 				// not really clear how these ones work...?
 				if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
 					||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
@@ -458,13 +504,18 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 		return s_instance;
 	}
 
-	const std::shared_ptr<VulkanPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ShaderProgram&)
+	const std::shared_ptr<CompiledPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ShaderProgram&)
 	{
 		return _graphicsPipelineLayout;
 	}
-	const std::shared_ptr<VulkanPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ComputeShader&)
+	const std::shared_ptr<CompiledPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ComputeShader&)
 	{
 		return _computePipelineLayout;
+	}
+
+	const LegacyRegisterBinding& VulkanGlobalsTemp::GetLegacyRegisterBinding()
+	{
+		return *_graphicsRootSignatureFile->GetLegacyRegisterBinding(Hash64(_graphicsRootSignatureFile->GetRootSignature(Hash64(_graphicsRootSignatureFile->_mainRootSignature))->_legacyBindings));
 	}
 
 	VulkanGlobalsTemp::VulkanGlobalsTemp() 

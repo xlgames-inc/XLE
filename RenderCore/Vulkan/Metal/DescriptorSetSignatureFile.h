@@ -5,6 +5,7 @@
 #pragma once
 
 // #include "PipelineLayout.h"
+#include "../../UniformsStream.h"
 #include "../../../Assets/AssetUtils.h"		// for Assets::DependentFileState
 #include <string>
 #include <vector>
@@ -17,28 +18,6 @@ namespace Utility
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	enum class DescriptorType
-	{
-		Sampler,
-		Texture,
-		ConstantBuffer,
-		UnorderedAccessTexture,
-		UnorderedAccessBuffer,
-		Unknown
-	};
-
-	const char* AsString(DescriptorType type);
-	
-	class DescriptorSetSignature
-	{
-	public:
-		std::string						_name;
-		uint64_t						_hashName = 0;		// todo -- move these out? Just use vectors of pairs / unordered maps below?
-		std::vector<DescriptorType>		_bindings;
-
-		uint64_t GetHash() const;		// hash of content, not including name
-	};
-
 	class LegacyRegisterBinding
 	{
 	public:
@@ -98,7 +77,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DescriptorSetSignatureFile
 	{
 	public:
-		std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
+		std::vector<std::pair<std::string, std::shared_ptr<DescriptorSetSignature>>>	_descriptorSets;
 		std::vector<PushConstantsRangeSignature>				_pushConstantRanges;
 		std::vector<std::shared_ptr<LegacyRegisterBinding>>		_legacyRegisterBindingSettings;
 		std::vector<RootSignature>					_rootSignatures;

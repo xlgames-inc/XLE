@@ -6,7 +6,6 @@
 
 #include "Forward.h"
 #include "State.h"
-#include "InputLayout.h"		// for NumericUniformsInterface
 #include "PipelineLayout.h"		// for PipelineDescriptorsLayoutBuilder
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
@@ -29,7 +28,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class GlobalPools;
 	class FrameBuffer;
 	class PipelineLayout;
-	class DescriptorSetSignature;
 	class CommandPool;
 	class DescriptorPool;
 	class DummyResources;
@@ -136,21 +134,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DescriptorCollection
 	{
 	public:
-		NumericUniformsInterface			_numericBindings;
-		unsigned                            _numericBindingsSlot = ~0u;
-
 		std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
 		bool                                _hasSetsAwaitingFlush = false;
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			std::vector<DescriptorSetDebugInfo> _currentlyBoundDesc;
 		#endif
-
-		void BindNumericUniforms(
-			const std::shared_ptr<DescriptorSetSignature>& signature,
-			const LegacyRegisterBinding& bindings,
-			VkShaderStageFlags stageFlags,
-			unsigned descriptorSetIndex);
 
 		DescriptorCollection(
 			const ObjectFactory&    factory, 
@@ -286,7 +275,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		// --------------- Vulkan specific interface --------------- 
 		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description));
 		void		PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
-		void		RebindNumericDescriptorSet();
 
 	protected:
 		SharedGraphicsEncoder(const std::shared_ptr<VulkanEncoderSharedState>& sharedState = nullptr);
@@ -359,7 +347,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// --------------- Vulkan specific interface --------------- 
 		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description));
-		void		RebindNumericDescriptorSet();
 
 		~ComputeEncoder_ProgressivePipeline();
 	protected:
@@ -401,8 +388,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// --------------- Vulkan specific interface --------------- 
 
-		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
-
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
 		void		ExecuteCommandList(CommandList&, bool);
@@ -437,6 +422,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);
+		~DeviceContext();
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 

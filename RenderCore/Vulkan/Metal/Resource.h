@@ -13,6 +13,7 @@
 #include "../../../Utility/IteratorUtils.h"
 
 using VkSampleCountFlagBits_ = uint32_t;
+using VkImageLayout_ = uint32_t;
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -36,6 +37,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
 			PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 		};
+		VkImageLayout_ AsVkImageLayout(ImageLayout input);
 	}
 
 	/// <summary>Abstraction for a device memory resource</summary>
@@ -251,6 +253,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			Internal::ImageLayout _capturedLayout;
 			unsigned _capturedAccessMask;
 			bool _releaseCapture;
+			bool _usingCompatibleSteadyState;
 		};
 
 		void SetupInitialLayout(DeviceContext&, IResource&);

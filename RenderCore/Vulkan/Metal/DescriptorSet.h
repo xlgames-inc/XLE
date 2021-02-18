@@ -13,15 +13,13 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { class CompiledShaderByteCode; }
+namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class TextureView;
 	class GlobalPools;
 	class ObjectFactory;
-	class DescriptorSetSignature;
-	class DescriptorSetSignatureFile;
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
 		class DescriptorSetDebugInfo
@@ -37,15 +35,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		};		
 	#endif
 
-	class DescriptorSetBuilder
+	class ProgressiveDescriptorSetBuilder
     {
     public:
-		void    BindSRV(unsigned descriptorSetBindPoint, const TextureView* resource);
-		void    BindUAV(unsigned descriptorSetBindPoint, const TextureView* resource);
-		void    BindCB(unsigned descriptorSetBindPoint, VkDescriptorBufferInfo uniformBuffer, StringSection<> description = {});
-		void    BindSampler(unsigned descriptorSetBindPoint, VkSampler sampler, StringSection<> description = {});
+		void    Bind(unsigned descriptorSetBindPoint, const TextureView& resource);
+		void    Bind(unsigned descriptorSetBindPoint, const ConstantBufferView& resource);
+		void    Bind(unsigned descriptorSetBindPoint, VkDescriptorBufferInfo uniformBuffer, StringSection<> description = {});
+		void    Bind(unsigned descriptorSetBindPoint, VkSampler sampler, StringSection<> description = {});
 
-		uint64_t	BindDummyDescriptors(const DescriptorSetSignature& sig, uint64_t dummyDescWriteMask);
+		uint64_t	BindDummyDescriptors(GlobalPools& globalPools, uint64_t dummyDescWriteMask);
 
 		bool		HasChanges() const;
 		void		Reset();
@@ -57,12 +55,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask
 			VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo& description));
 
-		void		ValidatePendingWrites(const DescriptorSetSignature& sig);
-
-		DescriptorSetBuilder(GlobalPools& globalPools);
-		~DescriptorSetBuilder();
-		DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
-		DescriptorSetBuilder& operator=(const DescriptorSetBuilder&) = delete;
+		ProgressiveDescriptorSetBuilder(
+			IteratorRange<const DescriptorSlot*> signature);
+		~ProgressiveDescriptorSetBuilder();
+		ProgressiveDescriptorSetBuilder(ProgressiveDescriptorSetBuilder&&);
+		ProgressiveDescriptorSetBuilder& operator=(ProgressiveDescriptorSetBuilder&&);
 
 	private:
         static const unsigned s_pendingBufferLength = 32;
@@ -75,8 +72,8 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned	_pendingImageInfos = 0;
         unsigned	_pendingBufferInfos = 0;
 
-        uint64_t		_sinceLastFlush;
-		GlobalPools*	_globalPools;
+        uint64_t	_sinceLastFlush = 0;
+		std::vector<DescriptorSlot> _signature;
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _verboseDescription;
@@ -92,21 +89,67 @@ namespace RenderCore { namespace Metal_Vulkan
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
-		const ObjectFactory& factory, 
-		const DescriptorSetSignature& srcLayout,
-		VkShaderStageFlags stageFlags);
-
 	#if defined(VULKAN_VERBOSE_DEBUG)
 		class LegacyRegisterBinding;
 		class DescriptorSetDebugInfo;
 		std::ostream& WriteDescriptorSet(
 			std::ostream&& stream,
 			const DescriptorSetDebugInfo& bindingDescription,
-			const DescriptorSetSignature& signature,
+			IteratorRange<const DescriptorSlot*> signature,
+			const std::string& descriptorSetName,
 			const LegacyRegisterBinding& legacyRegisterBinding,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound);
 	#endif
+
+	class IDescriptorSet
+	{
+	public:
+		virtual ~IDescriptorSet() = default;
+		enum class BindType { BufferView, TextureView, Sampler };
+		struct BindTypeAndIdx { BindType _type; unsigned _idx; };
+	};
+
+	class CompiledDescriptorSetLayout
+	{
+	public:
+		VkDescriptorSetLayout GetUnderlying() { return _layout.get(); }
+		IteratorRange<const DescriptorSlot*> GetDescriptorSlots() const { return MakeIteratorRange(_descriptorSlots); }
+		VkShaderStageFlags GetShaderStageFlags() { return _shaderStageFlags; }
+
+		CompiledDescriptorSetLayout(
+			const ObjectFactory& factory, 
+			IteratorRange<const DescriptorSlot*> srcLayout,
+			VkShaderStageFlags stageFlags);
+		~CompiledDescriptorSetLayout();
+		CompiledDescriptorSetLayout(CompiledDescriptorSetLayout&&) never_throws = default;
+		CompiledDescriptorSetLayout& operator=(CompiledDescriptorSetLayout&&) never_throws = default;
+	private:
+		VulkanUniquePtr<VkDescriptorSetLayout>	_layout;
+		std::vector<DescriptorSlot> _descriptorSlots;
+		VkShaderStageFlags _shaderStageFlags;
+	};
+
+	class CompiledDescriptorSet : public IDescriptorSet
+	{
+	public:
+		VkDescriptorSet GetUnderlying() { return _underlying.get(); }
+		VkDescriptorSetLayout GetUnderlyingLayout() { return _layout->GetUnderlying(); }
+
+		CompiledDescriptorSet(
+			ObjectFactory& factory,
+			GlobalPools& globalPools,
+			const std::shared_ptr<CompiledDescriptorSetLayout>& layout,
+			VkShaderStageFlags stageFlags,
+			IteratorRange<const BindTypeAndIdx*> binds,
+			const UniformsStream& uniforms);
+		~CompiledDescriptorSet();
+	private:
+		VulkanUniquePtr<VkDescriptorSet> _underlying;
+		std::shared_ptr<CompiledDescriptorSetLayout> _layout;
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			DescriptorSetDebugInfo _description;
+		#endif
+	};
 
 }}

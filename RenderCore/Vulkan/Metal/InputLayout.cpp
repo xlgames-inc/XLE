@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		SPIRVReflection::Binding _binding = {};
 		SPIRVReflection::StorageType _storageType = SPIRVReflection::StorageType::Unknown;
-		RenderCore::DescriptorSetSignature::SlotType _slotType = RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer;
+		DescriptorType _slotType = DescriptorType::ConstantBuffer;
 		StringSection<> _name;
 	};
 
@@ -70,11 +70,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				case SPIRVReflection::BasicType::Image:
 					// image types can map onto different input slots, so we may need to be
 					// more expressive here
-					result._slotType = RenderCore::DescriptorSetSignature::SlotType::Texture;
+					result._slotType = DescriptorType::Texture;
 					break;
 
 				case SPIRVReflection::BasicType::Sampler:
-					result._slotType = RenderCore::DescriptorSetSignature::SlotType::Sampler;
+					result._slotType = DescriptorType::Sampler;
 					break;
 
 				default:
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else {
 				if (std::find(reflection._structTypes.begin(), reflection._structTypes.end(), typeToLookup) != reflection._structTypes.end()) {
 					// a structure will require some kind of buffer as input
-					result._slotType = RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer;
+					result._slotType = DescriptorType::ConstantBuffer;
 
 					// In this case, the name we're interested in isn't actually the variable
 					// name itself, but instead the name of the struct type. As per HLSL, this
@@ -272,7 +272,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		std::map<unsigned, std::pair<unsigned, const RenderCore::DescriptorSetSignature*>> _fixedDescriptorSets;
 		const UniformsStreamInterface* _looseUniforms;
-		Internal::VulkanPipelineLayout* _pipelineLayout;
+		CompiledPipelineLayout* _pipelineLayout;
 			
 		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
 		std::vector<PushConstantBindingRules> _pushConstantsRules;
@@ -283,7 +283,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t _boundLooseSamplerStates = 0;
 
 		void AddLooseUniformBinding(
-			RenderCore::DescriptorSetSignature::SlotType slotType,
+			DescriptorType slotType,
 			unsigned outputDescriptorSet, unsigned outputDescriptorSetSlot,
 			unsigned inputUniformStreamIdx, uint32_t shaderStageMask)
 		{
@@ -292,9 +292,10 @@ namespace RenderCore { namespace Metal_Vulkan
 				[outputDescriptorSet](const auto& c) { return c._descriptorSetIdx == outputDescriptorSet; });
 			if (adaptiveSet == _adaptiveSetRules.end()) {
 				_adaptiveSetRules.push_back(
-					AdaptiveSetBindingRules { outputDescriptorSet, shaderStageMask, _pipelineLayout->GetUnderlyingDescriptorSetLayout(outputDescriptorSet) });
+					AdaptiveSetBindingRules { outputDescriptorSet, shaderStageMask, _pipelineLayout->GetDescriptorSetLayout(outputDescriptorSet) });
 				adaptiveSet = _adaptiveSetRules.end()-1;
-				adaptiveSet->_sig = _pipelineLayout->GetDescriptorSetSignature(outputDescriptorSet);
+				auto bindings = _pipelineLayout->GetDescriptorSetLayout(outputDescriptorSet)->GetDescriptorSlots();
+				adaptiveSet->_sig = std::vector<DescriptorSlot> { bindings.begin(), bindings.end() };
 				adaptiveSet->_shaderUsageMask = 0;
 			} else {
 				adaptiveSet->_shaderStageMask |= shaderStageMask;
@@ -303,14 +304,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			if (inputUniformStreamIdx != ~0u) {
 				std::vector<LooseUniformBind>* binds;
-				if (slotType == RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer) {
+				if (slotType == DescriptorType::ConstantBuffer) {
 					binds = &adaptiveSet->_cbBinds;
 					_boundLooseUniformBuffers |= (1ull << uint64_t(inputUniformStreamIdx));
-				} else if (slotType == RenderCore::DescriptorSetSignature::SlotType::Texture) {
+				} else if (slotType == DescriptorType::Texture) {
 					binds = &adaptiveSet->_srvBinds;
 					_boundLooseResources |= (1ull << uint64_t(inputUniformStreamIdx));
 				} else {
-					assert(slotType == RenderCore::DescriptorSetSignature::SlotType::Sampler);
+					assert(slotType == DescriptorType::Sampler);
 					binds = &adaptiveSet->_samplerBinds;
 					_boundLooseSamplerStates |= (1ull << uint64_t(inputUniformStreamIdx));
 				}
@@ -341,7 +342,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					if (fixedDescSet == _fixedDescriptorSets.end()) {
 
 						// We need to got to the pipeline layout to find the signature for the descriptor set
-						auto& descSetSig = *_pipelineLayout->GetDescriptorSetSignature(reflectionVariable._binding._descriptorSet);
+						auto descSetSigBindings = _pipelineLayout->GetDescriptorSetLayout(reflectionVariable._binding._descriptorSet)->GetDescriptorSlots();
 
 						auto srv = std::find(_looseUniforms->_srvBindings.begin(), _looseUniforms->_srvBindings.end(), hashName);
 						if (srv != _looseUniforms->_srvBindings.end()) {
@@ -355,45 +356,45 @@ namespace RenderCore { namespace Metal_Vulkan
 							/*if (descSetSig._layout->_slots[b.second._bindingPoint]._type != RenderCore::DescriptorSetSignature::SlotType::Texture)
 								Throw(std::runtime_error(""));*/
 
-							if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::Texture)
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture)
 								Throw(std::runtime_error(""));
 
-							if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::Texture)
+							if (reflectionVariable._slotType != DescriptorType::Texture)
 								Throw(std::runtime_error(""));
 
 							auto inputSlot = std::distance(_looseUniforms->_srvBindings.begin(), srv);
 							AddLooseUniformBinding(
-								RenderCore::DescriptorSetSignature::SlotType::Texture,
+								DescriptorType::Texture,
 								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 								inputSlot, shaderStageMask);
 
 						} else {
 							auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
 							if (cb != _looseUniforms->_cbBindings.end()) {
-								if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::ConstantBuffer)
+								if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer)
 									Throw(std::runtime_error(""));
 
-								if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer)
+								if (reflectionVariable._slotType != DescriptorType::ConstantBuffer)
 									Throw(std::runtime_error(""));
 
 								auto inputSlot = std::distance(_looseUniforms->_cbBindings.begin(), cb);
 								AddLooseUniformBinding(
-									RenderCore::DescriptorSetSignature::SlotType::ConstantBuffer,
+									DescriptorType::ConstantBuffer,
 									reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 									inputSlot, shaderStageMask);
 
 							} else {
 								auto ss = std::find(_looseUniforms->_samplerBindings.begin(), _looseUniforms->_samplerBindings.end(), hashName);
 								if (ss != _looseUniforms->_samplerBindings.end()) {
-									if (reflectionVariable._binding._bindingPoint >= descSetSig._bindings.size() || descSetSig._bindings[reflectionVariable._binding._bindingPoint] != DescriptorType::Sampler)
+									if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Sampler)
 										Throw(std::runtime_error(""));
 
-									if (reflectionVariable._slotType != RenderCore::DescriptorSetSignature::SlotType::Sampler)
+									if (reflectionVariable._slotType != DescriptorType::Sampler)
 										Throw(std::runtime_error(""));
 
 									auto inputSlot = std::distance(_looseUniforms->_samplerBindings.begin(), ss);
 									AddLooseUniformBinding(
-										RenderCore::DescriptorSetSignature::SlotType::Sampler,
+										DescriptorType::Sampler,
 										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 										inputSlot, shaderStageMask);
 
@@ -415,9 +416,6 @@ namespace RenderCore { namespace Metal_Vulkan
 							Throw(std::runtime_error(""));
 						
 						auto& descSetSlot = fixedDescSet->second.second->_slots[reflectionVariable._binding._bindingPoint];
-						if (!XlEqString(reflectionVariable._name, descSetSlot._name))
-							Throw(std::runtime_error(""));		// names don't agree. It's not critical for them to agree, but we're going to be strict
-
 						if (reflectionVariable._slotType != descSetSlot._type)
 							Throw(std::runtime_error(""));		// types should agree
 
@@ -507,7 +505,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			bool foundMapping = false;
 			for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
 				// todo -- don't rehash this constantly!
-				auto hashName = Hash64(pipelineLayout.GetDescriptorSetSignature(c)->_name);
+				auto hashName = pipelineLayout.GetDescriptorSetBindingName(c);
 				if (hashName == d._bindingName) {
 					// todo -- we should check compatibility between the given descriptor set and the pipeline layout
 					helper._fixedDescriptorSets.insert({c, std::make_pair(dIdx, d._layout)});
@@ -543,7 +541,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		static uint64_t WriteCBBindings(
-			DescriptorSetBuilder& builder,
+			ProgressiveDescriptorSetBuilder& builder,
 			TemporaryBufferSpace& temporaryBufferSpace,
 			bool& requiresTemporaryBufferBarrier,
 			ObjectFactory& factory,
@@ -562,7 +560,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					assert(const_cast<IResource*>(cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
 					auto& res = *(Resource*)cbv._prebuiltBuffer;
 					assert(res.GetBuffer());
-					builder.BindCB(bind._descSetSlot, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
+					builder.Bind(bind._descSetSlot, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
 				} else {
 					auto& pkt = cbv._packet;
 					// assert(bufferCount < dimof(result._bufferInfo));
@@ -572,9 +570,9 @@ namespace RenderCore { namespace Metal_Vulkan
 					if (!tempSpace.buffer) {
 						Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
 						auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
-						builder.BindCB(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+						builder.Bind(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 					} else {
-						builder.BindCB(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+						builder.Bind(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 						requiresTemporaryBufferBarrier |= true;
 					}
 				}
@@ -586,7 +584,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		static uint64_t WriteSRVBindings(
-			DescriptorSetBuilder& builder,
+			ProgressiveDescriptorSetBuilder& builder,
 			IteratorRange<const ShaderResourceView*const*> srvs,
 			IteratorRange<const LooseUniformBind*> bindingIndicies)
 		{
@@ -594,11 +592,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			for (auto bind:bindingIndicies) {
 				assert(bind._inputUniformStreamIdx < srvs.size());
-				auto& srv = srvs[bind._inputUniformStreamIdx];
+				auto* srv = srvs[bind._inputUniformStreamIdx];
 
 				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
 
-				builder.BindSRV(bind._descSetSlot, srv);
+				builder.Bind(bind._descSetSlot, *srv);
 
 				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
 			}
@@ -607,7 +605,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		static uint64_t WriteSamplerStateBindings(
-			DescriptorSetBuilder& builder,
+			ProgressiveDescriptorSetBuilder& builder,
 			IteratorRange<const SamplerState*const*> samplerStates,
 			IteratorRange<const LooseUniformBind*> bindingIndicies)
 		{
@@ -619,7 +617,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
 
-				builder.BindSampler(bind._descSetSlot, samplerState->GetUnderlying());
+				builder.Bind(bind._descSetSlot, samplerState->GetUnderlying());
 
 				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
 			}
@@ -651,7 +649,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			// make more sense to just create and set a full descriptor set for every call to this function.
 
 			auto& globalPools = context.GetGlobalPools();
-			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(adaptiveSet._underlyingLayout.get());
+			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(adaptiveSet._layout->GetUnderlying());
 			#if defined(VULKAN_VERBOSE_DEBUG)
 				DescriptorSetDebugInfo verboseDescription;
 				verboseDescription._descriptorSetInfo = s_looseUniforms;
@@ -660,7 +658,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			bool requiresTemporaryBufferBarrier = false;
 
 			// -------- write descriptor set --------
-			DescriptorSetBuilder builder { context.GetGlobalPools() };
+			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig) };
 			auto cbBindingFlag = BindingHelper::WriteCBBindings(
 				builder,
 				context.GetTemporaryBufferSpace(),
@@ -691,17 +689,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			uint64_t dummyDescWriteMask = (~(cbBindingFlag|srvBindingFlag|ssBindingFlag)) & adaptiveSet._shaderUsageMask;
 			uint64_t dummyDescWritten = 0;
 			if (dummyDescWriteMask != 0)
-				dummyDescWritten = builder.BindDummyDescriptors(*adaptiveSet._sig, dummyDescWriteMask);
+				dummyDescWritten = builder.BindDummyDescriptors(context.GetGlobalPools(), dummyDescWriteMask);
 
 			// note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
 			//          Ideally we don't really want to have to update these constantly... Once they are 
 			//          set, maybe we can just reuse them?
 			if (cbBindingFlag | srvBindingFlag | ssBindingFlag | dummyDescWriteMask) {
-				#if defined(_DEBUG)
-					// Check to make sure the descriptor type matches the write operation we're performing
-					builder.ValidatePendingWrites(*adaptiveSet._sig);
-				#endif
-
 				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DEBUG_ONLY(, verboseDescription));
 			}
 		

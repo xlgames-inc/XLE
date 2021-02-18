@@ -9,6 +9,7 @@
 #include "ObjectFactory.h"
 #include "Pools.h"
 #include "DescriptorSet.h"
+#include "DeviceContext.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
@@ -24,10 +25,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		static const unsigned s_maxBindings = 64u;
 
         DescriptorPool*     _descriptorPool = nullptr;
+		GlobalPools*		_globalPools = nullptr;
 
 		struct Binding
 		{
-			unsigned _descriptorSetBindIndex = ~0u;
+			unsigned _descSetIndex = ~0u;
+			unsigned _slotIndex = ~0u;
 		};
 
         Binding		_constantBufferRegisters[s_maxBindings];
@@ -42,10 +45,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		class DescSet
 		{
 		public:
-			DescriptorSetBuilder				_builder;
+			ProgressiveDescriptorSetBuilder		_builder;
 			VulkanUniquePtr<VkDescriptorSet>    _activeDescSet;
 			uint64_t							_slotsFilled = 0;
-			VulkanUniquePtr<VkDescriptorSetLayout>	_layout;
+			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
 
 			#if defined(VULKAN_VERBOSE_DEBUG)
 				DescriptorSetDebugInfo _description;
@@ -53,14 +56,15 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			std::shared_ptr<DescriptorSetSignature> _signature;
 
-			DescSet(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _builder(globalPools), _layout(std::move(layout))
+			DescSet(const std::shared_ptr<CompiledDescriptorSetLayout>& layout)
+			: _builder(layout->GetDescriptorSlots()), _layout(layout)
 			{
 				#if defined(VULKAN_VERBOSE_DEBUG)
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
 			}
 
-			void Reset()
+			void Reset(GlobalPools& globalPools)
 			{
 				_builder.Reset();
 				_activeDescSet.reset();
@@ -71,17 +75,23 @@ namespace RenderCore { namespace Metal_Vulkan
 				#endif
 
 				// bind dummies in every slot
-				_builder.BindDummyDescriptors(*_signature, (1ull<<uint64_t(_signature->_bindings.size()))-1ull);
+				_builder.BindDummyDescriptors(globalPools, (1ull<<uint64_t(_signature->_slots.size()))-1ull);
 			}
 		};
-		DescSet _descSet;
+		std::vector<DescSet> _descSet;
+		bool _hasChanges = false;
 
 		LegacyRegisterBinding _legacyRegisterBindings;
 
-		Pimpl(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _descSet(std::move(layout), globalPools) {}
+		Pimpl(const CompiledPipelineLayout& layout)
+		{
+			_descSet.reserve(layout.GetDescriptorSetCount());
+			for (unsigned c=0; c<layout.GetDescriptorSetCount(); ++c)
+				_descSet.emplace_back(layout.GetDescriptorSetLayout(c));
+		}
     };
 
-    void    NumericUniformsInterface::BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
+    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
 		assert(_pimpl);
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
@@ -92,87 +102,62 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (!resources[c]->GetResource()) continue;
 
 				const auto& binding = _pimpl->_srvRegisters_boundToBuffer[startingPoint + c];
-				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				if (binding._slotIndex == ~0u) {
+					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
-				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
+				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resources[c]);
+				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
 			} else {
 				const auto& binding = _pimpl->_srvRegisters[startingPoint + c];
-				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				if (binding._slotIndex == ~0u) {
+					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
-				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
+				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resources[c]);
+				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
 			}
         }
     }
 
-    void    NumericUniformsInterface::BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
-    {
-		assert(_pimpl);
-        for (unsigned c=0; c<unsigned(resources.size()); ++c) {
-			assert((startingPoint + c) < Pimpl::s_maxBindings);
-			if  (!resources[c]) continue;
-            
-			if (!resources[c]->GetImageView()) {
-				if (!resources[c]->GetResource()) continue;
-
-				const auto& binding = _pimpl->_uavRegisters_boundToBuffer[startingPoint + c];
-				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
-					continue;
-				}
-
-				_pimpl->_descSet._builder.BindUAV(binding._descriptorSetBindIndex, resources[c]);
-			} else {
-				const auto& binding = _pimpl->_uavRegisters[startingPoint + c];
-				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
-					continue;
-				}
-
-				_pimpl->_descSet._builder.BindUAV(binding._descriptorSetBindIndex, resources[c]);
-			}
-        }
-    }
-
-    void    NumericUniformsInterface::BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
+    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
     {
 		assert(_pimpl);
         for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
             if (!uniformBuffers[c]) continue;
 
 			const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
-			if (binding._descriptorSetBindIndex == ~0u) {
+			if (binding._slotIndex == ~0u) {
 				Log(Debug) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 
-			_pimpl->_descSet._builder.BindCB(binding._descriptorSetBindIndex, { uniformBuffers[c], 0, VK_WHOLE_SIZE});
+			_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, { uniformBuffers[c], 0, VK_WHOLE_SIZE});
+			_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
         }
     }
 
-    void    NumericUniformsInterface::BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers)
+    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers)
     {
 		assert(_pimpl);
         for (unsigned c=0; c<unsigned(samplers.size()); ++c) {
             if (!samplers[c]) continue;
 
 			const auto& binding = _pimpl->_samplerRegisters[startingPoint + c];
-			if (binding._descriptorSetBindIndex == ~0u) {
+			if (binding._slotIndex == ~0u) {
 				Log(Debug) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 
-			_pimpl->_descSet._builder.BindSampler(binding._descriptorSetBindIndex, samplers[c]);
+			_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, samplers[c]);
+			_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
         }
     }
 
-    void    NumericUniformsInterface::GetDescriptorSets(
-		IteratorRange<VkDescriptorSet*> dst
-		VULKAN_VERBOSE_DEBUG_ONLY(, IteratorRange<DescriptorSetDebugInfo**> descriptions))
-    {
+	void NumericUniformsInterface::Apply(
+		DeviceContext& context,
+		SharedGraphicsEncoder& encoder) const
+	{
 		assert(_pimpl);
         // If we've had any changes this last time, we must create new
         // descriptor sets. We will use vkUpdateDescriptorSets to fill in these
@@ -180,110 +165,103 @@ namespace RenderCore { namespace Metal_Vulkan
         // bindings that haven't changed.
         // It turns out that copying using VkCopyDescriptorSet is probably going to be
         // slow. We should try a different approach.
-        if (_pimpl->_descSet._builder.HasChanges()) {
-            VulkanUniquePtr<VkDescriptorSet> newSets[1];
-			VkDescriptorSetLayout layouts[1] = { _pimpl->_descSet._layout.get() };
-            _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(layouts));
+		for(unsigned dIdx=0; dIdx<_pimpl->_descSet.size(); ++dIdx) {
+			auto&d = _pimpl->_descSet[dIdx];
+			if (d._builder.HasChanges()) {
+				VulkanUniquePtr<VkDescriptorSet> newSets[1];
+				VkDescriptorSetLayout layouts[1] = { d._layout->GetUnderlying() };
+				_pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(layouts));
 
-			auto written = _pimpl->_descSet._builder.FlushChanges(
-				_pimpl->_descriptorPool->GetDevice(),
-				newSets[0].get(),
-				_pimpl->_descSet._activeDescSet.get(),
-				_pimpl->_descSet._slotsFilled
-				VULKAN_VERBOSE_DEBUG_ONLY(, _pimpl->_descSet._description));
+				auto written = d._builder.FlushChanges(
+					_pimpl->_descriptorPool->GetDevice(),
+					newSets[0].get(),
+					d._activeDescSet.get(),
+					d._slotsFilled
+					VULKAN_VERBOSE_DEBUG_ONLY(, d._description));
 
-            _pimpl->_descSet._slotsFilled |= written;
-            _pimpl->_descSet._activeDescSet = std::move(newSets[0]);
-        }
+				d._slotsFilled |= written;
+				d._activeDescSet = std::move(newSets[0]);
 
-        for (unsigned c=0; c<unsigned(dst.size()); ++c) {
-            dst[c] = (c < 1) ? _pimpl->_descSet._activeDescSet.get() : nullptr;
-			#if defined(VULKAN_VERBOSE_DEBUG)
-				descriptions[c] = &_pimpl->_descSet._description;
-			#endif
+				encoder.BindDescriptorSet(
+					dIdx, newSets[0].get()
+					VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo{d._description}));
+			}
 		}
     }
 
 	void    NumericUniformsInterface::Reset()
 	{
-		if (_pimpl)
-			_pimpl->_descSet.Reset();
+		if (_pimpl) {
+			for (auto&d:_pimpl->_descSet)
+				d.Reset(*_pimpl->_globalPools);
+			_pimpl->_hasChanges = false;
+		}
 	}
 
 	bool	NumericUniformsInterface::HasChanges() const
 	{
-		if (!_pimpl) return false;
-		return _pimpl->_descSet._builder.HasChanges();
-	}
-
-	const DescriptorSetSignature& NumericUniformsInterface::GetSignature() const
-	{
-		assert(_pimpl);
-		return *_pimpl->_descSet._signature;
-	}
-
-	const LegacyRegisterBinding& NumericUniformsInterface::GetLegacyRegisterBindings() const
-	{
-		assert(_pimpl);
-		return _pimpl->_legacyRegisterBindings;
+		return _pimpl->_hasChanges;
 	}
 
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
-        GlobalPools& globalPools, 
-		const std::shared_ptr<DescriptorSetSignature>& signature,
-        const LegacyRegisterBinding& bindings,
-		VkShaderStageFlags stageFlags,
-		unsigned descriptorSetIndex)
+		const CompiledPipelineLayout& pipelineLayout,
+        const LegacyRegisterBinding& bindings)
     {
-		auto layout = CreateDescriptorSetLayout(factory, *signature, stageFlags);
-        _pimpl = std::make_unique<Pimpl>(std::move(layout), globalPools);
-        _pimpl->_descriptorPool = &globalPools._mainDescriptorPool;
-		_pimpl->_descSet._signature = signature;
+        _pimpl = std::make_unique<Pimpl>(pipelineLayout);
+        _pimpl->_globalPools = Internal::VulkanGlobalsTemp::GetInstance()._globalPools;
+		_pimpl->_descriptorPool = &_pimpl->_globalPools->_mainDescriptorPool;
 		_pimpl->_legacyRegisterBindings = bindings;		// we store this only so we can return it from the GetLegacyRegisterBindings() query
+		_pimpl->_hasChanges = false;
         
         Reset();
 
 		for (const auto&e:bindings._samplerRegisters) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_samplerRegisters[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_samplerRegisters[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_samplerRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
 
 		for (const auto&e:bindings._constantBufferRegisters) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_constantBufferRegisters[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_constantBufferRegisters[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_constantBufferRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
 
 		for (const auto&e:bindings._srvRegisters) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_srvRegisters[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_srvRegisters[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_srvRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
 
 		for (const auto&e:bindings._uavRegisters) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_uavRegisters[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_uavRegisters[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_uavRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
 
 		for (const auto&e:bindings._srvRegisters_boundToBuffer) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_srvRegisters_boundToBuffer[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_srvRegisters_boundToBuffer[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_srvRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
 
 		for (const auto&e:bindings._uavRegisters_boundToBuffer) {
-			if (e._targetDescriptorSet != descriptorSetIndex) continue;
 			assert(e._end <= Pimpl::s_maxBindings);
-			for (unsigned b=e._begin; b!=e._end; ++b)
-				_pimpl->_uavRegisters_boundToBuffer[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
+			for (unsigned b=e._begin; b!=e._end; ++b) {
+				_pimpl->_uavRegisters_boundToBuffer[b]._descSetIndex = e._targetDescriptorSet;
+				_pimpl->_uavRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+			}
 		}
     }
 

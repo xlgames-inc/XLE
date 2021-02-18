@@ -72,8 +72,31 @@ namespace RenderCore
         mutable uint64_t _hash;
     };
     
-    using DescriptorSetSignature = RenderCore::Assets::PredefinedDescriptorSetLayout;
-    using DescriptorSet = UniformsStream;
+    enum class DescriptorType
+	{
+		Sampler,
+		Texture,
+		ConstantBuffer,
+		UnorderedAccessTexture,
+		UnorderedAccessBuffer,
+		Unknown
+	};
+
+	const char* AsString(DescriptorType type);
+    DescriptorType AsDescriptorType(StringSection<> type);
+
+    struct DescriptorSlot
+    {
+        DescriptorType _type = DescriptorType::Unknown;
+        unsigned _count = 1;
+    };
+
+    class DescriptorSetSignature
+    {
+    public:
+        std::vector<DescriptorSlot> _slots;
+        uint64_t GetHash() const;		// hash of content, not including name
+    };
 }
 
 

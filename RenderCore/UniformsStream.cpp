@@ -58,5 +58,34 @@ namespace RenderCore
     UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
     UniformsStreamInterface::~UniformsStreamInterface() {}
 
+
+    static const char* s_descriptorTypeNames[] = {
+		"Sampler",
+		"Texture",
+		"ConstantBuffer",
+		"UnorderedAccessTexture",
+		"UnorderedAccessBuffer"
+	};
+
+	const char* AsString(DescriptorType type)
+	{
+		if (unsigned(type) < dimof(s_descriptorTypeNames))
+			return s_descriptorTypeNames[unsigned(type)];
+        return "<<unknown>>";
+	}
+
+	DescriptorType AsDescriptorType(StringSection<> type)
+	{
+		for (unsigned c=0; c<dimof(s_descriptorTypeNames); ++c)
+			if (XlEqString(type, s_descriptorTypeNames[c]))
+				return (DescriptorType)c;
+		return DescriptorType::Unknown;
+	}
+
+    uint64_t DescriptorSetSignature::GetHash() const
+	{
+		return Hash64(AsPointer(_slots.begin()), AsPointer(_slots.end()));
+	}
+
 }
 

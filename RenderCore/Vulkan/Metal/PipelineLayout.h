@@ -15,12 +15,11 @@
 #include <string>
 #include <unordered_map>
 
-namespace RenderCore { class CompiledShaderByteCode; }
+namespace RenderCore { class CompiledShaderByteCode; class ConstantBufferElementDesc; class DescriptorSetSignature; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;
-	class DescriptorSetSignature;
 	class DescriptorSetSignatureFile;
 	class RootSignature;
 	class LegacyRegisterBinding;
@@ -29,189 +28,167 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ComputeShader;
 }}
 
-namespace RenderCore { namespace Metal_Vulkan { namespace Internal
+namespace RenderCore { namespace Metal_Vulkan
 {
-
-#if 0
-	class BoundSignatureFile
-	{
-	public:
-		
-
-		const DescriptorSet*	GetDescriptorSet(uint64_t signatureFile, uint64_t hashName) const;
-		void					RegisterSignatureFile(uint64_t hashName, const DescriptorSetSignatureFile& signatureFile);
-
-		BoundSignatureFile(ObjectFactory& objectFactory, GlobalPools& globalPools, VkShaderStageFlags stageFlags);
-		~BoundSignatureFile();
-	private:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
-	};
-#endif
-
 	static const unsigned s_maxDescriptorSetCount = 4;
+	static const unsigned s_maxPushConstantBuffers = 4;
 
-	class PartialPipelineDescriptorsLayout
+	class CompiledPipelineLayout
 	{
 	public:
-		class DescriptorSet
-		{
-		public:
-			std::shared_ptr<DescriptorSetSignature>		_signature;
-			unsigned									_pipelineLayoutBindingIndex;
-			std::string									_name;
-		};
-		std::vector<DescriptorSet>					_descriptorSets;
-		std::vector<PushConstantsRangeSignature>	_pushConstants;
-		std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
-	};
-
-	std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
-		const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType);
-
-	class CompiledDescriptorSetLayoutCache;
-
-	class VulkanPipelineLayout
-	{
-	public:
-		using DescriptorSetBinding = unsigned;
-		using DescriptorSetLayoutPtr = VulkanSharedPtr<VkDescriptorSetLayout>;
+		using DescriptorSetIndex = unsigned;
+		using DescriptorSetLayoutPtr = std::shared_ptr<CompiledDescriptorSetLayout>;
 		using DescriptorSetPtr = VulkanSharedPtr<VkDescriptorSet>;
 		
-		VkPipelineLayout			GetUnderlying() const;
-		const DescriptorSetLayoutPtr&	GetUnderlyingDescriptorSetLayout(DescriptorSetBinding) const;
-		const DescriptorSetPtr&			GetBlankDescriptorSet(DescriptorSetBinding) const;
-		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSetSignature(DescriptorSetBinding) const;
-		unsigned 					GetDescriptorSetCount() const;
+		VkPipelineLayout				GetUnderlying() const;
+		const DescriptorSetLayoutPtr&	GetDescriptorSetLayout(DescriptorSetIndex) const;
+		const DescriptorSetPtr&			GetBlankDescriptorSet(DescriptorSetIndex) const;
+		uint64_t						GetDescriptorSetBindingName(DescriptorSetIndex) const;
+		unsigned 						GetDescriptorSetCount() const;
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
-			const DescriptorSetDebugInfo& GetBlankDescriptorSetDebugInfo(DescriptorSetBinding) const;
+			const DescriptorSetDebugInfo& GetBlankDescriptorSetDebugInfo(DescriptorSetIndex) const;
 			void WriteDebugInfo(
 				std::ostream&& output,
 				IteratorRange<const CompiledShaderByteCode**> shaders,
 				IteratorRange<const DescriptorSetDebugInfo*> descriptorSets);
 		#endif
 
-		VulkanPipelineLayout(
+		struct DescriptorSetBinding
+		{
+			std::string _name;
+			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
+			DescriptorSetPtr _blankDescriptorSet;
+
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				DescriptorSetDebugInfo _blankDescriptorSetDebugInfo;
+			#endif
+		};
+
+		struct PushConstantsBinding
+		{
+			std::string _name;
+			unsigned _cbSize = 0;
+			VkShaderStageFlags _stageFlags = 0;
+			IteratorRange<const ConstantBufferElementDesc*> _cbElements;
+		};
+
+		CompiledPipelineLayout(
 			ObjectFactory& factory,
-			CompiledDescriptorSetLayoutCache& cache,
-			IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
-			VkShaderStageFlags stageFlags);
+			IteratorRange<const DescriptorSetBinding*> descriptorSets,
+			IteratorRange<const PushConstantsBinding*> pushConstants);
 	private:
-		
+		VulkanUniquePtr<VkPipelineLayout> _pipelineLayout;
+
 		DescriptorSetLayoutPtr	_descriptorSetLayouts[s_maxDescriptorSetCount];
 		DescriptorSetPtr		_blankDescriptorSets[s_maxDescriptorSetCount];
-		std::shared_ptr<DescriptorSetSignature> _descriptorSetSignature[s_maxDescriptorSetCount];
 		unsigned				_descriptorSetCount;
-		VulkanUniquePtr<VkPipelineLayout> _pipelineLayout;
+		unsigned 				_pushConstantBufferCount;
+
+		uint64_t				_descriptorSetBindingNames[s_maxDescriptorSetCount];
+		uint64_t				_pushConstantBufferBindingNames[s_maxPushConstantBuffers];
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _blankDescriptorSetsDebugInfo[s_maxDescriptorSetCount];
-			std::shared_ptr<LegacyRegisterBinding> _legacyRegisterBinding;
+			std::string _descriptorSetStringNames[s_maxDescriptorSetCount];
 		#endif
 	};
 
-	void ValidateRootSignature(
-		VkPhysicalDevice physDev,
-		const DescriptorSetSignatureFile& signatureFile);
-
-	/*mutable VulkanUniquePtr<VkPipelineLayout>	_cachedPipelineLayout;
-	mutable unsigned							_cachedPipelineLayoutId = 0;
-	mutable unsigned							_cachedDescriptorSetCount = 0;*/
-
-#if 0
-	class PipelineDescriptorsLayoutBuilder
-	{
-	public:
-		struct FixedDescriptorSetLayout
-		{
-			VulkanSharedPtr<VkDescriptorSetLayout>		_descriptorSet;
-			unsigned									_bindingIndex = ~0u;
-		};
-		FixedDescriptorSetLayout _fixedDescriptorSetLayout[s_maxDescriptorSetCount];
-
-		VkPipelineLayout	GetPipelineLayout() const { return _pipelineLayout; }
-		unsigned			GetDescriptorSetCount() const { return _descriptorSetCount; }
-		void				SetShaderBasedDescriptorSets(const PartialPipelineDescriptorsLayout&);
-
-		unsigned			_shaderStageMask = 0u;
-		ObjectFactory*		_factory = nullptr;
-
-		PipelineDescriptorsLayoutBuilder();
-		~PipelineDescriptorsLayoutBuilder();
-	private:
-		VkPipelineLayout	_pipelineLayout;
-		unsigned			_descriptorSetCount = 0u;
-		unsigned			_pipelineLayoutId = 1u;
-	};
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
-
-	class VulkanGlobalsTemp
-	{
-	public:
-		std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
-		std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
-
-		GlobalPools* _globalPools;
-
-		static VulkanGlobalsTemp& GetInstance();
-
-		// std::shared_ptr<BoundSignatureFile> _boundGraphicsSignatures;
-		// std::shared_ptr<BoundSignatureFile> _boundComputeSignatures;
-		// static const unsigned s_mainSignature = 1;
-
-		// std::shared_ptr<PartialPipelineDescriptorsLayout> _mainGraphicsConfig;
-		// std::shared_ptr<PartialPipelineDescriptorsLayout> _mainComputeConfig;
-
-			// note -- move this into GlobalPools?
-		std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
-
-		std::shared_ptr<VulkanPipelineLayout> _graphicsPipelineLayout;
-		std::shared_ptr<VulkanPipelineLayout> _computePipelineLayout;
-
-		const std::shared_ptr<VulkanPipelineLayout>& GetPipelineLayout(const ShaderProgram&);
-		const std::shared_ptr<VulkanPipelineLayout>& GetPipelineLayout(const ComputeShader&);
-
-		unsigned _graphicsUniformStreamToDescriptorSetBinding[4];
-		unsigned _computeUniformStreamToDescriptorSetBinding[4];
-
-		VulkanGlobalsTemp();
-		~VulkanGlobalsTemp();
-	};
-
-
-	inline VkPipelineLayout VulkanPipelineLayout::GetUnderlying() const { return _pipelineLayout.get(); }
-	inline auto VulkanPipelineLayout::GetUnderlyingDescriptorSetLayout(DescriptorSetBinding binding) const -> const DescriptorSetLayoutPtr&
+	inline VkPipelineLayout CompiledPipelineLayout::GetUnderlying() const { return _pipelineLayout.get(); }
+		
+	inline auto CompiledPipelineLayout::GetDescriptorSetLayout(DescriptorSetIndex binding) const -> const DescriptorSetLayoutPtr&
 	{
 		assert(binding < _descriptorSetCount);
 		return _descriptorSetLayouts[binding];
 	}
-	inline auto VulkanPipelineLayout::GetBlankDescriptorSet(DescriptorSetBinding binding) const -> const DescriptorSetPtr&
+
+	inline auto CompiledPipelineLayout::GetBlankDescriptorSet(DescriptorSetIndex binding) const -> const DescriptorSetPtr&
 	{
 		assert(binding < _descriptorSetCount);
 		return _blankDescriptorSets[binding];
 	}
-	inline const std::shared_ptr<DescriptorSetSignature>& VulkanPipelineLayout::GetDescriptorSetSignature(DescriptorSetBinding binding) const
+
+	inline uint64_t CompiledPipelineLayout::GetDescriptorSetBindingName(DescriptorSetIndex binding) const
 	{
 		assert(binding < _descriptorSetCount);
-		return _descriptorSetSignature[binding];
+		return _descriptorSetBindingNames[binding];
 	}
-	inline unsigned VulkanPipelineLayout::GetDescriptorSetCount() const
+
+	inline unsigned CompiledPipelineLayout::GetDescriptorSetCount() const
 	{
 		return _descriptorSetCount;
 	}
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
-		inline const DescriptorSetDebugInfo& VulkanPipelineLayout::GetBlankDescriptorSetDebugInfo(DescriptorSetBinding binding) const
+		inline const DescriptorSetDebugInfo& CompiledPipelineLayout::GetBlankDescriptorSetDebugInfo(DescriptorSetIndex binding) const
 		{
 			assert(binding < _descriptorSetCount);
 			return _blankDescriptorSetsDebugInfo[binding];
 		}
 	#endif
 
-}}}
+	namespace Internal
+	{
+		class PartialPipelineDescriptorsLayout
+		{
+		public:
+			class DescriptorSet
+			{
+			public:
+				std::shared_ptr<DescriptorSetSignature>		_signature;
+				unsigned									_pipelineLayoutBindingIndex;
+				std::string									_name;
+			};
+			std::vector<DescriptorSet>					_descriptorSets;
+			std::vector<PushConstantsRangeSignature>	_pushConstants;
+			std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
+		};
+
+		std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
+			const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType);
+
+		class CompiledDescriptorSetLayoutCache;
+		std::shared_ptr<CompiledPipelineLayout> CreateCompiledPipelineLayout(
+			ObjectFactory& factory,
+			CompiledDescriptorSetLayoutCache& cache,
+			IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
+			VkShaderStageFlags stageFlags);
+
+		void ValidateRootSignature(
+			VkPhysicalDevice physDev,
+			const DescriptorSetSignatureFile& signatureFile);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
+
+		class VulkanGlobalsTemp
+		{
+		public:
+			std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
+			std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
+
+			GlobalPools* _globalPools;
+
+			static VulkanGlobalsTemp& GetInstance();
+
+				// note -- move this into GlobalPools?
+			std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
+
+			std::shared_ptr<CompiledPipelineLayout> _graphicsPipelineLayout;
+			std::shared_ptr<CompiledPipelineLayout> _computePipelineLayout;
+
+			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ShaderProgram&);
+			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ComputeShader&);
+
+			const LegacyRegisterBinding& GetLegacyRegisterBinding();
+
+			unsigned _graphicsUniformStreamToDescriptorSetBinding[4];
+			unsigned _computeUniformStreamToDescriptorSetBinding[4];
+
+			VulkanGlobalsTemp();
+			~VulkanGlobalsTemp();
+		};
+	}
+}}
 

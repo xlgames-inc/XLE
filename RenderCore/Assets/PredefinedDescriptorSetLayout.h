@@ -11,6 +11,7 @@
 
 namespace Assets { class DirectorySearchRules; class DependencyValidation; }
 namespace Utility { class ConditionalProcessingTokenizer; }
+namespace RenderCore { enum class DescriptorType; }
 
 namespace RenderCore { namespace Assets 
 {
@@ -35,16 +36,12 @@ namespace RenderCore { namespace Assets
 		// VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
 		// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
 
-		enum class SlotType { Texture, Sampler, ConstantBuffer };
-		struct DescriptorSlot
+		struct ConditionalDescriptorSlot
 		{
 			std::string _name;
+			DescriptorType _type;
 			unsigned _arrayElementCount = 0u;
-			SlotType _type;
 			unsigned _cbIdx;		// this is an idx into the _constantBuffers array for constant buffer types
-		};
-		struct ConditionalDescriptorSlot : public DescriptorSlot
-		{
 			std::string _conditions;
 		};
 		std::vector<ConditionalDescriptorSlot> _slots;
@@ -60,7 +57,7 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
 	protected:
-		void ParseSlot(ConditionalProcessingTokenizer& iterator, SlotType type);
+		void ParseSlot(ConditionalProcessingTokenizer& iterator, DescriptorType type);
 
 		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 	};

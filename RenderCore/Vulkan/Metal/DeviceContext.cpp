@@ -157,21 +157,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			stageFlags, 0, (uint32_t)data.size(), data.begin());
 	}
 
-	void			SharedGraphicsEncoder::RebindNumericDescriptorSet()
-	{
-		VkDescriptorSet descSets[1];
-		#if defined(VULKAN_VERBOSE_DEBUG)
-			DescriptorSetDebugInfo* descriptions[1];
-			_sharedState->_graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets), MakeIteratorRange(descriptions));
-			BindDescriptorSet(
-				_sharedState->_graphicsDescriptors._numericBindingsSlot, descSets[0], 
-				DescriptorSetDebugInfo{*descriptions[0]});
-		#else
-			_sharedState->_graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
-			BindDescriptorSet(_sharedState->_graphicsDescriptors._numericBindingsSlot, descSets[0]);
-		#endif
-	}
-
 	unsigned SharedGraphicsEncoder::GetDescriptorSetCount()
 	{
 		return 4;
@@ -190,21 +175,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	VkPipelineLayout ComputeEncoder_ProgressivePipeline::GetPipelineLayout()
 	{
 		return Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout->GetUnderlying();
-	}
-
-	void			ComputeEncoder_ProgressivePipeline::RebindNumericDescriptorSet()
-	{
-		VkDescriptorSet descSets[1];
-		#if defined(VULKAN_VERBOSE_DEBUG)
-			DescriptorSetDebugInfo* descriptions[1];
-			_sharedState->_computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets), MakeIteratorRange(descriptions));
-			BindDescriptorSet(
-				_sharedState->_computeDescriptors._numericBindingsSlot, descSets[0], 
-				DescriptorSetDebugInfo{*descriptions[0]});
-		#else
-			_sharedState->_computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
-			BindDescriptorSet(_sharedState->_computeDescriptors._numericBindingsSlot, descSets[0]);
-		#endif
 	}
 
 	bool GraphicsEncoder_ProgressivePipeline::BindGraphicsPipeline()
@@ -422,9 +392,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			// bind descriptor sets that are pending
 			// If we've been using the pipeline layout builder directly, then we
 			// must flush those changes down to the GraphicsPipelineBuilder
-			if (_sharedState->_graphicsDescriptors._numericBindings.HasChanges()) {
-				RebindNumericDescriptorSet();
-			}
 			if (_sharedState->_graphicsDescriptors._hasSetsAwaitingFlush) {
 				_sharedState->_commandList.BindDescriptorSets(
 					VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -546,9 +513,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::ProgressiveCompute;
 
 		// bind descriptor sets that are pending
-		if (_sharedState->_computeDescriptors._numericBindings.HasChanges()) {
-			RebindNumericDescriptorSet();
-		}
 		if (_sharedState->_computeDescriptors._hasSetsAwaitingFlush) {
 			_sharedState->_commandList.BindDescriptorSets(
 				VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -622,7 +586,6 @@ namespace RenderCore { namespace Metal_Vulkan
 				_sharedState->_graphicsDescriptors._currentlyBoundDesc[c] = graphicsPipelineLayout.GetBlankDescriptorSetDebugInfo(c);
 			#endif
 		}
-		_sharedState->_graphicsDescriptors._numericBindings.Reset();
 		_sharedState->_graphicsDescriptors._hasSetsAwaitingFlush = true;
 
 		auto& computePipelineLayout = *Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout;
@@ -632,7 +595,6 @@ namespace RenderCore { namespace Metal_Vulkan
 				_sharedState->_computeDescriptors._currentlyBoundDesc[c] = computePipelineLayout.GetBlankDescriptorSetDebugInfo(c);
 			#endif
 		}
-		_sharedState->_computeDescriptors._numericBindings.Reset();
 		_sharedState->_computeDescriptors._hasSetsAwaitingFlush = true;
 	}
 
@@ -804,26 +766,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _sharedState->_renderPassSubpass;
 	}
 
-	NumericUniformsInterface& DeviceContext::GetNumericUniforms(ShaderStage stage)
-	{
-		switch (stage) {
-		case ShaderStage::Pixel:
-			return _sharedState->_graphicsDescriptors._numericBindings;
-		case ShaderStage::Compute:
-			return _sharedState->_computeDescriptors._numericBindings;
-		default:
-			// since the numeric uniforms are associated with a descriptor set, we don't
-			// distinguish between different shader stages (unlike some APIs where constants
-			// are set for each stage independantly)
-			// Hence we can't return anything sensible here.
-			Throw(::Exceptions::BasicLabel("Numeric uniforms only supported for pixel shader in Vulkan"));
-		}
-	}
-
 	static std::shared_ptr<DescriptorSetSignature> GetNumericBindingsDescriptorSet(const DescriptorSetSignatureFile& source)
 	{
 		for (const auto&d:source._descriptorSets)
-			if (d->_name == "Numeric") return d;
+			if (d.first == "Numeric") return d.second;
 		return nullptr;
 	}
 
@@ -842,16 +788,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto graphicsPartialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
 				*globals._graphicsRootSignatureFile, PipelineType::Graphics);
 
-			globals._graphicsPipelineLayout = std::make_shared<Internal::VulkanPipelineLayout>(
+			globals._graphicsPipelineLayout = Internal::CreateCompiledPipelineLayout(
 				*_factory, *globals._compiledDescriptorSetLayoutCache, 
 				MakeIteratorRange(graphicsPartialLayout.get(), graphicsPartialLayout.get()+1),
 				VK_SHADER_STAGE_ALL_GRAPHICS);
 			
-			_sharedState->_graphicsDescriptors.BindNumericUniforms(
-				GetNumericBindingsDescriptorSet(*globals._graphicsRootSignatureFile),
-				*globals._graphicsRootSignatureFile->_legacyRegisterBindingSettings[0],	// hack -- just selecting first
-				VK_SHADER_STAGE_ALL_GRAPHICS, 3);
-
 			// find the uniform stream bindings
 			const auto& root = *globals._graphicsRootSignatureFile->GetRootSignature(Hash64(globals._graphicsRootSignatureFile->_mainRootSignature));
 			for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
@@ -869,14 +810,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto computePartialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
 				*globals._computeRootSignatureFile, PipelineType::Compute);
 
-			globals._computePipelineLayout = std::make_shared<Internal::VulkanPipelineLayout>(
+			globals._computePipelineLayout = Internal::CreateCompiledPipelineLayout(
 				*_factory, *globals._compiledDescriptorSetLayoutCache, MakeIteratorRange(computePartialLayout.get(), computePartialLayout.get()+1),
 				VK_SHADER_STAGE_COMPUTE_BIT);
-
-			_sharedState->_computeDescriptors.BindNumericUniforms(
-				GetNumericBindingsDescriptorSet(*globals._computeRootSignatureFile),
-				*globals._computeRootSignatureFile->_legacyRegisterBindingSettings[0],	// hack -- just selecting first
-				VK_SHADER_STAGE_COMPUTE_BIT, 2);
 
 			const auto& root = *globals._computeRootSignatureFile->GetRootSignature(Hash64(globals._computeRootSignatureFile->_mainRootSignature));
 			for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
@@ -915,6 +851,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		globals._mainGraphicsConfig = std::make_shared<PartialPipelineDescriptorsLayout>(factory, *globals._graphicsRootSignatureFile, globals.s_mainSignature, PipelineType::Graphics);
 		globals._mainComputeConfig = std::make_shared<PartialPipelineDescriptorsLayout>(factory, *globals._computeRootSignatureFile, globals.s_mainSignature, PipelineType::Compute);
 		*/
+	}
+
+	DeviceContext::~DeviceContext()
+	{
+		Internal::ValidateIsEmpty(*_captureForBindRecords);
 	}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -1084,18 +1025,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	CommandList::~CommandList() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	void DescriptorCollection::BindNumericUniforms(
-		const std::shared_ptr<DescriptorSetSignature>& signature,
-		const LegacyRegisterBinding& bindings,
-		VkShaderStageFlags stageFlags,
-		unsigned descriptorSetIndex)
-	{
-		_numericBindings = NumericUniformsInterface {
-			*_factory, *_globalPools,
-			signature, bindings, stageFlags, descriptorSetIndex };
-		_numericBindingsSlot = descriptorSetIndex;
-	}
 
 	DescriptorCollection::DescriptorCollection(
 		const ObjectFactory&    factory, 

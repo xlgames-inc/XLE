@@ -18,7 +18,7 @@ namespace RenderCore { namespace Assets
 	PredefinedCBLayout::NameAndType ParseStatement(ConditionalProcessingTokenizer& streamIterator, ParameterBox& defaults);
 	void AppendElement(PredefinedCBLayout& cbLayout, const PredefinedCBLayout::NameAndType& input, unsigned cbIterator[PredefinedCBLayout::AlignmentRules_Max]);
 
-	void PredefinedDescriptorSetLayout::ParseSlot(ConditionalProcessingTokenizer& iterator, SlotType type)
+	void PredefinedDescriptorSetLayout::ParseSlot(ConditionalProcessingTokenizer& iterator, DescriptorType type)
 	{
 		PredefinedDescriptorSetLayout::ConditionalDescriptorSlot result;
 
@@ -33,7 +33,7 @@ namespace RenderCore { namespace Assets
 
 		auto token = iterator.GetNextToken();
 
-		if (type == SlotType::Texture || type == SlotType::Sampler) {
+		if (type == DescriptorType::Texture || type == DescriptorType::Sampler) {
 			if (XlEqString(token._value, "[")) {
 				auto countToken = iterator.GetNextToken();
 				if (XlEqString(countToken._value, "]"))
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Assets
 			}
 		}
 
-		if (type == SlotType::ConstantBuffer) {
+		if (type == DescriptorType::ConstantBuffer) {
 			if (XlEqString(token._value, "{")) {
 				auto newLayout = std::make_shared<PredefinedCBLayout>();
 				unsigned currentLayoutCBIterator[PredefinedCBLayout::AlignmentRules_Max] = { 0, 0, 0 };
@@ -113,11 +113,11 @@ namespace RenderCore { namespace Assets
 				break;
 
 			if (XlEqString(token._value, "struct")) {
-				ParseSlot(iterator, SlotType::ConstantBuffer);
+				ParseSlot(iterator, DescriptorType::ConstantBuffer);
 			} else if (XlEqString(token._value, "Texture2D")) {
-				ParseSlot(iterator, SlotType::Texture);
+				ParseSlot(iterator, DescriptorType::Texture);
 			} else if (XlEqString(token._value, "SamplerState")) {
-				ParseSlot(iterator, SlotType::Sampler);
+				ParseSlot(iterator, DescriptorType::Sampler);
 			} else {
 				Throw(FormatException(StringMeld<256>() << "Expecting 'struct' keyword, but got " << token._value, token._start));
 			}
