@@ -169,6 +169,8 @@ namespace RenderCore
         IResourcePtr                CreateResource(const ResourceDesc& desc, const SubResourceInitData& initData);
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
+        virtual std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutDesc& desc) = 0;
+
         // Block until the GPU has caught up to (at least) the end of the previous frame
         virtual void                Stall() = 0;
 
@@ -177,7 +179,7 @@ namespace RenderCore
         /// <summary>Returns description & version information for this device</summary>
         /// Queries build number and build date information.
         virtual DeviceDesc          GetDesc() = 0;
-        ~IDevice();
+        virtual ~IDevice();
     };
 
     class IResource
@@ -187,7 +189,13 @@ namespace RenderCore
         virtual void*			        QueryInterface(size_t guid) = 0;
         virtual uint64_t                GetGUID() const = 0;
         virtual std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes = {}) const = 0;
-        ~IResource();
+        virtual ~IResource();
+    };
+
+    class ICompiledPipelineLayout
+    {
+    public:
+        virtual ~ICompiledPipelineLayout();
     };
 
     using Resource = IResource;     // old naming compatibility

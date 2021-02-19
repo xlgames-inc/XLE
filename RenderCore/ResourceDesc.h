@@ -70,7 +70,7 @@ namespace RenderCore
         ///     <list>
         ///         <item> BindFlag::RenderTarget | BindFlag::ShaderResource
         ///         <item> BindFlag::DepthStencil | BindFlag::ShaderResource
-        ///         <item> BindFlag::StructuredBuffer | BindFlag::VertexBuffer
+        ///         <item> BindFlag::UnorderedAccess | BindFlag::VertexBuffer
         ///     </list>
         enum Enum
         {
@@ -79,8 +79,7 @@ namespace RenderCore
             ShaderResource      = 1<<2,     ///< Used as a shader resource (ie, PSSetShaderResources)
             RenderTarget        = 1<<3,     ///< Used as a render target (ie, OMSetRenderTargets)
             DepthStencil        = 1<<4,     ///< Used as a depth buffer (ie, OMSetRenderTargets)
-            UnorderedAccess     = 1<<5,     ///< Used as a unordered access buffer (ie, CSSetUnorderedAccessViews)
-            StructuredBuffer    = 1<<6,     ///< Used as a structured buffer (ie, CSSetShaderResources)
+            UnorderedAccess     = 1<<5,     ///< Used as a unordered access texture or structured buffer (ie, CSSetUnorderedAccessViews)
             ConstantBuffer      = 1<<7,     ///< Used as a constant buffer (ie, VSSetConstantBuffers)
             StreamOutput        = 1<<8,     ///< Used as a stream-output buffer from the geomtry shader (ie, SOSetTargets)
             DrawIndirectArgs    = 1<<9,     ///< Used with DrawInstancedIndirect or DrawIndexedInstancedIndirect

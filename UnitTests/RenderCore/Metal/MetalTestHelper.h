@@ -26,12 +26,22 @@ namespace UnitTests
 		std::unique_ptr<RenderCore::ShaderService> _shaderService;
 		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
 
+        std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
+
         MetalTestHelper(RenderCore::UnderlyingAPI api);
 		MetalTestHelper(const std::shared_ptr<RenderCore::IDevice>& device);
         ~MetalTestHelper();
     };
 
     std::unique_ptr<MetalTestHelper> MakeTestHelper();
+
+    RenderCore::CompiledShaderByteCode MakeShader(
+        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, 
+        StringSection<> shader, StringSection<> shaderModel, StringSection<> defines = {});
+    RenderCore::Metal::ShaderProgram MakeShaderProgram(
+        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource,
+        const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+        StringSection<> vs, StringSection<> ps);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    U N I T   T E S T   F B    H E L P E R

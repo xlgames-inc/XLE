@@ -6,60 +6,72 @@
 #include "Types.h"
 #include "Format.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/BitUtils.h"
 #include "../Core/SelectConfiguration.h"
+#include "../Core/Exceptions.h"
+#include <stdexcept>
 
 namespace RenderCore 
 {
 
-    void UniformsStreamInterface::BindConstantBuffer(unsigned slot, const CBBinding& binding)
-    {
-        if (_cbBindings.size() <= slot)
-            _cbBindings.resize(slot+1);
+	void UniformsStreamInterface::BindBufferView(unsigned slot, const CBBinding& binding)
+	{
+		if (_cbBindings.size() <= slot)
+			_cbBindings.resize(slot+1);
 
-        _cbBindings[slot] = RetainedCBBinding {
-            binding._hashName,
-            std::vector<ConstantBufferElementDesc>(binding._elements.begin(), binding._elements.end())
-        };
-        _hash = 0;
-    }
+		_cbBindings[slot] = RetainedCBBinding {
+			binding._hashName,
+			std::vector<ConstantBufferElementDesc>(binding._elements.begin(), binding._elements.end())
+		};
+		_hash = 0;
+	}
 
-    void UniformsStreamInterface::BindResource(unsigned slot, uint64_t hashName)
-    {
-        if (_srvBindings.size() <= slot)
-            _srvBindings.resize(slot+1);
-        _srvBindings[slot] = hashName;
-        _hash = 0;
-    }
+	void UniformsStreamInterface::BindBufferView(unsigned slot, uint64_t hashName)
+	{
+		if (_cbBindings.size() <= slot)
+			_cbBindings.resize(slot+1);
 
-    void UniformsStreamInterface::BindSampler(unsigned slot, uint64_t hashName)
-    {
-        if (_samplerBindings.size() <= slot)
-            _samplerBindings.resize(slot+1);
-        _samplerBindings[slot] = hashName;
-        _hash = 0;
-    }
+		_cbBindings[slot] = RetainedCBBinding { hashName, std::vector<ConstantBufferElementDesc>{} };
+		_hash = 0;
+	}
 
-    uint64_t UniformsStreamInterface::GetHash() const
-    {
-        if (expect_evaluation(_hash==0, false)) {
-            _hash = DefaultSeed64;
-            // to prevent some oddities when the same hash value could be in either a CB or SRV
-            // we need to include the count of the first array we look through in the hash
-            _hash = HashCombine((uint64_t)_cbBindings.size(), _hash);
-            for (const auto& c:_cbBindings)
-                _hash = HashCombine(c._hashName, _hash);
-            _hash = HashCombine(Hash64(AsPointer(_srvBindings.begin()), AsPointer(_srvBindings.end())), _hash);
-            _hash = HashCombine(Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end())), _hash);
-        }
+	void UniformsStreamInterface::BindTextureView(unsigned slot, uint64_t hashName)
+	{
+		if (_srvBindings.size() <= slot)
+			_srvBindings.resize(slot+1);
+		_srvBindings[slot] = hashName;
+		_hash = 0;
+	}
 
-        return _hash;
-    }
+	void UniformsStreamInterface::BindSampler(unsigned slot, uint64_t hashName)
+	{
+		if (_samplerBindings.size() <= slot)
+			_samplerBindings.resize(slot+1);
+		_samplerBindings[slot] = hashName;
+		_hash = 0;
+	}
 
-    UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
-    UniformsStreamInterface::~UniformsStreamInterface() {}
+	uint64_t UniformsStreamInterface::GetHash() const
+	{
+		if (expect_evaluation(_hash==0, false)) {
+			_hash = DefaultSeed64;
+			// to prevent some oddities when the same hash value could be in either a CB or SRV
+			// we need to include the count of the first array we look through in the hash
+			_hash = HashCombine((uint64_t)_cbBindings.size(), _hash);
+			for (const auto& c:_cbBindings)
+				_hash = HashCombine(c._hashName, _hash);
+			_hash = HashCombine(Hash64(AsPointer(_srvBindings.begin()), AsPointer(_srvBindings.end())), _hash);
+			_hash = HashCombine(Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end())), _hash);
+		}
+
+		return _hash;
+	}
+
+	UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
+	UniformsStreamInterface::~UniformsStreamInterface() {}
 
 
-    static const char* s_descriptorTypeNames[] = {
+	static const char* s_descriptorTypeNames[] = {
 		"Sampler",
 		"Texture",
 		"ConstantBuffer",
@@ -71,7 +83,7 @@ namespace RenderCore
 	{
 		if (unsigned(type) < dimof(s_descriptorTypeNames))
 			return s_descriptorTypeNames[unsigned(type)];
-        return "<<unknown>>";
+		return "<<unknown>>";
 	}
 
 	DescriptorType AsDescriptorType(StringSection<> type)
@@ -82,10 +94,96 @@ namespace RenderCore
 		return DescriptorType::Unknown;
 	}
 
-    uint64_t DescriptorSetSignature::GetHash() const
+	uint64_t DescriptorSetSignature::GetHash() const
 	{
 		return Hash64(AsPointer(_slots.begin()), AsPointer(_slots.end()));
 	}
+
+	void PipelineLayoutDesc::AppendDescriptorSet(
+		const std::string& name,
+		const DescriptorSetSignature& signature)
+	{
+		_descriptorSets.push_back({name, signature});
+	}
+
+	void PipelineLayoutDesc::AppendPushConstants(
+		const std::string& name,
+		IteratorRange<const ConstantBufferElementDesc*> elements,
+		ShaderStage shaderStage)
+	{
+		PushConstantsBinding binding;
+		binding._name = name;
+		binding._cbSize = CalculateSize(elements);
+		binding._cbElements = { elements.begin(), elements.end() };
+		binding._shaderStage = shaderStage;
+		_pushConstants.push_back(std::move(binding));
+	}
+
+	void PipelineLayoutDesc::AppendPushConstants(
+		const std::string& name,
+		size_t bufferSize,
+		ShaderStage shaderStage)
+	{
+		PushConstantsBinding binding;
+		binding._name = name;
+		binding._cbSize = bufferSize;
+		binding._shaderStage = shaderStage;
+		_pushConstants.push_back(std::move(binding));
+	}
+
+	PipelineLayoutDesc::PipelineLayoutDesc() {}
+	PipelineLayoutDesc::~PipelineLayoutDesc() {}
+
+	unsigned CalculateSize(IteratorRange<const ConstantBufferElementDesc*> elements)
+	{
+		// here, we're expecting the offset values in the elements to always contain good data
+		unsigned end = 0;
+		for (const auto& e:elements)
+			end = std::max(end, e._offset + BitsPerPixel(e._nativeFormat)/8);
+		return CeilToMultiplePow2(end, 16);
+	}
+
+	void LegacyRegisterBindingDesc::AppendEntry(
+		RegisterType type, RegisterQualifier qualifier,
+		const Entry& entry)
+	{
+		std::vector<LegacyRegisterBindingDesc::Entry>* dest =  nullptr;
+		switch (type) {
+		case LegacyRegisterBindingDesc::RegisterType::Sampler: dest = &_samplerRegisters; break;
+		case LegacyRegisterBindingDesc::RegisterType::ShaderResource:
+			dest = (qualifier == LegacyRegisterBindingDesc::RegisterQualifier::Buffer) ? &_srvRegisters_boundToBuffer : &_srvRegisters;
+			break;
+		case LegacyRegisterBindingDesc::RegisterType::ConstantBuffer: dest = &_constantBufferRegisters; break;
+		case LegacyRegisterBindingDesc::RegisterType::UnorderedAccess:
+			dest = (qualifier == LegacyRegisterBindingDesc::RegisterQualifier::Buffer) ? &_uavRegisters_boundToBuffer : &_uavRegisters; 
+			break;
+		default: assert(0);
+		}
+
+		auto di = dest->begin();
+		while (di!=dest->end() && di->_begin < entry._end) ++di;
+
+		if (di != dest->begin() && (di-1)->_end > entry._begin)
+			Throw(std::runtime_error("Register overlap found in ReadLegacyRegisterBinding"));
+
+		dest->insert(di, entry);
+	}
+
+	auto LegacyRegisterBindingDesc::GetEntries(RegisterType type, RegisterQualifier qualifier) const -> IteratorRange<const Entry*>
+	{
+		switch (type) {
+		case RegisterType::Sampler: return MakeIteratorRange(_samplerRegisters);
+		case RegisterType::ShaderResource: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_srvRegisters_boundToBuffer) : MakeIteratorRange(_srvRegisters);
+		case RegisterType::ConstantBuffer: return MakeIteratorRange(_constantBufferRegisters);
+		case RegisterType::UnorderedAccess: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_uavRegisters_boundToBuffer) : MakeIteratorRange(_uavRegisters);
+		default:
+			assert(0);
+			return {};
+		}
+	}
+
+	LegacyRegisterBindingDesc::LegacyRegisterBindingDesc() {}
+	LegacyRegisterBindingDesc::~LegacyRegisterBindingDesc() {}
 
 }
 

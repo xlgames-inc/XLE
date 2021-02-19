@@ -81,7 +81,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<DescSet> _descSet;
 		bool _hasChanges = false;
 
-		LegacyRegisterBinding _legacyRegisterBindings;
+		LegacyRegisterBindingDesc _legacyRegisterBindings;
 
 		Pimpl(const CompiledPipelineLayout& layout)
 		{
@@ -203,10 +203,19 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _pimpl->_hasChanges;
 	}
 
+	static unsigned LookupDescriptorSet(const CompiledPipelineLayout& pipelineLayout, uint64_t bindingName)
+	{
+		auto bindingNames = pipelineLayout.GetDescriptorSetBindingNames();
+		for (unsigned c=0; c<bindingNames.size(); ++c)
+			if (bindingNames[c] == bindingName)
+				return c;
+		return ~0u;
+	}
+
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
 		const CompiledPipelineLayout& pipelineLayout,
-        const LegacyRegisterBinding& bindings)
+        const LegacyRegisterBindingDesc& bindings)
     {
         _pimpl = std::make_unique<Pimpl>(pipelineLayout);
         _pimpl->_globalPools = Internal::VulkanGlobalsTemp::GetInstance()._globalPools;
@@ -216,51 +225,75 @@ namespace RenderCore { namespace Metal_Vulkan
         
         Reset();
 
-		for (const auto&e:bindings._samplerRegisters) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::Sampler)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_samplerRegisters[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_samplerRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_samplerRegisters[b]._descSetIndex = descSet;
+					_pimpl->_samplerRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
 
-		for (const auto&e:bindings._constantBufferRegisters) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::ConstantBuffer)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_constantBufferRegisters[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_constantBufferRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_constantBufferRegisters[b]._descSetIndex = descSet;
+					_pimpl->_constantBufferRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
 
-		for (const auto&e:bindings._srvRegisters) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::ShaderResource)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_srvRegisters[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_srvRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_srvRegisters[b]._descSetIndex = descSet;
+					_pimpl->_srvRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
 
-		for (const auto&e:bindings._uavRegisters) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::UnorderedAccess)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_uavRegisters[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_uavRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_uavRegisters[b]._descSetIndex = descSet;
+					_pimpl->_uavRegisters[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
 
-		for (const auto&e:bindings._srvRegisters_boundToBuffer) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::ShaderResource, LegacyRegisterBindingDesc::RegisterQualifier::Buffer)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_srvRegisters_boundToBuffer[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_srvRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_srvRegisters_boundToBuffer[b]._descSetIndex = descSet;
+					_pimpl->_srvRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
 
-		for (const auto&e:bindings._uavRegisters_boundToBuffer) {
+		for (const auto&e:bindings.GetEntries(LegacyRegisterBindingDesc::RegisterType::UnorderedAccess, LegacyRegisterBindingDesc::RegisterQualifier::Buffer)) {
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b) {
-				_pimpl->_uavRegisters_boundToBuffer[b]._descSetIndex = e._targetDescriptorSet;
-				_pimpl->_uavRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+				auto descSet = LookupDescriptorSet(pipelineLayout, e._targetDescriptorSetBindingName);
+				if (descSet != ~0u) {
+					assert(descSet == e._targetDescriptorSetIdx);
+					_pimpl->_uavRegisters_boundToBuffer[b]._descSetIndex = descSet;
+					_pimpl->_uavRegisters_boundToBuffer[b]._slotIndex = b-e._begin+e._targetBegin;
+				}
 			}
 		}
     }

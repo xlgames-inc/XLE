@@ -607,7 +607,7 @@ namespace RenderCore { namespace Metal_Vulkan
     static IResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
     {
         auto desc = CreateDesc(
-            BindFlag::StructuredBuffer, 
+            BindFlag::UnorderedAccess, 
             0, GPUAccess::Read|GPUAccess::Write, 
             LinearBufferDesc::Create(256, 256), "DummyBuffer");
         return CreateResource(factory, desc);

@@ -12,6 +12,7 @@
 #include "FrameBuffer.h"
 #include "ObjectFactory.h"
 #include "VulkanCore.h"
+#include "PipelineLayout.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/HeapUtils.h"
 #include <vector>
@@ -123,6 +124,8 @@ namespace RenderCore { namespace Metal_Vulkan
         DummyResources& operator=(DummyResources&& moveFrom) never_throws;
     };
 
+    namespace Internal { class CompiledDescriptorSetLayoutCache; }
+
     class GlobalPools
     {
     public:
@@ -130,6 +133,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		DescriptorPool                      _longTermDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
         DummyResources                      _dummyResources;
+
+        std::shared_ptr<Internal::CompiledDescriptorSetLayoutCache> _descriptorSetLayoutCache;
 
         GlobalPools();
         ~GlobalPools();

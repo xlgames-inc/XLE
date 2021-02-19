@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; }
+namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; class LegacyRegisterBindingDesc; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -90,14 +90,13 @@ namespace RenderCore { namespace Metal_Vulkan
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
-		class LegacyRegisterBinding;
 		class DescriptorSetDebugInfo;
 		std::ostream& WriteDescriptorSet(
 			std::ostream&& stream,
 			const DescriptorSetDebugInfo& bindingDescription,
 			IteratorRange<const DescriptorSlot*> signature,
 			const std::string& descriptorSetName,
-			const LegacyRegisterBinding& legacyRegisterBinding,
+			const LegacyRegisterBindingDesc& legacyRegisterBinding,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound);
 	#endif

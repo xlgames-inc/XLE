@@ -427,6 +427,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
 
+		static char GetRegisterPrefix(LegacyRegisterBindingDesc::RegisterType regType)
+		{
+			switch (regType) {
+			case LegacyRegisterBindingDesc::RegisterType::Sampler: return 's';
+			case LegacyRegisterBindingDesc::RegisterType::ShaderResource: return 't';
+			case LegacyRegisterBindingDesc::RegisterType::ConstantBuffer: return 'b';
+			case LegacyRegisterBindingDesc::RegisterType::UnorderedAccess: return 'u';
+			default:
+				assert(0);
+				return ' ';
+			}
+		}
+
 		static const std::string s_columnHeader0 = "Root Signature";
 		static const std::string s_columnHeader2 = "Binding";
 		static const std::string s_columnHeader3 = "Legacy Binding";
@@ -436,7 +449,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			const DescriptorSetDebugInfo& bindingDescription,
 			IteratorRange<const DescriptorSlot*> signature,
 			const std::string& descriptorSetName,
-			const LegacyRegisterBinding& legacyBinding,
+			const LegacyRegisterBindingDesc& legacyBinding,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound)
 		{
@@ -483,16 +496,18 @@ namespace RenderCore { namespace Metal_Vulkan
 				rowCount = std::max(rowCount, (unsigned)shaderColumns[stage].size());
 
 			legacyBindingColumn.resize(rowCount);
-			for (unsigned regType=0; regType<(unsigned)LegacyRegisterBinding::RegisterType::Unknown; ++regType) {
-				auto prefix = GetRegisterPrefix((LegacyRegisterBinding::RegisterType)regType);
-				auto entries = legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType, LegacyRegisterBinding::RegisterQualifier::None);
+			for (unsigned regType=0; regType<(unsigned)LegacyRegisterBindingDesc::RegisterType::Unknown; ++regType) {
+				auto prefix = GetRegisterPrefix((LegacyRegisterBindingDesc::RegisterType)regType);
+				auto entries = legacyBinding.GetEntries((LegacyRegisterBindingDesc::RegisterType)regType, LegacyRegisterBindingDesc::RegisterQualifier::None);
 				for (const auto&e:entries)
-					if (e._targetDescriptorSet == descriptorSetIndex && e._targetBegin < rowCount)
+					if (e._targetDescriptorSetIdx == descriptorSetIndex && e._targetBegin < rowCount) {
+						assert(e._targetDescriptorSetBindingName == Hash64(descriptorSetName));
 						for (unsigned t=e._targetBegin; t<std::min(e._targetEnd, rowCount); ++t) {
 							if (!legacyBindingColumn[t].empty())
 								legacyBindingColumn[t] += ", ";
 							legacyBindingColumn[t] += prefix + std::to_string(t-e._targetBegin+e._begin);
 						}
+					}
 			}
 			for (const auto&e:legacyBindingColumn)
 				legacyBindingColumnMax = std::max(legacyBindingColumnMax, e.size());
@@ -614,9 +629,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
 		for (unsigned c=0; c<binds.size(); ++c) {
 			if (binds[c]._type == BindType::BufferView) {
-				builder.Bind(c, uniforms._constantBuffers[binds[c]._idx]);
+				builder.Bind(c, uniforms._bufferViews[binds[c]._idx]);
 			} else if (binds[c]._type == BindType::TextureView) {
-				builder.Bind(c, *(TextureView*)uniforms._resources[binds[c]._idx]);
+				builder.Bind(c, *(TextureView*)uniforms._textureViews[binds[c]._idx]);
 			} else {
 				assert(binds[c]._type == BindType::Sampler);
 				builder.Bind(c, ((SamplerState*)uniforms._samplers[binds[c]._idx])->GetUnderlying());
@@ -641,6 +656,38 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	VkDescriptorType_ AsVkDescriptorType(DescriptorType type)
 	{
+		//
+		// Vulkan has a few less common descriptor types:
+		//
+		// VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+		//			-- as the name suggests
+		//
+		// VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+		// VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+		//			-- we bind a "buffer" type object but the shader reads it like a texture
+		//			   The shader object is a "uniform samplerBuffer", which can be used with
+		//			   functions like texelFetch
+		//			   On the host, we just bind an arbitrary buffer (using VkBufferView, etc)
+		//			   See texel_buffer.cpp sample
+		//
+		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+		// VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+		//			-- like the non-dynamic versions, but there is an offset value specified
+		//			   during the call to vkCmdBindDescriptorSets
+		//			   presumably the typical use case is to bind a large host synchronized 
+		// 			   dynamic buffer and update the offset for each draw call
+		//
+		// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+		//			-- load from an attachment registered in the inputs list of the renderpass
+		//			   shader object is a "uniform subpassInput", and can be used with functions
+		//			   such as subpassLoad
+		//
+		// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT
+		// VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+		// VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV
+		//			-- extension features
+		//
+
 		switch (type) {
 		case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
 		case DescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;

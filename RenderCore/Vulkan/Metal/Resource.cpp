@@ -42,7 +42,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (bindFlags & BindFlag::DrawIndirectArgs) result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         if (bindFlags & BindFlag::TransferSrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (bindFlags & BindFlag::TransferDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        if (bindFlags & BindFlag::StructuredBuffer) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (bindFlags & BindFlag::UnorderedAccess) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
 		// from VK_EXT_transform_feedback
 		if (bindFlags & BindFlag::StreamOutput) result |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
@@ -285,6 +285,13 @@ namespace RenderCore { namespace Metal_Vulkan
 				return { 
 					ImageLayout::ShaderReadOnlyOptimal,
 					VK_ACCESS_SHADER_READ_BIT,
+					VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+					| VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+				};
+			case BindFlag::UnorderedAccess:
+				return { 
+					ImageLayout::General,
+					VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 					VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
 					| VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
 				};
@@ -543,6 +550,10 @@ namespace RenderCore { namespace Metal_Vulkan
 				_steadyStateLayout = lyt::ShaderReadOnlyOptimal;
 				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._accessFlags;
 			}
+			if (desc._bindFlags & BindFlag::UnorderedAccess) {
+				_steadyStateLayout = lyt::General;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::UnorderedAccess)._accessFlags;
+			}
 			if (desc._bindFlags & BindFlag::RenderTarget) {
 				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::ColorAttachmentOptimal : lyt::General;
 				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._accessFlags;
@@ -640,8 +651,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		// better off with a custom rolled solution that tracks the specific operations involved
 		context.CommitCommands(CommitCommandsFlags::WaitForCompletion);
 
+		auto* vulkanDevice = (IDeviceVulkan*)context.GetDevice()->QueryInterface(typeid(IDeviceVulkan).hash_code());
+		assert(vulkanDevice);
 		ResourceMap map(
-			checked_cast<IDeviceVulkan*>(context.GetDevice().get())->GetUnderlyingDevice(),
+			vulkanDevice->GetUnderlyingDevice(),
 			*const_cast<Resource*>(this),
 			ResourceMap::Mode::Read,
 			subRes);
@@ -1042,6 +1055,10 @@ namespace RenderCore { namespace Metal_Vulkan
                 }
 
 				if (!layout.size) continue;	// couldn't find this subresource?
+
+				auto defaultPitches = MakeTexturePitches(mipDesc);
+				if (!subResData._pitches._rowPitch && !subResData._pitches._slicePitch && !subResData._pitches._arrayPitch)
+					subResData._pitches = defaultPitches;
 
                 CopyMipLevel(
                     PtrAdd(map.GetData().begin(), layout.offset), size_t(layout.size),

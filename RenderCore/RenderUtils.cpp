@@ -737,6 +737,7 @@ namespace RenderCore
     IPresentationChain::~IPresentationChain() {}
     IResource::~IResource() {}
     IAnnotator::~IAnnotator() {}
+    ICompiledPipelineLayout::~ICompiledPipelineLayout() {}
 
 }
 

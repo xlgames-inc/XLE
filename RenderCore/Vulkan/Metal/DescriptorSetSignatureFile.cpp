@@ -2,6 +2,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0 
+
 #include "DescriptorSetSignatureFile.h"
 #include "../../UniformsStream.h"
 #include "../../../Assets/DepVal.h"
@@ -29,24 +31,24 @@ namespace RenderCore { namespace Metal_Vulkan
 		return RootSignature::DescriptorSetType::Unknown;
 	}
 
-    static LegacyRegisterBinding::RegisterQualifier AsQualifier(StringSection<char> str)
+    static LegacyRegisterBindingDesc::RegisterQualifier AsQualifier(StringSection<char> str)
     {
         // look for "(image)" or "(buffer)" qualifiers
-        if (str.IsEmpty() || str[0] != '(') return LegacyRegisterBinding::RegisterQualifier::None;
+        if (str.IsEmpty() || str[0] != '(') return LegacyRegisterBindingDesc::RegisterQualifier::None;
 
         if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
-            return LegacyRegisterBinding::RegisterQualifier::Buffer;
+            return LegacyRegisterBindingDesc::RegisterQualifier::Buffer;
 
         if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "texture)"))
-            return LegacyRegisterBinding::RegisterQualifier::Texture;
+            return LegacyRegisterBindingDesc::RegisterQualifier::Texture;
 
-        return LegacyRegisterBinding::RegisterQualifier::None;
+        return LegacyRegisterBindingDesc::RegisterQualifier::None;
     }
 
 	struct RegisterRange
 	{
 		unsigned long _begin = 0, _end = 0;
-		LegacyRegisterBinding::RegisterQualifier _qualifier;
+		LegacyRegisterBindingDesc::RegisterQualifier _qualifier;
 	};
 
 	static RegisterRange AsRegisterRange(StringSection<> input)
@@ -84,15 +86,15 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    static LegacyRegisterBinding::RegisterType AsLegacyRegisterType(char type)
+    static LegacyRegisterBindingDesc::RegisterType AsLegacyRegisterType(char type)
     {
         // convert between HLSL style register binding indices to a type enum
         switch (type) {
-        case 'b': return LegacyRegisterBinding::RegisterType::ConstantBuffer;
-        case 's': return LegacyRegisterBinding::RegisterType::Sampler;
-        case 't': return LegacyRegisterBinding::RegisterType::ShaderResource;
-        case 'u': return LegacyRegisterBinding::RegisterType::UnorderedAccess;
-	    default:  return LegacyRegisterBinding::RegisterType::Unknown;
+        case 'b': return LegacyRegisterBindingDesc::RegisterType::ConstantBuffer;
+        case 's': return LegacyRegisterBindingDesc::RegisterType::Sampler;
+        case 't': return LegacyRegisterBindingDesc::RegisterType::ShaderResource;
+        case 'u': return LegacyRegisterBindingDesc::RegisterType::UnorderedAccess;
+	    default:  return LegacyRegisterBindingDesc::RegisterType::Unknown;
         }
     }
 
@@ -141,13 +143,10 @@ namespace RenderCore { namespace Metal_Vulkan
         return {name, result};
     }
 
-	static std::shared_ptr<LegacyRegisterBinding> ReadLegacyRegisterBinding(
-		StreamDOMElement<InputStreamFormatter<char>>& element,
-		IteratorRange<const StringSection<>*> descriptorSetNames)
+	static std::shared_ptr<LegacyRegisterBindingDesc> ReadLegacyRegisterBinding(
+		StreamDOMElement<InputStreamFormatter<char>>& element)
 	{
-		auto result = std::make_shared<LegacyRegisterBinding>();
-		result->_name = element.Attribute("name").Value().AsString();
-		result->_hashName = Hash64(result->_name);
+		auto result = std::make_shared<LegacyRegisterBindingDesc>();
 
 		for (auto e:element.children()) {
 			auto name = e.Name();
@@ -155,7 +154,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				Throw(std::runtime_error("Legacy register binding with empty name"));
 
 			auto regType = AsLegacyRegisterType(name[0]);
-			if (regType == LegacyRegisterBinding::RegisterType::Unknown)
+			if (regType == LegacyRegisterBindingDesc::RegisterType::Unknown)
 				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
 
 			auto legacyRegisters = AsRegisterRange({name.begin()+1, name.end()});
@@ -169,36 +168,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			if ((mappedRegisters._end - mappedRegisters._begin) != (legacyRegisters._end - legacyRegisters._begin))
 				Throw(::Exceptions::BasicLabel("Number of legacy register and number of mapped registers don't match up in ReadLegacyRegisterBinding"));
 
-			auto set = e.Attribute("set").Value();
-			auto i = std::find_if(
-				descriptorSetNames.begin(), descriptorSetNames.end(),
-				[set](StringSection<> compare) { return XlEqString(set, compare); });
-			if (i == descriptorSetNames.end())
-				Throw(::Exceptions::BasicLabel("Could not find referenced descriptor set in ReadLegacyRegisterBinding (%s)", set.AsString().c_str()));
-
-			std::vector<LegacyRegisterBinding::Entry>* dest =  nullptr;
-			switch (regType) {
-			case LegacyRegisterBinding::RegisterType::Sampler: dest = &result->_samplerRegisters; break;
-			case LegacyRegisterBinding::RegisterType::ShaderResource:
-				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result->_srvRegisters_boundToBuffer : &result->_srvRegisters;
-				break;
-			case LegacyRegisterBinding::RegisterType::ConstantBuffer: dest = &result->_constantBufferRegisters; break;
-			case LegacyRegisterBinding::RegisterType::UnorderedAccess:
-				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result->_uavRegisters_boundToBuffer : &result->_uavRegisters; 
-				break;
-			default: assert(0);
-			}
-
-			auto di = dest->begin();
-			while (di!=dest->end() && di->_begin < legacyRegisters._end) ++di;
-
-			if (di != dest->end() && di->_begin < legacyRegisters._end)
-				Throw(::Exceptions::BasicLabel("Register overlap found in ReadLegacyRegisterBinding"));
-
-			dest->insert(di, LegacyRegisterBinding::Entry {
-				(unsigned)legacyRegisters._begin, (unsigned)legacyRegisters._end,
-				(unsigned)std::distance(descriptorSetNames.begin(), i),
-				(unsigned)mappedRegisters._begin, (unsigned)mappedRegisters._end });
+			result->AppendEntry(
+				regType, legacyRegisters._qualifier,
+				LegacyRegisterBindingDesc::Entry {
+					(unsigned)legacyRegisters._begin, (unsigned)legacyRegisters._end,
+					Hash64(e.Attribute("set").Value()),
+					e.Attribute("setIndex").As<unsigned>().value(),
+					(unsigned)mappedRegisters._begin, (unsigned)mappedRegisters._end });
 		}
 
 		return result;
@@ -259,26 +235,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-	IteratorRange<const LegacyRegisterBinding::Entry*>	LegacyRegisterBinding::GetEntries(RegisterType type, RegisterQualifier qualifier) const
-	{
-		switch (type) {
-		case RegisterType::Sampler: return MakeIteratorRange(_samplerRegisters);
-		case RegisterType::ShaderResource: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_srvRegisters_boundToBuffer) : MakeIteratorRange(_srvRegisters);
-		case RegisterType::ConstantBuffer: return MakeIteratorRange(_constantBufferRegisters);
-		case RegisterType::UnorderedAccess: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_uavRegisters_boundToBuffer) : MakeIteratorRange(_uavRegisters);
-		default:
-			assert(0);
-			return {};
-		}
-	}
-
-	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType)
+	char GetRegisterPrefix(LegacyRegisterBindingDesc::RegisterType regType)
 	{
 		switch (regType) {
-		case LegacyRegisterBinding::RegisterType::Sampler: return 's';
-		case LegacyRegisterBinding::RegisterType::ShaderResource: return 't';
-		case LegacyRegisterBinding::RegisterType::ConstantBuffer: return 'b';
-		case LegacyRegisterBinding::RegisterType::UnorderedAccess: return 'u';
+		case LegacyRegisterBindingDesc::RegisterType::Sampler: return 's';
+		case LegacyRegisterBindingDesc::RegisterType::ShaderResource: return 't';
+		case LegacyRegisterBindingDesc::RegisterType::ConstantBuffer: return 'b';
+		case LegacyRegisterBindingDesc::RegisterType::UnorderedAccess: return 'u';
 		default:
 			assert(0);
 			return ' ';
@@ -293,12 +256,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		return nullptr;
 	}
 
-	const std::shared_ptr<LegacyRegisterBinding>&		DescriptorSetSignatureFile::GetLegacyRegisterBinding(uint64_t name) const
+	const std::shared_ptr<LegacyRegisterBindingDesc>&		DescriptorSetSignatureFile::GetLegacyRegisterBinding(uint64_t name) const
 	{
-		for (const auto&r:_legacyRegisterBindingSettings)
+		/*for (const auto&r:_legacyRegisterBindingSettings)
 			if (r->_hashName == name)
-				return r;
-		static std::shared_ptr<LegacyRegisterBinding> dummy;
+				return r;*/
+		static std::shared_ptr<LegacyRegisterBindingDesc> dummy;
 		return dummy;
 	}
 
@@ -332,10 +295,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (XlEqString(a.Name(), "DescriptorSet")) {
 				_descriptorSets.emplace_back(ReadDescriptorSet(a));
 			} else if (XlEqString(a.Name(), "LegacyBinding")) {
-				std::vector<StringSection<>> descriptorSetNames;
-				descriptorSetNames.reserve(_descriptorSets.size());
-				for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d.first);
-				_legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
+				// std::vector<StringSection<>> descriptorSetNames;
+				// descriptorSetNames.reserve(_descriptorSets.size());
+				// for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d.first);
+				// _legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
 			} else if (XlEqString(a.Name(), "PushConstants")) {
 				_pushConstantRanges.emplace_back(ReadPushConstRange(a));
 			} else if (XlEqString(a.Name(), "RootSignature")) {
@@ -376,3 +339,4 @@ namespace RenderCore { namespace Metal_Vulkan
 
 }}
 
+#endif

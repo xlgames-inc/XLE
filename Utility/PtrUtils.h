@@ -272,11 +272,28 @@ namespace Utility
                 //  Note -- if RTTI is disabled in Debug, then it's never checked
                 //
             #if defined(_DEBUG) && FEATURE_RTTI
-                DestinationType result = dynamic_cast<DestinationType>(source);
-                assert(!source || result);
-                return result;
+                DestinationType dynamicResult = dynamic_cast<DestinationType>(source);
+				DestinationType staticResult = static_cast<DestinationType>(source);
+                assert(dynamicResult == staticResult);
+                return staticResult;
             #else
                 return static_cast<DestinationType>(source);
+            #endif
+        }
+
+	template<typename DestinationType, typename SourceType>
+        decltype(std::static_pointer_cast<DestinationType>(std::declval<const SourceType&>())) checked_pointer_cast(const SourceType& source)
+        {
+                //
+                //  Note -- if RTTI is disabled in Debug, then it's never checked
+                //
+            #if defined(_DEBUG) && FEATURE_RTTI
+                auto dynamicResult = std::dynamic_pointer_cast<DestinationType>(source);
+				auto staticResult = std::static_pointer_cast<DestinationType>(source);
+                assert(dynamicResult == staticResult);
+                return staticResult;
+            #else
+                return std::static_pointer_cast<DestinationType>(source);
             #endif
         }
 

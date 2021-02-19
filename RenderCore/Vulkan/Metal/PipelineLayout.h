@@ -7,7 +7,9 @@
 #include "VulkanForward.h"
 #include "VulkanCore.h"
 #include "DescriptorSet.h"		// (for DescriptorSetVerboseDescription)
+#include "../../IDevice.h"
 #include "../../Types.h"
+#include "../../UniformsStream.h"
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Assets/AssetUtils.h"
 #include <memory>
@@ -22,7 +24,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class DescriptorSetSignatureFile;
 	class RootSignature;
-	class LegacyRegisterBinding;
 	class PushConstantsRangeSignature;
 	class ShaderProgram;
 	class ComputeShader;
@@ -33,7 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	static const unsigned s_maxDescriptorSetCount = 4;
 	static const unsigned s_maxPushConstantBuffers = 4;
 
-	class CompiledPipelineLayout
+	class CompiledPipelineLayout : public ICompiledPipelineLayout
 	{
 	public:
 		using DescriptorSetIndex = unsigned;
@@ -43,8 +44,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkPipelineLayout				GetUnderlying() const;
 		const DescriptorSetLayoutPtr&	GetDescriptorSetLayout(DescriptorSetIndex) const;
 		const DescriptorSetPtr&			GetBlankDescriptorSet(DescriptorSetIndex) const;
-		uint64_t						GetDescriptorSetBindingName(DescriptorSetIndex) const;
 		unsigned 						GetDescriptorSetCount() const;
+
+		IteratorRange<const uint64_t*> 	GetDescriptorSetBindingNames() const;
+		IteratorRange<const uint64_t*> 	GetPushConstantsBindingNames() const;
+		const VkPushConstantRange&		GetPushConstantsRange(unsigned idx) const;		
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			const DescriptorSetDebugInfo& GetBlankDescriptorSetDebugInfo(DescriptorSetIndex) const;
@@ -53,7 +57,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				IteratorRange<const CompiledShaderByteCode**> shaders,
 				IteratorRange<const DescriptorSetDebugInfo*> descriptorSets);
 		#endif
-
+                                                                                                        
 		struct DescriptorSetBinding
 		{
 			std::string _name;
@@ -82,6 +86,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		DescriptorSetLayoutPtr	_descriptorSetLayouts[s_maxDescriptorSetCount];
 		DescriptorSetPtr		_blankDescriptorSets[s_maxDescriptorSetCount];
+		VkPushConstantRange		_pushConstantRanges[s_maxPushConstantBuffers];
 		unsigned				_descriptorSetCount;
 		unsigned 				_pushConstantBufferCount;
 
@@ -108,10 +113,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _blankDescriptorSets[binding];
 	}
 
-	inline uint64_t CompiledPipelineLayout::GetDescriptorSetBindingName(DescriptorSetIndex binding) const
+	inline auto CompiledPipelineLayout::GetDescriptorSetBindingNames() const -> IteratorRange<const uint64_t*>
 	{
-		assert(binding < _descriptorSetCount);
-		return _descriptorSetBindingNames[binding];
+		return MakeIteratorRange(_descriptorSetBindingNames, _descriptorSetBindingNames + _descriptorSetCount);
+	}
+
+	inline auto CompiledPipelineLayout::GetPushConstantsBindingNames() const -> IteratorRange<const uint64_t*>
+	{
+		return MakeIteratorRange(_pushConstantBufferBindingNames, _pushConstantBufferBindingNames + _pushConstantBufferCount);
+	}
+
+	inline const VkPushConstantRange& CompiledPipelineLayout::GetPushConstantsRange(unsigned idx) const
+	{
+		assert(idx < _pushConstantBufferCount);
+		return _pushConstantRanges[idx];
 	}
 
 	inline unsigned CompiledPipelineLayout::GetDescriptorSetCount() const
@@ -129,6 +144,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	namespace Internal
 	{
+#if 0
 		class PartialPipelineDescriptorsLayout
 		{
 		public:
@@ -141,7 +157,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			};
 			std::vector<DescriptorSet>					_descriptorSets;
 			std::vector<PushConstantsRangeSignature>	_pushConstants;
-			std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
+			std::shared_ptr<LegacyRegisterBindingDesc>		_legacyRegisterBinding;
 		};
 
 		std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
@@ -153,38 +169,64 @@ namespace RenderCore { namespace Metal_Vulkan
 			CompiledDescriptorSetLayoutCache& cache,
 			IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
 			VkShaderStageFlags stageFlags);
+#endif
 
-		void ValidateRootSignature(
+		void ValidatePipelineLayout(
 			VkPhysicalDevice physDev,
-			const DescriptorSetSignatureFile& signatureFile);
+			const PipelineLayoutDesc& pipelineLayout);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
+		struct DescriptorSetCacheResult
+		{
+			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
+			VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
+			
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				DescriptorSetDebugInfo _blankBindingsDescription;
+				std::string _name;
+			#endif
+		};
+		
+		class CompiledDescriptorSetLayoutCache
+		{
+		public:
+			const DescriptorSetCacheResult*	CompileDescriptorSetLayout(
+				const DescriptorSetSignature& signature,
+				const std::string& name,
+				VkShaderStageFlags stageFlags);
+
+			CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools);
+			~CompiledDescriptorSetLayoutCache();
+		private:
+			ObjectFactory*	_objectFactory;
+			GlobalPools*	_globalPools;
+
+			std::vector<std::pair<uint64_t, std::unique_ptr<DescriptorSetCacheResult>>> _cache;
+		};
+		std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache();
 
 		class VulkanGlobalsTemp
 		{
 		public:
-			std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
-			std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
+			// std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
+			// std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
 
 			GlobalPools* _globalPools;
+			LegacyRegisterBindingDesc _legacyRegisterBindings;
 
 			static VulkanGlobalsTemp& GetInstance();
 
 				// note -- move this into GlobalPools?
-			std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
+			// std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
 
-			std::shared_ptr<CompiledPipelineLayout> _graphicsPipelineLayout;
+			/*std::shared_ptr<CompiledPipelineLayout> _graphicsPipelineLayout;
 			std::shared_ptr<CompiledPipelineLayout> _computePipelineLayout;
 
 			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ShaderProgram&);
-			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ComputeShader&);
+			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ComputeShader&);*/
 
-			const LegacyRegisterBinding& GetLegacyRegisterBinding();
-
-			unsigned _graphicsUniformStreamToDescriptorSetBinding[4];
-			unsigned _computeUniformStreamToDescriptorSetBinding[4];
+			// const LegacyRegisterBindingDesc& GetLegacyRegisterBinding();
 
 			VulkanGlobalsTemp();
 			~VulkanGlobalsTemp();

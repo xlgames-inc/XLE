@@ -165,5 +165,7 @@ namespace RenderCore
         , _originIsUpperLeft(originIsUpperLeft)
         {}
     };
+
+    struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
 }
 

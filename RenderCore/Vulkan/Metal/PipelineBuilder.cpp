@@ -137,6 +137,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (vs) shaderStages[shaderStageCount++] = BuildShaderStage(vs.get(), VK_SHADER_STAGE_VERTEX_BIT);
 		if (gs) shaderStages[shaderStageCount++] = BuildShaderStage(gs.get(), VK_SHADER_STAGE_GEOMETRY_BIT);
 		if (ps) shaderStages[shaderStageCount++] = BuildShaderStage(ps.get(), VK_SHADER_STAGE_FRAGMENT_BIT);
+		assert(shaderStageCount != 0);
 
 		VkDynamicState dynamicStateEnables[4];
 		VkPipelineDynamicStateCreateInfo dynamicState = {};
@@ -187,7 +188,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkGraphicsPipelineCreateInfo pipeline = {};
 		pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
-		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shaderProgram)->GetUnderlying();
+		pipeline.layout = _shaderProgram->GetPipelineLayout().GetUnderlying();
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
@@ -256,7 +257,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		pipeline.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
-		pipeline.layout = Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(*_shader)->GetUnderlying();
+		pipeline.layout = _shader->GetPipelineLayout().GetUnderlying();
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 

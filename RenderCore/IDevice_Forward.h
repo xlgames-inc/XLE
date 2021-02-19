@@ -16,6 +16,7 @@ namespace RenderCore
     class IResource;
     class IThreadContext;
     class IAnnotator;
+    class ICompiledPipelineLayout;
 
     using Resource = IResource;
     using IResourcePtr = std::shared_ptr<IResource>;
@@ -24,5 +25,6 @@ namespace RenderCore
     class SubResourceInitData;
     class PresentationChainDesc;
     class SubResourceId;
+    class PipelineLayoutDesc;
 }
 

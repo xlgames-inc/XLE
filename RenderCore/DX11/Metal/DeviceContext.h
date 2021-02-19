@@ -123,7 +123,6 @@ namespace RenderCore { namespace Metal_DX11
 		void        DrawAuto(const GraphicsPipeline& pipeline);
 
         void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& values);
-        struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
         void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
         void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& values);
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& values);

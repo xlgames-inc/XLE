@@ -419,9 +419,6 @@ namespace RenderCore { namespace ImplVulkan
 
     Device::~Device()
     {
-		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._graphicsPipelineLayout = nullptr;
-		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._computePipelineLayout = nullptr;
-		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._compiledDescriptorSetLayoutCache = nullptr;
 		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._globalPools = nullptr;
 
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
@@ -813,12 +810,13 @@ namespace RenderCore { namespace ImplVulkan
 
 	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
 	{
-		return CreateShaderCompiler(VulkanShaderMode::GLSLToSPIRV);
+		return CreateShaderCompiler(VulkanCompilerConfiguration{});
 	}
 
-	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler(VulkanShaderMode shaderMode)
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler(const VulkanCompilerConfiguration& cfg)
 	{
-		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this, shaderMode);
+		Metal_Vulkan::Internal::VulkanGlobalsTemp::GetInstance()._legacyRegisterBindings = cfg._legacyBindings;
+		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this, cfg);
 	}
 
 	void Device::Stall()
@@ -833,6 +831,47 @@ namespace RenderCore { namespace ImplVulkan
 		auto libVersion = ConsoleRig::GetLibVersionDesc();
         return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
+
+	std::shared_ptr<ICompiledPipelineLayout> Device::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+	{
+		DoSecondStageInit();
+		Metal_Vulkan::Internal::ValidatePipelineLayout(_physDev._dev, desc);
+
+		using DescriptorSetBinding = Metal_Vulkan::CompiledPipelineLayout::DescriptorSetBinding;
+		using PushConstantsBinding = Metal_Vulkan::CompiledPipelineLayout::PushConstantsBinding;
+
+		if (!_pools._descriptorSetLayoutCache)
+			_pools._descriptorSetLayoutCache = Metal_Vulkan::Internal::CreateCompiledDescriptorSetLayoutCache();
+
+		DescriptorSetBinding descSetBindings[desc.GetDescriptorSets().size()];
+		for (unsigned c=0; c<desc.GetDescriptorSets().size(); ++c) {
+			auto& srcBinding = desc.GetDescriptorSets()[c];
+			descSetBindings[c]._name = srcBinding._name;
+			auto compiled = _pools._descriptorSetLayoutCache->CompileDescriptorSetLayout(
+				srcBinding._signature,
+				srcBinding._name,
+				VK_SHADER_STAGE_ALL_GRAPHICS);
+			descSetBindings[c]._layout = compiled->_layout;
+			descSetBindings[c]._blankDescriptorSet = compiled->_blankBindings;
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				descSetBindings[c]._blankDescriptorSetDebugInfo = compiled->_blankBindingsDescription;
+			#endif
+		}
+
+		PushConstantsBinding pushConstantBinding[desc.GetPushConstants().size()];
+		for (unsigned c=0; c<desc.GetPushConstants().size(); ++c) {
+			auto& srcBinding = desc.GetPushConstants()[c];
+			pushConstantBinding[c]._name = srcBinding._name;
+			pushConstantBinding[c]._cbSize = srcBinding._cbSize;
+			pushConstantBinding[c]._stageFlags = Metal_Vulkan::Internal::AsVkShaderStageFlags(srcBinding._shaderStage);
+			pushConstantBinding[c]._cbElements = MakeIteratorRange(srcBinding._cbElements);
+		}
+
+		return std::make_shared<Metal_Vulkan::CompiledPipelineLayout>(
+			_objectFactory,
+			MakeIteratorRange(descSetBindings, &descSetBindings[desc.GetDescriptorSets().size()]),
+			MakeIteratorRange(pushConstantBinding, &pushConstantBinding[desc.GetPushConstants().size()]));
+	}
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 

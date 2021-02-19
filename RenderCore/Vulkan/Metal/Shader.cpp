@@ -28,9 +28,11 @@ namespace RenderCore { namespace Metal_Vulkan
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
+									const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& ps)
     {
+		_pipelineLayout = checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout);
 		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
 		if (vs.GetStage() != ShaderStage::Null) {
@@ -55,11 +57,12 @@ namespace RenderCore { namespace Metal_Vulkan
     }
     
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
+									const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
 									const CompiledShaderByteCode& ps,
 									StreamOutputInitializers so)
-    :   ShaderProgram(factory, vs, ps)
+    :   ShaderProgram(factory, pipelineLayout, vs, ps)
     {
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
@@ -71,13 +74,14 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
+									const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
 									const CompiledShaderByteCode& ps,
 									const CompiledShaderByteCode& hs,
 									const CompiledShaderByteCode& ds,
 									StreamOutputInitializers so)
-    :   ShaderProgram(factory, vs, gs, ps, so)
+    :   ShaderProgram(factory, pipelineLayout, vs, gs, ps, so)
     {
 		if (hs.GetStage() != ShaderStage::Null) {
 			assert(hs.GetStage() == ShaderStage::Hull);
@@ -121,9 +125,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ComputeShader::ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& compiledShader)
+    ComputeShader::ComputeShader(
+		ObjectFactory& factory,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		const CompiledShaderByteCode& compiledShader)
     : _compiledCode(compiledShader)
     {
+		_pipelineLayout = checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout);
+
 		if (compiledShader.GetStage() != ShaderStage::Null) {
 			assert(compiledShader.GetStage() == ShaderStage::Compute);
             _module = factory.CreateShaderModule(compiledShader.GetByteCode());
@@ -174,81 +183,43 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void ShaderProgram::ConstructToFuture(
 		::Assets::AssetFuture<ShaderProgram>& future,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> psName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
+		auto vsFuture = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
+		auto psFuture = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
 
-		future.SetPollingFunction(
-			[vsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
-
-			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
-			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
-
-			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
-			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
-
-			if (!vsActual || !psActual) {
-				if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsDepVal);
-					TryRegisterDependency(depVal, psDepVal);
-					thatFuture.SetInvalidAsset(depVal, nullptr);
-					return false;
-				}
-				return true;
-			}
-
-			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *psActual);
-			thatFuture.SetAsset(std::move(newShaderProgram), {});
-			return false;
-		});
+		::Assets::WhenAll(vsFuture, psFuture).ThenConstructToFuture<ShaderProgram>(
+			future,
+			[pipelineLayout](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+				return std::make_shared<ShaderProgram>(GetObjectFactory(), pipelineLayout, *vsActual, *psActual);
+			});
 	}
 
 	void ShaderProgram::ConstructToFuture(
 		::Assets::AssetFuture<ShaderProgram>& future,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> gsName,
 		StringSection<::Assets::ResChar> psName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
-		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
+		auto vsFuture = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
+		auto gsFuture = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
+		auto psFuture = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
 
-		future.SetPollingFunction(
-			[vsCode, gsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
-
-			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
-			std::shared_ptr<CompiledShaderByteCode> gsActual; ::Assets::DepValPtr gsDepVal; ::Assets::Blob gsLog;
-			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
-
-			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
-			auto gsState = gsCode->CheckStatusBkgrnd(gsActual, gsDepVal, gsLog);
-			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
-
-			if (!vsActual || !gsActual || !psActual) {
-				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
-					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsDepVal);
-					TryRegisterDependency(depVal, gsDepVal);
-					TryRegisterDependency(depVal, psDepVal);
-					thatFuture.SetInvalidAsset(depVal, nullptr);
-					return false;
-				}
-				return true;
-			}
-
-			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual);
-			thatFuture.SetAsset(std::move(newShaderProgram), {});
-			return false;
-		});
+		::Assets::WhenAll(vsFuture, gsFuture, psFuture).ThenConstructToFuture<ShaderProgram>(
+			future,
+			[pipelineLayout](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& gsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+				return std::make_shared<ShaderProgram>(GetObjectFactory(), pipelineLayout, *vsActual, *gsActual, *psActual);
+			});
 	}
 
 	void ShaderProgram::ConstructToFuture(
 		::Assets::AssetFuture<ShaderProgram>& future,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> gsName,
 		StringSection<::Assets::ResChar> psName,
@@ -256,72 +227,37 @@ namespace RenderCore { namespace Metal_Vulkan
 		StringSection<::Assets::ResChar> dsName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
-		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
-		auto hsCode = MakeByteCodeFuture(ShaderStage::Hull, hsName, definesTable);
-		auto dsCode = MakeByteCodeFuture(ShaderStage::Domain, dsName, definesTable);
+		auto vsFuture = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
+		auto gsFuture = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
+		auto psFuture = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
+		auto hsFuture = MakeByteCodeFuture(ShaderStage::Hull, hsName, definesTable);
+		auto dsFuture = MakeByteCodeFuture(ShaderStage::Domain, dsName, definesTable);
 
-		future.SetPollingFunction(
-			[vsCode, gsCode, psCode, hsCode, dsCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
+		::Assets::WhenAll(vsFuture, gsFuture, psFuture, hsFuture, dsFuture).ThenConstructToFuture<ShaderProgram>(
+			future,
+			[pipelineLayout](	const std::shared_ptr<CompiledShaderByteCode>& vsActual,
+				const std::shared_ptr<CompiledShaderByteCode>& gsActual,
+				const std::shared_ptr<CompiledShaderByteCode>& psActual,
+				const std::shared_ptr<CompiledShaderByteCode>& hsActual,
+				const std::shared_ptr<CompiledShaderByteCode>& dsActual) {
 
-			std::shared_ptr<CompiledShaderByteCode> vsActual; ::Assets::DepValPtr vsDepVal; ::Assets::Blob vsLog;
-			std::shared_ptr<CompiledShaderByteCode> gsActual; ::Assets::DepValPtr gsDepVal; ::Assets::Blob gsLog;
-			std::shared_ptr<CompiledShaderByteCode> psActual; ::Assets::DepValPtr psDepVal; ::Assets::Blob psLog;
-			std::shared_ptr<CompiledShaderByteCode> hsActual; ::Assets::DepValPtr hsDepVal; ::Assets::Blob hsLog;
-			std::shared_ptr<CompiledShaderByteCode> dsActual; ::Assets::DepValPtr dsDepVal; ::Assets::Blob dsLog;
-
-			auto vsState = vsCode->CheckStatusBkgrnd(vsActual, vsDepVal, vsLog);
-			auto gsState = gsCode->CheckStatusBkgrnd(gsActual, gsDepVal, gsLog);
-			auto psState = psCode->CheckStatusBkgrnd(psActual, psDepVal, psLog);
-			auto hsState = hsCode->CheckStatusBkgrnd(hsActual, hsDepVal, hsLog);
-			auto dsState = dsCode->CheckStatusBkgrnd(dsActual, dsDepVal, dsLog);
-
-			if (!vsActual || !gsActual || !psActual || !hsActual || !dsActual) {
-				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid || hsState == ::Assets::AssetState::Invalid || dsState == ::Assets::AssetState::Invalid) {
-					auto depVal = std::make_shared<::Assets::DependencyValidation>();
-					TryRegisterDependency(depVal, vsDepVal);
-					TryRegisterDependency(depVal, gsDepVal);
-					TryRegisterDependency(depVal, psDepVal);
-					TryRegisterDependency(depVal, hsDepVal);
-					TryRegisterDependency(depVal, dsDepVal);
-					thatFuture.SetInvalidAsset(depVal, nullptr);
-					return false;
-				}
-				return true;
-			}
-
-			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
-			thatFuture.SetAsset(std::move(newShaderProgram), {});
-			return false;
-		});
+				return std::make_shared<ShaderProgram>(GetObjectFactory(), pipelineLayout, *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
+			});
 	}
 
 	void ComputeShader::ConstructToFuture(
 		::Assets::AssetFuture<ComputeShader>& future,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		StringSection<::Assets::ResChar> codeName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
 		auto code = MakeByteCodeFuture(ShaderStage::Compute, codeName, definesTable);
 
-		future.SetPollingFunction(
-			[code](::Assets::AssetFuture<ComputeShader>& thatFuture) -> bool {
-
-			std::shared_ptr<CompiledShaderByteCode> codeActual; ::Assets::DepValPtr codeDepVal; ::Assets::Blob codeLog;
-			auto codeState = code->CheckStatusBkgrnd(codeActual, codeDepVal, codeLog);
-
-			if (!codeActual) {
-				if (codeState == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(codeDepVal, nullptr);
-					return false;
-				}
-				return true;
-			}
-
-			auto newShader = std::make_shared<ComputeShader>(GetObjectFactory(), *codeActual);
-			thatFuture.SetAsset(std::move(newShader), {});
-			return false;
-		});
+		::Assets::WhenAll(code).ThenConstructToFuture<ComputeShader>(
+			future,
+			[pipelineLayout](const std::shared_ptr<CompiledShaderByteCode>& csActual) {
+				return std::make_shared<ComputeShader>(GetObjectFactory(), pipelineLayout, *csActual);
+			});
 	}
 
 }}

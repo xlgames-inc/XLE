@@ -4,6 +4,8 @@
 
 #pragma once
 
+#if 0
+
 // #include "PipelineLayout.h"
 #include "../../UniformsStream.h"
 #include "../../../Assets/AssetUtils.h"		// for Assets::DependentFileState
@@ -18,30 +20,6 @@ namespace Utility
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	class LegacyRegisterBinding
-	{
-	public:
-		enum class RegisterType { Sampler, ShaderResource, ConstantBuffer, UnorderedAccess, Unknown };
-		enum class RegisterQualifier { Texture, Buffer, None };
-
-		std::string		_name;
-		uint64_t		_hashName = 0;
-		struct Entry
-		{
-			unsigned		_begin = 0, _end = 0;
-			unsigned		_targetDescriptorSet = ~0u;
-			unsigned		_targetBegin = 0, _targetEnd = 0;
-		};
-		std::vector<Entry> _samplerRegisters;
-		std::vector<Entry> _constantBufferRegisters;
-		std::vector<Entry> _srvRegisters;
-		std::vector<Entry> _uavRegisters;
-		std::vector<Entry> _srvRegisters_boundToBuffer;
-		std::vector<Entry> _uavRegisters_boundToBuffer;
-
-		IteratorRange<const Entry*>	GetEntries(RegisterType type, RegisterQualifier qualifier) const;
-	};
-
 	class PushConstantsRangeSignature
 	{
 	public:
@@ -79,12 +57,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		std::vector<std::pair<std::string, std::shared_ptr<DescriptorSetSignature>>>	_descriptorSets;
 		std::vector<PushConstantsRangeSignature>				_pushConstantRanges;
-		std::vector<std::shared_ptr<LegacyRegisterBinding>>		_legacyRegisterBindingSettings;
+		std::vector<std::shared_ptr<LegacyRegisterBindingDesc>>		_legacyRegisterBindingSettings;
 		std::vector<RootSignature>					_rootSignatures;
 		std::string									_mainRootSignature;
 
 		const RootSignature*								GetRootSignature(uint64_t name) const;
-		const std::shared_ptr<LegacyRegisterBinding>&		GetLegacyRegisterBinding(uint64_t) const;
+		const std::shared_ptr<LegacyRegisterBindingDesc>&		GetLegacyRegisterBinding(uint64_t) const;
 		const PushConstantsRangeSignature*					GetPushConstantsRangeSignature(uint64_t) const;
 		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSet(uint64_t) const;
 
@@ -99,5 +77,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		::Assets::DepValPtr _depVal;
 	};
 
-	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
+	char GetRegisterPrefix(LegacyRegisterBindingDesc::RegisterType regType);
 }}
+
+#endif

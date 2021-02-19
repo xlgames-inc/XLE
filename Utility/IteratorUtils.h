@@ -152,6 +152,8 @@ namespace Utility
             bool empty() const          { return this->first == this->second; }
 			size_t size() const			{ return Internal::IteratorDifference(this->first, this->second); }
 
+            using iterator = Iterator;
+
             // operator[] is only available on iterator range for types other than void*/const void*
             template<typename I=Iterator>
                 auto operator[](size_t index) const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value, decltype(*std::declval<const I>())>::type
@@ -171,20 +173,27 @@ namespace Utility
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
-            template<   typename OtherIterator,
-                        typename std::enable_if<
-                            std::is_constructible<std::pair<Iterator, Iterator>, const std::pair<OtherIterator, OtherIterator>&>::value
-                        >::type* = nullptr>
-                IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
-                    : std::pair<Iterator, Iterator>(copyFrom) {}
+            // The following constructor & operator pair now handle conversion from different types of IteratorRanges
+            // (so long as there's an automatic statis_cast conversion down to the new iterator type)
+            // Furthermore, they will handle anything with const begin() and end() methods
+            // It's quite flexible, so be conscious of automatic conversions
+            // Also the Microsoft intellisense code doesn't seem to always be able to identify the all of the cases were conversion is
+            // possible! I've no idea why
 
-            template<   typename OtherIterator,
+            template<   typename OtherRange,
                         typename std::enable_if<
-                            std::is_constructible<std::pair<Iterator, Iterator>, const std::pair<OtherIterator, OtherIterator>&>::value
-                        >::type* = nullptr>
-                IteratorRange& operator=(const std::pair<OtherIterator, OtherIterator>& copyFrom)
+                            std::is_constructible<std::pair<Iterator, Iterator>, typename OtherRange::iterator&, typename OtherRange::iterator&>::value
+                        >::type* =nullptr>
+                IteratorRange(const OtherRange& copyFrom)
+                    : std::pair<Iterator, Iterator>(copyFrom.begin(), copyFrom.end()) {}
+
+            template<   typename OtherRange,
+                        typename std::enable_if<
+                            std::is_constructible<std::pair<Iterator, Iterator>, typename OtherRange::iterator&, typename OtherRange::iterator&>::value
+                        >::type* =nullptr>
+                IteratorRange& operator=(const OtherRange& copyFrom)
                 {
-                    std::pair<Iterator, Iterator>::operator=(copyFrom);
+                    std::pair<Iterator, Iterator>::operator=(std::make_pair(copyFrom.begin(), copyFrom.end()));
                     return *this;
                 }
         };

@@ -272,7 +272,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		std::map<unsigned, std::pair<unsigned, const RenderCore::DescriptorSetSignature*>> _fixedDescriptorSets;
 		const UniformsStreamInterface* _looseUniforms;
-		CompiledPipelineLayout* _pipelineLayout;
+		const CompiledPipelineLayout* _pipelineLayout;
 			
 		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
 		std::vector<PushConstantBindingRules> _pushConstantsRules;
@@ -296,7 +296,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				adaptiveSet = _adaptiveSetRules.end()-1;
 				auto bindings = _pipelineLayout->GetDescriptorSetLayout(outputDescriptorSet)->GetDescriptorSlots();
 				adaptiveSet->_sig = std::vector<DescriptorSlot> { bindings.begin(), bindings.end() };
-				adaptiveSet->_shaderUsageMask = 0;
+				adaptiveSet->_shaderUsageMask = (1ull << uint64_t(outputDescriptorSetSlot));
 			} else {
 				adaptiveSet->_shaderStageMask |= shaderStageMask;
 				adaptiveSet->_shaderUsageMask |= (1ull << uint64_t(outputDescriptorSetSlot));
@@ -342,6 +342,9 @@ namespace RenderCore { namespace Metal_Vulkan
 					if (fixedDescSet == _fixedDescriptorSets.end()) {
 
 						// We need to got to the pipeline layout to find the signature for the descriptor set
+						if (reflectionVariable._binding._descriptorSet >= _pipelineLayout->GetDescriptorSetCount())
+							Throw(std::runtime_error(""));	// variable off pipeline layout
+
 						auto descSetSigBindings = _pipelineLayout->GetDescriptorSetLayout(reflectionVariable._binding._descriptorSet)->GetDescriptorSlots();
 
 						auto srv = std::find(_looseUniforms->_srvBindings.begin(), _looseUniforms->_srvBindings.end(), hashName);
@@ -356,7 +359,7 @@ namespace RenderCore { namespace Metal_Vulkan
 							/*if (descSetSig._layout->_slots[b.second._bindingPoint]._type != RenderCore::DescriptorSetSignature::SlotType::Texture)
 								Throw(std::runtime_error(""));*/
 
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture)
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture))
 								Throw(std::runtime_error(""));
 
 							if (reflectionVariable._slotType != DescriptorType::Texture)
@@ -371,7 +374,7 @@ namespace RenderCore { namespace Metal_Vulkan
 						} else {
 							auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
 							if (cb != _looseUniforms->_cbBindings.end()) {
-								if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer)
+								if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 									Throw(std::runtime_error(""));
 
 								if (reflectionVariable._slotType != DescriptorType::ConstantBuffer)
@@ -437,6 +440,14 @@ namespace RenderCore { namespace Metal_Vulkan
 				} else if (reflectionVariable._storageType == SPIRVReflection::StorageType::PushConstant) {
 
 					assert(!reflectionVariable._name.IsEmpty());
+					unsigned pipelineLayoutIdx = 0;
+					for (; pipelineLayoutIdx<_pipelineLayout->GetPushConstantsBindingNames().size(); ++pipelineLayoutIdx) {
+						if (_pipelineLayout->GetPushConstantsBindingNames()[pipelineLayoutIdx] != hashName) continue;
+						if ((_pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx).stageFlags & shaderStageMask) != shaderStageMask) continue;
+						break;
+					}
+					if (pipelineLayoutIdx >= _pipelineLayout->GetPushConstantsBindingNames().size())
+						Throw(std::runtime_error(""));		// can't find this push constants in the pipeline layout (for the name and shader stage configuration)
 
 					// push constants must from the "loose uniforms" -- we can't extract them
 					// from a prebuilt descriptor set
@@ -450,7 +461,8 @@ namespace RenderCore { namespace Metal_Vulkan
 						if (existing != _pushConstantsRules.end())
 							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
 						auto inputSlot = (unsigned)std::distance(_looseUniforms->_cbBindings.begin(), cb);
-						_pushConstantsRules.push_back({shaderStageMask, inputSlot});
+						auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
+						_pushConstantsRules.push_back({shaderStageMask, pipelineRange.offset, pipelineRange.size, inputSlot});
 
 					} else {
 						Throw(std::runtime_error(""));		// missing push constants input
@@ -465,24 +477,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(0);		// todo -- unimplemented
 	}
 
-	static unsigned AsVkShaderStageBit(ShaderStage input)
+	namespace Internal
 	{
-		switch (input) {
-		case ShaderStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
-		case ShaderStage::Pixel: return VK_SHADER_STAGE_FRAGMENT_BIT;
-		case ShaderStage::Geometry: return VK_SHADER_STAGE_GEOMETRY_BIT;
-		case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
+		VkShaderStageFlags_ AsVkShaderStageFlags(ShaderStage input)
+		{
+			switch (input) {
+			case ShaderStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
+			case ShaderStage::Pixel: return VK_SHADER_STAGE_FRAGMENT_BIT;
+			case ShaderStage::Geometry: return VK_SHADER_STAGE_GEOMETRY_BIT;
+			case ShaderStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT;
 
-		case ShaderStage::Hull:
-		case ShaderStage::Domain:
-			// VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
-			// not supported on Vulkan yet
-			assert(0);
-			return 0;
+			case ShaderStage::Hull:
+			case ShaderStage::Domain:
+				// VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+				// not supported on Vulkan yet
+				assert(0);
+				return 0;
 
-		case ShaderStage::Null:
-		default:
-			return 0;
+			case ShaderStage::Null:
+			default:
+				return 0;
+			}
 		}
 	}
 
@@ -495,7 +510,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// We need to map on the input descriptor set bindings to the slots understood
 		// by the shader's pipeline layout
-		auto& pipelineLayout = *Internal::VulkanGlobalsTemp::GetInstance().GetPipelineLayout(shader);
+		auto& pipelineLayout = shader.GetPipelineLayout();
 		ConstructionHelper helper;
 		helper._looseUniforms = &looseUniforms;
 		helper._pipelineLayout = &pipelineLayout;
@@ -504,8 +519,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			const auto& d = descriptorSetBindings[dIdx];
 			bool foundMapping = false;
 			for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
-				// todo -- don't rehash this constantly!
-				auto hashName = pipelineLayout.GetDescriptorSetBindingName(c);
+				auto hashName = pipelineLayout.GetDescriptorSetBindingNames()[c];
 				if (hashName == d._bindingName) {
 					// todo -- we should check compatibility between the given descriptor set and the pipeline layout
 					helper._fixedDescriptorSets.insert({c, std::make_pair(dIdx, d._layout)});
@@ -523,7 +537,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned stage=0; stage<ShaderProgram::s_maxShaderStages; ++stage) {
 			const auto& compiledCode = shader.GetCompiledCode((ShaderStage)stage);
 			if (compiledCode.GetByteCode().size()) {
-				helper.BindReflection(SPIRVReflection(compiledCode.GetByteCode()), AsVkShaderStageBit((ShaderStage)stage));
+				helper.BindReflection(SPIRVReflection(compiledCode.GetByteCode()), Internal::AsVkShaderStageFlags((ShaderStage)stage));
 			}
 		}
 
@@ -585,7 +599,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		static uint64_t WriteSRVBindings(
 			ProgressiveDescriptorSetBuilder& builder,
-			IteratorRange<const ShaderResourceView*const*> srvs,
+			IteratorRange<const TextureView*const*> srvs,
 			IteratorRange<const LooseUniformBind*> bindingIndicies)
 		{
 			uint64_t bindingsWrittenTo = 0u;
@@ -664,12 +678,12 @@ namespace RenderCore { namespace Metal_Vulkan
 				context.GetTemporaryBufferSpace(),
 				requiresTemporaryBufferBarrier,
 				context.GetFactory(),
-				stream._constantBuffers,
+				stream._bufferViews,
 				MakeIteratorRange(adaptiveSet._cbBinds));
 
 			auto srvBindingFlag = BindingHelper::WriteSRVBindings(
 				builder,
-				MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
+				MakeIteratorRange((const TextureView*const*)stream._textureViews.begin(), (const TextureView*const*)stream._textureViews.end()),
 				MakeIteratorRange(adaptiveSet._srvBinds));
 
 			auto ssBindingFlag = BindingHelper::WriteSamplerStateBindings(
@@ -707,9 +721,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		for (const auto&pushConstants:_pushConstantsRules) {
-			auto& cb = stream._constantBuffers[pushConstants._inputCBSlot];
+			auto& cb = stream._bufferViews[pushConstants._inputCBSlot];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			encoder.PushConstants(pushConstants._shaderStageBind, cb._packet.AsIteratorRange());
+			assert(cb._packet.size() == pushConstants._size);
+			encoder.PushConstants(pushConstants._shaderStageBind, pushConstants._offset, cb._packet.AsIteratorRange());
 		}
 	}
 

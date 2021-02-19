@@ -8,8 +8,11 @@
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"
+#include "../UniformsStream.h"
 #include "Metal/VulkanForward.h"
 #include <memory>
+
+namespace Assets { class DependentFileState; }
 
 namespace RenderCore
 {
@@ -20,6 +23,13 @@ namespace RenderCore
 		GLSLToSPIRV,
 		HLSLToSPIRV,
 		HLSLCrossCompiled
+	};
+	struct VulkanCompilerConfiguration
+	{
+		VulkanShaderMode _shaderMode = VulkanShaderMode::GLSLToSPIRV;
+		LegacyRegisterBindingDesc _legacyBindings = {};
+		std::vector<PipelineLayoutDesc::PushConstantsBinding> _pushConstants = {};
+		std::vector<::Assets::DependentFileState> _additionalDependencies = {};		// (if the legacy bindings, etc, are loaded from a file, you can register extra dependencies with this)
 	};
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +44,8 @@ namespace RenderCore
 		virtual VkDevice	GetUnderlyingDevice() = 0;
 		virtual VkQueue     GetRenderingQueue() = 0;
 		virtual Metal_Vulkan::GlobalPools& GetGlobalPools() = 0;
-		virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler(VulkanShaderMode shaderMode) = 0;
+		virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler(
+			const VulkanCompilerConfiguration&) = 0;
 		~IDeviceVulkan();
 	};
 

@@ -192,10 +192,12 @@ namespace RenderCore { namespace ImplVulkan
 			const std::function<SubResourceInitData(SubResourceId)>&) override;
 		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
+        std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutDesc& desc) override;
+
 		void			Stall() override;
 
 		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() override;
-        std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler(VulkanShaderMode) override;
+        std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler(const VulkanCompilerConfiguration& cfg) override;
 
         virtual void*   QueryInterface(size_t guid) override;
 		VkInstance	    GetVulkanInstance() override;

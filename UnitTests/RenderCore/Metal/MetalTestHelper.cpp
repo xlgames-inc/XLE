@@ -14,22 +14,112 @@
 #include "../../../RenderCore/ResourceUtils.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/DepVal.h"
+#include "../../../Utility/Streams/StreamFormatter.h"
+#include "../../../Utility/Streams/StreamDOM.h"
+#include "../../../Utility/Streams/SerializationUtils.h"
 
 #if GFXAPI_TARGET == GFXAPI_DX11
 	#include "../../../RenderCore/Metal/State.h"
 #endif
 
+namespace RenderCore
+{
+	static LegacyRegisterBindingDesc::RegisterQualifier AsQualifier(StringSection<char> str)
+	{
+		// look for "(image)" or "(buffer)" qualifiers
+		if (str.IsEmpty() || str[0] != '(') return LegacyRegisterBindingDesc::RegisterQualifier::None;
+
+		if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
+			return LegacyRegisterBindingDesc::RegisterQualifier::Buffer;
+
+		if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "texture)"))
+			return LegacyRegisterBindingDesc::RegisterQualifier::Texture;
+
+		return LegacyRegisterBindingDesc::RegisterQualifier::None;
+	}
+	
+	struct RegisterRange
+	{
+		unsigned long _begin = 0, _end = 0;
+		LegacyRegisterBindingDesc::RegisterQualifier _qualifier;
+	};
+
+	static RegisterRange AsRegisterRange(StringSection<> input)
+	{
+		if (input.IsEmpty()) return {};
+
+		char* endPt = nullptr;
+		auto start = std::strtoul(input.begin(), &endPt, 10);
+		auto end = start+1;
+		if (endPt && endPt[0] == '.' && endPt[1] == '.')
+			end = std::strtoul(endPt+2, &endPt, 10);
+
+		auto qualifier = AsQualifier(StringSection<char>(endPt, input.end()));
+		return {start, end, qualifier};
+	}
+
+	static LegacyRegisterBindingDesc::RegisterType AsLegacyRegisterType(char type)
+	{
+		// convert between HLSL style register binding indices to a type enum
+		switch (type) {
+		case 'b': return LegacyRegisterBindingDesc::RegisterType::ConstantBuffer;
+		case 's': return LegacyRegisterBindingDesc::RegisterType::Sampler;
+		case 't': return LegacyRegisterBindingDesc::RegisterType::ShaderResource;
+		case 'u': return LegacyRegisterBindingDesc::RegisterType::UnorderedAccess;
+		default:  return LegacyRegisterBindingDesc::RegisterType::Unknown;
+		}
+	}
+
+	void DeserializationOperator(
+		InputStreamFormatter<>& formatter,
+		LegacyRegisterBindingDesc& result)
+	{
+		StreamDOM<InputStreamFormatter<>> dom(formatter);
+		auto element = dom.RootElement();
+		for (auto e:element.children()) {
+			auto name = e.Name();
+			if (name.IsEmpty())
+				Throw(std::runtime_error("Legacy register binding with empty name"));
+
+			auto regType = AsLegacyRegisterType(name[0]);
+			if (regType == LegacyRegisterBindingDesc::RegisterType::Unknown)
+				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
+
+			auto legacyRegisters = AsRegisterRange({name.begin()+1, name.end()});
+			if (legacyRegisters._end <= legacyRegisters._begin)
+				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
+
+			auto mappedRegisters = AsRegisterRange(e.Attribute("mapping").Value());
+			if (mappedRegisters._begin == mappedRegisters._end)
+				Throw(::Exceptions::BasicLabel("Could not parse target register mapping in ReadLegacyRegisterBinding (%s)", e.Attribute("mapping").Value().AsString().c_str()));
+			
+			if ((mappedRegisters._end - mappedRegisters._begin) != (legacyRegisters._end - legacyRegisters._begin))
+				Throw(::Exceptions::BasicLabel("Number of legacy register and number of mapped registers don't match up in ReadLegacyRegisterBinding"));
+
+			result.AppendEntry(
+				regType, legacyRegisters._qualifier,
+				LegacyRegisterBindingDesc::Entry {
+					(unsigned)legacyRegisters._begin, (unsigned)legacyRegisters._end,
+					Hash64(e.Attribute("set").Value()),
+					e.Attribute("setIndex").As<unsigned>().value(),
+					(unsigned)mappedRegisters._begin, (unsigned)mappedRegisters._end });
+		}
+	}
+}
+
 namespace UnitTests
 {
+	std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateDefaultPipelineLayout(RenderCore::IDevice& device);
+	RenderCore::LegacyRegisterBindingDesc CreateDefaultLegacyRegisterBindingDesc();
 	
 	RenderCore::CompiledShaderByteCode MetalTestHelper::MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
 	{
-		auto codeBlob = _shaderSource->CompileFromMemory(shader, "main", shaderModel, defines);
-		return RenderCore::CompiledShaderByteCode {
-			codeBlob._payload,
-			::Assets::AsDepVal(MakeIteratorRange(codeBlob._deps)),
-			{}
-		};
+		return UnitTests::MakeShader(_shaderSource, shader, shaderModel, defines);
+	}
+
+	RenderCore::Metal::ShaderProgram MetalTestHelper::MakeShaderProgram(StringSection<> vs, StringSection<> ps)
+	{
+		return UnitTests::MakeShaderProgram(_shaderSource, _pipelineLayout, vs, ps);
 	}
 
 	MetalTestHelper::MetalTestHelper(RenderCore::UnderlyingAPI api)
@@ -48,10 +138,15 @@ namespace UnitTests
 		if (vulkanDevice) {
 			// Vulkan allows for multiple ways for compiling shaders. The tests currently use a HLSL to GLSL to SPIRV 
 			// cross compilation approach
-		 	shaderCompiler = vulkanDevice->CreateShaderCompiler(RenderCore::VulkanShaderMode::HLSLCrossCompiled);
+			RenderCore::VulkanCompilerConfiguration cfg;
+			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
+			cfg._legacyBindings = CreateDefaultLegacyRegisterBindingDesc();
+		 	shaderCompiler = vulkanDevice->CreateShaderCompiler(cfg);
 		} else {
 			shaderCompiler = _device->CreateShaderCompiler();
 		}
+
+		_pipelineLayout = CreateDefaultPipelineLayout(*_device);
 
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
 		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
@@ -69,6 +164,7 @@ namespace UnitTests
 
 	MetalTestHelper::~MetalTestHelper()
 	{
+		_pipelineLayout.reset();
 		_shaderSource.reset();
 		_shaderService.reset();
 		_device.reset();
@@ -200,34 +296,191 @@ namespace UnitTests
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-            //    U T I L I T Y    F N S
+			//    U T I L I T Y    F N S
 
+	RenderCore::CompiledShaderByteCode MakeShader(const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
+	{
+		auto codeBlob = shaderSource->CompileFromMemory(shader, "main", shaderModel, defines);
+		if (!codeBlob._payload || codeBlob._payload->empty()) {
+			std::cout << "Shader compile failed with errors: " << ::Assets::AsString(codeBlob._errors) << std::endl;
+			assert(0);
+		}
+		return RenderCore::CompiledShaderByteCode {
+			codeBlob._payload,
+			::Assets::AsDepVal(MakeIteratorRange(codeBlob._deps)),
+			{}
+		};
+	}
+
+	RenderCore::Metal::ShaderProgram MakeShaderProgram(
+        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource,
+        const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+        StringSection<> vs, StringSection<> ps)
+	{
+		return RenderCore::Metal::ShaderProgram(RenderCore::Metal::GetObjectFactory(), pipelineLayout, MakeShader(shaderSource, vs, "vs_*"), MakeShader(shaderSource, ps, "ps_*"));
+	}
+	
 	std::shared_ptr<RenderCore::IResource> MetalTestHelper::CreateVB(IteratorRange<const void*> data)
-    {
-        using namespace RenderCore;
-        return _device->CreateResource(
-            CreateDesc(
-                BindFlag::VertexBuffer, 0, GPUAccess::Read,
-                LinearBufferDesc::Create((unsigned)data.size()),
-                "vertexBuffer"),
-            SubResourceInitData { data });
-    }
+	{
+		using namespace RenderCore;
+		return _device->CreateResource(
+			CreateDesc(
+				BindFlag::VertexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create((unsigned)data.size()),
+				"vertexBuffer"),
+			SubResourceInitData { data });
+	}
 
 	std::shared_ptr<RenderCore::IResource> MetalTestHelper::CreateIB(IteratorRange<const void*> data)
-    {
-        using namespace RenderCore;
-        return _device->CreateResource(
-            CreateDesc(
-                BindFlag::IndexBuffer, 0, GPUAccess::Read,
-                LinearBufferDesc::Create((unsigned)data.size()),
-                "indexBuffer"),
-            SubResourceInitData { data });
-    }
+	{
+		using namespace RenderCore;
+		return _device->CreateResource(
+			CreateDesc(
+				BindFlag::IndexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create((unsigned)data.size()),
+				"indexBuffer"),
+			SubResourceInitData { data });
+	}
 
-    RenderCore::Metal::ShaderProgram MetalTestHelper::MakeShaderProgram(StringSection<> vs, StringSection<> ps)
-    {
-        return RenderCore::Metal::ShaderProgram(RenderCore::Metal::GetObjectFactory(), MakeShader(vs, "vs_*"), MakeShader(ps, "ps_*"));
-    }
+	std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateDefaultPipelineLayout(RenderCore::IDevice& device)
+	{
+		using namespace RenderCore;
+		RenderCore::DescriptorSetSignature sequencerSet {
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture}
+		};
+
+		RenderCore::DescriptorSetSignature materialSet {
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+
+			{DescriptorType::UnorderedAccessBuffer}
+		};
+
+		RenderCore::DescriptorSetSignature drawSet {
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture}
+		};
+
+		RenderCore::DescriptorSetSignature numericSet {
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+			{DescriptorType::Texture},
+
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+			{DescriptorType::ConstantBuffer},
+
+			{DescriptorType::Sampler}
+		};
+
+		RenderCore::PipelineLayoutDesc desc;
+		desc.AppendDescriptorSet("Sequencer", sequencerSet);
+		desc.AppendDescriptorSet("Material", materialSet);
+		desc.AppendDescriptorSet("Draw", drawSet);
+		desc.AppendDescriptorSet("Numeric", numericSet);
+		return device.CreatePipelineLayout(desc);
+	}
+
+	RenderCore::LegacyRegisterBindingDesc CreateDefaultLegacyRegisterBindingDesc()
+	{
+		const char* defaultCfg = R"--(
+			t0..16=~
+				set = Numeric
+				setIndex = 3
+				mapping = 0..16
+			t16..23=~
+				set = Sequencer
+				setIndex = 0
+				mapping = 6..13
+			t23..31=~
+				set = Material
+				setIndex = 1
+				mapping = 3..11
+			t27(buffer)=~
+				set = Material
+				setIndex = 1
+				mapping = 11
+
+			s0..7=~
+				set = Numeric
+				setIndex = 3
+				mapping = 16..23
+			s16=~		~~ (this the DummySampler generated by the HLSLCrossCompiler)
+				set = Numeric
+				setIndex = 3
+				mapping = 27
+
+			b0..4=~
+				set = Numeric
+				setIndex = 3
+				mapping = 23..27
+			b4..7=~
+				set = Material
+				setIndex = 1
+				mapping = 0..3
+			b7..13=~
+				set = Sequencer
+				setIndex = 0
+				mapping = 0..6
+		)--";
+
+		RenderCore::LegacyRegisterBindingDesc result;
+		InputStreamFormatter<> formatter(MakeStringSection(defaultCfg));
+		formatter >> result;
+		return result;
+	}
 
 }
-

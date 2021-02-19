@@ -146,6 +146,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		struct PushConstantBindingRules
 		{
 			uint32_t	_shaderStageBind;
+			unsigned	_offset, _size;
 			unsigned	_inputCBSlot;
 		};
 		std::vector<PushConstantBindingRules> _pushConstantsRules;
@@ -181,16 +182,14 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TextureView;
 	class ObjectFactory;
 	class DescriptorSetDebugInfo;
-	class LegacyRegisterBinding;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
 	{
 	public:
-		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
+		template<int Count> void Bind(const ResourceList<TextureView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
-		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
 		void Reset();
 		bool HasChanges() const;
@@ -202,7 +201,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		NumericUniformsInterface(
 			const ObjectFactory& factory,
 			const CompiledPipelineLayout& pipelineLayout,
-			const LegacyRegisterBinding& bindings);
+			const LegacyRegisterBindingDesc& bindings);
 		NumericUniformsInterface();
 		~NumericUniformsInterface();
 
@@ -220,7 +219,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<int Count> 
-		void    NumericUniformsInterface::Bind(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+		void    NumericUniformsInterface::Bind(const ResourceList<TextureView, Count>& shaderResources) 
 		{
 			auto r = MakeIteratorRange(shaderResources._buffers);
 			Bind(
@@ -247,14 +246,5 @@ namespace RenderCore { namespace Metal_Vulkan
 			Bind(
 				constantBuffers._startingPoint,
 				MakeIteratorRange(buffers));
-		}
-
-	template<int Count> 
-		void    NumericUniformsInterface::Bind(const ResourceList<UnorderedAccessView, Count>& uavs)
-		{
-			auto r = MakeIteratorRange(uavs._buffers);
-			Bind(
-				uavs._startingPoint,
-				MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
 		}
 }}
