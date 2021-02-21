@@ -56,7 +56,7 @@ namespace SceneEngine
 
         unsigned structureSize = (desc._storeColour)?(sizeof(float)*3):(sizeof(float)*2);
         auto nodeListBufferDesc = CreateDesc(
-            BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource,
+            BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             0, GPUAccess::Read|GPUAccess::Write,
             LinearBufferDesc::Create(16*1024*1024*structureSize, structureSize),
             "OI-NodeBuffer");

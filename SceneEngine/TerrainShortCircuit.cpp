@@ -89,7 +89,7 @@ namespace SceneEngine
 
         _tileCoordsBuffer = GestaltTypes::UAV(
             BufferUploads::LinearBufferDesc::Create(32, 32),
-            "TileCoordsBuffer", nullptr, BufferUploads::BindFlag::StructuredBuffer);
+            "TileCoordsBuffer", nullptr, BufferUploads::BindFlag::UnorderedAccess);
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_depVal, _cs0->GetDependencyValidation());

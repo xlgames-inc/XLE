@@ -102,7 +102,7 @@ namespace SceneEngine
 
         _listsBuffer = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::UnorderedAccess | BindFlag::ShaderResource | BindFlag::StructuredBuffer,
+                BindFlag::UnorderedAccess | BindFlag::ShaderResource,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::LinearBufferDesc::Create(indexSize*2*desc._storageCount, indexSize*2),
                 "RTShadowsList"));

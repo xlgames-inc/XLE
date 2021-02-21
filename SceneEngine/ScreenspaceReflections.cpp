@@ -207,7 +207,7 @@ namespace SceneEngine
         // auto pkt = CreateBasicPacket(sizeof(SamplingPattern), samplingPattern.get());
         // auto samplingPatternCS = GetBufferUploads().Transaction_Immediate(
         //     CreateDesc(
-        //         BindFlag::StructuredBuffer|BindFlag::ShaderResource, 0, GPUAccess::Read, 
+        //         BindFlag::UnorderedAccess|BindFlag::ShaderResource, 0, GPUAccess::Read, 
         //         LinearBufferDesc::Create(sizeof(SamplingPattern), sizeof(unsigned)),
         //         "SSRSampling"),
         //     pkt.get());

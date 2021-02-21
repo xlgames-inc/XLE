@@ -109,7 +109,7 @@ namespace SceneEngine
 
         BufferUploads::BufferDesc bufferDesc;
         bufferDesc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
-        bufferDesc._bindFlags = BufferUploads::BindFlag::StructuredBuffer | BufferUploads::BindFlag::UnorderedAccess;
+        bufferDesc._bindFlags = BufferUploads::BindFlag::UnorderedAccess;
         bufferDesc._cpuAccess = 0;
         bufferDesc._gpuAccess = BufferUploads::GPUAccess::Read | BufferUploads::GPUAccess::Write;
         bufferDesc._allocationRules = 0;
@@ -202,7 +202,7 @@ namespace SceneEngine
                     auto& uploads = GetBufferUploads();
                     BufferUploads::BufferDesc desc;
                     desc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
-                    desc._bindFlags = BufferUploads::BindFlag::ShaderResource | BufferUploads::BindFlag::StructuredBuffer;
+                    desc._bindFlags = BufferUploads::BindFlag::ShaderResource | BufferUploads::BindFlag::UnorderedAccess;
                     desc._cpuAccess = BufferUploads::CPUAccess::WriteDynamic;
                     desc._gpuAccess = BufferUploads::GPUAccess::Read;
                     desc._allocationRules = 0;

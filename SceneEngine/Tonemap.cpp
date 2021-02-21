@@ -307,7 +307,7 @@ namespace SceneEngine
             BufferUploads::LinearBufferDesc::Create(8, 8),
             "LuminanceProperties", 
             BufferUploads::CreateBasicPacket(sizeof(initialData), &initialData).get(),
-            BufferUploads::BindFlag::StructuredBuffer);
+            BufferUploads::BindFlag::UnorderedAccess);
 
         StringMeld<256> shaderDefines; 
         shaderDefines << "MSAA_SAMPLES=" << desc._sampleCount;

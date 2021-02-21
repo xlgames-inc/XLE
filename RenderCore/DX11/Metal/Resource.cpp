@@ -442,7 +442,7 @@ namespace RenderCore { namespace Metal_DX11
 				d3dDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
 				d3dDesc.MiscFlags = 0;
 				d3dDesc.StructureByteStride = 0;
-				if (desc._bindFlags & BindFlag::StructuredBuffer) {
+				if (desc._bindFlags & BindFlag::UnorderedAccess) {
 					d3dDesc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 					d3dDesc.StructureByteStride = desc._linearBufferDesc._structureByteSize;
 				}

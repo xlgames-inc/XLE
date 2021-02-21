@@ -145,7 +145,7 @@ namespace SceneEngine
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
             //      We want to write to an append structure buffer. So let's make it a shader resource, and read from it using Load int the vertex shader
-        bufferDesc._bindFlags = BindFlag::UnorderedAccess | BindFlag::StructuredBuffer | BindFlag::ShaderResource;
+        bufferDesc._bindFlags = BindFlag::UnorderedAccess | BindFlag::ShaderResource;
         bufferDesc._linearBufferDesc._structureByteSize = 4*4 + (desc._alignToTerrainUp ? 3*3*4 : 2*4);
         bufferDesc._linearBufferDesc._sizeInBytes = bufferDesc._linearBufferDesc._structureByteSize*InstanceBufferMaxCount;
         

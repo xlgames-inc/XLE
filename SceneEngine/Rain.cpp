@@ -167,7 +167,7 @@ namespace SceneEngine
 
         ResourceDesc structuredBufferDesc;
         structuredBufferDesc._type = ResourceDesc::Type::LinearBuffer;
-        structuredBufferDesc._bindFlags = BindFlag::ShaderResource|BindFlag::StructuredBuffer|BindFlag::UnorderedAccess;
+        structuredBufferDesc._bindFlags = BindFlag::ShaderResource|BindFlag::UnorderedAccess;
         structuredBufferDesc._cpuAccess = 0;
         structuredBufferDesc._gpuAccess = GPUAccess::Write;
         structuredBufferDesc._allocationRules = 0;

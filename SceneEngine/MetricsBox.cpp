@@ -26,7 +26,7 @@ namespace SceneEngine
         auto& uploads = GetBufferUploads();
         ResourceDesc metricsBufferDesc;
         metricsBufferDesc._type = ResourceDesc::Type::LinearBuffer;
-        metricsBufferDesc._bindFlags = BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource;
+        metricsBufferDesc._bindFlags = BindFlag::UnorderedAccess|BindFlag::ShaderResource;
         metricsBufferDesc._cpuAccess = 0;
         metricsBufferDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
         metricsBufferDesc._allocationRules = 0;
