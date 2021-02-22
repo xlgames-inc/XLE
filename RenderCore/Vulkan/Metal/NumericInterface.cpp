@@ -10,6 +10,7 @@
 #include "Pools.h"
 #include "DescriptorSet.h"
 #include "DeviceContext.h"
+#include "../../BufferView.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
@@ -48,13 +49,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			ProgressiveDescriptorSetBuilder		_builder;
 			VulkanUniquePtr<VkDescriptorSet>    _activeDescSet;
 			uint64_t							_slotsFilled = 0;
+			uint64_t							_allSlotsMask = 0;
 			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
 
 			#if defined(VULKAN_VERBOSE_DEBUG)
 				DescriptorSetDebugInfo _description;
 			#endif
-
-			std::shared_ptr<DescriptorSetSignature> _signature;
 
 			DescSet(const std::shared_ptr<CompiledDescriptorSetLayout>& layout)
 			: _builder(layout->GetDescriptorSlots()), _layout(layout)
@@ -62,6 +62,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				#if defined(VULKAN_VERBOSE_DEBUG)
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
+				_allSlotsMask = (1ull<<uint64_t(layout->GetDescriptorSlots().size()))-1ull;
 			}
 
 			void Reset(GlobalPools& globalPools)
@@ -75,7 +76,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				#endif
 
 				// bind dummies in every slot
-				_builder.BindDummyDescriptors(globalPools, (1ull<<uint64_t(_signature->_slots.size()))-1ull);
+				_builder.BindDummyDescriptors(globalPools, _allSlotsMask);
 			}
 		};
 		std::vector<DescSet> _descSet;
@@ -120,11 +121,13 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers)
+    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const ConstantBufferView*> constantBuffers)
     {
 		assert(_pimpl);
-        for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
-            if (!uniformBuffers[c]) continue;
+
+		VkDescriptorBufferInfo buffers[constantBuffers.size()];
+		for (unsigned c=0; c<constantBuffers.size(); ++c) {
+			if (!constantBuffers[c]._prebuiltBuffer) continue;
 
 			const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
 			if (binding._slotIndex == ~0u) {
@@ -132,7 +135,19 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
-			_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, { uniformBuffers[c], 0, VK_WHOLE_SIZE});
+			VkDescriptorBufferInfo bufferInfo;
+			bufferInfo.buffer = checked_cast<const Resource*>(constantBuffers[c]._prebuiltBuffer)->GetBuffer();
+			if (constantBuffers[c]._prebuiltRangeEnd != 0) {
+				bufferInfo.offset = constantBuffers[c]._prebuiltRangeBegin;
+				bufferInfo.range = constantBuffers[c]._prebuiltRangeEnd - constantBuffers[c]._prebuiltRangeBegin;
+			} else {
+				bufferInfo.offset = 0;
+				bufferInfo.range = VK_WHOLE_SIZE;
+			}
+
+			_pimpl->_descSet[binding._descSetIndex]._builder.Bind(
+				binding._slotIndex, bufferInfo,
+				constantBuffers[c]._prebuiltBuffer->GetDesc()._name);
 			_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
         }
     }
@@ -183,7 +198,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				d._activeDescSet = std::move(newSets[0]);
 
 				encoder.BindDescriptorSet(
-					dIdx, newSets[0].get()
+					dIdx, d._activeDescSet.get()
 					VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo{d._description}));
 			}
 		}
@@ -214,9 +229,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
-		const CompiledPipelineLayout& pipelineLayout,
+		const ICompiledPipelineLayout& ipipelineLayout,
         const LegacyRegisterBindingDesc& bindings)
     {
+		const auto& pipelineLayout = *checked_cast<const CompiledPipelineLayout*>(&ipipelineLayout);
         _pimpl = std::make_unique<Pimpl>(pipelineLayout);
         _pimpl->_globalPools = Internal::VulkanGlobalsTemp::GetInstance()._globalPools;
 		_pimpl->_descriptorPool = &_pimpl->_globalPools->_mainDescriptorPool;

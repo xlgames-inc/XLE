@@ -110,6 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const ObjectFactory& factory, const std::shared_ptr<IResource>& image, 
         const TextureViewDesc& window, FormatUsage formatUsage)
 	{
+        assert(image);
 		auto res = (Resource*)image->QueryInterface(typeid(Resource).hash_code());
 		if (!res)
 			Throw(::Exceptions::BasicLabel("Incorrect resource type passed to Vulkan TextureView"));

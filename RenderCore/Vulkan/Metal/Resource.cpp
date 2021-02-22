@@ -543,6 +543,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			// Determine the steady state layout for this resource. If we have only one
 			// usage type selected, we will default to the optimal layout for that usage method.
 			// Otherwise we will fall back to "general"
+			// However, there's an exception for TransferDst; since most textures will have this just to
+			// fill with initial data
 			_steadyStateLayout = Internal::ImageLayout::Undefined;
 			_steadyStateAccessMask = 0;
 			using lyt = Internal::ImageLayout;
@@ -568,7 +570,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._accessFlags;
 			}
 			if (desc._bindFlags & BindFlag::TransferDst) {
-				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferDstOptimal : lyt::General;
+				// Note the exception for _steadyStateLayout for TransferDst
+				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferDstOptimal : _steadyStateLayout;
 				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._accessFlags;
 			}
 		}

@@ -135,4 +135,33 @@ namespace UnitTests
                 return Texture.Sample(Texture_sampler, a_texCoord);
             }
         )";
+
+    static const char psText_LegacyBindings[] = 
+        HLSLPrefix
+		R"(
+            Texture2D<uint> Texture0 : register(t5);
+            Texture2D<uint> Texture1 : register(t6);
+            cbuffer TestBuffer : register(b9)
+            {
+                float3 InputA;
+			    float InputB;
+            };
+            float4 main(float2 a_texCoord : TEXCOORD) : SV_Target0
+            {
+                uint4 t0 = Texture0.Load(int3(3,3,0));
+                uint4 t1 = Texture1.Load(int3(4,4,0));
+                bool success = 
+                    t0 == uint4(7,3,5,9)
+                    && t1 == uint4(10, 45, 99, 23)
+                    && InputA == float3(1,0,1)
+                    && InputB == 8
+                    ;
+
+                if (success) {
+                    return float4(0, 1, 0, 1);
+                } else {
+                    return float4(1, 0, 0, 1);
+                }
+            }
+        )";
 }

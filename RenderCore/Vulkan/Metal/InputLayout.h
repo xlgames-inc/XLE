@@ -18,6 +18,8 @@ namespace RenderCore
 	class InputElementDesc;
 	class MiniInputElementDesc;
 	class CompiledShaderByteCode;
+	class ICompiledPipelineLayout;
+	class IResource;
 	template <typename Type, int Count> class ResourceList;
 }
 
@@ -75,7 +77,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ComputePipeline;
 	class CompiledDescriptorSet;
 	class CompiledDescriptorSetLayout;
-	class CompiledPipelineLayout;
 
 	class BoundUniforms
 	{
@@ -177,8 +178,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ShaderResourceView;
 	class UnorderedAccessView;
 	class SamplerState;
-	class Buffer;
-	using ConstantBuffer = Buffer;
 	class TextureView;
 	class ObjectFactory;
 	class DescriptorSetDebugInfo;
@@ -189,7 +188,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		template<int Count> void Bind(const ResourceList<TextureView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
-		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+		template<int Count> void Bind(const ResourceList<IResource, Count>&);
+
+		void    Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+		void    Bind(unsigned startingPoint, IteratorRange<const ConstantBufferView*> uniformBuffers);
 
 		void Reset();
 		bool HasChanges() const;
@@ -200,7 +202,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		NumericUniformsInterface(
 			const ObjectFactory& factory,
-			const CompiledPipelineLayout& pipelineLayout,
+			const ICompiledPipelineLayout& pipelineLayout,
 			const LegacyRegisterBindingDesc& bindings);
 		NumericUniformsInterface();
 		~NumericUniformsInterface();
@@ -211,8 +213,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
 
-		void    Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-		void    Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
 		void    Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 	};
 
@@ -238,11 +238,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	
 	template<int Count> 
-		void    NumericUniformsInterface::Bind(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+		void    NumericUniformsInterface::Bind(const ResourceList<IResource, Count>& constantBuffers) 
 		{
-			VkBuffer buffers[Count];
+			ConstantBufferView buffers[Count];
 			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
+				buffers[c]._prebuiltBuffer = constantBuffers._buffers[c];
 			Bind(
 				constantBuffers._startingPoint,
 				MakeIteratorRange(buffers));

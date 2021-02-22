@@ -85,13 +85,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			w.descriptorType = (VkDescriptorType)type;
 
 			InfoPtr<BindingInfo>(w) = (reallocateBufferInfo) ? &AllocateInfo(bindingInfo) : &bindingInfo;
-
-			#if defined(VULKAN_VERBOSE_DEBUG)
-				if (_verboseDescription._bindingDescriptions.size() <= bindingPoint)
-					_verboseDescription._bindingDescriptions.resize(bindingPoint+1);
-				_verboseDescription._bindingDescriptions[bindingPoint] = { type, description };
-			#endif
 		}
+
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			if (_verboseDescription._bindingDescriptions.size() <= bindingPoint)
+				_verboseDescription._bindingDescriptions.resize(bindingPoint+1);
+			_verboseDescription._bindingDescriptions[bindingPoint] = { type, description };
+		#endif
 	}
 
 	void    ProgressiveDescriptorSetBuilder::Bind(unsigned descriptorSetBindPoint, const TextureView& resource)

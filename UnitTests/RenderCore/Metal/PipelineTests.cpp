@@ -157,6 +157,15 @@ namespace UnitTests
 		return device.CreatePipelineLayout(desc);
 	}
 
+	static RenderCore::ResourceDesc AsStagingDesc(const RenderCore::ResourceDesc& desc)
+	{
+		auto stagingDesc = desc;
+		stagingDesc._bindFlags = RenderCore::BindFlag::TransferSrc;
+		stagingDesc._cpuAccess = RenderCore::CPUAccess::Write;
+		stagingDesc._gpuAccess = 0;
+		return stagingDesc;
+	}
+
 	static std::shared_ptr<RenderCore::IResource> CreateTestStorageTexture(RenderCore::IDevice& device, RenderCore::IThreadContext& threadContext)
 	{
 		using namespace RenderCore;
@@ -169,11 +178,7 @@ namespace UnitTests
 		// fill with data via a staging texture
 		// Vulkan really doesn't like initializing UnorderedAccess with preinitialized data, even if we use
 		// linear tiling. We must do an explicit initialization via a staging texture
-		auto stagingDesc = desc;
-		stagingDesc._bindFlags = BindFlag::TransferSrc;
-		stagingDesc._cpuAccess = CPUAccess::Write;
-		stagingDesc._gpuAccess = 0;
-		auto staging = device.CreateResource(stagingDesc);
+		auto staging = device.CreateResource(AsStagingDesc(desc));
 		{
 			Metal::ResourceMap map(
 				*Metal::DeviceContext::Get(threadContext),
@@ -243,8 +248,6 @@ namespace UnitTests
 		TestBufferType pushConstants0 { Float3(13, 13, 13), 16 };
 		TestBufferType pushConstants1 { Float3(14, 14, 14), 19 };
 
-		threadContext->GetAnnotator().BeginFrameCapture();
-
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
@@ -283,8 +286,6 @@ namespace UnitTests
 			encoder.Draw(4);
 		}
 
-		threadContext->GetAnnotator().EndFrameCapture();
-
 		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 		REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
@@ -292,6 +293,84 @@ namespace UnitTests
 
 		// potential tests:
 		//		- mismatches (shader vs descriptor set, bindings vs descriptor set types)
-
 	}
+
+	TEST_CASE( "Pipeline-NumericInterface", "[rendercore_metal]" )
+	{
+		using namespace RenderCore;
+		auto testHelper = MakeTestHelper();
+		auto threadContext = testHelper->_device->GetImmediateContext();
+		auto targetDesc = CreateDesc(
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(256, 256, Format::R8G8B8A8_UNORM),
+			"temporary-out");
+		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+
+		TestBufferType pushConstants0 { Float3(1, 0, 1), 8 };
+		auto testConstantBuffer = testHelper->CreateCB(MakeOpaqueIteratorRange(pushConstants0));
+
+		// Initialize 2 textures with some data to read
+		std::shared_ptr<IResource> tex0, tex1;
+		{
+			auto desc = CreateDesc(
+				BindFlag::ShaderResource | BindFlag::TransferDst, 0, GPUAccess::Read,
+				TextureDesc::Plain2D(8, 8, Format::R8G8B8A8_UINT),
+				"test-storage-texture-0");
+			tex0 = testHelper->_device->CreateResource(desc);
+			XlCopyString(desc._name, "test-storage-texture-1");
+			tex1 = testHelper->_device->CreateResource(desc);
+
+			auto staging = testHelper->_device->CreateResource(AsStagingDesc(desc));
+			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			{
+				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
+				std::memset(map.GetData().begin(), 0, map.GetData().size());
+				map.GetData().Cast<unsigned*>()[3*8+3] = (9u << 24u) | (5u << 16u) | (3u << 8u) | (7u);
+			}
+			Metal::Internal::CaptureForBind tex0Cap(metalContext, *tex0, BindFlag::TransferDst);
+			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex0.get()), *checked_cast<Metal::Resource*>(staging.get()));
+
+			{
+				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
+				std::memset(map.GetData().begin(), 0, map.GetData().size());
+				map.GetData().Cast<unsigned*>()[4*8+4] = (23u << 24u) | (99u << 16u) | (45u << 8u) | (10u);
+			}
+			Metal::Internal::CaptureForBind tex1Cap(metalContext, *tex1, BindFlag::TransferDst);
+			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex1.get()), *checked_cast<Metal::Resource*>(staging.get()), Metal::Internal::ImageLayout::ShaderReadOnlyOptimal);
+		}
+
+		////////////////////////////////////////////////////////////////////////////////////////
+		{
+			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+
+			auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport, psText_LegacyBindings);
+			encoder.Bind(shaderProgram);
+
+			Metal::NumericUniformsInterface numericInterface(
+				Metal::GetObjectFactory(),
+				*testHelper->_pipelineLayout,
+				*testHelper->_defaultLegacyBindings);
+
+			Metal::TextureView tv0 { tex0 };
+			Metal::TextureView tv1 { tex1 };
+			ConstantBufferView cbs[] { testConstantBuffer };
+
+			numericInterface.Bind(MakeResourceList(5, tv0, tv1));
+			numericInterface.Bind(9, MakeIteratorRange(cbs));
+			numericInterface.Apply(metalContext, encoder);
+
+			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
+			REQUIRE(inputLayout.AllAttributesBound());
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Draw(4);
+		}
+
+		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
+		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
+		REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
+		////////////////////////////////////////////////////////////////////////////////////////
+	}
+
 }

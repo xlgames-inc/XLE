@@ -141,6 +141,7 @@ namespace UnitTests
 			RenderCore::VulkanCompilerConfiguration cfg;
 			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
 			cfg._legacyBindings = CreateDefaultLegacyRegisterBindingDesc();
+			_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(cfg._legacyBindings);
 		 	shaderCompiler = vulkanDevice->CreateShaderCompiler(cfg);
 		} else {
 			shaderCompiler = _device->CreateShaderCompiler();
@@ -327,7 +328,7 @@ namespace UnitTests
 			CreateDesc(
 				BindFlag::VertexBuffer, 0, GPUAccess::Read,
 				LinearBufferDesc::Create((unsigned)data.size()),
-				"vertexBuffer"),
+				"vertex-buffer"),
 			SubResourceInitData { data });
 	}
 
@@ -338,7 +339,18 @@ namespace UnitTests
 			CreateDesc(
 				BindFlag::IndexBuffer, 0, GPUAccess::Read,
 				LinearBufferDesc::Create((unsigned)data.size()),
-				"indexBuffer"),
+				"index-buffer"),
+			SubResourceInitData { data });
+	}
+
+	std::shared_ptr<RenderCore::IResource> MetalTestHelper::CreateCB(IteratorRange<const void*> data)
+	{
+		using namespace RenderCore;
+		return _device->CreateResource(
+			CreateDesc(
+				BindFlag::ConstantBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create((unsigned)data.size()),
+				"constant-buffer"),
 			SubResourceInitData { data });
 	}
 
