@@ -1182,7 +1182,7 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static PlustacheTypes::ObjectType CreateTemplateContext(IteratorRange<D3D10_SHADER_MACRO*> macros)
+    static PlustacheTypes::ObjectType CreateTemplateContext(IteratorRange<const D3D10_SHADER_MACRO*> macros)
     {
         PlustacheTypes::ObjectType result;
         for (auto i=macros.cbegin(); i!=macros.cend(); ++i)

@@ -139,6 +139,37 @@ namespace Utility
 		template<typename Iterator> inline size_t IteratorDifference(Iterator first, Iterator second)		{ return std::distance(first, second); } 
 		template<> inline size_t IteratorDifference(void* first, void* second)								{ return (size_t)PtrDiff(second, first); }
 		template<> inline size_t IteratorDifference(const void* first, const void* second)					{ return (size_t)PtrDiff(second, first); }
+
+        template<
+            typename DstType, typename SrcType,
+            typename std::enable_if<
+                std::is_constructible_v<DstType, SrcType>
+            >::type* =nullptr
+            > DstType ImplicitIteratorCast(SrcType input) { return input; }
+
+        template<
+            typename DstType, typename SrcType,
+            typename std::enable_if<
+                !std::is_constructible_v<DstType, SrcType>
+                && std::is_constructible_v<DstType, decltype(AsPointer(std::declval<SrcType>()))>
+            >::type* =nullptr
+            > DstType ImplicitIteratorCast(SrcType input) { return AsPointer(input); }
+
+        template<typename DstType, typename SrcType>
+			static auto HasImplicitIteratorCast_Helper(int) -> decltype(ImplicitIteratorCast<DstType>(std::declval<SrcType>()), std::true_type{});
+
+		template<typename...>
+			static auto HasImplicitIteratorCast_Helper(...) -> std::false_type;
+
+        template<typename DstType, typename SrcType>
+            decltype(ImplicitIteratorCast<DstType>(std::declval<SrcType>())) StaticIteratorCast(SrcType input) { return ImplicitIteratorCast<DstType>(input); }
+
+        template<
+            typename DstType, typename SrcType,
+            typename std::enable_if<
+                !decltype(HasImplicitIteratorCast_Helper<DstType, SrcType>(0))::value
+            >::type* =nullptr
+            > DstType StaticIteratorCast(SrcType input) { return static_cast<DstType>(AsPointer(input)); }
 	}
 
     template<typename Iterator>
@@ -155,61 +186,116 @@ namespace Utility
             using iterator = Iterator;
 
             // operator[] is only available on iterator range for types other than void*/const void*
-            template<typename I=Iterator>
-                auto operator[](size_t index) const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value, decltype(*std::declval<const I>())>::type
-                { return this->first[index]; }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvoid-ptr-dereference"
-            template<typename I=Iterator>
-                auto data() const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value,
-                    decltype(&(*std::declval<const I>()))>::type
-                { return &(*this->first); }
-#pragma GCC diagnostic pop
+            auto operator[](size_t index) const -> decltype(*std::declval<Iterator>()) { return this->first[index]; }
+            auto data() const -> decltype(&(*std::declval<Iterator>())) { return &(*this->first); }
 
             template<typename OtherIteratorType>
-                IteratorRange<OtherIteratorType> Cast() const { return IteratorRange<OtherIteratorType>((OtherIteratorType)this->first, (OtherIteratorType)this->second); }
+                IteratorRange<OtherIteratorType> Cast() const { return IteratorRange<OtherIteratorType>(Internal::StaticIteratorCast<OtherIteratorType>(this->first), Internal::StaticIteratorCast<OtherIteratorType>(this->second)); }
 
             IteratorRange() : std::pair<Iterator, Iterator>((Iterator)nullptr, (Iterator)nullptr) {}
-            IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
+
+            template<typename OtherIteratorType, decltype(Internal::ImplicitIteratorCast<Iterator>(std::declval<OtherIteratorType>()))* = nullptr>
+                IteratorRange(OtherIteratorType f, OtherIteratorType s) : std::pair<Iterator, Iterator>(Internal::ImplicitIteratorCast<Iterator>(f), Internal::ImplicitIteratorCast<Iterator>(s)) {}
+
+            IteratorRange(std::initializer_list<std::decay_t<decltype(*std::declval<Iterator>())>> init) : std::pair<Iterator, Iterator>(std::begin(init), std::end(init)) {}
 
             // The following constructor & operator pair now handle conversion from different types of IteratorRanges
-            // (so long as there's an automatic statis_cast conversion down to the new iterator type)
+            // (so long as there's an automatic static_cast conversion down to the new iterator type)
             // Furthermore, they will handle anything with const begin() and end() methods
             // It's quite flexible, so be conscious of automatic conversions
             // Also the Microsoft intellisense code doesn't seem to always be able to identify the all of the cases were conversion is
             // possible! I've no idea why
 
             template<   typename OtherRange,
-                        typename std::enable_if<
-                            std::is_constructible<std::pair<Iterator, Iterator>, typename OtherRange::iterator&, typename OtherRange::iterator&>::value
-                        >::type* =nullptr>
+                        decltype(Internal::ImplicitIteratorCast<Iterator>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
                 IteratorRange(const OtherRange& copyFrom)
-                    : std::pair<Iterator, Iterator>(copyFrom.begin(), copyFrom.end()) {}
+                    : std::pair<Iterator, Iterator>(Internal::ImplicitIteratorCast<Iterator>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<Iterator>(std::end(copyFrom))) {}
 
             template<   typename OtherRange,
-                        typename std::enable_if<
-                            std::is_constructible<std::pair<Iterator, Iterator>, typename OtherRange::iterator&, typename OtherRange::iterator&>::value
-                        >::type* =nullptr>
+                        decltype(Internal::ImplicitIteratorCast<Iterator>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
                 IteratorRange& operator=(const OtherRange& copyFrom)
                 {
-                    std::pair<Iterator, Iterator>::operator=(std::make_pair(copyFrom.begin(), copyFrom.end()));
+                    std::pair<Iterator, Iterator>::operator=(std::make_pair(Internal::ImplicitIteratorCast<Iterator>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<Iterator>(std::end(copyFrom))));
+                    return *this;
+                }
+        };
+
+    template<>
+        class IteratorRange<void*> : public std::pair<void*, void*>
+        {
+        public:
+            void* begin() const         { return this->first; }
+            void* end() const           { return this->second; }
+            void* cbegin() const        { return this->first; }
+            void* cend() const          { return this->second; }
+            bool empty() const          { return this->first == this->second; }
+			size_t size() const			{ return Internal::IteratorDifference(this->first, this->second); }
+
+            auto data() const -> void* { return this->first; }
+
+            template<typename OtherIteratorType>
+                IteratorRange<OtherIteratorType> Cast() const { return IteratorRange<OtherIteratorType>(Internal::StaticIteratorCast<OtherIteratorType>(this->first), Internal::StaticIteratorCast<OtherIteratorType>(this->second)); }
+
+            IteratorRange() : std::pair<void*, void*>(nullptr, nullptr) {}
+
+            template<typename OtherIteratorType, decltype(Internal::ImplicitIteratorCast<void*>(std::declval<OtherIteratorType>()))* = nullptr>
+                IteratorRange(OtherIteratorType f, OtherIteratorType s) : std::pair<void*, void*>(Internal::ImplicitIteratorCast<void*>(f), Internal::ImplicitIteratorCast<void*>(s)) {}
+
+            template<   typename OtherRange,
+                        decltype(Internal::ImplicitIteratorCast<void*>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
+                IteratorRange(const OtherRange& copyFrom)
+                    : std::pair<void*, void*>(Internal::ImplicitIteratorCast<void*>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<void*>(std::end(copyFrom))) {}
+
+            template<   typename OtherRange,
+                        decltype(Internal::ImplicitIteratorCast<void*>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
+                IteratorRange& operator=(const OtherRange& copyFrom)
+                {
+                    std::pair<void*, void*>::operator=(std::make_pair(Internal::ImplicitIteratorCast<void*>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<void*>(std::end(copyFrom))));
+                    return *this;
+                }
+        };
+
+    template<>
+        class IteratorRange<const void*> : public std::pair<const void*, const void*>
+        {
+        public:
+            const void* begin() const       { return this->first; }
+            const void* end() const         { return this->second; }
+            const void* cbegin() const      { return this->first; }
+            const void* cend() const        { return this->second; }
+            bool empty() const              { return this->first == this->second; }
+			size_t size() const             { return Internal::IteratorDifference(this->first, this->second); }
+
+            auto data() const -> const void* { return this->first; }
+
+            template<typename OtherIteratorType>
+                IteratorRange<OtherIteratorType> Cast() const { return IteratorRange<OtherIteratorType>(Internal::StaticIteratorCast<OtherIteratorType>(this->first), Internal::StaticIteratorCast<OtherIteratorType>(this->second)); }
+
+            IteratorRange() : std::pair<const void*, const void*>(nullptr, nullptr) {}
+
+            template<typename OtherIteratorType, decltype(Internal::ImplicitIteratorCast<const void*>(std::declval<OtherIteratorType>()))* = nullptr>
+                IteratorRange(OtherIteratorType f, OtherIteratorType s) : std::pair<const void*, const void*>(Internal::ImplicitIteratorCast<const void*>(f), Internal::ImplicitIteratorCast<const void*>(s)) {}
+
+            template<   typename OtherRange,
+                        decltype(Internal::ImplicitIteratorCast<const void*>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
+                IteratorRange(const OtherRange& copyFrom)
+                    : std::pair<const void*, const void*>(Internal::ImplicitIteratorCast<const void*>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<const void*>(std::end(copyFrom))) {}
+
+            template<   typename OtherRange,
+                        decltype(Internal::ImplicitIteratorCast<const void*>(std::begin(std::declval<const OtherRange&>())))* = nullptr>
+                IteratorRange& operator=(const OtherRange& copyFrom)
+                {
+                    std::pair<const void*, const void*>::operator=(std::make_pair(Internal::ImplicitIteratorCast<const void*>(std::begin(copyFrom)), Internal::ImplicitIteratorCast<const void*>(std::end(copyFrom))));
                     return *this;
                 }
         };
 
     template<typename Container>
-        IteratorRange<const typename Container::value_type*> MakeIteratorRange(const Container& c)
+        IteratorRange<decltype(std::begin(std::declval<Container&>()))> MakeIteratorRange(Container& c)
         {
-            return IteratorRange<const typename Container::value_type*>(AsPointer(c.cbegin()), AsPointer(c.cend()));
+            return IteratorRange<decltype(std::begin(std::declval<Container&>()))>(std::begin(c), std::end(c));
         }
-
-    template<typename Container>
-        IteratorRange<typename Container::value_type*> MakeIteratorRange(Container& c)
-        {
-            return IteratorRange<typename Container::value_type*>(AsPointer(c.begin()), AsPointer(c.end()));
-        }
-    
+   
     template<typename Iterator>
         IteratorRange<Iterator> MakeIteratorRange(Iterator begin, Iterator end)
         {
@@ -221,12 +307,6 @@ namespace Utility
         {
             return IteratorRange<ArrayElement*>(&c[0], &c[Count]);
         }
-
-	template<typename ArrayElement>
-		IteratorRange<const ArrayElement*> MakeIteratorRange(std::initializer_list<ArrayElement> initializers)
-		{
-			return IteratorRange<const ArrayElement*>(initializers.begin(), initializers.end());
-		}
 
 	template<typename Type>
 		IteratorRange<void*> MakeOpaqueIteratorRange(Type& object)
@@ -297,6 +377,12 @@ namespace Utility
             return std::lower_bound(v.begin(), v.end(), compareToFirst, 
 				CompareFirst<decltype(std::declval<Iterator>()->first), decltype(std::declval<Iterator>()->second)>());
         }
+}
+
+namespace std
+{
+    template<typename Iterator> Iterator begin(const IteratorRange<Iterator>& range) { return range.begin(); }
+    template<typename Iterator> Iterator end(const IteratorRange<Iterator>& range) { return range.end(); }
 }
 
 using namespace Utility;

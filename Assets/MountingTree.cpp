@@ -222,7 +222,7 @@ namespace Assets
 					}
 
 					if (_segmentCount < dimof(_segments))
-						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (uint8_t*)iterator };
+						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (const uint8_t*)iterator };
 					++_segmentCount;
 				}
 			}
@@ -265,7 +265,7 @@ namespace Assets
 					}
 
 					if (_segmentCount < dimof(_segments))
-						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (uint8_t*)iterator };
+						_segments[_segmentCount] = { (const uint8_t*)segmentBegin, (const uint8_t*)iterator };
 					++_segmentCount;
 				}
 			}
