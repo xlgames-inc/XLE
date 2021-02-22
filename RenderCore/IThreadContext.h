@@ -21,7 +21,7 @@ namespace RenderCore
 
     namespace CommitCommandsFlags
     {
-        enum Flags { WaitForCompletion };
+        enum Flags { WaitForCompletion = 1<<0 };
         using BitField = unsigned;
     }
 

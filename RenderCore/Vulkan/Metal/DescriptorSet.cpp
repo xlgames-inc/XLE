@@ -108,6 +108,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 		#endif
 
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			if (resource.GetResource()) ValidateResourceVisibility(*resource.GetResource());
+		#endif
+
 		assert(descriptorSetBindPoint < _signature.size());
 		auto slotType = _signature[descriptorSetBindPoint]._type;
 		assert(_signature[descriptorSetBindPoint]._count == 1);
@@ -292,7 +296,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	uint64_t	ProgressiveDescriptorSetBuilder::FlushChanges(
 		VkDevice device,
 		VkDescriptorSet destination,
-		VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask
+		VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask,
+		std::vector<uint64_t>& resourceVisibilityList
 		VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo& description))
 	{
 		// Flush out changes to the given descriptor set.
@@ -347,8 +352,33 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 		#endif
 
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			if (resourceVisibilityList.empty()) {
+				resourceVisibilityList = std::move(_resourcesThatMustBeVisible);
+			} else {
+				resourceVisibilityList.insert(resourceVisibilityList.end(), _resourcesThatMustBeVisible.begin(), _resourcesThatMustBeVisible.end());
+				_resourcesThatMustBeVisible.clear();
+			}
+		#endif
+
 		return result;
 	}
+
+	#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+		void ProgressiveDescriptorSetBuilder::ValidateResourceVisibility(IResource& res)
+		{
+			auto& vres = *checked_cast<Resource*>(&res);
+			if (vres._pendingInitialization)
+				Throw(std::runtime_error("Attempting to use a resource while it still has a pending initialization function. Call Metal::CompleteInitialization() to complete initialization for this resource. Resource: " + std::string{res.GetDesc()._name}));
+
+			if (!vres.GetImage())		// we only care about images; they are the ones with awkward rules
+				return;
+
+			// If the resource is already on our _resourcesBecomingVisible list, then we're ok
+			// Otherwise, we remember the guid and validate that it's visible on commit
+			_resourcesThatMustBeVisible.push_back(vres.GetGUID());
+		}
+	#endif
 
 	bool    ProgressiveDescriptorSetBuilder::HasChanges() const
 	{
@@ -642,10 +672,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t signatureMask = uint64_t(layout->GetDescriptorSlots().size())-1;
 		builder.BindDummyDescriptors(globalPools, signatureMask & ~writtenMask);
 
+		std::vector<uint64_t> resourceVisibilityList;
 		builder.FlushChanges(
 			factory.GetDevice().get(),
 			_underlying.get(),
-			nullptr, 0
+			nullptr, 0,
+			resourceVisibilityList
 			VULKAN_VERBOSE_DEBUG_ONLY(, _description));
 	}
 

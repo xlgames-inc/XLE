@@ -116,14 +116,25 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     VulkanUniquePtr<VkImage> ObjectFactory::CreateImage(
-        const VkImageCreateInfo& createInfo) const
+        const VkImageCreateInfo& createInfo,
+        uint64_t guidForVisibilityTracking) const
     {
         auto d = _destruction.get();
         VkImage rawImage = nullptr;
         auto res = vkCreateImage(_device.get(), &createInfo, g_allocationCallbacks, &rawImage);
-        auto image = VulkanUniquePtr<VkImage>(
-            rawImage,
-            [d](VkImage image) { d->Destroy(image); });
+        VulkanUniquePtr<VkImage> image;
+        #if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+            if (guidForVisibilityTracking) {
+                image = VulkanUniquePtr<VkImage>(
+                    rawImage,
+                    [d, guidForVisibilityTracking, this](VkImage image) { d->Destroy(image); this->ForgetResource(guidForVisibilityTracking); });
+            } else
+        #endif
+        {
+            image = VulkanUniquePtr<VkImage>(
+                rawImage,
+                [d](VkImage image) { d->Destroy(image); });
+        }
         if (res != VK_SUCCESS)
             Throw(VulkanAPIFailure(res, "Failed while creating image"));
         return std::move(image);
@@ -383,6 +394,15 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		_destruction = destruction;
 	}
+
+    #if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+        void ObjectFactory::ForgetResource(uint64_t resourceGuid) const
+        {
+            auto i = std::lower_bound(_resourcesVisibleToQueue.begin(), _resourcesVisibleToQueue.end(), resourceGuid);
+            if (i != _resourcesVisibleToQueue.end() && *i == resourceGuid)
+                _resourcesVisibleToQueue.erase(i);
+        }
+    #endif
 
     ObjectFactory::ObjectFactory(ObjectFactory&& moveFrom) never_throws
     : _memProps(std::move(moveFrom._memProps))

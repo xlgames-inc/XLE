@@ -470,7 +470,7 @@ namespace RenderCore { namespace ImplVulkan
         }
     }
 
-    static VkPresentModeKHR SelectPresentMode(IteratorRange<VkPresentModeKHR*> availableModes)
+    static VkPresentModeKHR SelectPresentMode(IteratorRange<const VkPresentModeKHR*> availableModes)
     {
         // If mailbox mode is available, use it, as is the lowest-latency non-
         // tearing mode.  If not, try IMMEDIATE which will usually be available,
@@ -1162,6 +1162,8 @@ namespace RenderCore { namespace ImplVulkan
 		IteratorRange<const VkSemaphore*> completionSignals,
 		VkFence fence)
 	{
+		_metalContext->ValidateCommitToQueue();
+		
 		VkSubmitInfo submitInfo;
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.pNext = nullptr;

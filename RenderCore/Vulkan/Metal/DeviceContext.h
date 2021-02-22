@@ -353,13 +353,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
 		void		ExecuteCommandList(CommandList&, bool);
-
-		struct QueueCommandListFlags
-		{
-			enum Bits { Stall = 1 << 0 };
-			using BitField = unsigned;
-		};
-		void		QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags = 0);
 		auto        ResolveCommandList() -> std::shared_ptr<CommandList>;
 
 		CommandList& GetActiveCommandList();
@@ -388,6 +381,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		DeviceContext(const DeviceContext&) = delete;
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
+		void RequireResourceVisbility(IteratorRange<const uint64_t*> resourceGuids);
+		void MakeResourcesVisible(IteratorRange<const uint64_t*> resourceGuids);
+		void ValidateCommitToQueue();
+
 		std::shared_ptr<Internal::CaptureForBindRecords> _captureForBindRecords;
 
 		// --------------- Legacy interface --------------- 
@@ -406,7 +403,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		TemporaryBufferSpace*				_tempBufferSpace;
 
-		VulkanUniquePtr<VkFence>			_utilityFence;
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			std::vector<uint64_t> _resourcesBecomingVisible;
+			std::vector<uint64_t> _resourcesThatMustBeVisible;
+		#endif
 
 		void SetupPipelineBuilders();
 		void ResetDescriptorSetState();

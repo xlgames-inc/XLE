@@ -320,8 +320,10 @@ namespace UnitTests
 			XlCopyString(desc._name, "test-storage-texture-1");
 			tex1 = testHelper->_device->CreateResource(desc);
 
-			auto staging = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			Metal::CompleteInitialization(metalContext, {tex0.get(), tex1.get(), fbHelper.GetMainTarget().get()});
+
+			auto staging = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			{
 				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
 				std::memset(map.GetData().begin(), 0, map.GetData().size());
@@ -330,13 +332,16 @@ namespace UnitTests
 			Metal::Internal::CaptureForBind tex0Cap(metalContext, *tex0, BindFlag::TransferDst);
 			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex0.get()), *checked_cast<Metal::Resource*>(staging.get()));
 
+			// (note that it's critical that we use a different staging texture for this -- since the copy into
+			// tex0 is queued on a command list, but the effects of ResourceMap happen immediately)
+			auto staging2 = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			{
-				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
+				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging2.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
 				std::memset(map.GetData().begin(), 0, map.GetData().size());
 				map.GetData().Cast<unsigned*>()[4*8+4] = (23u << 24u) | (99u << 16u) | (45u << 8u) | (10u);
 			}
 			Metal::Internal::CaptureForBind tex1Cap(metalContext, *tex1, BindFlag::TransferDst);
-			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex1.get()), *checked_cast<Metal::Resource*>(staging.get()), Metal::Internal::ImageLayout::ShaderReadOnlyOptimal);
+			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex1.get()), *checked_cast<Metal::Resource*>(staging2.get()));
 		}
 
 		////////////////////////////////////////////////////////////////////////////////////////

@@ -77,7 +77,8 @@ namespace RenderCore { namespace Metal_Vulkan
             const VkRenderPassCreateInfo& createInfo) const;
 
         VulkanUniquePtr<VkImage> CreateImage(
-            const VkImageCreateInfo& createInfo) const;
+            const VkImageCreateInfo& createInfo,
+            uint64_t guidForVisibilityTracking = 0ull) const;
 
         VulkanUniquePtr<VkImageView> CreateImageView(
             const VkImageViewCreateInfo& createInfo) const;
@@ -131,6 +132,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::shared_ptr<IDestructionQueue> CreateMarkerTrackingDestroyer(const std::shared_ptr<IAsyncTracker>&);
 
 		void SetDefaultDestroyer(const std::shared_ptr<IDestructionQueue>&);
+
+        #if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+            void ForgetResource(uint64_t resourceGuid) const;
+            mutable std::vector<uint64_t> _resourcesVisibleToQueue;
+        #endif
 
 		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
 		ObjectFactory();

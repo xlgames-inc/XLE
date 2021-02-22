@@ -709,7 +709,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			//          Ideally we don't really want to have to update these constantly... Once they are 
 			//          set, maybe we can just reuse them?
 			if (cbBindingFlag | srvBindingFlag | ssBindingFlag | dummyDescWriteMask) {
-				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DEBUG_ONLY(, verboseDescription));
+				std::vector<uint64_t> resourceVisibilityList;
+				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0, resourceVisibilityList VULKAN_VERBOSE_DEBUG_ONLY(, verboseDescription));
+				context.RequireResourceVisbility(MakeIteratorRange(resourceVisibilityList));
 			}
 		
 			encoder.BindDescriptorSet(

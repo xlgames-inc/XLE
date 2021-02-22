@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; class LegacyRegisterBindingDesc; }
+namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; class LegacyRegisterBindingDesc; class IResource; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -52,7 +52,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t	FlushChanges(
 			VkDevice device,
 			VkDescriptorSet destination,
-			VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask
+			VkDescriptorSet copyPrevDescriptors, uint64_t prevDescriptorMask,
+			std::vector<uint64_t>& resourceVisibilityList
 			VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo& description));
 
 		ProgressiveDescriptorSetBuilder(
@@ -77,6 +78,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _verboseDescription;
+		#endif
+
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			std::vector<uint64_t> _resourcesThatMustBeVisible;
+			void ValidateResourceVisibility(IResource& res);
 		#endif
 
 		template<typename BindingInfo> 

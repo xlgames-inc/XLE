@@ -38,6 +38,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 		};
 		VkImageLayout_ AsVkImageLayout(ImageLayout input);
+
+		class ResourceInitializationHelper;
 	}
 
 	/// <summary>Abstraction for a device memory resource</summary>
@@ -52,6 +54,18 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		using Desc = ResourceDesc;
+		void* QueryInterface(size_t guid) override;
+		std::vector<uint8_t> ReadBack(IThreadContext& context, SubResourceId subRes) const override;
+		Desc GetDesc() const override		{ return _desc; }
+		uint64_t GetGUID() const override	{ return _guid; }
+
+		// ----------- Vulkan specific interface -----------
+
+		VkDeviceMemory GetMemory() const    { return _mem.get(); }
+		VkImage GetImage() const            { return _underlyingImage.get(); }
+		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
+
+		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,
@@ -62,26 +76,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		Resource(VkImage image, const Desc& desc);
 		Resource();
 		~Resource();
-
-		VkDeviceMemory GetMemory() const    { return _mem.get(); }
-		VkImage GetImage() const            { return _underlyingImage.get(); }
-		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
-		Desc GetDesc() const override		{ return _desc; }
-		uint64_t GetGUID() const override	{ return _guid; }
-
-		void*       QueryInterface(size_t guid) override;
-
-		std::vector<uint8_t>    ReadBack(IThreadContext& context, SubResourceId subRes) const override;
-
-		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
-
+		
 		Internal::ImageLayout _steadyStateLayout;
 		unsigned _steadyStateAccessMask;
+		unsigned _steadyStateAssociatedStageMask;
+		std::function<void(Internal::ResourceInitializationHelper&, Resource&)> _pendingInitialization;
 	protected:
-		VulkanSharedPtr<VkDeviceMemory> _mem;
-
-		VulkanSharedPtr<VkBuffer> _underlyingBuffer;
 		VulkanSharedPtr<VkImage> _underlyingImage;
+		VulkanSharedPtr<VkBuffer> _underlyingBuffer;
+		VulkanSharedPtr<VkDeviceMemory> _mem;
 
 		Desc _desc;
 		uint64_t _guid;
@@ -94,6 +97,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ResourceInitializer& init = ResourceInitializer());
 
 	using UnderlyingResourcePtr = std::shared_ptr<IResource>;
+
+	void CompleteInitialization(
+		DeviceContext& context,
+		IteratorRange<IResource* const*> resources);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      M E M O R Y   M A P       //
@@ -226,14 +233,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			Resource* _res = nullptr;
 			ImageLayout _oldLayout = ImageLayout::Undefined;
 			unsigned _oldAccessMask = 0;
+			unsigned _srcStages = 0;
 			ImageLayout _newLayout = ImageLayout::Undefined;
 			unsigned _newAccessMask = 0;
+			unsigned _dstStages = 0;
 		};
 		void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 		void SetImageLayout(
 			DeviceContext& context, Resource& res, 
-			ImageLayout oldLayout, unsigned oldAccessMask, 
-			ImageLayout newLayout, unsigned newAccessMask);
+			ImageLayout oldLayout, unsigned oldAccessMask, unsigned srcStages, 
+			ImageLayout newLayout, unsigned newAccessMask, unsigned dstStages);
 
 		class CaptureForBindRecords;
 		void ValidateIsEmpty(CaptureForBindRecords&);
@@ -252,6 +261,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			BindFlag::Enum _bindType;
 			Internal::ImageLayout _capturedLayout;
 			unsigned _capturedAccessMask;
+			unsigned _capturedStageMask;
 			bool _releaseCapture;
 			bool _usingCompatibleSteadyState;
 		};

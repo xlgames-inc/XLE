@@ -679,55 +679,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			dimof(buffers), buffers);
 	}
 
-	void		DeviceContext::QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags)
-	{
-		IDeviceVulkan* deviceVulkan = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
-		if (!deviceVulkan) {
-			assert(0);
-			return;
-		}
-
-		assert(deviceVulkan->GetUnderlyingDevice() == GetUnderlyingDevice());
-
-		auto cmdList = ResolveCommandList();
-		auto renderingQueue = deviceVulkan->GetRenderingQueue();
-
-		VkSubmitInfo submitInfo;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
-
-		VkCommandBuffer rawCmdBuffers[] = { cmdList->GetUnderlying().get() };
-		submitInfo.waitSemaphoreCount = 0;
-		submitInfo.pWaitSemaphores = nullptr;
-		submitInfo.signalSemaphoreCount = 0;
-		submitInfo.pSignalSemaphores = nullptr;
-		submitInfo.pWaitDstStageMask = 0;
-		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
-		submitInfo.pCommandBuffers = rawCmdBuffers;
-
-		// Use a fence to stall this method until the execute of the command list is complete
-		VkFence f = VK_NULL_HANDLE;
-		if (flags & QueueCommandListFlags::Stall) {
-			f = _utilityFence.get();
-			auto res = vkResetFences(deviceVulkan->GetUnderlyingDevice(), 1, &f);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while resetting utility fence"));
-		}
-		
-		auto res = vkQueueSubmit(renderingQueue, 1, &submitInfo, f);
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while queuing command list"));
-
-		if (flags & QueueCommandListFlags::Stall) {
-			res = vkWaitForFences(deviceVulkan->GetUnderlyingDevice(), 1, &f, true, UINT64_MAX);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while waiting for command list fence"));
-		}
-	}
-
 	auto        DeviceContext::ResolveCommandList() -> std::shared_ptr<CommandList>
 	{
 		assert(_sharedState->_commandList.GetUnderlying());
+		Internal::ValidateIsEmpty(*_captureForBindRecords);		// always complete these captures before completing a command list
 		auto res = vkEndCommandBuffer(_sharedState->_commandList.GetUnderlying().get());
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
@@ -856,6 +811,68 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
 	}
 
+	void DeviceContext::RequireResourceVisbility(IteratorRange<const uint64_t*> resourceGuids)
+	{
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			for (auto r:resourceGuids) {
+				// Don't record the guid for any resources that are already marked as becoming visible 
+				// during this command list (this is the only way we can check relative ordering of 
+				// initialization and use within the same command list)
+				auto i = std::lower_bound(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end(), r);
+				if (i != _resourcesBecomingVisible.end() && *i == r)
+					continue;
+				_resourcesThatMustBeVisible.push_back(r);
+			}
+		#endif
+	}
+
+	void DeviceContext::MakeResourcesVisible(IteratorRange<const uint64_t*> resourceGuids)
+	{
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			_resourcesBecomingVisible.insert(_resourcesBecomingVisible.end(), resourceGuids.begin(), resourceGuids.end());
+		#endif
+	}
+
+	void DeviceContext::ValidateCommitToQueue()
+	{
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			// We're going to commit the current command list to the queue. Let's validate resource visibility
+			// All resources in _resourcesBecomingVisible must be on the "_resourcesVisibleToQueue" list in ObjectFactory
+			// If they are not, it means one of the following:
+			//   - that the resource was never made visible on a command list
+			//   - the command list in which it was made visible hasn't yet been commited to the queue
+			//   - it's made visible after it was used on this command list
+			std::sort(_resourcesThatMustBeVisible.begin(), _resourcesThatMustBeVisible.end());
+			std::sort(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end());
+			auto becomingVisibleEnd = std::unique(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end());
+
+			auto factoryi = _factory->_resourcesVisibleToQueue.begin();
+			auto searchi = _resourcesThatMustBeVisible.begin();
+			while (searchi != _resourcesThatMustBeVisible.end()) {
+				while (factoryi != _factory->_resourcesVisibleToQueue.end() && *factoryi < *searchi)
+					++factoryi;
+
+				if (factoryi == _factory->_resourcesVisibleToQueue.end() || *factoryi != *searchi)
+					Throw(std::runtime_error("Attempting to use resource that hasn't been made visible. Ensure that all used resources have had Metal::CompleteInitialization() called on them"));
+
+				++searchi;
+			}
+			_resourcesThatMustBeVisible.clear();
+
+			// Now register the resources in _resourcesBecomingVisible as visible to the queue
+			if (_resourcesBecomingVisible.begin() != becomingVisibleEnd) {
+				std::vector<uint64_t> newVisibleToQueue;
+				newVisibleToQueue.reserve(becomingVisibleEnd - _resourcesBecomingVisible.begin() + _factory->_resourcesVisibleToQueue.size());
+				std::set_union(
+					_factory->_resourcesVisibleToQueue.begin(), _factory->_resourcesVisibleToQueue.end(),
+					_resourcesBecomingVisible.begin(), becomingVisibleEnd,
+					std::back_inserter(newVisibleToQueue));
+
+				std::swap(newVisibleToQueue, _factory->_resourcesVisibleToQueue);
+			}
+		#endif
+	}
+
 	DeviceContext::DeviceContext(
 		ObjectFactory&			factory, 
 		GlobalPools&            globalPools,
@@ -868,7 +885,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	, _tempBufferSpace(&tempBufferSpace)
 	{
 		_sharedState = std::make_shared<VulkanEncoderSharedState>(*_factory, *_globalPools);
-		_utilityFence = _factory->CreateFence(0);
 
 		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
 		globals._globalPools = &globalPools;
