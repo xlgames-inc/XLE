@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -20,25 +18,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class DeviceContext;
 	class Resource;
-	class TextureView;
 
 	namespace Internal
 	{
-		enum class ImageLayout
-		{
-			Undefined						= 0, // VK_IMAGE_LAYOUT_UNDEFINED,
-			General							= 1, // VK_IMAGE_LAYOUT_GENERAL,
-			ColorAttachmentOptimal			= 2, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			DepthStencilAttachmentOptimal	= 3, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			DepthStencilReadOnlyOptimal		= 4, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-			ShaderReadOnlyOptimal			= 5, // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			TransferSrcOptimal				= 6, // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			TransferDstOptimal				= 7, // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
-			PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		};
-		VkImageLayout_ AsVkImageLayout(ImageLayout input);
-
+		enum class ImageLayout;
 		class ResourceInitializationHelper;
 	}
 
@@ -55,7 +38,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		using Desc = ResourceDesc;
 		void* QueryInterface(size_t guid) override;
-		std::vector<uint8_t> ReadBack(IThreadContext& context, SubResourceId subRes) const override;
+		std::vector<uint8_t> ReadBackSynchronized(IThreadContext& context, SubResourceId subRes) const override;
 		Desc GetDesc() const override		{ return _desc; }
 		uint64_t GetGUID() const override	{ return _guid; }
 
@@ -90,35 +73,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t _guid;
 	};
 
-    using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-    RenderCore::IResourcePtr CreateResource(
-		const ObjectFactory& factory,
-		const ResourceDesc& desc, 
-		const ResourceInitializer& init = ResourceInitializer());
-
-	using UnderlyingResourcePtr = std::shared_ptr<IResource>;
-
 	void CompleteInitialization(
 		DeviceContext& context,
 		IteratorRange<IResource* const*> resources);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-        //      M E M O R Y   M A P       //
+		//      M E M O R Y   M A P       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// <summary>Locks a resource's memory for access from the CPU</summary>
-    /// This is a low level mapping operation that happens immediately. The GPU must not
-    /// be using the resource at the same time. If the GPU attempts to read while the CPU
-    /// is written, the results will be undefined.
-    /// A resource cannot be mapped more than once at the same time. However, multiple 
-    /// subresources can be mapped in a single mapping operation.
-    /// The caller is responsible for ensuring that the map is safe.
+	/// <summary>Locks a resource's memory for access from the CPU</summary>
+	/// This is a low level mapping operation that happens immediately. The GPU must not
+	/// be using the resource at the same time. If the GPU attempts to read while the CPU
+	/// is written, the results will be undefined.
+	/// A resource cannot be mapped more than once at the same time. However, multiple 
+	/// subresources can be mapped in a single mapping operation.
+	/// The caller is responsible for ensuring that the map is safe.
 	class ResourceMap
 	{
 	public:
 		IteratorRange<void*>        GetData()               { return { _data, PtrAdd(_data, _dataSize) }; }
-        IteratorRange<const void*>  GetData() const         { return { _data, PtrAdd(_data, _dataSize) }; }
-        TexturePitches				GetPitches() const      { return _pitches; }
+		IteratorRange<const void*>  GetData() const         { return { _data, PtrAdd(_data, _dataSize) }; }
+		TexturePitches				GetPitches() const      { return _pitches; }
 
 		enum class Mode { Read, WriteDiscardPrevious };
 
@@ -126,13 +101,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDevice dev, VkDeviceMemory memory,
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap(
-			DeviceContext& context, Resource& resource,
-            Mode mapMode,
+			DeviceContext& context, IResource& resource,
+			Mode mapMode,
 			SubResourceId subResource = {},
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap(
-			VkDevice dev, Resource& resource,
-            Mode mapMode,
+			VkDevice dev, IResource& resource,
+			Mode mapMode,
 			SubResourceId subResource = {},
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap();
@@ -146,87 +121,87 @@ namespace RenderCore { namespace Metal_Vulkan
 	private:
 		VkDevice            _dev;
 		VkDeviceMemory      _mem;
-        void*               _data;
-        size_t              _dataSize;
-        TexturePitches      _pitches;
+		void*               _data;
+		size_t              _dataSize;
+		TexturePitches      _pitches;
 
 		void TryUnmap();
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-        //      C O P Y I N G       //
+		//      B L T P A S S       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(
-        DeviceContext&, 
-        Resource& dst, Resource& src, 
-        Internal::ImageLayout dstLayout = Internal::ImageLayout::TransferDstOptimal,
-		Internal::ImageLayout srcLayout = Internal::ImageLayout::TransferSrcOptimal);
+	class BlitPass
+	{
+	public:
+		class CopyPartial_Dest
+		{
+		public:
+			IResource*          _resource;
+			SubResourceId       _subResource;
+			VectorPattern<unsigned, 3>      _leftTopFront;
+		};
 
-    using UInt3Pattern = VectorPattern<unsigned, 3>;
+		class CopyPartial_Src
+		{
+		public:
+			IResource*          _resource;
+			SubResourceId       _subResource;
+			VectorPattern<unsigned, 3>      _leftTopFront;
+			VectorPattern<unsigned, 3>      _rightBottomBack;
+		};
 
-    class CopyPartial_Dest
-    {
-    public:
-        Resource*		_resource;
-        SubResourceId   _subResource;
-        UInt3Pattern    _leftTopFront;
+		void    Write(
+			const CopyPartial_Dest& dst,
+			const SubResourceInitData& srcData,
+			Format srcDataFormat,
+			VectorPattern<unsigned, 3> srcDataDimensions);
 
-        CopyPartial_Dest(
-            Resource& dst, SubResourceId subres = {},
-            const UInt3Pattern& leftTopFront = UInt3Pattern())
-        : _resource(&dst), _subResource(subres), _leftTopFront(leftTopFront) {}
-    };
+		void    Copy(
+			const CopyPartial_Dest& dst,
+			const CopyPartial_Src& src);
 
-    class CopyPartial_Src
-    {
-    public:
-		Resource*		_resource;
-        SubResourceId   _subResource;
-        UInt3Pattern    _leftTopFront;
-        UInt3Pattern    _rightBottomBack;
+		void    Copy(
+			IResource& dst,
+			IResource& src);
 
-        CopyPartial_Src(
-            Resource& dst, SubResourceId subres = {},
-            const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
-            const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
-        : _resource(&dst), _subResource(subres)
-        , _leftTopFront(leftTopFront)
-        , _rightBottomBack(rightBottomBack) {}
-    };
+		BlitPass(DeviceContext& devContext);
+		~BlitPass();
 
-	void CopyPartial(
-        DeviceContext&, 
-        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
-        Internal::ImageLayout dstLayout = Internal::ImageLayout::Undefined, Internal::ImageLayout srcLayout = Internal::ImageLayout::Undefined);
-
-	IResourcePtr Duplicate(ObjectFactory&, Resource& inputResource);
-	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
-
-    unsigned CopyViaMemoryMap(
-        VkDevice device, VkImage image, VkDeviceMemory mem,
-        const TextureDesc& desc,
-        const std::function<SubResourceInitData(SubResourceId)>& initData);
-
-    unsigned CopyViaMemoryMap(
-        IDevice& dev, Resource& resource,
-        const std::function<SubResourceInitData(SubResourceId)>& initData);
+		BlitPass(const BlitPass&) = delete;
+		BlitPass& operator=(const BlitPass&) = delete;
+	private:
+		DeviceContext* _devContext;
+	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-        //      G E T   D E S C       //
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
-	ResourceDesc ExtractDesc(const TextureView& res);
-	RenderCore::IResourcePtr ExtractResource(const TextureView&);
-	Resource& AsResource(IResource& res);
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-        //      U T I L S       //
+		//      U T I L S       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	namespace Internal
 	{
+		using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
+		RenderCore::IResourcePtr CreateResource(
+			const ObjectFactory& factory,
+			const ResourceDesc& desc, 
+			const ResourceInitializer& init = ResourceInitializer());
+
+		enum class ImageLayout
+		{
+			Undefined						= 0, // VK_IMAGE_LAYOUT_UNDEFINED,
+			General							= 1, // VK_IMAGE_LAYOUT_GENERAL,
+			ColorAttachmentOptimal			= 2, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			DepthStencilAttachmentOptimal	= 3, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			DepthStencilReadOnlyOptimal		= 4, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+			ShaderReadOnlyOptimal			= 5, // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			TransferSrcOptimal				= 6, // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			TransferDstOptimal				= 7, // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			Preinitialized					= 8, // VK_IMAGE_LAYOUT_PREINITIALIZED,
+			PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		};
+		VkImageLayout_ AsVkImageLayout(ImageLayout input);
+
 		class LayoutTransition
 		{
 		public:
@@ -269,6 +244,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void SetupInitialLayout(DeviceContext&, IResource&);
 	}
 
-    VkSampleCountFlagBits_	AsSampleCountFlagBits(TextureSamples samples);
-    VkImageAspectFlags      AsImageAspectMask(Format fmt);
+	VkSampleCountFlagBits_	AsSampleCountFlagBits(TextureSamples samples);
+	VkImageAspectFlags      AsImageAspectMask(Format fmt);
 }}

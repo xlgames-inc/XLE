@@ -800,7 +800,7 @@ namespace RenderCore { namespace ImplVulkan
 		const ResourceDesc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	{
-		return Metal_Vulkan::CreateResource(_objectFactory, desc, initData);
+		return Metal_Vulkan::Internal::CreateResource(_objectFactory, desc, initData);
 	}
 
 	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)

@@ -249,7 +249,7 @@ namespace UnitTests
 	{
 		std::map<unsigned, unsigned> result;
 
-		auto data = _pimpl->_mainTarget->ReadBack(threadContext);
+		auto data = _pimpl->_mainTarget->ReadBackSynchronized(threadContext);
 
 		assert(data.size() == (size_t)RenderCore::ByteCount(_pimpl->_mainTarget->GetDesc()));
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));

@@ -452,11 +452,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		return *s_defaultObjectFactory;
 	}
 
-	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr)
-	{
-		return *s_defaultObjectFactory;
-	}
-
 	ObjectFactory& GetObjectFactory()
 	{
 		return *s_defaultObjectFactory;

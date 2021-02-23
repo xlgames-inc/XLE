@@ -134,7 +134,7 @@ namespace UnitTests
 	{
 		ColorBreakdown result;
 
-		auto data = fbHelper.GetMainTarget()->ReadBack(threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(threadContext);
 
 		assert(data.size() == (size_t)RenderCore::ByteCount(fbHelper.GetMainTarget()->GetDesc()));
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
@@ -184,15 +184,8 @@ namespace UnitTests
 			std::vector<uint8_t> initBuffer(RenderCore::ByteCount(stagingDesc), 0xdd);
 			SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(stagingDesc._textureDesc) };
 			auto stagingRes = testHelper->_device->CreateResource(stagingDesc, initData);
-			{
-				auto&ctx = *Metal::DeviceContext::Get(*threadContext);
-				Metal::Internal::CaptureForBind captureDst(ctx, *fbHelper.GetMainTarget(), BindFlag::TransferDst);
-				Metal::Internal::CaptureForBind captureSrc(ctx, *stagingRes, BindFlag::TransferSrc);
-				Metal::Copy(ctx, 
-					*dynamic_cast<Metal::Resource*>(fbHelper.GetMainTarget().get()),
-					*dynamic_cast<Metal::Resource*>(stagingRes.get()),
-					captureDst.GetLayout(), captureSrc.GetLayout());
-			}
+			Metal::BlitPass blt(*Metal::DeviceContext::Get(*threadContext));
+			blt.Copy(*fbHelper.GetMainTarget(), *stagingRes);
 		}
 
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
@@ -1010,7 +1003,7 @@ namespace UnitTests
 		// We're expecting the output texture to directly match the input, just scaled up by
 		// the dimensional difference. Since we're using point sampling, there should be no
 		// filtering applied
-		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		assert(data.size() == (size_t)RenderCore::ByteCount(targetDesc));
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 

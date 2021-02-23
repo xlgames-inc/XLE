@@ -61,12 +61,14 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		CommandList 	_commandList;
 
-		VkRenderPass	_renderPass;
-		TextureSamples	_renderPassSamples;
-		unsigned		_renderPassSubpass;
+		VkRenderPass	_renderPass = 0;
+		TextureSamples	_renderPassSamples = TextureSamples::Create(0);
+		unsigned		_renderPassSubpass = 0;
 
-		float			_renderTargetWidth;
-		float			_renderTargetHeight;
+		float			_renderTargetWidth = 0.f;
+		float			_renderTargetHeight = 0.f;
+
+		bool			_inBltPass = false;
 
 		class DescriptorCollection
 		{
@@ -93,11 +95,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		DescriptorCollection	_graphicsDescriptors;
 		DescriptorCollection	_computeDescriptors;
 
-		void* _currentEncoder;
+		void* _currentEncoder = nullptr;
 		enum class EncoderType { None, Graphics, ProgressiveGraphics, ProgressiveCompute };
-		EncoderType _currentEncoderType;
+		EncoderType _currentEncoderType = EncoderType::None;
 
-		bool _ibBound;		// (for debugging, validates that an index buffer actually is bound when calling DrawIndexed & alternatives)
+		bool _ibBound = false;		// (for debugging, validates that an index buffer actually is bound when calling DrawIndexed & alternatives)
 
 		VulkanEncoderSharedState(
 			const ObjectFactory&    factory, 
@@ -599,16 +601,24 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder DeviceContext::BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
 		return GraphicsEncoder { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState };
 	}
 
 	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
 		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
 	}
 
 	ComputeEncoder_ProgressivePipeline DeviceContext::BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
+		if (_sharedState->_renderPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while another render pass is in progress"));
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
 		return ComputeEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
 	}
 
@@ -701,6 +711,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		if (_sharedState->_renderPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a render pass while another render pass is already in progress"));
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a render pass while a blt pass is in progress"));
 		assert(!_sharedState->_currentEncoder);
 		assert(_sharedState->_commandList.GetUnderlying() != nullptr);
 
@@ -761,6 +773,23 @@ namespace RenderCore { namespace Metal_Vulkan
 	unsigned DeviceContext::GetCurrentSubpassIndex() const
 	{
 		return _sharedState->_renderPassSubpass;
+	}
+
+	void DeviceContext::BeginBltPass()
+	{
+		if (_sharedState->_renderPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a blt pass while a render pass is in progress"));
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a blt pass while another blt pass is already in progress"));
+		if (_sharedState->_currentEncoder)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a blt pass while an encoder is in progress"));
+		_sharedState->_inBltPass = true;
+	}
+
+	void DeviceContext::EndBltPass()
+	{
+		assert(_sharedState->_inBltPass);
+		_sharedState->_inBltPass = false;
 	}
 
 	CommandList& DeviceContext::GetActiveCommandList()
@@ -921,6 +950,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_currentEncoder = nullptr;
 		_currentEncoderType = EncoderType::None;
 		_ibBound = false;
+		_inBltPass = false;
 	}
 	VulkanEncoderSharedState::~VulkanEncoderSharedState() {}
 

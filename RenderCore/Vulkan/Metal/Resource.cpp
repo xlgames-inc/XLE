@@ -26,12 +26,21 @@ namespace RenderCore { namespace Metal_Vulkan
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
-	Resource& AsResource(IResource& res)
-	{
-		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
-		assert(r);
-		return *r;
-	}
+	static unsigned CopyViaMemoryMap(
+		VkDevice device, VkImage image, VkDeviceMemory mem,
+		const TextureDesc& desc,
+		const std::function<SubResourceInitData(SubResourceId)>& initData);
+
+	static unsigned CopyViaMemoryMap(
+		IDevice& dev, Resource& resource,
+		const std::function<SubResourceInitData(SubResourceId)>& initData);
+
+	static void CopyPartial(
+        DeviceContext& context, 
+        const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
+        Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout);
+
+	static void Copy(DeviceContext& context, Resource& dst, Resource& src, Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout);
 
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
 	{
@@ -116,88 +125,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-    static VkAccessFlags GetAccessForOldLayout(VkImageLayout oldImageLayout)
-    {
-        VkAccessFlags flags = 0;
-        if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-			flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		}
-
-        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			flags = VK_ACCESS_TRANSFER_WRITE_BIT;
-		}
-
-        if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-			flags = VK_ACCESS_TRANSFER_READ_BIT;
-		}
-
-		if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-			flags = VK_ACCESS_HOST_WRITE_BIT;
-		}
-
-        if (oldImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-			flags = VK_ACCESS_SHADER_READ_BIT;
-            // (or VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)
-		}
-
-        // note --  the "General" case is tricky here! General is used for storage buffers, which
-        //          can be read or written. It's also used for transfers that read and write from
-        //          the same buffer. And it can be used when mapping textures.
-        //          So we need to lay down some blanket flags...
-        if (oldImageLayout == VK_IMAGE_LAYOUT_GENERAL) {
-			flags = 
-                  VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT
-                | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT
-                | VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT;
-		}
-
-        if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-            flags = VK_ACCESS_HOST_WRITE_BIT;
-        }
-
-        return flags;
-    }
-
-    static VkAccessFlags GetAccessForNewLayout(VkImageLayout newImageLayout)
-    {
-        VkAccessFlags flags = 0;
-        if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			flags = VK_ACCESS_TRANSFER_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-			flags = VK_ACCESS_TRANSFER_READ_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            // These flags are set in the samples, but we're handling when switching
-            // away from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or VK_IMAGE_LAYOUT_PREINITIALIZED
-			// image_memory_barrier.srcAccessMask =
-			// 	VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-			flags = VK_ACCESS_SHADER_READ_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-			|| newImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-			flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		}
-
-		if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-			flags = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		}
-
-        if (newImageLayout == VK_IMAGE_LAYOUT_GENERAL) {
-			flags = 
-                  VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT
-                | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT
-                | VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT;
-		}
-        return flags;
-    }
-#endif
-
 	namespace Internal
 	{
 		void SetImageLayouts(
@@ -212,7 +139,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			unsigned barrierCount = 0;
 			for (unsigned c=0; c<(unsigned)changes.size(); ++c) {
-				auto& r = AsResource(*changes[c]._res);
+				auto& r = *changes[c]._res;
 				assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
 				if (!r.GetImage()) continue;   // (staging buffer case)
 
@@ -674,7 +601,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	std::vector<uint8_t>    Resource::ReadBack(IThreadContext& context, SubResourceId subRes) const
+	std::vector<uint8_t>    Resource::ReadBackSynchronized(IThreadContext& context, SubResourceId subRes) const
 	{
 		bool requiresDestaging = !_desc._cpuAccess;
 		if (requiresDestaging) {
@@ -692,7 +619,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				Copy(ctx, destaging, *const_cast<Resource*>(this), destaging._steadyStateLayout, capture.GetLayout());
 			}
 
-			return destaging.ReadBack(context, subRes);
+			return destaging.ReadBackSynchronized(context, subRes);
 		}
 
 		// Commit all commands up to this point, and wait for completion
@@ -752,23 +679,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		return nullptr;
 	}
 
-	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
-	{
-		return AsResource(*res).GetDesc();
-	}
-
-	ResourceDesc ExtractDesc(const TextureView& res)
-	{
-		auto resource = res.GetResource();
-		if (!resource) return ResourceDesc();
-		return AsResource(*resource).GetDesc();
-	}
-
-	RenderCore::IResourcePtr ExtractResource(const TextureView& res)
-	{
-		return res.GetResource();
-	}
-
     namespace Internal
 	{
 		class ResourceAllocator : public std::allocator<Metal_Vulkan::Resource>
@@ -785,27 +695,27 @@ namespace RenderCore { namespace Metal_Vulkan
 				delete (Metal_Vulkan::Resource*)p;
 			}
 		};
-	}
 
-    IResourcePtr CreateResource(
-        const ObjectFactory& factory,
-		const ResourceDesc& desc,
-		const ResourceInitializer& initData)
-    {
-        const bool useAllocateShared = true;
-		if (constant_expression<useAllocateShared>::result()) {
-			auto res = std::allocate_shared<Metal_Vulkan::Resource>(
-				Internal::ResourceAllocator(),
-				std::ref(factory), std::ref(desc), std::ref(initData));
-			return *reinterpret_cast<IResourcePtr*>(&res);
+		IResourcePtr CreateResource(
+			const ObjectFactory& factory,
+			const ResourceDesc& desc,
+			const ResourceInitializer& initData)
+		{
+			const bool useAllocateShared = true;
+			if (constant_expression<useAllocateShared>::result()) {
+				auto res = std::allocate_shared<Metal_Vulkan::Resource>(
+					Internal::ResourceAllocator(),
+					std::ref(factory), std::ref(desc), std::ref(initData));
+				return *reinterpret_cast<IResourcePtr*>(&res);
+			}
+			else {
+				auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
+				return IResourcePtr(
+					(RenderCore::Resource*)res.release(),
+					[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
+			}
 		}
-		else {
-			auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
-			return IResourcePtr(
-				(RenderCore::Resource*)res.release(),
-				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
-		}
-    }
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -851,7 +761,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return result;
 	}
 
-	void Copy(DeviceContext& context, Resource& dst, Resource& src, Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
+	static void Copy(DeviceContext& context, Resource& dst, Resource& src, Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
 	{
         if (dst.GetImage() && src.GetImage()) {
             // image to image copy
@@ -943,19 +853,21 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 	}
 
-    void CopyPartial(
+    static void CopyPartial(
         DeviceContext& context, 
-        const CopyPartial_Dest& dst, const CopyPartial_Src& src,
+        const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
         Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
     {
         assert(src._resource && dst._resource);
-        if (dst._resource->GetImage() && src._resource->GetImage()) {
+		auto dstResource = checked_cast<Resource*>(dst._resource);
+		auto srcResource = checked_cast<Resource*>(dst._resource);
+        if (dstResource->GetImage() && srcResource->GetImage()) {
             // image to image copy
             // In this case, we're going to generate only a single copy operation. This is 
             // similar to CopySubresourceRegion in D3D
 
-            const auto& srcDesc = src._resource->GetDesc();
-		    const auto& dstDesc = dst._resource->GetDesc();
+            const auto& srcDesc = srcResource->GetDesc();
+		    const auto& dstDesc = dstResource->GetDesc();
 		    assert(srcDesc._type == Resource::Desc::Type::Texture);
 		    assert(dstDesc._type == Resource::Desc::Type::Texture);
 
@@ -980,10 +892,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			c.dstSubresource.layerCount = 1;
 
             context.GetActiveCommandList().CopyImage(
-			    src._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(srcLayout),
-			    dst._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
+			    srcResource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(srcLayout),
+			    dstResource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
 			    1, &c);
-        } else if (dst._resource->GetBuffer() && src._resource->GetBuffer()) {
+        } else if (dstResource->GetBuffer() && srcResource->GetBuffer()) {
             // buffer to buffer copy
             const auto& srcDesc = src._resource->GetDesc();
 		    const auto& dstDesc = dst._resource->GetDesc();
@@ -995,10 +907,10 @@ namespace RenderCore { namespace Metal_Vulkan
             auto end = std::min(src._rightBottomBack._values[0], std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes));
             c.size = end - src._rightBottomBack._values[0];
             context.GetActiveCommandList().CopyBuffer(
-                src._resource->GetBuffer(),
-                dst._resource->GetBuffer(),
+                srcResource->GetBuffer(),
+                dstResource->GetBuffer(),
                 1, &c);
-        } else if (dst._resource->GetImage() && src._resource->GetBuffer()) {
+        } else if (dstResource->GetImage() && srcResource->GetBuffer()) {
             // This copy operation is typically used when initializing a texture via staging
             // resource. The buffer probably has a "Texture" type Desc, even though the underlying
             // resource is a buffer.
@@ -1006,7 +918,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 Throw(::Exceptions::BasicLabel("Buffer to image copy not implemented, except for staging resources"));
 
             const auto& srcDesc = src._resource->GetDesc();
-		    const auto& dstDesc = dst._resource->GetDesc();
+		    const auto& dstDesc = dstResource->GetDesc();
 		    assert(srcDesc._type == Resource::Desc::Type::Texture);
 		    assert(dstDesc._type == Resource::Desc::Type::Texture);
 
@@ -1064,8 +976,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
             const auto copyOperations = mips*arrayCount;
             context.GetActiveCommandList().CopyBufferToImage(
-                src._resource->GetBuffer(),
-                dst._resource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
+                srcResource->GetBuffer(),
+                dstResource->GetImage(), (VkImageLayout)Internal::AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
@@ -1074,7 +986,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    unsigned CopyViaMemoryMap(
+    static unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
         const TextureDesc& desc,
         const std::function<SubResourceInitData(SubResourceId)>& initData)
@@ -1122,7 +1034,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return bytesUploaded;
     }
 
-    unsigned CopyViaMemoryMap(
+    static unsigned CopyViaMemoryMap(
         IDevice& dev, Resource& resource,
         const std::function<SubResourceInitData(SubResourceId)>& initData)
     {
@@ -1131,16 +1043,6 @@ namespace RenderCore { namespace Metal_Vulkan
             ExtractUnderlyingDevice(dev), resource.GetImage(), resource.GetMemory(),
             resource.GetDesc()._textureDesc, initData);
     }
-
-	IResourcePtr Duplicate(ObjectFactory&, Resource& inputResource) 
-    { 
-        Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
-    }
-
-	IResourcePtr Duplicate(DeviceContext&, Resource& inputResource)
-	{
-		Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1182,7 +1084,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ResourceMap::ResourceMap(
-		DeviceContext& context, Resource& resource,
+		DeviceContext& context, IResource& resource,
 		Mode mapMode,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
@@ -1191,13 +1093,15 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ResourceMap::ResourceMap(
-		VkDevice dev, Resource& resource,
+		VkDevice dev, IResource& iresource,
 		Mode mapMode,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
 	{
         VkDeviceSize finalOffset = offset, finalSize = size;
         _pitches = TexturePitches { unsigned(size), unsigned(size) };
+
+		auto& resource = *checked_cast<Resource*>(&iresource);
 
         // special case for images, where we need to take into account the requested "subresource"
         auto* image = resource.GetImage();
@@ -1266,6 +1170,80 @@ namespace RenderCore { namespace Metal_Vulkan
 		return *this;
 	}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void BlitPass::Write(
+		const CopyPartial_Dest& dst,
+		const SubResourceInitData& srcData,
+		Format srcDataFormat,
+		VectorPattern<unsigned, 3> srcDataDimensions)
+	{
+		// This is a synchronized write, which means it happens in the command list order
+		// we need to create a staging resource, fill with the given information, and copy from
+		// there via a command on the command list
+		// Note that we only change a single subresource with this command
+
+		assert(dst._resource);
+		auto desc = dst._resource->GetDesc();
+        if (desc._type != RenderCore::ResourceDesc::Type::Texture)
+            Throw(std::runtime_error("Non-texture resource type used with WriteSynchronized operation"));
+
+		if (dst._subResource._mip >= desc._textureDesc._mipCount)
+            Throw(std::runtime_error("Mipmap index used in WriteSynchronized operation is too high"));
+
+        if ((dst._leftTopFront[0]+srcDataDimensions[0]) > desc._textureDesc._width || (dst._leftTopFront[1]+srcDataDimensions[1]) > desc._textureDesc._height)
+            Throw(std::runtime_error("Rectangle dimensions used with WriteSynchronized operation are outside of the destination texture area"));
+
+		auto srcPixelCount = srcDataDimensions[0] * srcDataDimensions[1] * srcDataDimensions[2];
+        if (!srcPixelCount)
+            Throw(std::runtime_error("No source pixels in WriteSynchronized operation. The depth of the srcDataDimensions field might need to be at least 1."));
+
+		auto transferSrc = std::make_shared<Resource>(
+			GetObjectFactory(*_devContext),
+            RenderCore::CreateDesc(
+                RenderCore::BindFlag::TransferSrc,
+                0, RenderCore::GPUAccess::Read,
+                RenderCore::TextureDesc::Plain3D(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2], srcDataFormat),
+                "blit-pass-src"),
+            srcData);
+
+		CopyPartial_Src srcPartial {
+			transferSrc.get(), SubResourceId{},
+			{0,0,0},
+			srcDataDimensions };
+
+		Internal::CaptureForBind captureDst(*_devContext, *checked_cast<Resource*>(dst._resource), BindFlag::TransferDst);
+		CopyPartial(*_devContext, dst, srcPartial, captureDst.GetLayout(), Internal::ImageLayout::TransferSrcOptimal);
+	}
+
+	void BlitPass::Copy(
+		const CopyPartial_Dest& dst,
+		const CopyPartial_Src& src)
+	{
+		assert(src._resource && dst._resource);
+		Internal::CaptureForBind captureSrc(*_devContext, *checked_cast<Resource*>(src._resource), BindFlag::TransferSrc);
+		Internal::CaptureForBind captureDst(*_devContext, *checked_cast<Resource*>(dst._resource), BindFlag::TransferDst);
+		CopyPartial(*_devContext, dst, src, captureDst.GetLayout(), captureSrc.GetLayout());
+	}
+
+	void BlitPass::Copy(
+		IResource& dst,
+		IResource& src)
+	{
+		Internal::CaptureForBind captureSrc(*_devContext, *checked_cast<Resource*>(&src), BindFlag::TransferSrc);
+		Internal::CaptureForBind captureDst(*_devContext, *checked_cast<Resource*>(&dst), BindFlag::TransferDst);
+		Metal_Vulkan::Copy(*_devContext, *checked_cast<Resource*>(&dst), *checked_cast<Resource*>(&src), captureDst.GetLayout(), captureSrc.GetLayout());
+	}
+
+	BlitPass::BlitPass(DeviceContext& devContext) : _devContext(&devContext)
+	{
+		_devContext->BeginBltPass();
+	}
+
+	BlitPass::~BlitPass()
+	{
+		_devContext->EndBltPass();
+	}
 
 }}
 

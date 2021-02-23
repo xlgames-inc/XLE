@@ -187,9 +187,8 @@ namespace UnitTests
 			std::memset(map.GetData().begin(), 0, map.GetData().size());
 			map.GetData().Cast<unsigned*>()[2*8+2] = (8u << 24u) | (23u << 16u) | (33u << 8u) | (12u);
 		}
-		Metal::Copy(
-			*Metal::DeviceContext::Get(threadContext),
-			*checked_cast<Metal::Resource*>(result.get()), *checked_cast<Metal::Resource*>(staging.get()), Metal::Internal::ImageLayout::General);
+		Metal::BlitPass blt(*Metal::DeviceContext::Get(threadContext));
+		blt.Copy(*result, *staging);
 
 		return result;
 	}
@@ -286,7 +285,7 @@ namespace UnitTests
 			encoder.Draw(4);
 		}
 
-		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 		REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -323,25 +322,25 @@ namespace UnitTests
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 			Metal::CompleteInitialization(metalContext, {tex0.get(), tex1.get(), fbHelper.GetMainTarget().get()});
 
-			auto staging = testHelper->_device->CreateResource(AsStagingDesc(desc));
+			Metal::BlitPass blt(metalContext);
+
+			auto staging0 = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			{
-				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
+				Metal::ResourceMap map(metalContext, *staging0, Metal::ResourceMap::Mode::WriteDiscardPrevious);
 				std::memset(map.GetData().begin(), 0, map.GetData().size());
 				map.GetData().Cast<unsigned*>()[3*8+3] = (9u << 24u) | (5u << 16u) | (3u << 8u) | (7u);
 			}
-			Metal::Internal::CaptureForBind tex0Cap(metalContext, *tex0, BindFlag::TransferDst);
-			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex0.get()), *checked_cast<Metal::Resource*>(staging.get()));
+			blt.Copy(*tex0, *staging0);
 
 			// (note that it's critical that we use a different staging texture for this -- since the copy into
 			// tex0 is queued on a command list, but the effects of ResourceMap happen immediately)
-			auto staging2 = testHelper->_device->CreateResource(AsStagingDesc(desc));
+			auto staging1 = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			{
-				Metal::ResourceMap map(metalContext, *checked_cast<Metal::Resource*>(staging2.get()), Metal::ResourceMap::Mode::WriteDiscardPrevious);
+				Metal::ResourceMap map(metalContext, *staging1, Metal::ResourceMap::Mode::WriteDiscardPrevious);
 				std::memset(map.GetData().begin(), 0, map.GetData().size());
 				map.GetData().Cast<unsigned*>()[4*8+4] = (23u << 24u) | (99u << 16u) | (45u << 8u) | (10u);
 			}
-			Metal::Internal::CaptureForBind tex1Cap(metalContext, *tex1, BindFlag::TransferDst);
-			Metal::Copy(metalContext, *checked_cast<Metal::Resource*>(tex1.get()), *checked_cast<Metal::Resource*>(staging2.get()));
+			blt.Copy(*tex1, *staging1);
 		}
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -372,7 +371,7 @@ namespace UnitTests
 			encoder.Draw(4);
 		}
 
-		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 		REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
 		////////////////////////////////////////////////////////////////////////////////////////

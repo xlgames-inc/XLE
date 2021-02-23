@@ -350,6 +350,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// --------------- Vulkan specific interface --------------- 
 
+		void BeginBltPass();
+		void EndBltPass();
+
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
 		void		ExecuteCommandList(CommandList&, bool);
