@@ -692,7 +692,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	auto        DeviceContext::ResolveCommandList() -> std::shared_ptr<CommandList>
 	{
 		assert(_sharedState->_commandList.GetUnderlying());
-		Internal::ValidateIsEmpty(*_captureForBindRecords);		// always complete these captures before completing a command list
+		if (_captureForBindRecords)
+			Internal::ValidateIsEmpty(*_captureForBindRecords);		// always complete these captures before completing a command list
 		auto res = vkEndCommandBuffer(_sharedState->_commandList.GetUnderlying().get());
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while ending command buffer"));
@@ -848,9 +849,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				// Don't record the guid for any resources that are already marked as becoming visible 
 				// during this command list (this is the only way we can check relative ordering of 
 				// initialization and use within the same command list)
-				auto i = std::lower_bound(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end(), r);
-				if (i != _resourcesBecomingVisible.end() && *i == r)
-					continue;
+				auto i = std::find(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end(), r);
+				if (i != _resourcesBecomingVisible.end()) continue;
 				_resourcesThatMustBeVisible.push_back(r);
 			}
 		#endif
@@ -934,7 +934,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	DeviceContext::~DeviceContext()
 	{
-		Internal::ValidateIsEmpty(*_captureForBindRecords);
+		if (_captureForBindRecords)
+			Internal::ValidateIsEmpty(*_captureForBindRecords);
 	}
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}

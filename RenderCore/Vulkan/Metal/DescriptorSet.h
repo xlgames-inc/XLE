@@ -17,7 +17,7 @@ namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum 
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	class TextureView;
+	class ResourceView;
 	class GlobalPools;
 	class ObjectFactory;
 
@@ -38,8 +38,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ProgressiveDescriptorSetBuilder
     {
     public:
-		void    Bind(unsigned descriptorSetBindPoint, const TextureView& resource);
-		void    Bind(unsigned descriptorSetBindPoint, const ConstantBufferView& resource);
+		void    Bind(unsigned descriptorSetBindPoint, const ResourceView& resource);
 		void    Bind(unsigned descriptorSetBindPoint, VkDescriptorBufferInfo uniformBuffer, StringSection<> description = {});
 		void    Bind(unsigned descriptorSetBindPoint, VkSampler sampler, StringSection<> description = {});
 
@@ -111,7 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		virtual ~IDescriptorSet() = default;
-		enum class BindType { BufferView, TextureView, Sampler };
+		enum class BindType { ResourceView, Sampler };
 		struct BindTypeAndIdx { BindType _type; unsigned _idx; };
 	};
 

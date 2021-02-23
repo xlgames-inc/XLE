@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -8,7 +6,10 @@
 
 #include "Resource.h"
 #include "VulkanCore.h"
+#include "../../IDevice.h"
 #include "../../Types_Forward.h"
+#include "../../ResourceDesc.h"
+#include <memory>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -23,94 +24,33 @@ namespace RenderCore { namespace Metal_Vulkan
 	///
 	/// Only VkImageViews can be used with render passes and frame buffers. But both image views
 	/// and buffer views can be used as shader resources.
-    class TextureView
+    class ResourceView : public IResourceView
     {
     public:
-        TextureView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc());
-		TextureView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
-        explicit TextureView(const VkImage image, const TextureViewDesc& window = TextureViewDesc());
-		explicit TextureView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
-        TextureView();
-        ~TextureView();
+        ResourceView(ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc());
+        ResourceView(ObjectFactory& factory, const VkBuffer buffer, Format texelBufferFormat, unsigned rangeOffset = 0, unsigned rangeSize = 0);
 
-		bool					IsGood() const { return _imageView != nullptr; }
+        ResourceView(ObjectFactory& factory, const IResourcePtr& image, BindFlag::Enum usage, const TextureViewDesc& window);
+        ResourceView(ObjectFactory& factory, const IResourcePtr& buffer, Format texelBufferFormat, unsigned rangeOffset, unsigned rangeSize);
+        ResourceView(ObjectFactory& factory, const IResourcePtr& buffer, unsigned rangeOffset, unsigned rangeSize);
+        ResourceView(ObjectFactory& factory, const IResourcePtr& resource);
+        ResourceView();
+        ~ResourceView();
 
-		const std::shared_ptr<Resource>&	GetResource() const { return _image; }
+		const std::shared_ptr<Resource>&	GetResource() const { return _resource; }
         VkImageView							GetImageView() const { return _imageView.get(); }
+        VkBufferView						GetBufferView() const { return _bufferView.get(); }
+        std::pair<unsigned, unsigned>       GetBufferRangeOffsetAndSize() const { return _bufferRange; }
+
+        enum class Type { ImageView, BufferView, BufferAndRange };
+        Type GetType() const { return _type; }
 
     private:
         VulkanSharedPtr<VkImageView>	_imageView;
-		std::shared_ptr<Resource>		_image;
-    };
-
-    // note -- in Vulkan, ShaderResourceView, RenderTargetView, DepthStencilView and UnorderedAccessView
-    // are the same. But we can't just use "using" statements, because we need separate types to distinquish
-    // between the variations of the Bind() functions
-
-    class ShaderResourceView : public TextureView
-    {
-    public:
-		// using TextureView::TextureView;
-
-        ShaderResourceView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window) {}
-		ShaderResourceView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window, FormatUsage::SRV) {}
-		explicit ShaderResourceView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window) {}
-		explicit ShaderResourceView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window, FormatUsage::SRV) {}
-        ShaderResourceView() {}
-    };
-
-    class RenderTargetView : public TextureView
-    {
-    public:
-		// using TextureView::TextureView;
-
-        RenderTargetView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window) {}
-		RenderTargetView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window, FormatUsage::RTV) {}
-		explicit RenderTargetView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window) {}
-		explicit RenderTargetView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window, FormatUsage::RTV) {}
-		RenderTargetView(DeviceContext&) {}
-        RenderTargetView() {}
-    };
-
-    class DepthStencilView : public TextureView
-    {
-    public:
-		// using TextureView::TextureView;
-
-        DepthStencilView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window) {}
-		DepthStencilView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(factory, image, window, FormatUsage::DSV) {}
-		explicit DepthStencilView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window) {}
-		explicit DepthStencilView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-            : TextureView(image, window, FormatUsage::DSV) {}
-		DepthStencilView(DeviceContext&) {}
-		DepthStencilView() {}
-    };
-
-    class UnorderedAccessView : public TextureView
-    {
-    public:
-		// using TextureView::TextureView;
-
-		UnorderedAccessView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc())
-			: TextureView(factory, image, window) {}
-		UnorderedAccessView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-			: TextureView(factory, image, window, FormatUsage::UAV) {}
-		explicit UnorderedAccessView(VkImage image, const TextureViewDesc& window = TextureViewDesc())
-			: TextureView(image, window) {}
-		explicit UnorderedAccessView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc())
-			: TextureView(image, window, FormatUsage::UAV) {}
-		UnorderedAccessView() {}
+        VulkanSharedPtr<VkBufferView>	_bufferView;        // used for VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+        Type                            _type;
+        std::pair<unsigned, unsigned>   _bufferRange;       // used for basic VkBuffer bindings (eg, with VkDescriptorBufferInfo)
+		std::shared_ptr<Resource>		_resource;
     };
 }}
 

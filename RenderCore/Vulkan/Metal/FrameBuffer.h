@@ -14,10 +14,7 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
-    class RenderTargetView;
-    class ShaderResourceView;
-    class DepthStencilView;
-    class TextureView;
+    class ResourceView;
     class DeviceContext;
 
     class FrameBuffer

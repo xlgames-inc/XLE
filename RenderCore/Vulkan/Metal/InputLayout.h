@@ -134,8 +134,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			uint32_t _shaderStageMask = 0u;
 			std::shared_ptr<CompiledDescriptorSetLayout> _layout;
 
-			std::vector<LooseUniformBind> _cbBinds;
-			std::vector<LooseUniformBind> _srvBinds;
+			std::vector<LooseUniformBind> _resourceViewBinds;
+			std::vector<LooseUniformBind> _immediateDataBinds;
 			std::vector<LooseUniformBind> _samplerBinds;
 			
 			// these exist so we default out slots that are used by the shader, but not provided as input
@@ -175,10 +175,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class ShaderResourceView;
-	class UnorderedAccessView;
 	class SamplerState;
-	class TextureView;
+	class ResourceView;
 	class ObjectFactory;
 	class DescriptorSetDebugInfo;
 
@@ -186,11 +184,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	class NumericUniformsInterface
 	{
 	public:
-		template<int Count> void Bind(const ResourceList<TextureView, Count>&);
+		template<int Count> void Bind(const ResourceList<IResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<IResource, Count>&);
 
-		void    Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+		void    Bind(unsigned startingPoint, IteratorRange<const IResourceView*const*> resources);
 		void    Bind(unsigned startingPoint, IteratorRange<const ConstantBufferView*> uniformBuffers);
 
 		void Reset();
@@ -219,12 +217,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<int Count> 
-		void    NumericUniformsInterface::Bind(const ResourceList<TextureView, Count>& shaderResources) 
+		void    NumericUniformsInterface::Bind(const ResourceList<IResourceView, Count>& shaderResources) 
 		{
-			auto r = MakeIteratorRange(shaderResources._buffers);
 			Bind(
 				shaderResources._startingPoint,
-				MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
+				MakeIteratorRange(shaderResources._buffers));
 		}
 	
 	template<int Count> void    NumericUniformsInterface::Bind(const ResourceList<SamplerState, Count>& samplerStates) 

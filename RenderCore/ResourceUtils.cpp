@@ -7,6 +7,7 @@
 #include "ResourceUtils.h"
 #include "ResourceDesc.h"
 #include "Format.h"
+#include "IDevice.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/SerializationUtils.h"
@@ -318,5 +319,42 @@ namespace RenderCore
             strm << ", AllocationRules: " << resDesc._allocationRules;
         }
         return strm;
+    }
+
+    static uint64_t CalculateHash(const TextureViewDesc& viewDesc)
+	{
+		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(TextureViewDesc)));
+	}
+
+	IResourceView* ViewPool::GetTextureView(const std::shared_ptr<IResource>& resource, BindFlag::Enum usage, const TextureViewDesc& viewDesc)
+	{
+		uint64_t hash = HashCombine(resource->GetGUID(), CalculateHash(viewDesc) ^ usage);
+		auto i = LowerBound(_views, hash);
+		if (i != _views.end() && i->first == hash)
+			return i->second._view.get();
+
+        auto newView = resource->CreateTextureView(usage, viewDesc);
+		i = _views.emplace(i, std::make_pair(hash, Entry{ resource, std::move(newView) }));
+		return i->second._view.get();
+	}
+
+	void ViewPool::Erase(IResource& res)
+	{
+		IResource* rawRes = &res;
+		_views.erase(
+			std::remove_if(
+				_views.begin(), _views.end(),
+				[rawRes](const std::pair<uint64, Entry>& p) { return p.second._resource.get() == rawRes; }),
+			_views.end());
+	}
+
+    void ViewPool::Reset()
+    {
+        _views.clear();
+    }
+
+    auto ViewPool::GetMetrics() const -> Metrics
+    {
+        return Metrics { (unsigned)_views.size() };
     }
 }

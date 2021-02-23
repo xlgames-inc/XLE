@@ -799,7 +799,7 @@ namespace RenderCore
         return Format::Unknown;
     }
 
-    Format ResolveFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, FormatUsage usage)
+    Format ResolveFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, BindFlag::Enum usage)
     {
         // We need to filter the format by aspect and color space.
         // First, check if there are linear & SRGB versions of the format. If there are, we can ignore the "aspect" filter,
@@ -811,11 +811,11 @@ namespace RenderCore
 
         case TextureViewDesc::DepthStencil:
         case TextureViewDesc::Depth:
-            if (usage == FormatUsage::DSV) return AsDepthStencilFormat(baseFormat);
+            if (usage == BindFlag::DepthStencil) return AsDepthStencilFormat(baseFormat);
             return AsDepthAspectSRVFormat(baseFormat);
 
         case TextureViewDesc::Stencil:
-            if (usage == FormatUsage::DSV) return AsDepthStencilFormat(baseFormat);
+            if (usage == BindFlag::DepthStencil) return AsDepthStencilFormat(baseFormat);
             return AsStencilAspectSRVFormat(baseFormat);
 
         case TextureViewDesc::ColorLinear:

@@ -250,6 +250,8 @@ namespace UnitTests
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			Metal::CompleteInitialization(metalContext, {testStorageTexture.get(), testStorageBuffer.get(), fbHelper.GetMainTarget().get()});
+
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
 
@@ -257,26 +259,27 @@ namespace UnitTests
 			encoder.Bind(shaderProgram);
 
 			UniformsStreamInterface looseUniforms;
-			looseUniforms.BindBufferView(0, Hash64("Set0Binding0"));
-			looseUniforms.BindBufferView(1, Hash64("Set1Binding4"));
-			looseUniforms.BindBufferView(2, Hash64("PushConstants0"));
-			looseUniforms.BindBufferView(3, Hash64("PushConstants1"));
-			looseUniforms.BindBufferView(4, Hash64("Set1Binding5"));		// this is the storage buffer / unordered access buffer
-			looseUniforms.BindTextureView(0, Hash64("Set1Binding6"));		// this is the storage texture / unordered access texture
+			looseUniforms.BindImmediateData(0, Hash64("Set0Binding0"));
+			looseUniforms.BindImmediateData(1, Hash64("Set1Binding4"));
+			looseUniforms.BindImmediateData(2, Hash64("PushConstants0"));
+			looseUniforms.BindImmediateData(3, Hash64("PushConstants1"));
+			looseUniforms.BindResourceView(0, Hash64("Set1Binding5"));		// this is the storage buffer / unordered access buffer
+			looseUniforms.BindResourceView(1, Hash64("Set1Binding6"));		// this is the storage texture / unordered access texture
 			Metal::BoundUniforms uniforms(shaderProgram, {}, looseUniforms);
 
-			ConstantBufferView cbvs[] {
-				ConstantBufferView { MakeSharedPkt(set0binding0) },
-				ConstantBufferView { MakeSharedPkt(set1binding4) },
-				ConstantBufferView { MakeSharedPkt(pushConstants0) },
-				ConstantBufferView { MakeSharedPkt(pushConstants1) },
-				ConstantBufferView { testStorageBuffer }
-			};
-			Metal::TextureView textView { Metal::GetObjectFactory(), testStorageTexture };
-			Metal::TextureView* textureViews[] { &textView };
 			UniformsStream uniformsStream;
-			uniformsStream._bufferViews = MakeIteratorRange(cbvs);
-			uniformsStream._textureViews = UniformsStream::MakeResources(MakeIteratorRange(textureViews));
+			uniformsStream._immediateData = {
+				MakeOpaqueIteratorRange(set0binding0),
+				MakeOpaqueIteratorRange(set1binding4),
+				MakeOpaqueIteratorRange(pushConstants0),
+				MakeOpaqueIteratorRange(pushConstants1)
+			};
+			auto testStorageBufferView = testStorageBuffer->CreateBufferView(BindFlag::UnorderedAccess);
+			auto testStorageTextureView = testStorageTexture->CreateTextureView(BindFlag::UnorderedAccess);		
+			uniformsStream._resourceViews = {
+				testStorageBufferView.get(),
+				testStorageTextureView.get()
+			};
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
@@ -357,12 +360,12 @@ namespace UnitTests
 				*testHelper->_pipelineLayout,
 				*testHelper->_defaultLegacyBindings);
 
-			Metal::TextureView tv0 { tex0 };
-			Metal::TextureView tv1 { tex1 };
-			ConstantBufferView cbs[] { testConstantBuffer };
+			auto tv0 = tex0->CreateTextureView(BindFlag::UnorderedAccess);
+			auto tv1 = tex1->CreateTextureView(BindFlag::UnorderedAccess);
+			auto cb0 = testConstantBuffer->CreateBufferView();
 
-			numericInterface.Bind(MakeResourceList(5, tv0, tv1));
-			numericInterface.Bind(9, MakeIteratorRange(cbs));
+			numericInterface.Bind(MakeResourceList(5, *tv0, *tv1));
+			numericInterface.Bind(9, {cb0.get()});
 			numericInterface.Apply(metalContext, encoder);
 
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);

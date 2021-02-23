@@ -89,6 +89,7 @@ namespace RenderCore
     };
 
 	class ILowLevelCompiler;
+    class SamplerDesc;
 
     ///
     /// <summary>Represents a hardware device capable of rendering</summary>
@@ -169,6 +170,8 @@ namespace RenderCore
         IResourcePtr                CreateResource(const ResourceDesc& desc, const SubResourceInitData& initData);
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
+        virtual std::shared_ptr<ISampler>   CreateSampler(const SamplerDesc& desc) = 0;
+
         virtual std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutDesc& desc) = 0;
 
         // Block until the GPU has caught up to (at least) the end of the previous frame
@@ -182,6 +185,12 @@ namespace RenderCore
         virtual ~IDevice();
     };
 
+    class IResourceView
+    {
+    public:
+        virtual ~IResourceView();
+    };
+    
     class IResource
     {
     public:
@@ -189,7 +198,15 @@ namespace RenderCore
         virtual void*			        QueryInterface(size_t guid) = 0;
         virtual uint64_t                GetGUID() const = 0;
         virtual std::vector<uint8_t>    ReadBackSynchronized(IThreadContext& context, SubResourceId subRes = {}) const = 0;
+        virtual std::shared_ptr<IResourceView>  CreateTextureView(BindFlag::Enum usage = BindFlag::ShaderResource, const TextureViewDesc& window = TextureViewDesc{}) = 0;
+        virtual std::shared_ptr<IResourceView>  CreateBufferView(BindFlag::Enum usage = BindFlag::ConstantBuffer, unsigned rangeOffset = 0, unsigned rangeSize = 0) = 0;
         virtual ~IResource();
+    };
+
+    class ISampler
+    {
+    public:
+        virtual ~ISampler();
     };
 
     class ICompiledPipelineLayout

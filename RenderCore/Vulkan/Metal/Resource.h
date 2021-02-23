@@ -33,7 +33,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	/// Images and buffers are combined into a single object for convenience. This allows us to use the 
 	/// single "Desc" object to describe both, and it also fits in better with other APIs (eg, DirectX).
 	/// This adds a small amount of redundancy to the Resource object -- but it seems to be trivial.
-	class Resource : public IResource
+	class Resource : public IResource, public std::enable_shared_from_this<Resource>
 	{
 	public:
 		using Desc = ResourceDesc;
@@ -41,6 +41,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<uint8_t> ReadBackSynchronized(IThreadContext& context, SubResourceId subRes) const override;
 		Desc GetDesc() const override		{ return _desc; }
 		uint64_t GetGUID() const override	{ return _guid; }
+
+		std::shared_ptr<IResourceView>  CreateTextureView(BindFlag::Enum usage, const TextureViewDesc& window) override;
+        std::shared_ptr<IResourceView>  CreateBufferView(BindFlag::Enum usage, unsigned rangeOffset, unsigned rangeSize) override;
 
 		// ----------- Vulkan specific interface -----------
 

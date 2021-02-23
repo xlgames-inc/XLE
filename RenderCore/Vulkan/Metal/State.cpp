@@ -242,23 +242,22 @@ namespace RenderCore { namespace Metal_Vulkan { namespace Internal
 namespace RenderCore { namespace Metal_Vulkan
 {
 	SamplerState::SamplerState(   
-		FilterMode filter,
-		AddressMode addressU, 
-		AddressMode addressV, 
-		AddressMode addressW,
-		CompareOp comparison)
+		ObjectFactory& objectFactory, 
+		const SamplerDesc& desc)
 	{
 		VkSamplerCreateInfo samplerCreateInfo = {};
 		samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerCreateInfo.pNext = nullptr;
 		samplerCreateInfo.flags = 0;
 
+		assert(desc._enableMipmaps == true);
+
 		samplerCreateInfo.compareEnable = VK_FALSE;
 		samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
 		samplerCreateInfo.anisotropyEnable = VK_FALSE;
 		samplerCreateInfo.maxAnisotropy = 0;
 
-		switch (filter) {
+		switch (desc._filter) {
 		default:
 		case FilterMode::Point:                 
 			samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
@@ -277,7 +276,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
 			samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 			samplerCreateInfo.compareEnable = VK_TRUE;
-			samplerCreateInfo.compareOp = Internal::AsVkCompareOp(comparison);
+			samplerCreateInfo.compareOp = Internal::AsVkCompareOp(desc._comparison);
 			break;
 		case FilterMode::Bilinear:              
 			samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
@@ -291,16 +290,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			break;
 		}
 		
-		samplerCreateInfo.addressModeU = Internal::AsVkAddressMode(addressU);
-		samplerCreateInfo.addressModeV = Internal::AsVkAddressMode(addressV);
-		samplerCreateInfo.addressModeW = Internal::AsVkAddressMode(addressW);
+		samplerCreateInfo.addressModeU = Internal::AsVkAddressMode(desc._addressU);
+		samplerCreateInfo.addressModeV = Internal::AsVkAddressMode(desc._addressU);
+		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
 		samplerCreateInfo.mipLodBias = 0.f;
 		samplerCreateInfo.minLod = 0.f;
-		samplerCreateInfo.maxLod = std::numeric_limits<float>::max();
+		samplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;       // (interesting)
-		_sampler = GetObjectFactory().CreateSampler(samplerCreateInfo);
+		_sampler = objectFactory.CreateSampler(samplerCreateInfo);
 	}
 
 	SamplerState::~SamplerState() {}

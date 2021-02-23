@@ -18,12 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     class BoundUniforms;
     class BoundInputLayout;
-
-    class RenderTargetView;
-    class DepthStencilView;
-    class UnorderedAccessView;
-
-    class ShaderResourceView;
+    class ResourceView;
 
     class RasterizerState;
     class SamplerState;

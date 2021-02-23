@@ -17,6 +17,8 @@ namespace RenderCore
     class IThreadContext;
     class IAnnotator;
     class ICompiledPipelineLayout;
+    class IResourceView;
+    class ISampler;
 
     using Resource = IResource;
     using IResourcePtr = std::shared_ptr<IResource>;

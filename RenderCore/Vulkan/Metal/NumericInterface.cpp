@@ -92,30 +92,39 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
     };
 
-    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
+    void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const IResourceView*const*> resources)
     {
 		assert(_pimpl);
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
             assert((startingPoint + c) < Pimpl::s_maxBindings);
 			if  (!resources[c]) continue;
 
-			if (!resources[c]->GetImageView()) {
-				if (!resources[c]->GetResource()) continue;
+			auto* resView = checked_cast<const ResourceView*>(resources[c]);
+			auto viewType = resView->GetType();
 
-				const auto& binding = _pimpl->_srvRegisters_boundToBuffer[startingPoint + c];
-				if (binding._slotIndex == ~0u) {
-					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
-					continue;
-				}
-				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resources[c]);
-				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
-			} else {
+			if (viewType == ResourceView::Type::ImageView) {
 				const auto& binding = _pimpl->_srvRegisters[startingPoint + c];
 				if (binding._slotIndex == ~0u) {
 					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
-				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resources[c]);
+				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resView);
+				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
+			} else if (viewType == ResourceView::Type::BufferView) {
+				const auto& binding = _pimpl->_srvRegisters_boundToBuffer[startingPoint + c];
+				if (binding._slotIndex == ~0u) {
+					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					continue;
+				}
+				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resView);
+				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
+			} else if (viewType == ResourceView::Type::BufferAndRange) {
+				const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
+				if (binding._slotIndex == ~0u) {
+					Log(Debug) << "Texture view numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					continue;
+				}
+				_pimpl->_descSet[binding._descSetIndex]._builder.Bind(binding._slotIndex, *resView);
 				_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
 			}
         }

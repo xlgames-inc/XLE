@@ -267,6 +267,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
+	enum class UniformStreamType { ResourceView, ImmediateData, Sampler, Dummy };
+
 	class BoundUniforms::ConstructionHelper
 	{
 	public:
@@ -283,7 +285,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t _boundLooseSamplerStates = 0;
 
 		void AddLooseUniformBinding(
-			DescriptorType slotType,
+			UniformStreamType uniformStreamType,
 			unsigned outputDescriptorSet, unsigned outputDescriptorSetSlot,
 			unsigned inputUniformStreamIdx, uint32_t shaderStageMask)
 		{
@@ -302,16 +304,16 @@ namespace RenderCore { namespace Metal_Vulkan
 				adaptiveSet->_shaderUsageMask |= (1ull << uint64_t(outputDescriptorSetSlot));
 			}
 
-			if (inputUniformStreamIdx != ~0u) {
+			if (uniformStreamType != UniformStreamType::Dummy) {
 				std::vector<LooseUniformBind>* binds;
-				if (slotType == DescriptorType::ConstantBuffer) {
-					binds = &adaptiveSet->_cbBinds;
+				if (uniformStreamType == UniformStreamType::ImmediateData) {
+					binds = &adaptiveSet->_immediateDataBinds;
 					_boundLooseUniformBuffers |= (1ull << uint64_t(inputUniformStreamIdx));
-				} else if (slotType == DescriptorType::Texture) {
-					binds = &adaptiveSet->_srvBinds;
+				} else if (uniformStreamType == UniformStreamType::ResourceView) {
+					binds = &adaptiveSet->_resourceViewBinds;
 					_boundLooseResources |= (1ull << uint64_t(inputUniformStreamIdx));
 				} else {
-					assert(slotType == DescriptorType::Sampler);
+					assert(uniformStreamType == UniformStreamType::Sampler);
 					binds = &adaptiveSet->_samplerBinds;
 					_boundLooseSamplerStates |= (1ull << uint64_t(inputUniformStreamIdx));
 				}
@@ -347,8 +349,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						auto descSetSigBindings = _pipelineLayout->GetDescriptorSetLayout(reflectionVariable._binding._descriptorSet)->GetDescriptorSlots();
 
-						auto srv = std::find(_looseUniforms->_srvBindings.begin(), _looseUniforms->_srvBindings.end(), hashName);
-						if (srv != _looseUniforms->_srvBindings.end()) {
+						auto srv = std::find(_looseUniforms->_resourceViewBindings.begin(), _looseUniforms->_resourceViewBindings.end(), hashName);
+						if (srv != _looseUniforms->_resourceViewBindings.end()) {
 
 							// We matched this shader input to a SRV in the loose uniforms input
 							// We also need to find this in the descriptor set.
@@ -359,30 +361,24 @@ namespace RenderCore { namespace Metal_Vulkan
 							/*if (descSetSig._layout->_slots[b.second._bindingPoint]._type != RenderCore::DescriptorSetSignature::SlotType::Texture)
 								Throw(std::runtime_error(""));*/
 
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture))
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 								Throw(std::runtime_error(""));
 
-							if (reflectionVariable._slotType != DescriptorType::Texture)
-								Throw(std::runtime_error(""));
-
-							auto inputSlot = std::distance(_looseUniforms->_srvBindings.begin(), srv);
+							auto inputSlot = std::distance(_looseUniforms->_resourceViewBindings.begin(), srv);
 							AddLooseUniformBinding(
-								DescriptorType::Texture,
+								UniformStreamType::ResourceView,
 								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 								inputSlot, shaderStageMask);
 
 						} else {
-							auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
-							if (cb != _looseUniforms->_cbBindings.end()) {
+							auto cb = std::find(_looseUniforms->_immediateDataBindings.begin(), _looseUniforms->_immediateDataBindings.end(), hashName);
+							if (cb != _looseUniforms->_immediateDataBindings.end()) {
 								if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 									Throw(std::runtime_error(""));
 
-								if (reflectionVariable._slotType != DescriptorType::ConstantBuffer)
-									Throw(std::runtime_error(""));
-
-								auto inputSlot = std::distance(_looseUniforms->_cbBindings.begin(), cb);
+								auto inputSlot = std::distance(_looseUniforms->_immediateDataBindings.begin(), cb);
 								AddLooseUniformBinding(
-									DescriptorType::ConstantBuffer,
+									UniformStreamType::ImmediateData,
 									reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 									inputSlot, shaderStageMask);
 
@@ -397,14 +393,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
 									auto inputSlot = std::distance(_looseUniforms->_samplerBindings.begin(), ss);
 									AddLooseUniformBinding(
-										DescriptorType::Sampler,
+										UniformStreamType::Sampler,
 										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 										inputSlot, shaderStageMask);
 
 								} else {
 									// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
 									AddLooseUniformBinding(
-										reflectionVariable._slotType,
+										UniformStreamType::Dummy,
 										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 										~0u, shaderStageMask);
 								}
@@ -450,17 +446,18 @@ namespace RenderCore { namespace Metal_Vulkan
 						Throw(std::runtime_error(""));		// can't find this push constants in the pipeline layout (for the name and shader stage configuration)
 
 					// push constants must from the "loose uniforms" -- we can't extract them
-					// from a prebuilt descriptor set
+					// from a prebuilt descriptor set. Furthermore, they must be a "immediateData"
+					// type of input
 
-					auto cb = std::find_if(_looseUniforms->_cbBindings.begin(), _looseUniforms->_cbBindings.end(), [hashName](auto&c) { return c._hashName == hashName; });
-					if (cb != _looseUniforms->_cbBindings.end()) {
+					auto cb = std::find(_looseUniforms->_immediateDataBindings.begin(), _looseUniforms->_immediateDataBindings.end(), hashName);
+					if (cb != _looseUniforms->_immediateDataBindings.end()) {
 
 						auto existing = std::find_if(
 							_pushConstantsRules.begin(), _pushConstantsRules.end(),
 							[shaderStageMask](const auto& c) { return c._shaderStageBind == shaderStageMask; });
 						if (existing != _pushConstantsRules.end())
 							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
-						auto inputSlot = (unsigned)std::distance(_looseUniforms->_cbBindings.begin(), cb);
+						auto inputSlot = (unsigned)std::distance(_looseUniforms->_immediateDataBindings.begin(), cb);
 						auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
 						_pushConstantsRules.push_back({shaderStageMask, pipelineRange.offset, pipelineRange.size, inputSlot});
 
@@ -554,41 +551,30 @@ namespace RenderCore { namespace Metal_Vulkan
 	class BoundUniforms::BindingHelper
 	{
 	public:
-		static uint64_t WriteCBBindings(
+		static uint64_t WriteImmediateDataBindings(
 			ProgressiveDescriptorSetBuilder& builder,
 			TemporaryBufferSpace& temporaryBufferSpace,
 			bool& requiresTemporaryBufferBarrier,
 			ObjectFactory& factory,
-			IteratorRange<const ConstantBufferView*> cbvs,
+			IteratorRange<const UniformsStream::ImmediateData*> pkts,
 			IteratorRange<const LooseUniformBind*> bindingIndicies)
 		{
 			uint64_t bindingsWrittenTo = 0u;
 
 			for (auto bind:bindingIndicies) {
-				assert(bind._inputUniformStreamIdx < cbvs.size());
-				auto& cbv = cbvs[bind._inputUniformStreamIdx];
-				
 				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
 				
-				if (cbv._prebuiltBuffer) {
-					assert(const_cast<IResource*>(cbv._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
-					auto& res = *(Resource*)cbv._prebuiltBuffer;
-					assert(res.GetBuffer());
-					builder.Bind(bind._descSetSlot, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "prebuilt"));
+				auto& pkt = pkts[bind._inputUniformStreamIdx];
+				// We must either allocate some memory from a temporary pool, or 
+				// (or we could use push constants)
+				auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt);
+				if (!tempSpace.buffer) {
+					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
+					auto cb = MakeConstantBuffer(factory, pkt);
+					builder.Bind(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 				} else {
-					auto& pkt = cbv._packet;
-					// assert(bufferCount < dimof(result._bufferInfo));
-					// We must either allocate some memory from a temporary pool, or 
-					// (or we could use push constants)
-					auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
-					if (!tempSpace.buffer) {
-						Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
-						auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
-						builder.Bind(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
-					} else {
-						builder.Bind(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
-						requiresTemporaryBufferBarrier |= true;
-					}
+					builder.Bind(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+					requiresTemporaryBufferBarrier |= true;
 				}
 
 				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
@@ -597,9 +583,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			return bindingsWrittenTo;
 		}
 
-		static uint64_t WriteSRVBindings(
+		static uint64_t WriteResourceViewBindings(
 			ProgressiveDescriptorSetBuilder& builder,
-			IteratorRange<const TextureView*const*> srvs,
+			IteratorRange<const IResourceView*const*> srvs,
 			IteratorRange<const LooseUniformBind*> bindingIndicies)
 		{
 			uint64_t bindingsWrittenTo = 0u;
@@ -610,7 +596,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
 
-				builder.Bind(bind._descSetSlot, *srv);
+				builder.Bind(bind._descSetSlot, *checked_cast<const ResourceView*>(srv));
 
 				bindingsWrittenTo |= (1ull << uint64_t(bind._descSetSlot));
 			}
@@ -673,18 +659,18 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			// -------- write descriptor set --------
 			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig) };
-			auto cbBindingFlag = BindingHelper::WriteCBBindings(
+			auto cbBindingFlag = BindingHelper::WriteImmediateDataBindings(
 				builder,
 				context.GetTemporaryBufferSpace(),
 				requiresTemporaryBufferBarrier,
 				context.GetFactory(),
-				stream._bufferViews,
-				MakeIteratorRange(adaptiveSet._cbBinds));
+				stream._immediateData,
+				MakeIteratorRange(adaptiveSet._immediateDataBinds));
 
-			auto srvBindingFlag = BindingHelper::WriteSRVBindings(
+			auto srvBindingFlag = BindingHelper::WriteResourceViewBindings(
 				builder,
-				MakeIteratorRange((const TextureView*const*)stream._textureViews.begin(), (const TextureView*const*)stream._textureViews.end()),
-				MakeIteratorRange(adaptiveSet._srvBinds));
+				stream._resourceViews,
+				MakeIteratorRange(adaptiveSet._resourceViewBinds));
 
 			auto ssBindingFlag = BindingHelper::WriteSamplerStateBindings(
 				builder,
@@ -723,10 +709,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		for (const auto&pushConstants:_pushConstantsRules) {
-			auto& cb = stream._bufferViews[pushConstants._inputCBSlot];
-			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			assert(cb._packet.size() == pushConstants._size);
-			encoder.PushConstants(pushConstants._shaderStageBind, pushConstants._offset, cb._packet.AsIteratorRange());
+			auto cb = stream._immediateData[pushConstants._inputCBSlot];
+			assert(cb.size() == pushConstants._size);
+			encoder.PushConstants(pushConstants._shaderStageBind, pushConstants._offset, cb);
 		}
 	}
 

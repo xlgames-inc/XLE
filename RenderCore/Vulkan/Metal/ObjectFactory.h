@@ -36,6 +36,7 @@ namespace RenderCore { namespace Metal_Vulkan
         virtual void    Destroy(VkRenderPass) = 0;
         virtual void    Destroy(VkImage) = 0;
         virtual void    Destroy(VkImageView) = 0;
+        virtual void    Destroy(VkBufferView) = 0;
         virtual void    Destroy(VkFramebuffer) = 0;
         virtual void    Destroy(VkShaderModule) = 0;
         virtual void    Destroy(VkDescriptorSetLayout) = 0;
@@ -82,6 +83,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VulkanUniquePtr<VkImageView> CreateImageView(
             const VkImageViewCreateInfo& createInfo) const;
+
+        VulkanUniquePtr<VkBufferView> CreateBufferView(
+            const VkBufferViewCreateInfo& createInfo) const;
 
         VulkanUniquePtr<VkFramebuffer> CreateFramebuffer(
             const VkFramebufferCreateInfo& createInfo) const;

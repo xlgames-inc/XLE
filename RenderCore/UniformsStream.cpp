@@ -14,33 +14,42 @@
 namespace RenderCore 
 {
 
-	void UniformsStreamInterface::BindBufferView(unsigned slot, const CBBinding& binding)
+	void UniformsStreamInterface::BindResourceView(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> cbElements)
 	{
-		if (_cbBindings.size() <= slot)
-			_cbBindings.resize(slot+1);
+		if (_resourceViewBindings.size() <= slot)
+			_resourceViewBindings.resize(slot+1);
 
-		_cbBindings[slot] = RetainedCBBinding {
-			binding._hashName,
-			std::vector<ConstantBufferElementDesc>(binding._elements.begin(), binding._elements.end())
-		};
+		_resourceViewBindings[slot] = hashName;
 		_hash = 0;
+
+		if (cbElements.size()) {
+			#if defined(_DEBUG)
+				auto i = std::find_if(_cbLayouts.begin(), _cbLayouts.end(), [hashName](auto& c) { return c.first == hashName; });
+				assert(i == _cbLayouts.end());
+			#endif
+			ExplicitCBLayout lyt;
+			lyt._elements = std::vector<ConstantBufferElementDesc>{cbElements.begin(), cbElements.end()};
+			_cbLayouts.push_back(std::make_pair(hashName, std::move(lyt)));
+		}
 	}
 
-	void UniformsStreamInterface::BindBufferView(unsigned slot, uint64_t hashName)
+	void UniformsStreamInterface::BindImmediateData(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> cbElements)
 	{
-		if (_cbBindings.size() <= slot)
-			_cbBindings.resize(slot+1);
+		if (_immediateDataBindings.size() <= slot)
+			_immediateDataBindings.resize(slot+1);
 
-		_cbBindings[slot] = RetainedCBBinding { hashName, std::vector<ConstantBufferElementDesc>{} };
+		_immediateDataBindings[slot] = hashName;
 		_hash = 0;
-	}
 
-	void UniformsStreamInterface::BindTextureView(unsigned slot, uint64_t hashName)
-	{
-		if (_srvBindings.size() <= slot)
-			_srvBindings.resize(slot+1);
-		_srvBindings[slot] = hashName;
-		_hash = 0;
+		if (cbElements.size()) {
+			#if defined(_DEBUG)
+				auto i = std::find_if(_cbLayouts.begin(), _cbLayouts.end(), [hashName](auto& c) { return c.first == hashName; });
+				assert(i == _cbLayouts.end());
+			#endif
+			ExplicitCBLayout lyt;
+			lyt._elements = std::vector<ConstantBufferElementDesc>{cbElements.begin(), cbElements.end()};
+			_cbLayouts.push_back(std::make_pair(hashName, std::move(lyt)));
+		}
 	}
 
 	void UniformsStreamInterface::BindSampler(unsigned slot, uint64_t hashName)
@@ -55,13 +64,13 @@ namespace RenderCore
 	{
 		if (expect_evaluation(_hash==0, false)) {
 			_hash = DefaultSeed64;
-			// to prevent some oddities when the same hash value could be in either a CB or SRV
+			// to prevent some oddities when the same hash value could be in either in _resourceViewBindings or _immediateDataBindings
 			// we need to include the count of the first array we look through in the hash
-			_hash = HashCombine((uint64_t)_cbBindings.size(), _hash);
-			for (const auto& c:_cbBindings)
-				_hash = HashCombine(c._hashName, _hash);
-			_hash = HashCombine(Hash64(AsPointer(_srvBindings.begin()), AsPointer(_srvBindings.end())), _hash);
-			_hash = HashCombine(Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end())), _hash);
+			// Also note that we ignore _cbLayouts for this hash calculation
+			_hash = HashCombine((uint64_t)_resourceViewBindings.size(), _hash);
+			_hash = Hash64(AsPointer(_resourceViewBindings.begin()), AsPointer(_resourceViewBindings.end()), _hash);
+			_hash = Hash64(AsPointer(_immediateDataBindings.begin()), AsPointer(_immediateDataBindings.end()), _hash);
+			_hash = Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end()), _hash);
 		}
 
 		return _hash;

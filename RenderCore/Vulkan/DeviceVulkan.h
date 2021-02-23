@@ -53,7 +53,7 @@ namespace RenderCore { namespace ImplVulkan
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        Metal_Vulkan::RenderTargetView* AcquireNextImage();
+        Metal_Vulkan::ResourceView* AcquireNextImage();
         const TextureDesc& GetBufferDesc() { return _bufferDesc; }
 
 		void PresentToQueue(VkQueue queue);
@@ -75,7 +75,7 @@ namespace RenderCore { namespace ImplVulkan
 		VulkanSharedPtr<VkCommandBuffer> SharePrimaryBuffer() { return _primaryBuffers[_activePresentSync]; }
 
         PresentationChain(
-			const Metal_Vulkan::ObjectFactory& factory,
+			Metal_Vulkan::ObjectFactory& factory,
             VulkanSharedPtr<VkSurfaceKHR> surface, 
 			VectorPattern<unsigned, 2> extent,
 			unsigned queueFamilyIndex,
@@ -85,7 +85,7 @@ namespace RenderCore { namespace ImplVulkan
 		VulkanSharedPtr<VkSurfaceKHR>   _surface;
         VulkanSharedPtr<VkSwapchainKHR> _swapChain;
         VulkanSharedPtr<VkDevice>       _device;
-        const Metal_Vulkan::ObjectFactory*    _factory;
+        Metal_Vulkan::ObjectFactory*    _factory;
         const void*		_platformValue;
         unsigned		_activeImageIndex;
 
@@ -93,7 +93,7 @@ namespace RenderCore { namespace ImplVulkan
         {
         public:
             VkImage     _image;
-			Metal_Vulkan::RenderTargetView      _rtv;
+			Metal_Vulkan::ResourceView      _rtv;
         };
         std::vector<Image> _images;
 
@@ -193,6 +193,7 @@ namespace RenderCore { namespace ImplVulkan
 		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
         std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutDesc& desc) override;
+        std::shared_ptr<ISampler>   CreateSampler(const SamplerDesc& desc) override;
 
 		void			Stall() override;
 

@@ -253,9 +253,9 @@ namespace RenderCore { namespace Metal_Vulkan
             const auto& resourceDesc = a.second._desc;
 
             auto formatFilter = a.second._formatFilter;
-            FormatUsage formatUsage = FormatUsage::SRV;
-            if (a.second._attachmentUsage & Internal::AttachmentUsageType::Output) formatUsage = FormatUsage::RTV;
-            if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = FormatUsage::DSV;
+            BindFlag::Enum formatUsage = BindFlag::ShaderResource;
+            if (a.second._attachmentUsage & Internal::AttachmentUsageType::Output) formatUsage = BindFlag::RenderTarget;
+            if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = BindFlag::DepthStencil;
             auto resolvedFormat = ResolveFormat(resourceDesc._format, formatFilter, formatUsage);
 
 			// look through the subpass dependencies to find the load operation for the first reference to this resource
@@ -521,6 +521,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		result._height = std::max(result._height, resHeight);
 	}
 
+	static BindFlag::Enum AsBindFlag(Internal::AttachmentUsageType::BitField usageType)
+	{
+		if (usageType & Internal::AttachmentUsageType::Output)
+			return BindFlag::RenderTarget;
+
+		if (usageType & Internal::AttachmentUsageType::DepthStencil)
+			return BindFlag::DepthStencil;
+
+		return BindFlag::InputAttachment;
+	}
+
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -577,7 +588,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			i = i2;
 		}
 
-		ViewPool<TextureView> viewPool;
+		ViewPool viewPool;
         VkImageView rawViews[16];
 		unsigned rawViewCount = 0;
 		_clearValuesOrdering.reserve(uniqueAttachments.size());
@@ -586,8 +597,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
 			// the same resource being used with more than one view
 			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc);
-			auto* rtv = viewPool.GetView(resource, TextureViewDesc{});
-			rawViews[rawViewCount++] = rtv->GetImageView();
+			auto* rtv = viewPool.GetTextureView(resource, AsBindFlag(a.second), TextureViewDesc{});
+			rawViews[rawViewCount++] = checked_cast<ResourceView*>(rtv)->GetImageView();
 
 			ClearValue defaultClearValue = MakeClearValue(0.f, 0.f, 0.f, 1.f);
 			if (a.second & Internal::AttachmentUsageType::DepthStencil)

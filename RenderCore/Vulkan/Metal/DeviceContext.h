@@ -214,11 +214,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		//	------ Draw & Clear -------
-		void        Clear(const RenderTargetView& renderTargets, const VectorPattern<float,4>& clearColour);
-		void        Clear(const DepthStencilView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
-		void        ClearUInt(const UnorderedAccessView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour);
-		void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour);
-		void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
+		void        Clear(const ResourceView& renderTarget, const VectorPattern<float,4>& clearColour);
+		void        Clear(const ResourceView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
+		void        ClearUInt(const ResourceView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour);
+		void        ClearFloat(const ResourceView& unorderedAccess, const VectorPattern<float,4>& clearColour);
+		void        ClearStencil(const ResourceView& depthStencil, unsigned stencil);
 
 		//	------ Non-pipeline states (that can be changed mid-render pass) -------
 		void        Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView);

@@ -601,6 +601,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	std::shared_ptr<IResourceView>  Resource::CreateTextureView(BindFlag::Enum usage, const TextureViewDesc& window)
+	{
+		return std::make_shared<ResourceView>(GetObjectFactory(), shared_from_this(), usage, window);
+	}
+
+    std::shared_ptr<IResourceView>  Resource::CreateBufferView(BindFlag::Enum usage, unsigned rangeOffset, unsigned rangeSize)
+	{
+		// note that we can't create a "texel buffer" view via this interface
+		return std::make_shared<ResourceView>(GetObjectFactory(), shared_from_this(), rangeOffset, rangeSize);
+	}
+
 	std::vector<uint8_t>    Resource::ReadBackSynchronized(IThreadContext& context, SubResourceId subRes) const
 	{
 		bool requiresDestaging = !_desc._cpuAccess;

@@ -13,21 +13,17 @@ namespace RenderCore
 {
 	class MiniInputElementDesc;
 	class ConstantBufferView;
+	class IResourceView;
+	class ISampler;
 	enum class Format;
 
 	class UniformsStream
 	{
 	public:
-		// todo -- is there any way to shift ShaderResourceView down to RenderCore layer?
-		IteratorRange<const ConstantBufferView*> _bufferViews = {};
-		IteratorRange<const void*const*> _textureViews = {};			// Metal::TextureView
-		IteratorRange<const void*const*> _samplers = {};				// Metal::SamplerState
-
-		template<typename Type>
-			static IteratorRange<const void*const*> MakeResources(const Type& input)
-			{
-				return IteratorRange<const void*const*>((const void*const*)input.begin(), (const void*const*)input.end());
-			}
+		using ImmediateData = IteratorRange<const void*>;
+		IteratorRange<const IResourceView*const*> _resourceViews = {};
+		IteratorRange<const ImmediateData*> _immediateData = {};
+		IteratorRange<const ISampler*const*> _samplers = {};
 	};
 
 	class ConstantBufferElementDesc
@@ -44,16 +40,8 @@ namespace RenderCore
 	class UniformsStreamInterface
 	{
 	public:
-		struct CBBinding
-		{
-		public:
-			uint64_t _hashName;
-			IteratorRange<const ConstantBufferElementDesc*> _elements = {};
-		};
-
-		void BindBufferView(unsigned slot, const CBBinding& binding);
-		void BindBufferView(unsigned slot, uint64_t hashName);
-		void BindTextureView(unsigned slot, uint64_t hashName);
+		void BindResourceView(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> _cbElements = {});
+		void BindImmediateData(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> _cbElements = {});
 		void BindSampler(unsigned slot, uint64_t hashName);
 
 		uint64_t GetHash() const;
@@ -62,15 +50,15 @@ namespace RenderCore
 		~UniformsStreamInterface();
 
 	////////////////////////////////////////////////////////////////////////
-		struct RetainedCBBinding
+		std::vector<uint64_t> _resourceViewBindings;
+		std::vector<uint64_t> _immediateDataBindings;
+		std::vector<uint64_t> _samplerBindings;
+
+		struct ExplicitCBLayout
 		{
-		public:
-			uint64_t _hashName = 0ull;
 			std::vector<ConstantBufferElementDesc> _elements = {};
 		};
-		std::vector<RetainedCBBinding> _cbBindings;
-		std::vector<uint64_t> _srvBindings;
-		std::vector<uint64_t> _samplerBindings;
+		std::vector<std::pair<uint64_t, ExplicitCBLayout>> _cbLayouts;
 
 	private:
 		mutable uint64_t _hash;

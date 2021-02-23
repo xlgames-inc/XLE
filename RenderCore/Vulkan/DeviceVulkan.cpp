@@ -13,6 +13,7 @@
 #include "Metal/Resource.h"
 #include "Metal/PipelineLayout.h"
 #include "Metal/Shader.h"
+#include "Metal/State.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../OSServices/Log.h"
 #include "../../ConsoleRig/AttachablePtr.h"
@@ -873,6 +874,11 @@ namespace RenderCore { namespace ImplVulkan
 			MakeIteratorRange(pushConstantBinding, &pushConstantBinding[desc.GetPushConstants().size()]));
 	}
 
+	std::shared_ptr<ISampler> Device::CreateSampler(const SamplerDesc& desc)
+	{
+		return std::make_shared<Metal_Vulkan::SamplerState>(_objectFactory, desc);
+	}
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void*   Device::QueryInterface(size_t guid)
@@ -922,7 +928,7 @@ namespace RenderCore { namespace ImplVulkan
 		return _desc;
     }
 
-    Metal_Vulkan::RenderTargetView* PresentationChain::AcquireNextImage()
+    Metal_Vulkan::ResourceView* PresentationChain::AcquireNextImage()
     {
 		#if defined(HACK_FORCE_SYNC)
 			// hack -- just slow us down
@@ -1034,12 +1040,12 @@ namespace RenderCore { namespace ImplVulkan
 				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
 				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
             _images.emplace_back(
-                Image { i, Metal_Vulkan::RenderTargetView(*_factory, resPtr, window) });
+                Image { i, Metal_Vulkan::ResourceView(*_factory, resPtr, BindFlag::RenderTarget, window) });
         }
     }
 
     PresentationChain::PresentationChain(
-		const Metal_Vulkan::ObjectFactory& factory,
+		Metal_Vulkan::ObjectFactory& factory,
         VulkanSharedPtr<VkSurfaceKHR> surface, 
 		VectorPattern<unsigned, 2> extent,
 		unsigned queueFamilyIndex,

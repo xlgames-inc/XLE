@@ -738,6 +738,8 @@ namespace RenderCore
     IResource::~IResource() {}
     IAnnotator::~IAnnotator() {}
     ICompiledPipelineLayout::~ICompiledPipelineLayout() {}
+    IResourceView::~IResourceView() {}
+    ISampler::~ISampler() {}
 
 }
 

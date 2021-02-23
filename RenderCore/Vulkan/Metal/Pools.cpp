@@ -131,7 +131,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-	CommandPool::CommandPool(const ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker)
+	CommandPool::CommandPool(ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker)
 	: _device(factory.GetDevice())
 	, _gpuTracker(tracker)
 	{
@@ -212,7 +212,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TemporaryBufferSpace::Pimpl
 	{
 	public:
-		const ObjectFactory*			_factory;
+		ObjectFactory*			_factory;
 		std::shared_ptr<IAsyncTracker>	_gpuTracker;
 
 		struct MarkedDestroys
@@ -233,13 +233,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			unsigned		_alignment;
 
-			ReservedSpace(const ObjectFactory& factory, size_t size);
+			ReservedSpace(ObjectFactory& factory, size_t size);
 			~ReservedSpace();
 		};
 		
 		ReservedSpace _cb;
 
-		Pimpl(const ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker);
+		Pimpl(ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker);
 	};
 
 	static ResourceDesc BuildBufferDesc(
@@ -252,7 +252,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			"RollingTempBuf");
 	}
 
-	TemporaryBufferSpace::Pimpl::ReservedSpace::ReservedSpace(const ObjectFactory& factory, size_t byteCount)
+	TemporaryBufferSpace::Pimpl::ReservedSpace::ReservedSpace(ObjectFactory& factory, size_t byteCount)
 	: _buffer(factory, BuildBufferDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount))
 	, _heap((unsigned)byteCount)
 	{
@@ -263,7 +263,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	TemporaryBufferSpace::Pimpl::ReservedSpace::~ReservedSpace() {}
 
-	TemporaryBufferSpace::Pimpl::Pimpl(const ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker)
+	TemporaryBufferSpace::Pimpl::Pimpl(ObjectFactory& factory, std::shared_ptr<IAsyncTracker> gpuTracker)
 	: _factory(&factory), _gpuTracker(gpuTracker)
 	, _cb(factory, 32*1024)
 	{
@@ -426,7 +426,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	TemporaryBufferSpace::TemporaryBufferSpace(
-		const ObjectFactory& factory,
+		ObjectFactory& factory,
 		const std::shared_ptr<IAsyncTracker>& asyncTracker) 
 	{
 		_pimpl = std::make_unique<Pimpl>(factory, asyncTracker);
@@ -520,7 +520,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_pendingDestroys.push_back(set);
 	}
 
-    DescriptorPool::DescriptorPool(const ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker)
+    DescriptorPool::DescriptorPool(ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker)
     : _device(factory.GetDevice())
 	, _gpuTracker(tracker)
     {
@@ -579,7 +579,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    static IResourcePtr CreateDummyTexture(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyTexture(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::ShaderResource, 
@@ -595,7 +595,7 @@ namespace RenderCore { namespace Metal_Vulkan
             });
     }
 
-    static IResourcePtr CreateDummyUAVImage(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyUAVImage(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -604,7 +604,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return Internal::CreateResource(factory, desc);
     }
 
-    static IResourcePtr CreateDummyUAVBuffer(const ObjectFactory& factory)
+    static IResourcePtr CreateDummyUAVBuffer(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -613,14 +613,14 @@ namespace RenderCore { namespace Metal_Vulkan
         return Internal::CreateResource(factory, desc);
     }
 
-    DummyResources::DummyResources(const ObjectFactory& factory)
+    DummyResources::DummyResources(ObjectFactory& factory)
     : _blankTexture(CreateDummyTexture(factory))
     , _blankUAVImageRes(CreateDummyUAVImage(factory))
     , _blankUAVBufferRes(CreateDummyUAVBuffer(factory))
     , _blankSrv(factory, _blankTexture)
     , _blankUavImage(factory, _blankUAVImageRes)
     , _blankUavBuffer(factory, _blankUAVBufferRes)
-    , _blankSampler(std::make_unique<SamplerState>(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp))
+    , _blankSampler(std::make_unique<SamplerState>(factory, SamplerDesc{FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp}))
     {
         uint8 blankData[4096];
         std::memset(blankData, 0, sizeof(blankData));

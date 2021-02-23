@@ -184,8 +184,7 @@ namespace RenderCore
 		uint64_t Hash() const;
     };
 
-    /// Similar to ?
-    class SamplerStateDesc
+    class SamplerDesc
     {
     public:
         RenderCore::FilterMode _filter = RenderCore::FilterMode::Trilinear;

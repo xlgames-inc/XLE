@@ -68,6 +68,7 @@ extern "C"
     typedef struct VkRenderPassCreateInfo VkRenderPassCreateInfo;
     typedef struct VkImageCreateInfo VkImageCreateInfo;
     typedef struct VkImageViewCreateInfo VkImageViewCreateInfo;
+    typedef struct VkBufferViewCreateInfo VkBufferViewCreateInfo;
     typedef struct VkGraphicsPipelineCreateInfo VkGraphicsPipelineCreateInfo;
     typedef struct VkDescriptorPoolCreateInfo VkDescriptorPoolCreateInfo;
     typedef struct VkBufferCreateInfo VkBufferCreateInfo;

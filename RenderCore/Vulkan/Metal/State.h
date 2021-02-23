@@ -9,12 +9,14 @@
 #include "VulkanCore.h"
 #include "IncludeVulkan.h"      // required because we're deriving from Vulkan types
 #include "../../StateDesc.h"
+#include "../../IDevice.h"
 #include "../../../Utility/IteratorUtils.h"
 #include <utility>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
     class DeviceContext;
+    class ObjectFactory;
 
     static const unsigned s_mrtLimit = 4;
 
@@ -49,14 +51,10 @@ namespace RenderCore { namespace Metal_Vulkan
     /// <exception cref="::RenderCore::Exceptions::AllocationFailure">
     ///     Failed to create underlying object. Could be caused by invalid input values, or a corrupt/lost device.
     /// </exception>
-    class SamplerState
+    class SamplerState : public ISampler
     {
     public:
-        SamplerState(   FilterMode filter = FilterMode::Trilinear,
-                        AddressMode addressU = AddressMode::Wrap, 
-                        AddressMode addressV = AddressMode::Wrap, 
-                        AddressMode addressW = AddressMode::Wrap,
-						CompareOp comparison = CompareOp::Never);
+        SamplerState(ObjectFactory&, const SamplerDesc&);
 		~SamplerState();
 
         using UnderlyingType = VkSampler;

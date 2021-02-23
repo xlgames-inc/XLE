@@ -216,8 +216,7 @@ namespace RenderCore
 		Flags::BitField				_flags = 0;
     };
 
-    enum class FormatUsage { SRV, RTV, DSV, UAV };
-    Format ResolveFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, FormatUsage usage);
+    Format ResolveFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, BindFlag::Enum usage);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

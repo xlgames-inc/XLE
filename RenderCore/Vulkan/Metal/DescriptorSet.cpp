@@ -28,6 +28,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	template<typename BindingInfo> static BindingInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc);
 	template<> VkDescriptorImageInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pImageInfo; }
 	template<> VkDescriptorBufferInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pBufferInfo; }
+	template<> VkBufferView const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pTexelBufferView; }
 
 	template<> 
 		VkDescriptorImageInfo& ProgressiveDescriptorSetBuilder::AllocateInfo(const VkDescriptorImageInfo& init)
@@ -45,6 +46,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& i = _bufferInfo[_pendingBufferInfos++];
 		i = init;
 		return i;
+	}
+
+	template<> 
+		VkBufferView& ProgressiveDescriptorSetBuilder::AllocateInfo(const VkBufferView& init)
+	{
+		assert(0);
+		return *(VkBufferView*)nullptr;
 	}
 
 	template<typename BindingInfo>
@@ -94,47 +102,60 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
 	}
 
-	void    ProgressiveDescriptorSetBuilder::Bind(unsigned descriptorSetBindPoint, const TextureView& resource)
+	void    ProgressiveDescriptorSetBuilder::Bind(unsigned descriptorSetBindPoint, const ResourceView& resourceView)
 	{
 		// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
 		// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 		// descriptor.
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			std::string description;
-			if (resource.GetResource()) {
-				description = resource.GetResource()->GetDesc()._name;
+			if (resourceView.GetResource()) {
+				description = resourceView.GetResource()->GetDesc()._name;
 			} else {
-				description = std::string{"TextureView"};
+				description = std::string{"ResourceView"};
 			}
 		#endif
 
 		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
-			if (resource.GetResource()) ValidateResourceVisibility(*resource.GetResource());
+			if (resourceView.GetResource()) ValidateResourceVisibility(*resourceView.GetResource());
 		#endif
 
 		assert(descriptorSetBindPoint < _signature.size());
 		auto slotType = _signature[descriptorSetBindPoint]._type;
 		assert(_signature[descriptorSetBindPoint]._count == 1);
 
-		switch (slotType) {
-		case DescriptorType::Texture:
-		case DescriptorType::UnorderedAccessTexture:
-			assert(resource.GetResource());
+		assert(resourceView.GetResource());
+		switch (resourceView.GetType()) {
+		case ResourceView::Type::ImageView:
+			assert(resourceView.GetImageView());
 			WriteBinding(
 				descriptorSetBindPoint,
 				AsVkDescriptorType(slotType),
-				VkDescriptorImageInfo { nullptr, resource.GetImageView(), (VkImageLayout)Internal::AsVkImageLayout(resource.GetResource()->_steadyStateLayout) }, true
+				VkDescriptorImageInfo { nullptr, resourceView.GetImageView(), (VkImageLayout)Internal::AsVkImageLayout(resourceView.GetResource()->_steadyStateLayout) }, true
 				VULKAN_VERBOSE_DEBUG_ONLY(, description));
 			break;
 
-		case DescriptorType::ConstantBuffer:
-		case DescriptorType::UnorderedAccessBuffer:
-			// This is a "structured buffer" in the DirectX terminology
-			assert(resource.GetResource() && resource.GetResource()->GetBuffer());
+		case ResourceView::Type::BufferAndRange:
+			{
+				assert(resourceView.GetResource() && resourceView.GetResource()->GetBuffer());
+				auto range = resourceView.GetBufferRangeOffsetAndSize();
+				uint64_t rangeBegin = range.first, rangeEnd = range.second;
+				if (rangeBegin == 0 && rangeEnd == 0)
+					rangeEnd = VK_WHOLE_SIZE;
+				WriteBinding(
+					descriptorSetBindPoint,
+					AsVkDescriptorType(slotType),
+					VkDescriptorBufferInfo { resourceView.GetResource()->GetBuffer(), rangeBegin, rangeEnd }, true
+					VULKAN_VERBOSE_DEBUG_ONLY(, description));
+			}
+			break;
+
+		case ResourceView::Type::BufferView:
+			assert(resourceView.GetBufferView());
 			WriteBinding(
 				descriptorSetBindPoint,
 				AsVkDescriptorType(slotType),
-				VkDescriptorBufferInfo { resource.GetResource()->GetBuffer(), 0, VK_WHOLE_SIZE }, true
+				resourceView.GetBufferView(), false
 				VULKAN_VERBOSE_DEBUG_ONLY(, description));
 			break;
 
@@ -143,6 +164,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+#if 0
 	void    ProgressiveDescriptorSetBuilder::Bind(unsigned descriptorSetBindPoint, const ConstantBufferView& resource)
 	{
 		#if defined(VULKAN_VERBOSE_DEBUG)
@@ -175,6 +197,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			assert(0);
 		}
 	}
+#endif
 
 	void    ProgressiveDescriptorSetBuilder::Bind(unsigned descriptorSetBindPoint, VkDescriptorBufferInfo uniformBuffer, StringSection<> description)
 	{
@@ -658,13 +681,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
 		for (unsigned c=0; c<binds.size(); ++c) {
-			if (binds[c]._type == BindType::BufferView) {
-				builder.Bind(c, uniforms._bufferViews[binds[c]._idx]);
-			} else if (binds[c]._type == BindType::TextureView) {
-				builder.Bind(c, *(TextureView*)uniforms._textureViews[binds[c]._idx]);
+			if (binds[c]._type == BindType::ResourceView) {
+				builder.Bind(c, *checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._idx]));
 			} else {
 				assert(binds[c]._type == BindType::Sampler);
-				builder.Bind(c, ((SamplerState*)uniforms._samplers[binds[c]._idx])->GetUnderlying());
+				builder.Bind(c, checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._idx])->GetUnderlying());
 			}
 		}
 

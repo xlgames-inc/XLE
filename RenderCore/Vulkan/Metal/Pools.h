@@ -36,7 +36,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void FlushDestroys();
 
-		CommandPool(const Metal_Vulkan::ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker);
+		CommandPool(ObjectFactory& factory, unsigned queueFamilyIndex, bool resetable, const std::shared_ptr<IAsyncTracker>& tracker);
 		CommandPool();
 		~CommandPool();
 
@@ -65,7 +65,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void WriteBarrier(DeviceContext& context);
 
 		TemporaryBufferSpace(
-			const ObjectFactory& factory,
+			ObjectFactory& factory,
 			const std::shared_ptr<IAsyncTracker>& asyncTracker);
 		~TemporaryBufferSpace();
 	private:
@@ -84,7 +84,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void FlushDestroys();
         VkDevice GetDevice() { return _device.get(); }
 
-        DescriptorPool(const Metal_Vulkan::ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker);
+        DescriptorPool(ObjectFactory& factory, const std::shared_ptr<IAsyncTracker>& tracker);
         DescriptorPool();
         ~DescriptorPool();
 
@@ -110,13 +110,13 @@ namespace RenderCore { namespace Metal_Vulkan
         IResourcePtr		_blankTexture;
         IResourcePtr		_blankUAVImageRes;
         IResourcePtr		_blankUAVBufferRes;
-        ShaderResourceView  _blankSrv;
-        UnorderedAccessView _blankUavImage;
-        UnorderedAccessView _blankUavBuffer;
+        ResourceView        _blankSrv;
+        ResourceView        _blankUavImage;
+        ResourceView        _blankUavBuffer;
         Buffer              _blankBuffer;
         std::unique_ptr<SamplerState> _blankSampler;
 
-        DummyResources(const ObjectFactory& factory);
+        DummyResources(ObjectFactory& factory);
         DummyResources();
         ~DummyResources();
 
