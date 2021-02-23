@@ -187,7 +187,7 @@ namespace UnitTests
 			std::memset(map.GetData().begin(), 0, map.GetData().size());
 			map.GetData().Cast<unsigned*>()[2*8+2] = (8u << 24u) | (23u << 16u) | (33u << 8u) | (12u);
 		}
-		Metal::BlitPass blt(*Metal::DeviceContext::Get(threadContext));
+		auto blt = Metal::DeviceContext::Get(threadContext)->BeginBlitEncoder();
 		blt.Copy(*result, *staging);
 
 		return result;
@@ -322,7 +322,7 @@ namespace UnitTests
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 			Metal::CompleteInitialization(metalContext, {tex0.get(), tex1.get(), fbHelper.GetMainTarget().get()});
 
-			Metal::BlitPass blt(metalContext);
+			auto blt = metalContext.BeginBlitEncoder();
 
 			auto staging0 = testHelper->_device->CreateResource(AsStagingDesc(desc));
 			{

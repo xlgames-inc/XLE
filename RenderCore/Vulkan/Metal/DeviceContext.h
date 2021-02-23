@@ -330,6 +330,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		friend class DeviceContext;
 	};
 
+	class BlitEncoder;
+
 	class DeviceContext
 	{
 	public:
@@ -345,13 +347,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		GraphicsEncoder BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
+		BlitEncoder BeginBlitEncoder();
 
 		static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 
 		// --------------- Vulkan specific interface --------------- 
-
-		void BeginBltPass();
-		void EndBltPass();
 
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
@@ -411,6 +411,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::vector<uint64_t> _resourcesThatMustBeVisible;
 		#endif
 
+		friend class BlitEncoder;
+		void EndBlitEncoder();
 		void SetupPipelineBuilders();
 		void ResetDescriptorSetState();
 	};

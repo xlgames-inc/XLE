@@ -775,7 +775,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _sharedState->_renderPassSubpass;
 	}
 
-	void DeviceContext::BeginBltPass()
+	BlitEncoder DeviceContext::BeginBlitEncoder()
 	{
 		if (_sharedState->_renderPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a blt pass while a render pass is in progress"));
@@ -784,9 +784,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (_sharedState->_currentEncoder)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a blt pass while an encoder is in progress"));
 		_sharedState->_inBltPass = true;
+		return BlitEncoder(*this);
 	}
 
-	void DeviceContext::EndBltPass()
+	void DeviceContext::EndBlitEncoder()
 	{
 		assert(_sharedState->_inBltPass);
 		_sharedState->_inBltPass = false;

@@ -132,7 +132,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		//      B L T P A S S       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class BlitPass
+	class BlitEncoder
 	{
 	public:
 		class CopyPartial_Dest
@@ -166,13 +166,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			IResource& dst,
 			IResource& src);
 
-		BlitPass(DeviceContext& devContext);
-		~BlitPass();
+		~BlitEncoder();
 
-		BlitPass(const BlitPass&) = delete;
-		BlitPass& operator=(const BlitPass&) = delete;
+		BlitEncoder(const BlitEncoder&) = delete;
+		BlitEncoder& operator=(const BlitEncoder&) = delete;
 	private:
+		BlitEncoder(DeviceContext& devContext);
 		DeviceContext* _devContext;
+		friend class DeviceContext;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

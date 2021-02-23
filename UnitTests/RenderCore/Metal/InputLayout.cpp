@@ -184,7 +184,7 @@ namespace UnitTests
 			std::vector<uint8_t> initBuffer(RenderCore::ByteCount(stagingDesc), 0xdd);
 			SubResourceInitData initData { MakeIteratorRange(initBuffer), MakeTexturePitches(stagingDesc._textureDesc) };
 			auto stagingRes = testHelper->_device->CreateResource(stagingDesc, initData);
-			Metal::BlitPass blt(*Metal::DeviceContext::Get(*threadContext));
+			auto blt = Metal::DeviceContext::Get(*threadContext)->BeginBlitEncoder();
 			blt.Copy(*fbHelper.GetMainTarget(), *stagingRes);
 		}
 

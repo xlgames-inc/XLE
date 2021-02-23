@@ -37,7 +37,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	static void CopyPartial(
         DeviceContext& context, 
-        const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
+        const BlitEncoder::CopyPartial_Dest& dst, const BlitEncoder::CopyPartial_Src& src,
         Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout);
 
 	static void Copy(DeviceContext& context, Resource& dst, Resource& src, Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout);
@@ -855,7 +855,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static void CopyPartial(
         DeviceContext& context, 
-        const BlitPass::CopyPartial_Dest& dst, const BlitPass::CopyPartial_Src& src,
+        const BlitEncoder::CopyPartial_Dest& dst, const BlitEncoder::CopyPartial_Src& src,
         Internal::ImageLayout dstLayout, Internal::ImageLayout srcLayout)
     {
         assert(src._resource && dst._resource);
@@ -1172,7 +1172,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void BlitPass::Write(
+	void BlitEncoder::Write(
 		const CopyPartial_Dest& dst,
 		const SubResourceInitData& srcData,
 		Format srcDataFormat,
@@ -1216,7 +1216,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		CopyPartial(*_devContext, dst, srcPartial, captureDst.GetLayout(), Internal::ImageLayout::TransferSrcOptimal);
 	}
 
-	void BlitPass::Copy(
+	void BlitEncoder::Copy(
 		const CopyPartial_Dest& dst,
 		const CopyPartial_Src& src)
 	{
@@ -1226,7 +1226,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		CopyPartial(*_devContext, dst, src, captureDst.GetLayout(), captureSrc.GetLayout());
 	}
 
-	void BlitPass::Copy(
+	void BlitEncoder::Copy(
 		IResource& dst,
 		IResource& src)
 	{
@@ -1235,14 +1235,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		Metal_Vulkan::Copy(*_devContext, *checked_cast<Resource*>(&dst), *checked_cast<Resource*>(&src), captureDst.GetLayout(), captureSrc.GetLayout());
 	}
 
-	BlitPass::BlitPass(DeviceContext& devContext) : _devContext(&devContext)
+	BlitEncoder::BlitEncoder(DeviceContext& devContext) : _devContext(&devContext)
 	{
-		_devContext->BeginBltPass();
 	}
 
-	BlitPass::~BlitPass()
+	BlitEncoder::~BlitEncoder()
 	{
-		_devContext->EndBltPass();
+		_devContext->EndBlitEncoder();
 	}
 
 }}
