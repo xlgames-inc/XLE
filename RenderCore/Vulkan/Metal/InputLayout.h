@@ -20,6 +20,7 @@ namespace RenderCore
 	class CompiledShaderByteCode;
 	class ICompiledPipelineLayout;
 	class IResource;
+	class IDescriptorSet;
 	template <typename Type, int Count> class ResourceList;
 }
 
@@ -72,10 +73,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class SharedGraphicsEncoder;
+	class GraphicsEncoder;
 	class GraphicsPipeline;
 	class ComputePipeline;
-	class CompiledDescriptorSet;
 	class CompiledDescriptorSetLayout;
 
 	class BoundUniforms
@@ -83,42 +83,31 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		void ApplyLooseUniforms(
 			DeviceContext& context,
-			SharedGraphicsEncoder& encoder,
+			GraphicsEncoder& encoder,
 			const UniformsStream& stream) const;
-		void UnbindLooseUniforms(DeviceContext& context, SharedGraphicsEncoder& encoder);
+		void UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder);
 
 		void ApplyDescriptorSets(
 			DeviceContext& context,
-			SharedGraphicsEncoder& encoder,
-			IteratorRange<const CompiledDescriptorSet**> descriptorSets);
+			GraphicsEncoder& encoder,
+			IteratorRange<const IDescriptorSet* const*> descriptorSets);
 
 		uint64_t GetBoundLooseConstantBuffers() const { return _boundLooseUniformBuffers; }
 		uint64_t GetBoundLooseResources() const { return _boundLooseResources; }
 		uint64_t GetBoundLooseSamplers() const { return _boundLooseSamplerStates; }
 
-		struct DescriptorSetBinding
-		{
-		public:
-			uint64_t _bindingName = 0;
-			const RenderCore::DescriptorSetSignature* _layout = nullptr;
-		};
-
 		BoundUniforms(
 			const ShaderProgram& shader,
-			IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
-			const UniformsStreamInterface& looseUniforms = {});
+			const UniformsStreamInterface& interf);
 		BoundUniforms(
 			const ComputeShader& shader,
-			IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
-			const UniformsStreamInterface& looseUniforms = {});
+			const UniformsStreamInterface& interf);
 		BoundUniforms(
 			const GraphicsPipeline& shader,
-			IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
-			const UniformsStreamInterface& looseUniforms = {});
+			const UniformsStreamInterface& interf);
 		BoundUniforms(
 			const ComputePipeline& shader,
-			IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
-			const UniformsStreamInterface& looseUniforms = {});
+			const UniformsStreamInterface& interf);
 		BoundUniforms();
 		~BoundUniforms();
 		BoundUniforms(const BoundUniforms&) = default;
@@ -196,7 +185,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void Apply(
 			DeviceContext& context,
-			SharedGraphicsEncoder& encoder) const;
+			GraphicsEncoder& encoder) const;
 
 		NumericUniformsInterface(
 			const ObjectFactory& factory,

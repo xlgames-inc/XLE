@@ -833,7 +833,7 @@ namespace RenderCore { namespace ImplVulkan
         return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
 
-	std::shared_ptr<ICompiledPipelineLayout> Device::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+	std::shared_ptr<ICompiledPipelineLayout> Device::CreatePipelineLayout(const PipelineLayoutInitializer& desc)
 	{
 		DoSecondStageInit();
 		Metal_Vulkan::Internal::ValidatePipelineLayout(_physDev._dev, desc);
@@ -872,6 +872,19 @@ namespace RenderCore { namespace ImplVulkan
 			_objectFactory,
 			MakeIteratorRange(descSetBindings, &descSetBindings[desc.GetDescriptorSets().size()]),
 			MakeIteratorRange(pushConstantBinding, &pushConstantBinding[desc.GetPushConstants().size()]));
+	}
+
+	std::shared_ptr<IDescriptorSet> Device::CreateDescriptorSet(const DescriptorSetInitializer& desc)
+	{
+		return std::make_shared<Metal_Vulkan::CompiledDescriptorSet>(
+			_objectFactory, _pools,
+			_pools._descriptorSetLayoutCache->CompileDescriptorSetLayout(
+				*desc._signature,
+				{},		// don't have the name available here
+				VK_SHADER_STAGE_ALL_GRAPHICS)->_layout,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
+			desc._slotBindings,
+			desc._bindItems);
 	}
 
 	std::shared_ptr<ISampler> Device::CreateSampler(const SamplerDesc& desc)

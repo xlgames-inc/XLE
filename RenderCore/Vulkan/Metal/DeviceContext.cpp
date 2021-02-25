@@ -12,7 +12,6 @@
 #include "FrameBuffer.h"
 #include "Pools.h"
 #include "PipelineLayout.h"
-#include "DescriptorSetSignatureFile.h"
 #include "ShaderReflection.h"
 #include "../IDeviceVulkan.h"
 #include "../../Format.h"
@@ -107,7 +106,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		~VulkanEncoderSharedState();
 	};
 
-	void        SharedGraphicsEncoder::Bind(
+	void        GraphicsEncoder::Bind(
 		IteratorRange<const Viewport*> viewports,
 		IteratorRange<const ScissorRect*> scissorRects)
 	{
@@ -130,7 +129,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		vkCmdSetScissor(_sharedState->_commandList.GetUnderlying().get(), 0, scissorRects.size(), vkScissors);
 	}
 
-	void        SharedGraphicsEncoder::Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView)
+	void        GraphicsEncoder::Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView)
 	{
 		assert(_sharedState->_commandList.GetUnderlying());
 
@@ -160,7 +159,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	void        SharedGraphicsEncoder::BindDescriptorSet(
+	void        GraphicsEncoder::BindDescriptorSet(
 		unsigned index, VkDescriptorSet set
 		VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description))
 	{
@@ -200,7 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	void			SharedGraphicsEncoder::PushConstants(VkShaderStageFlags stageFlags, unsigned offset, IteratorRange<const void*> data)
+	void			GraphicsEncoder::PushConstants(VkShaderStageFlags stageFlags, unsigned offset, IteratorRange<const void*> data)
 	{
 		assert(!(stageFlags & VK_SHADER_STAGE_COMPUTE_BIT));
 		_sharedState->_commandList.PushConstants(
@@ -208,12 +207,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			stageFlags, offset, (uint32_t)data.size(), data.begin());
 	}
 
-	unsigned SharedGraphicsEncoder::GetDescriptorSetCount()
+	unsigned GraphicsEncoder::GetDescriptorSetCount()
 	{
 		return _pipelineLayout->GetDescriptorSetCount();
 	}
 
-	VkPipelineLayout SharedGraphicsEncoder::GetUnderlyingPipelineLayout()
+	VkPipelineLayout GraphicsEncoder::GetUnderlyingPipelineLayout()
 	{
 		return _pipelineLayout->GetUnderlying();
 	}
@@ -437,7 +436,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	SharedGraphicsEncoder::SharedGraphicsEncoder(
+	GraphicsEncoder::GraphicsEncoder(
 		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 		const std::shared_ptr<VulkanEncoderSharedState>& sharedState)
 	: _pipelineLayout(pipelineLayout)
@@ -465,7 +464,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	SharedGraphicsEncoder::~SharedGraphicsEncoder()
+	GraphicsEncoder::~GraphicsEncoder()
 	{
 		if (_sharedState) {
 			assert(_sharedState->_currentEncoder == this);
@@ -474,7 +473,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	SharedGraphicsEncoder::SharedGraphicsEncoder(SharedGraphicsEncoder&& moveFrom)
+	GraphicsEncoder::GraphicsEncoder(GraphicsEncoder&& moveFrom)
 	{
 		if (moveFrom._sharedState) {
 			assert(moveFrom._sharedState->_currentEncoder == &moveFrom);
@@ -483,7 +482,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	SharedGraphicsEncoder& SharedGraphicsEncoder::operator=(SharedGraphicsEncoder&& moveFrom)
+	GraphicsEncoder& GraphicsEncoder::operator=(GraphicsEncoder&& moveFrom)
 	{
 		if (_sharedState) {
 			assert(_sharedState->_currentEncoder == this);
@@ -501,7 +500,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	GraphicsEncoder_ProgressivePipeline::GraphicsEncoder_ProgressivePipeline(GraphicsEncoder_ProgressivePipeline&& moveFrom)
-	: SharedGraphicsEncoder(std::move(moveFrom))
+	: GraphicsEncoder(std::move(moveFrom))
 	, GraphicsPipelineBuilder(moveFrom)
 	{
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
@@ -513,7 +512,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder_ProgressivePipeline& GraphicsEncoder_ProgressivePipeline::operator=(GraphicsEncoder_ProgressivePipeline&& moveFrom)
 	{
-		SharedGraphicsEncoder::operator=(std::move(moveFrom));
+		GraphicsEncoder::operator=(std::move(moveFrom));
 		GraphicsPipelineBuilder::operator=(std::move(moveFrom));
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
 		_factory = moveFrom._factory;
@@ -528,7 +527,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
 		ObjectFactory& objectFactory,
 		GlobalPools& globalPools)
-	: SharedGraphicsEncoder(pipelineLayout, sharedState)
+	: GraphicsEncoder(pipelineLayout, sharedState)
 	, _factory(&objectFactory)
 	, _globalPools(&globalPools)
 	{
@@ -544,25 +543,25 @@ namespace RenderCore { namespace Metal_Vulkan
 	GraphicsEncoder_ProgressivePipeline::~GraphicsEncoder_ProgressivePipeline()
 	{}
 
-	GraphicsEncoder::GraphicsEncoder(GraphicsEncoder&& moveFrom)
-	: SharedGraphicsEncoder(std::move(moveFrom))
+	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(GraphicsEncoder_Optimized&& moveFrom)
+	: GraphicsEncoder(std::move(moveFrom))
 	{
 	}
 
-	GraphicsEncoder::GraphicsEncoder() {}
+	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized() {}
 
-	GraphicsEncoder& GraphicsEncoder::operator=(GraphicsEncoder&& moveFrom)
+	GraphicsEncoder_Optimized& GraphicsEncoder_Optimized::operator=(GraphicsEncoder_Optimized&& moveFrom)
 	{
-		SharedGraphicsEncoder::operator=(std::move(moveFrom));
+		GraphicsEncoder::operator=(std::move(moveFrom));
 		return *this;
 	}
 
-	GraphicsEncoder::GraphicsEncoder(
+	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(
 		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 		const std::shared_ptr<VulkanEncoderSharedState>& sharedState)
-	: SharedGraphicsEncoder(pipelineLayout, sharedState)
+	: GraphicsEncoder(pipelineLayout, sharedState)
 	{}
-	GraphicsEncoder::~GraphicsEncoder()
+	GraphicsEncoder_Optimized::~GraphicsEncoder_Optimized()
 	{}
 
 	ComputeEncoder_ProgressivePipeline::ComputeEncoder_ProgressivePipeline(
@@ -599,11 +598,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::None;
 	}
 
-	GraphicsEncoder DeviceContext::BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	GraphicsEncoder_Optimized DeviceContext::BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
-		return GraphicsEncoder { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState };
+		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState };
 	}
 
 	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)

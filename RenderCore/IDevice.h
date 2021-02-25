@@ -90,6 +90,7 @@ namespace RenderCore
 
 	class ILowLevelCompiler;
     class SamplerDesc;
+    class DescriptorSetInitializer;
 
     ///
     /// <summary>Represents a hardware device capable of rendering</summary>
@@ -170,9 +171,10 @@ namespace RenderCore
         IResourcePtr                CreateResource(const ResourceDesc& desc, const SubResourceInitData& initData);
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
 
-        virtual std::shared_ptr<ISampler>   CreateSampler(const SamplerDesc& desc) = 0;
+        virtual std::shared_ptr<IDescriptorSet> CreateDescriptorSet(const DescriptorSetInitializer& desc) = 0;
+        virtual std::shared_ptr<ISampler>       CreateSampler(const SamplerDesc& desc) = 0;
 
-        virtual std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutDesc& desc) = 0;
+        virtual std::shared_ptr<ICompiledPipelineLayout> CreatePipelineLayout(const PipelineLayoutInitializer& desc) = 0;
 
         // Block until the GPU has caught up to (at least) the end of the previous frame
         virtual void                Stall() = 0;
@@ -214,6 +216,12 @@ namespace RenderCore
     public:
         virtual ~ICompiledPipelineLayout();
     };
+
+    class IDescriptorSet
+	{
+	public:
+		virtual ~IDescriptorSet() = default;
+	};
 
     using Resource = IResource;     // old naming compatibility
 

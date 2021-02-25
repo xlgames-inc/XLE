@@ -6,37 +6,19 @@
 
 #pragma once
 
-#include <utility>      // for std::pair
-
-namespace RenderCore { class SharedPkt; }
-
 namespace RenderCore { namespace Metal_Vulkan
 {
-    class ShaderProgram;
-
-    class Buffer;
-
     class BoundUniforms;
     class BoundInputLayout;
     class ResourceView;
 
-    class RasterizerState;
-    class SamplerState;
-    class BlendState;
-    class DepthStencilState;
-
     class DeviceContext;
     class ObjectFactory;
+    class GraphicsEncoder;
+    class GraphicsPipeline;
 
-    using ConstantBufferPacket = SharedPkt;
-	using ConstantBuffer = Buffer;
-
-	class VertexShader;
-	class GeometryShader;
-	class PixelShader;
-	class ComputeShader;
-	class DomainShader;
-	class HullShader;
+	class ShaderProgram;
+    class ComputeShader;
 	class BoundClassInterfaces;
     
     class FrameBuffer;

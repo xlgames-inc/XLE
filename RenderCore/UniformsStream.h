@@ -16,6 +16,7 @@ namespace RenderCore
 	class IResourceView;
 	class ISampler;
 	enum class Format;
+	class DescriptorSetSignature;
 
 	class UniformsStream
 	{
@@ -43,6 +44,7 @@ namespace RenderCore
 		void BindResourceView(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> _cbElements = {});
 		void BindImmediateData(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> _cbElements = {});
 		void BindSampler(unsigned slot, uint64_t hashName);
+		void BindFixedDescriptorSet(unsigned slot, uint64_t hashName, const DescriptorSetSignature* signature = nullptr);
 
 		uint64_t GetHash() const;
 
@@ -60,10 +62,18 @@ namespace RenderCore
 		};
 		std::vector<std::pair<uint64_t, ExplicitCBLayout>> _cbLayouts;
 
+		struct FixedDescriptorSetBinding
+		{
+			unsigned _inputSlot;
+			uint64_t _hashName;
+			const DescriptorSetSignature* _signature;
+		};
+		std::vector<FixedDescriptorSetBinding> _fixedDescriptorSetBindings;
+
 	private:
 		mutable uint64_t _hash;
 	};
-	
+
 	enum class DescriptorType
 	{
 		Sampler,
@@ -93,7 +103,17 @@ namespace RenderCore
 		DescriptorSetSignature(std::initializer_list<DescriptorSlot> init) : _slots(std::move(init)) {}
 	};
 
-	class PipelineLayoutDesc
+	class DescriptorSetInitializer
+	{
+	public:
+		enum class BindType { ResourceView, Sampler, Empty };
+		struct BindTypeAndIdx { BindType _type = BindType::Empty; unsigned _uniformsStreamIdx = ~0u; };
+		IteratorRange<const BindTypeAndIdx*> _slotBindings;
+		UniformsStream _bindItems;
+		const DescriptorSetSignature* _signature;
+	};
+
+	class PipelineLayoutInitializer
 	{
 	public:
 		struct DescriptorSetBinding
@@ -127,8 +147,8 @@ namespace RenderCore
 		IteratorRange<const DescriptorSetBinding*> GetDescriptorSets() const { return MakeIteratorRange(_descriptorSets); }
 		IteratorRange<const PushConstantsBinding*> GetPushConstants() const { return MakeIteratorRange(_pushConstants); }
 
-		PipelineLayoutDesc();
-		~PipelineLayoutDesc();
+		PipelineLayoutInitializer();
+		~PipelineLayoutInitializer();
 	private:
 		std::vector<DescriptorSetBinding> _descriptorSets;
 		std::vector<PushConstantsBinding> _pushConstants;

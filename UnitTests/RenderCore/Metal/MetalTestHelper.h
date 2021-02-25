@@ -10,7 +10,7 @@
 #include <memory>
 #include <map>
 
-namespace RenderCore { class IDevice; class IThreadContext; }
+namespace RenderCore { class IDevice; class IThreadContext; class DescriptorSetSignature; }
 namespace UnitTests
 {
     class MetalTestHelper
@@ -52,7 +52,8 @@ namespace UnitTests
     {
     public:
         UnitTestFBHelper(
-            RenderCore::IDevice& device, 
+            RenderCore::IDevice& device,
+            RenderCore::IThreadContext& threadContext,
             const RenderCore::ResourceDesc& mainTargetDesc);
         ~UnitTestFBHelper();
 
@@ -70,6 +71,22 @@ namespace UnitTests
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    class DescriptorSetHelper
+	{
+	public:
+		void Bind(unsigned descriptorSetSlot, const std::shared_ptr<RenderCore::IResourceView>&);
+		void Bind(unsigned descriptorSetSlot, const std::shared_ptr<RenderCore::ISampler>&);
+		std::shared_ptr<RenderCore::IDescriptorSet> CreateDescriptorSet(
+            RenderCore::IDevice& device, 
+            const RenderCore::DescriptorSetSignature& signature);
+
+        DescriptorSetHelper();
+        ~DescriptorSetHelper();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+	};
 
 }
 

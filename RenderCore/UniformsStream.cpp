@@ -60,6 +60,15 @@ namespace RenderCore
 		_hash = 0;
 	}
 
+	void UniformsStreamInterface::BindFixedDescriptorSet(unsigned slot, uint64_t hashName, const DescriptorSetSignature* signature)
+	{
+		FixedDescriptorSetBinding binding;
+		binding._inputSlot = slot;
+		binding._hashName = hashName;
+		binding._signature = signature;
+		_fixedDescriptorSetBindings.push_back(binding);
+	}
+
 	uint64_t UniformsStreamInterface::GetHash() const
 	{
 		if (expect_evaluation(_hash==0, false)) {
@@ -71,6 +80,7 @@ namespace RenderCore
 			_hash = Hash64(AsPointer(_resourceViewBindings.begin()), AsPointer(_resourceViewBindings.end()), _hash);
 			_hash = Hash64(AsPointer(_immediateDataBindings.begin()), AsPointer(_immediateDataBindings.end()), _hash);
 			_hash = Hash64(AsPointer(_samplerBindings.begin()), AsPointer(_samplerBindings.end()), _hash);
+			_hash = Hash64(AsPointer(_fixedDescriptorSetBindings.begin()), AsPointer(_fixedDescriptorSetBindings.end()), _hash);
 		}
 
 		return _hash;
@@ -108,14 +118,14 @@ namespace RenderCore
 		return Hash64(AsPointer(_slots.begin()), AsPointer(_slots.end()));
 	}
 
-	void PipelineLayoutDesc::AppendDescriptorSet(
+	void PipelineLayoutInitializer::AppendDescriptorSet(
 		const std::string& name,
 		const DescriptorSetSignature& signature)
 	{
 		_descriptorSets.push_back({name, signature});
 	}
 
-	void PipelineLayoutDesc::AppendPushConstants(
+	void PipelineLayoutInitializer::AppendPushConstants(
 		const std::string& name,
 		IteratorRange<const ConstantBufferElementDesc*> elements,
 		ShaderStage shaderStage)
@@ -128,7 +138,7 @@ namespace RenderCore
 		_pushConstants.push_back(std::move(binding));
 	}
 
-	void PipelineLayoutDesc::AppendPushConstants(
+	void PipelineLayoutInitializer::AppendPushConstants(
 		const std::string& name,
 		size_t bufferSize,
 		ShaderStage shaderStage)
@@ -140,8 +150,8 @@ namespace RenderCore
 		_pushConstants.push_back(std::move(binding));
 	}
 
-	PipelineLayoutDesc::PipelineLayoutDesc() {}
-	PipelineLayoutDesc::~PipelineLayoutDesc() {}
+	PipelineLayoutInitializer::PipelineLayoutInitializer() {}
+	PipelineLayoutInitializer::~PipelineLayoutInitializer() {}
 
 	unsigned CalculateSize(IteratorRange<const ConstantBufferElementDesc*> elements)
 	{

@@ -127,7 +127,7 @@ namespace UnitTests
 
 	struct TestBufferType { Float3 InputA; float InputB; };
 
-	static std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateCustomPipelineLayout(RenderCore::IDevice& device)
+	static RenderCore::PipelineLayoutInitializer CustomPipelineLayoutInitializer()
 	{
 		using namespace RenderCore;
 		RenderCore::DescriptorSetSignature set0 {
@@ -149,12 +149,22 @@ namespace UnitTests
 			{DescriptorType::UnorderedAccessTexture}
 		};
 
-		RenderCore::PipelineLayoutDesc desc;
+		RenderCore::PipelineLayoutInitializer desc;
 		desc.AppendDescriptorSet("Set0", set0);
 		desc.AppendDescriptorSet("Set1", set1);
 		desc.AppendPushConstants("PushConstants0", sizeof(TestBufferType), ShaderStage::Vertex);
 		desc.AppendPushConstants("PushConstants1", sizeof(TestBufferType), ShaderStage::Pixel);
-		return device.CreatePipelineLayout(desc);
+		return desc;
+	}
+
+	const RenderCore::DescriptorSetSignature* FindDescriptorSetSignature(
+		const RenderCore::PipelineLayoutInitializer& pipelineLayout,
+		const std::string& name)
+	{
+		for (const auto&descSet:pipelineLayout.GetDescriptorSets())
+			if (descSet._name == name)
+				return &descSet._signature;
+		return nullptr;
 	}
 
 	static RenderCore::ResourceDesc AsStagingDesc(const RenderCore::ResourceDesc& desc)
@@ -213,7 +223,7 @@ namespace UnitTests
 		return device.CreateResource(desc, MakeOpaqueIteratorRange(contents).Cast<const void*>());
 	}
 
-	TEST_CASE( "Pipeline-DescriptorSetBinding", "[rendercore_metal]" )
+	TEST_CASE( "Pipeline-ComplexUniformBinding", "[rendercore_metal]" )
 	{
 		using namespace RenderCore;
 		auto testHelper = MakeTestHelper();
@@ -222,7 +232,7 @@ namespace UnitTests
 			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(256, 256, Format::R8G8B8A8_UNORM),
 			"temporary-out");
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto testStorageTexture = CreateTestStorageTexture(*testHelper->_device, *threadContext);
 		auto testStorageBuffer = CreateTestStorageBuffer(*testHelper->_device);
 		
@@ -235,37 +245,39 @@ namespace UnitTests
 			RenderCore::VulkanCompilerConfiguration cfg;
 			cfg._shaderMode = RenderCore::VulkanShaderMode::GLSLToSPIRV;
 		 	auto shaderCompiler = vulkanDevice->CreateShaderCompiler(cfg);
-			 customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
+			customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
 		} else {
 			Throw(std::runtime_error("This test only implemented for Vulkan"));
 		}
 
-		auto pipelineLayout = CreateCustomPipelineLayout(*testHelper->_device);
+		auto pipelineLayoutInitializer = CustomPipelineLayoutInitializer();
+		auto pipelineLayout = testHelper->_device->CreatePipelineLayout(pipelineLayoutInitializer);
 
 		TestBufferType set0binding0 { Float3(1, 1, 1), 5 };
 		TestBufferType set1binding4 { Float3(7, 7, 7), 9 };
 		TestBufferType pushConstants0 { Float3(13, 13, 13), 16 };
 		TestBufferType pushConstants1 { Float3(14, 14, 14), 19 };
 
+		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+		Metal::CompleteInitialization(metalContext, {testStorageTexture.get(), testStorageBuffer.get(), fbHelper.GetMainTarget().get()});
+
+		auto shaderProgram = MakeShaderProgram(customShaderSource, pipelineLayout, s_vs_descriptorSetTest, s_ps_descriptorSetTest);
+
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-			Metal::CompleteInitialization(metalContext, {testStorageTexture.get(), testStorageBuffer.get(), fbHelper.GetMainTarget().get()});
-
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
 
-			auto shaderProgram = MakeShaderProgram(customShaderSource, pipelineLayout, s_vs_descriptorSetTest, s_ps_descriptorSetTest);
 			encoder.Bind(shaderProgram);
 
-			UniformsStreamInterface looseUniforms;
-			looseUniforms.BindImmediateData(0, Hash64("Set0Binding0"));
-			looseUniforms.BindImmediateData(1, Hash64("Set1Binding4"));
-			looseUniforms.BindImmediateData(2, Hash64("PushConstants0"));
-			looseUniforms.BindImmediateData(3, Hash64("PushConstants1"));
-			looseUniforms.BindResourceView(0, Hash64("Set1Binding5"));		// this is the storage buffer / unordered access buffer
-			looseUniforms.BindResourceView(1, Hash64("Set1Binding6"));		// this is the storage texture / unordered access texture
-			Metal::BoundUniforms uniforms(shaderProgram, {}, looseUniforms);
+			UniformsStreamInterface uniformInterface;
+			uniformInterface.BindImmediateData(0, Hash64("Set0Binding0"));
+			uniformInterface.BindImmediateData(1, Hash64("Set1Binding4"));
+			uniformInterface.BindImmediateData(2, Hash64("PushConstants0"));
+			uniformInterface.BindImmediateData(3, Hash64("PushConstants1"));
+			uniformInterface.BindResourceView(0, Hash64("Set1Binding5"));		// this is the storage buffer / unordered access buffer
+			uniformInterface.BindResourceView(1, Hash64("Set1Binding6"));		// this is the storage texture / unordered access texture
+			Metal::BoundUniforms uniforms(shaderProgram, uniformInterface);
 
 			UniformsStream uniformsStream;
 			uniformsStream._immediateData = {
@@ -288,9 +300,56 @@ namespace UnitTests
 			encoder.Draw(4);
 		}
 
-		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
-		auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
-		REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
+		{
+			auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
+			auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
+			REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
+		}
+		////////////////////////////////////////////////////////////////////////////////////////
+			// Let's do the same, except this time binding via a pre-built descriptor set
+		////////////////////////////////////////////////////////////////////////////////////////
+		{
+			DescriptorSetHelper set0helper, set1helper;
+			set0helper.Bind(0, testHelper->CreateCB(MakeOpaqueIteratorRange(set0binding0))->CreateBufferView());
+			set1helper.Bind(4, testHelper->CreateCB(MakeOpaqueIteratorRange(set1binding4))->CreateBufferView());
+			set1helper.Bind(5, testStorageBuffer->CreateBufferView(BindFlag::UnorderedAccess));
+			set1helper.Bind(6, testStorageTexture->CreateTextureView(BindFlag::UnorderedAccess));
+			auto set0 = set0helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set0"));
+			auto set1 = set1helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set1"));
+			
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
+
+			encoder.Bind(shaderProgram);
+
+			UniformsStreamInterface uniformInterface;
+			uniformInterface.BindImmediateData(0, Hash64("PushConstants0"));
+			uniformInterface.BindImmediateData(1, Hash64("PushConstants1"));
+			uniformInterface.BindFixedDescriptorSet(0, Hash64("Set0"));
+			uniformInterface.BindFixedDescriptorSet(1, Hash64("Set1"));
+			Metal::BoundUniforms uniforms(shaderProgram, uniformInterface);
+
+			UniformsStream uniformsStream;
+			uniformsStream._immediateData = {
+				MakeOpaqueIteratorRange(pushConstants0),
+				MakeOpaqueIteratorRange(pushConstants1)
+			};
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+			IDescriptorSet* descSets[] = { set0.get(), set1.get() };
+			uniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(descSets));
+
+			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
+			REQUIRE(inputLayout.AllAttributesBound());
+			encoder.Bind(inputLayout, Topology::TriangleStrip);
+			encoder.Draw(4);
+		}
+
+		{
+			auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
+			auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
+			REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
+		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		// potential tests:
@@ -306,7 +365,7 @@ namespace UnitTests
 			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(256, 256, Format::R8G8B8A8_UNORM),
 			"temporary-out");
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
 		TestBufferType pushConstants0 { Float3(1, 0, 1), 8 };
 		auto testConstantBuffer = testHelper->CreateCB(MakeOpaqueIteratorRange(pushConstants0));

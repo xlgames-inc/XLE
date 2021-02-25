@@ -5,6 +5,8 @@
 #pragma once
 
 #include "VulkanCore.h"
+#include "../../IDevice.h"
+#include "../../UniformsStream.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/IteratorUtils.h"
 
@@ -106,14 +108,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned descriptorSetIndex, bool isBound);
 	#endif
 
-	class IDescriptorSet
-	{
-	public:
-		virtual ~IDescriptorSet() = default;
-		enum class BindType { ResourceView, Sampler };
-		struct BindTypeAndIdx { BindType _type; unsigned _idx; };
-	};
-
 	class CompiledDescriptorSetLayout
 	{
 	public:
@@ -137,15 +131,19 @@ namespace RenderCore { namespace Metal_Vulkan
 	class CompiledDescriptorSet : public IDescriptorSet
 	{
 	public:
-		VkDescriptorSet GetUnderlying() { return _underlying.get(); }
-		VkDescriptorSetLayout GetUnderlyingLayout() { return _layout->GetUnderlying(); }
+		VkDescriptorSet GetUnderlying() const { return _underlying.get(); }
+		VkDescriptorSetLayout GetUnderlyingLayout() const { return _layout->GetUnderlying(); }
+
+		#if defined(VULKAN_VERBOSE_DEBUG)
+			const DescriptorSetDebugInfo& GetDescription() const { return _description; }
+		#endif
 
 		CompiledDescriptorSet(
 			ObjectFactory& factory,
 			GlobalPools& globalPools,
 			const std::shared_ptr<CompiledDescriptorSetLayout>& layout,
 			VkShaderStageFlags stageFlags,
-			IteratorRange<const BindTypeAndIdx*> binds,
+			IteratorRange<const DescriptorSetInitializer::BindTypeAndIdx*> binds,
 			const UniformsStream& uniforms);
 		~CompiledDescriptorSet();
 	private:

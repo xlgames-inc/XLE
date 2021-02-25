@@ -210,7 +210,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	class VulkanEncoderSharedState;
 
-	class SharedGraphicsEncoder
+	class GraphicsEncoder
 	{
 	public:
 		//	------ Draw & Clear -------
@@ -230,12 +230,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		PushConstants(VkShaderStageFlags stageFlags, unsigned offset, IteratorRange<const void*> data);
 
 	protected:
-		SharedGraphicsEncoder(
+		GraphicsEncoder(
 			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout = nullptr,
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState = nullptr);
-		~SharedGraphicsEncoder();
-		SharedGraphicsEncoder(SharedGraphicsEncoder&&);		// (hide these to avoid slicing in derived types)
-		SharedGraphicsEncoder& operator=(SharedGraphicsEncoder&&);
+		~GraphicsEncoder();
+		GraphicsEncoder(GraphicsEncoder&&);		// (hide these to avoid slicing in derived types)
+		GraphicsEncoder& operator=(GraphicsEncoder&&);
 
 		VkPipelineLayout GetUnderlyingPipelineLayout();
 		unsigned GetDescriptorSetCount();
@@ -244,7 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
 	};
 	
-	class GraphicsEncoder_ProgressivePipeline : public SharedGraphicsEncoder, public GraphicsPipelineBuilder
+	class GraphicsEncoder_ProgressivePipeline : public GraphicsEncoder, public GraphicsPipelineBuilder
 	{
 	public:
 		//	------ Draw & Clear -------
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto();
 
-		using SharedGraphicsEncoder::Bind;
+		using GraphicsEncoder::Bind;
 		using GraphicsPipelineBuilder::Bind;
 		void        Bind(const ShaderProgram& shaderProgram);
 
@@ -278,7 +278,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		friend class DeviceContext;
 	};
 
-	class GraphicsEncoder : public SharedGraphicsEncoder
+	class GraphicsEncoder_Optimized : public GraphicsEncoder
 	{
 	public:
 		//	------ Draw & Clear -------
@@ -288,12 +288,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		void    	DrawIndexedInstances(const GraphicsPipeline& pipeline, unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0);
 		void        DrawAuto(const GraphicsPipeline& pipeline);
 
-		GraphicsEncoder(GraphicsEncoder&&);
-		GraphicsEncoder& operator=(GraphicsEncoder&&);
-		GraphicsEncoder();
-		~GraphicsEncoder();
+		GraphicsEncoder_Optimized(GraphicsEncoder_Optimized&&);
+		GraphicsEncoder_Optimized& operator=(GraphicsEncoder_Optimized&&);
+		GraphicsEncoder_Optimized();
+		~GraphicsEncoder_Optimized();
 	protected:
-		GraphicsEncoder(
+		GraphicsEncoder_Optimized(
 			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
 
@@ -344,7 +344,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void EndRenderPass();
 		unsigned GetCurrentSubpassIndex() const;
 
-		GraphicsEncoder BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
+		GraphicsEncoder_Optimized BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		BlitEncoder BeginBlitEncoder();

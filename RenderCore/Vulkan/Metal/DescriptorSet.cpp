@@ -673,24 +673,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		GlobalPools& globalPools,
 		const std::shared_ptr<CompiledDescriptorSetLayout>& layout,
 		VkShaderStageFlags shaderStageFlags,
-		IteratorRange<const BindTypeAndIdx*> binds,
+		IteratorRange<const DescriptorSetInitializer::BindTypeAndIdx*> binds,
 		const UniformsStream& uniforms)
 	: _layout(layout)
 	{
 		_underlying = globalPools._longTermDescriptorPool.Allocate(GetUnderlyingLayout());
 
+		uint64_t writtenMask = 0ull;
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
 		for (unsigned c=0; c<binds.size(); ++c) {
-			if (binds[c]._type == BindType::ResourceView) {
-				builder.Bind(c, *checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._idx]));
+			if (binds[c]._type == DescriptorSetInitializer::BindType::ResourceView) {
+				builder.Bind(c, *checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._uniformsStreamIdx]));
+				writtenMask |= 1ull<<uint64_t(c);
+			} else if (binds[c]._type == DescriptorSetInitializer::BindType::Sampler) {
+				builder.Bind(c, checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._uniformsStreamIdx])->GetUnderlying());
+				writtenMask |= 1ull<<uint64_t(c);
 			} else {
-				assert(binds[c]._type == BindType::Sampler);
-				builder.Bind(c, checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._idx])->GetUnderlying());
+				assert(binds[c]._type == DescriptorSetInitializer::BindType::Empty);
 			}
 		}
 
-		uint64_t writtenMask = uint64_t(binds.size())-1;
-		uint64_t signatureMask = uint64_t(layout->GetDescriptorSlots().size())-1;
+		uint64_t signatureMask = (1ull<<uint64_t(layout->GetDescriptorSlots().size()))-1;
 		builder.BindDummyDescriptors(globalPools, signatureMask & ~writtenMask);
 
 		std::vector<uint64_t> resourceVisibilityList;

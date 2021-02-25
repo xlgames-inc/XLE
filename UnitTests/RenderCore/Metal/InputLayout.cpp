@@ -170,7 +170,7 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		
 		/*Metal::Internal::SetupInitialLayout(
 			*Metal::DeviceContext::Get(*threadContext),
@@ -231,7 +231,7 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +278,7 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
 		auto vertexBuffer0 = testHelper->CreateVB(MakeIteratorRange(vertices_4Boxes));
 		auto vertexBuffer1 = testHelper->CreateVB(MakeIteratorRange(vertices_colors));
@@ -381,7 +381,7 @@ namespace UnitTests
 			InputElementDesc { "instanceOffset", 0, Format::R32G32_SINT, 2, ~0u, InputDataRate::PerInstance, 1 }
 		};
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -470,7 +470,7 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePC), shaderProgram);
@@ -499,7 +499,7 @@ namespace UnitTests
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*testHelper->_device->GetImmediateContext());
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		InputElementDesc inputEles[] = {
@@ -540,7 +540,7 @@ namespace UnitTests
 			"temporary-out");
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -558,7 +558,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
@@ -596,7 +596,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
@@ -634,7 +634,7 @@ namespace UnitTests
 			"temporary-out");
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
 		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
@@ -651,7 +651,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectBinding));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			(void)uniforms;
 		}
 
@@ -664,7 +664,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_MissingValues));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			(void)uniforms;
 		}
 
@@ -678,7 +678,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_IncorrectFormats));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			(void)uniforms;
 		}
 
@@ -693,14 +693,14 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_OverlappingValues));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			(void)uniforms;
 		}
 
 		{
 			// missing CB binding
 			UniformsStreamInterface usi;
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 			(void)uniforms;
 		}
 
@@ -757,8 +757,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
-		Metal::CompleteInitialization(metalContext, {testTexture._res.get(), fbHelper.GetMainTarget().get()});
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		Metal::CompleteInitialization(metalContext, {testTexture._res.get()});
 
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
@@ -778,7 +778,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Values"));
 			usi.BindSampler(0, Hash64("Values_sampler"));
-			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramCB, usi };
 			
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
@@ -800,7 +800,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 			
 			Values v;
 			UniformsStream uniformsStream;
@@ -817,7 +817,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values));
-			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramCB, usi };
 
 			REQUIRE_THROWS(
 				[&]() {
@@ -833,7 +833,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 
 			REQUIRE_THROWS(
 				[&]() {
@@ -869,8 +869,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
-		Metal::CompleteInitialization(metalContext, {testTexture._res.get(), fbHelper.GetMainTarget().get()});
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		Metal::CompleteInitialization(metalContext, {testTexture._res.get()});
 
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
@@ -889,7 +889,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Values"));
 			usi.BindSampler(0, Hash64("Values_sampler"));
-			Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramCB, usi };
 
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
@@ -911,7 +911,7 @@ namespace UnitTests
 
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 
 			Values v;
 			UniformsStream uniformsStream;
@@ -930,9 +930,9 @@ namespace UnitTests
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values));
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 				auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				Metal::BoundUniforms uniforms { *pipeline, {}, usi };
+				Metal::BoundUniforms uniforms { *pipeline, usi };
 			#else
-				Metal::BoundUniforms uniforms { shaderProgramCB, {}, usi };
+				Metal::BoundUniforms uniforms { shaderProgramCB, usi };
 			#endif
 
 			REQUIRE_THROWS(
@@ -950,9 +950,9 @@ namespace UnitTests
 			usi.BindResourceView(0, Hash64("Texture"));
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL
 				auto pipeline = metalContext.CreatePipeline(Metal::GetObjectFactory());
-				Metal::BoundUniforms uniforms { *pipeline, {}, usi };
+				Metal::BoundUniforms uniforms { *pipeline, usi };
 			#else
-				Metal::BoundUniforms uniforms { shaderProgramSRV, {}, usi };
+				Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 			#endif
 
 			REQUIRE_THROWS(
@@ -984,8 +984,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
-		Metal::CompleteInitialization(metalContext, {testTexture._res.get(), fbHelper.GetMainTarget().get()});
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		Metal::CompleteInitialization(metalContext, {testTexture._res.get()});
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		{
@@ -1005,7 +1005,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Texture"));
 			usi.BindSampler(0, Hash64("Texture_sampler"));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
@@ -1058,8 +1058,8 @@ namespace UnitTests
 		// -------------------------------------------------------------------------------------
 
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
-		Metal::CompleteInitialization(metalContext, {testTexture._res.get(), fbHelper.GetMainTarget().get()});
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+		Metal::CompleteInitialization(metalContext, {testTexture._res.get()});
 
 		auto rpi = fbHelper.BeginRenderPass(*threadContext);
 
@@ -1077,7 +1077,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Texture"));
 			usi.BindSampler(0, Hash64("Texture_sampler"));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
@@ -1119,7 +1119,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Texture"));
 			usi.BindSampler(0, Hash64("Texture_sampler"));
-			Metal::BoundUniforms uniforms { shaderProgram, {}, usi };
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto linearSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp });

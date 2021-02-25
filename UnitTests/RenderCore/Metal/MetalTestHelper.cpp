@@ -6,6 +6,7 @@
 #include "../../../RenderCore/Metal/FrameBuffer.h"
 #include "../../../RenderCore/Metal/DeviceContext.h"
 #include "../../../RenderCore/Metal/ObjectFactory.h"
+#include "../../../RenderCore/Metal/Resource.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IThreadContext.h"
 #include "../../../RenderCore/OpenGLES/IDeviceOpenGLES.h"
@@ -265,6 +266,7 @@ namespace UnitTests
 
 	UnitTestFBHelper::UnitTestFBHelper(
 		RenderCore::IDevice& device, 
+		RenderCore::IThreadContext& threadContext,
 		const RenderCore::ResourceDesc& mainFBDesc)
 	{
 		using namespace RenderCore;
@@ -290,11 +292,68 @@ namespace UnitTests
 			Metal::GetObjectFactory(device),
 			_pimpl->_fbDesc,
 			*_pimpl);
+
+		Metal::CompleteInitialization(*Metal::DeviceContext::Get(threadContext), {_pimpl->_mainTarget.get()});
 	}
 
 	UnitTestFBHelper::~UnitTestFBHelper()
 	{
 	}
+
+	class DescriptorSetHelper::Pimpl
+	{
+	public:
+		std::vector<std::shared_ptr<RenderCore::IResourceView>> _resources;
+		std::vector<std::shared_ptr<RenderCore::ISampler>> _samplers;
+		std::vector<RenderCore::DescriptorSetInitializer::BindTypeAndIdx> _slotBindings;
+	};
+
+	void DescriptorSetHelper::Bind(unsigned descriptorSetSlot, const std::shared_ptr<RenderCore::IResourceView>& res)
+	{
+		if (_pimpl->_slotBindings.size() <= descriptorSetSlot)
+			_pimpl->_slotBindings.resize(descriptorSetSlot+1, {});
+
+		_pimpl->_slotBindings[descriptorSetSlot]._type = RenderCore::DescriptorSetInitializer::BindType::ResourceView;
+		_pimpl->_slotBindings[descriptorSetSlot]._uniformsStreamIdx = (unsigned)_pimpl->_resources.size();
+		_pimpl->_resources.push_back(res);
+	}
+	
+	void DescriptorSetHelper::Bind(unsigned descriptorSetSlot, const std::shared_ptr<RenderCore::ISampler>& sampler)
+	{
+		if (_pimpl->_slotBindings.size() <= descriptorSetSlot)
+			_pimpl->_slotBindings.resize(descriptorSetSlot+1, {});
+
+		_pimpl->_slotBindings[descriptorSetSlot]._type = RenderCore::DescriptorSetInitializer::BindType::Sampler;
+		_pimpl->_slotBindings[descriptorSetSlot]._uniformsStreamIdx = (unsigned)_pimpl->_samplers.size();
+		_pimpl->_samplers.push_back(sampler);
+	}
+
+	std::shared_ptr<RenderCore::IDescriptorSet> DescriptorSetHelper::CreateDescriptorSet(
+		RenderCore::IDevice& device,
+		const RenderCore::DescriptorSetSignature& signature)
+	{
+		RenderCore::DescriptorSetInitializer init;
+		init._slotBindings = _pimpl->_slotBindings;
+		init._signature = &signature;
+
+		RenderCore::IResourceView* resViews[_pimpl->_resources.size()];
+		RenderCore::ISampler* samplers[_pimpl->_samplers.size()];
+		for (unsigned c=0; c<_pimpl->_resources.size(); ++c) resViews[c] = _pimpl->_resources[c].get();
+		for (unsigned c=0; c<_pimpl->_samplers.size(); ++c) samplers[c] = _pimpl->_samplers[c].get();
+
+		init._bindItems._resourceViews = MakeIteratorRange(resViews, resViews+_pimpl->_resources.size());
+		init._bindItems._samplers = MakeIteratorRange(samplers, samplers+_pimpl->_samplers.size());
+
+		return device.CreateDescriptorSet(init);
+	}
+
+	DescriptorSetHelper::DescriptorSetHelper()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+
+	DescriptorSetHelper::~DescriptorSetHelper()
+	{}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 			//    U T I L I T Y    F N S
@@ -438,7 +497,7 @@ namespace UnitTests
 			{DescriptorType::Sampler}
 		};
 
-		RenderCore::PipelineLayoutDesc desc;
+		RenderCore::PipelineLayoutInitializer desc;
 		desc.AppendDescriptorSet("Sequencer", sequencerSet);
 		desc.AppendDescriptorSet("Material", materialSet);
 		desc.AppendDescriptorSet("Draw", drawSet);

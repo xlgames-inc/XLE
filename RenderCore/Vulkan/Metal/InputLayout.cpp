@@ -7,7 +7,6 @@
 #include "Shader.h"
 #include "Format.h"
 #include "PipelineLayout.h"
-#include "DescriptorSetSignatureFile.h"
 #include "DeviceContext.h"
 #include "Pools.h"
 #include "../../Format.h"
@@ -411,25 +410,27 @@ namespace RenderCore { namespace Metal_Vulkan
 						// There is a fixed descriptor set assigned that covers this input
 						// Compare the slot within the fixed descriptor set to what the shader wants as input
 
-						if (reflectionVariable._binding._bindingPoint >= fixedDescSet->second.second->_slots.size())
-							Throw(std::runtime_error(""));
-						
-						auto& descSetSlot = fixedDescSet->second.second->_slots[reflectionVariable._binding._bindingPoint];
-						if (reflectionVariable._slotType != descSetSlot._type)
-							Throw(std::runtime_error(""));		// types should agree
+						if (fixedDescSet->second.second) {
+							if (reflectionVariable._binding._bindingPoint >= fixedDescSet->second.second->_slots.size())
+								Throw(std::runtime_error(""));
+							
+							auto& descSetSlot = fixedDescSet->second.second->_slots[reflectionVariable._binding._bindingPoint];
+							if (reflectionVariable._slotType != descSetSlot._type)
+								Throw(std::runtime_error(""));		// types should agree
+						}
 
 						auto inputSlot = fixedDescSet->second.first;
 						auto existing = std::find_if(
 							_fixedDescriptorSetRules.begin(), _fixedDescriptorSetRules.end(),
 							[inputSlot](const auto& c) { return c._inputSlot == inputSlot; });
 						if (existing != _fixedDescriptorSetRules.end()) {
-							if (existing->_outputSlot != reflectionVariable._binding._bindingPoint)
+							if (existing->_outputSlot != reflectionVariable._binding._descriptorSet)
 								Throw(std::runtime_error(""));		// attempting the bind the same fixed descriptor set to multiple output slots
 							existing->_shaderStageMask |= shaderStageMask;
 						} else {
 							_fixedDescriptorSetRules.push_back(
 								FixedDescriptorSetBindingRules {
-									inputSlot, reflectionVariable._binding._bindingPoint, shaderStageMask
+									inputSlot, reflectionVariable._binding._descriptorSet, shaderStageMask
 								});
 						}
 					}
@@ -469,7 +470,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	};
 
-	void BoundUniforms::UnbindLooseUniforms(DeviceContext& context, SharedGraphicsEncoder& encoder)
+	void BoundUniforms::UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder)
 	{
 		assert(0);		// todo -- unimplemented
 	}
@@ -500,8 +501,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	BoundUniforms::BoundUniforms(
 		const ShaderProgram& shader,
-		IteratorRange<const DescriptorSetBinding*> descriptorSetBindings,
-		const UniformsStreamInterface& looseUniforms)
+		const UniformsStreamInterface& interf)
 	{
 		_pipelineType = PipelineType::Graphics;
 
@@ -509,24 +509,24 @@ namespace RenderCore { namespace Metal_Vulkan
 		// by the shader's pipeline layout
 		auto& pipelineLayout = shader.GetPipelineLayout();
 		ConstructionHelper helper;
-		helper._looseUniforms = &looseUniforms;
+		helper._looseUniforms = &interf;
 		helper._pipelineLayout = &pipelineLayout;
 		
-		for (unsigned dIdx=0; dIdx<descriptorSetBindings.size(); ++dIdx) {
-			const auto& d = descriptorSetBindings[dIdx];
+		for (unsigned dIdx=0; dIdx<interf._fixedDescriptorSetBindings.size(); ++dIdx) {
+			const auto& d = interf._fixedDescriptorSetBindings[dIdx];
 			bool foundMapping = false;
 			for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
 				auto hashName = pipelineLayout.GetDescriptorSetBindingNames()[c];
-				if (hashName == d._bindingName) {
+				if (hashName == d._hashName) {
 					// todo -- we should check compatibility between the given descriptor set and the pipeline layout
-					helper._fixedDescriptorSets.insert({c, std::make_pair(dIdx, d._layout)});
+					helper._fixedDescriptorSets.insert({c, std::make_pair(d._inputSlot, d._signature)});
 					foundMapping = true;
 					break;
 				}
 			}
 			#if defined(_DEBUG)
 				if (!foundMapping) {
-					std::cout << "Could not find descriptor set in pipeline layout (hash code: " << std::hex << d._bindingName << std::dec << "). Ignoring" << std::endl;
+					std::cout << "Could not find descriptor set in pipeline layout (hash code: " << std::hex << d._hashName << std::dec << "). Ignoring" << std::endl;
 				}
 			#endif
 		}
@@ -570,8 +570,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt);
 				if (!tempSpace.buffer) {
 					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
-					auto cb = MakeConstantBuffer(factory, pkt);
-					builder.Bind(bind._descSetSlot, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+					Resource cb{
+						factory, 
+						CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(unsigned(pkt.size())), "overflow-buf"), 
+						SubResourceInitData{pkt}};
+					builder.Bind(bind._descSetSlot, { cb.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 				} else {
 					builder.Bind(bind._descSetSlot, tempSpace VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
 					requiresTemporaryBufferBarrier |= true;
@@ -630,7 +633,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void BoundUniforms::ApplyLooseUniforms(
 		DeviceContext& context,
-		SharedGraphicsEncoder& encoder,
+		GraphicsEncoder& encoder,
 		const UniformsStream& stream) const
 	{
 		for (const auto& adaptiveSet:_adaptiveSetRules) {
@@ -712,6 +715,19 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto cb = stream._immediateData[pushConstants._inputCBSlot];
 			assert(cb.size() == pushConstants._size);
 			encoder.PushConstants(pushConstants._shaderStageBind, pushConstants._offset, cb);
+		}
+	}
+
+	void BoundUniforms::ApplyDescriptorSets(
+		DeviceContext& context,
+		GraphicsEncoder& encoder,
+		IteratorRange<const IDescriptorSet* const*> descriptorSets)
+	{
+		for (const auto& fixedSet:_fixedDescriptorSetRules) {
+			auto* descSet = checked_cast<const CompiledDescriptorSet*>(descriptorSets[fixedSet._inputSlot]);
+			encoder.BindDescriptorSet(
+				fixedSet._outputSlot, descSet->GetUnderlying()
+				VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo{descSet->GetDescription()} ));
 		}
 	}
 
