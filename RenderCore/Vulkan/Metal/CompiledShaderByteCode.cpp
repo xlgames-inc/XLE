@@ -4,7 +4,6 @@
 
 #include "Shader.h"
 #include "DeviceContext.h"
-#include "DescriptorSetSignatureFile.h"
 #include "ShaderReflection.h"		// (for metrics string)
 #include "IncludeVulkan.h"
 #include "../IDeviceVulkan.h"

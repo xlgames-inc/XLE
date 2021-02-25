@@ -117,7 +117,6 @@
     <ClInclude Include="..\Vulkan\Metal\Format.h" />
     <ClInclude Include="..\Vulkan\Metal\Forward.h" />
     <ClInclude Include="..\Vulkan\Metal\FrameBuffer.h" />
-    <ClInclude Include="..\Vulkan\Metal\DescriptorSetSignatureFile.h" />
     <ClInclude Include="..\Vulkan\Metal\QueryPool.h" />
     <ClInclude Include="..\Vulkan\Metal\IncludeVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\InputLayout.h" />

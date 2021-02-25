@@ -8,7 +8,6 @@
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "PipelineLayout.h"
-#include "DescriptorSetSignatureFile.h"		// (just to get depval)
 #include "../../ShaderService.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"

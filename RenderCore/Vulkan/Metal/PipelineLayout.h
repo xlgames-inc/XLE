@@ -144,33 +144,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	namespace Internal
 	{
-#if 0
-		class PartialPipelineDescriptorsLayout
-		{
-		public:
-			class DescriptorSet
-			{
-			public:
-				std::shared_ptr<DescriptorSetSignature>		_signature;
-				unsigned									_pipelineLayoutBindingIndex;
-				std::string									_name;
-			};
-			std::vector<DescriptorSet>					_descriptorSets;
-			std::vector<PushConstantsRangeSignature>	_pushConstants;
-			std::shared_ptr<LegacyRegisterBindingDesc>		_legacyRegisterBinding;
-		};
-
-		std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
-			const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType);
-
-		class CompiledDescriptorSetLayoutCache;
-		std::shared_ptr<CompiledPipelineLayout> CreateCompiledPipelineLayout(
-			ObjectFactory& factory,
-			CompiledDescriptorSetLayoutCache& cache,
-			IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
-			VkShaderStageFlags stageFlags);
-#endif
-
 		void ValidatePipelineLayout(
 			VkPhysicalDevice physDev,
 			const PipelineLayoutInitializer& pipelineLayout);
@@ -209,27 +182,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		class VulkanGlobalsTemp
 		{
 		public:
-			// std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
-			// std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
-
 			GlobalPools* _globalPools;
 			LegacyRegisterBindingDesc _legacyRegisterBindings;
-
 			static VulkanGlobalsTemp& GetInstance();
-
-				// note -- move this into GlobalPools?
-			// std::shared_ptr<CompiledDescriptorSetLayoutCache> _compiledDescriptorSetLayoutCache;
-
-			/*std::shared_ptr<CompiledPipelineLayout> _graphicsPipelineLayout;
-			std::shared_ptr<CompiledPipelineLayout> _computePipelineLayout;
-
-			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ShaderProgram&);
-			const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout(const ComputeShader&);*/
-
-			// const LegacyRegisterBindingDesc& GetLegacyRegisterBinding();
-
-			VulkanGlobalsTemp();
-			~VulkanGlobalsTemp();
 		};
 	}
 }}

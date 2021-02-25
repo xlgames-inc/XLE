@@ -224,7 +224,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		class ReservedSpace
 		{
 		public:
-			Buffer			_buffer;
+			Resource		_buffer;
 			CircularHeap	_heap;
 			CircularBuffer<MarkedDestroys, 8>	_markedDestroys;
 
@@ -253,7 +253,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	TemporaryBufferSpace::Pimpl::ReservedSpace::ReservedSpace(ObjectFactory& factory, size_t byteCount)
-	: _buffer(factory, BuildBufferDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount))
+	: _buffer(factory, BuildBufferDesc(BindFlag::ConstantBuffer, byteCount))
 	, _heap((unsigned)byteCount)
 	{
 		_lastBarrier = 0u;
@@ -269,7 +269,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	}
 
-	static void PushData(VkDevice device, Buffer buffer, size_t startPt, IteratorRange<const void*> data)
+	static void PushData(VkDevice device, Resource& buffer, size_t startPt, IteratorRange<const void*> data)
 	{
 		// Write to the buffer using a map and CPU assisted copy
 		// Note -- we could also consider using "non-coherent" memory access here, and manually doing
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				// Some devices have strict alignnment rules for the "offset" value for constant buffers
 				// We must respect the alignment restriction given to use from vkGetPhysicalDeviceProperties!
 				assert((space % b._alignment) == 0);
-				return VkDescriptorBufferInfo { b._buffer.GetUnderlying(), space, byteCount };
+				return VkDescriptorBufferInfo { b._buffer.GetBuffer(), space, byteCount };
 			}
 		}
 
@@ -402,15 +402,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned barrierCount;
 			if (endRegion > startRegion) {
 				bufferBarrier[0] = CreateBufferMemoryBarrier(
-					_pimpl->_cb._buffer.GetUnderlying(), 
+					_pimpl->_cb._buffer.GetBuffer(), 
 					startRegion, endRegion - startRegion);
 				barrierCount = 1;
 			} else {
 				bufferBarrier[0] = CreateBufferMemoryBarrier(
-					_pimpl->_cb._buffer.GetUnderlying(),
+					_pimpl->_cb._buffer.GetBuffer(),
 					startRegion, b._heap.HeapSize() - startRegion);
 				bufferBarrier[1] = CreateBufferMemoryBarrier(
-					_pimpl->_cb._buffer.GetUnderlying(),
+					_pimpl->_cb._buffer.GetBuffer(),
 					0, endRegion);
 				barrierCount = 2;
 			}
@@ -579,7 +579,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    static IResourcePtr CreateDummyTexture(ObjectFactory& factory)
+    static std::shared_ptr<Resource> CreateDummyTexture(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::ShaderResource, 
@@ -595,7 +595,7 @@ namespace RenderCore { namespace Metal_Vulkan
             });
     }
 
-    static IResourcePtr CreateDummyUAVImage(ObjectFactory& factory)
+    static std::shared_ptr<Resource> CreateDummyUAVImage(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -604,7 +604,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return Internal::CreateResource(factory, desc);
     }
 
-    static IResourcePtr CreateDummyUAVBuffer(ObjectFactory& factory)
+    static std::shared_ptr<Resource> CreateDummyUAVBuffer(ObjectFactory& factory)
     {
         auto desc = CreateDesc(
             BindFlag::UnorderedAccess, 
@@ -624,10 +624,14 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         uint8 blankData[4096];
         std::memset(blankData, 0, sizeof(blankData));
-        _blankBuffer = Buffer(
+		auto initData = MakeIteratorRange(blankData);
+        _blankBuffer = Internal::CreateResource(
             factory, 
             CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(sizeof(blankData)), "DummyBuffer"),
-            MakeIteratorRange(blankData));
+			[initData](SubResourceId subResId) -> SubResourceInitData {
+                assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+            	return SubResourceInitData{initData};
+			});
     }
 
     DummyResources::DummyResources() {}

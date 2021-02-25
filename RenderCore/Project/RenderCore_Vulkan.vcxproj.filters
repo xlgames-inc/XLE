@@ -54,7 +54,6 @@
     <ClInclude Include="..\Vulkan\DeviceVulkan.h">
       <Filter>Device</Filter>
     </ClInclude>
-    <ClInclude Include="..\Vulkan\Metal\DescriptorSetSignatureFile.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

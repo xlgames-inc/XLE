@@ -3,11 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DescriptorSet.h"
-#include "DescriptorSetSignatureFile.h"
 #include "TextureView.h"
 #include "Pools.h"
 #include "PipelineLayout.h"
-#include "DescriptorSetSignatureFile.h"
 #include "ShaderReflection.h"
 #include "../../ShaderService.h"
 #include "../../UniformsStream.h"
@@ -246,7 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto& blankBuffer = AllocateInfo(
 			VkDescriptorBufferInfo { 
-				globalPools._dummyResources._blankBuffer.GetUnderlying(),
+				globalPools._dummyResources._blankBuffer->GetBuffer(),
 				0, VK_WHOLE_SIZE });
 		auto& blankImage = AllocateInfo(
 			VkDescriptorImageInfo {

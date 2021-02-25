@@ -707,7 +707,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 		};
 
-		IResourcePtr CreateResource(
+		std::shared_ptr<Resource> CreateResource(
 			const ObjectFactory& factory,
 			const ResourceDesc& desc,
 			const ResourceInitializer& initData)
@@ -717,13 +717,9 @@ namespace RenderCore { namespace Metal_Vulkan
 				auto res = std::allocate_shared<Metal_Vulkan::Resource>(
 					Internal::ResourceAllocator(),
 					std::ref(factory), std::ref(desc), std::ref(initData));
-				return *reinterpret_cast<IResourcePtr*>(&res);
-			}
-			else {
-				auto res = std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
-				return IResourcePtr(
-					(RenderCore::Resource*)res.release(),
-					[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
+				return res;
+			} else {
+				return std::make_unique<Metal_Vulkan::Resource>(factory, desc, initData);
 			}
 		}
 	}
@@ -1209,14 +1205,17 @@ namespace RenderCore { namespace Metal_Vulkan
         if (!srcPixelCount)
             Throw(std::runtime_error("No source pixels in WriteSynchronized operation. The depth of the srcDataDimensions field might need to be at least 1."));
 
-		auto transferSrc = std::make_shared<Resource>(
+		auto transferSrc = Internal::CreateResource(
 			GetObjectFactory(*_devContext),
             RenderCore::CreateDesc(
                 RenderCore::BindFlag::TransferSrc,
                 0, RenderCore::GPUAccess::Read,
                 RenderCore::TextureDesc::Plain3D(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2], srcDataFormat),
                 "blit-pass-src"),
-            srcData);
+            [srcData](SubResourceId subResId) -> SubResourceInitData {
+				assert(subResId._mip == 0 && subResId._arrayLayer == 0);
+            	return SubResourceInitData{srcData};
+			});
 
 		CopyPartial_Src srcPartial {
 			transferSrc.get(), SubResourceId{},

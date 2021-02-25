@@ -2,7 +2,6 @@
 set(Src
 	Annotator.cpp
 	DeviceVulkan.cpp
-	Metal/Buffer.cpp
 	Metal/CompiledShaderByteCode.cpp
 	Metal/DescriptorSet.cpp
 	Metal/DeviceContext.cpp
@@ -13,7 +12,6 @@ set(Src
 	Metal/ObjectFactory.cpp
 	Metal/PipelineBuilder.cpp
 	Metal/PipelineLayout.cpp
-	Metal/DescriptorSetSignatureFile.cpp
 	Metal/Pools.cpp
 	Metal/QueryPool.cpp
 	Metal/Resource.cpp

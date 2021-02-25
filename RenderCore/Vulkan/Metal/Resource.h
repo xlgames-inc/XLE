@@ -186,7 +186,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	namespace Internal
 	{
 		using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-		RenderCore::IResourcePtr CreateResource(
+		std::shared_ptr<Resource> CreateResource(
 			const ObjectFactory& factory,
 			const ResourceDesc& desc, 
 			const ResourceInitializer& init = ResourceInitializer());

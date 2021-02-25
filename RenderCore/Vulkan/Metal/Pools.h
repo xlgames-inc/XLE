@@ -107,13 +107,13 @@ namespace RenderCore { namespace Metal_Vulkan
     class DummyResources
     {
     public:
-        IResourcePtr		_blankTexture;
-        IResourcePtr		_blankUAVImageRes;
-        IResourcePtr		_blankUAVBufferRes;
+        std::shared_ptr<Resource>		_blankTexture;
+        std::shared_ptr<Resource>		_blankUAVImageRes;
+        std::shared_ptr<Resource>		_blankUAVBufferRes;
         ResourceView        _blankSrv;
         ResourceView        _blankUavImage;
         ResourceView        _blankUavBuffer;
-        Buffer              _blankBuffer;
+        std::shared_ptr<Resource>            _blankBuffer;
         std::unique_ptr<SamplerState> _blankSampler;
 
         DummyResources(ObjectFactory& factory);

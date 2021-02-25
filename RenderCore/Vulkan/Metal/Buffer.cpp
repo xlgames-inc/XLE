@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "Buffer.h"
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
@@ -102,4 +104,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 }}
+
+#endif
 

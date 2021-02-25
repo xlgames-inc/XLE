@@ -4,10 +4,8 @@
 
 #include "PipelineLayout.h"
 #include "DescriptorSet.h"
-#include "DescriptorSetSignatureFile.h"
 #include "ObjectFactory.h"
 #include "Pools.h"
-#include "DescriptorSetSignatureFile.h"
 #include "IncludeVulkan.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/Threading/Mutex.h"
@@ -148,126 +146,6 @@ RootSignature=~
 MainRootSignature = GraphicsMain
 )--";
 
-namespace RenderCore { namespace Metal_Vulkan { namespace Internal
-{
-#if 0
-	class BoundSignatureFile::Pimpl
-	{
-	public:
-		std::vector<std::pair<uint64_t, DescriptorSet>> _descriptorSetLayouts;
-		VkShaderStageFlags								_stageFlags;
-		ObjectFactory*		_factory;
-		GlobalPools*		_globalPools;
-	};
-
-	auto BoundSignatureFile::GetDescriptorSet(uint64_t signatureFile, uint64_t hashName) const -> const DescriptorSet*
-	{
-		auto h = HashCombine(signatureFile, hashName);
-		auto i = LowerBound(_pimpl->_descriptorSetLayouts, h);
-		if (i != _pimpl->_descriptorSetLayouts.end() && i->first == h)
-			return &i->second;
-		return nullptr;
-	}
-
-	void BoundSignatureFile::RegisterSignatureFile(uint64_t hashName, const DescriptorSetSignatureFile& signatureFile)
-	{
-		// Each descriptor set layout is initialized from the root signature
-		// This allows us to create a single global setting that can be used broadly across
-		// many "pipelines"
-
-		#if defined(_DEBUG)
-			ValidateRootSignature(_pimpl->_factory->GetPhysicalDevice(), signatureFile);
-		#endif
-
-		_pimpl->_descriptorSetLayouts.reserve(_pimpl->_descriptorSetLayouts.size() + signatureFile._descriptorSets.size());
-
-		for (const auto& s:signatureFile._descriptorSets) {
-			DescriptorSet ds;
-			ds._layout = CreateDescriptorSetLayout(*_pimpl->_factory, *s, _pimpl->_stageFlags);
-			
-			{
-				ProgressiveDescriptorSetBuilder builder(*_pimpl->_globalPools);
-				builder.BindDummyDescriptors(*s, (1ull<<uint64_t(s->_bindings.size()))-1ull);
-				ds._blankBindings = _pimpl->_globalPools->_longTermDescriptorPool.Allocate(ds._layout.get());
-				VULKAN_VERBOSE_DEBUG_ONLY(ds._blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorSetName);
-				builder.FlushChanges(
-					_pimpl->_factory->GetDevice().get(),
-					ds._blankBindings.get(),
-					0, 0 VULKAN_VERBOSE_DEBUG_ONLY(, ds._blankBindingsDescription));
-			}
-
-			VULKAN_VERBOSE_DEBUG_ONLY(ds._name = s->_name);
-			_pimpl->_descriptorSetLayouts.emplace_back(std::make_pair(HashCombine(hashName, s->_hashName), std::move(ds)));
-		}
-		std::sort(
-			_pimpl->_descriptorSetLayouts.begin(),
-			_pimpl->_descriptorSetLayouts.end(),
-			CompareFirst<uint64_t, DescriptorSet>());
-	}
-
-	BoundSignatureFile::BoundSignatureFile(ObjectFactory& objectFactory, GlobalPools& globalPools, VkShaderStageFlags stageFlags)
-	{
-		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_stageFlags = stageFlags;
-		_pimpl->_factory = &objectFactory;
-		_pimpl->_globalPools = &globalPools;
-	}
-
-	BoundSignatureFile::~BoundSignatureFile()
-	{}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	static const std::string s_dummyDescriptorString{"<DummyDescriptor>"};
-
-	const DescriptorSetCacheResult*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
-		const DescriptorSetSignature& signature,
-		const std::string& name,
-		VkShaderStageFlags stageFlags)
-	{
-		auto hash = HashCombine(signature.GetHash(), stageFlags);
-		auto i = LowerBound(_cache, hash);
-		if (i != _cache.end() && i->first == hash)
-			return i->second.get();
-
-		auto ds = std::make_unique<DescriptorSetCacheResult>();
-		ds->_layout = std::make_unique<CompiledDescriptorSetLayout>(*_objectFactory, MakeIteratorRange(signature._slots), stageFlags);
-		
-		{
-			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(signature._slots) };
-			builder.BindDummyDescriptors(*_globalPools, (1ull<<uint64_t(signature._slots.size()))-1ull);
-			ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout->GetUnderlying());
-			VULKAN_VERBOSE_DEBUG_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
-			std::vector<uint64_t> resourceVisibilityList;
-			builder.FlushChanges(
-				_objectFactory->GetDevice().get(),
-				ds->_blankBindings.get(),
-				0, 0, resourceVisibilityList VULKAN_VERBOSE_DEBUG_ONLY(, ds->_blankBindingsDescription));
-		}
-
-		VULKAN_VERBOSE_DEBUG_ONLY(ds->_name = name);
-
-		i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
-		return i->second.get();
-	}
-
-	CompiledDescriptorSetLayoutCache::CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools)
-	: _objectFactory(&objectFactory)
-	, _globalPools(&globalPools)
-	{}
-
-	CompiledDescriptorSetLayoutCache::~CompiledDescriptorSetLayoutCache() {}
-
-	std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache()
-	{
-		return std::make_shared<CompiledDescriptorSetLayoutCache>(
-			GetObjectFactory(), 
-			*VulkanGlobalsTemp::GetInstance()._globalPools);
-	}
-
-}}}
-
 namespace RenderCore { namespace Metal_Vulkan
 {
 	CompiledPipelineLayout::CompiledPipelineLayout(
@@ -344,227 +222,155 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	#endif
 
-}}
-
-namespace RenderCore { namespace Metal_Vulkan { namespace Internal
-{
-#if 0
-	std::shared_ptr<CompiledPipelineLayout> CreateCompiledPipelineLayout(
-		ObjectFactory& factory,
-		CompiledDescriptorSetLayoutCache& cache,
-		IteratorRange<const PartialPipelineDescriptorsLayout*> partialLayouts,
-		VkShaderStageFlags stageFlags)
+	namespace Internal
 	{
-		std::vector<CompiledPipelineLayout::DescriptorSetBinding> descriptorSetBindings;
-		std::vector<CompiledPipelineLayout::PushConstantsBinding> pushConstantBindings;
 
-		for (const auto&partial:partialLayouts) {
-			for (auto& desc:partial._descriptorSets) {
-				assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
-				assert(desc._pipelineLayoutBindingIndex <= descriptorSetBindings.size() || !descriptorSetBindings[desc._pipelineLayoutBindingIndex]._layout);
+	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-				auto* compiled = cache.CompileDescriptorSetLayout(*desc._signature, desc._name, stageFlags);
-				if (compiled) {
-					// todo -- check for multiples bound to the same index
-					assert(desc._pipelineLayoutBindingIndex < s_maxDescriptorSetCount);
+		static const std::string s_dummyDescriptorString{"<DummyDescriptor>"};
 
-					CompiledPipelineLayout::DescriptorSetBinding binding;
-					binding._name = desc._name;
-					binding._layout = compiled->_layout;
-					binding._blankDescriptorSet = compiled->_blankBindings;
+		const DescriptorSetCacheResult*	CompiledDescriptorSetLayoutCache::CompileDescriptorSetLayout(
+			const DescriptorSetSignature& signature,
+			const std::string& name,
+			VkShaderStageFlags stageFlags)
+		{
+			auto hash = HashCombine(signature.GetHash(), stageFlags);
+			auto i = LowerBound(_cache, hash);
+			if (i != _cache.end() && i->first == hash)
+				return i->second.get();
 
-					#if defined(VULKAN_VERBOSE_DEBUG)
-						binding._blankDescriptorSetDebugInfo = compiled->_blankBindingsDescription;
-					#endif
+			auto ds = std::make_unique<DescriptorSetCacheResult>();
+			ds->_layout = std::make_unique<CompiledDescriptorSetLayout>(*_objectFactory, MakeIteratorRange(signature._slots), stageFlags);
+			
+			{
+				ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(signature._slots) };
+				builder.BindDummyDescriptors(*_globalPools, (1ull<<uint64_t(signature._slots.size()))-1ull);
+				ds->_blankBindings = _globalPools->_longTermDescriptorPool.Allocate(ds->_layout->GetUnderlying());
+				VULKAN_VERBOSE_DEBUG_ONLY(ds->_blankBindingsDescription._descriptorSetInfo = s_dummyDescriptorString);
+				std::vector<uint64_t> resourceVisibilityList;
+				builder.FlushChanges(
+					_objectFactory->GetDevice().get(),
+					ds->_blankBindings.get(),
+					0, 0, resourceVisibilityList VULKAN_VERBOSE_DEBUG_ONLY(, ds->_blankBindingsDescription));
+			}
 
-					if (descriptorSetBindings.size() <= desc._pipelineLayoutBindingIndex)
-						descriptorSetBindings.resize(desc._pipelineLayoutBindingIndex+1);
-					descriptorSetBindings[desc._pipelineLayoutBindingIndex] = std::move(binding);
+			VULKAN_VERBOSE_DEBUG_ONLY(ds->_name = name);
+
+			i = _cache.insert(i, std::make_pair(hash, std::move(ds)));
+			return i->second.get();
+		}
+
+		CompiledDescriptorSetLayoutCache::CompiledDescriptorSetLayoutCache(ObjectFactory& objectFactory, GlobalPools& globalPools)
+		: _objectFactory(&objectFactory)
+		, _globalPools(&globalPools)
+		{}
+
+		CompiledDescriptorSetLayoutCache::~CompiledDescriptorSetLayoutCache() {}
+
+		std::shared_ptr<CompiledDescriptorSetLayoutCache> CreateCompiledDescriptorSetLayoutCache()
+		{
+			return std::make_shared<CompiledDescriptorSetLayoutCache>(
+				GetObjectFactory(), 
+				*VulkanGlobalsTemp::GetInstance()._globalPools);
+		}
+
+		class DescSetLimits
+		{
+		public:
+			unsigned _sampledImageCount;
+			unsigned _samplerCount;
+			unsigned _uniformBufferCount;
+			unsigned _storageBufferCount;
+			unsigned _storageImageCount;
+			unsigned _inputAttachmentCount;
+
+			void Add(const DescSetLimits& other)
+			{
+				_sampledImageCount += other._sampledImageCount;
+				_samplerCount += other._samplerCount;
+				_uniformBufferCount += other._uniformBufferCount;
+				_storageBufferCount += other._storageBufferCount;
+				_storageImageCount += other._storageImageCount;
+				_inputAttachmentCount += other._inputAttachmentCount;
+			}
+		};
+
+		static DescSetLimits BuildLimits(const DescriptorSetSignature& setSig)
+		{
+			DescSetLimits result = {};
+			for (auto& b:setSig._slots) {
+				switch (b._type) {
+				case DescriptorType::Sampler:
+					result._samplerCount += b._count;
+					break;
+
+				case DescriptorType::Texture:
+					result._sampledImageCount += b._count;
+					break;
+
+				case DescriptorType::ConstantBuffer:
+					result._uniformBufferCount += b._count;
+					break;
+
+				case DescriptorType::UnorderedAccessBuffer:
+					result._storageBufferCount += b._count;
+					break;
+
+				case DescriptorType::UnorderedAccessTexture:
+					result._storageImageCount += b._count;
+					break;
+
+				default:
+					break;
 				}
 			}
-
-			pushConstantBindings.reserve(partial._pushConstants.size());
-			for (const auto& s:partial._pushConstants)
-				pushConstantBindings.push_back(CompiledPipelineLayout::PushConstantsBinding{s._name, s._rangeSize, stageFlags});
+			return result;
 		}
 
-		return std::make_shared<CompiledPipelineLayout>(
-			factory,
-			MakeIteratorRange(descriptorSetBindings),
-			MakeIteratorRange(pushConstantBindings));
-	}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class DescSetLimits
-	{
-	public:
-		unsigned _sampledImageCount;
-		unsigned _samplerCount;
-		unsigned _uniformBufferCount;
-		unsigned _storageBufferCount;
-		unsigned _storageImageCount;
-		unsigned _inputAttachmentCount;
-
-		void Add(const DescSetLimits& other)
+		static void ValidatePipelineLayout(
+			VkPhysicalDevice physDev,
+			const PipelineLayoutInitializer& pipelineLayout)
 		{
-			_sampledImageCount += other._sampledImageCount;
-			_samplerCount += other._samplerCount;
-			_uniformBufferCount += other._uniformBufferCount;
-			_storageBufferCount += other._storageBufferCount;
-			_storageImageCount += other._storageImageCount;
-			_inputAttachmentCount += other._inputAttachmentCount;
-		}
-	};
+			// Validate the root signature against the physical device, and throw an exception
+			// if there are problems.
+			// Things to check:
+			//      VkPhysicalDeviceLimits.maxBoundDescriptorSets
+			//      VkPhysicalDeviceLimits.maxPerStageDescriptor*
+			//      VkPhysicalDeviceLimits.maxDescriptorSet*
 
-	static DescSetLimits BuildLimits(const DescriptorSetSignature& setSig)
-	{
-		DescSetLimits result = {};
-		for (auto& b:setSig._slots) {
-			switch (b._type) {
-			case DescriptorType::Sampler:
-				result._samplerCount += b._count;
-				break;
+			VkPhysicalDeviceProperties props;
+			vkGetPhysicalDeviceProperties(physDev, &props);
+			const auto& limits = props.limits;
 
-			case DescriptorType::Texture:
-				result._sampledImageCount += b._count;
-				break;
-
-			case DescriptorType::ConstantBuffer:
-				result._uniformBufferCount += b._count;
-				break;
-
-			case DescriptorType::UnorderedAccessBuffer:
-				result._storageBufferCount += b._count;
-				break;
-
-			case DescriptorType::UnorderedAccessTexture:
-				result._storageImageCount += b._count;
-				break;
-
-			default:
-				break;
+			// Here, we are assuming all descriptors apply equally to all stages.
+			DescSetLimits totalLimits = {};
+			for (const auto& s:pipelineLayout.GetDescriptorSets()) {
+				auto ds = BuildLimits(s._signature);
+				// not really clear how these ones work...?
+				if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
+					||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
+					||  ds._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
+					||  ds._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
+					||  ds._storageImageCount > limits.maxPerStageDescriptorStorageImages
+					||  ds._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
+					Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources in a single descriptor set that is supported by the device"));
+				totalLimits.Add(ds);
 			}
-		}
-		return result;
-	}
 
-	static void ValidatePipelineLayout(
-		VkPhysicalDevice physDev,
-		const PipelineLayoutDesc& pipelineLayout)
-	{
-		// Validate the root signature against the physical device, and throw an exception
-		// if there are problems.
-		// Things to check:
-		//      VkPhysicalDeviceLimits.maxBoundDescriptorSets
-		//      VkPhysicalDeviceLimits.maxPerStageDescriptor*
-		//      VkPhysicalDeviceLimits.maxDescriptorSet*
-
-		VkPhysicalDeviceProperties props;
-		vkGetPhysicalDeviceProperties(physDev, &props);
-		const auto& limits = props.limits;
-
-		// Here, we are assuming all descriptors apply equally to all stages.
-		DescSetLimits totalLimits = {};
-		for (const auto& s:pipelineLayout.GetDescriptorSets()) {
-			auto ds = BuildLimits(s._signature);
-			// not really clear how these ones work...?
-			if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
-				||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
-				||  ds._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
-				||  ds._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
-				||  ds._storageImageCount > limits.maxPerStageDescriptorStorageImages
-				||  ds._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
-				Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources in a single descriptor set that is supported by the device"));
-			totalLimits.Add(ds);
+			if (    totalLimits._sampledImageCount > limits.maxDescriptorSetSampledImages
+				||  totalLimits._samplerCount > limits.maxPerStageDescriptorSamplers
+				||  totalLimits._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
+				||  totalLimits._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
+				||  totalLimits._storageImageCount > limits.maxPerStageDescriptorStorageImages
+				||  totalLimits._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
+				Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources per stage that is supported by the device"));
 		}
 
-		if (    totalLimits._sampledImageCount > limits.maxDescriptorSetSampledImages
-			||  totalLimits._samplerCount > limits.maxPerStageDescriptorSamplers
-			||  totalLimits._uniformBufferCount > limits.maxPerStageDescriptorUniformBuffers
-			||  totalLimits._storageBufferCount > limits.maxPerStageDescriptorStorageBuffers
-			||  totalLimits._storageImageCount > limits.maxPerStageDescriptorStorageImages
-			||  totalLimits._inputAttachmentCount > limits.maxPerStageDescriptorInputAttachments)
-			Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound resources per stage that is supported by the device"));
-	}
-
-	VulkanGlobalsTemp& VulkanGlobalsTemp::GetInstance()
-	{
-		static VulkanGlobalsTemp s_instance;
-		return s_instance;
-	}
-
-	/*const std::shared_ptr<CompiledPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ShaderProgram&)
-	{
-		return _graphicsPipelineLayout;
-	}
-	const std::shared_ptr<CompiledPipelineLayout>& VulkanGlobalsTemp::GetPipelineLayout(const ComputeShader&)
-	{
-		return _computePipelineLayout;
-	}
-
-	const LegacyRegisterBindingDesc& VulkanGlobalsTemp::GetLegacyRegisterBinding()
-	{
-		return *_graphicsRootSignatureFile->GetLegacyRegisterBinding(Hash64(_graphicsRootSignatureFile->GetRootSignature(Hash64(_graphicsRootSignatureFile->_mainRootSignature))->_legacyBindings));
-	}*/
-
-	VulkanGlobalsTemp::VulkanGlobalsTemp() 
-	{
-		// _graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::DescriptorSetSignatureFile>(ROOT_SIGNATURE_CFG);
-		// _computeRootSignatureFile = std::make_shared<Metal_Vulkan::DescriptorSetSignatureFile>(ROOT_SIGNATURE_COMPUTE_CFG);
-
-		// hack -- temporary configuration
-		/*{
-			InputStreamFormatter<> formatter(MakeStringSection(s_rootSignatureGraphicsDefault));
-			_graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::DescriptorSetSignatureFile>(formatter, ::Assets::DirectorySearchRules{}, nullptr);
+		VulkanGlobalsTemp& VulkanGlobalsTemp::GetInstance()
+		{
+			static VulkanGlobalsTemp s_instance;
+			return s_instance;
 		}
-		_computeRootSignatureFile = _graphicsRootSignatureFile;*/
 	}
-
-	VulkanGlobalsTemp::~VulkanGlobalsTemp() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-	std::shared_ptr<PartialPipelineDescriptorsLayout> CreatePartialPipelineDescriptorsLayout(
-		const DescriptorSetSignatureFile& signatureFile, PipelineType pipelineType)
-	{
-		auto result = std::make_shared<PartialPipelineDescriptorsLayout>();
-
-		auto& globals = VulkanGlobalsTemp::GetInstance();
-		const auto& root = *signatureFile.GetRootSignature(Hash64(signatureFile._mainRootSignature));
-		result->_descriptorSets.reserve(root._descriptorSets.size());
-		for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
-			const auto&d = root._descriptorSets[c];
-			result->_descriptorSets.emplace_back(
-				PartialPipelineDescriptorsLayout::DescriptorSet {
-					signatureFile.GetDescriptorSet(d._hashName),
-					c,
-					d._name
-				});
-		}
-
-		auto shaderStageMask = 0;
-		if (pipelineType == PipelineType::Graphics) {
-			shaderStageMask = VK_SHADER_STAGE_ALL_GRAPHICS;
-		} else {
-			shaderStageMask = VK_SHADER_STAGE_COMPUTE_BIT;
-		}
-
-		for (unsigned c=0; c<root._pushConstants.size(); ++c) {
-			auto* sig = signatureFile.GetPushConstantsRangeSignature(Hash64(root._pushConstants[c]));
-			if (sig && (sig->_stages & shaderStageMask)) {
-				auto newSig = *sig;
-				newSig._stages &= shaderStageMask;
-				result->_pushConstants.push_back(std::move(newSig));
-			}
-		}
-
-		result->_legacyRegisterBinding = signatureFile.GetLegacyRegisterBinding(Hash64(root._legacyBindings));
-		return result;
-	}
-#endif
 	
-}}}
-
+}}
