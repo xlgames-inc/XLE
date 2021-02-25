@@ -84,38 +84,37 @@ namespace UnitTests
 		RenderCore::Metal::DeviceContext& metalContext,
 		IteratorRange<const VertexPCT*> vertices,
 		const RenderCore::RasterizationDesc& rasterizationDesc,
-		const RenderCore::Metal::ShaderResourceView* srv = nullptr,
-		const RenderCore::Metal::SamplerState* samplerState = nullptr)
+		const RenderCore::IResourceView* srv = nullptr,
+		const RenderCore::ISampler* samplerState = nullptr)
 	{
-		auto shaderProgram = MakeShaderProgram(testHelper, vsText_clipInput, psText);
+		auto shaderProgram = testHelper.MakeShaderProgram(vsText_clipInput, psText);
 
 		using namespace RenderCore;
-		auto vertexBuffer = CreateVB(*testHelper._device, vertices);
+		auto vertexBuffer = testHelper.CreateVB(vertices);
 
 		// Using the InputElementDesc version of BoundInputLayout constructor
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePCT), shaderProgram);
 		assert(inputLayout.AllAttributesBound());
 
-		VertexBufferView vbv { vertexBuffer.get() };
-		inputLayout.Apply(metalContext, MakeIteratorRange(&vbv, &vbv+1));
-
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper._pipelineLayout);
 		if (srv) {
 			UniformsStreamInterface usi;
-			usi.BindShaderResource(0, Hash64("Texture"));
-			Metal::BoundUniforms uniforms { shaderProgram, Metal::PipelineLayoutConfig {}, usi };
+			usi.BindResourceView(0, Hash64("Texture"));
+			usi.BindSampler(0, Hash64("Texture_sampler"));
+			Metal::BoundUniforms uniforms { shaderProgram, usi };
 
-			const Metal::ShaderResourceView* srvs[] = { srv };
-			const Metal::SamplerState* samplerStates[] = { samplerState };
 			UniformsStream uniformsStream;
-			uniformsStream._resources = UniformsStream::MakeResources(MakeIteratorRange(srvs));
-			uniformsStream._samplers = UniformsStream::MakeResources(MakeIteratorRange(samplerStates));
-			uniforms.Apply(metalContext, 0, uniformsStream);
+			uniformsStream._resourceViews = { srv };
+			uniformsStream._samplers = { samplerState };
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
-		metalContext.Bind(shaderProgram);
-		metalContext.Bind(Topology::TriangleList);
-		metalContext.Bind(rasterizationDesc);
-		metalContext.Draw((unsigned)vertices.size());
+		encoder.Bind(shaderProgram);
+		encoder.Bind(inputLayout, Topology::TriangleList);
+		VertexBufferView vbv { vertexBuffer.get() };
+		encoder.Bind(MakeIteratorRange(&vbv, &vbv+1), {});
+		encoder.Bind(rasterizationDesc);
+		encoder.Draw((unsigned)vertices.size());
 	}
 
 	TEST_CASE( "CoordinateSpaces-WindowCoordSpaceOrientation", "[rendercore_metal]" )
@@ -128,18 +127,18 @@ namespace UnitTests
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
-		auto data = fbHelper.GetMainTarget()->ReadBack(*threadContext);
+		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		unsigned lastPixel = *(unsigned*)PtrAdd(AsPointer(data.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel = *(unsigned*)data.data();
 
@@ -163,12 +162,12 @@ namespace UnitTests
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
@@ -185,11 +184,11 @@ namespace UnitTests
 		{
 			RenderCore::Viewport viewports[1];
 			viewports[0] = RenderCore::Viewport{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
-			viewports[0].OriginIsUpperLeft = originIsUpperLeft;
+			viewports[0]._originIsUpperLeft = originIsUpperLeft;
 			RenderCore::ScissorRect scissorRects[1];
 			scissorRects[0] = RenderCore::ScissorRect{ (int)x, (int)y, (unsigned)w, (unsigned)h };
-			scissorRects[0].OriginIsUpperLeft = originIsUpperLeft;
-			metalContext.SetViewportAndScissorRects(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+			scissorRects[0]._originIsUpperLeft = originIsUpperLeft;
+			metalContext.BeginGraphicsEncoder_ProgressivePipeline(nullptr).Bind(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
 		};
 
 		auto TestScissor = [&](float x, float y, float w, float h, bool originIsUpperLeft)
@@ -283,10 +282,10 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
-		UnitTestFBHelper fbHelper(*testHelper->_device, targetDesc);
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CCW});
@@ -362,22 +361,22 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::ShaderResource, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
-		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
+		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto targetDesc1 = CreateDesc(
-			BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
-		UnitTestFBHelper fbHelper1(*testHelper->_device, targetDesc1);
+		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);
 		{
 			auto rpi = fbHelper1.BeginRenderPass(*threadContext);
-			Metal::ShaderResourceView srv { Metal::GetObjectFactory(), fbHelper0.GetMainTarget() };
-			Metal::SamplerState samplerState { FilterMode::Point };
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None}, &srv, &samplerState);
+			auto srv = fbHelper0.GetMainTarget()->CreateTextureView(BindFlag::ShaderResource);
+			auto sampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point });
+			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None}, srv.get(), sampler.get());
 		}
 
 		// The data in fpHelper1 is should now be the same as what we got through the
@@ -385,8 +384,8 @@ namespace UnitTests
 		// The copy is done via a draw operation, with this orientation
 		//      clip space { -1, -1, 0, 1 } maps to tex coord { 0, 0 }
 		//      clip space {  1,  1, 0, 1 } maps to tex coord { 1, 1 }
-		auto data0 = fbHelper0.GetMainTarget()->ReadBack(*threadContext);
-		auto data1 = fbHelper1.GetMainTarget()->ReadBack(*threadContext);
+		auto data0 = fbHelper0.GetMainTarget()->ReadBackSynchronized(*threadContext);
+		auto data1 = fbHelper1.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel0 = *(unsigned*)data0.data();
 		unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));
@@ -430,7 +429,7 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::TransferSrc, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
-		UnitTestFBHelper fbHelper0(*testHelper->_device, targetDesc0);
+		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
 			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
@@ -440,19 +439,19 @@ namespace UnitTests
 			BindFlag::RenderTarget|BindFlag::TransferDst, CPUAccess::Read, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
-		UnitTestFBHelper fbHelper1(*testHelper->_device, targetDesc1);
+		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);
 		{
-			Metal::BlitPass blitPass(*threadContext);
+			auto blitPass = metalContext.BeginBlitEncoder();
 			blitPass.Copy(
-				Metal::BlitPass::CopyPartial_Dest { fbHelper1.GetMainTarget().get() },
-				Metal::BlitPass::CopyPartial_Src { fbHelper0.GetMainTarget().get(), {}, {0,0,0}, {64, 64, 1} });
+				Metal::BlitEncoder::CopyPartial_Dest { fbHelper1.GetMainTarget().get() },
+				Metal::BlitEncoder::CopyPartial_Src { fbHelper0.GetMainTarget().get(), {}, {0,0,0}, {64, 64, 1} });
 		}
 
 		// The data in fpHelper1 is should now be the same as what we got through the
 		// WindowCoordSpaceOrientation test; except that we've added another copy in the middle
 		// The copy is done via a full texture blit operation
-		auto data0 = fbHelper0.GetMainTarget()->ReadBack(*threadContext);
-		auto data1 = fbHelper1.GetMainTarget()->ReadBack(*threadContext);
+		auto data0 = fbHelper0.GetMainTarget()->ReadBackSynchronized(*threadContext);
+		auto data1 = fbHelper1.GetMainTarget()->ReadBackSynchronized(*threadContext);
 		unsigned lastPixel0 = *(unsigned*)PtrAdd(AsPointer(data0.end()), -(ptrdiff_t)sizeof(unsigned));
 		unsigned firstPixel0 = *(unsigned*)data0.data();
 		unsigned lastPixel1 = *(unsigned*)PtrAdd(AsPointer(data1.end()), -(ptrdiff_t)sizeof(unsigned));

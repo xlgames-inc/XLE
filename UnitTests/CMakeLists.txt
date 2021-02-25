@@ -40,7 +40,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     add_executable(
         UnitTests-RenderCore-${metal_name}
-        #RenderCore/Metal/CoordinateSpaces.cpp
+        RenderCore/Metal/CoordinateSpaces.cpp
         RenderCore/Metal/InputLayout.cpp
         RenderCore/Metal/PipelineTests.cpp
         RenderCore/Metal/MetalTestHelper.cpp
