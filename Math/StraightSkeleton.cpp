@@ -936,22 +936,13 @@ namespace XLEMath
 			|| (Equivalent(p0, p2, GetEpsilon<Primitive>()) || Equivalent(p1, p2, GetEpsilon<Primitive>()));
 	}
 
-    static auto FindInAndOut(IteratorRange<WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<WavefrontEdge*, WavefrontEdge*>
+    template<typename Iterator>
+		static auto FindInAndOut(IteratorRange<Iterator> edges, unsigned pivotVertex) -> std::pair<Iterator, Iterator>
     {
-        std::pair<WavefrontEdge*, WavefrontEdge*> result(nullptr, nullptr);
-        for  (auto&s:edges) {
-            if (s._head == pivotVertex) { assert(!result.first); result.first = &s; }
-            else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
-        }
-        return result;
-    }
-
-    static auto FindInAndOut(IteratorRange<const WavefrontEdge*> edges, unsigned pivotVertex) -> std::pair<const WavefrontEdge*, const WavefrontEdge*>
-    {
-        std::pair<const WavefrontEdge*, const WavefrontEdge*> result(nullptr, nullptr);
-        for  (auto&s:edges) {
-            if (s._head == pivotVertex) { assert(!result.first); result.first = &s; }
-            else if (s._tail == pivotVertex) { assert(!result.second); result.second = &s; }
+        std::pair<Iterator, Iterator> result { nullptr, nullptr };
+        for  (auto s=edges.begin(); s!=edges.end(); ++s) {
+            if (s->_head == pivotVertex) { assert(!result.first); result.first = s; }
+            else if (s->_tail == pivotVertex) { assert(!result.second); result.second = s; }
         }
         return result;
     }
@@ -1700,8 +1691,8 @@ namespace XLEMath
 
 			// reassign the edges on either side of the collapse group to
 			// point to the new vertex
-			auto tail = FindInAndOut(MakeIteratorRange(loop._edges), group._tail).first;
-			auto head = FindInAndOut(MakeIteratorRange(loop._edges), group._head).second;
+			auto tail = FindInAndOut(MakeIteratorRange(loop._edges).template Cast<WavefrontEdge*>(), group._tail).first;
+			auto head = FindInAndOut(MakeIteratorRange(loop._edges).template Cast<WavefrontEdge*>(), group._head).second;
 			assert(tail && head);
 			tail->_head = group._newVertex;
 			head->_tail = group._newVertex;
@@ -1940,7 +1931,7 @@ namespace XLEMath
 		if (originVertex == ~0u)
 			originVertex = AddSteinerVertex(dst, Expand(vert._position, vert._initialTime));
 
-		auto inAndOut = FindInAndOut(MakeIteratorRange(loop._edges), v);
+		auto inAndOut = FindInAndOut(MakeIteratorRange(loop._edges).template Cast<const WavefrontEdge*>(), v);
 		unsigned leftFace = ~0u, rightFace = ~0u;
 		if (inAndOut.first) leftFace = inAndOut.first->_rightFace;
 		if (inAndOut.second) rightFace = inAndOut.second->_rightFace;

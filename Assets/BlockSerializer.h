@@ -49,18 +49,9 @@ namespace Assets
         void    SerializeValue  ( float     value );
         void    SerializeValue  ( const std::string& value );
         void    AddPadding      ( unsigned sizeInBytes );
-
-        template<typename Type, typename Allocator>
-            void    SerializeRaw    ( const std::vector<Type, Allocator>& value );
-
-		template<typename Type>
-            void    SerializeRaw    ( const SerializableVector<Type>& value );
-
-		template<typename Type, size_t Count>
-			void    SerializeRaw	( Type      (&type)[Count] ); 
 			
 		template<typename Type>
-            void    SerializeRaw    ( Type      type );
+            void    SerializeRaw    ( const Type& type );
 
         std::unique_ptr<uint8[]>        AsMemoryBlock() const;
         size_t                          Size() const;
@@ -204,28 +195,8 @@ namespace Assets
         SerializeSubBlock(temporaryBlock, SpecialBuffer::Unknown);
     }
 
-    template<typename Type, typename Allocator>
-        void    NascentBlockSerializer::SerializeRaw(const std::vector<Type, Allocator>& vector)
-    {
-            // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(MakeIteratorRange(vector), NascentBlockSerializer::SpecialBuffer::Vector);
-    }
-
-	template<typename Type>
-        void    NascentBlockSerializer::SerializeRaw(const SerializableVector<Type>& vector)
-    {
-            // serialize the vector using just a raw copy of the contents
-        SerializeRawSubBlock(MakeIteratorRange(vector), NascentBlockSerializer::SpecialBuffer::Vector);
-    }
-
-	template<typename Type, size_t Count>
-		void    NascentBlockSerializer::SerializeRaw(Type(&type)[Count])
-	{
-		PushBackRaw(type, sizeof(Type)*Count);
-	}
-
     template<typename Type>
-        void    NascentBlockSerializer::SerializeRaw(Type      type)
+        void    NascentBlockSerializer::SerializeRaw(const Type& type)
     {
         PushBackRaw(&type, sizeof(Type));
     }
