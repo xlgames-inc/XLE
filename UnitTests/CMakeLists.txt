@@ -8,6 +8,7 @@ add_executable(
     Utility/StreamFormatterTests.cpp
     Utility/ConversionPatterns.cpp
     Utility/ClassAccessorsTests.cpp
+    Utility/PreprocessorInterpreterTests.cpp
     Math/BasicMaths.cpp
     Math/MathSerialization.cpp
     OSServices/OSServicesAsync.cpp

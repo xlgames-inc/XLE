@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +9,6 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/FunctionUtils.h"
 #include "../../Utility/MemoryUtils.h"
-#include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/FastParseValue.h"
 #include <stdexcept>
@@ -351,35 +348,6 @@ namespace UnitTests
         REQUIRE(
             ConstHash64<'1234', '5678', '90qw', 'erty'>::Value ==
             ConstHash64FromString(s1.begin(), s1.end()));
-    }
-
-    TEST_CASE( "Utilities-ConditionalPreprocessingTest", "[utility]" )
-    {
-        const char* input = R"--(
-            Token0 Token1
-            #if SELECTOR_0 || SELECTOR_1
-                #if SELECTOR_2
-                    Token2
-                #endif
-                Token3
-            #endif
-        )--";
-
-        ConditionalProcessingTokenizer tokenizer(input);
-
-        REQUIRE(std::string("Token0") == tokenizer.GetNextToken()._value.AsString());
-        REQUIRE(std::string("") == tokenizer._preprocessorContext.GetCurrentConditionString());
-
-        REQUIRE(std::string("Token1") == tokenizer.GetNextToken()._value.AsString());
-        REQUIRE(std::string("") == tokenizer._preprocessorContext.GetCurrentConditionString());
-
-        REQUIRE(std::string("Token2") == tokenizer.GetNextToken()._value.AsString());
-        REQUIRE(std::string("(SELECTOR_2) && (SELECTOR_0 || SELECTOR_1)") == tokenizer._preprocessorContext.GetCurrentConditionString());
-
-        REQUIRE(std::string("Token3") == tokenizer.GetNextToken()._value.AsString());
-        REQUIRE(std::string("(SELECTOR_0 || SELECTOR_1)") == tokenizer._preprocessorContext.GetCurrentConditionString());
-
-        REQUIRE(tokenizer.PeekNextToken()._value.IsEmpty());
     }
 
     TEST_CASE( "Utilities-FastParseValue (integer)", "[utility]" )

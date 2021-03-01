@@ -12,13 +12,19 @@ namespace Utility
 {
 	class ParameterBox;
 
-    bool EvaluatePreprocessorExpression(
-        StringSection<> input,
-        const std::unordered_map<std::string, int>& definedTokens);
+	bool EvaluatePreprocessorExpression(
+		StringSection<> input,
+		const std::unordered_map<std::string, int>& definedTokens);
 
 	bool EvaluatePreprocessorExpression(
-        StringSection<> input,
-        IteratorRange<const ParameterBox**> definedTokens);
+		StringSection<> input,
+		IteratorRange<const ParameterBox**> definedTokens);
+
+	struct RelevanceTable
+	{
+		std::unordered_map<std::string, std::string> _items;
+	};
+	RelevanceTable CalculatePreprocessorExpressionRevelance(StringSection<> input);
 }
 
 using namespace Utility;
