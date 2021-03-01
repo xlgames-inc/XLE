@@ -17,9 +17,9 @@ namespace Assets
         ////////////////////////////////////////////////////////////
 
     template<typename Type>
-        void PushBack(std::vector<uint8>& buffer, const Type& type)
+        void PushBack(std::vector<uint8_t>& buffer, const Type& type)
     {
-        std::copy(  (const uint8*)&type, (const uint8*)PtrAdd(&type, sizeof(Type)), 
+        std::copy(  (const uint8_t*)&type, (const uint8_t*)PtrAdd(&type, sizeof(Type)), 
                     std::back_inserter(buffer));
     }
 
@@ -56,7 +56,7 @@ namespace Assets
         newPointer._specialBuffer    = specialBuffer;
         _internalPointers.push_back(newPointer);
 
-        std::copy((const uint8*)range.begin(), (const uint8*)range.end(), std::back_inserter(_trailingSubBlocks));
+        std::copy((const uint8_t*)range.begin(), (const uint8_t*)range.end(), std::back_inserter(_trailingSubBlocks));
 
             //
             //      =<>=    Write blank space for this special buffer   =<>=
@@ -64,33 +64,33 @@ namespace Assets
         PushBackPlaceholder(specialBuffer);
     }
 
-    void    NascentBlockSerializer::SerializeValue(uint8     value)
+    void    NascentBlockSerializer::SerializeValue(uint8_t     value)
     {
-        std::copy(  (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)), 
+        std::copy(  (const uint8_t*)&value, (const uint8_t*)PtrAdd(&value, sizeof(value)), 
                     std::back_inserter(_memory));
     }
 
-    void    NascentBlockSerializer::SerializeValue(uint16    value)
+    void    NascentBlockSerializer::SerializeValue(uint16_t    value)
     {
-        std::copy(  (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)), 
+        std::copy(  (const uint8_t*)&value, (const uint8_t*)PtrAdd(&value, sizeof(value)), 
                     std::back_inserter(_memory));
     }
 
-    void    NascentBlockSerializer::SerializeValue(uint32    value)
+    void    NascentBlockSerializer::SerializeValue(uint32_t    value)
     {
-        std::copy(  (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)), 
+        std::copy(  (const uint8_t*)&value, (const uint8_t*)PtrAdd(&value, sizeof(value)), 
                     std::back_inserter(_memory));
     }
 
-    void    NascentBlockSerializer::SerializeValue(uint64    value)
+    void    NascentBlockSerializer::SerializeValue(uint64_t    value)
     {
-        std::copy(  (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)), 
+        std::copy(  (const uint8_t*)&value, (const uint8_t*)PtrAdd(&value, sizeof(value)), 
                     std::back_inserter(_memory));
     }
 
     void    NascentBlockSerializer::SerializeValue(float     value)
     {
-        std::copy(  (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)), 
+        std::copy(  (const uint8_t*)&value, (const uint8_t*)PtrAdd(&value, sizeof(value)), 
                     std::back_inserter(_memory));
     }
 
@@ -101,13 +101,13 @@ namespace Assets
 
     void NascentBlockSerializer::PushBackRaw(const void* data, size_t size)
     {
-        std::copy(  (const uint8*)data, (const uint8*)PtrAdd(data, size), 
+        std::copy(  (const uint8_t*)data, (const uint8_t*)PtrAdd(data, size), 
                     std::back_inserter(_memory));
     }
 
     void NascentBlockSerializer::PushBackRaw_SubBlock(const void* data, size_t size)
     {
-        std::copy(  (const uint8*)data, (const uint8*)PtrAdd(data, size), 
+        std::copy(  (const uint8_t*)data, (const uint8_t*)PtrAdd(data, size), 
                     std::back_inserter(_trailingSubBlocks));
     }
 
@@ -193,9 +193,9 @@ namespace Assets
             + _internalPointers.size() * sizeof(InternalPointer);
     }
 
-    std::unique_ptr<uint8[]>      NascentBlockSerializer::AsMemoryBlock() const
+    std::unique_ptr<uint8_t[]>      NascentBlockSerializer::AsMemoryBlock() const
     {
-        std::unique_ptr<uint8[]> result = std::make_unique<uint8[]>(Size());
+        std::unique_ptr<uint8_t[]> result = std::make_unique<uint8_t[]>(Size());
 
         ((Header*)result.get())->_rawMemorySize = _memory.size() + _trailingSubBlocks.size();
         ((Header*)result.get())->_internalPointerCount = _internalPointers.size();
@@ -233,8 +233,8 @@ namespace Assets
 
     static void SetPtr(void* dst, uint64_t value)
     {
-        ((uint32*)dst)[0] = (uint32)value;
-        ((uint32*)dst)[1] = (uint32)(value >> 32ull);
+        ((uint32_t*)dst)[0] = (uint32_t)value;
+        ((uint32_t*)dst)[1] = (uint32_t)(value >> 32ull);
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
@@ -287,10 +287,10 @@ namespace Assets
         return size_t(h._rawMemorySize + h._internalPointerCount * sizeof(NascentBlockSerializer::InternalPointer) + sizeof(Header));
     }
 #pragma GCC diagnostic pop
-    std::unique_ptr<uint8[]>  Block_Duplicate(const void* block)
+    std::unique_ptr<uint8_t[]>  Block_Duplicate(const void* block)
     {
         size_t size = Block_GetSize(block);
-        std::unique_ptr<uint8[]> result = std::make_unique<uint8[]>(size);
+        std::unique_ptr<uint8_t[]> result = std::make_unique<uint8_t[]>(size);
         XlCopyMemory(result.get(), block, size);
         return result;
     }
