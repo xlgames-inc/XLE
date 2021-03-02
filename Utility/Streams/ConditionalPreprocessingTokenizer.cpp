@@ -4,6 +4,7 @@
 
 #include "ConditionalPreprocessingTokenizer.h"
 #include "../StringFormat.h"
+#include <iostream>
 
 namespace Utility
 {
@@ -572,15 +573,76 @@ namespace Utility
                         break;
                     }
 
-                if (foundNonWhitespaceChar) {
-                    auto expr = Internal::AsExpressionTokenList(
-                        activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+                bool unconditionalSet = true;
+                bool gotNotDefinedCheck = false;
+                for (const auto& condition:conditionsStack) {
+                    if (!condition._negativeCond.empty()) {
+                        unconditionalSet = false;
+                        break;
+                    }
+                    // We're looking for "just true" or "just !defined(X)"
+                    if (condition._positiveCond.size() == 1) {
+                        if (condition._positiveCond[0] != 1) {
+                            unconditionalSet = false;
+                            break;
+                        }
+                    } else if (condition._positiveCond.size() == 3) {
+                        auto& token0 = tokenDictionary._tokenDefinitions[condition._positiveCond[0]];
+                        auto& token1 = tokenDictionary._tokenDefinitions[condition._positiveCond[1]];
+                        auto& token2 = tokenDictionary._tokenDefinitions[condition._positiveCond[2]];
+                        bool matchingUndefinedCheck =
+                            token0._type == Internal::TokenDictionary::TokenType::UnaryMarker
+                            && token1._type == Internal::TokenDictionary::TokenType::IsDefinedTest && XlEqString(symbol._value, token1._value)
+                            && token2._type == Internal::TokenDictionary::TokenType::Operation && XlEqString(token2._value, "!");
+                        if (!matchingUndefinedCheck) {
+                            unconditionalSet = false;
+                            break;
+                        }
+                        gotNotDefinedCheck = true;
+                    } else {
+                        break;
+                    }
+                }
 
-                    // Note that we don't want to calculate any relevance information yet. We will do
-                    // that if the substitution is used, however
-                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                // If we're defining something with no value, and the only condition on the stack is a check to see
+                // if that same symbol defined; let's assume this is a header guard type pattern, and just wipe out
+                // the condition on the stack
+                auto headerGuardDetection = !foundNonWhitespaceChar && unconditionalSet && gotNotDefinedCheck && conditionsStack.size()==1;
+                if (!headerGuardDetection) {
+                    // It could be an unconditional substitution, or it could be set in different ways
+                    // depending on the conditions on the stack.
+                    // Conditional sets add some complexity -- we can't actually think of it as just a straight
+                    // substitution anymore; but instead just something that pulls in an extra relevance table
+                    if (unconditionalSet) {
+                        if (foundNonWhitespaceChar) {
+                            auto expr = Internal::AsExpressionTokenList(
+                                activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+
+                            // Note that we don't want to calculate any relevance information yet. We will do
+                            // that if the substitution is used, however
+                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                        } else {
+                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                        }
+                    } else {
+                        // The state of this variable will vary based on
+                        // We can still support this, but it requires building a relevance table for
+                        // the symbol here; and then any expression that uses this symbol should then
+                        // merge in the relevance information for it
+                        std::cout << "Conditional substitution for " << symbol._value << " ignored." << std::endl;
+                    }
                 } else {
-                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                    auto tableEntry = tokenDictionary.GetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+                    auto i = relevanceTable.find(tableEntry);
+                    if (i != relevanceTable.end())
+                        relevanceTable.erase(i);
+
+                    // By the check above, any size 3 positive conditions are just !defined(X).
+                    // We will just clear them out here, because we won't want them to appear in the
+                    // relevance conditions
+                    for (auto& condition:conditionsStack)
+                        if (condition._positiveCond.size() == 3)
+                            conditionsStack[0]._positiveCond = {1};
                 }
                 
             } else if (XlEqStringI(directive._value, "undef")) {
