@@ -5,6 +5,7 @@
 #pragma once
 
 #include "StreamFormatter.h"
+#include "PreprocessorInterpreter.h"
 #include "../StringUtils.h"
 #include <string>
 #include <vector>
@@ -92,5 +93,14 @@ namespace Utility
         void PreProc_SkipWhitespace();
         auto PreProc_GetNextToken() -> Token;
     };
+
+    class PreprocessorAnalysis
+    {
+    public:
+        RelevanceTable _relevanceTable;
+        std::unordered_map<std::string, std::string> _sideEffects;
+    };
+
+    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input);
 }
 

@@ -613,6 +613,13 @@ namespace Utility
                 && XlEqStringI(StringSection<T>(a.end() - b.Length(), a.end()), b);
         }
 
+    std::string Concatenate(StringSection<> zero, StringSection<> one);
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two);
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three);
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four);
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five);
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five, StringSection<> six);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if REDIRECT_CLIB_WITH_PREPROCESSOR

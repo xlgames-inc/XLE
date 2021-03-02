@@ -18,6 +18,7 @@ namespace Utility
 
     void ConditionalProcessingTokenizer::SkipWhitespace()
     {
+        // Note -- not supporting block comments or line extensions
         while (_input.begin() != _input.end()) {
             switch (*_input.begin()) {
             case '/':
@@ -112,6 +113,7 @@ namespace Utility
 
     void ConditionalProcessingTokenizer::PreProc_SkipWhitespace()
     {
+        // Note -- not supporting block comments or line extensions
         while (_input.begin() != _input.end()) {
             switch (*_input.begin()) {
             case '/':
@@ -192,6 +194,8 @@ namespace Utility
 
             _preprocessorContext._conditionsStack.push_back({"defined(" + symbol._value.AsString() + ")"});
 
+            ReadUntilEndOfLine();       // skip rest of line
+
         } else if (XlEqStringI(directive._value, "ifndef")) {
 
             auto symbol = PreProc_GetNextToken();
@@ -199,6 +203,8 @@ namespace Utility
                 Throw(FormatException("Expected token in #ifndef", directive._start));
 
             _preprocessorContext._conditionsStack.push_back({"!defined(" + symbol._value.AsString() + ")"});
+
+            ReadUntilEndOfLine();       // skip rest of line
 
         } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
 
@@ -210,16 +216,17 @@ namespace Utility
             auto prevCondition = *(_preprocessorContext._conditionsStack.end()-1);
             _preprocessorContext._conditionsStack.erase(_preprocessorContext._conditionsStack.end()-1);
 
+            auto negCondition = prevCondition._positiveCond;
+            if (!prevCondition._negativeCond.empty())
+                negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
+
             if (XlEqStringI(directive._value, "elif")) {
-                auto negCondition = prevCondition._positiveCond;
-                if (!prevCondition._negativeCond.empty())
-                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
-                _preprocessorContext._conditionsStack.push_back({Remaining().AsString(), negCondition});
+                auto remainingLine = ReadUntilEndOfLine();
+                _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString(), negCondition});
             } else if (XlEqStringI(directive._value, "else")) {
-                auto negCondition = prevCondition._positiveCond;
-                if (!prevCondition._negativeCond.empty())
-                    negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
-                _preprocessorContext._conditionsStack.push_back({"1", prevCondition._positiveCond});
+                _preprocessorContext._conditionsStack.push_back({"1", negCondition});
+
+                ReadUntilEndOfLine();       // skip rest of line
             }
 
         } else {
@@ -285,4 +292,343 @@ namespace Utility
 
     ConditionalProcessingTokenizer::PreprocessorParseContext::PreprocessorParseContext() {}
     ConditionalProcessingTokenizer::PreprocessorParseContext::~PreprocessorParseContext() {}
+
+    struct ParserHelper
+    {
+        StringSection<>     _input;
+        unsigned            _lineIndex;
+        const void*         _lineStart;
+
+        void SkipUntilNextPreproc()
+        {
+            bool preprocValid = true;
+            // Note -- not supporting block comments or line extensions
+            while (_input.begin() != _input.end()) {
+                switch (*_input.begin()) {
+                case '/':
+                    if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
+                        // read upto, but don't swallow the next newline (line extension not supported for these comments)
+                        _input._start += 2;
+                        ReadUntilEndOfLine();
+                        break;
+                    } else
+                        return;
+
+                case '\r':  // (could be an independant new line, or /r/n combo)
+                    ++_input._start;
+                    if (_input.begin() != _input.end() &&  *_input.begin() == '\n')
+                        ++_input._start;
+                    ++_lineIndex; _lineStart = _input.begin();
+                    preprocValid = true;
+                    break;
+
+                case '\n':  // (independant new line. A following /r will be treated as another new line)
+                    ++_input._start;
+                    ++_lineIndex; _lineStart = _input.begin();
+                    preprocValid = true;
+                    break;
+
+                case '#':
+                    if (preprocValid) {
+                        ++_input._start;
+                        return;
+                    }
+                    // else intentional fall-through
+                default:
+                    ++_input._start;
+                    break;
+                }
+            }
+        }
+
+        struct Token
+        {
+            StringSection<> _value;
+            StreamLocation _start, _end;
+        };
+
+        StreamLocation GetLocation() const
+        {
+            StreamLocation result;
+            result._charIndex = 1 + unsigned(size_t(_input.begin()) - size_t(_lineStart));
+            result._lineIndex = 1 + _lineIndex;
+            return result;
+        }
+
+        auto ReadUntilEndOfLine() -> Token
+        {
+            auto startLocation = GetLocation();
+            auto startOfToken = _input.begin();
+
+            while (_input.begin() != _input.end() && *_input.begin() != '\r' && *_input.begin() != '\n') {
+                // Also terminate if we hit a "//" style comment
+                if (*_input._start == '/' && (_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/')
+                    break;
+                ++_input._start;
+            }
+
+            return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
+        }
+
+        void PreProc_SkipWhitespace()
+        {
+            // Note -- not supporting block comments or line extensions
+            while (_input.begin() != _input.end()) {
+                switch (*_input.begin()) {
+                case '/':
+                    if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
+                        // read upto, but don't swallow the next newline (line extension not supported for these comments)s
+                        _input._start += 2;
+                        ReadUntilEndOfLine();
+                    }
+                    return;
+
+                case ' ':
+                case '\t':
+                    ++_input._start;
+                    continue;       // back to top of the loop
+
+                default:
+                    // something other than whitespace; time to get out
+                    // (we also get here on a newline char)
+                    return;
+                }
+            }
+        }
+
+        auto PreProc_GetNextToken() -> Token
+        {
+            // we need a special implementation for this for reading the preprocessor tokens themselves,
+            // because the rules are slightly different (for example, we don't want to start parsing
+            // preprocessor tokens recursively)
+            PreProc_SkipWhitespace();
+
+            auto startLocation = GetLocation();
+
+            auto startOfToken = _input.begin();
+            if (_input.begin() != _input.end()) {
+                if (IsIdentifierOrNumericChar(*_input.begin())) {
+                    while ((_input.begin() != _input.end()) && IsIdentifierOrNumericChar(*_input.begin()))
+                        ++_input._start;
+                } else {
+                    if (*_input.begin() == '\r' || *_input.begin() == '\n')
+                        return {};      // hit newline, no more tokens
+                    ++_input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
+                }
+            }
+
+            return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
+        }
+    };
+
+    struct Cond
+    {
+        Internal::ExpressionTokenList _positiveCond;
+        Internal::ExpressionTokenList _negativeCond;
+    };
+
+    Internal::ExpressionTokenList GetCurrentCondition(IteratorRange<const Cond*> conditionStack)
+    {
+        Internal::ExpressionTokenList result;
+        result.push_back(1);    // start with "true"
+
+        for (const auto&c:conditionStack) {
+            // The "_negativeCond" must be false and the _positiveCond must be true
+            if (!c._negativeCond.empty())
+                result = Internal::AndNotExpression(result, c._negativeCond);
+            if (!c._positiveCond.empty())
+                result = Internal::AndExpression(result, c._positiveCond);
+        }
+
+        return result;
+    }
+    
+    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input)
+    {
+        // Walk through the input string, extracting all preprocessor operations
+        // We need to consider "//" comments, but we don't support block comments or line extensions
+
+        ParserHelper helper;
+        helper._input = input;
+        helper._lineIndex = 0;
+        helper._lineStart = input.begin();
+
+        Internal::TokenDictionary tokenDictionary;
+        std::vector<Cond> conditionsStack;
+
+        Internal::WorkingRelevanceTable relevanceTable;
+        Internal::PreprocessorSubstitutions activeSubstitutions;
+
+        while (true) {
+            helper.SkipUntilNextPreproc();
+            auto directive = helper.PreProc_GetNextToken();
+            if (directive._value.IsEmpty()) break;
+
+            if (XlEqStringI(directive._value, "if")) {
+
+                // the rest of the line should be some preprocessor condition expression
+                helper.PreProc_SkipWhitespace();
+                auto remainingLine = helper.ReadUntilEndOfLine();
+
+                auto expr = Internal::AsExpressionTokenList(
+                    tokenDictionary, remainingLine._value, activeSubstitutions);
+
+                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                    tokenDictionary, expr);
+
+                relevanceTable = Internal::MergeRelevanceTables(
+                    relevanceTable, {},
+                    exprRelevance, GetCurrentCondition(conditionsStack));
+
+                conditionsStack.push_back({expr});
+
+            } else if (XlEqStringI(directive._value, "ifdef")) {
+
+                auto symbol = helper.PreProc_GetNextToken();
+                if (symbol._value.IsEmpty())
+                    Throw(FormatException("Expected token in #ifdef", directive._start));
+
+                Internal::ExpressionTokenList expr;
+                tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+
+                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                    tokenDictionary, expr);
+
+                relevanceTable = Internal::MergeRelevanceTables(
+                    relevanceTable, {},
+                    exprRelevance, GetCurrentCondition(conditionsStack));
+
+                conditionsStack.push_back({expr});
+                helper.ReadUntilEndOfLine();       // skip rest of line
+
+            } else if (XlEqStringI(directive._value, "ifndef")) {
+
+                auto symbol = helper.PreProc_GetNextToken();
+                if (symbol._value.IsEmpty())
+                    Throw(FormatException("Expected token in #ifndef", directive._start));
+
+                Internal::ExpressionTokenList expr;
+                tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+                expr = Internal::InvertExpression(expr);
+
+                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                    tokenDictionary, expr);
+
+                relevanceTable = Internal::MergeRelevanceTables(
+                    relevanceTable, {},
+                    exprRelevance, GetCurrentCondition(conditionsStack));
+
+                conditionsStack.push_back({expr});
+                helper.ReadUntilEndOfLine();       // skip rest of line
+
+            } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
+
+                if (conditionsStack.empty())
+                    Throw(FormatException(
+                        StringMeld<256>() << "endif/else/elif when there has been no if",
+                        directive._start));
+
+                // Since we're at the same layer of nesting as the #if that we're trailing,
+                // we wil actually modify the top condition on the stack, rather than pushing
+                // and going to a deaper level
+                auto prevCondition = *(conditionsStack.end()-1);
+                conditionsStack.erase(conditionsStack.end()-1);
+
+                // The "_negativeCond" must be false for this section to be value
+                auto negCondition = Internal::AndExpression(prevCondition._positiveCond, prevCondition._negativeCond);
+
+                if (XlEqStringI(directive._value, "elif")) {
+
+                    auto remainingLine = helper.ReadUntilEndOfLine();
+
+                    auto expr = Internal::AsExpressionTokenList(
+                        tokenDictionary, remainingLine._value, activeSubstitutions);
+
+                    auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                        tokenDictionary, expr);
+
+                    auto conditions = Internal::AndNotExpression(GetCurrentCondition(conditionsStack), negCondition);
+                    relevanceTable = Internal::MergeRelevanceTables(
+                        relevanceTable, {},
+                        exprRelevance, conditions);
+
+                    conditionsStack.push_back({expr, negCondition});
+                } else if (XlEqStringI(directive._value, "else")) {
+                    conditionsStack.push_back({{}, negCondition});
+                    helper.ReadUntilEndOfLine();       // skip rest of line
+                }
+
+            } else if (XlEqStringI(directive._value, "define")) {
+
+                auto symbol = helper.PreProc_GetNextToken();
+                if (symbol._value.IsEmpty())
+                    Throw(FormatException("Expected token in #define", directive._start));
+
+                auto remainingLine = helper.ReadUntilEndOfLine();
+                bool foundNonWhitespaceChar = false;
+                for (auto c:remainingLine._value)
+                    if (c!=' ' && c!='\t') {
+                        foundNonWhitespaceChar = true;
+                        break;
+                    }
+
+                if (foundNonWhitespaceChar) {
+                    auto expr = Internal::AsExpressionTokenList(
+                        activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+
+                    // Note that we don't want to calculate any relevance information yet. We will do
+                    // that if the substitution is used, however
+                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                } else {
+                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                }
+                
+            } else if (XlEqStringI(directive._value, "undef")) {
+
+                // Remove a substitution (not that undef'ing something that is not defined is silently ignored)
+                auto symbol = helper.PreProc_GetNextToken();
+                if (symbol._value.IsEmpty())
+                    Throw(FormatException("Expected token in #undef", directive._start));
+
+                auto subs = activeSubstitutions._items.find(symbol._value.AsString());
+                if (subs != activeSubstitutions._items.end())
+                    activeSubstitutions._items.erase(subs);
+
+            } else if (XlEqStringI(directive._value, "include")) {
+
+                Throw(FormatException("Include directives not yet supported", directive._start));
+
+            } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
+
+                // These don't have any effects relevant to us. We can jsut go ahead and skip them
+                helper.SkipUntilNextPreproc();
+
+            } else {
+
+                Throw(FormatException(
+                    StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
+                    directive._start));
+
+            }
+        }
+
+        PreprocessorAnalysis result;
+		for (const auto&i:relevanceTable) {
+			result._relevanceTable._items.insert(
+				std::make_pair(
+					tokenDictionary._tokenDefinitions[i.first]._value,
+					tokenDictionary.AsString(i.second)));
+		}
+        for (const auto&i:activeSubstitutions._items) {
+            if (!i.second.empty()) {
+                result._sideEffects.insert(
+                    std::make_pair(
+                        i.first,
+                        activeSubstitutions._dictionary.AsString(i.second)));
+            } else {
+                result._sideEffects.insert(std::make_pair(i.first, std::string{}));
+            }
+        }
+		return result;
+    }
 }

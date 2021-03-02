@@ -1977,4 +1977,72 @@ size_t XlWideToMulti(utf8* dst, size_t count, const ucs4* src)
 
 #endif
 
+    std::string Concatenate(StringSection<> zero, StringSection<> one)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        return result;
+    }
+    
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size() + two.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        result.insert(result.end(), two.begin(), two.end());
+        return result;
+    }
+
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size() + two.size() + three.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        result.insert(result.end(), two.begin(), two.end());
+        result.insert(result.end(), three.begin(), three.end());
+        return result;
+    }
+    
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        result.insert(result.end(), two.begin(), two.end());
+        result.insert(result.end(), three.begin(), three.end());
+        result.insert(result.end(), four.begin(), four.end());
+        return result;
+    }
+
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size() + five.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        result.insert(result.end(), two.begin(), two.end());
+        result.insert(result.end(), three.begin(), three.end());
+        result.insert(result.end(), four.begin(), four.end());
+        result.insert(result.end(), five.begin(), five.end());
+        return result;
+    }
+    
+    std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five, StringSection<> six)
+    {
+        std::string result;
+        result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size() + five.size() + six.size());
+        result.insert(result.end(), zero.begin(), zero.end());
+        result.insert(result.end(), one.begin(), one.end());
+        result.insert(result.end(), two.begin(), two.end());
+        result.insert(result.end(), three.begin(), three.end());
+        result.insert(result.end(), four.begin(), four.end());
+        result.insert(result.end(), five.begin(), five.end());
+        result.insert(result.end(), six.begin(), six.end());
+        return result;
+    }
 }

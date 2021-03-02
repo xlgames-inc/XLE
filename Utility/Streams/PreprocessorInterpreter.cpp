@@ -275,436 +275,439 @@ namespace Utility
 		return calculator::calculate(input.AsString().c_str(), &vars).asBool();
 	}
 
-	class AbstractExpression
+	namespace Internal
 	{
-	public:
-		enum class TokenType { UnaryMarker, Literal, Variable, IsDefinedTest, Operation };
-		struct Token
+		static bool operator==(const TokenDictionary::Token& lhs, const TokenDictionary::Token& rhs)
 		{
-			TokenType _type;
-			std::string _value;
-		};
-		std::vector<Token> _tokens;
-		std::vector<unsigned> _reversePolishOrdering;		// we use this indirection here because we're expecting tokens (particular variables) to be frequently reused
-	};
-
-	using AbstractSubExpression = std::vector<unsigned>;
-
-	static bool operator==(const AbstractExpression::Token& lhs, const AbstractExpression::Token& rhs)
-	{
-		return lhs._type == rhs._type && lhs._value == rhs._value;
-	}
-
-	static bool operator<(const AbstractExpression::Token& lhs, const AbstractExpression::Token& rhs)
-	{
-		if (lhs._type < rhs._type) return true;
-		if (lhs._type > rhs._type) return false;
-		return lhs._value < rhs._value;
-	}
-
-	static void PushBackToken(AbstractExpression& expr, AbstractExpression::TokenType type, const std::string& value = {});
-
-	using WorkingRelevanceTable = std::map<unsigned, AbstractSubExpression>;
-
-	static WorkingRelevanceTable MergeRelevanceTables(
-		const WorkingRelevanceTable& lhs, const AbstractSubExpression& lhsCondition,
-		const WorkingRelevanceTable& rhs, const AbstractSubExpression& rhsCondition);
-
-	static AbstractSubExpression InvertExpression(const AbstractSubExpression& expr);
-	static AbstractSubExpression AddExpression(const AbstractSubExpression& lhs, const AbstractSubExpression& rhs);
-	static AbstractSubExpression OrExpression(const AbstractSubExpression& lhs, const AbstractSubExpression& rhs);
-
-	static RelevanceTable AsRelevanceTable(class AbstractExpression& tokenTable, const WorkingRelevanceTable& input);
-
-	static const unsigned s_fixedTokenFalse = 0;
-	static const unsigned s_fixedTokenTrue = 1;
-	static const unsigned s_fixedTokenLogicalAnd = 2;
-	static const unsigned s_fixedTokenLogicalOr = 3;
-	static const unsigned s_fixedTokenNot = 4;
-	static const unsigned s_fixedTokenUnaryMarker = 5;
-
-	AbstractExpression AsAbstractExpression(TokenQueue_t&& input)
-	{
-		AbstractExpression result;
-		result._tokens.push_back({AbstractExpression::TokenType::Literal, "0"});		// s_fixedTokenFalse
-		result._tokens.push_back({AbstractExpression::TokenType::Literal, "1"});		// s_fixedTokenTrue
-		result._tokens.push_back({AbstractExpression::TokenType::Operation, "&&"});		// s_fixedTokenLogicalAnd
-		result._tokens.push_back({AbstractExpression::TokenType::Operation, "||"});		// s_fixedTokenLogicalOr
-		result._tokens.push_back({AbstractExpression::TokenType::Operation, "!"});		// s_fixedTokenNot
-		result._tokens.push_back({AbstractExpression::TokenType::UnaryMarker});			// s_fixedTokenUnaryMarker
-		result._reversePolishOrdering.reserve(input.size());
-
-		while (!input.empty()) {
-			TokenBase& base  = *input.front();
-			
-			if (base.type == OP) {
-				auto op = static_cast<Token<std::string>*>(&base)->val;
-
-				if (op == "()") {
-					Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
-				} else {
-					PushBackToken(result, AbstractExpression::TokenType::Operation, op);
-				}
-
-			} else if (base.type == UNARY) {
-
-				PushBackToken(result, AbstractExpression::TokenType::UnaryMarker);
-			
-			} else if (base.type == VAR) {
-
-				std::string key = static_cast<Token<std::string>*>(&base)->val;
-				PushBackToken(result, AbstractExpression::TokenType::Variable, key);
-
-			} else if (base.type & REF) {
-
-				// This will appear when calling the "defined" pseudo-function
-				// We want to transform the pattern
-				//		<REF "&Function defined()"> <VARIABLE var> <Op "()">
-				// to be just 
-				//		<IsDefinedTest var>
-
-				auto* resolvedRef = static_cast<RefToken*>(&base)->resolve();
-				if (!resolvedRef || static_cast<CppFunction*>(resolvedRef)->name() != "defined()")
-					Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
-
-				input.pop();
-				if (input.empty())
-					Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-				TokenBase& varToTest  = *input.front();
-				if (varToTest.type != VAR)
-					Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-				std::string key = static_cast<Token<std::string>*>(&varToTest)->val;
-				input.pop();
-				if (input.empty())
-					Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-				TokenBase& callOp  = *input.front();
-				if (callOp.type != OP || static_cast<Token<std::string>*>(&callOp)->val != "()")
-					Throw(std::runtime_error("Missing call token for defined() function in token stream"));
-				// (final pop still happens below)
-
-				PushBackToken(result, AbstractExpression::TokenType::IsDefinedTest, key);
-				
-			} else {
-				
-				std::string literal = packToken::str(&base);
-				PushBackToken(result, AbstractExpression::TokenType::Literal, literal);
-
-			}
-
-			input.pop();
+			return lhs._type == rhs._type && lhs._value == rhs._value;
 		}
 
-		return result;
-	}
+		static bool operator<(const TokenDictionary::Token& lhs, const TokenDictionary::Token& rhs)
+		{
+			if (lhs._type < rhs._type) return true;
+			if (lhs._type > rhs._type) return false;
+			return lhs._value < rhs._value;
+		}
 
-	AbstractExpression AsAbstractExpression(StringSection<> input)
-	{
-		TokenMap vars;
-		auto rpn = calculator::toRPN(input.AsString().c_str(), vars);
-		return AsAbstractExpression(std::move(rpn));
+		static const unsigned s_fixedTokenFalse = 0;
+		static const unsigned s_fixedTokenTrue = 1;
+		static const unsigned s_fixedTokenLogicalAnd = 2;
+		static const unsigned s_fixedTokenLogicalOr = 3;
+		static const unsigned s_fixedTokenNot = 4;
+		static const unsigned s_fixedTokenUnaryMarker = 5;
+
+		ExpressionTokenList AsAbstractExpression(
+			TokenDictionary& dictionary,
+			TokenQueue_t&& input,
+			const PreprocessorSubstitutions& substitutions)
+		{
+			ExpressionTokenList reversePolishOrdering;		// we use this indirection here because we're expecting tokens (particular variables) to be frequently reused
+			reversePolishOrdering.reserve(input.size());
+
+			while (!input.empty()) {
+				TokenBase& base  = *input.front();
+				
+				if (base.type == OP) {
+					auto op = static_cast<Token<std::string>*>(&base)->val;
+
+					if (op == "()") {
+						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
+					} else {
+						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Operation, op);
+					}
+
+				} else if (base.type == UNARY) {
+
+					dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::UnaryMarker);
+				
+				} else if (base.type == VAR) {
+
+					std::string key = static_cast<Token<std::string>*>(&base)->val;
+					auto sub = substitutions._items.find(key);
+					if (sub == substitutions._items.end()) {
+						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Variable, key);
+					} else {
+						// We need to substitute in the expression provided in the substitutions table
+						// This is used for things like #define
+						// Note that "key" never becomes a token in our output. So no relevance information
+						// will be calculated for it -- but if the expression substituted in refers to variables,
+						// then we can get relevance information for them
+						auto translated = dictionary.Translate(substitutions._dictionary, sub->second);
+						reversePolishOrdering.insert(
+							reversePolishOrdering.end(),
+							translated.begin(), translated.end());
+					}
+
+				} else if (base.type & REF) {
+
+					// This will appear when calling the "defined" pseudo-function
+					// We want to transform the pattern
+					//		<REF "&Function defined()"> <VARIABLE var> <Op "()">
+					// to be just 
+					//		<IsDefinedTest var>
+
+					auto* resolvedRef = static_cast<RefToken*>(&base)->resolve();
+					if (!resolvedRef || static_cast<CppFunction*>(resolvedRef)->name() != "defined()")
+						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
+
+					input.pop();
+					if (input.empty())
+						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+					TokenBase& varToTest  = *input.front();
+					if (varToTest.type != VAR)
+						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+					std::string key = static_cast<Token<std::string>*>(&varToTest)->val;
+					input.pop();
+					if (input.empty())
+						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+					TokenBase& callOp  = *input.front();
+					if (callOp.type != OP || static_cast<Token<std::string>*>(&callOp)->val != "()")
+						Throw(std::runtime_error("Missing call token for defined() function in token stream"));
+					// (final pop still happens below)
+
+					auto sub = substitutions._items.find(key);
+					if (sub == substitutions._items.end()) {
+						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::IsDefinedTest, key);
+					} else {
+						// This is actually doing a defined(...) check on one of our substitutions. We can treat it
+						// as just "true"
+						reversePolishOrdering.push_back(s_fixedTokenTrue);
+					}
+					
+				} else {
+					
+					std::string literal = packToken::str(&base);
+					dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Literal, literal);
+
+				}
+
+				input.pop();
+			}
+
+			return reversePolishOrdering;
+		}
+
+		ExpressionTokenList AsExpressionTokenList(
+			TokenDictionary& dictionary,
+			StringSection<> input,
+			const PreprocessorSubstitutions& substitutions)
+		{
+			TokenMap vars;
+			auto rpn = calculator::toRPN(input.AsString().c_str(), vars);
+			return AsAbstractExpression(dictionary, std::move(rpn), substitutions);
+		}
+
+		ExpressionTokenList AndExpression(const ExpressionTokenList& lhs, const ExpressionTokenList& rhs)
+		{
+			if (lhs.empty()) return rhs;
+			if (rhs.empty()) return lhs;
+
+			if (lhs.size() == 1) {
+				if (lhs[0] == s_fixedTokenTrue) return rhs;
+				if (lhs[0] == s_fixedTokenFalse) return {s_fixedTokenFalse};
+			}
+
+			if (rhs.size() == 1) {
+				if (rhs[0] == s_fixedTokenTrue) return lhs;
+				if (rhs[0] == s_fixedTokenFalse) return {s_fixedTokenFalse};
+			}
+
+			ExpressionTokenList result;
+			result.reserve(lhs.size() + rhs.size() + 1);
+			result.insert(result.end(), lhs.begin(), lhs.end());
+			result.insert(result.end(), rhs.begin(), rhs.end());
+			result.push_back(s_fixedTokenLogicalAnd);
+			return result;
+		}
+
+		ExpressionTokenList OrExpression(const ExpressionTokenList& lhs, const ExpressionTokenList& rhs)
+		{
+			if (lhs.empty()) return rhs;
+			if (rhs.empty()) return lhs;
+
+			if (lhs.size() == 1) {
+				if (lhs[0] == s_fixedTokenTrue) return {s_fixedTokenTrue};
+				if (lhs[0] == s_fixedTokenFalse) return rhs;
+			}
+
+			if (rhs.size() == 1) {
+				if (rhs[0] == s_fixedTokenTrue) return {s_fixedTokenTrue};
+				if (rhs[0] == s_fixedTokenFalse) return lhs;
+			}
+
+			ExpressionTokenList result;
+			result.reserve(lhs.size() + rhs.size() + 1);
+			result.insert(result.end(), lhs.begin(), lhs.end());
+			result.insert(result.end(), rhs.begin(), rhs.end());
+			result.push_back(s_fixedTokenLogicalOr);
+			return result;
+		}
+
+		ExpressionTokenList AndNotExpression(const ExpressionTokenList& lhs, const ExpressionTokenList& rhs)
+		{
+			if (lhs.empty()) return InvertExpression(rhs);
+			if (rhs.empty()) return lhs;
+
+			if (lhs.size() == 1) {
+				if (lhs[0] == s_fixedTokenTrue) return InvertExpression(rhs);
+				if (lhs[0] == s_fixedTokenFalse) return {s_fixedTokenFalse};
+			}
+
+			if (rhs.size() == 1) {
+				if (rhs[0] == s_fixedTokenFalse) return lhs;
+				if (rhs[0] == s_fixedTokenTrue) return {s_fixedTokenFalse};
+			}
+
+			ExpressionTokenList result;
+			result.reserve(lhs.size() + rhs.size() + 3);
+			result.insert(result.end(), lhs.begin(), lhs.end());
+			result.push_back(s_fixedTokenUnaryMarker);
+			result.insert(result.end(), rhs.begin(), rhs.end());
+			result.push_back(s_fixedTokenNot);
+			result.push_back(s_fixedTokenLogicalAnd);
+			return result;
+		}
+
+		ExpressionTokenList InvertExpression(const ExpressionTokenList& expr)
+		{
+			if (expr.size() == 1) {
+				if (expr[0] == s_fixedTokenTrue) return {s_fixedTokenFalse};
+				if (expr[0] == s_fixedTokenFalse) return {s_fixedTokenTrue};
+			}
+
+			ExpressionTokenList result;
+			result.reserve(expr.size() + 2);
+			result.push_back(s_fixedTokenUnaryMarker);
+			result.insert(result.end(), expr.begin(), expr.end());
+			result.push_back(s_fixedTokenNot);
+			return result;
+		}
+
+		WorkingRelevanceTable MergeRelevanceTables(
+			const WorkingRelevanceTable& lhs, const ExpressionTokenList& lhsCondition,
+			const WorkingRelevanceTable& rhs, const ExpressionTokenList& rhsCondition)
+		{
+			WorkingRelevanceTable result;
+
+			// note that we have to use an "ordered" map here to make the merging
+			// efficient. Using an std::unordered_map here would probably result
+			// in a significant amount of re-hashing
+
+			auto lhsi = lhs.begin();
+			auto rhsi = rhs.begin();
+			for (;;) {
+				if (lhsi == lhs.end() && rhsi == rhs.end()) break;
+				while (lhsi != lhs.end() && (rhsi == rhs.end() || lhsi->first < rhsi->first)) {
+					result.insert(std::make_pair(lhsi->first, AndExpression(lhsi->second, lhsCondition)));
+					++lhsi;
+				}
+				while (rhsi != rhs.end() && (lhsi == lhs.end() || rhsi->first < lhsi->first)) {
+					result.insert(std::make_pair(rhsi->first, AndExpression(rhsi->second, rhsCondition)));
+					++rhsi;
+				}
+				if (lhsi != lhs.end() && rhsi != rhs.end() && lhsi->first == rhsi->first) {
+					auto lhsPart = AndExpression(lhsi->second, lhsCondition);
+					auto rhsPart = AndExpression(rhsi->second, rhsCondition);
+					result.insert(std::make_pair(lhsi->first, OrExpression(lhsPart, rhsPart)));
+					++lhsi;
+					++rhsi;
+				}
+			}
+
+			return result;
+		}
+
+		std::string TokenDictionary::AsString(const ExpressionTokenList& subExpression)
+		{
+			std::stack<std::string> evaluation;
+			for (auto tokenIdx:subExpression) {
+				const auto& token = _tokenDefinitions[tokenIdx];
+
+				if (token._type == TokenDictionary::TokenType::Operation) {
+					auto r_token = std::move(evaluation.top()); evaluation.pop();
+					auto l_token = std::move(evaluation.top()); evaluation.pop();
+					if (l_token.empty()) {	// we get an empty string for the unary marker
+						evaluation.push(Concatenate("(", token._value, r_token, ")"));
+					} else {
+						evaluation.push(Concatenate("(", l_token, " ", token._value, " ", r_token, ")"));
+					}
+				} else if (token._type == TokenDictionary::TokenType::UnaryMarker) {
+					evaluation.push({});
+				} else if (token._type == TokenDictionary::TokenType::IsDefinedTest) {
+					evaluation.push(Concatenate("defined(", token._value, ")"));
+				} else {
+					evaluation.push(token._value);
+				}
+			}
+			assert(evaluation.size() == 1);
+			return evaluation.top();
+		}
+
+		/*static RelevanceTable AsRelevanceTable(class TokenDictionary& tokenTable, const WorkingRelevanceTable& input)
+		{
+			RelevanceTable result;
+			for (const auto&e:input) {
+				auto& varToken = tokenTable._tokenDefinitions[e.first];
+				if (varToken._type == TokenDictionary::TokenType::Variable) {
+					result._items.insert(std::make_pair(varToken._value, AsString(tokenTable, e.second)));
+				} else if (varToken._type == TokenDictionary::TokenType::IsDefinedTest) {
+					result._items.insert(std::make_pair(Concatenate("defined(", varToken._value, ")"), AsString(tokenTable, e.second)));
+				} else {
+					assert(0);
+				}
+			}
+			return result;
+		}*/
+
+		unsigned TokenDictionary::GetToken(TokenType type, const std::string& value)
+		{
+			TokenDictionary::Token token { type, value };
+			auto existing = std::find(_tokenDefinitions.begin(), _tokenDefinitions.end(), token);
+			if (existing == _tokenDefinitions.end()) {
+				_tokenDefinitions.push_back(token);
+				return (unsigned)_tokenDefinitions.size() - 1;
+			} else {
+				return (unsigned)std::distance(_tokenDefinitions.begin(), existing);
+			}
+		}
+
+		void TokenDictionary::PushBack(ExpressionTokenList& tokenList, TokenDictionary::TokenType type, const std::string& value)
+		{
+			tokenList.push_back(GetToken(type, value));
+		}
+
+		ExpressionTokenList TokenDictionary::Translate(
+			const TokenDictionary& otherDictionary,
+			const ExpressionTokenList& tokenListForOtherDictionary)
+		{
+			ExpressionTokenList result;
+			result.reserve(tokenListForOtherDictionary.size());
+			std::vector<unsigned> translated;
+			translated.resize(otherDictionary._tokenDefinitions.size(), ~0u);
+			for (const auto&token:tokenListForOtherDictionary) {
+				auto& trns = translated[token];
+				if (trns == ~0u)
+					trns = GetToken(otherDictionary._tokenDefinitions[token]._type, otherDictionary._tokenDefinitions[token]._value);
+				result.push_back(trns);
+			}
+			return result;
+		}
+
+		TokenDictionary::TokenDictionary()
+		{
+			// We have a few utility tokens which have universal values -- just for
+			// convenience's sake
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::Literal, "0"});		// s_fixedTokenFalse
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::Literal, "1"});		// s_fixedTokenTrue
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::Operation, "&&"});		// s_fixedTokenLogicalAnd
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::Operation, "||"});		// s_fixedTokenLogicalOr
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::Operation, "!"});		// s_fixedTokenNot
+			_tokenDefinitions.push_back({TokenDictionary::TokenType::UnaryMarker});			// s_fixedTokenUnaryMarker
+		}
+
+		TokenDictionary::~TokenDictionary() {}
+
+		WorkingRelevanceTable CalculatePreprocessorExpressionRevelance(
+			TokenDictionary& tokenDictionary,
+			const ExpressionTokenList& abstractInput)
+		{
+			// For the given expression, we want to figure out how variables are used, and under what conditions
+			// they impact the result of the evaluation
+
+			struct PartialExpression
+			{
+				Internal::WorkingRelevanceTable _relevance;
+				std::vector<unsigned> _subExpression;
+			};
+
+			using TokenType = Internal::TokenDictionary::TokenType;
+
+			std::stack<PartialExpression> evaluation;
+			for (auto tokenIdx:abstractInput) {
+				const auto& token = tokenDictionary._tokenDefinitions[tokenIdx];
+
+				if (token._type == TokenType::Operation) {
+
+					PartialExpression r_token = std::move(evaluation.top()); evaluation.pop();
+					PartialExpression l_token = std::move(evaluation.top()); evaluation.pop();
+
+					// For logical operations, we need to carefully consider the left and right
+					// relevance tables. For defined(), we will simplify the relevance to show
+					// that we only care whether the symbol is defined or now.
+					// For other operations, we will basically just merge together the relevance tables for both left and right
+
+					PartialExpression newPartialExpression;
+					if (token._value == "()")
+						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
+					
+					if (token._value == "&&") {
+						// lhs variables relevant when rhs expression is true
+						// rhs variables relevant when lhs expression is true
+						newPartialExpression._relevance = Internal::MergeRelevanceTables(
+							l_token._relevance, r_token._subExpression,
+							r_token._relevance, l_token._subExpression);
+					} else if (token._value == "||") {
+						// lhs variables relevant when rhs expression is false
+						// rhs variables relevant when lhs expression is false
+						newPartialExpression._relevance = Internal::MergeRelevanceTables(
+							l_token._relevance, Internal::InvertExpression(r_token._subExpression),
+							r_token._relevance, Internal::InvertExpression(l_token._subExpression));
+					} else {
+						newPartialExpression._relevance = Internal::MergeRelevanceTables(l_token._relevance, {}, r_token._relevance, {});
+					}
+
+					newPartialExpression._subExpression.reserve(l_token._subExpression.size() + r_token._subExpression.size() + 1);
+					newPartialExpression._subExpression.insert(
+						newPartialExpression._subExpression.end(),
+						l_token._subExpression.begin(), l_token._subExpression.end());
+					newPartialExpression._subExpression.insert(
+						newPartialExpression._subExpression.end(),
+						r_token._subExpression.begin(), r_token._subExpression.end());
+					newPartialExpression._subExpression.push_back(tokenIdx);
+
+					evaluation.push(std::move(newPartialExpression));
+
+				} else if (token._type == TokenType::Variable) {
+
+					PartialExpression newPartialExpression;
+					newPartialExpression._relevance.insert(std::make_pair(tokenIdx, Internal::ExpressionTokenList{Internal::s_fixedTokenTrue}));
+					newPartialExpression._subExpression = {tokenIdx};
+					evaluation.push(std::move(newPartialExpression));
+
+				} else if (token._type == TokenType::IsDefinedTest) {
+
+					PartialExpression newPartialExpression;
+					newPartialExpression._relevance.insert(std::make_pair(tokenIdx, Internal::ExpressionTokenList{Internal::s_fixedTokenTrue}));
+					newPartialExpression._subExpression = {tokenIdx};
+					evaluation.push(std::move(newPartialExpression));
+
+				} else {
+
+					PartialExpression newPartialExpression;
+					newPartialExpression._subExpression = {tokenIdx};
+					evaluation.push(std::move(newPartialExpression));
+				
+				}
+			}
+
+			assert(evaluation.size() == 1);
+			return evaluation.top()._relevance;
+		}
 	}
 
 	RelevanceTable CalculatePreprocessorExpressionRevelance(StringSection<> input)
 	{
-		// For the given expression, we want to figure out how variables are used, and under what conditions
-		// they impact the result of the evaluation
-
-		auto abstractInput = AsAbstractExpression(input);
-
-		struct PartialExpression
-		{
-			WorkingRelevanceTable _relevance;
-			std::vector<unsigned> _subExpression;
-		};
-
-		std::stack<PartialExpression> evaluation;
-		for (auto tokenIdx:abstractInput._reversePolishOrdering) {
-			const auto& token = abstractInput._tokens[tokenIdx];
-
-			if (token._type == AbstractExpression::TokenType::Operation) {
-
-				PartialExpression r_token = std::move(evaluation.top()); evaluation.pop();
-				PartialExpression l_token = std::move(evaluation.top()); evaluation.pop();
-
-				// For logical operations, we need to carefully consider the left and right
-				// relevance tables. For defined(), we will simplify the relevance to show
-				// that we only care whether the symbol is defined or now.
-				// For other operations, we will basically just merge together the relevance tables for both left and right
-
-				PartialExpression newPartialExpression;
-				if (token._value == "()")
-					Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
-				
-				if (token._value == "&&") {
-					// lhs variables relevant when rhs expression is true
-					// rhs variables relevant when lhs expression is true
-					newPartialExpression._relevance = MergeRelevanceTables(
-						l_token._relevance, r_token._subExpression,
-						r_token._relevance, l_token._subExpression);
-				} else if (token._value == "||") {
-					// lhs variables relevant when rhs expression is false
-					// rhs variables relevant when lhs expression is false
-					newPartialExpression._relevance = MergeRelevanceTables(
-						l_token._relevance, InvertExpression(r_token._subExpression),
-						r_token._relevance, InvertExpression(l_token._subExpression));
-				} else {
-					newPartialExpression._relevance = MergeRelevanceTables(l_token._relevance, {}, r_token._relevance, {});
-				}
-
-				newPartialExpression._subExpression.reserve(l_token._subExpression.size() + r_token._subExpression.size() + 1);
-				newPartialExpression._subExpression.insert(
-					newPartialExpression._subExpression.end(),
-					l_token._subExpression.begin(), l_token._subExpression.end());
-				newPartialExpression._subExpression.insert(
-					newPartialExpression._subExpression.end(),
-					r_token._subExpression.begin(), r_token._subExpression.end());
-				newPartialExpression._subExpression.push_back(tokenIdx);
-
-				evaluation.push(std::move(newPartialExpression));
-
-			} else if (token._type == AbstractExpression::TokenType::Variable) {
-
-				PartialExpression newPartialExpression;
-				newPartialExpression._relevance.insert(std::make_pair(tokenIdx, AbstractSubExpression{s_fixedTokenTrue}));
-				newPartialExpression._subExpression = {tokenIdx};
-				evaluation.push(std::move(newPartialExpression));
-
-			} else if (token._type == AbstractExpression::TokenType::IsDefinedTest) {
-
-				PartialExpression newPartialExpression;
-				newPartialExpression._relevance.insert(std::make_pair(tokenIdx, AbstractSubExpression{s_fixedTokenTrue}));
-				newPartialExpression._subExpression = {tokenIdx};
-				evaluation.push(std::move(newPartialExpression));
-
-			} else {
-
-				PartialExpression newPartialExpression;
-				newPartialExpression._subExpression = {tokenIdx};
-				evaluation.push(std::move(newPartialExpression));
-			
-			}
-		}
-
-		assert(evaluation.size() == 1);
-		return AsRelevanceTable(abstractInput, evaluation.top()._relevance);
-	}
-
-	static std::string Concatenate(StringSection<> zero, StringSection<> one)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		return result;
-	}
-	
-	static std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size() + two.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		result.insert(result.end(), two.begin(), two.end());
-		return result;
-	}
-
-	static std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size() + two.size() + three.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		result.insert(result.end(), two.begin(), two.end());
-		result.insert(result.end(), three.begin(), three.end());
-		return result;
-	}
-	
-	static std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		result.insert(result.end(), two.begin(), two.end());
-		result.insert(result.end(), three.begin(), three.end());
-		result.insert(result.end(), four.begin(), four.end());
-		return result;
-	}
-
-	static std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size() + five.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		result.insert(result.end(), two.begin(), two.end());
-		result.insert(result.end(), three.begin(), three.end());
-		result.insert(result.end(), four.begin(), four.end());
-		result.insert(result.end(), five.begin(), five.end());
-		return result;
-	}
-	
-	static std::string Concatenate(StringSection<> zero, StringSection<> one, StringSection<> two, StringSection<> three, StringSection<> four, StringSection<> five, StringSection<> six)
-	{
-		std::string result;
-		result.reserve(zero.size() + one.size() + two.size() + three.size() + four.size() + five.size() + six.size());
-		result.insert(result.end(), zero.begin(), zero.end());
-		result.insert(result.end(), one.begin(), one.end());
-		result.insert(result.end(), two.begin(), two.end());
-		result.insert(result.end(), three.begin(), three.end());
-		result.insert(result.end(), four.begin(), four.end());
-		result.insert(result.end(), five.begin(), five.end());
-		result.insert(result.end(), six.begin(), six.end());
-		return result;
-	}
-
-	static AbstractSubExpression AndExpression(const AbstractSubExpression& lhs, const AbstractSubExpression& rhs)
-	{
-		if (lhs.empty()) return rhs;
-		if (rhs.empty()) return lhs;
-
-		if (lhs.size() == 1) {
-			if (lhs[0] == s_fixedTokenTrue) return rhs;
-			if (lhs[0] == s_fixedTokenFalse) return {s_fixedTokenFalse};
-		}
-
-		if (rhs.size() == 1) {
-			if (rhs[0] == s_fixedTokenTrue) return lhs;
-			if (rhs[0] == s_fixedTokenFalse) return {s_fixedTokenFalse};
-		}
-
-		AbstractSubExpression result;
-		result.reserve(lhs.size() + rhs.size() + 1);
-		result.insert(result.end(), lhs.begin(), lhs.end());
-		result.insert(result.end(), rhs.begin(), rhs.end());
-		result.push_back(s_fixedTokenLogicalAnd);
-		return result;
-	}
-
-	static AbstractSubExpression OrExpression(const AbstractSubExpression& lhs, const AbstractSubExpression& rhs)
-	{
-		if (lhs.empty()) return rhs;
-		if (rhs.empty()) return lhs;
-
-		if (lhs.size() == 1) {
-			if (lhs[0] == s_fixedTokenTrue) return {s_fixedTokenTrue};
-			if (lhs[0] == s_fixedTokenFalse) return rhs;
-		}
-
-		if (rhs.size() == 1) {
-			if (rhs[0] == s_fixedTokenTrue) return {s_fixedTokenTrue};
-			if (rhs[0] == s_fixedTokenFalse) return lhs;
-		}
-
-		AbstractSubExpression result;
-		result.reserve(lhs.size() + rhs.size() + 1);
-		result.insert(result.end(), lhs.begin(), lhs.end());
-		result.insert(result.end(), rhs.begin(), rhs.end());
-		result.push_back(s_fixedTokenLogicalOr);
-		return result;
-	}
-
-	static AbstractSubExpression InvertExpression(const AbstractSubExpression& expr)
-	{
-		if (expr.size() == 1) {
-			if (expr[0] == s_fixedTokenTrue) return {s_fixedTokenFalse};
-			if (expr[0] == s_fixedTokenFalse) return {s_fixedTokenTrue};
-		}
-
-		AbstractSubExpression result;
-		result.reserve(expr.size() + 2);
-		result.push_back(s_fixedTokenUnaryMarker);
-		result.insert(result.end(), expr.begin(), expr.end());
-		result.push_back(s_fixedTokenNot);
-		return result;
-	}
-
-	static WorkingRelevanceTable MergeRelevanceTables(
-		const WorkingRelevanceTable& lhs, const AbstractSubExpression& lhsCondition,
-		const WorkingRelevanceTable& rhs, const AbstractSubExpression& rhsCondition)
-	{
-		WorkingRelevanceTable result;
-
-		// note that we have to use an "ordered" map here to make the merging
-		// efficient. Using an std::unordered_map here would probably result
-		// in a significant amount of re-hashing
-
-		auto lhsi = lhs.begin();
-		auto rhsi = rhs.begin();
-		for (;;) {
-			if (lhsi == lhs.end() && rhsi == rhs.end()) break;
-			while (lhsi != lhs.end() && (rhsi == rhs.end() || lhsi->first < rhsi->first)) {
-				result.insert(std::make_pair(lhsi->first, AndExpression(lhsi->second, lhsCondition)));
-				++lhsi;
-			}
-			while (rhsi != rhs.end() && (lhsi == lhs.end() || rhsi->first < lhsi->first)) {
-				result.insert(std::make_pair(rhsi->first, AndExpression(rhsi->second, rhsCondition)));
-				++rhsi;
-			}
-			if (lhsi != lhs.end() && rhsi != rhs.end() && lhsi->first == rhsi->first) {
-				auto lhsPart = AndExpression(lhsi->second, lhsCondition);
-				auto rhsPart = AndExpression(rhsi->second, rhsCondition);
-				result.insert(std::make_pair(lhsi->first, OrExpression(lhsPart, rhsPart)));
-				++lhsi;
-				++rhsi;
-			}
-		}
-
-		return result;
-	}
-
-	static std::string AsString(class AbstractExpression& tokenTable, const AbstractSubExpression& subExpression)
-	{
-		std::stack<std::string> evaluation;
-		for (auto tokenIdx:subExpression) {
-			const auto& token = tokenTable._tokens[tokenIdx];
-
-			if (token._type == AbstractExpression::TokenType::Operation) {
-				auto r_token = std::move(evaluation.top()); evaluation.pop();
-				auto l_token = std::move(evaluation.top()); evaluation.pop();
-				if (l_token.empty()) {	// we get an empty string for the unary marker
-					evaluation.push(Concatenate("(", token._value, r_token, ")"));
-				} else {
-					evaluation.push(Concatenate("(", l_token, " ", token._value, " ", r_token, ")"));
-				}
-			} else if (token._type == AbstractExpression::TokenType::UnaryMarker) {
-				evaluation.push({});
-			} else if (token._type == AbstractExpression::TokenType::IsDefinedTest) {
-				evaluation.push(Concatenate("defined(", token._value, ")"));
-			} else {
-				evaluation.push(token._value);
-			}
-		}
-		assert(evaluation.size() == 1);
-		return evaluation.top();
-	}
-
-	RelevanceTable AsRelevanceTable(class AbstractExpression& tokenTable, const WorkingRelevanceTable& input)
-	{
+		Internal::TokenDictionary tokenDictionary;
+		auto tokenList = Internal::AsExpressionTokenList(tokenDictionary, input);
+		auto midway = CalculatePreprocessorExpressionRevelance(tokenDictionary, tokenList);
 		RelevanceTable result;
-		for (const auto&e:input) {
-			auto& varToken = tokenTable._tokens[e.first];
-			if (varToken._type == AbstractExpression::TokenType::Variable) {
-				result._items.insert(std::make_pair(varToken._value, AsString(tokenTable, e.second)));
-			} else if (varToken._type == AbstractExpression::TokenType::IsDefinedTest) {
-				result._items.insert(std::make_pair(Concatenate("defined(", varToken._value, ")"), AsString(tokenTable, e.second)));
-			} else {
-				assert(0);
-			}
+		for (const auto&i:midway) {
+			result._items.insert(
+				std::make_pair(
+					tokenDictionary._tokenDefinitions[i.first]._value,
+					tokenDictionary.AsString(i.second)));
 		}
 		return result;
-	}
-
-	void PushBackToken(AbstractExpression& expr, AbstractExpression::TokenType type, const std::string& value)
-	{
-		AbstractExpression::Token token { type, value };
-		auto existing = std::find(expr._tokens.begin(), expr._tokens.end(), token);
-		if (existing == expr._tokens.end()) {
-			expr._reversePolishOrdering.push_back((unsigned)expr._tokens.size());
-			expr._tokens.push_back(token);
-		} else {
-			expr._reversePolishOrdering.push_back((unsigned)std::distance(expr._tokens.begin(), existing));
-		}
 	}
 
 	/* TokenMap vars;
