@@ -165,7 +165,7 @@ namespace Assets
 	template<typename Type, typename std::enable_if_t<Internal::IsPodIterator<Type>>*>
 		void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type> range, SpecialBuffer::Enum specialBuffer)
 	{
-		SerializeRawSubBlock(range.Cast<const void*>(), specialBuffer);
+		SerializeRawSubBlock(range.template Cast<const void*>(), specialBuffer);
 	}
 		
 	template<typename Type>
