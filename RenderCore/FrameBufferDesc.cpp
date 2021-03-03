@@ -107,8 +107,8 @@ namespace RenderCore
     {
         return uint64_t(_outputWidth) 
             ^ (uint64_t(_outputHeight) << 16ull)
-            ^ (uint64_t(_samples._sampleCount) < 48ull)
-            ^ (uint64_t(_samples._samplingQuality) < 56ull);
+            ^ (uint64_t(_samples._sampleCount) << 48ull)
+            ^ (uint64_t(_samples._samplingQuality) << 56ull);
     }
 
 	FrameBufferDesc SeparateSingleSubpass(const FrameBufferDesc& input, unsigned subpassIdx)
