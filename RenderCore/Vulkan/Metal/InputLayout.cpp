@@ -546,6 +546,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		_boundLooseSamplerStates = helper._boundLooseSamplerStates;
 	}
 
+	BoundUniforms::BoundUniforms(
+		const GraphicsPipeline& pipeline,
+		const UniformsStreamInterface& interf)
+	: BoundUniforms(pipeline._shader, interf) {}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class BoundUniforms::BindingHelper

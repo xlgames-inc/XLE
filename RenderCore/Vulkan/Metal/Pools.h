@@ -104,6 +104,24 @@ namespace RenderCore { namespace Metal_Vulkan
 		void QueueDestroy(VkDescriptorSet buffer);
     };
 
+    class VulkanRenderPassPool
+    {
+    public:
+        VulkanSharedPtr<VkRenderPass> CreateVulkanRenderPass(
+            const FrameBufferDesc& layout,
+            TextureSamples samples);
+
+        VulkanRenderPassPool(ObjectFactory& factory);
+        VulkanRenderPassPool();
+        ~VulkanRenderPassPool();
+
+        VulkanRenderPassPool(VulkanRenderPassPool&&) never_throws = default;
+        VulkanRenderPassPool& operator=(VulkanRenderPassPool&&) never_throws = default;
+    private:
+        std::vector<std::pair<uint64_t, VulkanSharedPtr<VkRenderPass>>> _cachedRenderPasses;
+        ObjectFactory* _factory;
+    };
+
     class DummyResources
     {
     public:
@@ -131,6 +149,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         DescriptorPool                      _mainDescriptorPool;
 		DescriptorPool                      _longTermDescriptorPool;
+        VulkanRenderPassPool                _renderPassPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
         DummyResources                      _dummyResources;
 

@@ -10,6 +10,7 @@
 #include "TextureView.h"
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
+#include "Pools.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
 #include "../../../OSServices/Log.h"
@@ -153,10 +154,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			dst._aspect = src._aspect;
 	}
 
-	VulkanUniquePtr<VkRenderPass> CreateRenderPass(
+	VulkanUniquePtr<VkRenderPass> CreateVulkanRenderPass(
         const Metal_Vulkan::ObjectFactory& factory,
         const FrameBufferDesc& layout,
-        const INamedAttachments& namedResources,
         TextureSamples samples)
 	{
 		const auto subpasses = layout.GetSubpasses();
@@ -537,10 +537,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
     {
-		// todo --	we shouldn't create the render pass every time.
-		//			we need to be able to share equivalent vkRenderPasses, so that
-		//			there are fewer pipeline objects required
-		_layout = CreateRenderPass(factory, fbDesc, namedResources, fbDesc.GetProperties()._samples);
+		_layout = Internal::VulkanGlobalsTemp::GetInstance()._globalPools->_renderPassPool.CreateVulkanRenderPass(fbDesc, fbDesc.GetProperties()._samples);
 
         // We must create the frame buffer, including all views required.
         // We need to order the list of views in VkFramebufferCreateInfo in the

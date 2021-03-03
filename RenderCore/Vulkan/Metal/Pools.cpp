@@ -7,9 +7,11 @@
 #include "Pools.h"
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
+#include "FrameBuffer.h"		// for CreateVulkanRenderPass
 #include "../../Format.h"
 #include "../../OSServices/Log.h"
 #include "../../Utility/BitUtils.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -578,6 +580,26 @@ namespace RenderCore { namespace Metal_Vulkan
 		_pendingDestroys = std::move(moveFrom._pendingDestroys);
         return *this;
     }
+
+	VulkanSharedPtr<VkRenderPass> VulkanRenderPassPool::CreateVulkanRenderPass(
+		const FrameBufferDesc& layout,
+		TextureSamples samples)
+	{
+		auto hash = HashCombine(layout.GetHash(), samples._sampleCount << 8 | samples._samplingQuality);
+		auto i = LowerBound(_cachedRenderPasses, hash);
+		if (i != _cachedRenderPasses.end() && i->first == hash) {
+			return i->second;
+		} else {
+			VulkanSharedPtr<VkRenderPass> newRenderPass = Metal_Vulkan::CreateVulkanRenderPass(*_factory, layout, samples);
+			_cachedRenderPasses.insert(i, std::make_pair(hash, newRenderPass));
+			return newRenderPass;
+		}
+	}
+
+	VulkanRenderPassPool::VulkanRenderPassPool(ObjectFactory& factory)
+	: _factory(&factory) {}
+	VulkanRenderPassPool::VulkanRenderPassPool() {}
+	VulkanRenderPassPool::~VulkanRenderPassPool() {}
 
     static std::shared_ptr<Resource> CreateDummyTexture(ObjectFactory& factory)
     {

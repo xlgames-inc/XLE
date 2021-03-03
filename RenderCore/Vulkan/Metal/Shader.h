@@ -68,6 +68,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		ShaderProgram(ShaderProgram&&) = default;
         ShaderProgram& operator=(ShaderProgram&&) = default;
+		ShaderProgram(const ShaderProgram&) = default;
+        ShaderProgram& operator=(const ShaderProgram&) = default;
 
 		// Legacy asset based API --
 		static void ConstructToFuture(
@@ -100,7 +102,6 @@ namespace RenderCore { namespace Metal_Vulkan
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
-		std::shared_ptr<DescriptorSetSignatureFile> _descriptorSetSignatureFile;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 		std::shared_ptr<CompiledPipelineLayout> _pipelineLayout;
     };
@@ -125,6 +126,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		ComputeShader& operator=(ComputeShader&& moveFrom) = default;
 		ComputeShader(ComputeShader&& moveFrom) = default;
+		ComputeShader& operator=(const ComputeShader&) = default;
+		ComputeShader(const ComputeShader&) = default;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
 
@@ -141,7 +144,6 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
-		std::shared_ptr<DescriptorSetSignatureFile>			_descriptorSetSignatureFile;
 		std::shared_ptr<CompiledPipelineLayout> 			_pipelineLayout;
     };
 

@@ -7,6 +7,7 @@
 #include "Forward.h"
 #include "State.h"
 #include "PipelineLayout.h"		// for PipelineDescriptorsLayoutBuilder
+#include "Shader.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../ResourceDesc.h"
@@ -40,6 +41,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		uint64_t GetGUID() const;
 
+		// --------------- Vulkan specific interface --------------- 
+		ShaderProgram _shader;
+
 		GraphicsPipeline(VulkanUniquePtr<VkPipeline>&&);
 		~GraphicsPipeline();
 	};
@@ -48,6 +52,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		uint64_t GetGUID() const;
+
+		// --------------- Vulkan specific interface --------------- 
+		ComputeShader _shader;
 
 		ComputePipeline(VulkanUniquePtr<VkPipeline>&&);
 		~ComputePipeline();
@@ -66,19 +73,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		void 		Bind(const BoundInputLayout& inputLayout, Topology topology);
 		void		UnbindInputLayout();
 
-		void 		SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
-		uint64_t 	GetRenderPassConfigurationHash() const;
+		void 		SetRenderPassConfiguration(const FrameBufferDesc& fbDesc, unsigned subPass);
+		uint64_t 	GetRenderPassConfigurationHash() const { return _renderPassConfigurationHash; }
+
+		static uint64_t CalculateFrameBufferRelevance(const FrameBufferDesc& fbDesc, unsigned subPass = 0);
+
+		std::shared_ptr<GraphicsPipeline> CreatePipeline(ObjectFactory& factory);
+
+		GraphicsPipelineBuilder();
+		~GraphicsPipelineBuilder();
+
+		// --------------- Vulkan specific interface --------------- 
 
 		std::shared_ptr<GraphicsPipeline> CreatePipeline(
 			ObjectFactory& factory, VkPipelineCache pipelineCache,
 			VkRenderPass renderPass, unsigned subpass, 
 			TextureSamples samples);
 		bool IsPipelineStale() const { return _pipelineStale; }
-
-		// --------------- Vulkan specific interface --------------- 
-
-		GraphicsPipelineBuilder();
-		~GraphicsPipelineBuilder();
 
 	private:
 		Internal::VulkanRasterizerState		_rasterizerState;
@@ -94,9 +105,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		bool                    _pipelineStale;
 
-		/*void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
-		friend class BoundInputLayout;
-		friend class ShaderProgram;*/
+		uint64_t 				_renderPassConfigurationHash = 0;
+		VulkanSharedPtr<VkRenderPass> 	_currentRenderPass;
+		unsigned						_currentSubpassIndex = ~0u;
+		TextureSamples					_currentTextureSamples = TextureSamples::Create(0);
 
 	protected:
 		GraphicsPipelineBuilder(const GraphicsPipelineBuilder&);
@@ -111,14 +123,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		// --------------- Cross-GFX-API interface --------------- 
 		void        Bind(const ComputeShader& shader);
 
+		ComputePipelineBuilder();
+		~ComputePipelineBuilder();
+
+		// --------------- Vulkan specific interface --------------- 
 		std::shared_ptr<ComputePipeline> CreatePipeline(
 			ObjectFactory& factory, VkPipelineCache pipelineCache);
 		bool IsPipelineStale() const { return _pipelineStale; }
-
-		// --------------- Vulkan specific interface --------------- 
-
-		ComputePipelineBuilder();
-		~ComputePipelineBuilder();
 
 		ComputePipelineBuilder(const ComputePipelineBuilder&);
 		ComputePipelineBuilder& operator=(const ComputePipelineBuilder&);
@@ -313,7 +324,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool 		BindComputePipeline();
 		std::shared_ptr<CompiledPipelineLayout> _pipelineLayout;
 		std::shared_ptr<VulkanEncoderSharedState> _sharedState;
-		std::shared_ptr<ComputePipeline> 	_currentComputePipeline;
+		std::shared_ptr<ComputePipeline>	_currentComputePipeline;
 		ObjectFactory*						_factory;
 		GlobalPools*                        _globalPools;
 

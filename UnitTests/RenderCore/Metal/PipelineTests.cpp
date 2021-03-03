@@ -308,15 +308,18 @@ namespace UnitTests
 		////////////////////////////////////////////////////////////////////////////////////////
 			// Let's do the same, except this time binding via a pre-built descriptor set
 		////////////////////////////////////////////////////////////////////////////////////////
+		DescriptorSetHelper set0helper, set1helper;
+		set0helper.Bind(0, testHelper->CreateCB(MakeOpaqueIteratorRange(set0binding0))->CreateBufferView());
+		set1helper.Bind(4, testHelper->CreateCB(MakeOpaqueIteratorRange(set1binding4))->CreateBufferView());
+		set1helper.Bind(5, testStorageBuffer->CreateBufferView(BindFlag::UnorderedAccess));
+		set1helper.Bind(6, testStorageTexture->CreateTextureView(BindFlag::UnorderedAccess));
+		auto set0 = set0helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set0"));
+		auto set1 = set1helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set1"));
+
+		Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
+		REQUIRE(inputLayout.AllAttributesBound());
+
 		{
-			DescriptorSetHelper set0helper, set1helper;
-			set0helper.Bind(0, testHelper->CreateCB(MakeOpaqueIteratorRange(set0binding0))->CreateBufferView());
-			set1helper.Bind(4, testHelper->CreateCB(MakeOpaqueIteratorRange(set1binding4))->CreateBufferView());
-			set1helper.Bind(5, testStorageBuffer->CreateBufferView(BindFlag::UnorderedAccess));
-			set1helper.Bind(6, testStorageTexture->CreateTextureView(BindFlag::UnorderedAccess));
-			auto set0 = set0helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set0"));
-			auto set1 = set1helper.CreateDescriptorSet(*testHelper->_device, *FindDescriptorSetSignature(pipelineLayoutInitializer, "Set1"));
-			
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
 			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
 
@@ -339,8 +342,6 @@ namespace UnitTests
 			IDescriptorSet* descSets[] = { set0.get(), set1.get() };
 			uniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(descSets));
 
-			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
-			REQUIRE(inputLayout.AllAttributesBound());
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
 			encoder.Draw(4);
 		}
@@ -350,6 +351,47 @@ namespace UnitTests
 			auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
 			REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
 		}
+
+		////////////////////////////////////////////////////////////////////////////////////////
+			// Once more, this time with prebuilt graphics pipeline
+		////////////////////////////////////////////////////////////////////////////////////////
+
+		Metal::GraphicsPipelineBuilder builder;
+		builder.Bind(shaderProgram);
+		builder.Bind(inputLayout, Topology::TriangleStrip);
+		builder.SetRenderPassConfiguration(fbHelper.GetDesc(), 0);
+		auto pipeline = builder.CreatePipeline(Metal::GetObjectFactory());
+
+		{
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder(pipelineLayout);
+
+			UniformsStreamInterface uniformInterface;
+			uniformInterface.BindImmediateData(0, Hash64("PushConstants0"));
+			uniformInterface.BindImmediateData(1, Hash64("PushConstants1"));
+			uniformInterface.BindFixedDescriptorSet(0, Hash64("Set0"));
+			uniformInterface.BindFixedDescriptorSet(1, Hash64("Set1"));
+			Metal::BoundUniforms uniforms(*pipeline, uniformInterface);
+
+			UniformsStream uniformsStream;
+			uniformsStream._immediateData = {
+				MakeOpaqueIteratorRange(pushConstants0),
+				MakeOpaqueIteratorRange(pushConstants1)
+			};
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+			IDescriptorSet* descSets[] = { set0.get(), set1.get() };
+			uniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(descSets));
+
+			encoder.Draw(*pipeline, 4);
+		}
+
+		{
+			auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
+			auto pixels = MakeIteratorRange((unsigned*)AsPointer(data.begin()), (unsigned*)AsPointer(data.end()));
+			REQUIRE(pixels[0] == 0xff00ff00);		// shader writes green on success, red on failure
+		}
+
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		// potential tests:

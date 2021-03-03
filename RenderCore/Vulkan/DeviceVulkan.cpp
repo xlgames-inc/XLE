@@ -621,6 +621,7 @@ namespace RenderCore { namespace ImplVulkan
 
             _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
 			_pools._longTermDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
+			_pools._renderPassPool = Metal_Vulkan::VulkanRenderPassPool(_objectFactory);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 

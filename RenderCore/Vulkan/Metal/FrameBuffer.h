@@ -58,4 +58,9 @@ namespace RenderCore { namespace Metal_Vulkan
     void EndRenderPass(DeviceContext& context);
 	unsigned GetCurrentSubpassIndex(DeviceContext& context);
 
+    VulkanUniquePtr<VkRenderPass> CreateVulkanRenderPass(
+        const Metal_Vulkan::ObjectFactory& factory,
+        const FrameBufferDesc& layout,
+        TextureSamples samples);
+
 }}

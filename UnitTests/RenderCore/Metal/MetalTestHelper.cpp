@@ -264,6 +264,11 @@ namespace UnitTests
 		return _pimpl->_mainTarget;
 	}
 
+	const RenderCore::FrameBufferDesc& UnitTestFBHelper::GetDesc() const
+	{
+		return _pimpl->_fbDesc;
+	}
+
 	UnitTestFBHelper::UnitTestFBHelper(
 		RenderCore::IDevice& device, 
 		RenderCore::IThreadContext& threadContext,

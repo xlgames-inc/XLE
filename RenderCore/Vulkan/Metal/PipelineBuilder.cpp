@@ -12,6 +12,7 @@
 #include "ShaderReflection.h"
 #include "PipelineLayout.h"
 #include "../../Format.h"
+#include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -208,8 +209,32 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto vkPipeline = factory.CreateGraphicsPipeline(pipelineCache, pipeline);
 		auto result = std::make_shared<GraphicsPipeline>(std::move(vkPipeline));
+		result->_shader = *_shaderProgram;
 		_pipelineStale = false;
 		return result;
+	}
+
+	std::shared_ptr<GraphicsPipeline> GraphicsPipelineBuilder::CreatePipeline(ObjectFactory& factory)
+	{
+		assert(_currentSubpassIndex != ~0u && _currentRenderPass);
+		return CreatePipeline(
+			factory, Internal::VulkanGlobalsTemp::GetInstance()._globalPools->_mainPipelineCache.get(),
+			_currentRenderPass.get(), _currentSubpassIndex, _currentTextureSamples);
+	}
+
+	void 		GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferDesc& fbDesc, unsigned subPass)
+	{
+		const auto& samples = fbDesc.GetProperties()._samples;
+		_renderPassConfigurationHash = HashCombine(fbDesc.GetSubpasses()[subPass].CalculateHash(), (samples._samplingQuality << 8) | samples._sampleCount);
+		_currentRenderPass = Internal::VulkanGlobalsTemp::GetInstance()._globalPools->_renderPassPool.CreateVulkanRenderPass(fbDesc, fbDesc.GetProperties()._samples);
+		_currentTextureSamples = fbDesc.GetProperties()._samples;
+		_currentSubpassIndex = subPass;
+	}
+
+	uint64_t GraphicsPipelineBuilder::CalculateFrameBufferRelevance(const FrameBufferDesc& fbDesc, unsigned subPass)
+	{
+		const auto& samples = fbDesc.GetProperties()._samples;
+		return HashCombine(fbDesc.GetSubpasses()[subPass].CalculateHash(), (samples._samplingQuality << 8) | samples._sampleCount);
 	}
 
 	GraphicsPipelineBuilder::GraphicsPipelineBuilder()
@@ -266,6 +291,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto vkPipeline = factory.CreateComputePipeline(pipelineCache, pipeline);
 		auto result = std::make_shared<ComputePipeline>(std::move(vkPipeline));
+		result->_shader = *_shader;
 		_pipelineStale = false;
 		return result;
 	}

@@ -10,7 +10,7 @@
 #include <memory>
 #include <map>
 
-namespace RenderCore { class IDevice; class IThreadContext; class DescriptorSetSignature; }
+namespace RenderCore { class IDevice; class IThreadContext; class DescriptorSetSignature; class FrameBufferDesc; }
 namespace UnitTests
 {
     class MetalTestHelper
@@ -66,6 +66,7 @@ namespace UnitTests
         std::shared_ptr<IRenderPassToken> BeginRenderPass(RenderCore::IThreadContext& threadContext);
         std::map<unsigned, unsigned> GetFullColorBreakdown(RenderCore::IThreadContext& threadContext);
         const std::shared_ptr<RenderCore::IResource> GetMainTarget() const;
+        const RenderCore::FrameBufferDesc& GetDesc() const;
 
     private:
         class Pimpl;
