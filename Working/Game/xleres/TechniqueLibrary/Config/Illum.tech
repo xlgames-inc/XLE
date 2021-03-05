@@ -4,9 +4,9 @@
 	~~ "Silhouette" configuration just has the minimum support to get the correct geometry
 	~~ silhouette (plus alpha testing)
 
-~Silhouette
-	~Inherit; shared.tech:Skinnable; shared.tech:VegetationSpawn
-	~Selectors
+Silhouette=~
+	Inherit=~; Shared.tech:Skinnable; Shared.tech:VegetationSpawn
+	Selectors=~
 		GEO_HAS_COLOR
 		GEO_HAS_TEXCOORD
 		GEO_HAS_NORMAL
@@ -14,31 +14,31 @@
 		RES_HAS_DiffuseTexture
 		MAT_VCOLOR_IS_ANIM_PARAM
 
-~VS_NoPatches
-	~Inherit; Silhouette
+VS_NoPatches=~
+	Inherit=~; Silhouette
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 
-~VS_DeformVertex
-	~Inherit; Silhouette
+VS_DeformVertex=~
+	Inherit=~; Silhouette
 	VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntryWithDeformVertex
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~ShadowGenShared
-	~Selectors
+ShadowGenShared=~
+	Selectors=~
 		MAT_ALPHA_DITHER_SHADOWS
 		FRUSTUM_FILTER=63
 		SHADOW_CASCADE_MODE
 		VSOUT_HAS_SHADOW_PROJECTION_COUNT=6
 		SHADOW_ENABLE_NEAR_CASCADE
 
-~VSShadowGen_NoPatches
-	~Inherit; Silhouette; ShadowGenShared
+VSShadowGen_NoPatches=~
+	Inherit=~; Silhouette; ShadowGenShared
 	VertexShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.vertex.hlsl:nopatches
 	GeometryShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.geo.hlsl:main
 
-~VSShadowGen_DeformVertex
-	~Inherit; Silhouette; ShadowGenShared
+VSShadowGen_DeformVertex=~
+	Inherit=~; Silhouette; ShadowGenShared
 	VertexShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.vertex.hlsl:frameworkEntryWithDeformVertex
 	GeometryShader=xleres/TechniqueLibrary/Standard/ShadowGen/shadowgen.geo.hlsl:main
 
@@ -48,31 +48,31 @@
 	~~      -- these are techniques that are used when drawing the object into the main scene and we're drawing
 	~~      the object in it's "main" visual look -- with all of the assigned material, texture & lighting properties
 
-~IllumShared
-	~Inherit; shared.tech:LegacyCommonMaterial; shared.tech:System
-	~Selectors
+IllumShared=~
+	Inherit=~; Shared.tech:LegacyCommonMaterial; Shared.tech:System
+	Selectors=~
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
 		GEO_HAS_TEXTANGENT
 		GEO_HAS_PER_VERTEX_AO
 		CLASSIFY_NORMAL_MAP
-		~SKIP_MATERIAL_DIFFUSE; relevance=value!=0
+		SKIP_MATERIAL_DIFFUSE=~; relevance=<:(value!=0):>
 
-~Forward
-	~Inherit; IllumShared; shared.tech:Forward
+Forward=~
+	Inherit=~; IllumShared; Shared.tech:Forward
 
-~Deferred
-	~Inherit; IllumShared; shared.tech:Deferred
+Deferred=~
+	Inherit=~; IllumShared; Shared.tech:Deferred
 
-~DepthOnly
-	~Selectors
+DepthOnly=~
+	Selectors=~
 		MAT_ALPHA_TEST_PREDEPTH
 		STOCHASTIC_TRANS
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
 
-~RayTest
-	~Selectors
+RayTest=~
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
@@ -80,47 +80,47 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Deferred_NoPatches
-	~Inherit; Deferred
+Deferred_NoPatches=~
+	Inherit=~; Deferred
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
-~Deferred_PerPixel
-	~Inherit; Deferred
+Deferred_PerPixel=~
+	Inherit=~; Deferred
 	PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
-~Deferred_PerPixelAndEarlyRejection
-	~Inherit; Deferred
+Deferred_PerPixelAndEarlyRejection=~
+	Inherit=~; Deferred
 	PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Forward_NoPatches
-	~Inherit; Forward
+Forward_NoPatches=~
+	Inherit=~; Forward
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:forward
 
-~Forward_PerPixel
-	~Inherit; Forward
+Forward_PerPixel=~
+	Inherit=~; Forward
 	PixelShader=xleres/TechniqueLibrary/Standard/forward.pixel.hlsl:frameworkEntry
 
-~Forward_PerPixelAndEarlyRejection
-	~Inherit; Forward
+Forward_PerPixelAndEarlyRejection=~
+	Inherit=~; Forward
 	PixelShader=xleres/TechniqueLibrary/Standard/forward.pixel.hlsl:frameworkEntryWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~DepthOnly_NoPatches
-	~Inherit; DepthOnly
+DepthOnly_NoPatches=~
+	Inherit=~; DepthOnly
 	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnly
 
-~DepthOnly_EarlyRejection
-	~Inherit; DepthOnly
+DepthOnly_EarlyRejection=~
+	Inherit=~; DepthOnly
 	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnlyWithEarlyRejection
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~RayTest_NoPatches
-	~Inherit; RayTest
+RayTest_NoPatches=~
+	Inherit=~; RayTest
 
-~RayTest_EarlyRejection
-	~Inherit; RayTest
+RayTest_EarlyRejection=~
+	Inherit=~; RayTest
 	PixelShader=xleres/TechniqueLibrary/Standard/depthonly.pixel.hlsl:frameworkEntryDepthOnlyWithEarlyRejection

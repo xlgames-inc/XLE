@@ -1,6 +1,6 @@
-~Illum
-    ~Inherit; ../shared.tech:System
-    ~Selectors
+Illum=~
+    Inherit=~; ../Shared.tech:System
+    Selectors=~
 		GEO_HAS_TEXCOORD
 		VSOUT_HAS_WORLD_VIEW_VECTOR=1
 		VSOUT_HAS_WORLD_POSITION=1
@@ -8,15 +8,15 @@
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
     PixelShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.pixel.hlsl:marker
-~RayTest
-    ~Selectors
+RayTest=~
+    Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
     PixelShader=null
 
-~Technique
+Technique=~
 	Forward = Illum
 	RayTest = RayTest
 

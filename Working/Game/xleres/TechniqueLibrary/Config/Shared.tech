@@ -1,5 +1,5 @@
-~LegacyCommonMaterial
-	~Selectors
+LegacyCommonMaterial=~
+	Selectors=~
 		MAT_ALPHA_TEST
 		MAT_PREMULTIPLIED_ALPHA
 		MAT_REFLECTIVENESS
@@ -14,45 +14,45 @@
 		MAT_DOUBLE_SIDED_LIGHTING
 		MAT_AO_IN_NORMAL_BLUE
 		MAT_HACK_TWIDDLE_NORMAL_MAP
-		~VIS_ANIM_PARAM; relevance=value!=0
+		VIS_ANIM_PARAM=~; relevance=<:(value!=0):>
 
-~Skinnable
-	~Selectors
+Skinnable=~
+	Selectors=~
 		GEO_HAS_BONEWEIGHTS
-		~SKIN_TRANSFORMS; relevance=value!=0
+		SKIN_TRANSFORMS=~; relevance=<:(value!=0):>
 
-~VegetationSpawn
-	~Selectors
+VegetationSpawn=~
+	Selectors=~
 		SPAWNED_INSTANCE
 		GEO_INSTANCE_ALIGN_UP
 
-~System
-	~Selectors
-		~AUTO_COTANGENT; relevance=value!=0
-		~PREFER_ANISOTROPIC; relevance=value!=0
-		~TANGENT_PROCESS_IN_PS; relevance=value!=0
+System=~
+	Selectors=~
+		AUTO_COTANGENT=~; relevance=<:(value!=0):>
+		PREFER_ANISOTROPIC=~; relevance=<:(value!=0):>
+		TANGENT_PROCESS_IN_PS=~; relevance=<:(value!=0):>
 		LOCAL_TO_WORLD_HAS_FLIP
-		~GEO_HAS_INSTANCE_ID; relevance=value!=0
-		~GEO_HAS_VERTEX_ID; relevance=value!=0
-		~GEO_NO_POSITION; relevance=value!=0
+		GEO_HAS_INSTANCE_ID=~; relevance=<:(value!=0):>
+		GEO_HAS_VERTEX_ID=~; relevance=<:(value!=0):>
+		GEO_NO_POSITION=~; relevance=<:(value!=0):>
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Forward
-	~Selectors
+Forward=~
+	Selectors=~
 		VSOUT_HAS_WORLD_VIEW_VECTOR=1
-		~SKIP_MATERIAL_DIFFUSE; relevance=value!=0
+		SKIP_MATERIAL_DIFFUSE=~; relevance=<:(value!=0):>
 		SKY_PROJECTION
 		HAS_DIFFUSE_IBL
 		HAS_SPECULAR_IBL
 		MAT_BLEND_FOG=1
-		~MAT_SKIP_LIGHTING_SCALE; relevance=value!=0
-		~MAT_TRANSMITTED_SPECULAR; relevance=value!=0
-		~MAT_CLAMP_SPEC; relevance=value!=0
+		MAT_SKIP_LIGHTING_SCALE=~; relevance=<:(value!=0):>
+		MAT_TRANSMITTED_SPECULAR=~; relevance=<:(value!=0):>
+		MAT_CLAMP_SPEC=~; relevance=<:(value!=0):>
 		BASIC_LIGHT_COUNT=1
 		SHADOW_CASCADE_MODE=2
 
-~Deferred
-	~Selectors
-		~GBUFFER_TYPE; relevance=value!=1
+Deferred=~
+	Selectors=~
+		GBUFFER_TYPE=~; relevance=<:(value!=1):>
 		DECAL_BLEND

@@ -1,10 +1,10 @@
-~Illum
-    ~Parameters
-        ~Geometry
+Illum=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             GEO_HAS_PARTICLE_INPUTS=1
-        ~Material
+        Material=~
             MAT_ALPHA_TEST
             MAT_MODULATE_VERTEX_ALPHA=1
             MAT_DO_PARTICLE_LIGHTING=1
@@ -17,24 +17,24 @@
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
     PixelShader=xleres/forward/illum.pixel.hlsl:main
-~DepthOnly
-    ~Parameters
-        ~Geometry
+DepthOnly=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_TEXCOORD
-        ~Material
+        Material=~
             MAT_ALPHA_TEST
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
     PixelShader=xleres/forward/depthonly.pixel.hlsl:main
-~Deferred
-    ~Parameters
-        ~Geometry
+Deferred=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             GEO_HAS_PARTICLE_INPUTS=1
-        ~GlobalEnvironment
+        GlobalEnvironment=~
             GBUFFER_TYPE=1
-        ~Material
+        Material=~
             MAT_ALPHA_TEST
             MAT_REFLECTIVENESS=1
             MAT_MODULATE_VERTEX_ALPHA=1
@@ -44,10 +44,10 @@
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
     PixelShader=xleres/deferred/basic.pixel.hlsl:main
-~ShadowGen
-~OrderIndependentTransparency
-    ~Parameters
-        ~Geometry
+ShadowGen=~
+OrderIndependentTransparency=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_COLOR
             GEO_HAS_TEXCOORD
             VSOUT_HAS_LOCAL_NORMAL=1
@@ -55,7 +55,7 @@
             VSOUT_HAS_WORLD_VIEW_VECTOR=1
             VSOUT_HAS_WORLD_POSITION=1
             GEO_HAS_PARTICLE_INPUTS=1
-        ~Material
+        Material=~
             MAT_ALPHA_TEST
             MAT_PREMULTIPLIED_ALPHA
             MAT_MODULATE_VERTEX_ALPHA=1

@@ -1,12 +1,12 @@
-~Illum
-    ~Parameters
+Illum=~
+    Parameters=~
     VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:minimal
     PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:invalid
-~DepthOnly
-    ~Parameters
+DepthOnly=~
+    Parameters=~
     VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:minimal
     PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:invalid
-~Deferred
-    ~Parameters
+Deferred=~
+    Parameters=~
     VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:minimal
     PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:invalid

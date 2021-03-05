@@ -1,30 +1,30 @@
 
-~Forward
-	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+Forward=~
+	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:forward
 
-~Deferred
-	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Deferred
+Deferred=~
+	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Deferred
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
-~OrderIndependentTransparency
-	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+OrderIndependentTransparency=~
+	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_oi
 
-~StochasticTransparency
-	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
-	~Selectors
+StochasticTransparency=~
+	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
+	Selectors=~
 		STOCHASTIC_SAMPLE_COUNT=8
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_stochastic
 
-~DepthWeightedTransparency
-	~Inherit; ../Illum.tech:IllumShared; ../shared.tech:Forward
+DepthWeightedTransparency=~
+	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/forward/transparency/depthweighted.hlsl:main_depth_weighted_oi
 
@@ -33,9 +33,9 @@
 	~~ "Silhouette" related rendering
 	~~      for example, for rendering to the shadow depths texture, or doing a pre-depth pass.
 
-~DepthOnly
-	~Inherit; ../Illum.tech:Silhouette
-	~Selectors
+DepthOnly=~
+	Inherit=~; ../Illum.tech:Silhouette
+	Selectors=~
 		MAT_ALPHA_TEST_PREDEPTH
 		STOCHASTIC_TRANS
 		STOCHASTIC_TRANS_PRIMITIVEID
@@ -43,9 +43,9 @@
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:depthonly
 
-~ShadowGen
-	~Inherit; ../Illum.tech:Silhouette
-	~Selectors
+ShadowGen=~
+	Inherit=~; ../Illum.tech:Silhouette
+	Selectors=~
 		MAT_ALPHA_DITHER_SHADOWS
 		FRUSTUM_FILTER=63
 		SHADOW_CASCADE_MODE
@@ -55,18 +55,18 @@
 	GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
 	PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
 
-~RayTest
-	~Inherit; ../Illum.tech:Silhouette
-	~Selectors
+RayTest=~
+	Inherit=~; ../Illum.tech:Silhouette
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
 	PixelShader=null
 
-~WriteTriangleIndex
-	~Inherit; ../Illum.tech:Silhouette
-	~Selectors
+WriteTriangleIndex=~
+	Inherit=~; ../Illum.tech:Silhouette
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=0
 		SHADOW_CASCADE_MODE
 	VertexShader=xleres/shadowgen/rtwritetiles.hlsl:vs_writetris
@@ -75,8 +75,8 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~VisNormals
-	~Selectors
+VisNormals=~
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		VSOUT_HAS_NORMAL=1
 		GEO_HAS_TEXTANGENT
@@ -87,8 +87,8 @@
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
-~VisWireframe
-	~Selectors
+VisWireframe=~
+	Selectors=~
 		GEO_HAS_TEXCOORD
 		VSOUT_HAS_WORLD_POSITION=1
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
@@ -97,7 +97,7 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Technique
+Technique=~
     Forward = Forward
     Deferred = Deferred
     OrderIndependentTransparency = OrderIndependentTransparency

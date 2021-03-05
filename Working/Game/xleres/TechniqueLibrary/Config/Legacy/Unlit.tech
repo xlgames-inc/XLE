@@ -1,25 +1,25 @@
-~Silhouette
-	~Inherit; ../illum.tech:Silhouette
+Silhouette=~
+	Inherit=~; ../illum.tech:Silhouette
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Forward
-	~Inherit; Silhouette; ../shared.tech:System
+Forward=~
+	Inherit=~; Silhouette; ../Shared.tech:System
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/Standard/unlit.pixel.hlsl:main
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~DepthOnly
-	~Inherit; Silhouette
-	~Selectors
+DepthOnly=~
+	Inherit=~; Silhouette
+	Selectors=~
 		MAT_ALPHA_TEST_PREDEPTH
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:depthonly
 
-~ShadowGen
-	~Inherit; Silhouette
-	~Selectors
+ShadowGen=~
+	Inherit=~; Silhouette
+	Selectors=~
 		MAT_ALPHA_DITHER_SHADOWS
 		FRUSTUM_FILTER=63
 		SHADOW_CASCADE_MODE
@@ -29,18 +29,18 @@
 	GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
 	PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
 
-~RayTest
-	~Inherit; Silhouette
-	~Selectors
+RayTest=~
+	Inherit=~; Silhouette
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
 	PixelShader=null
 
-~WriteTriangleIndex
-	~Inherit; Silhouette
-	~Selectors
+WriteTriangleIndex=~
+	Inherit=~; Silhouette
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=0
 		SHADOW_CASCADE_MODE
 	VertexShader=xleres/shadowgen/rtwritetiles.hlsl:vs_writetris
@@ -49,8 +49,8 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~VisNormals
-	~Selectors
+VisNormals=~
+	Selectors=~
 		VSOUT_HAS_WORLD_POSITION=1
 		VSOUT_HAS_NORMAL=1
 		VSOUT_HAS_TANGENT_FRAME=1
@@ -61,8 +61,8 @@
 	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
-~VisWireframe
-	~Selectors
+VisWireframe=~
+	Selectors=~
 		GEO_HAS_TEXCOORD
 		VSOUT_HAS_WORLD_POSITION=1
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
@@ -71,7 +71,7 @@
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-~Technique
+Technique=~
 	Forward = Forward
 	DepthOnly = DepthOnly
 	ShadowGen = ShadowGen

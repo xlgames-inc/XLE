@@ -1,54 +1,54 @@
-~Illum
-    ~Parameters
-        ~Geometry
+Illum=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_NORMAL
-        ~GlobalEnvironment
+        GlobalEnvironment=~
             AUTO_COTANGENT
             PREFER_ANISOTROPIC=1
             TANGENT_PROCESS_IN_PS=1
-        ~Material
+        Material=~
             MAT_BLEND_FOG=1
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/illum.pixel.hlsl:main
-~DepthOnly
-~Deferred
-    ~Parameters
-        ~Geometry
+DepthOnly=~
+Deferred=~
+    Parameters=~
+        Geometry=~
             GEO_HAS_NORMAL
-        ~GlobalEnvironment
+        GlobalEnvironment=~
             AUTO_COTANGENT
             PREFER_ANISOTROPIC=1
             TANGENT_PROCESS_IN_PS=1
             GBUFFER_TYPE=1
-        ~Material
+        Material=~
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
     VertexShader=xleres/deferred/basic.vertex.hlsl:main
     PixelShader=xleres/deferred/basic.pixel.hlsl:main
-~ShadowGen
-    ~Parameters
-        ~Geometry
-        ~Runtime
+ShadowGen=~
+    Parameters=~
+        Geometry=~
+        Runtime=~
             FRUSTUM_FILTER=63
             SPAWNED_INSTANCE
             SHADOW_CASCADE_MODE
     VertexShader=xleres/shadowgen/depthonly.vertex.hlsl:main
     GeometryShader=xleres/shadowgen/depthonly.geo.hlsl:main
     PixelShader=xleres/shadowgen/depthonly.pixel.hlsl:main
-~OrderIndependentTransparency
-    ~Parameters
+OrderIndependentTransparency=~
+    Parameters=~
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     PixelShader=xleres/forward/transparency/cloudvolume.pixel.hlsl:main
-~PrepareVegetationSpawn
-~RayTest
-~VisNormals
-~VisWireframe
-    ~Parameters
-        ~Geometry
+PrepareVegetationSpawn=~
+RayTest=~
+VisNormals=~
+VisWireframe=~
+    Parameters=~
+        Geometry=~
             VSOUT_HAS_WORLD_POSITION=1
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl:main
