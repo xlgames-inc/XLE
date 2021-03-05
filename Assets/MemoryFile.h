@@ -6,12 +6,14 @@
 
 #include "IFileSystem.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <unordered_map>
 
 namespace Assets
 {
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 	std::unique_ptr<IFileInterface> CreateMemoryFile(const Blob&);
+	std::unique_ptr<IFileInterface> CreateMemoryFile(IteratorRange<const void*> blob);
 
 	std::unique_ptr<IFileInterface> CreateSubFile(
 		const std::shared_ptr<OSServices::MemoryMappedFile>& archiveFile,
@@ -37,9 +39,14 @@ namespace Assets
 
 	// Creates a static case sensitive filesystem containing the given of files (in a single directory)
 	// with the given contents
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(
+	std::shared_ptr<IFileSystem> CreateFileSystem_Memory(
 		const std::unordered_map<std::string, Blob>& filesAndContents,
 		const FilenameRules& filenameRules = FilenameRules { '/', true },
 		FileSystemMemoryFlags::BitField = 0);
+
+	std::shared_ptr<IFileSystem> CreateFileSystem_Memory(
+		const std::unordered_map<std::string, IteratorRange<const void*>>& filesAndContents,
+		const FilenameRules& filenameRules = FilenameRules { '/', true },
+		FileSystemMemoryFlags::BitField flags = 0);
 }
 

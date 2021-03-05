@@ -9,6 +9,7 @@
     #include "../Foreign/zlib/zlib.h"
 #endif
 #include "../Utility/Conversion.h"
+#include <stdexcept>
 
 namespace Assets
 {
@@ -104,6 +105,97 @@ namespace Assets
 	std::unique_ptr<IFileInterface> CreateMemoryFile(const Blob& blob)
 	{
 		return std::make_unique<MemoryFile>(blob);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class MemoryFileStatic : public IFileInterface
+	{
+	public:
+		size_t			Write(const void * source, size_t size, size_t count) never_throws override;
+		size_t			Read(void * destination, size_t size, size_t count) const never_throws override;
+		ptrdiff_t		Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor) never_throws override;
+		size_t			TellP() const never_throws override;
+
+		size_t			GetSize() const never_throws override;
+		FileDesc		GetDesc() const never_throws override;
+
+		MemoryFileStatic(IteratorRange<const void*> data);
+		~MemoryFileStatic();
+	private:
+		IteratorRange<const void*> _data;
+		mutable size_t	_ptr;
+	};
+
+	size_t			MemoryFileStatic::Write(const void * source, size_t size, size_t count) never_throws
+	{
+		Throw(std::runtime_error("Attempting to write to a write protected MemoryFileStatic"));
+	}
+
+	size_t			MemoryFileStatic::Read(void * destination, size_t size, size_t count) const never_throws
+	{
+		if (!size || !count) return 0;
+
+		ptrdiff_t spaceLeft = _data.size() - _ptr;
+		ptrdiff_t maxCount = spaceLeft / size;
+		ptrdiff_t finalCount = std::min(ptrdiff_t(count), maxCount);
+
+		std::memcpy(
+			destination,
+			PtrAdd(AsPointer(_data.begin()), _ptr),
+			finalCount * size);
+		_ptr += finalCount * size;
+		return finalCount;
+	}
+
+	ptrdiff_t		MemoryFileStatic::Seek(ptrdiff_t seekOffset, OSServices::FileSeekAnchor anchor) never_throws
+	{
+		ptrdiff_t newPtr = 0;
+		switch (anchor) {
+		case OSServices::FileSeekAnchor::Start:		newPtr = seekOffset; break;
+		case OSServices::FileSeekAnchor::Current:	newPtr = _ptr + seekOffset; break;
+		case OSServices::FileSeekAnchor::End:		newPtr = _data.size() + seekOffset; break;
+		default:
+			assert(0);
+		}
+		newPtr = std::max(ptrdiff_t(0), newPtr);
+		newPtr = std::min(ptrdiff_t(_data.size()), newPtr);
+		_ptr = newPtr;
+		return _ptr;
+	}
+
+	size_t			MemoryFileStatic::TellP() const never_throws
+	{
+		return _ptr;
+	}
+
+	size_t			MemoryFileStatic::GetSize() const never_throws
+	{
+		return _data.size();
+	}
+
+	FileDesc		MemoryFileStatic::GetDesc() const never_throws
+	{
+		return FileDesc
+			{
+				"<<in memory>>", {},
+				FileDesc::State::Normal,
+				0, uint64_t(_data.size())
+			};
+	}
+
+	MemoryFileStatic::MemoryFileStatic(IteratorRange<const void*> data)
+	: _data(data)
+	, _ptr(0)
+	{}
+
+	MemoryFileStatic::~MemoryFileStatic()
+	{
+	}
+
+	std::unique_ptr<IFileInterface> CreateMemoryFile(IteratorRange<const void*> blob)
+	{
+		return std::make_unique<MemoryFileStatic>(blob);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -344,11 +436,15 @@ namespace Assets
 		virtual IOReason	TryFakeFileChange(const Marker& marker);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
-		FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags);
+		FileSystem_Memory(
+			const std::unordered_map<std::string, Blob>& filesAndContents, 
+			const std::unordered_map<std::string, IteratorRange<const void*>>& staticFilesAndContents, 
+			const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags);
 		~FileSystem_Memory();
 
 	protected:
 		std::vector<std::pair<uint64_t, Blob>> _filesAndContents;
+		std::vector<std::pair<uint64_t, IteratorRange<const void*>>> _staticFilesAndContents;
 		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _attachedMonitors;
 		FilenameRules _filenameRules;
 		FileSystemMemoryFlags::BitField _flags;
@@ -366,13 +462,22 @@ namespace Assets
 
 		auto hash = HashFilenameAndPath(filename, _filenameRules);
 		auto i = LowerBound(_filesAndContents, hash);
-		if (i == _filesAndContents.end() || i->first != hash)
-			return TranslateResult::Invalid;
+		if (i != _filesAndContents.end() && i->first == hash) {
+			result.resize(sizeof(MarkerStruct));
+			auto* out = (MarkerStruct*)AsPointer(result.begin());
+			out->_fileIdx = std::distance(_filesAndContents.begin(), i) << size_t(1);
+			return TranslateResult::Success;
+		}
 
-		result.resize(sizeof(MarkerStruct));
-		auto* out = (MarkerStruct*)AsPointer(result.begin());
-		out->_fileIdx = std::distance(_filesAndContents.begin(), i);
-		return TranslateResult::Success;
+		auto i2 = LowerBound(_staticFilesAndContents, hash);
+		if (i2 != _staticFilesAndContents.end() && i2->first == hash) {
+			result.resize(sizeof(MarkerStruct));
+			auto* out = (MarkerStruct*)AsPointer(result.begin());
+			out->_fileIdx = (std::distance(_staticFilesAndContents.begin(), i2) << size_t(1)) | size_t(1);
+			return TranslateResult::Success;
+		}
+
+		return TranslateResult::Invalid;
 	}
 
 	auto FileSystem_Memory::TryTranslate(Marker& result, StringSection<utf16> filename) -> TranslateResult
@@ -382,13 +487,22 @@ namespace Assets
 
 		auto hash = HashFilenameAndPath(filename, _filenameRules);
 		auto i = LowerBound(_filesAndContents, hash);
-		if (i == _filesAndContents.end() || i->first != hash)
-			return TranslateResult::Invalid;
+		if (i != _filesAndContents.end() && i->first == hash) {
+			result.resize(sizeof(MarkerStruct));
+			auto* out = (MarkerStruct*)AsPointer(result.begin());
+			out->_fileIdx = std::distance(_filesAndContents.begin(), i) << size_t(1);
+			return TranslateResult::Success;
+		}
 
-		result.resize(sizeof(MarkerStruct));
-		auto* out = (MarkerStruct*)AsPointer(result.begin());
-		out->_fileIdx = std::distance(_filesAndContents.begin(), i);
-		return TranslateResult::Success;
+		auto i2 = LowerBound(_staticFilesAndContents, hash);
+		if (i2 != _staticFilesAndContents.end() && i2->first == hash) {
+			result.resize(sizeof(MarkerStruct));
+			auto* out = (MarkerStruct*)AsPointer(result.begin());
+			out->_fileIdx = (std::distance(_staticFilesAndContents.begin(), i2) << size_t(1)) | size_t(1);
+			return TranslateResult::Success;
+		}
+
+		return TranslateResult::Invalid;
 	}
 
 	auto FileSystem_Memory::TryOpen(std::unique_ptr<IFileInterface>& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
@@ -396,13 +510,28 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx >= _filesAndContents.size())
-			return IOReason::FileNotFound;
+		if (m._fileIdx & 1) {
+			if (strchr(openMode, 'w'))
+				return IOReason::WriteProtect;
 
-		auto i = _filesAndContents.begin();
-		std::advance(i, m._fileIdx);
-		result = CreateMemoryFile(i->second);
-		return IOReason::Success;
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _staticFilesAndContents.size())
+				return IOReason::FileNotFound;
+
+			auto i = _staticFilesAndContents.begin();
+			std::advance(i, idx);
+			result = CreateMemoryFile(i->second);
+			return IOReason::Success;
+		} else {
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _filesAndContents.size())
+				return IOReason::FileNotFound;
+
+			auto i = _filesAndContents.begin();
+			std::advance(i, idx);
+			result = CreateMemoryFile(i->second);
+			return IOReason::Success;
+		}
 	}
 
 	auto FileSystem_Memory::TryOpen(OSServices::BasicFile& result, const Marker& marker, const char openMode[], OSServices::FileShareMode::BitField shareMode) -> IOReason
@@ -416,13 +545,28 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx >= _filesAndContents.size())
-			return IOReason::FileNotFound;
+		if (m._fileIdx & 1) {
+			if (strchr(openMode, 'w'))
+				return IOReason::WriteProtect;
 
-		auto i = _filesAndContents.begin();
-		std::advance(i, m._fileIdx);
-		result = OSServices::MemoryMappedFile(MakeIteratorRange(*i->second), OSServices::MemoryMappedFile::CloseFn{});
-		return IOReason::Success;
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _staticFilesAndContents.size())
+				return IOReason::FileNotFound;
+
+			auto i = _staticFilesAndContents.begin();
+			std::advance(i, idx);
+			result = OSServices::MemoryMappedFile({(void*)i->second.begin(), (void*)i->second.end()}, OSServices::MemoryMappedFile::CloseFn{});
+			return IOReason::Success;
+		} else {
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _filesAndContents.size())
+				return IOReason::FileNotFound;
+
+			auto i = _filesAndContents.begin();
+			std::advance(i, idx);
+			result = OSServices::MemoryMappedFile(MakeIteratorRange(*i->second), OSServices::MemoryMappedFile::CloseFn{});
+			return IOReason::Success;
+		}
 	}
 
 	auto FileSystem_Memory::TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt) -> IOReason
@@ -435,17 +579,21 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx >= _filesAndContents.size())
+		if (m._fileIdx & 1)
+			return IOReason::WriteProtect;
+
+		auto idx = m._fileIdx >> size_t(1);
+		if (idx >= _filesAndContents.size())
 			return IOReason::FileNotFound;
 
-		auto range = EqualRange(_attachedMonitors, (unsigned)m._fileIdx);
+		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
 		for (auto r=range.first; r!=range.second; ++r)
 			// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
 			// compares the control block, rather than the object pointer itself
 			if (!r->second.owner_before(evnt) && !evnt.owner_before(r->second))
 				return IOReason::Invalid;
 
-		_attachedMonitors.insert(range.second, std::make_pair(m._fileIdx, evnt));
+		_attachedMonitors.insert(range.second, std::make_pair(idx, evnt));
 		return IOReason::Success;
 	}
 
@@ -457,10 +605,14 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx >= _filesAndContents.size())
+		if (m._fileIdx & 1)
+			return IOReason::WriteProtect;
+
+		auto idx = m._fileIdx >> size_t(1);
+		if (idx >= _filesAndContents.size())
 			return IOReason::FileNotFound;
 
-		auto range = EqualRange(_attachedMonitors, (unsigned)m._fileIdx);
+		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
 		for (auto r=range.first; r!=range.second; ++r) {
 			auto m = r->second.lock();
 			if (m)
@@ -474,22 +626,43 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx >= _filesAndContents.size())
-			return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+		if (m._fileIdx & 1) {
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _staticFilesAndContents.size())
+				return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
 
-		auto i = _filesAndContents.begin();
-		std::advance(i, m._fileIdx);
+			auto i = _staticFilesAndContents.begin();
+			std::advance(i, idx);
 
-		auto name = Conversion::Convert<std::basic_string<utf8>>(i->first);
-		return FileDesc
-			{
-				name, name,
-				FileDesc::State::Normal,
-				0, (uint64_t)i->second->size()
-			};
+			auto name = Conversion::Convert<std::basic_string<utf8>>(i->first);
+			return FileDesc
+				{
+					name, name,
+					FileDesc::State::Normal,
+					0, (uint64_t)i->second.size()
+				};
+		} else {
+			auto idx = m._fileIdx >> size_t(1);
+			if (idx >= _filesAndContents.size())
+				return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };;
+
+			auto i = _filesAndContents.begin();
+			std::advance(i, idx);
+
+			auto name = Conversion::Convert<std::basic_string<utf8>>(i->first);
+			return FileDesc
+				{
+					name, name,
+					FileDesc::State::Normal,
+					0, (uint64_t)i->second->size()
+				};
+		}
 	}
 
-	FileSystem_Memory::FileSystem_Memory(const std::unordered_map<std::string, Blob>& filesAndContents, const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags)
+	FileSystem_Memory::FileSystem_Memory(
+		const std::unordered_map<std::string, Blob>& filesAndContents, 
+		const std::unordered_map<std::string, IteratorRange<const void*>>& staticFilesAndContents, 
+		const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags)
 	: _filenameRules(filenameRules)
 	, _flags(flags)
 	{
@@ -500,17 +673,34 @@ namespace Assets
 			assert(i2 == _filesAndContents.end() || i2->first != fnHash);
 			_filesAndContents.insert(i2, {fnHash, i.second});
 		}
+
+		_staticFilesAndContents.reserve(staticFilesAndContents.size());
+		for (const auto&i:staticFilesAndContents) {
+			auto fnHash = HashFilename(MakeStringSection(i.first), _filenameRules);
+			auto i2 = LowerBound(_staticFilesAndContents, fnHash);
+			assert(i2 == _staticFilesAndContents.end() || i2->first != fnHash);
+			_staticFilesAndContents.insert(i2, {fnHash, i.second});
+		}
 	}
 
 	FileSystem_Memory::~FileSystem_Memory() {}
 
 
-	std::shared_ptr<IFileSystem>	CreateFileSystem_Memory(
+	std::shared_ptr<IFileSystem> CreateFileSystem_Memory(
 		const std::unordered_map<std::string, Blob>& filesAndContents,
 		const FilenameRules& filenameRules,
 		FileSystemMemoryFlags::BitField flags)
 	{
-		return std::make_shared<FileSystem_Memory>(filesAndContents, filenameRules, flags);
+		return std::make_shared<FileSystem_Memory>(filesAndContents, std::unordered_map<std::string, IteratorRange<const void*>>{}, filenameRules, flags);
+	}
+
+	std::shared_ptr<IFileSystem> CreateFileSystem_Memory(
+		const std::unordered_map<std::string, IteratorRange<const void*>>& filesAndContents,
+		const FilenameRules& filenameRules,
+		FileSystemMemoryFlags::BitField flags)
+	{
+		assert(!(flags & FileSystemMemoryFlags::EnableChangeMonitoring));		// change monitoring doesn't make sense in this case, because files in this form are write protected
+		return std::make_shared<FileSystem_Memory>(std::unordered_map<std::string, Blob>{}, filesAndContents, filenameRules, flags);
 	}
 }
 
