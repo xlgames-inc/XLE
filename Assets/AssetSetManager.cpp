@@ -173,12 +173,14 @@ namespace Assets
 				Services::GetAssetSets().DeregisterFrameBarrierCallback(markerId);
 		}
 
-		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime)
+		void CheckMainThreadStall(std::chrono::steady_clock::time_point& stallStartTime)
 		{
 			if (Threading::CurrentThreadId() == s_mainThreadId) {
-				auto timeDiff = std::chrono::steady_clock::now() - stallStartTime;
+				auto now = std::chrono::steady_clock::now();
+				auto timeDiff = now - stallStartTime;
 				if (timeDiff > std::chrono::milliseconds(100)) {
 					Log(Warning) << "Long stall on main thread while waiting for asset (" << std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count() << ") milliseconds" << std::endl;
+					stallStartTime = now;
 				}
 			}
 		}

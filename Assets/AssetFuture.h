@@ -101,7 +101,7 @@ namespace Assets
 		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn);
 		void DeregisterFrameBarrierCallback(unsigned);
 
-		void CheckMainThreadStall(std::chrono::steady_clock::time_point stallStartTime);
+		void CheckMainThreadStall(std::chrono::steady_clock::time_point& stallStartTime);
 
 		using FutureResolution_CheckStatusFn = AssetState(*)(void*);
 		void FutureResolution_BeginMoment(void* future, FutureResolution_CheckStatusFn);

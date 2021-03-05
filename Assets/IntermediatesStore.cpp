@@ -195,21 +195,31 @@ namespace Assets
 		return (ResChar)((input == '\\')?'/':tolower(input));
 	}
 
+	static std::string MakeSafeName(StringSection<> input)
+	{
+		auto result = input.AsString();
+		for (auto&b:result)
+			if (b == ':') b = '-';
+		return result;
+	}
+
 	std::string IntermediatesStore::Pimpl::MakeStoreName(
 		StringSection<> archivableName,
 		CompileProductsGroupId groupId) const
 	{
 		ResolveBaseDirectory();
 
-		std::stringstream str;
-		str << _resolvedBaseDirectory << "/";
 		assert(_groupIdToDirName.find(groupId) != _groupIdToDirName.end());
-		str << _groupIdToDirName.find(groupId)->second << "/";
-		str << archivableName;
+		const auto& groupName = _groupIdToDirName.find(groupId)->second;
 
-		auto result = str.str();
-		for (auto&b:result)
-			if (b == ':') b = '-';
+		std::string result;
+		result.reserve(_resolvedBaseDirectory.size() + 1 + groupName.size() + 1 + archivableName.size());
+		result.insert(result.end(), _resolvedBaseDirectory.begin(), _resolvedBaseDirectory.end());
+		result.push_back('/');
+		result.insert(result.end(), groupName.begin(), groupName.end());
+		result.push_back('/');
+		for (auto b:archivableName)
+			result.push_back((b != ':')?b:'-');
 		return result;
 	}
 
@@ -689,9 +699,10 @@ namespace Assets
 		auto id = Hash64(name.begin(), name.end());
 		auto existing = _pimpl->_groupIdToDirName.find(id);
 		if (existing == _pimpl->_groupIdToDirName.end()) {
-			_pimpl->_groupIdToDirName.insert({id, name.AsString()});
+			auto safeName = MakeSafeName(name);
+			_pimpl->_groupIdToDirName.insert({id, safeName});
 		} else {
-			assert(existing->second == name.AsString());
+			assert(existing->second == MakeSafeName(name));
 		}
 		return id;
 	}
