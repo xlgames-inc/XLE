@@ -312,8 +312,10 @@ namespace Utility
                         _input._start += 2;
                         ReadUntilEndOfLine();
                         break;
-                    } else
-                        return;
+                    } else {
+                        ++_input._start;
+                        break;
+                    }
 
                 case '\r':  // (could be an independant new line, or /r/n combo)
                     ++_input._start;
@@ -336,6 +338,8 @@ namespace Utility
                     }
                     // else intentional fall-through
                 default:
+                    if (*_input.begin() != '\t' && *_input.begin() != ' ')
+                        preprocValid = false;
                     ++_input._start;
                     break;
                 }
@@ -420,6 +424,41 @@ namespace Utility
 
             return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
         }
+
+        auto PreProc_GetBrackettedToken() -> Token
+        {
+            // we need a special implementation for this for reading the preprocessor tokens themselves,
+            // because the rules are slightly different (for example, we don't want to start parsing
+            // preprocessor tokens recursively)
+            PreProc_SkipWhitespace();
+
+            auto startLocation = GetLocation();
+            if (_input.begin() == _input.end())
+                return Token { { _input.begin(), _input.begin() }, startLocation, GetLocation() };
+
+            char expectingTerminator = '"';
+            if (*_input.begin() == '"') {
+                ++_input._start;
+            } else if (*_input.begin() == '<') {
+                expectingTerminator = '>';
+                ++_input._start;
+            } else {
+                return Token { { _input.begin(), _input.begin() }, startLocation, GetLocation() };
+            }
+
+            auto startOfToken = _input.begin();
+            for (;;) {
+                if (_input.begin() == _input.end() || *_input.begin() == '\r' || *_input.begin() == '\n' || *_input.begin() == expectingTerminator)
+                    break;
+                ++_input._start;
+            }
+
+            auto endOfToken = _input.begin();
+            if (_input.begin() != _input.end() && *_input.begin() == expectingTerminator)
+                ++_input._start;
+
+            return Token { { startOfToken, endOfToken }, startLocation, GetLocation() };
+        }
     };
 
     struct Cond
@@ -444,7 +483,7 @@ namespace Utility
         return result;
     }
     
-    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input)
+    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input, StringSection<> filenameForRelativeIncludeSearch, IPreprocessorIncludeHandler& includeHandler)
     {
         // Walk through the input string, extracting all preprocessor operations
         // We need to consider "//" comments, but we don't support block comments or line extensions
@@ -559,7 +598,7 @@ namespace Utility
                     helper.ReadUntilEndOfLine();       // skip rest of line
                 }
 
-            } else if (XlEqStringI(directive._value, "define")) {
+            } else if (XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef")) {
 
                 auto symbol = helper.PreProc_GetNextToken();
                 if (symbol._value.IsEmpty())
@@ -604,65 +643,104 @@ namespace Utility
                     }
                 }
 
-                // If we're defining something with no value, and the only condition on the stack is a check to see
-                // if that same symbol defined; let's assume this is a header guard type pattern, and just wipe out
-                // the condition on the stack
-                auto headerGuardDetection = !foundNonWhitespaceChar && unconditionalSet && gotNotDefinedCheck && conditionsStack.size()==1;
-                if (!headerGuardDetection) {
-                    // It could be an unconditional substitution, or it could be set in different ways
-                    // depending on the conditions on the stack.
-                    // Conditional sets add some complexity -- we can't actually think of it as just a straight
-                    // substitution anymore; but instead just something that pulls in an extra relevance table
-                    if (unconditionalSet) {
-                        if (foundNonWhitespaceChar) {
-                            auto expr = Internal::AsExpressionTokenList(
-                                activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+                if (unconditionalSet) {
+                    // If we're defining something with no value, and the only condition on the stack is a check to see
+                    // if that same symbol defined; let's assume this is a header guard type pattern, and just wipe out
+                    // the condition on the stack
+                    auto headerGuardDetection = !foundNonWhitespaceChar && gotNotDefinedCheck && conditionsStack.size()==1 && XlEqStringI(directive._value, "define");
+                    if (!headerGuardDetection) {
+                        // It could be an unconditional substitution, or it could be set in different ways
+                        // depending on the conditions on the stack.
+                        // Conditional sets add some complexity -- we can't actually think of it as just a straight
+                        // substitution anymore; but instead just something that pulls in an extra relevance table
+                        if (XlEqStringI(directive._value, "define")) {
+                            if (foundNonWhitespaceChar) {
+                                try {
+                                    auto expr = Internal::AsExpressionTokenList(
+                                        activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
 
-                            // Note that we don't want to calculate any relevance information yet. We will do
-                            // that if the substitution is used, however
-                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                                    // Note that we don't want to calculate any relevance information yet. We will do
+                                    // that if the substitution is used, however
+                                    if (!gotNotDefinedCheck) {
+                                        activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                                    } else {
+                                        activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), expr));
+                                    }
+                                } catch (const std::exception& e) {
+                                    std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
+                                }
+                            } else {
+                                if (!gotNotDefinedCheck) {
+                                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                                } else {
+                                    activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                                }
+                            }
                         } else {
-                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                            auto subs = activeSubstitutions._items.find(symbol._value.AsString());
+                            if (subs != activeSubstitutions._items.end())
+                                activeSubstitutions._items.erase(subs);
                         }
                     } else {
-                        // The state of this variable will vary based on
-                        // We can still support this, but it requires building a relevance table for
-                        // the symbol here; and then any expression that uses this symbol should then
-                        // merge in the relevance information for it
-                        std::cout << "Conditional substitution for " << symbol._value << " ignored." << std::endl;
+                        auto tableEntry = tokenDictionary.GetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+                        auto i = relevanceTable.find(tableEntry);
+                        if (i != relevanceTable.end())
+                            relevanceTable.erase(i);
+
+                        // By the check above, any size 3 positive conditions are just !defined(X).
+                        // We will just clear them out here, because we won't want them to appear in the
+                        // relevance conditions
+                        for (auto& condition:conditionsStack)
+                            if (condition._positiveCond.size() == 3)
+                                conditionsStack[0]._positiveCond = {1};
                     }
                 } else {
-                    auto tableEntry = tokenDictionary.GetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
-                    auto i = relevanceTable.find(tableEntry);
-                    if (i != relevanceTable.end())
-                        relevanceTable.erase(i);
-
-                    // By the check above, any size 3 positive conditions are just !defined(X).
-                    // We will just clear them out here, because we won't want them to appear in the
-                    // relevance conditions
-                    for (auto& condition:conditionsStack)
-                        if (condition._positiveCond.size() == 3)
-                            conditionsStack[0]._positiveCond = {1};
+                    // The state of this variable will vary based on
+                    // We can still support this, but it requires building a relevance table for
+                    // the symbol here; and then any expression that uses this symbol should then
+                    // merge in the relevance information for it
+                    std::cout << "Conditional substitution for " << symbol._value << " ignored." << std::endl;
                 }
-                
-            } else if (XlEqStringI(directive._value, "undef")) {
-
-                // Remove a substitution (not that undef'ing something that is not defined is silently ignored)
-                auto symbol = helper.PreProc_GetNextToken();
-                if (symbol._value.IsEmpty())
-                    Throw(FormatException("Expected token in #undef", directive._start));
-
-                auto subs = activeSubstitutions._items.find(symbol._value.AsString());
-                if (subs != activeSubstitutions._items.end())
-                    activeSubstitutions._items.erase(subs);
 
             } else if (XlEqStringI(directive._value, "include")) {
 
-                Throw(FormatException("Include directives not yet supported", directive._start));
+                auto symbol = helper.PreProc_GetBrackettedToken();
+                if (symbol._value.IsEmpty())
+                    Throw(FormatException("Expected file to include after #include directive", directive._start));
+
+                // todo -- do we need any #pragma once type functionality to prevent infinite recursion
+                // or just searching through too many files
+                auto includedAnalysis = includeHandler.GeneratePreprocessorAnalysis(symbol._value, filenameForRelativeIncludeSearch);
+
+                // merge in the results we got from this included file
+                std::map<unsigned, Internal::ExpressionTokenList> translatedRelevanceTable;
+                for (const auto& relevance:includedAnalysis._relevanceTable) {
+                    translatedRelevanceTable.insert(std::make_pair(
+                        tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.first),
+                        tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.second)));
+                }
+                relevanceTable = Internal::MergeRelevanceTables(
+                    relevanceTable, {},
+                    translatedRelevanceTable, GetCurrentCondition(conditionsStack));
+
+                for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._items) {
+                    activeSubstitutions._items.insert(std::make_pair(
+                        sideEffect.first,
+                        activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
+                }
+
+                for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._defaultSets) {
+                    if (    activeSubstitutions._items.find(sideEffect.first) != activeSubstitutions._items.end()
+                        ||  activeSubstitutions._defaultSets.find(sideEffect.first) != activeSubstitutions._defaultSets.end())
+                        continue;
+                    activeSubstitutions._defaultSets.insert(std::make_pair(
+                        sideEffect.first,
+                        activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
+                }
 
             } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
 
-                // These don't have any effects relevant to us. We can jsut go ahead and skip them
+                // These don't have any effects relevant to us. We can just go ahead and skip them
                 helper.SkipUntilNextPreproc();
 
             } else {
@@ -675,22 +753,9 @@ namespace Utility
         }
 
         PreprocessorAnalysis result;
-		for (const auto&i:relevanceTable) {
-			result._relevanceTable._items.insert(
-				std::make_pair(
-					tokenDictionary._tokenDefinitions[i.first]._value,
-					tokenDictionary.AsString(i.second)));
-		}
-        for (const auto&i:activeSubstitutions._items) {
-            if (!i.second.empty()) {
-                result._sideEffects.insert(
-                    std::make_pair(
-                        i.first,
-                        activeSubstitutions._dictionary.AsString(i.second)));
-            } else {
-                result._sideEffects.insert(std::make_pair(i.first, std::string{}));
-            }
-        }
+        result._tokenDictionary = std::move(tokenDictionary);
+        result._relevanceTable = std::move(relevanceTable);
+        result._substitutionSideEffects = std::move(activeSubstitutions);
 		return result;
     }
 }

@@ -95,6 +95,12 @@ namespace preprocessor_operations
 			return left_d <= right_d;
 		} else if (op == ">=") {
 			return left_d >= right_d;
+		} else if (op == "&") {
+			return left_i & right_i;
+		} else if (op == "^") {
+			return left_i ^ right_i;
+		} else if (op == "|") {
+			return left_i | right_i;
 		} else if (op == "&&") {
 			return left_i && right_i;
 		} else if (op == "||") {
@@ -149,10 +155,13 @@ namespace preprocessor_operations
 			opp.add("*",  5); opp.add("/", 5); opp.add("%", 5);
 			opp.add("+",  6); opp.add("-", 6);
 			opp.add("<<", 7); opp.add(">>", 7);
-			opp.add("<",  8); opp.add("<=", 8); opp.add(">=", 8); opp.add(">", 8);
-			opp.add("==", 9); opp.add("!=", 9);
-			opp.add("&&", 13);
-			opp.add("||", 14);
+			opp.add("<",  9); opp.add("<=", 9); opp.add(">=", 9); opp.add(">", 9);
+			opp.add("==", 10); opp.add("!=", 10);
+			opp.add("&", 11);
+			opp.add("^", 12);
+			opp.add("|", 13);
+			opp.add("&&", 14);
+			opp.add("||", 15);
 
 			// Add unary operators:
 			opp.addUnary("+",  3); opp.addUnary("-", 3); opp.addUnary("!", 3);
@@ -277,6 +286,27 @@ namespace Utility
 
 	namespace Internal
 	{
+		const char* AsString(TokenDictionary::TokenType input)
+		{
+			switch (input) {
+			case TokenDictionary::TokenType::UnaryMarker: return "UnaryMarker";
+			case TokenDictionary::TokenType::Literal: return "Literal";
+			case TokenDictionary::TokenType::Variable: return "Variable";
+			case TokenDictionary::TokenType::IsDefinedTest: return "IsDefinedTest";
+			case TokenDictionary::TokenType::Operation: return "Operation";
+			default: return "<<unknown>>";
+			}
+		}
+
+		TokenDictionary::TokenType AsTokenType(StringSection<> input)
+		{
+			if (XlEqString(input, "UnaryMarker")) return TokenDictionary::TokenType::UnaryMarker;
+			if (XlEqString(input, "Literal")) return TokenDictionary::TokenType::Literal;
+			if (XlEqString(input, "Variable")) return TokenDictionary::TokenType::Variable;
+			if (XlEqString(input, "IsDefinedTest")) return TokenDictionary::TokenType::IsDefinedTest;
+			return TokenDictionary::TokenType::Operation;
+		}
+
 		static bool operator==(const TokenDictionary::Token& lhs, const TokenDictionary::Token& rhs)
 		{
 			return lhs._type == rhs._type && lhs._value == rhs._value;
@@ -517,7 +547,7 @@ namespace Utility
 			return result;
 		}
 
-		std::string TokenDictionary::AsString(const ExpressionTokenList& subExpression)
+		std::string TokenDictionary::AsString(const ExpressionTokenList& subExpression) const
 		{
 			std::stack<std::string> evaluation;
 			for (auto tokenIdx:subExpression) {
@@ -540,24 +570,16 @@ namespace Utility
 				}
 			}
 			assert(evaluation.size() == 1);
-			return evaluation.top();
-		}
+			auto res = evaluation.top();
 
-		/*static RelevanceTable AsRelevanceTable(class TokenDictionary& tokenTable, const WorkingRelevanceTable& input)
-		{
-			RelevanceTable result;
-			for (const auto&e:input) {
-				auto& varToken = tokenTable._tokenDefinitions[e.first];
-				if (varToken._type == TokenDictionary::TokenType::Variable) {
-					result._items.insert(std::make_pair(varToken._value, AsString(tokenTable, e.second)));
-				} else if (varToken._type == TokenDictionary::TokenType::IsDefinedTest) {
-					result._items.insert(std::make_pair(Concatenate("defined(", varToken._value, ")"), AsString(tokenTable, e.second)));
-				} else {
-					assert(0);
-				}
+			// We often end up with a set of brackets that surround the whole thing. Let's just
+			// remove that if we find it
+			if (res.size() > 2 && *res.begin() == '(' && *(res.end()-1) == ')') {
+				res.erase(res.begin());
+				res.erase(res.end()-1);
 			}
-			return result;
-		}*/
+			return res;
+		}
 
 		unsigned TokenDictionary::GetToken(TokenType type, const std::string& value)
 		{
@@ -591,6 +613,13 @@ namespace Utility
 				result.push_back(trns);
 			}
 			return result;
+		}
+
+		unsigned TokenDictionary::Translate(
+			const TokenDictionary& otherDictionary,
+			unsigned tokenForOtherDictionary)
+		{
+			return GetToken(otherDictionary._tokenDefinitions[tokenForOtherDictionary]._type, otherDictionary._tokenDefinitions[tokenForOtherDictionary]._value);
 		}
 
 		TokenDictionary::TokenDictionary()
@@ -709,6 +738,8 @@ namespace Utility
 		}
 		return result;
 	}
+
+	IPreprocessorIncludeHandler::~IPreprocessorIncludeHandler() {}
 
 	/* TokenMap vars;
 	vars["__VERSION__"] = 300;

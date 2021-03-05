@@ -43,14 +43,20 @@ namespace Utility
 			ExpressionTokenList Translate(
 				const TokenDictionary& otherDictionary,
 				const ExpressionTokenList& tokenListForOtherDictionary);
+			unsigned Translate(
+				const TokenDictionary& otherDictionary,
+				unsigned tokenForOtherDictionary);
 
 			unsigned GetToken(TokenType type, const std::string& value = {});
 
-			std::string AsString(const ExpressionTokenList& tokenList);
+			std::string AsString(const ExpressionTokenList& tokenList) const;
 
 			TokenDictionary();
 			~TokenDictionary();
 		};
+
+		const char* AsString(TokenDictionary::TokenType);
+		TokenDictionary::TokenType AsTokenType(StringSection<>);
 
 		using WorkingRelevanceTable = std::map<unsigned, ExpressionTokenList>;
 
@@ -67,6 +73,7 @@ namespace Utility
 		{
 			TokenDictionary _dictionary;
 			std::unordered_map<std::string, ExpressionTokenList> _items;
+			std::unordered_map<std::string, ExpressionTokenList> _defaultSets;
 		};
 
 		ExpressionTokenList AsExpressionTokenList(
@@ -85,6 +92,29 @@ namespace Utility
 	};
 	RelevanceTable CalculatePreprocessorExpressionRevelance(StringSection<> input);
 
+	class PreprocessorAnalysis
+    {
+    public:
+        Internal::TokenDictionary _tokenDictionary;
+        std::map<unsigned, Internal::ExpressionTokenList> _relevanceTable;
+        Internal::PreprocessorSubstitutions _substitutionSideEffects;
+    };
+
+	class IPreprocessorIncludeHandler;
+
+    PreprocessorAnalysis GeneratePreprocessorAnalysis(
+		StringSection<> input,
+		StringSection<> filenameForRelativeIncludeSearch,
+		IPreprocessorIncludeHandler& includeHandler);
+
+	class IPreprocessorIncludeHandler
+	{
+	public:
+		virtual PreprocessorAnalysis GeneratePreprocessorAnalysis(
+			StringSection<> requestString,
+			StringSection<> fileIncludedFrom) = 0;
+		virtual ~IPreprocessorIncludeHandler();
+	};
 }
 
 using namespace Utility;

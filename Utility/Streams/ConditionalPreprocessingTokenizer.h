@@ -12,7 +12,7 @@
 
 namespace Utility
 {
-		/// <summary>A stream of tokens from a file that uses a C-like preprocessor for conditional statements</summary>
+	/// <summary>A stream of tokens from a file that uses a C-like preprocessor for conditional statements</summary>
 	/// The C preprocessor has some well understood syntax for wrapping conditions around lines of text. It's often
 	/// useful to combine this with text written in some arbitrary language in order to create variations on the
 	/// basic structure of the file
@@ -93,14 +93,5 @@ namespace Utility
         void PreProc_SkipWhitespace();
         auto PreProc_GetNextToken() -> Token;
     };
-
-    class PreprocessorAnalysis
-    {
-    public:
-        RelevanceTable _relevanceTable;
-        std::unordered_map<std::string, std::string> _sideEffects;
-    };
-
-    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input);
 }
 
