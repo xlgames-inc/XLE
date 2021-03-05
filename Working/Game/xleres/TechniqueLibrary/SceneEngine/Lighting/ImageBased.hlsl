@@ -14,9 +14,9 @@
 #include "SpecularMethods.hlsl"
 #include "IBL/IBLAlgorithm.hlsl"
 #include "IBL/IBLRef.hlsl"
-#include "../../../Framework/CommonResources.hlsl"
-#include "../../../Math/Misc.hlsl"        // for DitherPatternInt
-#include "../../../Framework/SystemUniforms.hlsl"           // for SysUniform_GetGlobalSamplingPassCount(), SysUniform_GetGlobalSamplingPassIndex()
+#include "../../Framework/CommonResources.hlsl"
+#include "../../Math/Misc.hlsl"        // for DitherPatternInt
+#include "../../Framework/SystemUniforms.hlsl"           // for SysUniform_GetGlobalSamplingPassCount(), SysUniform_GetGlobalSamplingPassIndex()
 
 TextureCube DiffuseIBL BIND_NUMERIC_T7;
 TextureCube SpecularIBL BIND_NUMERIC_T8;

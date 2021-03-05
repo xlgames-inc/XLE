@@ -11,7 +11,7 @@
 #include "DiffuseMethods.hlsl"
 #include "LightDesc.hlsl"
 
-#include "materialquery.hlsl"
+#include "MaterialQuery.hlsl"
 #include "../../Framework/gbuffer.hlsl"
 #include "../../Math/MathConstants.hlsl"
 

@@ -7,16 +7,16 @@
 #if !defined(ILLUM_PER_PIXEL)
 #define ILLUM_PER_PIXEL
 
-#include "../TechniqueLibrary/Framework/CommonResources.hlsl"
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../TechniqueLibrary/Framework/Surface.hlsl"
-#include "../TechniqueLibrary/Framework/LegacySurface.hlsl"
-#include "../TechniqueLibrary/Framework/gbuffer.hlsl"
-#include "../BasicMaterial.hlsl"
-#include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
-// #include "../TechniqueLibrary/Math/perlinnoise.hlsl"
-#include "../TechniqueLibrary/Utility/Colour.hlsl"
-#include "../TechniqueLibrary/Framework/Binding.hlsl"
+#include "../../TechniqueLibrary/Framework/CommonResources.hlsl"
+#include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
+#include "../../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../../TechniqueLibrary/Framework/LegacySurface.hlsl"
+#include "../../TechniqueLibrary/Framework/gbuffer.hlsl"
+#include "../../BasicMaterial.hlsl"
+#include "../../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
+// #include "../../TechniqueLibrary/Math/perlinnoise.hlsl"
+#include "../../TechniqueLibrary/Utility/Colour.hlsl"
+#include "../../TechniqueLibrary/Framework/Binding.hlsl"
 
 Texture2D       ParametersTexture       BIND_MAT_T2;
 Texture2D       SpecularColorTexture    BIND_MAT_T3;
