@@ -162,7 +162,8 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox* shaderSelectors[ShaderSelectorFiltering::Source::Max]) const
 	{
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
-		ShaderVariationFactory_Basic factory(techEntry);
+		assert(0); // need to pass ICompiledPipelineLayout down
+		ShaderVariationFactory_Basic factory(techEntry, nullptr);
         return _variationSet.FindVariation(techEntry._selectorFiltering, shaderSelectors, factory)._shaderFuture;
 	}
 
@@ -192,14 +193,15 @@ namespace RenderCore { namespace Techniques
 		assert(!_entry->_vertexShaderName.empty());
 		assert(!_entry->_pixelShaderName.empty());
 		if (_entry->_geometryShaderName.empty()) {
-			return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_pixelShaderName, defines);
+			return ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, _entry->_vertexShaderName, _entry->_pixelShaderName, defines);
 		} else {
-			return ::Assets::MakeAsset<Metal::ShaderProgram>(_entry->_vertexShaderName, _entry->_geometryShaderName, _entry->_pixelShaderName, defines);
+			return ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, _entry->_vertexShaderName, _entry->_geometryShaderName, _entry->_pixelShaderName, defines);
 		}
 	}
 
-	ShaderVariationFactory_Basic::ShaderVariationFactory_Basic(const TechniqueEntry& entry) 
-	: _entry(&entry) 
+	ShaderVariationFactory_Basic::ShaderVariationFactory_Basic(const TechniqueEntry& entry, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	: _entry(&entry)
+	, _pipelineLayout(pipelineLayout)
 	{
 		_factoryGuid = entry._shaderNamesHash;
 	}

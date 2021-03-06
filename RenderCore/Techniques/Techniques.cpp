@@ -33,19 +33,18 @@ namespace RenderCore { namespace Techniques
 			//  Inherit lists should take the form "FileName:Setting"
 			//  The "setting" should be a top-level item in the file
 
-		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+		while (formatter.PeekNext() == FormatterBlob::Value) {
 
-			auto name = RequireKeyedItem(formatter);
 			auto value = RequireValue(formatter);
 		
-			auto colon = std::find(name._start, name._end, ':');
-			if (colon != name._end) {
+			auto colon = std::find(value._start, value._end, ':');
+			if (colon != value._end) {
 				::Assets::ResChar resolvedFile[MaxPath];
-				XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
+				XlCopyNString(resolvedFile, (const ::Assets::ResChar*)value._start, colon-value._start);
 				searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
 
 				auto& settingsTable = ::Assets::Legacy::GetAssetDep<TechniqueSetFile>(resolvedFile);
-				auto settingHash = Hash64(colon+1, name._end);
+				auto settingHash = Hash64(colon+1, value._end);
 					
 				auto s = LowerBound(settingsTable._settings, settingHash);
 				if (s != settingsTable._settings.end() && s->first == settingHash) {
@@ -58,7 +57,7 @@ namespace RenderCore { namespace Techniques
 				}
 			} else {
 				// this setting is in the same file
-				auto settingHash = Hash64(name._start, name._end);
+				auto settingHash = Hash64(value._start, value._end);
 				auto s = std::lower_bound(localSettings.begin(), localSettings.end(), settingHash, CompareFirst<uint64_t, TechniqueEntry>());
 				if (s != localSettings.end() && s->first == settingHash) {
 					dst.MergeIn(s->second);
@@ -73,35 +72,37 @@ namespace RenderCore { namespace Techniques
 
 	static void LoadSelectorFiltering(Formatter& formatter, ShaderSelectorFiltering& dst)
 	{
-		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+		while (formatter.PeekNext() == FormatterBlob::KeyedItem || formatter.PeekNext() == FormatterBlob::Value) {
 
-			auto selectorName = RequireKeyedItem(formatter);
+			if (formatter.PeekNext() == FormatterBlob::Value) {
 
-			if (formatter.PeekNext() == FormatterBlob::BeginElement) {
-				RequireBeginElement(formatter);
-
-				for (;;) {
-					if (formatter.PeekNext() == FormatterBlob::EndElement) break;
-
-					auto filterType = RequireKeyedItem(formatter);
-					auto value = RequireValue(formatter);
-					if (XlEqStringI(filterType, "relevance")) {
-						dst._relevanceMap[selectorName.AsString()] = value.AsString();
-					} else if (XlEqStringI(filterType, "set")) {
-						dst._setValues.SetParameter(selectorName, value);
-					} else {
-						Throw(FormatException("Expecting \"whitelist\", \"blacklist\" or \"set\"", formatter.GetLocation()));
-					}
-				}
-
-				RequireEndElement(formatter);
-			} else  {
 				// a selector name alone becomes a whitelist setting
-				auto value = RequireValue(formatter);
-				if (!value.IsEmpty()) {
-					dst._setValues.SetParameter(selectorName, value);
+				auto selectorName = RequireValue(formatter);
+				dst._relevanceMap[selectorName.AsString()] = "1";
+
+			} else {
+				auto selectorName = RequireKeyedItem(formatter);
+				if (formatter.PeekNext() == FormatterBlob::BeginElement) {
+					RequireBeginElement(formatter);
+
+					for (;;) {
+						if (formatter.PeekNext() == FormatterBlob::EndElement) break;
+
+						auto filterType = RequireKeyedItem(formatter);
+						auto value = RequireValue(formatter);
+						if (XlEqStringI(filterType, "relevance")) {
+							dst._relevanceMap[selectorName.AsString()] = value.AsString();
+						} else if (XlEqStringI(filterType, "set")) {
+							dst._setValues.SetParameter(selectorName, value);
+						} else {
+							Throw(FormatException("Expecting \"whitelist\", \"blacklist\" or \"set\"", formatter.GetLocation()));
+						}
+					}
+
+					RequireEndElement(formatter);
 				} else {
-					dst._relevanceMap[selectorName.AsString()] = "1";
+					auto value = RequireValue(formatter);
+					dst._setValues.SetParameter(selectorName, value);
 				}
 			}
 		}
@@ -427,6 +428,7 @@ namespace RenderCore { namespace Techniques
 
 				//////////////////////-------//////////////////////
 
+#if 0
 	const UniformsStreamInterface& TechniqueContext::GetGlobalUniformsStreamInterface()
 	{
 			//  We need to specify the order of resources as they appear in 
@@ -448,6 +450,7 @@ namespace RenderCore { namespace Techniques
 		}
 		return globalUniforms;
 	}
+#endif
 
 	TechniqueContext::TechniqueContext()
 	{

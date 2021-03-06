@@ -4,29 +4,30 @@
 
 #pragma once
 
+#include "../StateDesc.h"
 #include "../Types.h"
-#include "../Metal/Forward.h"
+#include "../Metal/Forward.h"		// for Metal::ShaderProgram
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <utility>
 
-namespace RenderCore { class IResource; class IDevice; class CompiledShaderByteCode; class StreamOutputInitializers; }
+namespace RenderCore { class IResource; class IDevice; class CompiledShaderByteCode; class StreamOutputInitializers; class ICompiledPipelineLayout; }
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class PredefinedDescriptorSetLayout; }}
 
 namespace RenderCore { namespace Techniques {
 
-	std::shared_ptr<IResource> CreateStaticVertexBuffer(IteratorRange<const void*> data);
-	std::shared_ptr<IResource> CreateStaticIndexBuffer(IteratorRange<const void*> data);
 	std::shared_ptr<IResource> CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data);
 	std::shared_ptr<IResource> CreateStaticIndexBuffer(IDevice& device, IteratorRange<const void*> data);
 
 	::Assets::FuturePtr<Metal::ShaderProgram> CreateShaderProgramFromByteCode(
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& vsCode,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& psCode,
 		const std::string& programName = {});
 
 	::Assets::FuturePtr<Metal::ShaderProgram> CreateShaderProgramFromByteCode(
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& vsCode,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& gsCode,
 		const ::Assets::FuturePtr<CompiledShaderByteCode>& psCode,
@@ -42,7 +43,7 @@ namespace RenderCore { namespace Techniques {
 			IPipelineAcceleratorPool& pool,
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
 			const RenderCore::Assets::MaterialScaffoldMaterial& material,
-			IteratorRange<const RenderCore::InputElementDesc*> inputLayout,
+			IteratorRange<const InputElementDesc*> inputLayout,
 			Topology topology = Topology::TriangleList);
 
 	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout();

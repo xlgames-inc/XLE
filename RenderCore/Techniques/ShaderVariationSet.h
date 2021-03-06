@@ -96,8 +96,6 @@ namespace RenderCore { namespace Techniques
 
     protected:
 		UniqueShaderVariationSet _variationSet;
-		
-
 		std::shared_ptr<Technique> _technique;
     };
 
@@ -107,10 +105,11 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines);
-		ShaderVariationFactory_Basic(const TechniqueEntry& entry);
+		ShaderVariationFactory_Basic(const TechniqueEntry& entry, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		~ShaderVariationFactory_Basic();
 	private:
 		const TechniqueEntry* _entry;
+		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
 	};
 
 }}
