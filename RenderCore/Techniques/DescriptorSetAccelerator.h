@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../UniformsStream.h"
+#include "../IDevice_Forward.h"
 #include "../Metal/Forward.h"
 #include "../../Assets/AssetFuture.h"
 #include <vector>
@@ -24,8 +25,8 @@ namespace RenderCore { namespace Techniques
 		UniformsStreamInterface _usi;
 
 		std::vector<std::shared_ptr<DeferredShaderResource>> _shaderResources;
-		std::vector<Metal::SamplerState> _samplerStates;
-		std::vector<std::shared_ptr<IResource>> _constantBuffers;
+		std::vector<std::shared_ptr<ISampler>> _samplerStates;
+		std::vector<std::shared_ptr<IResourceView>> _constantBuffers;
 
 		::Assets::DepValPtr _depVal;
 
@@ -33,15 +34,14 @@ namespace RenderCore { namespace Techniques
 
 		void Apply(
 			Metal::DeviceContext& devContext,
-			Metal::BoundUniforms& boundUniforms,
-			unsigned streamIdx) const;
+			Metal::GraphicsEncoder& encoder,
+			Metal::BoundUniforms& boundUniforms) const;
 	};
 
-	::Assets::FuturePtr<DescriptorSetAccelerator> MakeDescriptorSetAccelerator(
-		IDevice& device,
+	::Assets::FuturePtr<RenderCore::IDescriptorSet> MakeDescriptorSetFuture(
+		const std::shared_ptr<IDevice>& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
-		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout,
-		const std::string& descriptorSetName);
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout);
 
 }}

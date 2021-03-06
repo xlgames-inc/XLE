@@ -7,8 +7,9 @@
 #pragma once
 
 #include "../Types_Forward.h"
-#include "../Metal/TextureView.h"
+#include "../IDevice_Forward.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Utility/StringUtils.h"
 
 namespace Utility { class ParameterBox; }
 namespace Assets { class DirectorySearchRules; }
@@ -47,16 +48,15 @@ namespace RenderCore { namespace Techniques
     class DeferredShaderResource
     {
     public:
-		const Metal::ShaderResourceView&        GetShaderResource() const			{ return _srv; }
+		const std::shared_ptr<IResourceView>&   GetShaderResource() const			{ return _srv; }
         const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
 		StringSection<>							Initializer() const					{ return MakeStringSection(_initializer); }
 
-        static Metal::ShaderResourceView LoadImmediately(StringSection<::Assets::ResChar> initializer);
-        static Format LoadFormat(StringSection<::Assets::ResChar> initializer);
+        static std::shared_ptr<IResourceView> LoadImmediately(StringSection<::Assets::ResChar> initializer);
         static bool IsDXTNormalMap(StringSection<::Assets::ResChar> initializer);
 
         DeferredShaderResource(
-			const Metal::ShaderResourceView& srv,
+			const std::shared_ptr<IResourceView>& srv,
 			const std::string& initializer,
 			const ::Assets::DepValPtr& depVal);
         ~DeferredShaderResource();
@@ -65,7 +65,7 @@ namespace RenderCore { namespace Techniques
 			::Assets::AssetFuture<DeferredShaderResource>&,
 			StringSection<> initializer);
     private:
-		Metal::ShaderResourceView _srv;
+		std::shared_ptr<IResourceView> _srv;
         std::string _initializer;
 		::Assets::DepValPtr _depVal;
     };

@@ -7,17 +7,18 @@
 #pragma once
 
 #include "../StateDesc.h"
-#include "../Metal/State.h"
-#include "../Metal/Buffer.h"
+#include "../IDevice_Forward.h"
+#include "../Metal/Metal.h"
+
+#if GFXAPI_TARGET == GFXAPI_DX11
+    #include "../Metal/State.h
+#endif
 
 namespace RenderCore { namespace Techniques 
 {
     class CommonResourceBox
     {
     public:
-        class Desc {};
-        CommonResourceBox(const Desc&);
-
 #if GFXAPI_TARGET == GFXAPI_DX11
         Metal::DepthStencilState _dssReadWrite;
         Metal::DepthStencilState _dssReadOnly;
@@ -38,10 +39,10 @@ namespace RenderCore { namespace Techniques
         Metal::ConstantBuffer _localTransformBuffer;
 #endif
 
-        Metal::SamplerState _defaultSampler;
-        Metal::SamplerState _linearWrapSampler;
-        Metal::SamplerState _linearClampSampler;
-        Metal::SamplerState _pointClampSampler;
+        std::shared_ptr<ISampler> _defaultSampler;
+        std::shared_ptr<ISampler> _linearWrapSampler;
+        std::shared_ptr<ISampler> _linearClampSampler;
+        std::shared_ptr<ISampler> _pointClampSampler;
 
 		///////////////////////////////////////
 
@@ -61,12 +62,13 @@ namespace RenderCore { namespace Techniques
         RasterizationDesc _rsCullDisable;
         RasterizationDesc _rsCullReverse;
 
+        CommonResourceBox(IDevice&);
+        ~CommonResourceBox();
+
     private:
         CommonResourceBox(CommonResourceBox&);
         CommonResourceBox& operator=(const CommonResourceBox&);
     };
-
-    CommonResourceBox& CommonResources();
 
 }}
 

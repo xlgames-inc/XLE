@@ -8,7 +8,6 @@
 
 #include "DeferredShaderResource.h"
 #include "Services.h"
-#include "../Metal/TextureView.h"
 #include "../Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
@@ -214,9 +213,17 @@ namespace RenderCore { namespace Techniques
         future.SetPollingFunction(
 			[mon, metaDataFuture, depVal, init, intializerStr](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
 				auto& bu = RenderCore::Techniques::Services::GetBufferUploads();
-				if (!bu.IsCompleted(mon->GetId())
-					|| (metaDataFuture && metaDataFuture->GetAssetState() == ::Assets::AssetState::Pending))
+				if (!bu.IsCompleted(mon->GetId()))
 					return true;
+
+                ::Assets::Blob metaDataLog;
+			    ::Assets::DepValPtr metaDataDepVal;
+                std::shared_ptr<TextureMetaData> actualizedMetaData;
+                if (metaDataFuture) {
+                    auto metaDataState = metaDataFuture->CheckStatusBkgrnd(actualizedMetaData, metaDataDepVal, metaDataLog);
+                    if (metaDataState == ::Assets::AssetState::Pending)
+                        return true;        // still waiting to see if there's attached metadata
+                }
 
 				auto locator = bu.GetResource(mon->GetId());
 				*mon = {};	// release the transaction
@@ -241,24 +248,21 @@ namespace RenderCore { namespace Techniques
 					colSpace = SourceColorSpace::Linear;
 				} else if (init._colSpaceRequestString != SourceColorSpace::Unspecified) {
 					colSpace = init._colSpaceRequestString;
-				} else if (metaDataFuture) {
-					auto metaData = metaDataFuture->TryActualize();
-					if (metaData) {
-						if (metaData->_colorSpace != SourceColorSpace::Unspecified)
-							colSpace = metaData->_colorSpace;
-						::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
-					}
+				} else if (actualizedMetaData) {
+                    if (actualizedMetaData->_colorSpace != SourceColorSpace::Unspecified)
+                        colSpace = actualizedMetaData->_colorSpace;
+                    ::Assets::RegisterAssetDependency(depVal, metaDataDepVal);
 				}
 
 				if (colSpace == SourceColorSpace::Unspecified && init._colSpaceDefault != SourceColorSpace::Unspecified)
 					colSpace = init._colSpaceDefault;
 
-				auto format = desc._textureDesc._format;
-				if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
-				else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
+				TextureViewDesc viewDesc{}; 
+				if (colSpace == SourceColorSpace::SRGB) viewDesc._format._aspect = TextureViewDesc::Aspect::ColorSRGB;
+				else if (colSpace == SourceColorSpace::Linear) viewDesc._format._aspect = TextureViewDesc::Aspect::ColorLinear;
 
 				auto finalAsset = std::make_shared<DeferredShaderResource>(
-					Metal::ShaderResourceView(locator->GetUnderlying(), {format}),
+					locator->GetUnderlying()->CreateTextureView(BindFlag::ShaderResource, viewDesc),
 					intializerStr,
 					depVal);
 
@@ -269,51 +273,34 @@ namespace RenderCore { namespace Techniques
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static Format ResolveFormatImmediate(Format typelessFormat, const DecodedInitializer& init, const FileNameSplitter<ResChar>& splitter)
+    static TextureViewDesc ResolveTextureViewDescImmediate(const DecodedInitializer& init, const FileNameSplitter<ResChar>& splitter)
     {
-        auto result = typelessFormat;
-        if (HasLinearAndSRGBFormats(result)) {
-            auto finalColSpace = init._colSpaceRequestString;
-            if (finalColSpace == SourceColorSpace::Unspecified) {
-                    // need to load the metadata file to get SRGB settings!
-                ::Assets::ResChar metadataFile[MaxPath];
-                XlCopyString(metadataFile, splitter.AllExceptParameters());
-                XlCatString(metadataFile, ".metadata");
+        TextureViewDesc result{};
 
-				auto res = ::Assets::MakeAsset<TextureMetaData>(metadataFile);
-				res->StallWhilePending();
-				auto actual = res->TryActualize();
-				if (actual)
-					finalColSpace = actual->_colorSpace;
+        auto finalColSpace = init._colSpaceRequestString;
+        if (finalColSpace == SourceColorSpace::Unspecified) {
+                // need to load the metadata file to get SRGB settings!
+            ::Assets::ResChar metadataFile[MaxPath];
+            XlCopyString(metadataFile, splitter.AllExceptParameters());
+            XlCatString(metadataFile, ".metadata");
 
-                if (finalColSpace == SourceColorSpace::Unspecified)
-                    finalColSpace = (init._colSpaceDefault != SourceColorSpace::Unspecified) ? init._colSpaceDefault : SourceColorSpace::SRGB;
-            }
+            auto res = ::Assets::MakeAsset<TextureMetaData>(metadataFile);
+            res->StallWhilePending();
+            auto actual = res->TryActualize();
+            if (actual)
+                finalColSpace = actual->_colorSpace;
 
-            if (finalColSpace == SourceColorSpace::SRGB) result = AsSRGBFormat(result);
-            else if (finalColSpace == SourceColorSpace::Linear) result = AsLinearFormat(result);
+            if (finalColSpace == SourceColorSpace::Unspecified)
+                finalColSpace = (init._colSpaceDefault != SourceColorSpace::Unspecified) ? init._colSpaceDefault : SourceColorSpace::SRGB;
         }
+
+        if (finalColSpace == SourceColorSpace::SRGB) result._format._aspect = TextureViewDesc::Aspect::ColorSRGB;
+        else if (finalColSpace == SourceColorSpace::Linear) result._format._aspect = TextureViewDesc::Aspect::ColorLinear;
+
         return result;
     }
 
-	Format DeferredShaderResource::LoadFormat(StringSection<::Assets::ResChar> initializer)
-    {
-		auto splitter = MakeFileNameSplitter(initializer);
-        DecodedInitializer init(splitter);
-
-		Format result;
-		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
-		if (checkForShadowingFile) {
-			::Assets::ResChar filename[MaxPath];
-			BuildRequestString(filename, splitter);
-			result = BufferUploads::LoadTextureFormat(MakeStringSection(filename))._format;
-		} else*/
-			result = BufferUploads::LoadTextureFormat(splitter.AllExceptParameters())._format;
-
-        return ResolveFormatImmediate(result, init, splitter);
-    }
-
-    Metal::ShaderResourceView DeferredShaderResource::LoadImmediately(StringSection<::Assets::ResChar> initializer)
+    std::shared_ptr<IResourceView> DeferredShaderResource::LoadImmediately(StringSection<::Assets::ResChar> initializer)
     {
 		auto splitter = MakeFileNameSplitter(initializer);
         DecodedInitializer init(splitter);
@@ -345,9 +332,8 @@ namespace RenderCore { namespace Techniques
 
         auto desc = result->GetUnderlying()->GetDesc();
         assert(desc._type == BufferDesc::Type::Texture);
-        return Metal::ShaderResourceView(
-            result->GetUnderlying(),
-            {ResolveFormatImmediate(desc._textureDesc._format, init, splitter)});
+        auto view = ResolveTextureViewDescImmediate(init, splitter);
+        return result->GetUnderlying()->CreateTextureView(BindFlag::ShaderResource, view);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -398,6 +384,13 @@ namespace RenderCore { namespace Techniques
             && unsigned(format) <= unsigned(RenderCore::Format::BC1_UNORM_SRGB);
     }
 
+    static Format LoadFormat(StringSection<::Assets::ResChar> initializer)
+    {
+		auto splitter = MakeFileNameSplitter(initializer);
+        DecodedInitializer init(splitter);
+		return BufferUploads::LoadTextureFormat(splitter.AllExceptParameters())._format;
+    }
+
     bool DeferredShaderResource::IsDXTNormalMap(StringSection<::Assets::ResChar> textureName)
     {
         if (textureName.IsEmpty()) return false;
@@ -432,7 +425,7 @@ namespace RenderCore { namespace Techniques
             std::move_backward(i, end, end+1);
             i->first = hashName;
             TRY {
-                i->second = DeferredShaderResource::LoadFormat(textureName);
+                i->second = LoadFormat(textureName);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 i->second = Format::Unknown;
             } CATCH_END
@@ -445,7 +438,7 @@ namespace RenderCore { namespace Techniques
 
 
 	DeferredShaderResource::DeferredShaderResource(
-		const Metal::ShaderResourceView& srv,
+		const std::shared_ptr<IResourceView>& srv,
 		const std::string& initializer,
 		const ::Assets::DepValPtr& depVal)
 	: _srv(srv), _initializer(initializer), _depVal(depVal)

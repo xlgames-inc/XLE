@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../Assets/MaterialScaffold.h"		// used by DrawableMaterial below
 #include "../IDevice.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/VariantUtils.h"

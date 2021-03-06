@@ -6,12 +6,13 @@
 
 #include "CommonResources.h"
 #include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
+#include "../IDevice.h"
 #include "../Metal/ObjectFactory.h"
 #include "../../ConsoleRig/ResourceBox.h"
 
 namespace RenderCore { namespace Techniques
 {
-    CommonResourceBox::CommonResourceBox(const Desc&)
+    CommonResourceBox::CommonResourceBox(IDevice& device)
     {
         using namespace RenderCore::Metal;
 #if GFXAPI_TARGET == GFXAPI_DX11
@@ -34,9 +35,10 @@ namespace RenderCore { namespace Techniques
         _localTransformBuffer = MakeConstantBuffer(GetObjectFactory(), sizeof(LocalTransformConstants));
 #endif
 
-        _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Wrap);
-        _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp);
-        _pointClampSampler = SamplerState(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp);
+        _linearClampSampler = device.CreateSampler(SamplerDesc{FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Wrap});
+        _linearWrapSampler = device.CreateSampler(SamplerDesc{FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp});
+        _pointClampSampler = device.CreateSampler(SamplerDesc{FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp});
+        _defaultSampler = _linearWrapSampler;
 
 		_dsReadWrite = DepthStencilDesc {};
 		_dsReadOnly = DepthStencilDesc { CompareOp::LessEqual, false };
@@ -55,8 +57,8 @@ namespace RenderCore { namespace Techniques
         _rsCullReverse = RasterizationDesc { CullMode::Back, FaceWinding::CW };
     }
 
-    CommonResourceBox& CommonResources()
+    /*CommonResourceBox& CommonResources()
     {
         return ConsoleRig::FindCachedBox<CommonResourceBox>(CommonResourceBox::Desc());
-    }
+    }*/
 }}

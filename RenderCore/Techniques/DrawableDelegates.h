@@ -6,8 +6,9 @@
 
 #include "../UniformsStream.h"
 #include "../RenderUtils.h"
-#include "../Metal/Forward.h"
+#include "../IDevice_Forward.h"
 #include "../StateDesc.h"
+#include "../Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -31,8 +32,8 @@ namespace RenderCore { namespace Techniques
     class IShaderResourceDelegate
     {
     public:
-        using SRV = Metal::ShaderResourceView;
-        using SamplerState = Metal::SamplerState;
+        using SRV = IResourceView;
+        using SamplerState = ISampler;
         virtual void GetShaderResources(
 			ParsingContext& context, const void* objectContext,
 			IteratorRange<SRV*> dstSRVs,
@@ -73,28 +74,6 @@ namespace RenderCore { namespace Techniques
 			unsigned techniqueIndex);
 
 		virtual ~ITechniqueDelegate_Old();
-	};
-
-	class CompiledShaderPatchCollection;
-
-	class ITechniqueDelegate
-	{
-	public:
-		struct ResolvedTechnique
-		{
-			::Assets::FuturePtr<Metal::ShaderProgram> _shaderProgram;
-
-			DepthStencilDesc	_depthStencil;
-			AttachmentBlendDesc _blend;
-			RasterizationDesc	_rasterization;
-		};
-
-		virtual ResolvedTechnique Resolve(
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-			IteratorRange<const ParameterBox**> selectors,
-			const RenderCore::Assets::RenderStateSet& renderStates) = 0;
-
-		virtual ~ITechniqueDelegate();
 	};
 
 }}
