@@ -35,8 +35,8 @@ namespace RenderCore
             << attachment._width << ", "
             << attachment._height << ", "
             << attachment._arrayLayerCount << ", "
-            << unsigned(attachment._dimsMode)
-            << ", 0x" << std::hex << attachment._flags << std::dec << " }";
+            << ", 0x" << std::hex << attachment._flags << std::dec
+            << ", 0x" << std::hex << attachment._bindFlagsForFinalLayout << std::dec << " }";
         return str;
     }
 
@@ -110,8 +110,8 @@ namespace RenderCore { namespace Techniques
         assert(requestDesc._width == expectedDesc._width);
         assert(requestDesc._height == expectedDesc._height);
         assert(requestDesc._arrayLayerCount == expectedDesc._arrayLayerCount);
-        assert(requestDesc._dimsMode == expectedDesc._dimsMode);
         assert(requestDesc._flags == expectedDesc._flags);
+        assert(requestDesc._bindFlagsForFinalLayout == expectedDesc._bindFlagsForFinalLayout);
         assert(requestDesc.CalculateHash() == expectedDesc.CalculateHash());
 
         return result;
@@ -281,7 +281,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
-    auto RenderPassInstance::GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+    auto RenderPassInstance::GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window) const -> IResourceView*
     {
         assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-    auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+    auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
@@ -319,7 +319,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 	
-	auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	auto RenderPassInstance::GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
@@ -349,7 +349,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-    auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+    auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
@@ -359,7 +359,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 	
-	auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
@@ -369,7 +369,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-	auto RenderPassInstance::GetDepthStencilAttachmentSRV(const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	auto RenderPassInstance::GetDepthStencilAttachmentSRV(const TextureViewDesc& window) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
@@ -389,7 +389,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-    auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*
+    auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
@@ -399,7 +399,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 	
-	auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+	auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
@@ -505,12 +505,13 @@ namespace RenderCore { namespace Techniques
         std::vector<SemanticAttachment>    _semanticAttachments;
 
         FrameBufferProperties       _props;
-        ViewPool<Metal::ShaderResourceView> _srvPool;
+        ViewPool                    _srvPool;
+        std::shared_ptr<IDevice>    _device;
 
         bool BuildAttachment(AttachmentName attach);
     };
 
-    static std::shared_ptr<IResource> CreateFromAttachmentDesc(const AttachmentDesc& a, const FrameBufferProperties& props)
+    static std::shared_ptr<IResource> CreateFromAttachmentDesc(IDevice& device, const AttachmentDesc& a, const FrameBufferProperties& props)
     {
         // We need to calculate the dimensions, format, samples and bind flags for this
         // attachment. All of the information we need should be defined as part of the frame
@@ -520,7 +521,7 @@ namespace RenderCore { namespace Techniques
         //          the documentation suggest that the frame buffer dims should always be equal
         //          or smaller to the image views...?
         unsigned attachmentWidth, attachmentHeight;
-        if (a._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+        if (!(a._flags & AttachmentDesc::Flags::OutputRelativeDimensions)) {
             attachmentWidth = unsigned(a._width);
             attachmentHeight = unsigned(a._height);
         } else {
@@ -548,28 +549,28 @@ namespace RenderCore { namespace Techniques
         //          "depthStencil", or "preserve" in the final subpass could be used
         //          in some other way afterwards. For example, one render pass could
         //          generate shadow textures for uses in future render passes?
-        if (a._flags & AttachmentDesc::Flags::ShaderResource) {
+        if (a._bindFlagsForFinalLayout & BindFlag::ShaderResource) {
             desc._bindFlags |= BindFlag::ShaderResource;
             desc._gpuAccess |= GPUAccess::Read;
         }
 
-        if (a._flags & AttachmentDesc::Flags::RenderTarget) {
+        if (a._bindFlagsForFinalLayout & BindFlag::RenderTarget) {
             desc._bindFlags |= BindFlag::RenderTarget;
             desc._gpuAccess |= GPUAccess::Write;
         }
 
-        if (a._flags & AttachmentDesc::Flags::DepthStencil) {
+        if (a._bindFlagsForFinalLayout & BindFlag::DepthStencil) {
             desc._bindFlags |= BindFlag::DepthStencil;
             desc._gpuAccess |= GPUAccess::Write;
         }
 
-        if (a._flags & AttachmentDesc::Flags::TransferSource) {
+        if (a._bindFlagsForFinalLayout & BindFlag::TransferSrc) {
             desc._bindFlags |= BindFlag::TransferSrc;
             desc._gpuAccess |= GPUAccess::Read;
         }
 
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
-        return Metal::CreateResource(Metal::GetObjectFactory(), desc);
+        return device.CreateResource(desc);
     }
 
     bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attachName)
@@ -584,7 +585,7 @@ namespace RenderCore { namespace Techniques
         assert(attach);
         if (!attach) return false;
 
-        attach->_resource = CreateFromAttachmentDesc(attach->_desc, _props);
+        attach->_resource = CreateFromAttachmentDesc(*_device, attach->_desc, _props);
         return attach->_resource != nullptr;
     }
 
@@ -620,7 +621,7 @@ namespace RenderCore { namespace Techniques
         return attach->_resource;
 	}
 
-	Metal::ShaderResourceView* AttachmentPool::GetSRV(AttachmentName attachName, const TextureViewDesc& window) const
+	IResourceView* AttachmentPool::GetSRV(AttachmentName attachName, const TextureViewDesc& window) const
 	{
         Pimpl::Attachment* attach = nullptr;
         if (attachName & (1u<<31u)) {
@@ -641,18 +642,20 @@ namespace RenderCore { namespace Techniques
 			defaultAspect = TextureViewDesc::Aspect::Stencil;
 		}
 		auto completeView = CompleteTextureViewDesc(attach->_desc, window, defaultAspect);
-		return _pimpl->_srvPool.GetView(attach->_resource, completeView);
+		return _pimpl->_srvPool.GetTextureView(attach->_resource, BindFlag::ShaderResource, completeView);
 	}
 
     static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
     {
-        if (lhs._dimsMode == rhs._dimsMode)
+        bool lhsRelativeMode = !!(lhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
+        bool rhsRelativeMode = !!(rhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
+        if (lhsRelativeMode == rhsRelativeMode)
             return lhs._width == rhs._width && lhs._height == rhs._height;
 
         unsigned lhsWidth, lhsHeight;
         unsigned rhsWidth, rhsHeight;
 
-        if (lhs._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+        if (!lhsRelativeMode) {
             lhsWidth = unsigned(lhs._width);
             lhsHeight = unsigned(lhs._height);
         } else {
@@ -660,7 +663,7 @@ namespace RenderCore { namespace Techniques
             lhsHeight = unsigned(std::floor(props._outputHeight * lhs._height));
         }
 
-        if (rhs._dimsMode == AttachmentDesc::DimensionsMode::Absolute) {
+        if (!rhsRelativeMode) {
             rhsWidth = unsigned(rhs._width);
             rhsHeight = unsigned(rhs._height);
         } else {
@@ -846,7 +849,7 @@ namespace RenderCore { namespace Techniques
 
 		if (xyChanged)
             for (auto& r:_pimpl->_attachments)
-                if (r._desc._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+                if (r._desc._flags & AttachmentDesc::Flags::OutputRelativeDimensions) {
 					if (r._resource)
 						_pimpl->_srvPool.Erase(*r._resource);
 					r._resource.reset();
@@ -898,10 +901,11 @@ namespace RenderCore { namespace Techniques
         return str.str();
     }
 
-    AttachmentPool::AttachmentPool()
+    AttachmentPool::AttachmentPool(const std::shared_ptr<IDevice>& device)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_props = {0u, 0u, TextureSamples::Create()};
+        _pimpl->_device = device;
     }
 
     AttachmentPool::~AttachmentPool()
@@ -1082,6 +1086,7 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
+#if 0
     static bool ImplicitlyRequiresShaderResourceFlag(const FrameBufferDescFragment& fragment, unsigned attachmentName)
     {
         for (const auto&p:fragment._subpasses)
@@ -1090,6 +1095,7 @@ namespace RenderCore { namespace Techniques
                     return true;
         return false;
     }
+#endif
 
     class WorkingAttachment
     {
@@ -1342,7 +1348,7 @@ namespace RenderCore { namespace Techniques
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
                     auto interfaceAttachmentNoFlag = interfaceAttachment;
-                    interfaceAttachmentNoFlag._desc._flags &= ~AttachmentDesc::Flags::ShaderResource;
+                    // interfaceAttachmentNoFlag._desc._flags &= ~AttachmentDesc::Flags::ShaderResource;
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
                         [&interfaceAttachmentNoFlag, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
@@ -1402,8 +1408,8 @@ namespace RenderCore { namespace Techniques
                         auto newState = *compat;
                         newState._state = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         newState._stencilState = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        if ((interfaceAttachment._desc._flags & AttachmentDesc::Flags::ShaderResource) || ImplicitlyRequiresShaderResourceFlag(*f, interfaceAttachmentName))
-                            newState._desc._flags |= AttachmentDesc::Flags::ShaderResource;
+                        /*if ((interfaceAttachment._desc._flags & AttachmentDesc::Flags::ShaderResource) || ImplicitlyRequiresShaderResourceFlag(*f, interfaceAttachmentName))
+                            newState._desc._flags |= AttachmentDesc::Flags::ShaderResource;*/
 
                         newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
                         if (!newState._firstReadSemantic && compat->_isPredefinedAttachment) {    // (we only really care about first read for predefined attachments)

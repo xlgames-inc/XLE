@@ -75,12 +75,12 @@ namespace RenderCore { namespace Techniques
 
         auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResource(AttachmentName resName) const -> IResourcePtr;
-        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
         void ResetActualized();
         std::string GetMetrics() const;
 
-        AttachmentPool();
+        AttachmentPool(const std::shared_ptr<IDevice>& device);
         ~AttachmentPool();
     private:
         class Pimpl;
@@ -158,23 +158,23 @@ namespace RenderCore { namespace Techniques
 
 		auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
-		auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
+		auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
 		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
 		auto GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
-		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
+		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
-		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> IResourceView*;
 		auto GetDepthStencilAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> Metal::ShaderResourceView*;
-		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
+		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
 		// The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
         auto GetDescForAttachmentName(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr;
-        auto GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+        auto GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
         RenderPassInstance(
             IThreadContext& context,

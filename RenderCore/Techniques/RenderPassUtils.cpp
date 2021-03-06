@@ -74,7 +74,8 @@ namespace RenderCore { namespace Techniques
             } else {
                 assert(0);
             }
-            depthDesc._flags = AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil;
+            depthDesc._flags = AttachmentDesc::Flags::Multisampled;
+			depthDesc._bindFlagsForFinalLayout = BindFlag::DepthStencil;
         }
 		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, depthDesc };
 
