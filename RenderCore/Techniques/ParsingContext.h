@@ -49,7 +49,7 @@ namespace RenderCore { namespace Techniques
             //  ----------------- Working technique context -----------------
         TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
-		UniformsStream			GetGlobalUniformsStream() const;
+		// UniformsStream			GetGlobalUniformsStream() const;
         
 		RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
 
@@ -62,12 +62,12 @@ namespace RenderCore { namespace Techniques
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
 
 			//  ----------------- Legacy "global" CBs -----------------
-		Metal::Buffer&			GetGlobalTransformCB();
+		/*Metal::Buffer&			GetGlobalTransformCB();
         Metal::Buffer&			GetGlobalStateCB();
         void    SetGlobalCB(
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
-		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
+		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);*/
 
 			//  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
@@ -139,13 +139,13 @@ namespace RenderCore { namespace Techniques
     /// @}
 
 
-	inline UniformsStream ParsingContext::GetGlobalUniformsStream() const
+	/*inline UniformsStream ParsingContext::GetGlobalUniformsStream() const
 	{
 		return {
 			MakeIteratorRange(_globalCBVs),
 			{},
 			{}
 		};
-	}
+	}*/
 }}
 

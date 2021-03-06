@@ -16,6 +16,7 @@
 namespace RenderCore { namespace Techniques
 {
 
+#if 0
     void ParsingContext::SetGlobalCB(
         RenderCore::Metal::DeviceContext& context, unsigned index, 
         const void* newData, size_t dataSize)
@@ -60,6 +61,7 @@ namespace RenderCore { namespace Techniques
 		assert(index < dimof(_globalCBs));
 		return _globalCBs[index];
 	}
+#endif
 
     void ParsingContext::Process(const ::Assets::Exceptions::RetrievalError& e)
     {

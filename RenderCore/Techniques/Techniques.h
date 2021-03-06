@@ -109,6 +109,7 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<IRenderStateDelegate>	_defaultRenderStateDelegate;
 
         TechniqueContext();
+#if 0
 		static const UniformsStreamInterface& GetGlobalUniformsStreamInterface();
 
         static const unsigned CB_GlobalTransform = 0;
@@ -116,6 +117,7 @@ namespace RenderCore { namespace Techniques
         static const unsigned CB_ShadowProjection = 2;
         static const unsigned CB_OrthoShadowProjection = 3;
         static const unsigned CB_BasicLightingEnvironment = 4;
+#endif
     };
 
 	UnderlyingAPI GetTargetAPI();
