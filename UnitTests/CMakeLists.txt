@@ -74,6 +74,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/FakeModelCompiler.cpp
 		RenderCore/Assets/ShaderCompilation.cpp
         RenderCore/Metal/MetalTestHelper.cpp
+        EmbeddedRes.cpp
         )
 
     xle_configure_executable(UnitTests-RenderCoreAssetsTechniques-${metal_name})
