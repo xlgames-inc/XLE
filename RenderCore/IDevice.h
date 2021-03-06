@@ -214,6 +214,7 @@ namespace RenderCore
     class ICompiledPipelineLayout
     {
     public:
+        virtual uint64_t GetGUID() const = 0;
         virtual ~ICompiledPipelineLayout();
     };
 

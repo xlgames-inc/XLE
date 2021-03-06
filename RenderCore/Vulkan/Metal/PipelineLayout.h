@@ -45,6 +45,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const DescriptorSetLayoutPtr&	GetDescriptorSetLayout(DescriptorSetIndex) const;
 		const DescriptorSetPtr&			GetBlankDescriptorSet(DescriptorSetIndex) const;
 		unsigned 						GetDescriptorSetCount() const;
+		uint64_t 						GetGUID() const override;
 
 		IteratorRange<const uint64_t*> 	GetDescriptorSetBindingNames() const;
 		IteratorRange<const uint64_t*> 	GetPushConstantsBindingNames() const;
@@ -81,6 +82,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			ObjectFactory& factory,
 			IteratorRange<const DescriptorSetBinding*> descriptorSets,
 			IteratorRange<const PushConstantsBinding*> pushConstants);
+
+		CompiledPipelineLayout(const CompiledPipelineLayout&) = delete;
+		CompiledPipelineLayout& operator=(const CompiledPipelineLayout&) = delete;
 	private:
 		VulkanUniquePtr<VkPipelineLayout> _pipelineLayout;
 
@@ -92,6 +96,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		uint64_t				_descriptorSetBindingNames[s_maxDescriptorSetCount];
 		uint64_t				_pushConstantBufferBindingNames[s_maxPushConstantBuffers];
+
+		uint64_t				_guid;
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _blankDescriptorSetsDebugInfo[s_maxDescriptorSetCount];

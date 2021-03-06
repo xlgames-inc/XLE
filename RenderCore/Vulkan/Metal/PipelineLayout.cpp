@@ -148,10 +148,14 @@ MainRootSignature = GraphicsMain
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	static uint64_t s_nextCompiledPipelineLayoutGUID = 1;
+	uint64_t CompiledPipelineLayout::GetGUID() const { return _guid; }
+
 	CompiledPipelineLayout::CompiledPipelineLayout(
 		ObjectFactory& factory,
 		IteratorRange<const DescriptorSetBinding*> descriptorSets,
 		IteratorRange<const PushConstantsBinding*> pushConstants)
+	: _guid(s_nextCompiledPipelineLayoutGUID++)
 	{
 		for (auto&c:_descriptorSetBindingNames) c = 0;
 		for (auto&c:_pushConstantBufferBindingNames) c = 0;
