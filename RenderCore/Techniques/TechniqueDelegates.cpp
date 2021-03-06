@@ -7,23 +7,25 @@
 #include "CompiledShaderPatchCollection.h"
 #include "CommonResources.h"
 #include "CommonUtils.h"
+#include "AutomaticSelectorFiltering.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
 #include "../Assets/Services.h"
-#include "../Metal/Shader.h"
-#include "../Metal/ObjectFactory.h"
+// #include "../Metal/Shader.h"
+// #include "../Metal/ObjectFactory.h"
 #include "../IDevice.h"
 #include "../Format.h"
-#include "../MinimalShaderSource.h"
+// #include "../MinimalShaderSource.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../Assets/AssetServices.h"
+// #include "../../Assets/AssetServices.h"
 #include "../../Assets/IntermediatesStore.h"			// for GetDependentFileState()
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../ConsoleRig/GlobalServices.h"			// for GetLibVersionDesc
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../xleres/FileList.h"
 #include <sstream>
 #include <regex>
@@ -32,6 +34,12 @@
 
 namespace RenderCore { namespace Techniques
 {
+	const CommonResourceBox& CommonResources()
+	{
+		assert(0);
+		return *(const CommonResourceBox*)nullptr;
+	}
+	
 	static const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 
 	auto AssembleShader(
@@ -279,17 +287,19 @@ namespace RenderCore { namespace Techniques
 				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, finalDefines);
 
 				return CreateShaderProgramFromByteCode(
+					_pipelineLayout,
 					vsCode, gsCode, psCode,
 					StreamOutputInitializers {
 						MakeIteratorRange(_soElements), MakeIteratorRange(_soStrides)
 					},
 					"ShaderPatchFactory");
 			} else {
-				return CreateShaderProgramFromByteCode(vsCode, psCode, "ShaderPatchFactory");
+				return CreateShaderProgramFromByteCode(_pipelineLayout, vsCode, psCode, "ShaderPatchFactory");
 			}
 		}
 
 		ShaderPatchFactory(
+			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 			const TechniqueEntry& techEntry, 
 			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
 			IteratorRange<const uint64_t*> patchExpansions,
@@ -297,6 +307,7 @@ namespace RenderCore { namespace Techniques
 		: _entry(&techEntry)
 		, _patchCollection(patchCollection)
 		, _patchExpansions(patchExpansions.begin(), patchExpansions.end())
+		, _pipelineLayout(pipelineLayout)
 		{
 			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;
 
@@ -323,6 +334,7 @@ namespace RenderCore { namespace Techniques
 		const TechniqueEntry* _entry;
 		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
 		std::vector<uint64_t> _patchExpansions;
+		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
 
 		std::string _soExtraDefines;
 		std::vector<InputElementDesc> _soElements;
@@ -334,9 +346,8 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_Legacy : public ITechniqueDelegate
 	{
 	public:
-		ResolvedTechnique Resolve(
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-			IteratorRange<const ParameterBox**> selectors,
+		::Assets::FuturePtr<GraphicsPipelineDesc> Resolve(
+			const CompiledShaderPatchCollection::Interface& shaderPatches,
 			const RenderCore::Assets::RenderStateSet& input) override;
 
 		TechniqueDelegate_Legacy(
@@ -350,42 +361,92 @@ namespace RenderCore { namespace Techniques
 		AttachmentBlendDesc _blend;
 		RasterizationDesc _rasterization;
 		DepthStencilDesc _depthStencil;
-
-		struct VariationSet
-		{
-			std::shared_ptr<Technique> _techniqueSetFuture;
-			std::shared_ptr<TechniqueShaderVariationSet> _variationSet;
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSetFuture->GetDependencyValidation(); }
-		};
-		::Assets::FuturePtr<VariationSet> _variationSetFuture;
+		::Assets::FuturePtr<Technique> _techniqueFuture;
 	};
 
-	auto TechniqueDelegate_Legacy::Resolve(
-		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-		IteratorRange<const ParameterBox**> selectors,
-		const RenderCore::Assets::RenderStateSet& input) -> ResolvedTechnique
+	static void PrepareShadersFromTechniqueEntry(
+		::Assets::AssetFuture<ITechniqueDelegate::GraphicsPipelineDesc>& future,
+		const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& nascentDesc,
+		const TechniqueEntry& entry)
 	{
-		ResolvedTechnique result;
-		result._blend = _blend;
-		result._rasterization = _rasterization;
-		result._depthStencil = _depthStencil;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer = entry._vertexShaderName;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer = entry._pixelShaderName;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer = entry._geometryShaderName;
+		for (unsigned c=0; c<dimof(nascentDesc->_shaders); ++c)
+			nascentDesc->_shaders[c]._manualSelectorFiltering = entry._selectorFiltering;
 
-		auto variationSet = _variationSetFuture->TryActualize();
-		if (variationSet) {
-			result._shaderProgram = variationSet->_variationSet->FindVariation(_techniqueIndex, selectors.begin());
+		auto vsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer).AllExceptParameters();
+		auto psfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer).AllExceptParameters();
+
+		auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(vsfn);
+		auto psFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(psfn);
+		if (entry._geometryShaderName.empty()) {
+			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
+				future,
+				[nascentDesc](
+					const std::shared_ptr<ShaderSelectorFilteringRules>& vsFiltering,
+					const std::shared_ptr<ShaderSelectorFilteringRules>& psFiltering) {
+					
+					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
+					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
+					return nascentDesc;
+				});
 		} else {
-			std::vector<ParameterBox> selectorsCopy;
-			for (const auto&sel:selectors) selectorsCopy.push_back(*sel);
-			result._shaderProgram = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("ShaderPendingVariationSet");
-			::Assets::WhenAll(_variationSetFuture).ThenConstructToFuture<Metal::ShaderProgram>(
-				*result._shaderProgram,
-				[techniqueIndex{_techniqueIndex}, selectorsCopy](const std::shared_ptr<VariationSet>& variationSet) {
-					const ParameterBox* selectorPtrs[ShaderSelectorFiltering::Source::Max] = {};
-					for (size_t c=0; c<std::min(selectorsCopy.size(), dimof(selectorPtrs)); ++c)
-						selectorPtrs[c] = &selectorsCopy[c];
-					auto shader = variationSet->_variationSet->FindVariation(techniqueIndex, selectorPtrs);
-					shader->StallWhilePending();
-					return shader->Actualize();
+			auto gsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer).AllExceptParameters();
+			auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(gsfn);
+			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
+				future,
+				[nascentDesc](
+					const std::shared_ptr<ShaderSelectorFilteringRules>& vsFiltering,
+					const std::shared_ptr<ShaderSelectorFilteringRules>& psFiltering,
+					const std::shared_ptr<ShaderSelectorFilteringRules>& gsFiltering) {
+					
+					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
+					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
+					nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._automaticFiltering = gsFiltering;
+					return nascentDesc;
+				});
+		}
+	}
+
+	auto TechniqueDelegate_Legacy::Resolve(
+		const CompiledShaderPatchCollection::Interface& shaderPatches,
+		const RenderCore::Assets::RenderStateSet& input) -> ::Assets::FuturePtr<GraphicsPipelineDesc>
+	{
+		auto result = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("resolved-technique");
+
+		auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
+		nascentDesc->_blend.push_back(_blend);
+		nascentDesc->_rasterization = _rasterization;
+		nascentDesc->_depthStencil = _depthStencil;
+
+		auto technique = _techniqueFuture->TryActualize();
+		if (technique) {
+			nascentDesc->_depVal = technique->GetDependencyValidation();
+			auto& entry = technique->GetEntry(_techniqueIndex);
+			PrepareShadersFromTechniqueEntry(*result, nascentDesc, entry);
+		} else {
+			// We need to poll until the technique file is ready, and then continue on to figuring out the shader
+			// information as usual
+			result->SetPollingFunction(
+				[techniqueIndex = _techniqueIndex, techniqueFuture = _techniqueFuture, nascentDesc](::Assets::AssetFuture<GraphicsPipelineDesc>& thatFuture) -> bool {
+
+					::Assets::Blob queriedLog;
+					::Assets::DepValPtr queriedDepVal;
+					std::shared_ptr<Technique> technique;
+					auto state = techniqueFuture->CheckStatusBkgrnd(technique, queriedDepVal, queriedLog);
+					if (state == ::Assets::AssetState::Pending)
+						return true;
+
+					if (state == ::Assets::AssetState::Invalid) {
+						thatFuture.SetInvalidAsset(queriedDepVal, queriedLog);
+						return false;
+					}
+
+					nascentDesc->_depVal = technique->GetDependencyValidation();
+					auto& entry = technique->GetEntry(techniqueIndex);
+					PrepareShadersFromTechniqueEntry(thatFuture, nascentDesc, entry);
+					return false;
 				});
 		}
 
@@ -403,17 +464,7 @@ namespace RenderCore { namespace Techniques
 	, _depthStencil(depthStencil)
 	{
 		const char* techFile = ILLUM_LEGACY_TECH;
-		auto techniqueSetFuture = ::Assets::MakeAsset<Technique>(techFile);
-		_variationSetFuture = std::make_shared<::Assets::AssetFuture<VariationSet>>(techFile);
-		::Assets::WhenAll(techniqueSetFuture).ThenConstructToFuture<VariationSet>(
-			*_variationSetFuture,
-			[](const std::shared_ptr<Technique>& technique) {
-				auto variationSet = std::make_shared<TechniqueShaderVariationSet>(technique);
-				return std::make_shared<VariationSet>(VariationSet{
-					technique,
-					variationSet
-					});
-			});
+		_techniqueFuture = ::Assets::MakeAsset<Technique>(techFile);
 	}
 
 	TechniqueDelegate_Legacy::~TechniqueDelegate_Legacy()
@@ -446,7 +497,7 @@ namespace RenderCore { namespace Techniques
 			soInit._outputElements = MakeIteratorRange(_soElements);
 			soInit._outputBufferStrides = MakeIteratorRange(_soStrides);
 
-			ShaderPatchFactory factory(techEntry, shaderPatches, patchExpansions, soInit);
+			ShaderPatchFactory factory(nullptr, techEntry, shaderPatches, patchExpansions, soInit);
 			const auto& variation = _sharedResources->_mainVariationSet.FindVariation(
 				selectors,
 				techEntry._selectorFiltering,
@@ -481,10 +532,11 @@ namespace RenderCore { namespace Techniques
 		return IllumType::NoPerPixel;
 	}
 
+#if 0
 	class TechniqueDelegate_Deferred : public TechniqueDelegate_Base
 	{
 	public:
-		ResolvedTechnique Resolve(
+		GraphicsPipelineDesc Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
@@ -514,7 +566,7 @@ namespace RenderCore { namespace Techniques
 			TechniqueEntry mergedTechEntry = *vsTechEntry;
 			mergedTechEntry.MergeIn(*psTechEntry);
 
-			ResolvedTechnique result;
+			GraphicsPipelineDesc result;
 			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._rasterization = BuildDefaultRastizerDesc(stateSet);
 
@@ -575,7 +627,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_Forward : public TechniqueDelegate_Base
 	{
 	public:
-		ResolvedTechnique Resolve(
+		GraphicsPipelineDesc Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
@@ -604,7 +656,7 @@ namespace RenderCore { namespace Techniques
 			TechniqueEntry mergedTechEntry = *vsTechEntry;
 			mergedTechEntry.MergeIn(*psTechEntry);
 
-			ResolvedTechnique result;
+			GraphicsPipelineDesc result;
 			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._rasterization = BuildDefaultRastizerDesc(stateSet);
 
@@ -675,7 +727,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_DepthOnly : public TechniqueDelegate_Base
 	{
 	public:
-		ResolvedTechnique Resolve(
+		GraphicsPipelineDesc Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
@@ -696,7 +748,7 @@ namespace RenderCore { namespace Techniques
 			TechniqueEntry mergedTechEntry = *vsTechEntry;
 			mergedTechEntry.MergeIn(*psTechEntry);
 
-			ResolvedTechnique result;
+			GraphicsPipelineDesc result;
 			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 
 			unsigned cullDisable    = !!(stateSet._flag & Assets::RenderStateSet::Flag::DoubleSided);
@@ -774,7 +826,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_RayTest : public TechniqueDelegate_Base
 	{
 	public:
-		ResolvedTechnique Resolve(
+		GraphicsPipelineDesc Resolve(
 			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
 			IteratorRange<const ParameterBox**> selectors,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
@@ -795,7 +847,7 @@ namespace RenderCore { namespace Techniques
 			TechniqueEntry mergedTechEntry = *vsTechEntry;
 			mergedTechEntry.MergeIn(*psTechEntry);
 
-			ResolvedTechnique result;
+			GraphicsPipelineDesc result;
 			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
 			result._depthStencil = CommonResources()._dsDisable;
 			// result._rasterization = CommonResources()._rsDisable;
@@ -844,6 +896,7 @@ namespace RenderCore { namespace Techniques
 	{
 		return std::make_shared<TechniqueDelegate_RayTest>(techniqueSet, sharedResources, soInit);
 	}
+#endif
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}
 

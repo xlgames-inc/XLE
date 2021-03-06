@@ -6,13 +6,48 @@
 
 #include "DrawableDelegates.h"
 #include "ShaderVariationSet.h"
+#include "CompiledShaderPatchCollection.h"
 #include "RenderStateResolver.h"		// (for RSDepthBias)
 #include "../MinimalShaderSource.h"		// (for ISourceCodePreprocessor)
+#include "../../Assets/AssetFuture.h"
+#include <memory>
 
 namespace RenderCore { class StreamOutputInitializers; }
 
 namespace RenderCore { namespace Techniques
 {
+	class ShaderSelectorFilteringRules;
+
+	class ITechniqueDelegate
+	{
+	public:
+		struct GraphicsPipelineDesc
+		{
+			struct Shader
+			{
+				std::string	_initializer;
+				ShaderSelectorFiltering _manualSelectorFiltering;
+				std::shared_ptr<ShaderSelectorFilteringRules> _automaticFiltering;
+			};
+			Shader 		_shaders[3];		// indexed by RenderCore::ShaderStage
+
+			std::vector<uint64_t> 				_patchExpansions;
+
+			std::vector<AttachmentBlendDesc> 	_blend;
+			DepthStencilDesc					_depthStencil;
+			RasterizationDesc					_rasterization;
+
+			::Assets::DepValPtr _depVal;
+			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		};
+
+		virtual ::Assets::FuturePtr<GraphicsPipelineDesc> Resolve(
+			const CompiledShaderPatchCollection::Interface& shaderPatches,
+			const RenderCore::Assets::RenderStateSet& renderStates) = 0;
+
+		virtual ~ITechniqueDelegate();
+	};
+
 	class TechniqueSharedResources
 	{
 	public:

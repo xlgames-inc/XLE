@@ -10,7 +10,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DescriptorSetAccelerator.cpp
         # Drawables.cpp
         ParsingContext.cpp
-        # PipelineAccelerator.cpp
+        PipelineAccelerator.cpp
         RenderPass.cpp
         RenderPassUtils.cpp
         RenderStateResolver.cpp
@@ -21,8 +21,10 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         TechniqueDelegates.cpp
         Techniques.cpp
         TechniqueUtils.cpp
-        Services.cpp
-        ModelCache.cpp)
+        # Services.cpp
+        ModelCache.cpp
+        AutomaticSelectorFiltering.cpp
+        )
     set(Headers
         BasicDelegates.h
         CommonBindings.h
@@ -47,7 +49,9 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         Techniques.h
         TechniqueUtils.h
         Services.h
-        ModelCache.h)
+        ModelCache.h
+        AutomaticSelectorFiltering.h
+        )
 
     add_library(RenderCoreTechniques-${metal_name} STATIC ${Src} ${Headers})
     xle_configure_library(RenderCoreTechniques-${metal_name})
