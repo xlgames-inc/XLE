@@ -26,7 +26,7 @@
 @protocol MTLRenderPipelineState;
 @protocol MTLDepthStencilState;
 
-namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; class AttachmentBlendDesc; }
+namespace RenderCore { class FrameBufferDesc; class AttachmentBlendDesc; }
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -90,7 +90,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         // DepthStencilDesc ActiveDepthStencilDesc();
 
         void SetInputLayout(const BoundInputLayout& inputLayout);
-        void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass);
+        void SetRenderPassConfiguration(const FrameBufferDesc& fbDesc, unsigned subPass);
         void SetRenderPassConfiguration(MTLRenderPassDescriptor* desc, unsigned sampleCount);
         uint64_t GetRenderPassConfigurationHash() const;
 

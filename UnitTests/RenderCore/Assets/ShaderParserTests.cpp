@@ -214,9 +214,9 @@ static const int NonPreprocessorLine0 = 0;
 
 		)--";
 		auto analysis = ShaderSourceParser::AnalyzeSelectors(exampleShader);
-		REQUIRE(analysis._selectorRelevance["SOME_SELECTOR"] == std::string{"1"});
-		REQUIRE(analysis._selectorRelevance["ANOTHER_SELECTOR"] == std::string{"1"});
-		REQUIRE(analysis._selectorRelevance["THIRD_SELECTOR"] == std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
+		REQUIRE(analysis._selectorRelevance["defined(SOME_SELECTOR)"] == std::string{"!defined(ANOTHER_SELECTOR)"});
+		REQUIRE(analysis._selectorRelevance["defined(ANOTHER_SELECTOR)"] == std::string{"!defined(SOME_SELECTOR)"});
+		REQUIRE(analysis._selectorRelevance["defined(THIRD_SELECTOR)"] == std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
 
 		// Check some filtering conditions
 		{
@@ -236,6 +236,16 @@ static const int NonPreprocessorLine0 = 0;
 				},
 				analysis._selectorRelevance);
 			REQUIRE(filter1.GetCount() == (size_t)2);
+		}
+
+		{
+			auto filter1 = ShaderSourceParser::FilterSelectors(
+				ParameterBox {
+					std::make_pair("SOME_SELECTOR", "1"),
+					std::make_pair("ANOTHER_SELECTOR", "1"),
+				},
+				analysis._selectorRelevance);
+			REQUIRE(filter1.GetCount() == (size_t)1);
 		}
 	}
 

@@ -12,6 +12,7 @@ Brief install instructions for windows (using clang & vscode)
 * install ninja (I used choco install ninja)
 * install windows 10 sdk (https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk/)
 * this gets you 99% of the way there... but it turns out you also need Visual Studio 2019 for 2 .lib files: oldnames.lib & msvcrtd.lib. Install from https://visualstudio.microsoft.com/downloads/. Be aware of the licensing requirements, however
+    - (it might be possible to get away with just installing "Build Tools for Visual Studio" here, but I haven't tried that)
 
 Note that Git and ssh can be a hassle for windows. If you don't already have a setup you like, the following
 is what I tend to do:
@@ -32,3 +33,5 @@ For RenderCore you'll need a little more
 * After the first cmake configure, you should get an error message saying GLES could not be found. There's no default location for windows, you must configure it manually
 * set the cmake cache variables XLE_OPENGLES_INCLUDE_DIR & XLE_OPENGLES_LIBRARY_DIR
 * install java jre (choco install javaruntime)
+
+* install vulkan sdk: https://vulkan.lunarg.com/sdk/home. You'll also need the "Additional SDK components" (unzip into the same SDK directory, this the debug libs). Debug libs are required to against debug XLE components because of the iterator debugging functionality in the MSVC standard library

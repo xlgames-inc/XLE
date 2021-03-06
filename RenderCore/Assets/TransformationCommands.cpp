@@ -55,12 +55,12 @@ namespace RenderCore { namespace Assets
     {
         finalIdentLevel = 1;
         for (; i!=end;) {
-            if (*i == (uint32)TransformStackCommand::PopLocalToWorld) {
+            if (*i == (uint32_t)TransformStackCommand::PopLocalToWorld) {
                 auto popCount = *(i+1);
                 finalIdentLevel -= signed(popCount);
                 if (finalIdentLevel <= 0)
                     return i;
-            } else if (*i == (uint32)TransformStackCommand::PushLocalToWorld)
+            } else if (*i == (uint32_t)TransformStackCommand::PushLocalToWorld)
                 ++finalIdentLevel;
             i += 1 + CommandSize((TransformStackCommand)*i);
         }
@@ -84,7 +84,7 @@ namespace RenderCore { namespace Assets
     {
         // Scan forward... if the transform isn't modified at this level, or if
         // the matrix isn't used after the pop, then the push/pop is redundant
-        assert(*i == (uint32)TransformStackCommand::PushLocalToWorld);
+        assert(*i == (uint32_t)TransformStackCommand::PushLocalToWorld);
         ++i;
 
         bool foundTransformCmd = false;
@@ -112,14 +112,14 @@ namespace RenderCore { namespace Assets
         return i;
     }
 
-    static void RemoveRedundantPushes(std::vector<uint32>& cmdStream)
+    static void RemoveRedundantPushes(std::vector<uint32_t>& cmdStream)
     {
             // First, we just want to convert series of pop operations into
             // a single pop.
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
-            if (*i == (uint32)TransformStackCommand::PopLocalToWorld) {
+            if (*i == (uint32_t)TransformStackCommand::PopLocalToWorld) {
                 if (    (cmdStream.end() - i) >= 4
-                    &&  *(i+2) == (uint32)TransformStackCommand::PopLocalToWorld) {
+                    &&  *(i+2) == (uint32_t)TransformStackCommand::PopLocalToWorld) {
                         // combine these 2 pops into a single pop command
                     auto newPopCount = *(i+1) + *(i+3);
                     i = cmdStream.erase(i, i+2);
@@ -134,7 +134,7 @@ namespace RenderCore { namespace Assets
 
             // Now look for push operations that are redundant
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
-            if (*i == (uint32)TransformStackCommand::PushLocalToWorld) {
+            if (*i == (uint32_t)TransformStackCommand::PushLocalToWorld) {
                 bool isRedundant = false;
                 auto pop = IsRedundantPush(i, cmdStream.end(), isRedundant);
                 if (isRedundant) {
@@ -175,7 +175,7 @@ namespace RenderCore { namespace Assets
 		return false;
 	}
 
-	static void RemoveRedundantTransformationCommands(std::vector<uint32>& cmdStream)
+	static void RemoveRedundantTransformationCommands(std::vector<uint32_t>& cmdStream)
 	{
 			// For each transformation command we come across, scan forward to
 			// see if it's used as part of an WriteOutputMatrix operation
@@ -235,8 +235,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static const uint32* FindDownstreamInfluences(
-        const uint32* i, IteratorRange<const uint32*> range, 
+    static const uint32_t* FindDownstreamInfluences(
+        const uint32_t* i, IteratorRange<const uint32_t*> range, 
         std::vector<size_t>& result, signed& finalIdentLevel)
     {
             // Search forward and find the commands that are going to directly 
@@ -274,7 +274,7 @@ namespace RenderCore { namespace Assets
 
     static bool ShouldDoMerge(
         IteratorRange<size_t*> influences, 
-        IteratorRange<const uint32*> cmdStream,
+        IteratorRange<const uint32_t*> cmdStream,
         ITransformationMachineOptimizer& optimizer)
     {
         signed commandAdjustment = -1;
@@ -336,7 +336,7 @@ namespace RenderCore { namespace Assets
         return false;
     }
 
-    static Float4x4 PromoteToFloat4x4(const uint32* cmd)
+    static Float4x4 PromoteToFloat4x4(const uint32_t* cmd)
     {
         switch (TransformStackCommand(*cmd)) {
         case TransformStackCommand::TransformFloat4x4_Static:
@@ -373,9 +373,9 @@ namespace RenderCore { namespace Assets
     }
 
     static void DoTransformMerge(
-        std::vector<uint32>& cmdStream, 
-        std::vector<uint32>::iterator dst,
-        std::vector<uint32>::iterator mergingCmd)
+        std::vector<uint32_t>& cmdStream, 
+        std::vector<uint32_t>::iterator dst,
+        std::vector<uint32_t>::iterator mergingCmd)
     {
         // If the transforms are of exactly the same type (and not Rotate_Static)
         // then we can merge into a final transform that is the same type.
@@ -427,13 +427,13 @@ namespace RenderCore { namespace Assets
             auto mergeTransform = PromoteToFloat4x4(AsPointer(mergingCmd));
             auto t = cmdStream.erase(dst+1, dst+1+CommandSize(TransformStackCommand(*dst)));
             assert(t==dst+1);
-            *dst = (uint32)TransformStackCommand::TransformFloat4x4_Static;
+            *dst = (uint32_t)TransformStackCommand::TransformFloat4x4_Static;
             auto finalTransform = Combine(dstTransform, mergeTransform);
-            cmdStream.insert(dst+1, (uint32*)&finalTransform, (uint32*)(&finalTransform + 1));
+            cmdStream.insert(dst+1, (uint32_t*)&finalTransform, (uint32_t*)(&finalTransform + 1));
         }
     }
 
-    static void MergeSequentialTransforms(std::vector<uint32>& cmdStream, ITransformationMachineOptimizer& optimizer)
+    static void MergeSequentialTransforms(std::vector<uint32_t>& cmdStream, ITransformationMachineOptimizer& optimizer)
     {
         // Where we have multiple static transforms in a row, we can choose
         // to merge them together.
@@ -556,8 +556,8 @@ namespace RenderCore { namespace Assets
                             // plus, we need a push/pop pair surrounding it
                             auto insertSize = next-i;
                             i2 = cmdStream.insert(i2, i, next);
-                            i2 = cmdStream.insert(i2, (uint32)TransformStackCommand::PushLocalToWorld);
-                            uint32 popIntr[] = { (uint32)TransformStackCommand::PopLocalToWorld, 1 };
+                            i2 = cmdStream.insert(i2, (uint32_t)TransformStackCommand::PushLocalToWorld);
+                            uint32_t popIntr[] = { (uint32_t)TransformStackCommand::PopLocalToWorld, 1 };
                             i2 = cmdStream.insert(i2+1+insertSize, &popIntr[0], &popIntr[2]);
                             i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                         } else if (type == MergeType::OutputMatrix) {
@@ -581,8 +581,8 @@ namespace RenderCore { namespace Assets
                             } else {
                                 auto insertSize = next-i; auto outputMatSize = 1+CommandSize(TransformStackCommand(*i2));
                                 i2 = cmdStream.insert(i2, i, next);
-                                i2 = cmdStream.insert(i2, (uint32)TransformStackCommand::PushLocalToWorld);
-                                uint32 popIntr[] = { (uint32)TransformStackCommand::PopLocalToWorld, 1 };
+                                i2 = cmdStream.insert(i2, (uint32_t)TransformStackCommand::PushLocalToWorld);
+                                uint32_t popIntr[] = { (uint32_t)TransformStackCommand::PopLocalToWorld, 1 };
                                 i2 = cmdStream.insert(i2+1+insertSize+outputMatSize, popIntr, ArrayEnd(popIntr));
                                 i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                             }
@@ -599,7 +599,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static void OptimizePatterns(std::vector<uint32>& cmdStream)
+    static void OptimizePatterns(std::vector<uint32_t>& cmdStream)
     {
         // Replace certain common patterns in the stream with a "macro" command.
         // This is like macro instructions for intel processors... they are a single
@@ -612,7 +612,7 @@ namespace RenderCore { namespace Assets
         //          -> TransformFloat4x4AndWrite_Parameter
         
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
-            std::pair<TransformStackCommand, std::vector<uint32>::iterator> nextInstructions[3];
+            std::pair<TransformStackCommand, std::vector<uint32_t>::iterator> nextInstructions[3];
             auto i2 = i;
             for (unsigned c=0; c<dimof(nextInstructions); ++c) {
                 if (i2 < cmdStream.end()) {
@@ -632,9 +632,9 @@ namespace RenderCore { namespace Assets
                 auto outputIndex = *(nextInstructions[1].second+1);
                 cmdStream.erase(nextInstructions[1].second, nextInstructions[2].second);
                 if (nextInstructions[0].first == TransformStackCommand::TransformFloat4x4_Static)
-                    *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Static;
+                    *nextInstructions[0].second = (uint32_t)TransformStackCommand::TransformFloat4x4AndWrite_Static;
                 else 
-                    *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Parameter;
+                    *nextInstructions[0].second = (uint32_t)TransformStackCommand::TransformFloat4x4AndWrite_Parameter;
                 i = cmdStream.insert(nextInstructions[0].second+1, outputIndex) - 1;
                 continue;
             }
@@ -672,7 +672,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static void SimplifyTransformTypes(std::vector<uint32>& cmdStream)
+    static void SimplifyTransformTypes(std::vector<uint32_t>& cmdStream)
     {
         // In some cases we can simplify the transformation type used in a command. 
         // For example, if the command is a Float4x4 transform, but that matrix only 
@@ -711,35 +711,35 @@ namespace RenderCore { namespace Assets
                         //  Collada normally prefers axis, angle -- so we'll use that.
                         ArbitraryRotation rot(decomposed._rotation);
                         if (signed rotX = rot.IsRotationX()) {
-                            *i = (uint32)TransformStackCommand::RotateX_Static;
+                            *i = (uint32_t)TransformStackCommand::RotateX_Static;
                             *(float*)AsPointer(i+1) = Rad2Deg(float(rotX) * rot._angle);
                             cmdStream.erase(i+2, cmdEnd);
                         } else if (signed rotY = rot.IsRotationY()) {
-                            *i = (uint32)TransformStackCommand::RotateY_Static;
+                            *i = (uint32_t)TransformStackCommand::RotateY_Static;
                             *(float*)AsPointer(i+1) = Rad2Deg(float(rotY) * rot._angle);
                             cmdStream.erase(i+2, cmdEnd);
                         } else if (signed rotZ = rot.IsRotationZ()) {
-                            *i = (uint32)TransformStackCommand::RotateZ_Static;
+                            *i = (uint32_t)TransformStackCommand::RotateZ_Static;
                             *(float*)AsPointer(i+1) = Rad2Deg(float(rotZ) * rot._angle);
                             cmdStream.erase(i+2, cmdEnd);
                         } else {
-                            *i = (uint32)TransformStackCommand::Rotate_Static;
+                            *i = (uint32_t)TransformStackCommand::Rotate_Static;
                             *(Float3*)AsPointer(i+1) = rot._axis;
                             *(float*)AsPointer(i+4) = Rad2Deg(rot._angle);
                             cmdStream.erase(i+5, cmdEnd);
                         }
                     } else if (hasTranslation && !hasRotation) {
                         // translation (and maybe scale)
-                        *i = (uint32)TransformStackCommand::Translate_Static;
+                        *i = (uint32_t)TransformStackCommand::Translate_Static;
                         *(Float3*)AsPointer(i+1) = decomposed._translation;
                         auto transEnd = i+4;
                         if (hasScale) {
                             if (IsUniformScale(decomposed._scale, scaleThreshold)) {
-                                *transEnd = (uint32)TransformStackCommand::UniformScale_Static;
+                                *transEnd = (uint32_t)TransformStackCommand::UniformScale_Static;
                                 *(float*)AsPointer(transEnd+1) = GetMedianElement(decomposed._scale);
                                 cmdStream.erase(transEnd+2, cmdEnd);
                             } else {
-                                *transEnd = (uint32)TransformStackCommand::ArbitraryScale_Static;
+                                *transEnd = (uint32_t)TransformStackCommand::ArbitraryScale_Static;
                                 *(Float3*)AsPointer(transEnd+1) = decomposed._scale;
                                 cmdStream.erase(transEnd+4, cmdEnd);
                             }
@@ -749,11 +749,11 @@ namespace RenderCore { namespace Assets
                         // just scale
                         auto scaleEnd = i;
                         if (IsUniformScale(decomposed._scale, scaleThreshold)) {
-                            *i = (uint32)TransformStackCommand::UniformScale_Static;
+                            *i = (uint32_t)TransformStackCommand::UniformScale_Static;
                             *(float*)AsPointer(i+1) = GetMedianElement(decomposed._scale);
                             scaleEnd = i+2;
                         } else {
-                            *i = (uint32)TransformStackCommand::ArbitraryScale_Static;
+                            *i = (uint32_t)TransformStackCommand::ArbitraryScale_Static;
                             *(Float3*)AsPointer(i+1) = decomposed._scale;
                             scaleEnd = i+4;
                         }
@@ -766,7 +766,7 @@ namespace RenderCore { namespace Assets
                     // we should definitely change it!
                 auto scale = *(Float3*)AsPointer(i+1);
                 if (IsUniformScale(scale, scaleThreshold)) {
-                    *i = (uint32)TransformStackCommand::UniformScale_Static;
+                    *i = (uint32_t)TransformStackCommand::UniformScale_Static;
                     cmdStream.erase(i+1, i+3);
                     *(float*)AsPointer(i+1) = GetMedianElement(scale);
                 }
@@ -780,8 +780,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    std::vector<uint32> OptimizeTransformationMachine(
-        IteratorRange<const uint32*> input,
+    std::vector<uint32_t> OptimizeTransformationMachine(
+        IteratorRange<const uint32_t*> input,
         ITransformationMachineOptimizer& optimizer)
     {
         // Create an optimzied version of the given transformation machine.
@@ -804,7 +804,7 @@ namespace RenderCore { namespace Assets
         // result (because some optimisation will create new cases for other optimisations to
         // work). To make it easy, let's consider only one optimisation at a time.
 
-        std::vector<uint32> result(input.cbegin(), input.cend());
+        std::vector<uint32_t> result(input.cbegin(), input.cend());
 		RemoveRedundantTransformationCommands(result);
         RemoveRedundantPushes(result);
         MergeSequentialTransforms(result, optimizer);
@@ -826,7 +826,7 @@ namespace RenderCore { namespace Assets
         void GenerateOutputTransforms_Int(
             IteratorRange<Float4x4*>					result,
             const TransformationParameterSet*           parameterSet,
-            IteratorRange<const uint32*>                commandStream,
+            IteratorRange<const uint32_t*>                commandStream,
             const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator)
     {
             // The command stream will sometimes not write to 
@@ -938,7 +938,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::TransformFloat4x4_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float4x4s.size()) {
                         *workingTransform = Combine(float4x4s[parameterIndex], *workingTransform);
                     } else {
@@ -949,7 +949,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::Translate_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float3s.size()) {
                         Combine_IntoRHS(float3s[parameterIndex], *workingTransform);
                     } else {
@@ -960,7 +960,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::RotateX_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
                         Combine_IntoRHS(RotationX(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
@@ -971,7 +971,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::RotateY_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
                         Combine_IntoRHS(RotationY(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
@@ -982,7 +982,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::RotateZ_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
                         Combine_IntoRHS(RotationZ(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
@@ -993,7 +993,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::Rotate_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float4s.size()) {
 						Combine_IntoRHS(ArbitraryRotation(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
                     } else {
@@ -1004,7 +1004,7 @@ namespace RenderCore { namespace Assets
 
 			case TransformStackCommand::RotateQuaternion_Parameter:
 				{
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float4s.size()) {
 						const Float4& p = float4s[parameterIndex];
                         Combine_IntoRHS(Quaternion(p[0], p[1], p[2], p[3]), *workingTransform);
@@ -1016,7 +1016,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::UniformScale_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float1s.size()) {
                         Combine_IntoRHS(UniformScale(float1s[parameterIndex]), *workingTransform);
                     } else {
@@ -1027,7 +1027,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::ArbitraryScale_Parameter:
                 {
-                    uint32 parameterIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float3s.size()) {
                         Combine_IntoRHS(ArbitraryScale(float3s[parameterIndex]), *workingTransform);
                     } else {
@@ -1041,7 +1041,7 @@ namespace RenderCore { namespace Assets
                     //      Dump the current working transform to the output array
                     //
                 {
-                    uint32 outputIndex = *i++;
+                    uint32_t outputIndex = *i++;
                     if (outputIndex < result.size()) {
                         result[outputIndex] = *workingTransform;
                         if (constant_expression<UseDebugIterator>::result())
@@ -1053,7 +1053,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::TransformFloat4x4AndWrite_Static:
                 {
-                    uint32 outputIndex = *i++;
+                    uint32_t outputIndex = *i++;
                     const Float4x4& transformMatrix = *reinterpret_cast<const Float4x4*>(AsPointer(i)); 
                     i += 16;
                     if (outputIndex < result.size()) {
@@ -1067,8 +1067,8 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::TransformFloat4x4AndWrite_Parameter:
                 {
-                    uint32 outputIndex = *i++;
-                    uint32 parameterIndex = *i++;
+                    uint32_t outputIndex = *i++;
+                    uint32_t parameterIndex = *i++;
                     if (parameterIndex < float4x4s.size()) {
                         if (outputIndex < result.size()) {
                             result[outputIndex] = Combine(float4x4s[parameterIndex], *workingTransform);
@@ -1091,7 +1091,7 @@ namespace RenderCore { namespace Assets
     void GenerateOutputTransforms(
         IteratorRange<Float4x4*>					result,
         const TransformationParameterSet*           parameterSet,
-        IteratorRange<const uint32*>                commandStream)
+        IteratorRange<const uint32_t*>                commandStream)
     {
         GenerateOutputTransforms_Int<false>(
             result, parameterSet, commandStream, 
@@ -1171,7 +1171,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::WriteOutputMatrix:
                 {
-                    uint32 outputIndex = *i++;
+                    uint32_t outputIndex = *i++;
                     if (outputIndex < result.size()) {
 						assert(result[outputIndex] == ~0u);		// if a given output marker is written to twice, we can end up here. It doesn't make much sense to do this, because only the last value written will be used (this applies both to this function and GenerateOutputTransforms)
                         result[outputIndex] = *workingTransform;
@@ -1186,7 +1186,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::TransformFloat4x4AndWrite_Static:
                 {
-                    uint32 outputIndex = *i++;
+                    uint32_t outputIndex = *i++;
                     i += 16;
                     if (outputIndex < result.size()) {
                         result[outputIndex] = *workingTransform;
@@ -1200,7 +1200,7 @@ namespace RenderCore { namespace Assets
 
             case TransformStackCommand::TransformFloat4x4AndWrite_Parameter:
                 {
-                    uint32 outputIndex = *i++;
+                    uint32_t outputIndex = *i++;
                     i++;
                     if (outputIndex < result.size()) {
                         result[outputIndex] = *workingTransform;
@@ -1221,11 +1221,11 @@ namespace RenderCore { namespace Assets
 
         ///////////////////////////////////////////////////////
 
-	std::vector<uint32> RemapOutputMatrices(
-		IteratorRange<const uint32*> input,
+	std::vector<uint32_t> RemapOutputMatrices(
+		IteratorRange<const uint32_t*> input,
 		IteratorRange<const unsigned*> outputMatrixMapping)
 	{
-		std::vector<uint32> result;
+		std::vector<uint32_t> result;
 		result.reserve(input.size());
 
             // First, we just want to convert series of pop operations into
@@ -1265,11 +1265,11 @@ namespace RenderCore { namespace Assets
 
     void TraceTransformationMachine(
         std::ostream&   stream,
-        IteratorRange<const uint32*>    commandStream,
+        IteratorRange<const uint32_t*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
         std::function<std::string(AnimSamplerType, unsigned)> parameterToName)
     {
-        stream << "Transformation machine size: (" << (commandStream.size()) * sizeof(uint32) << ") bytes" << std::endl;
+        stream << "Transformation machine size: (" << (commandStream.size()) * sizeof(uint32_t) << ") bytes" << std::endl;
 
         char indentBuffer[32];
         signed indentLevel = 1;

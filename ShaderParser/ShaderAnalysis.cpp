@@ -10,24 +10,6 @@
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/PreprocessorInterpreter.h"
 #include "../Utility/StringFormat.h"
-#include <tiny-process-library/process.hpp>
-
-#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
-	// Awkward work-around for a strange problem inside of nlohmann/json.hpp
-	// it's use the "deprecated" attribute on an inline friend function definition
-	// (ie, it's defining a free function, but doing it inside of a class by using
-	// the friend keyword). MSVC doesn't seem to like the depreciated attribute
-	// begin used like this. We can adjust the __cplusplus keyword to try to trick
-	// the library into not doing it. Since MSVC doesn't set the correct value on 
-	// __cplusplus by default, this may be why it's not a more well known issue?
-	#include <nlohmann/thirdparty/hedley/hedley.hpp>
-	#undef JSON_HEDLEY_DEPRECATED
-	#define JSON_HEDLEY_DEPRECATED(X)
-	#include <nlohmann/json.hpp>
-#else
-	#include <nlohmann/json.hpp>
-#endif
-
 #include <sstream>
 
 namespace ShaderSourceParser
@@ -311,33 +293,15 @@ namespace ShaderSourceParser
 		return result;
 	}
 
-
 	ShaderSelectorAnalysis AnalyzeSelectors(const std::string& sourceCode)
 	{
-		std::stringstream str;
-		// Send the given text to the shader analyzer, and interpret the
-		// results
-		// HACK -- shader analyzer not public yet
-		TinyProcessLib::Process analyzerProcess(
-			"node build/analyze.js", "c:/code/ShaderPreprocessorAnalyzer/",
-			[&str](const char *bytes, size_t n) {
-				str << MakeStringSection(bytes, bytes+n);
-			},
-			nullptr, true);
-		analyzerProcess.write(sourceCode);
-		analyzerProcess.close_stdin();
-		int exitStatus = analyzerProcess.get_exit_status();
-
-		if (exitStatus == 0) {
-			auto json = nlohmann::json::parse(str.str());
-			ShaderSelectorAnalysis result;
-			for (auto i=json.begin(); i!=json.end(); ++i) {
-				result._selectorRelevance.insert(std::make_pair(i.key(), i.value().get<std::string>()));
-			}
-			return result;
-		} else {
-			return {};
-		}
+		auto analysis = GeneratePreprocessorAnalysis(sourceCode, {}, *(IPreprocessorIncludeHandler*)nullptr);
+		ShaderSelectorAnalysis result;
+		for (const auto& r:analysis._relevanceTable)
+			result._selectorRelevance.insert(std::make_pair(
+				analysis._tokenDictionary.AsString({r.first}),
+				analysis._tokenDictionary.AsString(r.second)));
+		return result;
 	}
 
 	ParameterBox FilterSelectors(

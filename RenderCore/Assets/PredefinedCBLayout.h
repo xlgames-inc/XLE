@@ -28,8 +28,7 @@ namespace RenderCore { namespace Assets
         class Element
         {
         public:
-            ParameterBox::ParameterNameHash _hash = ~0u;
-            uint64_t _hash64 = ~0ull;
+            ParameterBox::ParameterNameHash _hash = ~0ull;
             ImpliedTyping::TypeDesc _type;
             unsigned _arrayElementCount = 0;            // set to zero if this parameter is not actually an array
             unsigned _arrayElementStride = 0;

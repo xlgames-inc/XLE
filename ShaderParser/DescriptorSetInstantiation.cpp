@@ -6,6 +6,7 @@
 #include "NodeGraphSignature.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/ShaderLangUtil.h"
+#include "../RenderCore/UniformsStream.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <set>
@@ -14,55 +15,6 @@
 
 namespace ShaderSourceParser
 {
-	TypeDescriptor CalculateTypeDescriptor(StringSection<> type)
-    {
-        // HLSL keywords are not case sensitive. We could assume that
-        // a type name that does not begin with one of the scalar type
-        // prefixes is a global resource (like a texture, etc). This
-        // should provide some flexibility with new DX12 types, and perhaps
-        // allow for manipulating custom "interface" types...?
-        //
-        // However, that isn't going to work well with struct types (which
-        // can be contained with cbuffers and be passed to functions like
-        // scalars)
-        //
-        // const char* scalarTypePrefixes[] =
-        // {
-        //     "bool", "int", "uint", "half", "float", "double"
-        // };
-        //
-        // Note that we only check the prefix -- to catch variations on
-        // texture and RWTexture (and <> arguments like Texture2D<float4>)
-
-        const char* resourceTypePrefixes[] =
-        {
-            "cbuffer", "tbuffer",
-            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer",
-            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
-
-            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
-            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
-
-            // special .fx file types:
-            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView",
-        };
-        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
-
-        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
-            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
-                return TypeDescriptor::Resource;
-
-		const char* samplerTypePrefixes[] =
-        {
-			"sampler", // SamplerState, SamplerComparisonState
-		};
-		for (unsigned c=0; c<dimof(samplerTypePrefixes); ++c)
-            if (XlBeginsWithI(type, MakeStringSection(samplerTypePrefixes[c])))
-                return TypeDescriptor::Sampler;
-
-        return TypeDescriptor::Constant;
-    }
-
 	static std::string MakeGlobalName(const std::string& str)
 	{
 		auto i = str.find('.');
@@ -76,9 +28,6 @@ namespace ShaderSourceParser
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream)
 	{
-		std::vector<RenderCore::Assets::PredefinedDescriptorSetLayout::Resource> srvs;
-		std::vector<RenderCore::Assets::PredefinedDescriptorSetLayout::Sampler> samplers;
-
 		using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
 		struct WorkingCB
 		{
@@ -86,61 +35,67 @@ namespace ShaderSourceParser
 			ParameterBox _defaults;
 		};
 		std::unordered_map<std::string, WorkingCB> workingCBs;
-		std::set<std::string> texturesAlreadyStored;
+		std::set<std::string> objectsAlreadyStored;
+		auto result = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
 
 		// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
-		// texturesAlreadyStored.insert("DiffuseTexture");
-		// texturesAlreadyStored.insert("NormalsTexture");
+		// objectsAlreadyStored.insert("DiffuseTexture");
+		// objectsAlreadyStored.insert("NormalsTexture");
+
+		using DescriptorSlot = RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot;
 
 		for (const auto&c : captures) {
-			auto type = CalculateTypeDescriptor(c._type);
-			if (type != TypeDescriptor::Constant) {
-				auto globalName = MakeGlobalName(c._name);
-				if (texturesAlreadyStored.find(globalName) == texturesAlreadyStored.end()) {
-					texturesAlreadyStored.insert(globalName);
-					// This capture must be either an srv or a sampler
-					if (c._direction == GraphLanguage::ParameterDirection::In) {
-						if (type == TypeDescriptor::Resource) {
-							srvs.push_back({globalName, {}});
-						} else
-							samplers.push_back({globalName, {}});					
-					}
+			if (c._direction != GraphLanguage::ParameterDirection::In)
+				continue;
+
+			auto descType = RenderCore::ShaderLangTypeNameAsDescriptorType(c._type);
+
+			DescriptorSlot newSlot;
+			newSlot._name = MakeGlobalName(c._name);
+			newSlot._type = descType != RenderCore::DescriptorType::Unknown ? descType : RenderCore::DescriptorType::ConstantBuffer;
+
+			// If we didn't get a descriptor slot type from the type name, we'll treat this as a
+			// constant within a constant buffer
+			if (descType == RenderCore::DescriptorType::Unknown) {
+				auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(c._type);
+				if (fmt._type == ImpliedTyping::TypeCat::Void) {
+					warningStream << "\t// Could not convert type (" << c._type << ") to shader language type for capture (" << c._name << "). Skipping cbuffer entry." << std::endl;
+					continue;
 				}
-				continue;
+
+				std::string cbName, memberName;
+				auto i = c._name.find('.');
+				if (i != std::string::npos) {
+					cbName = c._name.substr(0, i);
+					memberName = c._name.substr(i+1);
+				} else {
+					cbName = "BasicMaterialConstants";
+					memberName = c._name;
+				}
+
+				auto cbi = workingCBs.find(cbName);
+				if (cbi == workingCBs.end())
+					cbi = workingCBs.insert(std::make_pair(cbName, WorkingCB{})).first;
+
+				cbi->second._cbElements.push_back(NameAndType{ memberName, fmt });
+				if (!c._default.empty())
+					cbi->second._defaults.SetParameter(
+						MakeStringSection(memberName).Cast<utf8>(),
+						MakeStringSection(c._default));
+
+				newSlot._cbIdx = (unsigned)std::distance(workingCBs.begin(), cbi);
 			}
 
-			auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(c._type);
-			if (fmt._type == ImpliedTyping::TypeCat::Void) {
-				warningStream << "\t// Could not convert type (" << c._type << ") to shader language type for capture (" << c._name << "). Skipping cbuffer entry." << std::endl;
-				continue;
+			if (objectsAlreadyStored.find(newSlot._name) == objectsAlreadyStored.end()) {
+				objectsAlreadyStored.insert(newSlot._name);
+				result->_slots.push_back(newSlot);
 			}
-
-			std::string cbName, memberName;
-			auto i = c._name.find('.');
-			if (i != std::string::npos) {
-				cbName = c._name.substr(0, i);
-				memberName = c._name.substr(i+1);
-			} else {
-				cbName = "BasicMaterialConstants";
-				memberName = c._name;
-			}
-
-			auto cbi = workingCBs.find(cbName);
-			if (cbi == workingCBs.end())
-				cbi = workingCBs.insert(std::make_pair(cbName, WorkingCB{})).first;
-
-			cbi->second._cbElements.push_back(NameAndType{ memberName, fmt });
-			if (!c._default.empty())
-				cbi->second._defaults.SetParameter(
-					MakeStringSection(memberName).Cast<utf8>(),
-					MakeStringSection(c._default));
 		}
 
-		auto result = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
-		result->_resources = std::move(srvs);
-		result->_samplers = std::move(samplers);
-
 		for (auto&cb:workingCBs) {
+			if (cb.second._cbElements.empty())
+				continue;
+
 			// Sort first in alphabetical order, and then optimize for
 			// type packing. This ensures that we get the same output layout for a given
 			// input, regardless of the input's original ordering.
@@ -151,15 +106,10 @@ namespace ShaderSourceParser
 				});
 			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(cb.second._cbElements), shaderLanguage);
 
+			
 			auto layout = std::make_shared<RenderCore::Assets::PredefinedCBLayout>(
 				MakeIteratorRange(cb.second._cbElements), cb.second._defaults);
-
-			if (!layout->_elements.empty())
-				result->_constantBuffers.emplace_back(
-					RenderCore::Assets::PredefinedDescriptorSetLayout::ConstantBuffer {
-						cb.first,
-						std::move(layout)
-					});
+			result->_constantBuffers.emplace_back(std::move(layout));
 		}
 
 		return result;

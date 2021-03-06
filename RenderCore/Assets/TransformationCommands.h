@@ -18,7 +18,7 @@ namespace Utility { class OutputStream; }
 
 namespace RenderCore { namespace Assets
 {
-    enum class TransformStackCommand : uint32
+    enum class TransformStackCommand : uint32_t
     {
         PushLocalToWorld,       // no parameters
         PopLocalToWorld,        // number of transforms to pop (ie, often 1, but sometimes we want to do multiple pops at once)
@@ -81,11 +81,11 @@ namespace RenderCore { namespace Assets
         IteratorRange<Float4*>			GetFloat4Parameters()			{ return MakeIteratorRange(_float4Parameters);      }
         IteratorRange<Float4x4*>		GetFloat4x4Parameters()			{ return MakeIteratorRange(_float4x4Parameters);	}
 
-		void Set(uint32 index, float);
-		void Set(uint32 index, Float3);
-		void Set(uint32 index, Float4);
-		void Set(uint32 index, Quaternion);
-		void Set(uint32 index, const Float4x4&);
+		void Set(uint32_t index, float);
+		void Set(uint32_t index, Float3);
+		void Set(uint32_t index, Float4);
+		void Set(uint32_t index, Quaternion);
+		void Set(uint32_t index, const Float4x4&);
             
         TransformationParameterSet();
         TransformationParameterSet(TransformationParameterSet&& moveFrom);
@@ -107,7 +107,7 @@ namespace RenderCore { namespace Assets
     void GenerateOutputTransforms(
         IteratorRange<Float4x4*>					result,
         const TransformationParameterSet*           parameterSet,
-        IteratorRange<const uint32*>                commandStream);
+        IteratorRange<const uint32_t*>                commandStream);
 
 	/// <summary>For each output marker, calculate the immediate parent</summary>
 	/// The parent of a given marker is defines as the first marker we encounter if we traverse back through
@@ -124,7 +124,7 @@ namespace RenderCore { namespace Assets
 
     void TraceTransformationMachine(
         std::ostream&                   outputStream,
-        IteratorRange<const uint32*>    commandStream,
+        IteratorRange<const uint32_t*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
         std::function<std::string(AnimSamplerType, unsigned)> parameterToName);
 
@@ -143,12 +143,12 @@ namespace RenderCore { namespace Assets
 		void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform) {};
 	};
 
-    std::vector<uint32> OptimizeTransformationMachine(
-        IteratorRange<const uint32*> input,
+    std::vector<uint32_t> OptimizeTransformationMachine(
+        IteratorRange<const uint32_t*> input,
         ITransformationMachineOptimizer& optimizer);
 
-	std::vector<uint32> RemapOutputMatrices(
-		IteratorRange<const uint32*> input,
+	std::vector<uint32_t> RemapOutputMatrices(
+		IteratorRange<const uint32_t*> input,
 		IteratorRange<const unsigned*> outputMatrixMapping);
 
 }}

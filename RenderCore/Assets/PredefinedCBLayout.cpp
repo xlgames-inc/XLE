@@ -262,7 +262,6 @@ namespace RenderCore { namespace Assets
         PredefinedCBLayout::Element e;
         e._name = input._name;
         e._hash = ParameterBox::MakeParameterNameHash(e._name);
-        e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
         e._type = input._type;
         e._conditions = input._conditions;
         e._arrayElementCount = input._arrayElementCount;
@@ -335,7 +334,7 @@ namespace RenderCore { namespace Assets
         for (const auto&e:_elements) {
             // note -- we have to carefully hash only the elements that meaningfully effect the
             //
-            result = HashCombine(e._hash64, result);
+            result = HashCombine(e._hash, result);
             result = Hash64(&e._type, &e._arrayElementStride+1, result);
             result = HashCombine(Hash64(e._conditions), result);
         }
@@ -349,7 +348,7 @@ namespace RenderCore { namespace Assets
         result.reserve(_elements.size());
         for (auto i=_elements.begin(); i!=_elements.end(); ++i) {
             result.push_back(ConstantBufferElementDesc {
-                i->_hash64, AsFormat(i->_type),
+                i->_hash, AsFormat(i->_type),
                 i->_offsetsByLanguage[alignmentRules], i->_arrayElementCount });
         }
         return result;

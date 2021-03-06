@@ -6,6 +6,7 @@
 #include "ModelScaffoldInternal.h"
 #include "../Types.h"
 #include "../Format.h"
+#include "../StateDesc.h"
 
 namespace RenderCore { namespace Assets
 {

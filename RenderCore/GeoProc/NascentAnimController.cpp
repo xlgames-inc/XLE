@@ -12,7 +12,7 @@
 #include "GeoProcUtil.h"
 #include "../Assets/AssetUtils.h"
 #include "../Format.h"
-#include "../Types.h"
+#include "../StateDesc.h"
 #include "../VertexUtil.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../OSServices/Log.h"

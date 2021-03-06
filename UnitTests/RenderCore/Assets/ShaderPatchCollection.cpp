@@ -4,11 +4,12 @@
 
 #include "../ReusableDataFiles.h"
 #include "../../UnitTestHelper.h"
-#include "../Metal/MetalUnitTest.h"
+#include "../Metal/MetalTestHelper.h"
 #include "../../../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../../../RenderCore/IDevice.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
@@ -20,6 +21,7 @@
 #include "../../../Assets/DeferredConstruction.h"
 #include "../../../Assets/InitializerPack.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/AssetServices.h"
 #include "../../../ConsoleRig/Console.h"
 #include "../../../OSServices/Log.h"
 #include "../../../OSServices/FileSystemMonitor.h"
@@ -299,15 +301,17 @@ namespace UnitTests
 
 			// Check for some of the expected interface elements
 			REQUIRE(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
-			auto& cbs = compiledCollection.GetInterface().GetMaterialDescriptorSet()->_constantBuffers;
-			REQUIRE(cbs.size() == (size_t)2);
-			auto material = std::find_if(cbs.begin(), cbs.end(), [](const auto& t) { return t._name == "MaterialUniforms"; });
-			auto second = std::find_if(cbs.begin(), cbs.end(), [](const auto& t) { return t._name == "SecondUnifomBuffer"; });
-			REQUIRE(material != cbs.end());
-			REQUIRE(material->_layout->_elements.size() == 2);
-			REQUIRE(second != cbs.end());
-			REQUIRE(second->_layout->_elements.size() == 1);
-			REQUIRE(compiledCollection.GetInterface().GetMaterialDescriptorSet()->_resources.size() == (size_t)3);
+			auto& descSet = *compiledCollection.GetInterface().GetMaterialDescriptorSet();
+			auto& slots = descSet._slots;
+			REQUIRE(slots.size() == (size_t)5);
+			auto material = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "MaterialUniforms"; });
+			auto second = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "SecondUnifomBuffer"; });
+			REQUIRE(material != slots.end());
+			REQUIRE(material->_cbIdx != ~0u);
+			REQUIRE(descSet._constantBuffers[material->_cbIdx]->_elements.size() == 2);
+			REQUIRE(second != slots.end());
+			REQUIRE(second->_cbIdx != ~0u);
+			REQUIRE(descSet._constantBuffers[second->_cbIdx]->_elements.size() == 1);
 		}
 
 		SECTION( "CompileShaderPatchCollection2" )
@@ -412,3 +416,4 @@ namespace UnitTests
 	}
 
 }
+

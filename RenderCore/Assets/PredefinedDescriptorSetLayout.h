@@ -41,7 +41,7 @@ namespace RenderCore { namespace Assets
 			std::string _name;
 			DescriptorType _type;
 			unsigned _arrayElementCount = 0u;
-			unsigned _cbIdx;		// this is an idx into the _constantBuffers array for constant buffer types
+			unsigned _cbIdx = ~0u;		// this is an idx into the _constantBuffers array for constant buffer types
 			std::string _conditions;
 		};
 		std::vector<ConditionalDescriptorSlot> _slots;

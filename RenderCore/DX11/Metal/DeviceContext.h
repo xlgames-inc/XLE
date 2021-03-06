@@ -90,11 +90,11 @@ namespace RenderCore { namespace Metal_DX11
         void Bind(const RasterizationDesc& desc);
 
         void SetInputLayout(const BoundInputLayout& inputLayout);
-		void SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass = 0);
+		void SetRenderPassConfiguration(const FrameBufferDesc& fbDesc, unsigned subPass = 0);
 
         const std::shared_ptr<GraphicsPipeline>& CreatePipeline(ObjectFactory&);
 
-		static uint64_t CalculateFrameBufferRelevance(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass = 0);
+		static uint64_t CalculateFrameBufferRelevance(const FrameBufferDesc& fbDesc, unsigned subPass = 0);
 
         GraphicsPipelineBuilder();
 		~GraphicsPipelineBuilder();

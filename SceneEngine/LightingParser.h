@@ -25,7 +25,7 @@ namespace RenderCore { namespace Techniques {
 	class IPipelineAcceleratorPool; 
 }}
 
-namespace RenderCore { class IThreadContext; class AttachmentDesc; class FrameBufferProperties; }
+namespace RenderCore { class IThreadContext; class AttachmentDesc; }
 
 namespace Assets { class IAsyncMarker; }
 

@@ -6,7 +6,6 @@
 #include "NodeGraph.h"
 #include "NodeGraphSignature.h"
 #include "ShaderSignatureParser.h"
-#include "DescriptorSetInstantiation.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../RenderCore/Format.h"
@@ -292,8 +291,8 @@ namespace ShaderSourceParser
     {
             // Resource types (eg, texture, etc) can't be handled like scalars
             // they must become globals in the shader.
-		auto descriptor = CalculateTypeDescriptor(MakeStringSection(_parameters[index]._type));
-		return descriptor != TypeDescriptor::Constant;
+		auto descriptor = RenderCore::ShaderLangTypeNameAsDescriptorType(MakeStringSection(_parameters[index]._type));
+		return descriptor != RenderCore::DescriptorType::Unknown;
     }
 
     ParameterGenerator::ParameterGenerator(const NodeGraphSignature& interf, const PreviewOptions& previewOptions)
@@ -490,8 +489,10 @@ namespace ShaderSourceParser
 	{
 		std::stringstream result;
 
-		for (auto i=descriptorSet._resources.begin(); i!=descriptorSet._resources.end(); ++i) {
-			auto descriptorIdx = std::distance(descriptorSet._resources.begin(), i);
+		for (auto i=descriptorSet._slots.begin(); i!=descriptorSet._slots.end(); ++i) {
+            if (i->_type != RenderCore::DescriptorType::Texture)
+                continue;
+			auto descriptorIdx = std::distance(descriptorSet._slots.begin(), i);
 			std::string type = "<<unknown type>>";
 			auto cap = std::find_if(
 				captures.begin(), captures.end(),
@@ -510,8 +511,11 @@ namespace ShaderSourceParser
 			result << type << " " << i->_name << " BIND_MAT_T" << descriptorIdx << ";" << std::endl;
 		}
 
-		for (auto i=descriptorSet._samplers.begin(); i!=descriptorSet._samplers.end(); ++i) {
-			auto descriptorIdx = std::distance(descriptorSet._samplers.begin(), i);
+		for (auto i=descriptorSet._slots.begin(); i!=descriptorSet._slots.end(); ++i) {
+            if (i->_type != RenderCore::DescriptorType::Sampler)
+                continue;
+
+			auto descriptorIdx = std::distance(descriptorSet._slots.begin(), i);
 			std::string type = "<<unknown type>>";
 			auto cap = std::find_if(
 				captures.begin(), captures.end(),
@@ -530,13 +534,21 @@ namespace ShaderSourceParser
 			result << type << " " << i->_name << " BIND_MAT_S" << descriptorIdx << ";" << std::endl;
 		}
 
-		for (auto cb=descriptorSet._constantBuffers.begin(); cb!=descriptorSet._constantBuffers.end(); ++cb) {
-			result << "cbuffer " << cb->_name << " BIND_MAT_B" << std::distance(descriptorSet._constantBuffers.begin(), cb) << std::endl;
+		for (auto cb=descriptorSet._slots.begin(); cb!=descriptorSet._slots.end(); ++cb) {
+            if (cb->_type != RenderCore::DescriptorType::ConstantBuffer)
+                continue;
+
+			result << "cbuffer " << cb->_name << " BIND_MAT_B" << std::distance(descriptorSet._slots.begin(), cb) << std::endl;
             result << "{" << std::endl;
-			for (auto ele=cb->_layout->_elements.begin(); ele!=cb->_layout->_elements.end(); ++ele) {
-				auto idx = std::distance(cb->_layout->_elements.begin(), ele);
-				result << "\t" << RenderCore::AsShaderLangTypeName(ele->_type, RenderCore::ShaderLanguage::HLSL) << " " << cb->_layout->_elements[idx]._name << ";" << std::endl;
-			}
+
+            if (cb->_cbIdx != ~0u) {
+                const auto& layout = *descriptorSet._constantBuffers[cb->_cbIdx];
+                for (auto ele=layout._elements.begin(); ele!=layout._elements.end(); ++ele) {
+                    auto idx = std::distance(layout._elements.begin(), ele);
+                    result << "\t" << RenderCore::AsShaderLangTypeName(ele->_type, RenderCore::ShaderLanguage::HLSL) << " " << layout._elements[idx]._name << ";" << std::endl;
+                }
+            }
+
 			result << "}" << std::endl;
 		}
 

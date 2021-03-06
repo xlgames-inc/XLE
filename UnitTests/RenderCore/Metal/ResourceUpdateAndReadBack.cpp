@@ -158,7 +158,7 @@ namespace UnitTests
             auto threadContext = _testHelper->_device->GetImmediateContext();
             auto shaderProgram = MakeShaderProgram(*_testHelper, vsText_clipInput, psText_Uniforms);
             auto targetDesc = CreateDesc(
-                                         BindFlag::RenderTarget, CPUAccess::Read, GPUAccess::Write,
+                                         BindFlag::RenderTarget, 0, GPUAccess::Write,
                                          TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
                                          "temporary-out");
 

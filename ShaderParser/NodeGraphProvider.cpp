@@ -15,22 +15,10 @@ namespace GraphLanguage
     static std::pair<std::string, ::Assets::DependentFileState> LoadSourceFile(StringSection<char> sourceFileName)
     {
         TRY {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(sourceFileName.AsString().c_str(), "rb");
-
 			::Assets::DependentFileState fileState;
-			fileState._filename = sourceFileName.AsString();
-			fileState._status = ::Assets::DependentFileState::Status::Normal;
-			fileState._timeMarker = file.GetFileTime();
-
-            file.Seek(0, FileSeekAnchor::End);
-            size_t size = file.TellP();
-            file.Seek(0, FileSeekAnchor::Start);
-
-            std::string result;
-            result.resize(size, '\0');
-            file.Read(&result.at(0), 1, size);
-            return std::make_pair(result, fileState);
-
+			size_t size = 0;
+			auto data = ::Assets::TryLoadFileAsMemoryBlock(sourceFileName.AsString().c_str(), &size, &fileState);
+            return std::make_pair(std::string((const char*)data.get(), (const char*)PtrAdd(data.get(), size)), fileState);
         } CATCH(const std::exception& ) {
 			return {};
         } CATCH_END

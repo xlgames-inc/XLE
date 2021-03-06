@@ -2,11 +2,12 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Metal/MetalUnitTest.h"
+#include "../Metal/MetalTestHelper.h"
 #include "../Metal/MetalTestShaders.h"
 #include "../../UnitTestHelper.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../RenderCore/Metal/Shader.h"
+#include "../../../RenderCore/IDevice.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
@@ -14,6 +15,7 @@
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Assets/DeferredConstruction.h"
 #include "../../../Assets/InitializerPack.h"
+#include "../../../Assets/AssetServices.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "catch2/catch_test_macros.hpp"
@@ -56,7 +58,7 @@ namespace UnitTests
 		SECTION("UnitTestHelper shaders") {
 			// Ensure that we can compile a shader from string input, via the MakeShaderProgram
 			// utility function
-			auto compiledFromString = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
+			auto compiledFromString = testHelper->MakeShaderProgram(vsText_clipInput, psText);
 			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
 		}
 
@@ -74,7 +76,7 @@ namespace UnitTests
 			::Assets::Services::GetAsyncMan().GetIntermediateCompilers());
 
 		SECTION("MinimalShaderSource") {
-			auto compiledFromString = MakeShaderProgram(*testHelper, vsText_clipInput, psText);
+			auto compiledFromString = testHelper->MakeShaderProgram(vsText_clipInput, psText);
 			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
 
 			// Using RenderCore::ShaderService, ensure that we can compile a simple shader (this shader should compile successfully)

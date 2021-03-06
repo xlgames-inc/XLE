@@ -90,7 +90,7 @@ namespace ShaderSourceParser
 
 		/// List of dependency validations, which can be used for change tracking.
 		std::set<::Assets::DepValPtr> _depVals;
-		std::vector<::Assets::DependentFileState> _depFileStates;
+		std::set<::Assets::DependentFileState> _depFileStates;
 	};
 
 	class GenerateFunctionOptions

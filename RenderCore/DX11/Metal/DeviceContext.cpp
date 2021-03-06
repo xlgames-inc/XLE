@@ -562,12 +562,12 @@ namespace RenderCore { namespace Metal_DX11
 		_pimpl->_vertexStrides.insert(_pimpl->_vertexStrides.end(), inputLayout.GetVertexStrides().begin(), inputLayout.GetVertexStrides().end());
 	}
 
-    void GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
+    void GraphicsPipelineBuilder::SetRenderPassConfiguration(const FrameBufferDesc& fbDesc, unsigned subPass)
 	{
 		// this state information not needed in DX11, since this gets configured via the FrameBuffer interface
 	}
 
-	uint64_t GraphicsPipelineBuilder::CalculateFrameBufferRelevance(const FrameBufferProperties& fbProps, const FrameBufferDesc& fbDesc, unsigned subPass)
+	uint64_t GraphicsPipelineBuilder::CalculateFrameBufferRelevance(const FrameBufferDesc& fbDesc, unsigned subPass)
 	{
 		// This function should normally filter what parts of the fbDesc are actually important to the graphics pipeline, and return
 		// a hash based on that.

@@ -21,6 +21,5 @@ namespace ShaderSourceParser
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream);
 
-	enum class TypeDescriptor { Constant, Resource, Sampler };
-	TypeDescriptor CalculateTypeDescriptor(StringSection<> type);
+	RenderCore::DescriptorType CalculateDescriptorType(StringSection<> type);
 }
