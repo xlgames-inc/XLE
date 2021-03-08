@@ -88,6 +88,7 @@ namespace RenderCore { namespace Techniques
 		_interface._filteringRules = inst._selectorRelevance;
 		for (const auto& rawShader:inst._rawShaderFileIncludes) {
 			auto filteringRules = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(rawShader);
+			filteringRules->StallWhilePending();
 			_interface._filteringRules.MergeIn(*filteringRules->Actualize());
 		}
 		::Assets::RegisterAssetDependency(_depVal, _interface._filteringRules.GetDependencyValidation());

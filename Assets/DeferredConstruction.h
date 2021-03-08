@@ -123,11 +123,15 @@ namespace Assets
 		// and then construct the final asset from the result
 
 		#if defined(_DEBUG)
-			std::string debugLabel = InitializerPack{args...}.ArchivableName();
+			std::string debugLabel = InitializerPack{args...}.ArchivableName();		// (note no forward here, because we reuse args below)
 		#endif
 
 		TRY { 
 			auto marker = Internal::BeginCompileOperation(compileTypeCode, InitializerPack{std::forward<Args>(args)...});
+			if (!marker) {
+				future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset " + debugLabel));
+				return;
+			}
 			// std::basic_string<ResChar> init0 = initializers[0].AsString();
 
 			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the

@@ -310,6 +310,9 @@ namespace ShaderSourceParser
 		for (const auto&s:selectors)
 			filteredBox.MergeIn(*s);
 
+		if (filteredBox.GetCount() == 0)
+			return filteredBox;
+
 		// We have to do the evaluation one at a time, updating the filteredBox as we go,
 		// because of mutual relationships between selectors. For example, in construction
 		// 		#if !defined(SEL_0) || !defined(SEL_1)
@@ -317,9 +320,7 @@ namespace ShaderSourceParser
 		// irrelevant
 
 		for (ptrdiff_t c=filteredBox.GetCount()-1; c>0;) {
-
 			auto evaluating = filteredBox.at(c);
-
 			bool relevant = false;
 
 			// If we're listed in the technique filtering relevance map, then we treat that as an override
@@ -338,11 +339,9 @@ namespace ShaderSourceParser
 					MakeIteratorRange(env));
 			}
 
-			if (relevant) {
-				--c;
-			} else {
+			if (!relevant)
 				filteredBox.RemoveParameter(evaluating->HashName());
-			}
+			--c;	// dec idx in either case
 		}
 
 		return filteredBox;

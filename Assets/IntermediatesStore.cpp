@@ -199,7 +199,7 @@ namespace Assets
 	{
 		auto result = input.AsString();
 		for (auto&b:result)
-			if (b == ':') b = '-';
+			if (b == ':' || b == '*') b = '-';
 		return result;
 	}
 
@@ -219,7 +219,7 @@ namespace Assets
 		result.insert(result.end(), groupName.begin(), groupName.end());
 		result.push_back('/');
 		for (auto b:archivableName)
-			result.push_back((b != ':')?b:'-');
+			result.push_back((b != ':' && b != '*')?b:'-');
 		return result;
 	}
 
@@ -570,10 +570,10 @@ namespace Assets
 					metricsName = intermediateName + "-" + a._name + ".log";
 				} else 
 					metricsName = intermediateName + ".log";
-				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".log", "wb", 0);
+				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
 				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 				compileProductsFile._compileProducts.push_back({a._type, metricsName});
-				renameOps.push_back({metricsName + ".log", metricsName});
+				renameOps.push_back({metricsName + ".staging", metricsName});
 			} else {
 				chunksInMainFile.push_back(a);
 			}

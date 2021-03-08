@@ -14,6 +14,7 @@
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
+#include "../../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
 #include "../../../Assets/MountingTree.h"
@@ -261,9 +262,9 @@ namespace UnitTests
 			auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
 				testHelper->_device->CreateShaderCompiler(),
 				std::make_shared<ExpandIncludesPreprocessor>());
-			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(
-				customShaderSource, 
-				::Assets::Services::GetAsyncMan().GetIntermediateCompilers());
+			auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(customShaderSource, compilers);
+			auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 
 			const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 			
@@ -289,7 +290,8 @@ namespace UnitTests
 			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
 
-			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().DeregisterCompiler(compilerRegistration._registrationId);
+			compilers.DeregisterCompiler(filteringRegistration._registrationId);
+			compilers.DeregisterCompiler(compilerRegistration._registrationId);
 		}
 
 		SECTION( "CompileShaderPatchCollection1" )

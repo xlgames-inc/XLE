@@ -9,16 +9,24 @@
 #include <string>
 #include <sstream>
 #include <any>
-
-template<typename Type>
-	inline auto MakeStoreableInAny(const Type& type) { return type; }
-
-template<typename CharType>
-	inline auto MakeStoreableInAny(StringSection<CharType> type) { return type.AsString(); }
+#include <type_traits>
 
 inline auto MakeStoreableInAny(const char* type) { return std::string(type); }
 inline auto MakeStoreableInAny(const utf16* type) { return std::u16string(type); }
 inline auto MakeStoreableInAny(const utf32* type) { return std::u32string(type); }
+
+template<int Count> inline auto MakeStoreableInAny(char (&type)[Count]) { return std::string(type); }
+template<int Count> inline auto MakeStoreableInAny(utf16 (&type)[Count]) { return std::u16string(type); }
+template<int Count> inline auto MakeStoreableInAny(utf32 (&type)[Count]) { return std::u32string(type); }
+
+// don't allow raw pointers to be stored in an std::any InitializerPack directly, since there's
+// no explicit lifetime management... It also resolves ambiguity with the char pointer overrides
+// above
+template<typename Type, typename std::enable_if_t<!std::is_pointer_v<Type>>* =nullptr>
+	inline auto MakeStoreableInAny(const Type& type) { return type; }
+
+template<typename CharType>
+	inline auto MakeStoreableInAny(StringSection<CharType> type) { return type.AsString(); }
 
 template<typename IteratorType>
 	inline auto MakeStoreableInAny(IteratorRange<IteratorType> type) { static_assert("IteratorRange<>s cannot be stored in an std::any. Try explicitly creating a std::vector instead"); }
@@ -207,7 +215,7 @@ namespace Assets
 
 		template<typename... Args>
 			InitializerPack(Args... args)
-		: _variantPack { MakeStoreableInAny(args)... }
+		: _variantPack { MakeStoreableInAny(std::forward<Args>(args))... }
 		{
 			_nameFn = &Internal::MakeArchivableName_Pack<0, decltype(MakeStoreableInAny(std::declval<Args>()))...>;
 			_hashFn = &Internal::MakeArchivableHash_Pack<decltype(MakeStoreableInAny(std::declval<Args>()))...>;

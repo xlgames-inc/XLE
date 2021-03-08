@@ -55,6 +55,8 @@ namespace Utility
 				IteratorRange<const ParameterBox**> environment) const;
 			std::string AsString(const ExpressionTokenList& tokenList) const;
 
+			uint64_t CalculateHash() const;
+
 			TokenDictionary();
 			~TokenDictionary();
 		};

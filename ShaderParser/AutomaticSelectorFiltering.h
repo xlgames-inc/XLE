@@ -23,7 +23,7 @@ namespace ShaderSourceParser
 		std::map<unsigned, Utility::Internal::ExpressionTokenList> _relevanceTable;
 		std::map<unsigned, Utility::Internal::ExpressionTokenList> _defaultSets;
 
-		uint64_t GetHash() const;
+		uint64_t GetHash() const { return _hash; }
 
 		bool IsRelevant(
 			StringSection<> symbol, StringSection<> value = {},
@@ -48,6 +48,7 @@ namespace ShaderSourceParser
 
 	private:
 		::Assets::DepValPtr _depVal;
+		uint64_t _hash = 0ull;
 		void RecalculateHash();
 	};
 

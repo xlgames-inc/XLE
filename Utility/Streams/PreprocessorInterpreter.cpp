@@ -10,6 +10,7 @@
 #include "../FastParseValue.h"
 #include "../ParameterBox.h"
 #include "../Threading/ThreadingUtils.h"
+#include "../MemoryUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../Foreign/cparse/shunting-yard.h"
 #include "../../Foreign/cparse/shunting-yard-exceptions.h"
@@ -721,6 +722,14 @@ namespace Utility
 			unsigned tokenForOtherDictionary)
 		{
 			return GetToken(otherDictionary._tokenDefinitions[tokenForOtherDictionary]._type, otherDictionary._tokenDefinitions[tokenForOtherDictionary]._value);
+		}
+
+		uint64_t TokenDictionary::CalculateHash() const
+		{
+			uint64_t result = DefaultSeed64;
+			for (const auto& def:_tokenDefinitions)
+				result = HashCombine(Hash64(def._value, (uint64_t)def._type), result);
+			return result;
 		}
 
 		TokenDictionary::TokenDictionary()

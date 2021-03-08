@@ -122,7 +122,18 @@ namespace ShaderSourceParser
 		RecalculateHash();
 	}
 
-	void SelectorFilteringRules::RecalculateHash() {}
+	void SelectorFilteringRules::RecalculateHash() 
+	{
+		// note -- if there are 2 different SelectorFilteringRules with exactly the same contents, except that the
+		//		tokens are ordered differently in the _tokenDictionary, they will generate different hash values
+		//		We could avoid that if we created a table of tokens -> hash values and used that to generate the value
+		//		hash... But it seems pretty unlikely that that would be important
+		_hash = _tokenDictionary.CalculateHash();
+		for (const auto& r:_relevanceTable)
+			_hash = HashCombine(Hash64(AsPointer(r.second.begin()), AsPointer(r.second.end()), r.first), _hash);
+		for (const auto& r:_defaultSets)
+			_hash = HashCombine(Hash64(AsPointer(r.second.begin()), AsPointer(r.second.end()), r.first), _hash);
+	}
 
 	SelectorFilteringRules::SelectorFilteringRules(
 		InputStreamFormatter<utf8>& formatter, 
@@ -163,6 +174,8 @@ namespace ShaderSourceParser
 			}
 			RequireEndElement(formatter);
 		}
+
+		RecalculateHash();
 	}
 
 	SelectorFilteringRules::SelectorFilteringRules(
@@ -240,8 +253,11 @@ namespace ShaderSourceParser
 			::Assets::DependentFileState mainFileState;
 			size_t size = 0;
 			auto blk = ::Assets::TryLoadFileAsMemoryBlock(resolvedFile, &size, &mainFileState);
-			if (!size)
-				Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile + " (included from: " + fileIncludedFrom.AsString() + ")"));
+			if (!size) {
+				if (!fileIncludedFrom.IsEmpty())
+					Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile + " (included from: " + fileIncludedFrom.AsString() + ")"));
+				Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile));
+			}
 			_depFileStates.insert(mainFileState);
 			
 			auto result = Utility::GeneratePreprocessorAnalysis(
