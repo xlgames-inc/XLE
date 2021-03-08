@@ -77,7 +77,7 @@ namespace ShaderSourceParser
 			auto* end = FastParseValue(value, valueAsInt);
 			if (end == value.end()) {
 				auto i = _defaultSets.find(t.value());
-				if (i!=_relevanceTable.end()) {
+				if (i!=_defaultSets.end()) {
 					int defaultValue = _tokenDictionary.EvaluateExpression(i->second, environment);
 					passesRelevanceCheck &= valueAsInt != defaultValue;
 				}

@@ -30,11 +30,11 @@ namespace ToolsRig
     IteratorRange<const RenderCore::InputElementDesc*> Vertex2D_InputLayout = MakeIteratorRange(Internal::Vertex2D_InputLayout_);
     IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout = MakeIteratorRange(Internal::Vertex3D_InputLayout_);
 
-	extern std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout {
+	std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout {
 		RenderCore::MiniInputElementDesc{ Hash64("POSITION"), RenderCore::Format::R32G32_FLOAT },
 		RenderCore::MiniInputElementDesc{ Hash64("TEXCOORD"), RenderCore::Format::R32G32_FLOAT }
 	};
-    extern std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout {
+    std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout {
 		RenderCore::MiniInputElementDesc{ Hash64("POSITION"), RenderCore::Format::R32G32B32_FLOAT },
 		RenderCore::MiniInputElementDesc{ Hash64("NORMAL"), RenderCore::Format::R32G32B32_FLOAT },
 		RenderCore::MiniInputElementDesc{ Hash64("TEXCOORD"), RenderCore::Format::R32G32_FLOAT },

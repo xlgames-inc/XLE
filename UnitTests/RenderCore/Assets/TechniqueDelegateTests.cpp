@@ -13,12 +13,18 @@
 #include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../../RenderCore/Metal/DeviceContext.h"
+#include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Format.h"
+#include "../../../RenderCore/BufferView.h"
 #include "../../../RenderCore/IDevice.h"
+#include "../../../RenderCore/IAnnotator.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../ShaderParser/AutomaticSelectorFiltering.h"
+#include "../../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
 #include "../../../Assets/MountingTree.h"
@@ -27,6 +33,7 @@
 #include "../../../Assets/AssetTraits.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Assets/Assets.h"
+#include "../../../Math/Transformations.h"
 #include "../../../ConsoleRig/Console.h"
 #include "../../../OSServices/Log.h"
 #include "../../../OSServices/FileSystemMonitor.h"
@@ -75,24 +82,21 @@ namespace UnitTests
 				float3 SphericalToNormal(float2 coord, float time);
 				float4 SphericalToColor(float2 coord, float time);
 
-				float3 SphericalToCartesian(float3 spherical)
+				float3 SphericalToCartesian_YUp(float inc, float theta)
 				{
 					float s0, c0, s1, c1;
-					sincos(spherical.x, s0, c0);
-					sincos(spherical.y, s1, c1);
-					return float3(
-						spherical.z * s0 * c1,
-						spherical.z * s0 * s1,
-						spherical.z * c0);
+					sincos(inc, s0, c0);
+					sincos(theta, s1, c1);
+					return float3(c0 * -s1, s0, c0 * c1);
 				}
 
-				float3 CartesianToSpherical(float3 direction)
+				float3 CartesianToSpherical_YUp(float3 direction)
 				{
 					float3 result;
 					float rDist = rsqrt(dot(direction, direction));
-					result.x = acos(direction[2] * rDist);
-					result.y = atan2(direction[1], direction[0]);
-					result.z = 1.0f / rDist;
+					result[0] = asin(direction.y * rDist);			// inc
+					result[1] = atan2(-direction.x, direction.z);	// theta
+					result[2] = 1.0f / rDist;
 					return result;
 				}
 
@@ -150,13 +154,14 @@ namespace UnitTests
 
 				float3 MainSphericalToNormal(float2 coord, float time)
 				{
-					return SphericalToCartesian(float3(coord.xy, 1));
+					return SphericalToCartesian_YUp(coord.x, coord.y);
 				}
 
 				float4 MainSphericalToColor(float2 coord, float time)
 				{
-					float t = 0.5f + 0.5f * sin(time + coord.x);
-					return float4(t,t,t,1);
+					float tx = 0.5f + 0.5f * sin(time + coord.x);
+					float ty = 0.5f + 0.5f * sin(time + coord.y);
+					return float4(tx,ty,0,1);
 				}
 			)--")),
 
@@ -173,7 +178,7 @@ namespace UnitTests
 					VSOUT output;
 					output.position = mul(SysUniform_GetWorldToClip(), float4(input.position,1));
 					#if VSOUT_HAS_TEXCOORD>=1
-						output.texCoord = CartesianToSpherical(input.position).xy;
+						output.texCoord = CartesianToSpherical_YUp(input.position).xy;
 					#endif
 					return output;
 				}				
@@ -240,10 +245,15 @@ namespace UnitTests
 		}
 	};
 
-	static RenderCore::InputElementDesc inputElePC[] = {
-		RenderCore::InputElementDesc { "position", 0, RenderCore::Format::R32G32B32A32_FLOAT },
-		RenderCore::InputElementDesc { "color", 0, RenderCore::Format::R8G8B8A8_UNORM }
-	};
+	static RenderCore::Techniques::GlobalTransformConstants MakeGlobalTransformConstants(const RenderCore::ResourceDesc& targetDesc)
+	{
+		using namespace RenderCore;
+		Techniques::CameraDesc cameraDesc;
+		cameraDesc._cameraToWorld = MakeCameraToWorld(Float3{0.f, 0.f, 1.f}, Float3{0.f, 1.f, 0.f}, Float3{0.f, 0.f, -5.f});
+		cameraDesc._projection = Techniques::CameraDesc::Projection::Orthogonal;
+		auto projDesc = Techniques::BuildProjectionDesc(cameraDesc, UInt2{ targetDesc._textureDesc._width, targetDesc._textureDesc._height });
+		return Techniques::BuildGlobalTransformConstants(projDesc);
+	}
 
 	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[shader_parser]" )
 	{
@@ -317,6 +327,11 @@ namespace UnitTests
 
 			UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
+			auto geo = ToolsRig::BuildGeodesicSphere();
+			auto vb = testHelper->CreateVB(geo);
+
+			threadContext->GetAnnotator().BeginFrameCapture();
+
 			// The final pipeline we want will be determined by two main things:
 			//		Properties related to how and when we're rendering the object (ie, render pass, technique delegate)
 			//		Properties realted to the object itself (ie, material settings, geometry input)
@@ -336,7 +351,7 @@ namespace UnitTests
 			auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
 				compiledPatchCollection,
 				ParameterBox{},
-				inputElePC, Topology::TriangleList,
+				ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
 				RenderCore::Assets::RenderStateSet{});
 			
 			auto pipelineFuture = pipelinePool->GetPipeline(*pipelineAccelerator, *cfg);
@@ -347,6 +362,31 @@ namespace UnitTests
 			}
 			auto pipeline = pipelineFuture->Actualize();
 			REQUIRE(pipeline != nullptr);
+
+			UniformsStreamInterface usi;
+			usi.BindImmediateData(0, Hash64("GlobalTransform"));
+			Metal::BoundUniforms uniforms { *pipeline, usi };
+
+			auto globalTransform = MakeGlobalTransformConstants(targetDesc);
+
+			{
+				auto rpi = fbHelper.BeginRenderPass(*threadContext);
+
+				auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+				auto encoder = metalContext.BeginGraphicsEncoder(testHelper->_pipelineLayout);
+
+				UniformsStream uniformsStream;
+				uniformsStream._immediateData = { MakeOpaqueIteratorRange(globalTransform) };
+				uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+				VertexBufferView vbvs[] = { vb.get() };
+				encoder.Bind(MakeIteratorRange(vbvs), {});
+				encoder.Draw(*pipeline, geo.size());
+			}
+
+			threadContext->GetAnnotator().EndFrameCapture();
+
+			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 
 			compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
 			compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);
