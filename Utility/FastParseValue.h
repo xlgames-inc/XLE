@@ -16,9 +16,11 @@ namespace Utility
         So the implementation here isn't actually 100%... but it works in at least some cases, and
         is quick. Just be careful with it -- because it's not guaranteed to be correct
     */
+    template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int32_t& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst);
+    template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int32_t& dst, unsigned radix);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint32_t& dst, unsigned radix);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst, unsigned radix);
     template<typename CharType> const CharType* FastParseValue(StringSection<CharType> input, uint64_t& dst, unsigned radix);

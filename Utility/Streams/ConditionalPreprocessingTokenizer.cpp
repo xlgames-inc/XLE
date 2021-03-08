@@ -483,7 +483,7 @@ namespace Utility
         return result;
     }
     
-    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input, StringSection<> filenameForRelativeIncludeSearch, IPreprocessorIncludeHandler& includeHandler)
+    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input, StringSection<> filenameForRelativeIncludeSearch, IPreprocessorIncludeHandler* includeHandler)
     {
         // Walk through the input string, extracting all preprocessor operations
         // We need to consider "//" comments, but we don't support block comments or line extensions
@@ -708,9 +708,12 @@ namespace Utility
                 if (symbol._value.IsEmpty())
                     Throw(FormatException("Expected file to include after #include directive", directive._start));
 
+                if (!includeHandler)
+                    Throw(FormatException("No include handler provided to handle #include directive", directive._start));
+
                 // todo -- do we need any #pragma once type functionality to prevent infinite recursion
                 // or just searching through too many files
-                auto includedAnalysis = includeHandler.GeneratePreprocessorAnalysis(symbol._value, filenameForRelativeIncludeSearch);
+                auto includedAnalysis = includeHandler->GeneratePreprocessorAnalysis(symbol._value, filenameForRelativeIncludeSearch);
 
                 // merge in the results we got from this included file
                 std::map<unsigned, Internal::ExpressionTokenList> translatedRelevanceTable;

@@ -7,6 +7,7 @@
 #pragma warning(disable:4505) // 'preprocessor_operations::UndefinedOnUndefinedOperation': unreferenced local function has been removed
 
 #include "PreprocessorInterpreter.h"
+#include "../FastParseValue.h"
 #include "../ParameterBox.h"
 #include "../Threading/ThreadingUtils.h"
 #include "../../Core/Exceptions.h"
@@ -47,10 +48,8 @@ namespace preprocessor_operations
 		return left != right;
 	}
 
-	static packToken UnaryNumeralOperation(const packToken& left, const packToken& right, evaluationData* data)
+	static packToken UnaryNumeralOperation_Internal(const packToken& left, const packToken& right, const std::string& op)
 	{
-		const std::string& op = data->op;
-
 		if (op == "+") {
 			return right;
 		} else if (op == "-") {
@@ -58,8 +57,13 @@ namespace preprocessor_operations
 		} else if (op == "!") {
 			return !right.asBool();
 		} else {
-			throw undefined_operation(data->op, left, right);
+			throw undefined_operation(op, left, right);
 		}
+	}
+
+	static packToken UnaryNumeralOperation(const packToken& left, const packToken& right, evaluationData* data)
+	{
+		return UnaryNumeralOperation_Internal(left, right, data->op);
 	}
 
 	static packToken NumeralOperation_Internal(const packToken& left, const packToken& right, const std::string& op)
@@ -553,7 +557,7 @@ namespace Utility
 			for (auto tokenIdx:subExpression) {
 				const auto& token = _tokenDefinitions[tokenIdx];
 
-				if (token._type == TokenDictionary::TokenType::Operation) {
+				if (token._type == TokenType::Operation) {
 					auto r_token = std::move(evaluation.top()); evaluation.pop();
 					auto l_token = std::move(evaluation.top()); evaluation.pop();
 					if (l_token.empty()) {	// we get an empty string for the unary marker
@@ -561,9 +565,9 @@ namespace Utility
 					} else {
 						evaluation.push(Concatenate("(", l_token, " ", token._value, " ", r_token, ")"));
 					}
-				} else if (token._type == TokenDictionary::TokenType::UnaryMarker) {
+				} else if (token._type == TokenType::UnaryMarker) {
 					evaluation.push({});
-				} else if (token._type == TokenDictionary::TokenType::IsDefinedTest) {
+				} else if (token._type == TokenType::IsDefinedTest) {
 					evaluation.push(Concatenate("defined(", token._value, ")"));
 				} else {
 					evaluation.push(token._value);
@@ -581,6 +585,93 @@ namespace Utility
 			return res;
 		}
 
+		bool TokenDictionary::EvaluateExpression(
+			const ExpressionTokenList& tokenList,
+			IteratorRange<const ParameterBox**> environment) const
+		{
+			struct IntToken
+			{
+				TokenType _type;
+				int _value;
+			};
+
+			IntToken evaluatedVariables[_tokenDefinitions.size()];
+			bool hasBeenEvaluated[_tokenDefinitions.size()];
+			for (unsigned c=0; c<_tokenDefinitions.size(); ++c)
+				hasBeenEvaluated[c] = false;
+
+			std::stack<IntToken> evaluation;
+			for (auto tokenIdx:tokenList) {
+				const auto& token = _tokenDefinitions[tokenIdx];
+
+				if (token._type == TokenType::Operation) {
+
+					auto r_token = std::move(evaluation.top()); evaluation.pop();
+					auto l_token = std::move(evaluation.top()); evaluation.pop();
+					if (l_token._type == TokenType::UnaryMarker) {
+						preprocessor_operations::UnaryNumeralOperation_Internal(
+							packToken{}, packToken(r_token._value), token._value);
+					} else {
+						preprocessor_operations::UnaryNumeralOperation_Internal(
+							packToken{l_token._value}, packToken{r_token._value}, token._value);
+					}
+
+				} else if (token._type == TokenType::Variable) {
+
+					if (!hasBeenEvaluated[tokenIdx]) {
+						bool foundEvaluation = false;
+						for (const auto&b:environment) {
+							auto val = b->GetParameter<int>(MakeStringSection(token._value));
+							if (val.has_value()) {
+								evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, val.value() };
+								foundEvaluation = true;
+								break;
+							}
+						}
+
+						// undefined variables treated as 0
+						if (!foundEvaluation)
+							evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 0 };
+						hasBeenEvaluated[tokenIdx] = true;
+					}
+
+					evaluation.push(evaluatedVariables[tokenIdx]);
+					
+				} else if (token._type == TokenType::IsDefinedTest) {
+
+					if (!hasBeenEvaluated[tokenIdx]) {
+						evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 0 };
+						for (const auto&b:environment) {
+							if (b->HasParameter(MakeStringSection(token._value))) {
+								evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 1 };
+								break;
+							}
+						}
+					}
+
+					evaluation.push(evaluatedVariables[tokenIdx]);
+
+				} else if (token._type == TokenType::Literal) {
+
+					int intValue = 0;
+					auto* end = FastParseValue(MakeStringSection(token._value), intValue);
+					if (end != AsPointer(token._value.end()))
+						Throw(std::runtime_error("Expression uses non-integer literal"));
+
+					evaluation.push({token._type, intValue});
+					
+				} else {
+					assert(token._value.empty());
+					evaluation.push({token._type, 0});
+				}
+			}
+
+			assert(evaluation.size() == 1);
+			auto res = evaluation.top();
+			assert(res._type == TokenType::Literal);
+			return res._value;
+		}
+
 		unsigned TokenDictionary::GetToken(TokenType type, const std::string& value)
 		{
 			TokenDictionary::Token token { type, value };
@@ -591,6 +682,16 @@ namespace Utility
 			} else {
 				return (unsigned)std::distance(_tokenDefinitions.begin(), existing);
 			}
+		}
+
+		std::optional<unsigned> TokenDictionary::TryGetToken(TokenType type, StringSection<> value) const
+		{
+			auto existing = std::find_if(
+				_tokenDefinitions.begin(), _tokenDefinitions.end(), 
+				[type, value](const auto& c) { return c._type == type && XlEqString(value, c._value); });
+			if (existing != _tokenDefinitions.end())
+				return (unsigned)std::distance(_tokenDefinitions.begin(), existing);
+			return {};
 		}
 
 		void TokenDictionary::PushBack(ExpressionTokenList& tokenList, TokenDictionary::TokenType type, const std::string& value)
@@ -722,21 +823,6 @@ namespace Utility
 			assert(evaluation.size() == 1);
 			return evaluation.top()._relevance;
 		}
-	}
-
-	RelevanceTable CalculatePreprocessorExpressionRevelance(StringSection<> input)
-	{
-		Internal::TokenDictionary tokenDictionary;
-		auto tokenList = Internal::AsExpressionTokenList(tokenDictionary, input);
-		auto midway = CalculatePreprocessorExpressionRevelance(tokenDictionary, tokenList);
-		RelevanceTable result;
-		for (const auto&i:midway) {
-			result._items.insert(
-				std::make_pair(
-					tokenDictionary._tokenDefinitions[i.first]._value,
-					tokenDictionary.AsString(i.second)));
-		}
-		return result;
 	}
 
 	IPreprocessorIncludeHandler::~IPreprocessorIncludeHandler() {}

@@ -10,6 +10,29 @@
 namespace Utility
 {
     template<typename CharType>
+        const CharType* FastParseValue(StringSection<CharType> input, int32_t& dst)
+    {
+        bool positive = true;
+        dst = 0;
+        auto start = input.begin();
+
+        if (start >= input.end()) return start;
+        if (*start == '-') { positive = false; ++start; }
+        else if (*start == '+') ++start;
+
+        uint32_t result = 0;
+        for (;;) {
+            if (start >= input.end()) break;
+            if (*start < '0' || *start > '9') break;
+
+            result = (result * 10) + uint32_t((*start) - '0');
+            ++start;
+        }
+        dst = positive ? result : -int32_t(result);
+        return start;
+    }
+    
+    template<typename CharType>
         const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst)
     {
         bool positive = true;
@@ -28,7 +51,7 @@ namespace Utility
             result = (result * 10ull) + uint64_t((*start) - '0');
             ++start;
         }
-        dst = positive ? result : -int64(result);
+        dst = positive ? result : -int64_t(result);
         return start;
     }
 
@@ -65,6 +88,35 @@ namespace Utility
     }
 
     template<typename CharType>
+        const CharType* FastParseValue(StringSection<CharType> input, int32_t& dst, unsigned radix)
+    {
+        bool positive = true;
+        dst = 0;
+        auto start = input.begin();
+
+        if (start >= input.end()) return start;
+        if (*start == '-') { positive = false; ++start; }
+        else if (*start == '+') ++start;
+
+        uint32_t result = 0;
+        for (;;) {
+            if (start >= input.end()) break;
+            if (*start >= '0' && *start <= '9') {
+                if (((*start) - '0') >= radix) break;
+                result = (result * radix) + uint32_t((*start) - '0');
+            } else if (*start >= 'a' && *start <= 'a'+radix-11) {
+                result = (result * radix) + uint32_t((*start) - 'a' + 10);
+            } else if (*start >= 'A' && *start <= 'A'+radix-11) {
+                result = (result * radix) + uint32_t((*start) - 'A' + 10);
+            } else
+                break;
+            ++start;
+        }
+        dst = positive ? result : -int32_t(result);
+        return start;
+    }
+    
+    template<typename CharType>
         const CharType* FastParseValue(StringSection<CharType> input, int64_t& dst, unsigned radix)
     {
         bool positive = true;
@@ -89,7 +141,7 @@ namespace Utility
                 break;
             ++start;
         }
-        dst = positive ? result : -int64(result);
+        dst = positive ? result : -int64_t(result);
         return start;
     }
 
@@ -191,7 +243,7 @@ namespace Utility
             afterPointPrec = 0;
         }
 
-        int64 explicitExponent;
+        int64_t explicitExponent;
         if (iterator < end && (*iterator == 'e' || *iterator == 'E')) {
             ++iterator;
             iterator = FastParseValue(MakeStringSection(iterator, end), explicitExponent);
@@ -328,9 +380,11 @@ namespace Utility
         return newEnd;
     }
 
+    template const utf8* FastParseValue(StringSection<utf8> input, int32_t& dst);
     template const utf8* FastParseValue(StringSection<utf8> input, int64_t& dst);
     template const utf8* FastParseValue(StringSection<utf8> input, uint64_t& dst);
     template const utf8* FastParseValue(StringSection<utf8> input, uint32_t& dst);
+    template const utf8* FastParseValue(StringSection<utf8> input, int32_t& dst, unsigned);
     template const utf8* FastParseValue(StringSection<utf8> input, int64_t& dst, unsigned);
     template const utf8* FastParseValue(StringSection<utf8> input, uint64_t& dst, unsigned);
     template const utf8* FastParseValue(StringSection<utf8> input, uint32_t& dst, unsigned);

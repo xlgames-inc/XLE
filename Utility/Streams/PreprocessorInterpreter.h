@@ -48,7 +48,11 @@ namespace Utility
 				unsigned tokenForOtherDictionary);
 
 			unsigned GetToken(TokenType type, const std::string& value = {});
+			std::optional<unsigned> TryGetToken(TokenType type, StringSection<> value) const;
 
+			bool EvaluateExpression(
+				const ExpressionTokenList& tokenList,
+				IteratorRange<const ParameterBox**> environment) const;
 			std::string AsString(const ExpressionTokenList& tokenList) const;
 
 			TokenDictionary();
@@ -86,12 +90,6 @@ namespace Utility
 			const ExpressionTokenList& input);
 	}
 
-	struct RelevanceTable
-	{
-		std::unordered_map<std::string, std::string> _items;
-	};
-	RelevanceTable CalculatePreprocessorExpressionRevelance(StringSection<> input);
-
 	class PreprocessorAnalysis
     {
     public:
@@ -105,7 +103,7 @@ namespace Utility
     PreprocessorAnalysis GeneratePreprocessorAnalysis(
 		StringSection<> input,
 		StringSection<> filenameForRelativeIncludeSearch,
-		IPreprocessorIncludeHandler& includeHandler);
+		IPreprocessorIncludeHandler* includeHandler);
 
 	class IPreprocessorIncludeHandler
 	{
