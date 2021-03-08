@@ -9,15 +9,15 @@
 #include "CompiledShaderPatchCollection.h"
 #include "RenderStateResolver.h"		// (for RSDepthBias)
 #include "../MinimalShaderSource.h"		// (for ISourceCodePreprocessor)
+#include "../../ShaderParser/ShaderAnalysis.h"
 #include "../../Assets/AssetFuture.h"
 #include <memory>
 
 namespace RenderCore { class StreamOutputInitializers; }
+namespace ShaderSourceParser { class SelectorFilteringRules; }
 
 namespace RenderCore { namespace Techniques
 {
-	class ShaderSelectorFilteringRules;
-
 	class ITechniqueDelegate
 	{
 	public:
@@ -26,10 +26,10 @@ namespace RenderCore { namespace Techniques
 			struct Shader
 			{
 				std::string	_initializer;
-				ShaderSelectorFiltering _manualSelectorFiltering;
-				std::shared_ptr<ShaderSelectorFilteringRules> _automaticFiltering;
+				std::shared_ptr<ShaderSourceParser::SelectorFilteringRules> _automaticFiltering;
 			};
 			Shader 		_shaders[3];		// indexed by RenderCore::ShaderStage
+			ShaderSourceParser::ManualSelectorFiltering _manualSelectorFiltering;
 
 			std::vector<uint64_t> 				_patchExpansions;
 
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueSharedResources
 	{
 	public:
-		UniqueShaderVariationSet _mainVariationSet;
+		// UniqueShaderVariationSet _mainVariationSet;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(

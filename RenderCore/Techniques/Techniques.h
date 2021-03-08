@@ -9,6 +9,7 @@
 #include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "../Assets/PredefinedCBLayout.h"
 #include "../Init.h"
+#include "../../ShaderParser/ShaderAnalysis.h"
 #include "../../Utility/ParameterBox.h"
 #include <string>
 #include <vector>
@@ -20,19 +21,7 @@ namespace RenderCore { namespace Techniques
 {
     class IRenderStateDelegate;
 
-    class ShaderSelectorFiltering
-    {
-    public:
-        struct Source { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
-
-		ParameterBox    _setValues;
-		std::unordered_map<std::string, std::string> _relevanceMap;
-
-		uint64_t GetHash() const { return _hash; }
-
-		void GenerateHash();
-		uint64_t _hash = 0ull;
-    };
+    struct SelectorStages { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
 
         //////////////////////////////////////////////////////////////////
             //      T E C H N I Q U E                               //
@@ -49,7 +38,7 @@ namespace RenderCore { namespace Techniques
         bool IsValid() const { return !_vertexShaderName.empty(); }
         void MergeIn(const TechniqueEntry& source);
 
-        ShaderSelectorFiltering		_selectorFiltering;
+        ShaderSourceParser::ManualSelectorFiltering		_selectorFiltering;
         ::Assets::rstring   _vertexShaderName;
         ::Assets::rstring   _pixelShaderName;
         ::Assets::rstring   _geometryShaderName;

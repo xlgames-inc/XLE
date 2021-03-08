@@ -388,7 +388,7 @@ namespace ToolsRig
 		{
 			using namespace RenderCore::Techniques;
 
-			ShaderSelectorFiltering previewStructureFiltering;
+			ShaderSourceParser::ManualSelectorFiltering previewStructureFiltering;
 			previewStructureFiltering._relevanceMap["GEO_PRETRANSFORMED"] = "1";
 			auto filteredDefines = MakeFilteredDefinesTable(selectors, previewStructureFiltering, shaderPatches.GetInterface().GetSelectorRelevance());
 

@@ -85,12 +85,12 @@ namespace RenderCore { namespace Techniques
 			if (std::find(_dependencies.begin(), _dependencies.end(), d) == _dependencies.end())
 				_dependencies.push_back(d);
 
-		_interface._selectorRelevance = inst._selectorRelevance;
-		if (!inst._rawShaderFileIncludes.empty()) {
-			auto relevanceDepVal = ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(_interface._selectorRelevance, inst._rawShaderFileIncludes);
-			if (relevanceDepVal)
-				::Assets::RegisterAssetDependency(_depVal, relevanceDepVal);
+		_interface._filteringRules = inst._selectorRelevance;
+		for (const auto& rawShader:inst._rawShaderFileIncludes) {
+			auto filteringRules = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(rawShader);
+			_interface._filteringRules.MergeIn(*filteringRules->Actualize());
 		}
+		::Assets::RegisterAssetDependency(_depVal, _interface._filteringRules.GetDependencyValidation());
 
 		size_t size = 0;
 		for (const auto&i:inst._sourceFragments)

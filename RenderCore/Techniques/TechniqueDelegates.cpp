@@ -7,7 +7,6 @@
 #include "CompiledShaderPatchCollection.h"
 #include "CommonResources.h"
 #include "CommonUtils.h"
-#include "AutomaticSelectorFiltering.h"
 #include "../Assets/RawMaterial.h"
 #include "../Assets/LocalCompiledShaderSource.h"
 #include "../Assets/Services.h"
@@ -17,6 +16,7 @@
 #include "../Format.h"
 // #include "../MinimalShaderSource.h"
 #include "../../ShaderParser/ShaderPatcher.h"
+#include "../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
 // #include "../../Assets/AssetServices.h"
@@ -372,20 +372,19 @@ namespace RenderCore { namespace Techniques
 		nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer = entry._vertexShaderName;
 		nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer = entry._pixelShaderName;
 		nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer = entry._geometryShaderName;
-		for (unsigned c=0; c<dimof(nascentDesc->_shaders); ++c)
-			nascentDesc->_shaders[c]._manualSelectorFiltering = entry._selectorFiltering;
+		nascentDesc->_manualSelectorFiltering = entry._selectorFiltering;
 
 		auto vsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer).AllExceptParameters();
 		auto psfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer).AllExceptParameters();
 
-		auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(vsfn);
-		auto psFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(psfn);
+		auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(vsfn);
+		auto psFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(psfn);
 		if (entry._geometryShaderName.empty()) {
 			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
 				future,
 				[nascentDesc](
-					const std::shared_ptr<ShaderSelectorFilteringRules>& vsFiltering,
-					const std::shared_ptr<ShaderSelectorFilteringRules>& psFiltering) {
+					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
 					
 					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
 					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
@@ -393,13 +392,13 @@ namespace RenderCore { namespace Techniques
 				});
 		} else {
 			auto gsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer).AllExceptParameters();
-			auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSelectorFilteringRules>(gsfn);
+			auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(gsfn);
 			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
 				future,
 				[nascentDesc](
-					const std::shared_ptr<ShaderSelectorFilteringRules>& vsFiltering,
-					const std::shared_ptr<ShaderSelectorFilteringRules>& psFiltering,
-					const std::shared_ptr<ShaderSelectorFilteringRules>& gsFiltering) {
+					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
+					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
 					
 					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
 					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
@@ -428,25 +427,15 @@ namespace RenderCore { namespace Techniques
 		} else {
 			// We need to poll until the technique file is ready, and then continue on to figuring out the shader
 			// information as usual
-			result->SetPollingFunction(
-				[techniqueIndex = _techniqueIndex, techniqueFuture = _techniqueFuture, nascentDesc](::Assets::AssetFuture<GraphicsPipelineDesc>& thatFuture) -> bool {
-
-					::Assets::Blob queriedLog;
-					::Assets::DepValPtr queriedDepVal;
-					std::shared_ptr<Technique> technique;
-					auto state = techniqueFuture->CheckStatusBkgrnd(technique, queriedDepVal, queriedLog);
-					if (state == ::Assets::AssetState::Pending)
-						return true;
-
-					if (state == ::Assets::AssetState::Invalid) {
-						thatFuture.SetInvalidAsset(queriedDepVal, queriedLog);
-						return false;
-					}
+			::Assets::WhenAll(_techniqueFuture).ThenConstructToFuture<GraphicsPipelineDesc>(
+				*result,
+				[techniqueIndex = _techniqueIndex, nascentDesc](
+					::Assets::AssetFuture<GraphicsPipelineDesc>& thatFuture,
+					const std::shared_ptr<Technique>& technique) {
 
 					nascentDesc->_depVal = technique->GetDependencyValidation();
 					auto& entry = technique->GetEntry(techniqueIndex);
 					PrepareShadersFromTechniqueEntry(thatFuture, nascentDesc, entry);
-					return false;
 				});
 		}
 
@@ -493,7 +482,7 @@ namespace RenderCore { namespace Techniques
 			const TechniqueEntry& techEntry,
 			IteratorRange<const uint64_t*> patchExpansions)
 		{
-			StreamOutputInitializers soInit;
+			/*StreamOutputInitializers soInit;
 			soInit._outputElements = MakeIteratorRange(_soElements);
 			soInit._outputBufferStrides = MakeIteratorRange(_soStrides);
 
@@ -503,7 +492,9 @@ namespace RenderCore { namespace Techniques
 				techEntry._selectorFiltering,
 				shaderPatches->GetInterface().GetSelectorRelevance(),
 				factory);
-			return variation._shaderFuture;
+			return variation._shaderFuture;*/
+			assert(0);
+			return nullptr;
 		}
 
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;

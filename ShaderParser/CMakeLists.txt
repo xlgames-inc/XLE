@@ -1,5 +1,6 @@
 set(Src 
 	AntlrHelper.cpp
+	AutomaticSelectorFiltering.cpp
 	DescriptorSetInstantiation.cpp
 	GraphSyntaxInstantiate.cpp
 	GraphSyntaxParse.cpp
@@ -15,6 +16,7 @@ set(Src
 	
 set(Headers
 	AntlrHelper.h
+	AutomaticSelectorFiltering.h
 	DescriptorSetInstantiation.h
 	Exceptions.h
 	GraphSyntax.h

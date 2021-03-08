@@ -19,7 +19,7 @@ namespace RenderCore
 }
 
 namespace RenderCore { namespace Assets { class RenderStateSet; } }
-namespace RenderCore { class IDevice; }
+namespace RenderCore { class IDevice; class ICompiledPipelineLayout; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -76,6 +76,8 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, MakeOpaqueIteratorRange(value), insertType);
 	}
 
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>&);
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
+		const std::shared_ptr<IDevice>&,
+		const std::shared_ptr<ICompiledPipelineLayout>&);
 }}
 

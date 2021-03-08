@@ -4,6 +4,7 @@
 
 #include "../ReusableDataFiles.h"
 #include "../../UnitTestHelper.h"
+#include "../../EmbeddedRes.h"
 #include "../Metal/MetalTestHelper.h"
 #include "../../../RenderCore/Assets/ShaderPatchCollection.h"
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
@@ -198,7 +199,7 @@ namespace UnitTests
 	{
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("/home/davidj/code/XLE/Working/Game/xleres", globalServices->GetPollingThread()));
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
 		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
@@ -324,12 +325,10 @@ namespace UnitTests
 
 			// Check for some of the recognized properties, in particular look for shader selectors
 			// We're expecting the selectors "RES_HAS_Texture0" and "RES_HAS_Texture1"
-			REQUIRE(
-				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture0")
-				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
-			REQUIRE(
-				compiledCollection.GetInterface().GetSelectorRelevance().find("RES_HAS_Texture1")
-				!=compiledCollection.GetInterface().GetSelectorRelevance().end());
+			ParameterBox testBox { std::make_pair("VSOUT_HAS_TEXCOORD", "1") };
+			const ParameterBox* env[] = { &testBox };
+			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_Texture0", {}, MakeIteratorRange(env)));
+			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_Texture1", {}, MakeIteratorRange(env)));
 		}
 
 		SECTION( "TestCompiledShaderDependencyChecking" )

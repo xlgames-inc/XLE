@@ -6,10 +6,12 @@
 
 #include "../ReusableDataFiles.h"
 #include "../../UnitTestHelper.h"
+#include "../../EmbeddedRes.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../ShaderParser/ShaderSignatureParser.h"
 #include "../../../ShaderParser/NodeGraphSignature.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
+#include "../../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
@@ -22,6 +24,7 @@
 #include "../../../OSServices/RawFS.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
+#include "../../../Utility/Streams/PreprocessorInterpreter.h"
 #include "../../../Utility/Conversion.h"
 #include <cctype>
 #include <sstream>
@@ -190,6 +193,19 @@ static const int NonPreprocessorLine0 = 0;
 		}
 	}
 
+	static std::string IsDefinedRelevance(
+		const ShaderSourceParser::SelectorFilteringRules& filteringRules,
+		StringSection<> name)
+	{
+		auto tkn = filteringRules._tokenDictionary.TryGetToken(Utility::Internal::TokenDictionary::TokenType::IsDefinedTest, name);
+		if (!tkn.has_value())
+			return {};
+		auto i = filteringRules._relevanceTable.find(tkn.value());
+		if (i == filteringRules._relevanceTable.end())
+			return {};
+		return filteringRules._tokenDictionary.AsString(i->second);
+	}
+
 	TEST_CASE( "ShaderParser-TestAnalyzeSelectors", "[shader_parser]" )
 	{
 		const char exampleShader[] = R"--(
@@ -213,10 +229,10 @@ static const int NonPreprocessorLine0 = 0;
 			#endif
 
 		)--";
-		auto analysis = ShaderSourceParser::AnalyzeSelectors(exampleShader);
-		REQUIRE(analysis._selectorRelevance["defined(SOME_SELECTOR)"] == std::string{"!defined(ANOTHER_SELECTOR)"});
-		REQUIRE(analysis._selectorRelevance["defined(ANOTHER_SELECTOR)"] == std::string{"!defined(SOME_SELECTOR)"});
-		REQUIRE(analysis._selectorRelevance["defined(THIRD_SELECTOR)"] == std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
+		auto analysis = ShaderSourceParser::GenerateSelectorFilteringRules(exampleShader);
+		REQUIRE(IsDefinedRelevance(analysis, "SOME_SELECTOR") == std::string{"!defined(ANOTHER_SELECTOR)"});
+		REQUIRE(IsDefinedRelevance(analysis, "ANOTHER_SELECTOR") == std::string{"!defined(SOME_SELECTOR)"});
+		REQUIRE(IsDefinedRelevance(analysis, "THIRD_SELECTOR") == std::string{"defined(SOME_SELECTOR) || defined(ANOTHER_SELECTOR)"});
 
 		// Check some filtering conditions
 		{
@@ -224,7 +240,8 @@ static const int NonPreprocessorLine0 = 0;
 				ParameterBox {
 					std::make_pair("THIRD_SELECTOR", "1"),
 				},
-				analysis._selectorRelevance);
+				{},
+				analysis);
 			REQUIRE(filter0.GetCount() == (size_t)0);
 		}
 
@@ -234,7 +251,8 @@ static const int NonPreprocessorLine0 = 0;
 					std::make_pair("SOME_SELECTOR", "1"),
 					std::make_pair("THIRD_SELECTOR", "1"),
 				},
-				analysis._selectorRelevance);
+				{},
+				analysis);
 			REQUIRE(filter1.GetCount() == (size_t)2);
 		}
 
@@ -244,7 +262,8 @@ static const int NonPreprocessorLine0 = 0;
 					std::make_pair("SOME_SELECTOR", "1"),
 					std::make_pair("ANOTHER_SELECTOR", "1"),
 				},
-				analysis._selectorRelevance);
+				{},
+				analysis);
 			REQUIRE(filter1.GetCount() == (size_t)1);
 		}
 	}
@@ -253,7 +272,7 @@ static const int NonPreprocessorLine0 = 0;
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto utDataMount = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
-		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("/home/davidj/code/XLE/Working/Game/xleres", globalServices->GetPollingThread()));
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 
 		// Given some shader (either straight-up shader code, or something generated from a shader graph)
 		// bind it to a technique, and produce both the final shader text and required meta-data
@@ -289,7 +308,7 @@ static const int NonPreprocessorLine0 = 0;
 				str << f << std::endl;
 
 			auto expanded = ExpandIncludes(str.str(), exampleGraphFN, ::Assets::DefaultDirectorySearchRules(exampleGraphFN));
-			auto relevanceTable = AnalyzeSelectors(expanded._processedSource);
+			auto relevanceTable = ShaderSourceParser::GenerateSelectorFilteringRules(expanded._processedSource);
 			(void)relevanceTable;
 		}
 

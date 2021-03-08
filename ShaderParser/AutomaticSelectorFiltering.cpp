@@ -3,29 +3,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AutomaticSelectorFiltering.h"
-#include "../../Assets/InitializerPack.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/ICompileOperation.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Assets/IntermediateCompilers.h"
-#include "../../ConsoleRig/GlobalServices.h"		// for GetLibVersionDesc
-#include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
-#include "../../Utility/Streams/OutputStreamFormatter.h"
-#include "../../Utility/Streams/StreamTypes.h"
-#include "../../Utility/Streams/SerializationUtils.h"
-#include "../../Utility/Conversion.h"
-#include "../../Utility/StringUtils.h"
+#include "../Assets/InitializerPack.h"
+#include "../Assets/IFileSystem.h"
+#include "../Assets/ICompileOperation.h"
+#include "../Assets/AssetUtils.h"
+#include "../Assets/IntermediateCompilers.h"
+#include "../Assets/DepVal.h"
+#include "../ConsoleRig/GlobalServices.h"		// for GetLibVersionDesc
+#include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
+#include "../Utility/Streams/OutputStreamFormatter.h"
+#include "../Utility/Streams/StreamTypes.h"
+#include "../Utility/Streams/SerializationUtils.h"
+#include "../Utility/Conversion.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/FastParseValue.h"
 #include <stdexcept>
 #include <set>
 #include <sstream>
 
-namespace RenderCore { namespace Techniques
+namespace ShaderSourceParser
 {
 	static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
 	void SerializationOperator(
 		Utility::OutputStreamFormatter& formatter,
-		const ShaderSelectorFilteringRules& input)
+		const SelectorFilteringRules& input)
 	{
 		auto e = formatter.BeginKeyedElement("TokenDictionary");
 		for (const auto&t:input._tokenDictionary._tokenDefinitions)
@@ -42,7 +44,87 @@ namespace RenderCore { namespace Techniques
 		formatter.EndElement(e);
 	}
 
-	ShaderSelectorFilteringRules::ShaderSelectorFilteringRules(
+	bool SelectorFilteringRules::IsRelevant(
+		StringSection<> symbol, StringSection<> value,
+		IteratorRange<const ParameterBox**> environment) const
+	{
+		bool passesRelevanceCheck = false;
+
+		auto t = _tokenDictionary.TryGetToken(Utility::Internal::TokenDictionary::TokenType::Variable, symbol);
+		if (t.has_value()) {
+			auto i = _relevanceTable.find(t.value());
+			if (i!=_relevanceTable.end()) {
+				int relevanceCheck = _tokenDictionary.EvaluateExpression(i->second, environment);
+				passesRelevanceCheck |= relevanceCheck != 0;
+			}
+		}
+
+		if (!passesRelevanceCheck) {
+			auto isDefinedT = _tokenDictionary.TryGetToken(Utility::Internal::TokenDictionary::TokenType::IsDefinedTest, symbol);
+			if (isDefinedT.has_value()) {
+				auto i = _relevanceTable.find(isDefinedT.value());
+				if (i!=_relevanceTable.end()) {
+					int relevanceCheck = _tokenDictionary.EvaluateExpression(i->second, environment);
+					passesRelevanceCheck |= relevanceCheck != 0;
+				}
+			}
+		}
+
+		// Final check -- if we're setting to an integer value, and the shader has a defaulting
+		// mechanism, then check if we're setting to the same value as the default
+		if (passesRelevanceCheck && t.has_value() && !value.IsEmpty()) {
+			int valueAsInt = 0;
+			auto* end = FastParseValue(value, valueAsInt);
+			if (end == value.end()) {
+				auto i = _defaultSets.find(t.value());
+				if (i!=_relevanceTable.end()) {
+					int defaultValue = _tokenDictionary.EvaluateExpression(i->second, environment);
+					passesRelevanceCheck &= valueAsInt != defaultValue;
+				}
+			}
+		}
+
+		return passesRelevanceCheck;
+	}
+
+	void SelectorFilteringRules::MergeIn(const SelectorFilteringRules& source)
+	{
+		std::map<unsigned, Utility::Internal::ExpressionTokenList> translatedRelevance;
+		for (const auto& e:source._relevanceTable) {
+			translatedRelevance.insert(std::make_pair(
+				_tokenDictionary.Translate(source._tokenDictionary, e.first),
+				_tokenDictionary.Translate(source._tokenDictionary, e.second)));
+		}
+
+		Utility::Internal::MergeRelevanceTables(
+			_relevanceTable, {},
+			translatedRelevance, {});
+
+		for (const auto& sideEffect:source._defaultSets) {
+			auto key = _tokenDictionary.Translate(source._tokenDictionary, sideEffect.first);
+			if (_defaultSets.find(sideEffect.first) != _defaultSets.end())
+				continue;
+
+			_defaultSets.insert(std::make_pair(
+				sideEffect.first,
+				_tokenDictionary.Translate(source._tokenDictionary, sideEffect.second)));
+		}
+
+		// Also need to merge in the dependency validation information
+		if (_depVal) {
+			auto newDepVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterAssetDependency(newDepVal, _depVal);
+			::Assets::RegisterAssetDependency(newDepVal, source.GetDependencyValidation());
+		} else {
+			_depVal = source.GetDependencyValidation();
+		}
+		
+		RecalculateHash();
+	}
+
+	void SelectorFilteringRules::RecalculateHash() {}
+
+	SelectorFilteringRules::SelectorFilteringRules(
 		InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules&,
 		const ::Assets::DepValPtr& depVal)
@@ -83,10 +165,40 @@ namespace RenderCore { namespace Techniques
 		}
 	}
 
-	ShaderSelectorFilteringRules::ShaderSelectorFilteringRules() {}
-	ShaderSelectorFilteringRules::~ShaderSelectorFilteringRules() {}
+	SelectorFilteringRules::SelectorFilteringRules(
+		const std::unordered_map<std::string, std::string>& relevanceStrings)
+	{
+		for (const auto&e:relevanceStrings) {
+			auto key = Utility::Internal::AsExpressionTokenList(_tokenDictionary, e.first);
+			if (key.size() != 1)
+				Throw(std::runtime_error("Unexpected key in relevance strings: " + e.first));
+			auto value = Utility::Internal::AsExpressionTokenList(
+				_tokenDictionary, 
+				e.second);
+			_relevanceTable.insert(std::make_pair(key[0], std::move(value)));
+		}
+	}
 
-	static ::Assets::Blob GenerateMetricsFile(const ShaderSelectorFilteringRules& rules)
+	SelectorFilteringRules::SelectorFilteringRules() {}
+	SelectorFilteringRules::~SelectorFilteringRules() {}
+
+	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode)
+	{
+		auto analysis = Utility::GeneratePreprocessorAnalysis(sourceCode, {}, nullptr);
+		SelectorFilteringRules filteringRules;
+
+		filteringRules._tokenDictionary = analysis._tokenDictionary;
+		filteringRules._relevanceTable = analysis._relevanceTable;
+
+		for (const auto&s:analysis._substitutionSideEffects._defaultSets)
+			filteringRules._defaultSets.insert(std::make_pair(
+				filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s.first),
+				filteringRules._tokenDictionary.Translate(analysis._substitutionSideEffects._dictionary, s.second)));
+
+		return filteringRules;
+	}
+
+	static ::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules)
 	{
 		std::stringstream str;
 		str << "-------- Relevance Rules --------" << std::endl;
@@ -135,7 +247,7 @@ namespace RenderCore { namespace Techniques
 			auto result = Utility::GeneratePreprocessorAnalysis(
 				MakeStringSection((const char*)blk.get(), (const char*)PtrAdd(blk.get(), size)),
 				resolvedFile,
-				*this);
+				this);
 
 			_processingFilesSet.erase(resolvedFile);
 
@@ -154,7 +266,7 @@ namespace RenderCore { namespace Techniques
 		virtual std::vector<TargetDesc>			GetTargets() const override
 		{
 			return {
-				TargetDesc { ShaderSelectorFilteringRules::CompileProcessType, "filtering-rules" }
+				TargetDesc { SelectorFilteringRules::CompileProcessType, "filtering-rules" }
 			};
 		}
 
@@ -176,7 +288,7 @@ namespace RenderCore { namespace Techniques
 			IncludeHandler handler;
 			auto analysis = handler.GeneratePreprocessorAnalysis(fn, {});
 
-			ShaderSelectorFilteringRules filteringRules;
+			SelectorFilteringRules filteringRules;
 			filteringRules._tokenDictionary = analysis._tokenDictionary;
 			filteringRules._relevanceTable = analysis._relevanceTable;
 
@@ -191,7 +303,7 @@ namespace RenderCore { namespace Techniques
 
 			{
 				SerializedArtifact artifact;
-				artifact._type = ShaderSelectorFilteringRules::CompileProcessType;
+				artifact._type = SelectorFilteringRules::CompileProcessType;
 				artifact._name = "filtering-rules";
 				artifact._version = 1;
 				artifact._data = ::Assets::AsBlob(memStream.AsString());
@@ -225,11 +337,11 @@ namespace RenderCore { namespace Techniques
 				return std::make_shared<ShaderSelectorFilteringCompileOperation>(initializers);
 			});
 
-		uint64_t outputAssetTypes[] = { ShaderSelectorFilteringRules::CompileProcessType };
+		uint64_t outputAssetTypes[] = { SelectorFilteringRules::CompileProcessType };
 		intermediateCompilers.AssociateRequest(
 			result._registrationId,
 			MakeIteratorRange(outputAssetTypes));
 		return result;
 	}
 	
-}}
+}

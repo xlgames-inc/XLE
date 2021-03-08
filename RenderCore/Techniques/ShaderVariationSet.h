@@ -9,10 +9,15 @@
 #include <unordered_map>
 #include <string>
 
+namespace ShaderSourceParser
+{
+	class ManualSelectorFiltering;
+	class SelectorFilteringRules;
+}
+
 namespace RenderCore { namespace Techniques 
 {
 	class ParsingContext;
-	class ShaderSelectorFiltering;
 	class Technique;
 	class TechniqueEntry;
 
@@ -27,13 +32,6 @@ namespace RenderCore { namespace Techniques
 		virtual ~IShaderVariationFactory();
 	};
 
-	using SelectorRelevanceMap = std::unordered_map<std::string, std::string>;
-
-	std::string MakeFilteredDefinesTable(
-		IteratorRange<const ParameterBox**> selectors,
-		const ShaderSelectorFiltering& techniqueFiltering,
-		const SelectorRelevanceMap& relevance);
-
 	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
 	///
 	/// Sometimes 2 different sets of construction parameters for a shader can result in equivalent final byte code.
@@ -44,34 +42,22 @@ namespace RenderCore { namespace Techniques
 	class UniqueShaderVariationSet
 	{
 	public:
-		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
-		struct Variation
+		struct FilteredSelectorSet
 		{
-			uint64_t		_variationHash;
-			ShaderFuture	_shaderFuture;
+			uint64_t _hashValue;
+			std::string _selectors;
 		};
-		DEPRECATED_ATTRIBUTE const Variation& FindVariation(
-			const ShaderSelectorFiltering& baseSelectors,
-			const ParameterBox* globalState[ShaderSelectorFiltering::Source::Max],
-			IShaderVariationFactory& factory) const;
 
-		const Variation& FindVariation(
+		FilteredSelectorSet FilterSelectors(
 			IteratorRange<const ParameterBox**> selectors,
-			const ShaderSelectorFiltering& techniqueFiltering,
-			const SelectorRelevanceMap& relevance,
-			IShaderVariationFactory& factory) const;
+			const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
+			const ShaderSourceParser::SelectorFilteringRules& automaticFiltering);
 
 		UniqueShaderVariationSet();
 		~UniqueShaderVariationSet();
 	protected:
-		mutable std::vector<Variation>							_filteredToResolved;
-
-		struct FilteredDefines
-		{
-			uint64_t _filteredHashValue;
-			std::string _filteredSelectors;
-		};
-		mutable std::vector<std::pair<uint64_t, FilteredDefines>>		_globalToFiltered;
+		// std::vector<Variation>							_filteredToResolved;
+		std::vector<std::pair<uint64_t, FilteredSelectorSet>>		_globalToFiltered;
 	};
 
 	/// <summary>Provides convenient management of shader variations generated from a technique file</summary>
@@ -80,7 +66,7 @@ namespace RenderCore { namespace Techniques
     public:
 		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
 			int techniqueIndex,
-			const ParameterBox* shaderSelectors[ShaderSelectorFiltering::Source::Max]) const;
+			const ParameterBox* shaderSelectors[SelectorStages::Max]) const;
 
 		const Technique& GetTechnique() const { return *_technique; }
 

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../Assets/ShaderPatchCollection.h"
+#include "../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -45,14 +46,14 @@ namespace RenderCore { namespace Techniques
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
 			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetMaterialDescriptorSet() const { return _descriptorSet; }
-			const std::unordered_map<std::string, std::string>& GetSelectorRelevance() const { return _selectorRelevance; }
+			const ShaderSourceParser::SelectorFilteringRules& GetSelectorFilteringRules() const { return _filteringRules; }
 
 			bool HasPatchType(uint64_t implementing) const;
 
 		private:
 			std::vector<Patch> _patches;
 			std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _descriptorSet;
-			std::unordered_map<std::string, std::string> _selectorRelevance;
+			ShaderSourceParser::SelectorFilteringRules _filteringRules;
 
 			friend class CompiledShaderPatchCollection;
 		};

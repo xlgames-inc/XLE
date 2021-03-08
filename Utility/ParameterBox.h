@@ -116,7 +116,7 @@ namespace Utility
 				friend class Iterator;
 			};
 
-            void operator++();
+            Iterator operator++();
 			const Value& operator*() const;
 			const Value* operator->() const;
 			friend bool operator==(const Iterator&, const Iterator&);
@@ -308,9 +308,10 @@ namespace Utility
 
     inline ParameterBox::Iterator::Value::Value() : _index(0), _box(nullptr) {}
 
-    inline void ParameterBox::Iterator::operator++()
+    inline auto ParameterBox::Iterator::operator++() -> Iterator
     {
         ++_value._index;
+        return *this;
     }
 
 	inline auto ParameterBox::Iterator::operator*() const -> const Value& { return _value; }

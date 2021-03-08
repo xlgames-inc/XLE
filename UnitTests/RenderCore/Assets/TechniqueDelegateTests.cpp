@@ -12,11 +12,11 @@
 #include "../../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
-#include "../../../RenderCore/Techniques/AutomaticSelectorFiltering.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
+#include "../../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
 #include "../../../Assets/MountingTree.h"
@@ -68,7 +68,7 @@ namespace UnitTests
 		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_techDelUTData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
 
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-		auto filteringRegistration = RenderCore::Techniques::RegisterShaderSelectorFilteringCompiler(compilers);
+		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 
 		static const char simplePatchCollectionFragments[] = R"--(
 		perPixel=~

@@ -84,7 +84,7 @@ namespace FixedFunctionModel
 
 		ResolvedShader FindVariation(
 			int techniqueIndex, 
-			const ParameterBox* shaderSelectors[RenderCore::Techniques::ShaderSelectorFiltering::Source::Max], 
+			const ParameterBox* shaderSelectors[RenderCore::Techniques::SelectorStages::Max], 
 			const TechniquePrebindingInterface& techniqueInterface) const;
 
 		BoundShaderVariationSet(const std::shared_ptr<RenderCore::Techniques::Technique>& technique);
@@ -110,7 +110,7 @@ namespace FixedFunctionModel
 			static BoundShader MakeBoundShader(
 				const std::shared_ptr<RenderCore::Metal::ShaderProgram>& shader, 
 				const RenderCore::Techniques::TechniqueEntry& techEntry,
-				const ParameterBox* shaderSelectors[RenderCore::Techniques::ShaderSelectorFiltering::Source::Max],
+				const ParameterBox* shaderSelectors[RenderCore::Techniques::SelectorStages::Max],
 				const TechniquePrebindingInterface& techniqueInterface);
 			static ResolvedShader AsResolvedShader(uint64_t hash, const BoundShader&);
 		};

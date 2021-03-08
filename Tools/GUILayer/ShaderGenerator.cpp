@@ -106,7 +106,7 @@ namespace GUILayer
 
 			{
 				std::vector<std::pair<const utf8*, std::string>> defines;
-				for (unsigned c=0; c<RenderCore::Techniques::ShaderSelectorFiltering::Source::Max; ++c)
+				for (unsigned c=0; c<RenderCore::Techniques::SelectorStages::Max; ++c)
 					BuildStringTable(defines, *shaderSelectors[c]);
 				std::stringstream str;
 				for (auto&d:defines) {

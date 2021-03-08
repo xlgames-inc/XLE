@@ -23,7 +23,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         TechniqueUtils.cpp
         # Services.cpp
         ModelCache.cpp
-        AutomaticSelectorFiltering.cpp
         )
     set(Headers
         BasicDelegates.h
@@ -50,7 +49,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         TechniqueUtils.h
         Services.h
         ModelCache.h
-        AutomaticSelectorFiltering.h
         )
 
     add_library(RenderCoreTechniques-${metal_name} STATIC ${Src} ${Headers})

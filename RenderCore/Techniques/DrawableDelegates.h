@@ -64,12 +64,12 @@ namespace RenderCore { namespace Techniques
 	public:
 		virtual Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
-			const ParameterBox* shaderSelectors[],		// ShaderSelectorFiltering::Source::Max
+			const ParameterBox* shaderSelectors[],		// SelectorStages::Max
 			const DrawableMaterial& material);
 
 		virtual RenderCore::Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
-			const ParameterBox* shaderSelectors[],		// ShaderSelectorFiltering::Source::Max
+			const ParameterBox* shaderSelectors[],		// SelectorStages::Max
 			const DrawableMaterial& material,
 			unsigned techniqueIndex);
 

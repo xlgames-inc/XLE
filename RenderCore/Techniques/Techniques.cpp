@@ -70,7 +70,7 @@ namespace RenderCore { namespace Techniques
 			Throw(FormatException("Unexpected blob when deserializing inheritted list", formatter.GetLocation()));
 	}
 
-	static void LoadSelectorFiltering(Formatter& formatter, ShaderSelectorFiltering& dst)
+	static void LoadSelectorFiltering(Formatter& formatter, ShaderSourceParser::ManualSelectorFiltering& dst)
 	{
 		while (formatter.PeekNext() == FormatterBlob::KeyedItem || formatter.PeekNext() == FormatterBlob::Value) {
 
@@ -238,13 +238,6 @@ namespace RenderCore { namespace Techniques
 		ReplaceInString(entry._pixelShaderName, selfRef, filename);
 		ReplaceInString(entry._geometryShaderName, selfRef, filename);
 		entry.GenerateHash();
-	}
-
-	void ShaderSelectorFiltering::GenerateHash()
-	{
-		_hash = HashCombine(_setValues.GetHash(), _setValues.GetParameterNamesHash());
-		for (const auto&r:_relevanceMap)
-			_hash = HashCombine(HashCombine(Hash64(r.first), Hash64(r.second)), _hash);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

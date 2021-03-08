@@ -9,6 +9,8 @@
 #include "../Metal/ObjectFactory.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../../Assets/AssetFuture.h"
+#include "../../Assets/AssetFutureContinuation.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <cctype>
@@ -32,6 +34,13 @@ namespace RenderCore { namespace Techniques
 		uint64_t _fbRelevanceValue = 0;
 	};
 
+	class SharedPools
+	{
+	public:
+		Threading::Mutex _lock;
+		UniqueShaderVariationSet _selectorVariationsSet;
+	};
+
 	class PipelineAccelerator : public std::enable_shared_from_this<PipelineAccelerator>
 	{
 	public:
@@ -52,11 +61,13 @@ namespace RenderCore { namespace Techniques
 
 		Pipeline CreatePipelineForSequencerState(
 			const SequencerConfig& cfg,
-			const ParameterBox& globalSelectors);
+			const ParameterBox& globalSelectors,
+			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+			const std::shared_ptr<SharedPools>& sharedPools);
 
 		Pipeline& PipelineForCfgId(SequencerConfigId cfgId);
 
-		const std::shared_ptr<CompiledShaderPatchCollection> _shaderPatches;
+		std::shared_ptr<CompiledShaderPatchCollection> _shaderPatches;
 		ParameterBox _materialSelectors;
 		ParameterBox _geoSelectors;
 
@@ -90,24 +101,80 @@ namespace RenderCore { namespace Techniques
 
 	auto PipelineAccelerator::CreatePipelineForSequencerState(
 		const SequencerConfig& cfg,
-		const ParameterBox& globalSelectors) -> Pipeline
+		const ParameterBox& globalSelectors,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		const std::shared_ptr<SharedPools>& sharedPools) -> Pipeline
 	{
 		Pipeline result;
 		result._future = std::make_shared<::Assets::AssetFuture<Metal::GraphicsPipeline>>("PipelineAccelerator Pipeline");
 
-		// Consider the pipeline accelerator required for the given that, and store it with
-		// the id provided
+		ParameterBox copyGlobalSelectors = globalSelectors;
 
-		// The list here defines the override order. Note that the global settings are last
-		// because they can actually override everything
-		const ParameterBox* paramBoxes[] = {
-			&cfg._sequencerSelectors,
-			&_geoSelectors,
-			&_materialSelectors,
-			&globalSelectors
-		};
+		auto resolvedTechnique = cfg._delegate->Resolve(_shaderPatches->GetInterface(), _stateSet);
+		std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
+		::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<Metal::GraphicsPipeline>(
+			*result._future,
+			[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis](
+				::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
+				const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
 
-		assert(0);
+				UniqueShaderVariationSet::FilteredSelectorSet filteredSelectors[dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders)];
+
+				auto containingPipelineAccelerator = weakThis.lock();
+				if (!containingPipelineAccelerator)
+					Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
+				
+				{
+					// The list here defines the override order. Note that the global settings are last
+					// because they can actually override everything
+					const ParameterBox* paramBoxes[] = {
+						&cfg._sequencerSelectors,
+						&containingPipelineAccelerator->_geoSelectors,
+						&containingPipelineAccelerator->_materialSelectors,
+						&copyGlobalSelectors
+					};
+
+					ScopedLock(sharedPools->_lock);
+					for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
+						if (!pipelineDesc->_shaders[c]._initializer.empty())
+							filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
+								MakeIteratorRange(paramBoxes),
+								pipelineDesc->_manualSelectorFiltering,
+								*pipelineDesc->_shaders[c]._automaticFiltering);
+				}
+
+				::Assets::FuturePtr<Metal::ShaderProgram> shaderProgram;
+				if (pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer.empty()) {
+					shaderProgram = ::Assets::MakeAsset<Metal::ShaderProgram>(
+						pipelineLayout,
+						pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer,
+						pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer);
+				} else {
+					shaderProgram = ::Assets::MakeAsset<Metal::ShaderProgram>(
+						pipelineLayout,
+						pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer,
+						pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer,
+						pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer);
+				}
+
+				::Assets::WhenAll(shaderProgram).ThenConstructToFuture<Metal::GraphicsPipeline>(
+					resultFuture,
+					[cfg, pipelineDesc, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
+						auto containingPipelineAccelerator = weakThis.lock();
+						if (!containingPipelineAccelerator)
+							Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
+
+						return containingPipelineAccelerator->InternalCreatePipeline(
+							*shaderProgram, 
+							pipelineDesc->_depthStencil, 
+							pipelineDesc->_blend[0], 
+							pipelineDesc->_rasterization, 
+							cfg);
+					});
+			});
+
+	return result;
+
 #if 0
 		auto shader = cfg._delegate->Resolve(
 			_shaderPatches,
@@ -263,7 +330,7 @@ namespace RenderCore { namespace Techniques
 
 		const std::shared_ptr<IDevice>& GetDevice() const override;
 
-		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device);
+		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		~PipelineAcceleratorPool();
 		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
 		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
@@ -282,6 +349,9 @@ namespace RenderCore { namespace Techniques
 
 		void RebuildAllPipelines(unsigned poolGuid);
 		void RebuildAllPipelines(unsigned poolGuid, PipelineAccelerator& pipeline);
+
+		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
+		std::shared_ptr<SharedPools> _sharedPools;
 	};
 
 	const ::Assets::FuturePtr<Metal::GraphicsPipeline>& PipelineAcceleratorPool::GetPipeline(
@@ -444,7 +514,7 @@ namespace RenderCore { namespace Techniques
 					if (a) {
 						auto& pipeline = a->PipelineForCfgId(cfgId);
 						if (!pipeline._future)
-							pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors);
+							pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _sharedPools);
 					}
 				}
 				
@@ -462,7 +532,7 @@ namespace RenderCore { namespace Techniques
 		for (auto& accelerator:_pipelineAccelerators) {
 			auto a = accelerator.second.lock();
 			if (a)
-				a->PipelineForCfgId(cfgId) = a->CreatePipelineForSequencerState(*result, _globalSelectors);
+				a->PipelineForCfgId(cfgId) = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _sharedPools);
 		}
 
 		return result;
@@ -474,7 +544,7 @@ namespace RenderCore { namespace Techniques
 			auto cfgId = SequencerConfigId(c) | (SequencerConfigId(poolGuid) << 32ull);
 			auto l = _sequencerConfigById[c].second.lock();
 			if (l) 
-				pipeline.PipelineForCfgId(cfgId) = pipeline.CreatePipelineForSequencerState(*l, _globalSelectors);
+				pipeline.PipelineForCfgId(cfgId) = pipeline.CreatePipelineForSequencerState(*l, _globalSelectors, _pipelineLayout, _sharedPools);
 		}
 	}
 
@@ -509,7 +579,7 @@ namespace RenderCore { namespace Techniques
 					auto& p = a->_finalPipelines[c];
 					if (p._future->GetAssetState() != ::Assets::AssetState::Pending && p._future->GetDependencyValidation()->GetValidationIndex() != 0) {
 						// It's out of date -- let's rebuild and reassign it
-						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _globalSelectors);
+						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _globalSelectors, _pipelineLayout, _sharedPools);
 					}
 				}
 			}
@@ -532,10 +602,12 @@ namespace RenderCore { namespace Techniques
 
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 
-	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device)
+	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
 		_guid = s_nextPipelineAcceleratorPoolGUID++;
 		_device = device;
+		_pipelineLayout = pipelineLayout;
+		_sharedPools = std::make_shared<SharedPools>();
 	}
 
 	PipelineAcceleratorPool::~PipelineAcceleratorPool() {}
@@ -543,9 +615,9 @@ namespace RenderCore { namespace Techniques
 
 	IPipelineAcceleratorPool::~IPipelineAcceleratorPool() {}
 
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>& device)
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
-		return std::make_shared<PipelineAcceleratorPool>(device);
+		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout);
 	}
 
 }}

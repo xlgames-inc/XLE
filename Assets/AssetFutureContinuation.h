@@ -112,7 +112,6 @@ namespace Assets
 						thatFuture.SetInvalidAsset(exceptionDepVal, actualizationBlob);
 						return false;
 					} else if (currentState == AssetState::Ready) {
-						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
 							// Note -- watch for a subtle edge condition here. Since we're passing the future to the callback function here,
@@ -126,6 +125,9 @@ namespace Assets
 						} CATCH (const std::exception& e) {
 							thatFuture.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 						} CATCH_END
+						// the future must either be in non-pending state, or have another polling function
+						// assigned by this point. Otherwise, it will never complete. Unfortunately, there isn't
+						// an easy way to verify that right now
 						return false;
 					}
 					return true;

@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderAnalysis.h"
+#include "AutomaticSelectorFiltering.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../Assets/AssetUtils.h"
@@ -293,6 +294,70 @@ namespace ShaderSourceParser
 		return result;
 	}
 
+	void ManualSelectorFiltering::GenerateHash()
+	{
+		_hash = HashCombine(_setValues.GetHash(), _setValues.GetParameterNamesHash());
+		for (const auto&r:_relevanceMap)
+			_hash = HashCombine(HashCombine(Hash64(r.first), Hash64(r.second)), _hash);
+	}
+
+	ParameterBox FilterSelectors(
+		IteratorRange<const ParameterBox**> selectors,
+		const ManualSelectorFiltering& manualFiltering,
+		const SelectorFilteringRules& automaticFiltering)
+	{
+		ParameterBox filteredBox = manualFiltering._setValues;
+		for (const auto&s:selectors)
+			filteredBox.MergeIn(*s);
+
+		// We have to do the evaluation one at a time, updating the filteredBox as we go,
+		// because of mutual relationships between selectors. For example, in construction
+		// 		#if !defined(SEL_0) || !defined(SEL_1)
+		// if both SEL_0 and SEL_1 are defined, we have to be careful not to consider both
+		// irrelevant
+
+		for (ptrdiff_t c=filteredBox.GetCount()-1; c>0;) {
+
+			auto evaluating = filteredBox.at(c);
+
+			bool relevant = false;
+
+			// If we're listed in the technique filtering relevance map, then we treat that as an override
+			// of the automatic filtering
+			auto relevanceI = manualFiltering._relevanceMap.find(evaluating->Name().AsString());
+			if (relevanceI != manualFiltering._relevanceMap.end()) {
+				// Set a key called "value" to the new value we want to set
+				ParameterBox pBoxValue;
+				pBoxValue.SetParameter("value", evaluating->RawValue(), evaluating->Type());
+				const ParameterBox* boxes[] = { &pBoxValue, &filteredBox };
+				relevant = EvaluatePreprocessorExpression(relevanceI->second, MakeIteratorRange(boxes));
+			} else {
+				const ParameterBox* env[] = { &filteredBox };
+				relevant = automaticFiltering.IsRelevant(
+					evaluating->Name(), evaluating->ValueAsString(),
+					MakeIteratorRange(env));
+			}
+
+			if (relevant) {
+				--c;
+			} else {
+				filteredBox.RemoveParameter(evaluating->HashName());
+			}
+		}
+
+		return filteredBox;
+	}
+
+	ParameterBox FilterSelectors(
+		const ParameterBox& selectors,
+		const ManualSelectorFiltering& manualFiltering,
+		const SelectorFilteringRules& automaticFiltering)
+	{
+		const ParameterBox* boxes[] = { &selectors };
+		return FilterSelectors(MakeIteratorRange(boxes), manualFiltering, automaticFiltering);
+	}
+
+#if 0
 	ShaderSelectorAnalysis AnalyzeSelectors(const std::string& sourceCode)
 	{
 		auto analysis = GeneratePreprocessorAnalysis(sourceCode, {}, *(IPreprocessorIncludeHandler*)nullptr);
@@ -375,4 +440,5 @@ namespace ShaderSourceParser
 			return ::Assets::AsDepVal(MakeIteratorRange(dependencies));
 		}
 	}
+#endif
 }
