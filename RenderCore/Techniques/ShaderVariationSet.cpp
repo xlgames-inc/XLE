@@ -52,7 +52,7 @@ namespace RenderCore { namespace Techniques
 	auto UniqueShaderVariationSet::FilterSelectors(
 		IteratorRange<const ParameterBox**> selectors,
 		const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering) -> FilteredSelectorSet
+		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering) -> const FilteredSelectorSet&
 	{
 		auto inputHash = Hash(selectors);
 		inputHash = HashCombine(techniqueFiltering.GetHash(), inputHash);
@@ -65,8 +65,8 @@ namespace RenderCore { namespace Techniques
 			FilteredSelectorSet result;
 			result._selectors = MakeFilteredDefinesTable(selectors, techniqueFiltering, automaticFiltering);
 			result._hashValue = Hash64(result._selectors);
-			_globalToFiltered.insert(i, {inputHash, result});
-			return result;
+			i = _globalToFiltered.insert(i, {inputHash, result});
+			return i->second;
 		}
 	}
 
@@ -75,19 +75,43 @@ namespace RenderCore { namespace Techniques
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class TechniqueShaderVariationSet::Variation
+	{
+	public:
+		::Assets::FuturePtr<Metal::ShaderProgram> _shaderFuture;
+	};
+
 	::Assets::FuturePtr<Metal::ShaderProgram> TechniqueShaderVariationSet::FindVariation(
 		int techniqueIndex,
-		const ParameterBox* shaderSelectors[SelectorStages::Max]) const
+		const ParameterBox* shaderSelectors[SelectorStages::Max])
 	{
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
-		assert(0); // need to pass ICompiledPipelineLayout down
-		// ShaderVariationFactory_Basic factory(techEntry, nullptr);
-		// return _variationSet.FindVariation(techEntry._selectorFiltering, shaderSelectors, factory)._shaderFuture;
-		return nullptr;
+		auto& filteredSelectors = _variationSet.FilterSelectors(
+			MakeIteratorRange(shaderSelectors, &shaderSelectors[SelectorStages::Max]),
+			techEntry._selectorFiltering, {});
+
+		auto i = LowerBound(_filteredSelectorsToVariation, filteredSelectors._hashValue);
+		if (i != _filteredSelectorsToVariation.end() && i->first == filteredSelectors._hashValue) {
+			return i->second._shaderFuture;
+		} else {
+			Variation variation;
+			assert(!techEntry._vertexShaderName.empty());
+			assert(!techEntry._pixelShaderName.empty());
+			if (techEntry._geometryShaderName.empty()) {
+				variation._shaderFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, techEntry._vertexShaderName, techEntry._pixelShaderName, filteredSelectors._selectors);
+			} else {
+				variation._shaderFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, techEntry._vertexShaderName, techEntry._geometryShaderName, techEntry._pixelShaderName, filteredSelectors._selectors);
+			}
+			i = _filteredSelectorsToVariation.insert(i, std::make_pair(filteredSelectors._hashValue, variation));
+			return i->second._shaderFuture;
+		}
 	}
 
-	TechniqueShaderVariationSet::TechniqueShaderVariationSet(const std::shared_ptr<Technique>& technique)
+	TechniqueShaderVariationSet::TechniqueShaderVariationSet(
+		const std::shared_ptr<Technique>& technique,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	: _technique(technique)
+	, _pipelineLayout(pipelineLayout)
 	{}
 
 	TechniqueShaderVariationSet::~TechniqueShaderVariationSet(){}
@@ -99,35 +123,14 @@ namespace RenderCore { namespace Techniques
 
 	void TechniqueShaderVariationSet::ConstructToFuture(
 		::Assets::AssetFuture<TechniqueShaderVariationSet>& future,
-		StringSection<::Assets::ResChar> modelScaffoldName)
+		StringSection<::Assets::ResChar> modelScaffoldName,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
 		auto scaffoldFuture = ::Assets::MakeAsset<Technique>(modelScaffoldName);
-		::Assets::WhenAll(scaffoldFuture).ThenConstructToFuture<TechniqueShaderVariationSet>(future);
+		::Assets::WhenAll(scaffoldFuture).ThenConstructToFuture<TechniqueShaderVariationSet>(
+			future,
+			[pipelineLayout](const std::shared_ptr<Technique>& technique) {
+				return std::make_shared<TechniqueShaderVariationSet>(technique, pipelineLayout);
+			});
 	}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	::Assets::FuturePtr<Metal::ShaderProgram> ShaderVariationFactory_Basic::MakeShaderVariation(StringSection<> defines) 
-	{
-		assert(!_entry->_vertexShaderName.empty());
-		assert(!_entry->_pixelShaderName.empty());
-		if (_entry->_geometryShaderName.empty()) {
-			return ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, _entry->_vertexShaderName, _entry->_pixelShaderName, defines);
-		} else {
-			return ::Assets::MakeAsset<Metal::ShaderProgram>(_pipelineLayout, _entry->_vertexShaderName, _entry->_geometryShaderName, _entry->_pixelShaderName, defines);
-		}
-	}
-
-	ShaderVariationFactory_Basic::ShaderVariationFactory_Basic(const TechniqueEntry& entry, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
-	: _entry(&entry)
-	, _pipelineLayout(pipelineLayout)
-	{
-		_factoryGuid = entry._shaderNamesHash;
-	}
-
-	ShaderVariationFactory_Basic::~ShaderVariationFactory_Basic() {}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	IShaderVariationFactory::~IShaderVariationFactory() {}
 }}

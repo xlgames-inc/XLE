@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PipelineAccelerator.h"
+#include "CompiledShaderPatchCollection.h"
 #include "../FrameBufferDesc.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
@@ -99,6 +100,86 @@ namespace RenderCore { namespace Techniques
 		}
 	};
 
+	static ::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> MakeByteCodeFuture(
+		ShaderStage stage, StringSection<> initializer, const std::string& definesTable,
+		const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
+		IteratorRange<const uint64_t*> patchExpansions)
+	{
+		assert(!initializer.IsEmpty());
+
+		char temp[MaxPath];
+		auto meld = StringMeldInPlace(temp);
+		meld << initializer;
+
+		// shader profile
+		{
+			char profileStr[] = "?s_";
+			switch (stage) {
+			case ShaderStage::Vertex: profileStr[0] = 'v'; break;
+			case ShaderStage::Geometry: profileStr[0] = 'g'; break;
+			case ShaderStage::Pixel: profileStr[0] = 'p'; break;
+			case ShaderStage::Domain: profileStr[0] = 'd'; break;
+			case ShaderStage::Hull: profileStr[0] = 'h'; break;
+			case ShaderStage::Compute: profileStr[0] = 'c'; break;
+			default: assert(0); break;
+			}
+			if (!XlFindStringI(initializer, profileStr)) {
+				meld << ":" << profileStr << "*";
+			}
+		}
+
+		std::vector<uint64_t> patchExpansionsCopy(patchExpansions.begin(), patchExpansions.end());
+
+		return ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(
+			MakeStringSection(temp), definesTable, patchCollection, patchExpansionsCopy);
+	}
+
+	static ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderProgram(
+		const ITechniqueDelegate::GraphicsPipelineDesc& pipelineDesc,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		const std::shared_ptr<CompiledShaderPatchCollection>& compiledPatchCollection,
+		IteratorRange<const UniqueShaderVariationSet::FilteredSelectorSet*> filteredSelectors)
+	{
+		::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> byteCodeFuture[3];
+
+		for (unsigned c=0; c<3; ++c) {
+			if (pipelineDesc._shaders[c]._initializer.empty())
+				continue;
+
+			byteCodeFuture[c] = MakeByteCodeFuture(
+				(ShaderStage)c,
+				pipelineDesc._shaders[c]._initializer,
+				filteredSelectors[c]._selectors,
+				compiledPatchCollection,
+				pipelineDesc._patchExpansions);
+		}
+
+		auto result = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("");
+		if (!byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
+			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
+				*result,
+				[pipelineLayout](	const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode) {
+					return std::make_shared<Metal::ShaderProgram>(
+						Metal::GetObjectFactory(),
+						pipelineLayout, *vsCode, *psCode);
+				});
+		} else {
+			// Odd ordering here intentional (because of idx of ShaderStage::Geometry)
+			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[2], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
+				*result,
+				[pipelineLayout](	const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& gsCode,
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode) {
+					return std::make_shared<Metal::ShaderProgram>(
+						Metal::GetObjectFactory(),
+						pipelineLayout, *vsCode, *gsCode, *psCode);
+				});
+		}
+		return result;
+	}
+		
+
 	auto PipelineAccelerator::CreatePipelineForSequencerState(
 		const SequencerConfig& cfg,
 		const ParameterBox& globalSelectors,
@@ -143,20 +224,7 @@ namespace RenderCore { namespace Techniques
 								*pipelineDesc->_shaders[c]._automaticFiltering);
 				}
 
-				::Assets::FuturePtr<Metal::ShaderProgram> shaderProgram;
-				if (pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer.empty()) {
-					shaderProgram = ::Assets::MakeAsset<Metal::ShaderProgram>(
-						pipelineLayout,
-						pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer,
-						pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer);
-				} else {
-					shaderProgram = ::Assets::MakeAsset<Metal::ShaderProgram>(
-						pipelineLayout,
-						pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer,
-						pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer,
-						pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer);
-				}
-
+				auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, containingPipelineAccelerator->_shaderPatches, MakeIteratorRange(filteredSelectors));
 				::Assets::WhenAll(shaderProgram).ThenConstructToFuture<Metal::GraphicsPipeline>(
 					resultFuture,
 					[cfg, pipelineDesc, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
@@ -173,60 +241,6 @@ namespace RenderCore { namespace Techniques
 					});
 			});
 
-	return result;
-
-#if 0
-		auto shader = cfg._delegate->Resolve(
-			_shaderPatches,
-			MakeIteratorRange(paramBoxes),
-			_stateSet);
-		
-		auto state = shader._shaderProgram->GetAssetState();
-		if (state == ::Assets::AssetState::Invalid) {
-			result._future->SetInvalidAsset(shader._shaderProgram->GetDependencyValidation(), shader._shaderProgram->GetActualizationLog());
-		} else if (state == ::Assets::AssetState::Ready) {
-			//
-			// Since we're ready, let's take an accelerated path and just construct
-			// the pipeline right here and now
-			//
-			auto pipeline = InternalCreatePipeline(*shader._shaderProgram->Actualize(), shader._depthStencil, shader._blend, shader._rasterization, cfg);
-			result._future->SetAsset(std::move(pipeline), nullptr);
-		} else {
-			//
-			// Our final pipeline is dependant on the shader compilation
-			// We can create a future that will trigger and complete processing after
-			// the shader has finished compilating
-			//
-			std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
-			result._future->SetPollingFunction(
-				[shader, cfg, weakThis](::Assets::AssetFuture<Metal::GraphicsPipeline>& thatFuture) {
-					::Assets::AssetPtr<Metal::ShaderProgram> shaderActual;
-					::Assets::DepValPtr depVal;
-					::Assets::Blob actualizationLog;
-					auto shaderState = shader._shaderProgram->CheckStatusBkgrnd(shaderActual, depVal, actualizationLog);
-					if (!shaderActual) {
-						if (shaderState == ::Assets::AssetState::Invalid) {
-							thatFuture.SetInvalidAsset(depVal, actualizationLog);
-							return false;
-						}
-						return true;
-					}
-
-					auto containingPipelineAccelerator = weakThis.lock();
-					if (!containingPipelineAccelerator) {
-						thatFuture.SetInvalidAsset(
-							std::make_shared<::Assets::DependencyValidation>(),
-							::Assets::AsBlob("Containing GraphicsPipeline builder has been destroyed"));
-						return false;
-					}
-
-					auto pipeline = containingPipelineAccelerator->InternalCreatePipeline(*shaderActual, shader._depthStencil, shader._blend, shader._rasterization, cfg);
-					thatFuture.SetAsset(std::move(pipeline), actualizationLog);
-					return false;
-				});
-		}
-#endif
-		
 		return result;
 	}
 

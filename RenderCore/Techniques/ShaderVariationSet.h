@@ -15,22 +15,11 @@ namespace ShaderSourceParser
 	class SelectorFilteringRules;
 }
 
+namespace RenderCore { class ICompiledPipelineLayout; }
+
 namespace RenderCore { namespace Techniques 
 {
-	class ParsingContext;
 	class Technique;
-	class TechniqueEntry;
-
-	/// <summary>Used with UniqueShaderVariationSet to provide customizability for shader construction</summary>
-	class IShaderVariationFactory
-	{
-	public:
-		uint64_t _factoryGuid = 0;
-
-		virtual ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(
-			StringSection<> defines) = 0;
-		virtual ~IShaderVariationFactory();
-	};
 
 	/// <summary>Filters shader variation construction parameters to avoid construction of duplicate shaders</summary>
 	///
@@ -48,7 +37,7 @@ namespace RenderCore { namespace Techniques
 			std::string _selectors;
 		};
 
-		FilteredSelectorSet FilterSelectors(
+		const FilteredSelectorSet& FilterSelectors(
 			IteratorRange<const ParameterBox**> selectors,
 			const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
 			const ShaderSourceParser::SelectorFilteringRules& automaticFiltering);
@@ -56,7 +45,6 @@ namespace RenderCore { namespace Techniques
 		UniqueShaderVariationSet();
 		~UniqueShaderVariationSet();
 	protected:
-		// std::vector<Variation>							_filteredToResolved;
 		std::vector<std::pair<uint64_t, FilteredSelectorSet>>		_globalToFiltered;
 	};
 
@@ -66,11 +54,13 @@ namespace RenderCore { namespace Techniques
     public:
 		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
 			int techniqueIndex,
-			const ParameterBox* shaderSelectors[SelectorStages::Max]) const;
+			const ParameterBox* shaderSelectors[SelectorStages::Max]);
 
 		const Technique& GetTechnique() const { return *_technique; }
 
-		TechniqueShaderVariationSet(const std::shared_ptr<Technique>& technique);
+		TechniqueShaderVariationSet(
+			const std::shared_ptr<Technique>& technique,
+			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		~TechniqueShaderVariationSet();
 
 		///////////////////////////////////////
@@ -78,24 +68,16 @@ namespace RenderCore { namespace Techniques
 		const ::Assets::DepValPtr& GetDependencyValidation() const;
 		static void ConstructToFuture(
 			::Assets::AssetFuture<TechniqueShaderVariationSet>& future,
-			StringSection<::Assets::ResChar> techniqueName);
+			StringSection<::Assets::ResChar> techniqueName,
+			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 
     protected:
 		UniqueShaderVariationSet _variationSet;
 		std::shared_ptr<Technique> _technique;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class ShaderVariationFactory_Basic : public IShaderVariationFactory
-	{
-	public:
-		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines);
-		ShaderVariationFactory_Basic(const TechniqueEntry& entry, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
-		~ShaderVariationFactory_Basic();
-	private:
-		const TechniqueEntry* _entry;
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
-	};
+
+		class Variation;
+		std::vector<std::pair<uint64_t, Variation>> _filteredSelectorsToVariation;
+    };
 
 }}

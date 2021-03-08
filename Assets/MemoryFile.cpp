@@ -9,6 +9,7 @@
     #include "../Foreign/zlib/zlib.h"
 #endif
 #include "../Utility/Conversion.h"
+#include "../Utility/Threading/Mutex.h"
 #include <stdexcept>
 
 namespace Assets
@@ -445,6 +446,7 @@ namespace Assets
 	protected:
 		std::vector<std::pair<uint64_t, Blob>> _filesAndContents;
 		std::vector<std::pair<uint64_t, IteratorRange<const void*>>> _staticFilesAndContents;
+		Threading::Mutex _attachedMonitorsLock;
 		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _attachedMonitors;
 		FilenameRules _filenameRules;
 		FileSystemMemoryFlags::BitField _flags;
@@ -586,6 +588,7 @@ namespace Assets
 		if (idx >= _filesAndContents.size())
 			return IOReason::FileNotFound;
 
+		ScopedLock(_attachedMonitorsLock);
 		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
 		for (auto r=range.first; r!=range.second; ++r)
 			// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
@@ -612,6 +615,7 @@ namespace Assets
 		if (idx >= _filesAndContents.size())
 			return IOReason::FileNotFound;
 
+		ScopedLock(_attachedMonitorsLock);
 		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
 		for (auto r=range.first; r!=range.second; ++r) {
 			auto m = r->second.lock();

@@ -68,6 +68,9 @@ namespace UnitTests
 		std::make_pair(
 			"spherical_prefix.hlsl",
 			::Assets::AsBlob(R"--(
+				#if !defined(SPHERICAL_PREFIX_HLSL)
+				#define SPHERICAL_PREFIX_HLSL
+
 				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
 				float3 SphericalToNormal(float2 coord, float time);
 				float4 SphericalToColor(float2 coord, float time);
@@ -101,6 +104,8 @@ namespace UnitTests
 						return float2(0,0);
 					#endif
 				}
+
+				#endif
 			)--")),
 
 		// ---------------------------- spherical.graph ----------------------------
@@ -224,6 +229,8 @@ namespace UnitTests
 				desc->_shaders[c]._automaticFiltering = future->Actualize();
 			}
 
+			desc->_blend.push_back(RenderCore::AttachmentBlendDesc{});
+
 			desc->_patchExpansions.push_back(perPixelPatchName);
 			desc->_depVal = std::make_shared<::Assets::DependencyValidation>();
 
@@ -252,10 +259,6 @@ namespace UnitTests
 			static const char simplePatchCollectionFragments[] = R"--(
 			main=~
 				ut-data/minimal_perpixel.graph::Minimal_PerPixel
-				colorGenerator=~
-					ut-data/spherical_generators.hlsl::MainSphericalToColor
-				normalGenerator=~
-					ut-data/spherical_generators.hlsl::MainSphericalToNormal
 			)--";
 			InputStreamFormatter<utf8> formattr { MakeStringSection(simplePatchCollectionFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
@@ -289,6 +292,10 @@ namespace UnitTests
 			static const char sphericalCollectionFragments[] = R"--(
 			main=~
 				ut-data/spherical.graph::Spherical_PerPixel
+				colorGenerator=~
+					ut-data/spherical_generators.hlsl::MainSphericalToColor
+				normalGenerator=~
+					ut-data/spherical_generators.hlsl::MainSphericalToNormal
 			)--";
 			InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
@@ -303,6 +310,7 @@ namespace UnitTests
 				"temporary-out");
 
 			auto shaderCompilerRegistration = RenderCore::RegisterShaderCompiler(testHelper->_shaderSource, compilers);
+			auto shaderCompiler2Registration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(testHelper->_shaderSource, compilers);
 			auto pipelinePool = Techniques::CreatePipelineAcceleratorPool(
 				testHelper->_device,
 				testHelper->_pipelineLayout);
@@ -334,9 +342,13 @@ namespace UnitTests
 			auto pipelineFuture = pipelinePool->GetPipeline(*pipelineAccelerator, *cfg);
 			REQUIRE(pipelineFuture != nullptr);
 			pipelineFuture->StallWhilePending();
+			if (pipelineFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				Log(Error) << ::Assets::AsString(pipelineFuture->GetActualizationLog()) << std::endl;
+			}
 			auto pipeline = pipelineFuture->Actualize();
 			REQUIRE(pipeline != nullptr);
 
+			compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
 			compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);
 		}
 

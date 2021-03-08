@@ -849,7 +849,18 @@ namespace Assets
 	}
 	::Assets::DepValPtr BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	BlobArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParams); }
-	AssetState BlobArtifactCollection::GetAssetState() const { return AssetState::Ready; }
+	AssetState BlobArtifactCollection::GetAssetState() const 
+	{
+		if (_chunks.empty())
+			return AssetState::Invalid;
+		// If we have just a single chunk, of type "ChunkType_Log", we'll consider this collection invalid
+		// most compilers will generate a "log" chunk on failure containing error information
+		// This is just a simple way to propagate this "invalid" state -- it does mean that we can't have
+		// any assets that are normally just a "log" chunk be considered valid
+		if (_chunks.size() == 1 && _chunks[0]._type == ChunkType_Log)
+			return AssetState::Invalid;
+		return AssetState::Ready; 
+	}
 	BlobArtifactCollection::BlobArtifactCollection(
 		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 		const ::Assets::DepValPtr& depVal, const std::string& collectionName, const rstring& requestParams)

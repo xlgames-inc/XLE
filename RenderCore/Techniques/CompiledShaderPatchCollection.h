@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../ShaderService.h"
 #include "../Assets/ShaderPatchCollection.h"
 #include "../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../Assets/AssetsCore.h"
@@ -81,7 +82,6 @@ namespace RenderCore { namespace Techniques
 		void BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst);
 	};
 
-
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const
 	{
 		auto iterator = std::find_if(
@@ -89,5 +89,17 @@ namespace RenderCore { namespace Techniques
 			[implementing](const Patch& patch) { return patch._implementsHash == implementing; });
 		return iterator != _patches.end();
 	}
+
+	class CompiledShaderByteCode_InstantiateShaderGraph : public CompiledShaderByteCode
+	{
+	public:
+		static const uint64 CompileProcessType;
+
+		using CompiledShaderByteCode::CompiledShaderByteCode;
+	};
+
+	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
+		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		::Assets::IntermediateCompilers& intermediateCompilers);
 
 }}
