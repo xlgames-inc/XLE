@@ -141,6 +141,12 @@ namespace Assets
 				return str << HashParam_Single(value);
 			}
 
+		template<typename Type>
+			std::ostream& StreamWithHashFallback(std::ostream& str, const std::shared_ptr<Type>& value)
+			{
+				return str << HashParam_Single(value);
+			}
+
 		template <typename Object>
 			inline void StreamDashSeparated(std::basic_stringstream<char>& result, const Object& obj)
 		{

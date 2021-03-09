@@ -127,6 +127,7 @@ namespace GraphLanguage
 			rSig._sourceFile = existing->second->GetSourceFileName();
 			rSig._isGraphSyntax = existing->second->_isGraphSyntaxFile;
 			rSig._depVal = existing->second->GetDependencyValidation();
+			rSig._fileState = existing->second->GetFileState();
 			result.push_back(rSig);
 		}
 		return result;

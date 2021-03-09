@@ -543,6 +543,7 @@ namespace Assets
 
 		for (const auto& s:dependencies) {
 			auto filename = MakeSplitPath(s._filename).Simplify().Rebuild();
+			assert(!filename.empty());
 			compileProductsFile._dependencies.push_back({filename, s._timeMarker});
 		}
 

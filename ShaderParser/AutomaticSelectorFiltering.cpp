@@ -258,6 +258,7 @@ namespace ShaderSourceParser
 					Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile + " (included from: " + fileIncludedFrom.AsString() + ")"));
 				Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile));
 			}
+			assert(!mainFileState._filename.empty());
 			_depFileStates.insert(mainFileState);
 			
 			auto result = Utility::GeneratePreprocessorAnalysis(

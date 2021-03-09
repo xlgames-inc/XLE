@@ -158,7 +158,8 @@ namespace RenderCore { namespace Techniques
 		if (!byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
 			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
 				*result,
-				[pipelineLayout](	const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
+				[pipelineLayout](
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
 					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode) {
 					return std::make_shared<Metal::ShaderProgram>(
 						Metal::GetObjectFactory(),
@@ -168,7 +169,8 @@ namespace RenderCore { namespace Techniques
 			// Odd ordering here intentional (because of idx of ShaderStage::Geometry)
 			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[2], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
 				*result,
-				[pipelineLayout](	const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
+				[pipelineLayout](
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
 					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& gsCode,
 					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode) {
 					return std::make_shared<Metal::ShaderProgram>(

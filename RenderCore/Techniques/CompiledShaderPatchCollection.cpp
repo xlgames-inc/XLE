@@ -84,9 +84,11 @@ namespace RenderCore { namespace Techniques
 		for (const auto&d:inst._depVals)
 			if (d)
 				::Assets::RegisterAssetDependency(_depVal, d);
-		for (const auto&d:inst._depFileStates)
+		for (const auto&d:inst._depFileStates) {
+			assert(!d._filename.empty());
 			if (std::find(_dependencies.begin(), _dependencies.end(), d) == _dependencies.end())
 				_dependencies.push_back(d);
+		}
 
 		_interface._filteringRules = inst._selectorRelevance;
 		for (const auto& rawShader:inst._rawShaderFileIncludes) {
@@ -211,6 +213,7 @@ namespace RenderCore { namespace Techniques
 
 		ISourceCodePreprocessor::SourceCodeWithRemapping result;
 		result._processedSource = output.str();
+		for (const auto& dep:patchCollection._dependencies) { assert(!dep._filename.empty()); }
 		result._dependencies.insert(
 			result._dependencies.end(),
 			patchCollection._dependencies.begin(), patchCollection._dependencies.end());
@@ -223,6 +226,7 @@ namespace RenderCore { namespace Techniques
 	static auto AssembleDirectFromFile(StringSection<> filename) -> ISourceCodePreprocessor::SourceCodeWithRemapping
 	{
 		assert(!XlEqString(filename, "-0"));
+		assert(!filename.IsEmpty());
 
 		// Fall back to loading the file directly (without any real preprocessing)
 		ISourceCodePreprocessor::SourceCodeWithRemapping result;

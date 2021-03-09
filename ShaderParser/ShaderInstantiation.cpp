@@ -210,7 +210,8 @@ namespace ShaderSourceParser
 			result._depVals.insert(instFn._depVals.begin(), instFn._depVals.end());
 			result._depFileStates.insert(instFn._depFileStates.begin(), instFn._depFileStates.end());
 			result._depVals.insert(inst._graph._depVal);
-			result._depFileStates.insert(inst._graph._fileState);
+			if (!inst._graph._fileState._filename.empty())
+				result._depFileStates.insert(inst._graph._fileState);
 
 			{
 				for (const auto&c:inst._graph._signature.GetCapturedParameters()) {

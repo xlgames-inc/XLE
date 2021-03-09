@@ -115,6 +115,7 @@ namespace ShaderSourceParser
         const auto& sig = sigResult.value()._signature;
 		assert(sigResult.value()._depVal);
 		depVals._depVals.insert(sigResult.value()._depVal);
+		assert(!sigResult.value()._fileState._filename.empty());
 		depVals._depFileStates.insert(sigResult.value()._fileState);
 
             // find a parameter with the right direction & name
@@ -395,6 +396,7 @@ namespace ShaderSourceParser
 
 			assert(sigProviderResult.value()._depVal);
 			depVals._depVals.insert(sigProviderResult.value()._depVal);
+			assert(!sigProviderResult.value()._fileState._filename.empty());
 			depVals._depFileStates.insert(sigProviderResult.value()._fileState);
 
             return result;
@@ -410,6 +412,7 @@ namespace ShaderSourceParser
 		result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
 		assert(sigProviderResult.value()._depVal);
 		depVals._depVals.insert(sigProviderResult.value()._depVal);
+		assert(!sigProviderResult.value()._fileState._filename.empty());
 		depVals._depFileStates.insert(sigProviderResult.value()._fileState);
         return result;
     }
@@ -479,6 +482,7 @@ namespace ShaderSourceParser
 				if (restrictionSignature) {
 					assert(restrictionSignature.value()._depVal);
 					depVals._depVals.insert(restrictionSignature.value()._depVal);
+					assert(!restrictionSignature.value()._fileState._filename.empty());
 					depVals._depFileStates.insert(restrictionSignature.value()._fileState);
 				}
 				for (const auto&c:nodeGraph.GetConnections()) {
