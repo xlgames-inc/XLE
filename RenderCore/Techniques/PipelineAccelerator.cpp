@@ -216,7 +216,7 @@ namespace RenderCore { namespace Techniques
 						&containingPipelineAccelerator->_materialSelectors,
 						&copyGlobalSelectors
 					};
-
+					
 					ScopedLock(sharedPools->_lock);
 					for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
 						if (!pipelineDesc->_shaders[c]._initializer.empty())
@@ -345,6 +345,7 @@ namespace RenderCore { namespace Techniques
 		void			RebuildAllOutOfDatePipelines() override;
 
 		const std::shared_ptr<IDevice>& GetDevice() const override;
+		const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() const override;
 
 		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		~PipelineAcceleratorPool();
@@ -615,6 +616,7 @@ namespace RenderCore { namespace Techniques
 	}
 
 	const std::shared_ptr<IDevice>& PipelineAcceleratorPool::GetDevice() const { return _device; }
+	const std::shared_ptr<ICompiledPipelineLayout>& PipelineAcceleratorPool::GetPipelineLayout() const { return _pipelineLayout; }
 
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 

@@ -81,6 +81,7 @@ namespace UnitTests
 				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
 				float3 SphericalToNormal(float2 coord, float time);
 				float4 SphericalToColor(float2 coord, float time);
+				float3 DeformPosition(float3 inputPosition, float3 inputNormal, float sphericalParam);
 
 				float3 SphericalToCartesian_YUp(float inc, float theta)
 				{
@@ -108,7 +109,6 @@ namespace UnitTests
 						return float2(0,0);
 					#endif
 				}
-
 				#endif
 			)--")),
 
@@ -122,7 +122,7 @@ namespace UnitTests
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
 				import spherical_prefix = "spherical_prefix.hlsl"
 
-				GBufferValues Spherical_PerPixel(
+				GBufferValues PerPixelImplementation(
 					VSOUT geo,
 					graph<spherical_prefix::SphericalToColor> colorGenerator,
 					graph<spherical_prefix::SphericalToNormal> normalGenerator) implements templates::PerPixel
@@ -144,6 +144,14 @@ namespace UnitTests
 						cookedLightOcclusion:"1",
 						transmission:"float3(0,0,0)").result;
 				}
+
+				float4 DeformPositionImplementation(float3 inputPosition, float3 inputNormal, float sphericalParam) implements spherical_prefix::DeformPosition
+				{
+					// return inputPosition + sin(sphericalParam) * 0.5 * inputNormal;
+					node extent = basic::Multiply1(lhs:basic::Sine1(x:sphericalParam).result, rhs:"0.25");
+					node term2 = basic::Multiply3Scalar(lhs:inputNormal, rhs:extent.result);
+					return basic::Add3(lhs:inputPosition, rhs:term2.result).result;
+				}
 			)--")),
 
 		// ---------------------------- spherical_generators.hlsl ----------------------------
@@ -159,9 +167,10 @@ namespace UnitTests
 
 				float4 MainSphericalToColor(float2 coord, float time)
 				{
-					float tx = 0.5f + 0.5f * sin(time + coord.x);
-					float ty = 0.5f + 0.5f * sin(time + coord.y);
-					return float4(tx,ty,0,1);
+					if ((frac(coord.x) < 0.5) ^ (frac(coord.y) < 0.5)) {
+						return float4(0,1,0,1);
+					} else
+						return float4(0,0,1,1);
 				}
 			)--")),
 
@@ -171,17 +180,51 @@ namespace UnitTests
 			::Assets::AsBlob(R"--(
 				#include "xleres/TechniqueLibrary/Framework/SystemUniforms.hlsl"
 				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
 				#include "spherical_prefix.hlsl"
 
 				VSOUT frameworkEntry(VSIN input)
 				{
 					VSOUT output;
 					output.position = mul(SysUniform_GetWorldToClip(), float4(input.position,1));
-					#if VSOUT_HAS_TEXCOORD>=1
+					#if VSOUT_HAS_TEXCOORD
 						output.texCoord = CartesianToSpherical_YUp(input.position).xy;
 					#endif
+					#if VSOUT_HAS_TANGENT_FRAME || VSOUT_HAS_NORMAL
+						TangentFrame tf = VSIN_GetWorldTangentFrame(input);
+						#if VSOUT_HAS_NORMAL
+							output.normal = tf.normal;
+						#endif
+						#if VSOUT_HAS_TANGENT_FRAME
+							output.tangent = tf.tangent;
+							output.bitangent = tf.bitangent;
+						#endif
+					#endif
 					return output;
-				}				
+				}
+
+				VSOUT frameworkEntryWithDeform(VSIN input)
+				{
+					VSOUT output;
+
+					float2 sphericalCoord = CartesianToSpherical_YUp(input.position).xy;
+					float3 deformedPosition = DeformPosition(input.position, VSIN_GetLocalNormal(input), 5.0 * (sphericalCoord.x + sphericalCoord.y));
+					output.position = mul(SysUniform_GetWorldToClip(), float4(deformedPosition,1));
+					#if VSOUT_HAS_TEXCOORD
+						output.texCoord = sphericalCoord;
+					#endif
+					#if VSOUT_HAS_TANGENT_FRAME || VSOUT_HAS_NORMAL
+						TangentFrame tf = VSIN_GetWorldTangentFrame(input);
+						#if VSOUT_HAS_NORMAL
+							output.normal = tf.normal;
+						#endif
+						#if VSOUT_HAS_TANGENT_FRAME
+							output.tangent = tf.tangent;
+							output.bitangent = tf.bitangent;
+						#endif
+					#endif
+					return output;
+				}
 			)--")),
 
 		// ---------------------------- framework-entry.pixel.hlsl ----------------------------
@@ -199,8 +242,10 @@ namespace UnitTests
 				{
 					GBufferValues sample = PerPixel(geo);
 
-					#if defined(OUTPUT_NORMAL)
-						return float4(0.5.xxx + 0.5 * sample.normal, 1.0);
+					#if defined(OUTPUT_RED)
+						return float4(1, 0, 0, 1);
+					#elif VSOUT_HAS_NORMAL
+						return float4(0.5.xxx + 0.5 * sample.worldSpaceNormal, sample.blendingAlpha);
 					#else
 						return float4(sample.diffuseAlbedo, sample.blendingAlpha);
 					#endif
@@ -216,6 +261,7 @@ namespace UnitTests
 			const RenderCore::Assets::RenderStateSet& input) override
 		{
 			const uint64_t perPixelPatchName = Hash64("PerPixel");
+			const uint64_t deformPositionPatchName = Hash64("DeformPosition");
 
 			auto perPixelPatch = std::find_if(
 				shaderPatches.GetPatches().begin(), shaderPatches.GetPatches().end(),
@@ -223,8 +269,15 @@ namespace UnitTests
 			if (perPixelPatch == shaderPatches.GetPatches().end())
 				Throw(std::runtime_error("A patch implementing the PerPixel interface must be implemented"));
 
+			bool hasDeformPosition = std::find_if(
+				shaderPatches.GetPatches().begin(), shaderPatches.GetPatches().end(),
+				[deformPositionPatchName](const auto& c) { return c._implementsHash == deformPositionPatchName; }) != shaderPatches.GetPatches().end();
+
 			auto desc = std::make_shared<GraphicsPipelineDesc>();
-			desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex]._initializer = "ut-data/framework-entry.vertex.hlsl:frameworkEntry";
+			if (hasDeformPosition) {
+				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex]._initializer = "ut-data/framework-entry.vertex.hlsl:frameworkEntryWithDeform";
+			} else
+				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex]._initializer = "ut-data/framework-entry.vertex.hlsl:frameworkEntry";
 			desc->_shaders[(unsigned)RenderCore::ShaderStage::Pixel]._initializer = "ut-data/framework-entry.pixel.hlsl:frameworkEntry";
 
 			for (unsigned c=0; c<dimof(desc->_shaders); ++c) {
@@ -237,6 +290,8 @@ namespace UnitTests
 			desc->_blend.push_back(RenderCore::AttachmentBlendDesc{});
 
 			desc->_patchExpansions.push_back(perPixelPatchName);
+			if (hasDeformPosition)
+				desc->_patchExpansions.push_back(deformPositionPatchName);
 			desc->_depVal = std::make_shared<::Assets::DependencyValidation>();
 
 			auto result = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("pipeline-for-unit-test");
@@ -249,10 +304,74 @@ namespace UnitTests
 	{
 		using namespace RenderCore;
 		Techniques::CameraDesc cameraDesc;
-		cameraDesc._cameraToWorld = MakeCameraToWorld(Float3{0.f, 0.f, 1.f}, Float3{0.f, 1.f, 0.f}, Float3{0.f, 0.f, -5.f});
+		Float3 fwd = Normalize(Float3 { 1.0f, -1.0f, 1.0f });
+		cameraDesc._cameraToWorld = MakeCameraToWorld(fwd, Float3{0.f, 1.f, 0.f}, -5.0f * fwd);
 		cameraDesc._projection = Techniques::CameraDesc::Projection::Orthogonal;
+		cameraDesc._left = -2.0f; cameraDesc._top = -2.0f;
+		cameraDesc._right = 2.0f; cameraDesc._bottom = 2.0f;
 		auto projDesc = Techniques::BuildProjectionDesc(cameraDesc, UInt2{ targetDesc._textureDesc._width, targetDesc._textureDesc._height });
 		return Techniques::BuildGlobalTransformConstants(projDesc);
+	}
+
+	static void DrawViaPipelineAccelerator(
+		const std::shared_ptr<RenderCore::IThreadContext>& threadContext,
+		UnitTestFBHelper& fbHelper,
+		const RenderCore::Techniques::GlobalTransformConstants& globalTransform,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelinePool,
+		const std::shared_ptr<RenderCore::Techniques::PipelineAccelerator>& pipelineAccelerator,
+		const std::shared_ptr<RenderCore::Techniques::SequencerConfig>& cfg,		
+		const RenderCore::IResource& vb, size_t vertexCount)
+	{
+		auto pipelineFuture = pipelinePool->GetPipeline(*pipelineAccelerator, *cfg);
+		REQUIRE(pipelineFuture != nullptr);
+		pipelineFuture->StallWhilePending();
+		if (pipelineFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+			Log(Error) << ::Assets::AsString(pipelineFuture->GetActualizationLog()) << std::endl;
+		}
+		auto pipeline = pipelineFuture->Actualize();
+		REQUIRE(pipeline != nullptr);
+
+		using namespace RenderCore;
+		UniformsStreamInterface usi;
+		usi.BindImmediateData(0, Hash64("GlobalTransform"));
+		Metal::BoundUniforms uniforms { *pipeline, usi };
+
+		{
+			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+
+			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder(pipelinePool->GetPipelineLayout());
+
+			UniformsStream uniformsStream;
+			uniformsStream._immediateData = { MakeOpaqueIteratorRange(globalTransform) };
+			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+			VertexBufferView vbvs[] = { &vb };
+			encoder.Bind(MakeIteratorRange(vbvs), {});
+			encoder.Draw(*pipeline, (unsigned)vertexCount);
+		}
+
+
+		static unsigned counter = 0;
+		fbHelper.SaveImage(
+			*threadContext,
+			(StringMeld<MaxPath>{} << "TechniqueDelegateTest-" << std::hex << counter).AsStringSection());
+		++counter;
+	}
+
+	static std::vector<RenderCore::InputElementDesc> RemoveTangentFrame(IteratorRange<const RenderCore::InputElementDesc*> input)
+	{
+		std::vector<RenderCore::InputElementDesc> result;
+		result.reserve(input.size());
+		for (const auto&c:input)
+			if (c._semanticName != "NORMAL" && c._semanticName != "TEXTANGENT" && c._semanticName != "TEXTANGENT") {
+				result.push_back(c);
+			} else {
+				auto d = c;
+				d._semanticName += "_DUMMY";
+				result.push_back(d);
+			}
+		return result;
 	}
 
 	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[shader_parser]" )
@@ -299,17 +418,37 @@ namespace UnitTests
 
 		SECTION("Retrieve graph based technique")
 		{
-			static const char sphericalCollectionFragments[] = R"--(
-			main=~
-				ut-data/spherical.graph::Spherical_PerPixel
-				colorGenerator=~
-					ut-data/spherical_generators.hlsl::MainSphericalToColor
-				normalGenerator=~
-					ut-data/spherical_generators.hlsl::MainSphericalToNormal
-			)--";
-			InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragments) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
-			auto compiledPatchCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
+			std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> compiledPatchCollectionNoDeform, compiledPatchCollectionWithDeform;
+
+			{
+				static const char sphericalCollectionFragmentsNoDeform[] = R"--(
+				main=~
+					ut-data/spherical.graph::PerPixelImplementation
+					colorGenerator=~
+						ut-data/spherical_generators.hlsl::MainSphericalToColor
+					normalGenerator=~
+						ut-data/spherical_generators.hlsl::MainSphericalToNormal
+				)--";
+				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsNoDeform) };
+				RenderCore::Assets::ShaderPatchCollection patchCollectionNoDeform(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				compiledPatchCollectionNoDeform = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollectionNoDeform);
+			}
+
+			{
+				static const char sphericalCollectionFragmentsWithDeform[] = R"--(
+				main=~
+					ut-data/spherical.graph::PerPixelImplementation
+					colorGenerator=~
+						ut-data/spherical_generators.hlsl::MainSphericalToColor
+					normalGenerator=~
+						ut-data/spherical_generators.hlsl::MainSphericalToNormal
+				deform=~
+					ut-data/spherical.graph::DeformPositionImplementation
+				)--";
+				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsWithDeform) };
+				RenderCore::Assets::ShaderPatchCollection patchCollectionWithDeform(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				compiledPatchCollectionWithDeform = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollectionWithDeform);
+			}
 
 			using namespace RenderCore;
 			auto testHelper = MakeTestHelper();
@@ -327,8 +466,11 @@ namespace UnitTests
 
 			UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
-			auto geo = ToolsRig::BuildGeodesicSphere();
-			auto vb = testHelper->CreateVB(geo);
+			auto sphereGeo = ToolsRig::BuildGeodesicSphere();
+			auto sphereVb = testHelper->CreateVB(sphereGeo);
+			auto simplifiedVertex3D = RemoveTangentFrame(ToolsRig::Vertex3D_InputLayout);
+
+			auto globalTransform = MakeGlobalTransformConstants(targetDesc);
 
 			threadContext->GetAnnotator().BeginFrameCapture();
 
@@ -348,45 +490,57 @@ namespace UnitTests
 				ParameterBox{}, 
 				fbHelper.GetDesc(), 0);
 
-			auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
-				compiledPatchCollection,
-				ParameterBox{},
-				ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
-				RenderCore::Assets::RenderStateSet{});
-			
-			auto pipelineFuture = pipelinePool->GetPipeline(*pipelineAccelerator, *cfg);
-			REQUIRE(pipelineFuture != nullptr);
-			pipelineFuture->StallWhilePending();
-			if (pipelineFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
-				Log(Error) << ::Assets::AsString(pipelineFuture->GetActualizationLog()) << std::endl;
-			}
-			auto pipeline = pipelineFuture->Actualize();
-			REQUIRE(pipeline != nullptr);
-
-			UniformsStreamInterface usi;
-			usi.BindImmediateData(0, Hash64("GlobalTransform"));
-			Metal::BoundUniforms uniforms { *pipeline, usi };
-
-			auto globalTransform = MakeGlobalTransformConstants(targetDesc);
+			auto cfgOutputRed = pipelinePool->CreateSequencerConfig(
+				techniqueDelegate,
+				ParameterBox{ std::make_pair("OUTPUT_RED", "1") }, 
+				fbHelper.GetDesc(), 0);
 
 			{
-				auto rpi = fbHelper.BeginRenderPass(*threadContext);
+				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+					compiledPatchCollectionNoDeform,
+					ParameterBox{},
+					ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
+					RenderCore::Assets::RenderStateSet{});
 
-				auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
-				auto encoder = metalContext.BeginGraphicsEncoder(testHelper->_pipelineLayout);
+				DrawViaPipelineAccelerator(
+					threadContext, fbHelper, globalTransform, pipelinePool,
+					pipelineAccelerator, cfg, 
+					*sphereVb, sphereGeo.size());
+			}
 
-				UniformsStream uniformsStream;
-				uniformsStream._immediateData = { MakeOpaqueIteratorRange(globalTransform) };
-				uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+			{
+				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+					compiledPatchCollectionNoDeform,
+					ParameterBox{},
+					simplifiedVertex3D, Topology::TriangleList,
+					RenderCore::Assets::RenderStateSet{});
 
-				VertexBufferView vbvs[] = { vb.get() };
-				encoder.Bind(MakeIteratorRange(vbvs), {});
-				encoder.Draw(*pipeline, geo.size());
+				DrawViaPipelineAccelerator(
+					threadContext, fbHelper, globalTransform, pipelinePool,
+					pipelineAccelerator, cfg, 
+					*sphereVb, sphereGeo.size());
+			}
+
+			{
+				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+					compiledPatchCollectionWithDeform,
+					ParameterBox{},
+					ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
+					RenderCore::Assets::RenderStateSet{});
+
+				DrawViaPipelineAccelerator(
+					threadContext, fbHelper, globalTransform, pipelinePool,
+					pipelineAccelerator, cfg, 
+					*sphereVb, sphereGeo.size());
+
+				// once again; except with the "OUTPUT_RED" configuration set
+				DrawViaPipelineAccelerator(
+					threadContext, fbHelper, globalTransform, pipelinePool,
+					pipelineAccelerator, cfgOutputRed, 
+					*sphereVb, sphereGeo.size());
 			}
 
 			threadContext->GetAnnotator().EndFrameCapture();
-
-			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 
 			compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
 			compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);

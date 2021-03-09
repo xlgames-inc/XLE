@@ -141,6 +141,8 @@ namespace ShaderSourceParser
 		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
 	{
+		_tokenDictionary._tokenDefinitions.clear();	// empty starting/default tokens
+
 		StringSection<> keyedItem;
 		while (formatter.TryKeyedItem(keyedItem)) {
 			RequireBeginElement(formatter);
@@ -211,7 +213,7 @@ namespace ShaderSourceParser
 		return filteringRules;
 	}
 
-	static ::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules)
+	::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules)
 	{
 		std::stringstream str;
 		str << "-------- Relevance Rules --------" << std::endl;

@@ -57,5 +57,7 @@ namespace ShaderSourceParser
 
 	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode);
 
+	::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules);
+
 }
 

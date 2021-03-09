@@ -18,6 +18,9 @@
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/SerializationUtils.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../../../Foreign/stb/stb_image_write.h"
+#include <filesystem>
 
 #if GFXAPI_TARGET == GFXAPI_DX11
 	#include "../../../RenderCore/Metal/State.h"
@@ -257,6 +260,45 @@ namespace UnitTests
 		for (auto p:pixels) ++result[p];
 
 		return result;
+	}
+
+	void UnitTestFBHelper::SaveImage(RenderCore::IThreadContext& threadContext, StringSection<> filename) const
+	{
+		auto desc = _pimpl->_mainTarget->GetDesc();
+		if (RenderCore::GetCompressionType(desc._textureDesc._format) != RenderCore::FormatCompressionType::None
+			|| RenderCore::GetComponentPrecision(desc._textureDesc._format) != 8)
+			Throw(std::runtime_error("Cannot output image in compressed or high precision format"));
+		auto components = RenderCore::GetComponents(desc._textureDesc._format);
+		unsigned compCount = 0;
+		switch (components) {
+		case RenderCore::FormatComponents::Alpha:
+		case RenderCore::FormatComponents::Luminance:
+			compCount = 1;
+			break;
+		case RenderCore::FormatComponents::LuminanceAlpha:
+		case RenderCore::FormatComponents::RG:
+			compCount = 2;
+			break;
+		case RenderCore::FormatComponents::RGB:
+			compCount = 3;
+			break;
+		case RenderCore::FormatComponents::RGBAlpha:
+			compCount = 4;
+			break;
+		default:
+			Throw(std::runtime_error("Component type not supported for image output"));
+		}
+
+		auto outputName = std::filesystem::temp_directory_path() / "xle-unit-tests" / (filename.AsString() + ".png");
+		
+		auto data = _pimpl->_mainTarget->ReadBackSynchronized(threadContext);		
+		auto res = stbi_write_png(
+			outputName.string().c_str(),
+			desc._textureDesc._width, desc._textureDesc._height,
+			compCount, 
+			AsPointer(data.begin()),
+			data.size() / desc._textureDesc._height);
+		assert(res != 0);
 	}
 
 	const std::shared_ptr<RenderCore::IResource> UnitTestFBHelper::GetMainTarget() const

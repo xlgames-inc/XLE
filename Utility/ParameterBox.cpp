@@ -701,8 +701,11 @@ namespace Utility
 	std::string BuildFlatStringTable(const ParameterBox& box)
 	{
 		std::stringstream str;
-		for (const auto&i:box)
-			str << i.Name() << '=' << i.ValueAsString() << ';';
+		bool first = true;
+		for (const auto&i:box) {
+			if (!first) str << ";"; first = false;
+			str << i.Name() << '=' << i.ValueAsString();
+		}
 		return str.str();
 	}
 

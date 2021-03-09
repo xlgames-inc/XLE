@@ -5,6 +5,48 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Screenshot.h"
+#include "../RenderCore/Format.h"
+#include "../Utility/Conversion.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Core/SelectConfiguration.h"
+#include <assert.h>
+
+// Some WinAPI-only stuff required -- 
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../OSServices/WinAPI/IncludeWindows.h"
+    #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+    #include "../RenderCore/DX11/Metal/Format.h"
+
+    namespace PlatformRig
+    {
+        void SaveImage(
+            const std::string& destinationFile,
+            const void* imageData,
+            VectorPattern<unsigned,2> dimensions,
+            unsigned rowPitch,
+            RenderCore::Format format)
+        {
+                // using DirectXTex to save to disk as a TGA file...
+            DirectX::Image image {
+                dimensions[0], dimensions[1],
+                RenderCore::Metal_DX11::AsDXGIFormat(format),
+                rowPitch, rowPitch * dimensions[1],
+                (uint8_t*)imageData };
+            auto fn = Conversion::Convert<std::basic_string<utf16>>(destinationFile);
+
+            // DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
+
+            const GUID GUID_ContainerFormatTiff = 
+                { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
+            auto hresult = DirectX::SaveToWICFile(
+                image, DirectX::WIC_FLAGS_NONE,
+                GUID_ContainerFormatTiff,
+                (const wchar_t*)fn.c_str());
+            (void)hresult;
+            assert(SUCCEEDED(hresult));
+        }
+    }
+#endif
 
 #if 0
 
@@ -31,7 +73,6 @@
 #include "../OSServices/RawFS.h"
 
 #include "../OSServices/WinAPI/IncludeWindows.h"
-#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 #include "../Foreign/half-1.9.2/include/half.hpp"
 #include "../RenderCore/DX11/Metal/Format.h"
 // #include <wincodec.h>        (avoiding an extra header from the winsdk by hard coding GUID_ContainerFormatTiff below)
@@ -40,33 +81,6 @@ namespace PlatformRig
 {
     using namespace SceneEngine;
     using namespace RenderCore;
-
-    static void SaveImage(
-        const char destinationFile[],
-        const void* imageData,
-        VectorPattern<unsigned,2> dimensions,
-        unsigned rowPitch,
-        Format format)
-    {
-            // using DirectXTex to save to disk as a TGA file...
-        DirectX::Image image {
-            dimensions[0], dimensions[1],
-            Metal_DX11::AsDXGIFormat(format),
-            rowPitch, rowPitch * dimensions[1],
-            (uint8_t*)imageData };
-        auto fn = Conversion::Convert<std::basic_string<utf16>>(std::string(destinationFile));
-
-        // DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
-
-        const GUID GUID_ContainerFormatTiff = 
-            { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
-        auto hresult = DirectX::SaveToWICFile(
-            image, DirectX::WIC_FLAGS_NONE,
-            GUID_ContainerFormatTiff,
-            (const wchar_t*)fn.c_str());
-        (void)hresult;
-        assert(SUCCEEDED(hresult));
-    }
 
     static intrusive_ptr<BufferUploads::DataPacket> RenderTiled(
         IThreadContext& context,

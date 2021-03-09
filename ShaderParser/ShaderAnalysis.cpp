@@ -319,7 +319,7 @@ namespace ShaderSourceParser
 		// if both SEL_0 and SEL_1 are defined, we have to be careful not to consider both
 		// irrelevant
 
-		for (ptrdiff_t c=filteredBox.GetCount()-1; c>0;) {
+		for (ptrdiff_t c=filteredBox.GetCount()-1; c>=0;) {
 			auto evaluating = filteredBox.at(c);
 			bool relevant = false;
 

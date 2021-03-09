@@ -59,6 +59,7 @@ namespace RenderCore { namespace Techniques
 		virtual void	RebuildAllOutOfDatePipelines() = 0;
 
 		virtual const std::shared_ptr<IDevice>& GetDevice() const = 0;
+		virtual const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() const = 0;
 
 		virtual ~IPipelineAcceleratorPool();
 

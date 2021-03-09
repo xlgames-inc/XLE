@@ -7,6 +7,8 @@
 #pragma once
 
 #include "../Math/Vector.h"
+#include "../Utility/IteratorUtils.h"
+#include <string>
 
 namespace SceneEngine
 {
@@ -15,7 +17,7 @@ namespace SceneEngine
 }
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class CameraDesc; } }
+namespace RenderCore { enum class Format; namespace Techniques { class ParsingContext; class CameraDesc; } }
 
 namespace PlatformRig
 {
@@ -26,5 +28,12 @@ namespace PlatformRig
         const RenderCore::Techniques::CameraDesc& camera,
         const SceneEngine::CompiledSceneTechnique& qualitySettings,
         UInt2 sampleCount);
+
+    void SaveImage(
+        const std::string& destinationFile,
+        const void* imageData,
+        VectorPattern<unsigned,2> dimensions,
+        unsigned rowPitch,
+        RenderCore::Format format);
 }
 

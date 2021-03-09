@@ -14,15 +14,15 @@ namespace ToolsRig
     namespace Internal
     {
         static RenderCore::InputElementDesc Vertex2D_InputLayout_[] = {
-            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32_FLOAT ),
-            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT )
+            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex2D, _position) ),
+            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex2D, _texCoord) )
         };
 
         static RenderCore::InputElementDesc Vertex3D_InputLayout_[] = {
-            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32B32_FLOAT ),
-            RenderCore::InputElementDesc(   "NORMAL", 0, RenderCore::Format::R32G32B32_FLOAT ),
-            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT ),
-            RenderCore::InputElementDesc( "TEXTANGENT", 0, RenderCore::Format::R32G32B32A32_FLOAT )//,
+            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32B32_FLOAT , 0, offsetof(Internal::Vertex3D, _position)),
+            RenderCore::InputElementDesc(   "NORMAL", 0, RenderCore::Format::R32G32B32_FLOAT, 0, offsetof(Internal::Vertex3D, _normal) ),
+            RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex3D, _texCoord) ),
+            RenderCore::InputElementDesc( "TEXTANGENT", 0, RenderCore::Format::R32G32B32A32_FLOAT, 0, offsetof(Internal::Vertex3D, _tangent) )//,
             //RenderCore::Metal::InputElementDesc( "TEXBITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
         };
     }
