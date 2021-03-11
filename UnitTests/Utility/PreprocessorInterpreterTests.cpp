@@ -5,17 +5,29 @@
 #include "../../Utility/Streams/PreprocessorInterpreter.h"
 #include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 #include "../../Utility/Streams/SerializationUtils.h"
+#include "../../Utility/ParameterBox.h"
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
 
 namespace Utility
 {
-	std::ostream& SerializationOperator(std::ostream& str, const RelevanceTable& table)
+	std::ostream& SerializationOperator(std::ostream& str, const Utility::PreprocessorAnalysis& analysis)
 	{
-		for (const auto& i:table._items)
-			str << "[" << i.first << "] = " << i.second << std::endl;
+		str << "-------- Relevance Rules --------" << std::endl;
+		for (const auto&r:analysis._relevanceTable)
+			str << "\t" << analysis._tokenDictionary.AsString({r.first}) << " = " << analysis._tokenDictionary.AsString(r.second) << std::endl;
+
+		str << "-------- Substitutions --------" << std::endl;
+		auto& subst = analysis._substitutionSideEffects;
+		for (const auto&r:subst._items)
+			str << "\t" << r.first << " = " << subst._dictionary.AsString(r.second) << std::endl;
+			
+		str << "-------- Default Sets --------" << std::endl;
+		for (const auto&r:subst._defaultSets)
+			str << "\t" << r.first << " = " << subst._dictionary.AsString(r.second) << std::endl;
 		return str;
 	}
 }
@@ -26,15 +38,15 @@ namespace UnitTests
 	TEST_CASE( "Utilities-ExpressionRelevance", "[utility]" )
 	{
 		const char* inputExpression0 = "(SEL0 || SEL1) && SEL2";
-		auto expression0Relevance = CalculatePreprocessorExpressionRevelance(inputExpression0);
+		auto expression0Relevance = GeneratePreprocessorAnalysis(inputExpression0);
 		std::cout << "Expression0 result: " << std::endl << expression0Relevance;
 
 		const char* inputExpression0a = "(SEL0 || defined(SEL1) || SEL2<5) && (SEL3 || defined(SEL4) || SEL5>=7)";
-		auto expression0aRelevance = CalculatePreprocessorExpressionRevelance(inputExpression0a);
+		auto expression0aRelevance = GeneratePreprocessorAnalysis(inputExpression0a);
 		std::cout << "Expression0a result: " << std::endl << expression0aRelevance;
 
 		const char* inputExpression1 = "(SEL0 || SEL1) && SEL2 && !SEL3 && (SEL4==2 || SEL5 < SEL6) || defined(SEL7)";
-		auto expression1Relevance = CalculatePreprocessorExpressionRevelance(inputExpression1);
+		auto expression1Relevance = GeneratePreprocessorAnalysis(inputExpression1);
 		std::cout << "Expression1 result: " << std::endl << expression1Relevance;
 	}
 
@@ -289,7 +301,60 @@ struct VSOUT /////////////////////////////////////////////////////
 
 	TEST_CASE( "Utilities-FileRelevance", "[utility]" )
 	{
-		GeneratePreprocessorAnalysis(s_testFile);
+		auto preprocAnalysis = GeneratePreprocessorAnalysis(s_testFile);
+
+		// We only care about AUTO_COTANGENT is GEO_HAS_NORMAL==1 or GEO_HAS_TEXTANGENT==1
+		auto autoCotangentRelevance = preprocAnalysis._relevanceTable[
+			preprocAnalysis._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, "AUTO_COTANGENT")];
+
+		auto expr = preprocAnalysis._tokenDictionary.AsString(autoCotangentRelevance);
+		INFO(expr);
+
+		ParameterBox env;
+		const ParameterBox* envBoxes[] = { &env };
+		REQUIRE(!preprocAnalysis._tokenDictionary.EvaluateExpression(autoCotangentRelevance, envBoxes));
+		
+		env.SetParameter("GEO_HAS_NORMAL", 1);
+		REQUIRE(preprocAnalysis._tokenDictionary.EvaluateExpression(autoCotangentRelevance, envBoxes));
+
+		env.SetParameter("GEO_HAS_NORMAL", 2);
+		env.SetParameter("GEO_HAS_TEXTANGENT", 1);
+		REQUIRE(preprocAnalysis._tokenDictionary.EvaluateExpression(autoCotangentRelevance, envBoxes));
+
+		env.SetParameter("GEO_HAS_TEXTANGENT", "nothing");
+		REQUIRE(!preprocAnalysis._tokenDictionary.EvaluateExpression(autoCotangentRelevance, envBoxes));
+	}
+
+	static std::string SimplifyExpression(StringSection<> input)
+	{
+		Utility::Internal::TokenDictionary dictionary;
+		auto tokenExpr = Utility::Internal::AsExpressionTokenList(dictionary, input);
+		dictionary.Simplify(tokenExpr);
+		auto res = dictionary.AsString(tokenExpr);
+
+		// Validate that if we parse in what we've written out, we'll get the same result again
+		// (this is mostly to check order of operations rules)
+		{
+			auto reconversion = Utility::Internal::AsExpressionTokenList(dictionary, res);
+			REQUIRE(tokenExpr == reconversion);
+		}
+
+		return res;
+	}
+
+	TEST_CASE( "Utilities-ExpressionSimplification", "[utility]" )
+	{
+		REQUIRE(SimplifyExpression("(A + B) * C") == "(A + B) * C");
+		REQUIRE(SimplifyExpression("(A * B) + C") == "C + A * B");
+		REQUIRE(SimplifyExpression("C * (A + B)") == "C * (A + B)");
+		REQUIRE(SimplifyExpression("!A && C") == "C && !A");
+		REQUIRE(SimplifyExpression("!(A && C)") == "!(A && C)");
+		REQUIRE(SimplifyExpression("!A == C") == "C == !A");
+
+		// We can simplify down many expressions just by identifying similar parts
+		REQUIRE(SimplifyExpression("((A < B) || (B >= A)) && ((B >= A) || (A < B))") == "A < B");
+		REQUIRE(SimplifyExpression("((A < B) || (C >= D)) && ((D < C) || (B >= A))") == "A < B || C >= D");
+		REQUIRE(SimplifyExpression("!(A == B) || !(C < D) || !(E != (A&B))") == "E == (A & B) || (A != B || C >= D)");
 	}
 	
 	TEST_CASE( "Utilities-ConditionalPreprocessingTest", "[utility]" )

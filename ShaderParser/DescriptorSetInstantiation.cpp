@@ -48,15 +48,12 @@ namespace ShaderSourceParser
 			if (c._direction != GraphLanguage::ParameterDirection::In)
 				continue;
 
-			auto descType = RenderCore::ShaderLangTypeNameAsDescriptorType(c._type);
-
-			DescriptorSlot newSlot;
-			newSlot._name = MakeGlobalName(c._name);
-			newSlot._type = descType != RenderCore::DescriptorType::Unknown ? descType : RenderCore::DescriptorType::ConstantBuffer;
+			DescriptorSlot newSlot;			
+			newSlot._type = RenderCore::ShaderLangTypeNameAsDescriptorType(c._type);
 
 			// If we didn't get a descriptor slot type from the type name, we'll treat this as a
 			// constant within a constant buffer
-			if (descType == RenderCore::DescriptorType::Unknown) {
+			if (newSlot._type == RenderCore::DescriptorType::Unknown) {
 				auto fmt = RenderCore::ShaderLangTypeNameAsTypeDesc(c._type);
 				if (fmt._type == ImpliedTyping::TypeCat::Void) {
 					warningStream << "\t// Could not convert type (" << c._type << ") to shader language type for capture (" << c._name << "). Skipping cbuffer entry." << std::endl;
@@ -84,6 +81,10 @@ namespace ShaderSourceParser
 						MakeStringSection(c._default));
 
 				newSlot._cbIdx = (unsigned)std::distance(workingCBs.begin(), cbi);
+				newSlot._name = cbName;
+				newSlot._type = RenderCore::DescriptorType::ConstantBuffer;
+			} else {
+				newSlot._name = MakeGlobalName(c._name);
 			}
 
 			if (objectsAlreadyStored.find(newSlot._name) == objectsAlreadyStored.end()) {

@@ -10,6 +10,7 @@
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/GraphSyntax.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
+#include "../../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
@@ -55,15 +56,16 @@ namespace UnitTests
 		std::make_pair("entryPointsInRawShader.pixel.hlsl", ::Assets::AsBlob(s_entryPointsInRawShader))
 	};
 
-	static void ExtractSelectorRelevance(
-		std::unordered_map<std::string, std::string>& result,
-		const GraphLanguage::GraphSyntaxFile& graphFile)
+	static std::unordered_map<std::string, std::string> ExtractSelectorRelevance(const GraphLanguage::GraphSyntaxFile& graphFile)
 	{
+		std::unordered_map<std::string, std::string> result;
 		for (const auto&sg:graphFile._subGraphs)
 			ShaderSourceParser::Internal::ExtractSelectorRelevance(result, sg.second._graph);
+		return result;
 	}
 
-	static ShaderSourceParser::ShaderSelectorAnalysis AnalyzeSelectorsFromGraphFile(StringSection<> fileName)
+	static ShaderSourceParser::SelectorFilteringRules GetSelectorRulesFromFile(StringSection<> filename);
+	static ShaderSourceParser::SelectorFilteringRules AnalyzeSelectorsFromGraphFile(StringSection<> fileName)
 	{
 		// Extract the shader relevance information from the given inputs
 		GraphLanguage::GraphSyntaxFile graphFile;
@@ -75,7 +77,7 @@ namespace UnitTests
 		
 		auto searchRules = ::Assets::DefaultDirectorySearchRules(fileName);
 		
-		ShaderSourceParser::ShaderSelectorAnalysis result;
+		ShaderSourceParser::SelectorFilteringRules result = ExtractSelectorRelevance(graphFile);
 		// extract relrevance from any imports
 		// imports can be graph syntax files or simple shaders
 		for (const auto& i:graphFile._imports) {
@@ -83,28 +85,48 @@ namespace UnitTests
 			searchRules.ResolveFile(resolved, MakeStringSection(i.second));
 			if (!resolved[0])
 				Throw(::Exceptions::BasicLabel("Could not resolve imported file (%s) when extracting shader relevance", i.second.c_str()));
-
-			size_t fileSize = 0;
-			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(resolved, &fileSize);
-
-			if (XlEqStringI(MakeFileNameSplitter(resolved).Extension(), "graph")) {
-				// consider this a graph file, and extract relevance from the graph file recursively
-				auto selectors = AnalyzeSelectorsFromGraphFile(resolved);
-				ShaderSourceParser::Utility::MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
-			} else {
-				// consider this a shader file, and extract 
-				auto expanded = ShaderSourceParser::ExpandIncludes(
-					MakeStringSection((char*)blob.get(), (char*)PtrAdd(blob.get(), fileSize)),
-					resolved, 
-					::Assets::DefaultDirectorySearchRules(resolved));
-				auto selectors = ShaderSourceParser::AnalyzeSelectors(expanded._processedSource);
-				ShaderSourceParser::Utility::MergeRelevance(result._selectorRelevance, selectors._selectorRelevance);
-			}
+			result.MergeIn(GetSelectorRulesFromFile(resolved));
 		}
 
-		// extract relevance from the graph file itself
-		ExtractSelectorRelevance(result._selectorRelevance, graphFile);
 		return result;
+	}
+
+	static ShaderSourceParser::SelectorFilteringRules GetSelectorRulesFromFile(StringSection<> filename)
+	{
+		if (XlEqStringI(MakeFileNameSplitter(filename).Extension(), "graph")) {
+			// consider this a graph file, and extract relevance from the graph file recursively
+			return AnalyzeSelectorsFromGraphFile(filename);
+		} else {
+			// consider this a shader file, and extract 
+			size_t fileSize = 0;
+			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &fileSize);
+
+			auto expanded = ShaderSourceParser::ExpandIncludes(
+				MakeStringSection((char*)blob.get(), (char*)PtrAdd(blob.get(), fileSize)),
+				filename.AsString(), 
+				::Assets::DefaultDirectorySearchRules(filename));
+			return ShaderSourceParser::GenerateSelectorFilteringRules(expanded._processedSource);
+		}
+	}
+
+	static std::string GetRelevanceAsString(const ShaderSourceParser::SelectorFilteringRules& rules, const std::string& entry)
+	{
+		auto token = rules._tokenDictionary.TryGetToken(Utility::Internal::TokenDictionary::TokenType::Variable, entry);
+		if (token.has_value()) {
+			auto i = rules._relevanceTable.find(token.value());
+			if (i != rules._relevanceTable.end())
+				return rules._tokenDictionary.AsString(i->second);
+		}
+
+		// search for defined(symbol) also..
+		token = rules._tokenDictionary.TryGetToken(Utility::Internal::TokenDictionary::TokenType::IsDefinedTest, entry);
+		if (token.has_value()) {
+			auto i = rules._relevanceTable.find(token.value());
+			if (i != rules._relevanceTable.end())
+				return rules._tokenDictionary.AsString(i->second);
+		}
+
+		return {};
 	}
 
 	TEST_CASE( "NodeGraphInstantiationTests", "[shader_parser]" )
@@ -177,28 +199,30 @@ namespace UnitTests
 				// There should be a "MaterialUniforms" CB in the instantiation
 				REQUIRE(inst._descriptorSet->_constantBuffers.size() == (size_t)2);
 				auto i = std::find_if(
-					inst._descriptorSet->_constantBuffers.begin(),
-					inst._descriptorSet->_constantBuffers.end(),
-					[](const RenderCore::Assets::PredefinedDescriptorSetLayout::ConstantBuffer& cb) {
-						return cb._name == "MaterialUniforms";
+					inst._descriptorSet->_slots.begin(),
+					inst._descriptorSet->_slots.end(),
+					[](const auto& slot) {
+						return slot._name == "MaterialUniforms";
 					});
-				REQUIRE(i != inst._descriptorSet->_constantBuffers.end());
+				REQUIRE(i != inst._descriptorSet->_slots.end());
+				REQUIRE(i->_cbIdx != ~0u);
 
 				const char* expectedMaterialUniforms[] = { "DiffuseColor", "AlphaWeight" };
 				for (auto u:expectedMaterialUniforms) {
+					const auto& elements = inst._descriptorSet->_constantBuffers[i->_cbIdx]->_elements;
 					auto i2 = std::find_if(
-						i->_layout->_elements.begin(),
-						i->_layout->_elements.end(),
+						elements.begin(),
+						elements.end(),
 						[u](const RenderCore::Assets::PredefinedCBLayout::Element& ele) {
 							return ele._name == u;
 						});
-					REQUIRE(i2 != i->_layout->_elements.end());
+					REQUIRE(i2 != elements.end());
 				}
 
 			} catch (const std::exception& e) {
 				std::stringstream str;
 				str << "Failed in complicated graph test, with exception message: " << e.what() << std::endl;
-				FAIL(ToString(str.str()).c_str());
+				FAIL(str.str());
 			}
 		}
 
@@ -234,19 +258,22 @@ namespace UnitTests
 		SECTION( "TestExtractSelectorRelevance" )
 		{
 			auto relevanceFromDirectAnalysis = AnalyzeSelectorsFromGraphFile("ut-data/complicated.graph");
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance.size() != (size_t)0);		// ensure that we got at least some
+			REQUIRE(relevanceFromDirectAnalysis._relevanceTable.size() != (size_t)0);		// ensure that we got at least some
 
 			// We're expecting the analysis to have found the link between SELECTOR_0 and SELECTOR_1
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance["SELECTOR_0"] == "defined(SELECTOR_1)");
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance["SELECTOR_1"] == "defined(SELECTOR_0)");
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance["ALPHA_TEST"] == "1");
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance["SIMPLE_BIND"] == "1");
+			REQUIRE(GetRelevanceAsString(relevanceFromDirectAnalysis, "SELECTOR_0") == "defined(SELECTOR_1)");
+			REQUIRE(GetRelevanceAsString(relevanceFromDirectAnalysis, "SELECTOR_1") == "defined(SELECTOR_0)");
+			REQUIRE(GetRelevanceAsString(relevanceFromDirectAnalysis, "ALPHA_TEST") == "1");
+			REQUIRE(GetRelevanceAsString(relevanceFromDirectAnalysis, "SIMPLE_BIND") == "1");
 
 			// ensure that there are no selectors that end in "_H" -- these indicate other defines in the shader, not
 			// selectors specifically
-			for (const auto& sel:relevanceFromDirectAnalysis._selectorRelevance)
-				if (sel.first.size() > 2 && *(sel.first.end()-2) == '_' && *(sel.first.end()-1) == 'H')
-					FAIL(ToString(std::string{"Found suspicious selector in selector relevance: "} + sel.first).c_str());
+			for (const auto& sel:relevanceFromDirectAnalysis._relevanceTable) {
+				auto name = relevanceFromDirectAnalysis._tokenDictionary.AsString({sel.first});
+				if ((name.size() > 2 && *(name.end()-2) == '_' && *(name.end()-1) == 'H')
+					|| (name.size() > 3 && *(name.end()-3) == '_' && *(name.end()-2) == 'H' && *(name.end()-1) == ')'))
+					FAIL(std::string{"Found suspicious selector in selector relevance: "} + name);
+			}
 
 			// Now do something similar using InstantiateShader, and ensure that we get the same result
 			// as we did in the case above
@@ -259,12 +286,31 @@ namespace UnitTests
 			auto inst = ShaderSourceParser::InstantiateShader(
 				MakeIteratorRange(&instRequest, &instRequest+1),
 				options, RenderCore::ShaderLanguage::HLSL);
-			auto relevanceViaInstantiateShader = inst._selectorRelevance;
-			ShaderSourceParser::Utility::MergeRelevanceFromShaderFiles(relevanceViaInstantiateShader, inst._rawShaderFileIncludes);
+			ShaderSourceParser::SelectorFilteringRules relevanceViaInstantiateShader = inst._selectorRelevance;
+			for (const auto& rawShader:inst._rawShaderFileIncludes)
+				relevanceViaInstantiateShader.MergeIn(GetSelectorRulesFromFile(rawShader));
 
-			REQUIRE(relevanceFromDirectAnalysis._selectorRelevance.size() != relevanceViaInstantiateShader.size());
-			for (const auto&r:relevanceFromDirectAnalysis._selectorRelevance)
-				REQUIRE(r.second != relevanceViaInstantiateShader[r.first]);
+			REQUIRE(relevanceFromDirectAnalysis._relevanceTable.size() != relevanceViaInstantiateShader._relevanceTable.size());
+			for (const auto&r:relevanceFromDirectAnalysis._relevanceTable) {
+				auto i = relevanceViaInstantiateShader._relevanceTable.find(relevanceViaInstantiateShader._tokenDictionary.Translate(relevanceFromDirectAnalysis._tokenDictionary, r.first));
+				if (i == relevanceViaInstantiateShader._relevanceTable.end()) continue;
+
+				auto lhsCopy = r.second;
+				auto rhsCopy = relevanceFromDirectAnalysis._tokenDictionary.Translate(relevanceViaInstantiateShader._tokenDictionary, i->second);
+				relevanceFromDirectAnalysis._tokenDictionary.Simplify(lhsCopy);
+				relevanceFromDirectAnalysis._tokenDictionary.Simplify(rhsCopy);
+				auto lhs = relevanceFromDirectAnalysis._tokenDictionary.AsString(lhsCopy);
+				auto rhs = relevanceFromDirectAnalysis._tokenDictionary.AsString(rhsCopy);
+				// Unfortunately we're not going to get identical results for every entry
+				// because we actually parse more files in the relevanceFromDirectAnalysis case
+				// But if the strings are the same length, they then should be identical, otherwise
+				// we should expect more conditions in the relevanceFromDirectAnalysis version
+				if (lhs.size() == rhs.size()) {
+					REQUIRE(lhs == rhs);
+				} else {
+					REQUIRE(lhs.size() > rhs.size());
+				}
+			}
 		}
 
 		SECTION( "TestGenerateTechniquePrebindData" )
