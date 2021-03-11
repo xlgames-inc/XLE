@@ -52,8 +52,9 @@ namespace Utility
 
 			bool EvaluateExpression(
 				const ExpressionTokenList& tokenList,
-				IteratorRange<const ParameterBox**> environment) const;
+				IteratorRange<ParameterBox const*const*> environment) const;
 			std::string AsString(const ExpressionTokenList& tokenList) const;
+			void Simplify(ExpressionTokenList&);
 
 			uint64_t CalculateHash() const;
 
@@ -104,8 +105,8 @@ namespace Utility
 
     PreprocessorAnalysis GeneratePreprocessorAnalysis(
 		StringSection<> input,
-		StringSection<> filenameForRelativeIncludeSearch,
-		IPreprocessorIncludeHandler* includeHandler);
+		StringSection<> filenameForRelativeIncludeSearch = {},
+		IPreprocessorIncludeHandler* includeHandler = nullptr);
 
 	class IPreprocessorIncludeHandler
 	{

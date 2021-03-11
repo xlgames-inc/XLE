@@ -482,6 +482,20 @@ namespace Utility
 
         return result;
     }
+
+    static bool IsNotDefinedCheck(
+        const Internal::TokenDictionary& dictionary,
+        IteratorRange<const unsigned*> expression,
+        unsigned definedCheckToken)
+    {
+        if (expression.size() != 3 || expression[1] != definedCheckToken) return false;
+
+        auto& token0 = dictionary._tokenDefinitions[expression[0]];
+        auto& token2 = dictionary._tokenDefinitions[expression[2]];
+        return
+            token0._type == Internal::TokenDictionary::TokenType::UnaryMarker
+            && token2._type == Internal::TokenDictionary::TokenType::Operation && XlEqString(token2._value, "!");
+    }
     
     PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input, StringSection<> filenameForRelativeIncludeSearch, IPreprocessorIncludeHandler* includeHandler)
     {
@@ -612,43 +626,46 @@ namespace Utility
                         break;
                     }
 
+                auto definedCheck = tokenDictionary.TryGetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value);
+
                 bool unconditionalSet = true;
                 bool gotNotDefinedCheck = false;
-                for (const auto& condition:conditionsStack) {
-                    if (!condition._negativeCond.empty()) {
+                for (auto condition=conditionsStack.rbegin(); condition!=conditionsStack.rend(); ++condition) {
+                    if (!condition->_negativeCond.empty()) {
                         unconditionalSet = false;
                         break;
                     }
                     // We're looking for "just true" or "just !defined(X)"
-                    if (condition._positiveCond.size() == 1) {
-                        if (condition._positiveCond[0] != 1) {
+                    if (condition->_positiveCond.size() == 1) {
+                        if (condition->_positiveCond[0] != 1) {
                             unconditionalSet = false;
                             break;
                         }
-                    } else if (condition._positiveCond.size() == 3) {
-                        auto& token0 = tokenDictionary._tokenDefinitions[condition._positiveCond[0]];
-                        auto& token1 = tokenDictionary._tokenDefinitions[condition._positiveCond[1]];
-                        auto& token2 = tokenDictionary._tokenDefinitions[condition._positiveCond[2]];
-                        bool matchingUndefinedCheck =
-                            token0._type == Internal::TokenDictionary::TokenType::UnaryMarker
-                            && token1._type == Internal::TokenDictionary::TokenType::IsDefinedTest && XlEqString(symbol._value, token1._value)
-                            && token2._type == Internal::TokenDictionary::TokenType::Operation && XlEqString(token2._value, "!");
-                        if (!matchingUndefinedCheck) {
-                            unconditionalSet = false;
-                            break;
-                        }
+                    } else if (definedCheck.has_value() && IsNotDefinedCheck(tokenDictionary, condition->_positiveCond, definedCheck.value())) {
+                        // Note that "gotNotDefinedCheck" will not be set to true if there are any non-true condition closer to the top
+                        // of the stack
                         gotNotDefinedCheck = true;
                     } else {
+                        unconditionalSet = false;
                         break;
                     }
                 }
 
-                if (unconditionalSet) {
-                    // If we're defining something with no value, and the only condition on the stack is a check to see
-                    // if that same symbol defined; let's assume this is a header guard type pattern, and just wipe out
-                    // the condition on the stack
-                    auto headerGuardDetection = !foundNonWhitespaceChar && gotNotDefinedCheck && conditionsStack.size()==1 && XlEqStringI(directive._value, "define");
-                    if (!headerGuardDetection) {
+                // If we're defining something with no value, and there is a !defined() check for the same
+                // variable on the conditions stack, and there are no conditionals later on the stack than
+                // that check, then let's assume this is a header guard type pattern, and just wipe out
+                // the condition on the stack
+                // The header guard check needs to trigger even if there are conditions closer to the bottom
+                // of the stack to handle strings that have already had #includes expanded. Ie, if we see
+                // something like "#if <something>\n #include <something>\n #endif" then we might end up with
+                // a header guard inside of some conditional check
+                auto headerGuardDetection = !foundNonWhitespaceChar && XlEqStringI(directive._value, "define") && gotNotDefinedCheck;
+                if (!headerGuardDetection) {
+                    if (unconditionalSet) {
+                        if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                            std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
+                        }
+
                         // It could be an unconditional substitution, or it could be set in different ways
                         // depending on the conditions on the stack.
                         // Conditional sets add some complexity -- we can't actually think of it as just a straight
@@ -682,24 +699,26 @@ namespace Utility
                                 activeSubstitutions._items.erase(subs);
                         }
                     } else {
-                        auto tableEntry = tokenDictionary.GetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
-                        auto i = relevanceTable.find(tableEntry);
-                        if (i != relevanceTable.end())
-                            relevanceTable.erase(i);
-
-                        // By the check above, any size 3 positive conditions are just !defined(X).
-                        // We will just clear them out here, because we won't want them to appear in the
-                        // relevance conditions
-                        for (auto& condition:conditionsStack)
-                            if (condition._positiveCond.size() == 3)
-                                conditionsStack[0]._positiveCond = {1};
+                        // The state of this variable will vary based on
+                        // We can still support this, but it requires building a relevance table for
+                        // the symbol here; and then any expression that uses this symbol should then
+                        // merge in the relevance information for it
+                        if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                            std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
+                        } else {
+                            std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
+                        }
                     }
-                } else {
-                    // The state of this variable will vary based on
-                    // We can still support this, but it requires building a relevance table for
-                    // the symbol here; and then any expression that uses this symbol should then
-                    // merge in the relevance information for it
-                    std::cout << "Conditional substitution for " << symbol._value << " ignored." << std::endl;
+                 } else {
+                    auto i = relevanceTable.find(definedCheck.value());
+                    if (i != relevanceTable.end())
+                        relevanceTable.erase(i);
+
+                    // Clear out the !defined() checks for this header guard, because we won't want them to appear in the
+                    // relevance conditions
+                    for (auto& condition:conditionsStack)
+                        if (condition._negativeCond.empty() && IsNotDefinedCheck(tokenDictionary, condition._positiveCond, definedCheck.value()))
+                            condition._positiveCond = {1};
                 }
 
             } else if (XlEqStringI(directive._value, "include")) {
@@ -744,7 +763,7 @@ namespace Utility
             } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
 
                 // These don't have any effects relevant to us. We can just go ahead and skip them
-                helper.SkipUntilNextPreproc();
+                helper.ReadUntilEndOfLine();
 
             } else {
 

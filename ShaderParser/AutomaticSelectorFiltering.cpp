@@ -96,17 +96,17 @@ namespace ShaderSourceParser
 				_tokenDictionary.Translate(source._tokenDictionary, e.second)));
 		}
 
-		Utility::Internal::MergeRelevanceTables(
+		_relevanceTable = Utility::Internal::MergeRelevanceTables(
 			_relevanceTable, {},
 			translatedRelevance, {});
 
 		for (const auto& sideEffect:source._defaultSets) {
 			auto key = _tokenDictionary.Translate(source._tokenDictionary, sideEffect.first);
-			if (_defaultSets.find(sideEffect.first) != _defaultSets.end())
+			if (_defaultSets.find(key) != _defaultSets.end())
 				continue;
 
 			_defaultSets.insert(std::make_pair(
-				sideEffect.first,
+				key,
 				_tokenDictionary.Translate(source._tokenDictionary, sideEffect.second)));
 		}
 
@@ -213,23 +213,22 @@ namespace ShaderSourceParser
 		return filteringRules;
 	}
 
-	::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules)
+	std::ostream& SerializationOperator(std::ostream& str, const SelectorFilteringRules& rules)
 	{
-		std::stringstream str;
 		str << "-------- Relevance Rules --------" << std::endl;
 		for (const auto&r:rules._relevanceTable)
-			str << "\t" << rules._tokenDictionary.AsString({r.first}) << " = " << rules._tokenDictionary.AsString(r.second) << std::endl;
+			str << "\t" << rules._tokenDictionary.AsString({r.first}) << " : " << rules._tokenDictionary.AsString(r.second) << std::endl;
 
 		str << std::endl;
 		str << "-------- Default Sets --------" << std::endl;
 		for (const auto&r:rules._defaultSets) {
 			if (!r.second.empty()) {
-				str << "\t" << rules._tokenDictionary.AsString({r.first}) << " = " << rules._tokenDictionary.AsString(r.second) << std::endl;
+				str << "\t" << rules._tokenDictionary.AsString({r.first}) << " : " << rules._tokenDictionary.AsString(r.second) << std::endl;
 			} else {
-				str << "\t" << rules._tokenDictionary.AsString({r.first}) << " = <<no value>>" << std::endl;
+				str << "\t" << rules._tokenDictionary.AsString({r.first}) << " : <<no value>>" << std::endl;
 			}
 		}
-		return ::Assets::AsBlob(str.str());
+		return str;
 	}
 
 	class IncludeHandler : public IPreprocessorIncludeHandler
@@ -311,10 +310,16 @@ namespace ShaderSourceParser
 			filteringRules._tokenDictionary = analysis._tokenDictionary;
 			filteringRules._relevanceTable = analysis._relevanceTable;
 
-			for (const auto&s:analysis._substitutionSideEffects._defaultSets)
+			for (auto& s:filteringRules._relevanceTable)
+				filteringRules._tokenDictionary.Simplify(s.second);
+
+			for (const auto&s:analysis._substitutionSideEffects._defaultSets) {
+				auto trans = filteringRules._tokenDictionary.Translate(analysis._substitutionSideEffects._dictionary, s.second);
+				filteringRules._tokenDictionary.Simplify(trans);
 				filteringRules._defaultSets.insert(std::make_pair(
 					filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s.first),
-					filteringRules._tokenDictionary.Translate(analysis._substitutionSideEffects._dictionary, s.second)));
+					trans));
+			}
 
 			MemoryOutputStream<> memStream;
 			OutputStreamFormatter fmttr(memStream);
@@ -334,7 +339,9 @@ namespace ShaderSourceParser
 				artifact._type = ChunkType_Metrics;
 				artifact._name = "metrics";
 				artifact._version = 1;
-				artifact._data = GenerateMetricsFile(filteringRules);
+				std::stringstream str;
+				str << filteringRules;
+				artifact._data = ::Assets::AsBlob(str.str());
 				_artifacts.push_back(std::move(artifact));
 			}
 

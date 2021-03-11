@@ -10,6 +10,7 @@
 #include "../Utility/Streams/PreprocessorInterpreter.h"
 #include "../Utility/MemoryUtils.h"
 #include <memory>
+#include <iosfwd>
 
 namespace Utility { class OutputStreamFormatter; }
 namespace Assets { class ICompileOperation; class DirectorySearchRules; }
@@ -57,7 +58,7 @@ namespace ShaderSourceParser
 
 	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode);
 
-	::Assets::Blob GenerateMetricsFile(const SelectorFilteringRules& rules);
+	std::ostream& SerializationOperator(std::ostream&, const SelectorFilteringRules& rules);
 
 }
 

@@ -49,22 +49,22 @@ namespace preprocessor_operations
 		return left != right;
 	}
 
-	static packToken UnaryNumeralOperation_Internal(const packToken& left, const packToken& right, const std::string& op)
+	static packToken UnaryNumeralOperation_Internal(const packToken& operand, const std::string& op)
 	{
 		if (op == "+") {
-			return right;
+			return operand;
 		} else if (op == "-") {
-			return -right.asDouble();
+			return -operand.asDouble();
 		} else if (op == "!") {
-			return !right.asBool();
+			return !operand.asBool();
 		} else {
-			throw undefined_operation(op, left, right);
+			throw undefined_operation(op, packToken{}, operand);
 		}
 	}
 
 	static packToken UnaryNumeralOperation(const packToken& left, const packToken& right, evaluationData* data)
 	{
-		return UnaryNumeralOperation_Internal(left, right, data->op);
+		return UnaryNumeralOperation_Internal(right, data->op);
 	}
 
 	static packToken NumeralOperation_Internal(const packToken& left, const packToken& right, const std::string& op)
@@ -110,8 +110,55 @@ namespace preprocessor_operations
 			return left_i && right_i;
 		} else if (op == "||") {
 			return left_i || right_i;
+		} else if (op == "==") {
+			return Equal(left, right, nullptr);
+		} else if (op == "!=") {
+			return Different(left, right, nullptr);
 		} else {
 			throw undefined_operation(op, left, right);
+		}
+	}
+
+	static StringSection<> NumeralOperation_FlippedOperandOperator(StringSection<char> op)
+	{
+		if (	XlEqString(op, "+")
+			|| 	XlEqString(op, "&")
+			|| 	XlEqString(op, "|")
+			|| 	XlEqString(op, "^")
+			|| 	XlEqString(op, "&&")
+			|| 	XlEqString(op, "||")
+			||  XlEqString(op, "==")
+			||  XlEqString(op, "!=")) {
+			return op;
+		} else if (XlEqString(op, "<")) {
+			return ">=";
+		} else if (XlEqString(op, ">")) {
+			return "<=";
+		} else if (XlEqString(op, "<=")) {
+			return ">";
+		} else if (XlEqString(op, ">=")) {
+			return "<";
+		} else {
+			return {};
+		}
+	}
+
+	static StringSection<> NumeralOperation_NegatedOperator(StringSection<char> op)
+	{
+		if (XlEqString(op, "==")) {
+			return "!=";
+		} else if (XlEqString(op, "!=")) {
+			return "==";
+		} else if (XlEqString(op, "<")) {
+			return ">=";
+		} else if (XlEqString(op, ">")) {
+			return "<=";
+		} else if (XlEqString(op, "<=")) {
+			return ">";
+		} else if (XlEqString(op, ">=")) {
+			return "<";
+		} else {
+			return {};
 		}
 	}
 
@@ -518,6 +565,93 @@ namespace Utility
 			return result;
 		}
 
+		bool Equal(IteratorRange<std::vector<unsigned>::iterator> lhs, IteratorRange<std::vector<unsigned>::iterator> rhs)
+		{
+			if (lhs.size() != rhs.size()) return false;
+			auto l = lhs.begin(), r = rhs.begin();
+			while (l != lhs.end())
+				if (*l++ != *r++) return false;
+			return true;
+		}
+
+		void TokenDictionary::Simplify(ExpressionTokenList& expr)
+		{
+			struct Subexpression
+			{
+				size_t _begin, _end;
+				unsigned _tokenWeight;
+			};
+			std::stack<Subexpression> evaluation;
+			for (size_t idx=0; idx<expr.size();) {
+				const auto& token = _tokenDefinitions[expr[idx]];
+				if (token._type == TokenType::Operation) {
+					auto rsub = std::move(evaluation.top()); evaluation.pop();
+					auto lsub = std::move(evaluation.top()); evaluation.pop();
+
+					auto rrange = MakeIteratorRange(expr.begin() + rsub._begin, expr.begin() + rsub._end);
+					auto lrange = MakeIteratorRange(expr.begin() + lsub._begin, expr.begin() + lsub._end);
+					bool identical = (rsub._tokenWeight == lsub._tokenWeight) && Equal(rrange, lrange);
+					if (identical) {
+						if (token._value == "&&" || token._value == "||") {
+							assert(lsub._begin < rsub._begin && lsub._end == rsub._begin);
+							expr.erase(expr.begin()+rsub._begin, expr.begin()+idx+1);
+							idx = lsub._end;
+							evaluation.push(lsub);
+							continue;
+						}
+					} else {
+						bool isUnary = ((lsub._end - lsub._begin) == 1) && _tokenDefinitions[expr[lsub._begin]]._type == TokenType::UnaryMarker;
+						if (!isUnary && lsub._tokenWeight > rsub._tokenWeight) {
+							// to try to encourage more identical matches, we will try to keep a consistent
+							// order. This might mean reversing lhs and rhs where it makes sense
+							// We will attempt to reverse as many operators as we can, but "&&" and "||" are going
+							// to be the most important ones
+							auto reversedOperator = preprocessor_operations::NumeralOperation_FlippedOperandOperator(token._value);
+							if (!reversedOperator.IsEmpty()) {
+								std::vector<unsigned> reversedPart;
+								reversedPart.reserve(rrange.end() - lrange.begin());
+								reversedPart.insert(reversedPart.end(), rrange.begin(), rrange.end());
+								reversedPart.insert(reversedPart.end(), lrange.begin(), lrange.end());
+								std::copy(reversedPart.begin(), reversedPart.end(), lrange.begin());
+								expr[idx] = GetToken(TokenType::Operation, reversedOperator.AsString());
+
+								// notice lsub & rsub reversed when calculating the "tokenWeight" just below
+								Subexpression subexpr { lsub._begin, idx + 1, lsub._tokenWeight ^ (rsub._tokenWeight << 3u) };
+								evaluation.push(subexpr);
+					 			++idx;
+								continue;
+							}
+						} else if (isUnary && token._value == "!" && !rrange.empty()) {
+							// sometimes we can removed a "!" by just changing the operator
+							// it applies to (ie; !(lhs < rhs) becomes (lhs >= rhs))
+							const auto& internalOp = _tokenDefinitions[*(rrange.end()-1)];
+							if (internalOp._type == TokenType::Operation) {
+								auto negated = preprocessor_operations::NumeralOperation_NegatedOperator(internalOp._value);
+								if (!negated.IsEmpty()) {
+									*(rrange.end()-1) = GetToken(TokenType::Operation, negated.AsString());
+									expr.erase(expr.begin()+idx);
+									expr.erase(expr.begin()+lsub._begin);
+									idx -= 1;	// back one because we erased the unary marker
+									rsub._begin -= 1;
+									rsub._end -= 1;
+									evaluation.push(rsub);
+									continue;
+								}
+							}
+						}
+					}
+
+					Subexpression subexpr { lsub._begin, idx + 1, rsub._tokenWeight ^ (lsub._tokenWeight << 3u) };
+					evaluation.push(subexpr);
+					++idx;
+				} else {
+					Subexpression subexpr { idx, idx + 1, expr[idx] };
+					evaluation.push(subexpr);
+					++idx;
+				}
+			}
+		}
+
 		WorkingRelevanceTable MergeRelevanceTables(
 			const WorkingRelevanceTable& lhs, const ExpressionTokenList& lhsCondition,
 			const WorkingRelevanceTable& rhs, const ExpressionTokenList& rhsCondition)
@@ -554,41 +688,59 @@ namespace Utility
 
 		std::string TokenDictionary::AsString(const ExpressionTokenList& subExpression) const
 		{
-			std::stack<std::string> evaluation;
+			OppMap_t& opp = calculator::Default().opPrecedence;
+			std::stack<std::pair<std::string, unsigned>> evaluation;
 			for (auto tokenIdx:subExpression) {
 				const auto& token = _tokenDefinitions[tokenIdx];
 
 				if (token._type == TokenType::Operation) {
 					auto r_token = std::move(evaluation.top()); evaluation.pop();
 					auto l_token = std::move(evaluation.top()); evaluation.pop();
-					if (l_token.empty()) {	// we get an empty string for the unary marker
-						evaluation.push(Concatenate("(", token._value, r_token, ")"));
+
+					int opPrecedence = 0;
+					std::stringstream str;
+
+					if (l_token.first.empty()) {	// we get an empty string for the unary marker
+						opPrecedence = opp.prec("L"+token._value);
+						bool rhsNeedsBrackets = r_token.second >= opPrecedence;
+
+						str << token._value;
+						if (rhsNeedsBrackets) {
+							str << "(" << r_token.first << ")";
+						} else 
+							str << r_token.first;
 					} else {
-						evaluation.push(Concatenate("(", l_token, " ", token._value, " ", r_token, ")"));
+						opPrecedence = opp.prec(token._value);
+						bool lhsNeedsBrackets = l_token.second > opPrecedence;
+						bool rhsNeedsBrackets = r_token.second >= opPrecedence;
+
+						if (lhsNeedsBrackets) {
+							str << "(" << l_token.first << ")";
+						} else 
+							str << l_token.first;
+						str << " " << token._value << " ";
+						if (rhsNeedsBrackets) {
+							str << "(" << r_token.first << ")";
+						} else 
+							str << r_token.first;
 					}
+
+					evaluation.push(std::make_pair(str.str(), opPrecedence));
 				} else if (token._type == TokenType::UnaryMarker) {
-					evaluation.push({});
+					evaluation.push(std::make_pair(std::string{}, 0));
 				} else if (token._type == TokenType::IsDefinedTest) {
-					evaluation.push(Concatenate("defined(", token._value, ")"));
+					evaluation.push(std::make_pair(Concatenate("defined(", token._value, ")"), 0));
 				} else {
-					evaluation.push(token._value);
+					evaluation.push(std::make_pair(token._value, 0));
 				}
 			}
 			assert(evaluation.size() == 1);
-			auto res = evaluation.top();
-
-			// We often end up with a set of brackets that surround the whole thing. Let's just
-			// remove that if we find it
-			if (res.size() > 2 && *res.begin() == '(' && *(res.end()-1) == ')') {
-				res.erase(res.begin());
-				res.erase(res.end()-1);
-			}
-			return res;
+			return evaluation.top().first;
 		}
 
 		bool TokenDictionary::EvaluateExpression(
 			const ExpressionTokenList& tokenList,
-			IteratorRange<const ParameterBox**> environment) const
+			IteratorRange<ParameterBox const*const*> environment) const
 		{
 			struct IntToken
 			{
@@ -610,11 +762,13 @@ namespace Utility
 					auto r_token = std::move(evaluation.top()); evaluation.pop();
 					auto l_token = std::move(evaluation.top()); evaluation.pop();
 					if (l_token._type == TokenType::UnaryMarker) {
-						preprocessor_operations::UnaryNumeralOperation_Internal(
-							packToken{}, packToken(r_token._value), token._value);
+						auto val = preprocessor_operations::UnaryNumeralOperation_Internal(
+							packToken(r_token._value), token._value);
+						evaluation.push(IntToken { TokenType::Literal, (int)val.asInt() });
 					} else {
-						preprocessor_operations::UnaryNumeralOperation_Internal(
+						auto val = preprocessor_operations::NumeralOperation_Internal(
 							packToken{l_token._value}, packToken{r_token._value}, token._value);
+						evaluation.push(IntToken { TokenType::Literal, (int)val.asInt() });
 					}
 
 				} else if (token._type == TokenType::Variable) {
