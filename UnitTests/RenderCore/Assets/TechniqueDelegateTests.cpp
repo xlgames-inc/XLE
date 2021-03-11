@@ -374,7 +374,7 @@ namespace UnitTests
 		return result;
 	}
 
-	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[shader_parser]" )
+	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[rendercore_techniques]" )
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto xlresmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());

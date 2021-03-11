@@ -2,14 +2,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../RenderCore/Assets/PredefinedCBLayout.h"
-#include "../Math/Vector.h"
+#include "../../../RenderCore/Assets/PredefinedCBLayout.h"
+#include "../../../Utility/ImpliedTyping.h"
+#include "../../../Math/Vector.h"
+#include "../../../Math/MathSerialization.h"
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
-#if !defined(XC_TEST_ADAPTER)
-    #include <CppUnitTest.h>
-    using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-#endif
-
+using namespace Catch::literals;
 namespace UnitTests
 {
 	using NameAndType = RenderCore::Assets::PredefinedCBLayout::NameAndType;
@@ -44,34 +44,30 @@ namespace UnitTests
 		NameAndType { "f_d", ImpliedTyping::TypeOf<float>() }
 	};
 
-    TEST_CLASS(PredefinedCBLayout)
+	TEST_CASE( "PredefinedCBLayout-OptimizeElementOrder", "[rendercore_assets]" )
 	{
-	public:
-		TEST_METHOD(OptimizeElementOrder)
-		{
-            auto shdLang = RenderCore::ShaderLanguage::HLSL;
+		auto shdLang = RenderCore::ShaderLanguage::HLSL;
 
-            RenderCore::Assets::PredefinedCBLayout poorlyOrdered(
-				MakeIteratorRange(s_poorlyOrdered));
-			RenderCore::Assets::PredefinedCBLayout wellOrdered(
-				MakeIteratorRange(s_wellOrdered));
+		RenderCore::Assets::PredefinedCBLayout poorlyOrdered(
+			MakeIteratorRange(s_poorlyOrdered));
+		RenderCore::Assets::PredefinedCBLayout wellOrdered(
+			MakeIteratorRange(s_wellOrdered));
 
-			auto reorderedPoorEle = s_poorlyOrdered;
-			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedPoorEle), shdLang);
+		auto reorderedPoorEle = s_poorlyOrdered;
+		RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedPoorEle), shdLang);
 
-			auto reorderedWellEle = s_wellOrdered;
-			RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedWellEle), shdLang);
+		auto reorderedWellEle = s_wellOrdered;
+		RenderCore::Assets::PredefinedCBLayout::OptimizeElementOrder(MakeIteratorRange(reorderedWellEle), shdLang);
 
-			RenderCore::Assets::PredefinedCBLayout reorderedPoor(
-				MakeIteratorRange(reorderedPoorEle));
-			RenderCore::Assets::PredefinedCBLayout reorderedWell(
-				MakeIteratorRange(reorderedWellEle));
+		RenderCore::Assets::PredefinedCBLayout reorderedPoor(
+			MakeIteratorRange(reorderedPoorEle));
+		RenderCore::Assets::PredefinedCBLayout reorderedWell(
+			MakeIteratorRange(reorderedWellEle));
 
-			Assert::AreEqual(wellOrdered.GetSize(shdLang), reorderedWell.GetSize(shdLang));
-			Assert::AreEqual(wellOrdered.GetSize(shdLang), reorderedPoor.GetSize(shdLang));
-			Assert::IsTrue(poorlyOrdered.GetSize(shdLang) > wellOrdered.GetSize(shdLang));
-			Assert::AreEqual(reorderedWell.CalculateHash(), reorderedPoor.CalculateHash());
-        }
-    };
+		REQUIRE(wellOrdered.GetSize(shdLang) == reorderedWell.GetSize(shdLang));
+		REQUIRE(wellOrdered.GetSize(shdLang) == reorderedPoor.GetSize(shdLang));
+		REQUIRE(poorlyOrdered.GetSize(shdLang) > wellOrdered.GetSize(shdLang));
+		REQUIRE(reorderedWell.CalculateHash() == reorderedPoor.CalculateHash());
+	}
 }
 
