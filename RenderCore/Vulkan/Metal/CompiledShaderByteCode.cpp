@@ -220,6 +220,34 @@ namespace RenderCore { namespace Metal_Vulkan
 			AsPointer(str.begin()), AsPointer(str.end()));
 	}
 
+	static std::string MakeDefinesPreamble(StringSection<> definesTable)
+	{
+		std::stringstream definesPreamble;
+        {
+            auto p = definesTable.begin();
+            while (p != definesTable.end()) {
+                while (p != definesTable.end() && std::isspace(*p)) ++p;
+
+                auto definition = std::find(p, definesTable.end(), '=');
+                auto defineEnd = std::find(p, definesTable.end(), ';');
+
+                auto endOfName = std::min(defineEnd, definition);
+                while ((endOfName-1) > p && std::isspace(*(endOfName-1))) ++endOfName;
+
+                if (definition < defineEnd) {
+                    auto e = definition+1;
+                    while (e < defineEnd && std::isspace(*e)) ++e;
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "\n";
+                } else {
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << "\n";
+                }
+
+                p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
+            }
+        }
+		return definesPreamble.str();
+	}
+
 	static bool GLSLtoSPV(
 		/*out*/ ::Assets::Blob& payload,
 		/*out*/ ::Assets::Blob& errors,
@@ -238,11 +266,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		glslang::TShader shader(shaderType);
 
-		assert(definesTable.IsEmpty());		// todo -- we need to add a string setting all of these defines
-
-		const char *shaderStrings[1] { glslSource.begin() };
-		int shaderStringLengths[1] { (int)glslSource.size() };
-		shader.setStringsWithLengths(shaderStrings, shaderStringLengths, 1);
+		if (!definesTable.IsEmpty()) {
+			auto definesPreamble = MakeDefinesPreamble(definesTable);
+			const char *shaderStrings[2] { definesPreamble.data(), glslSource.begin() };
+			int shaderStringLengths[2] { (int)definesPreamble.size(), (int)glslSource.size() };
+			shader.setStringsWithLengths(shaderStrings, shaderStringLengths, dimof(shaderStrings));
+		} else {
+			const char *shaderStrings[1] { glslSource.begin() };
+			int shaderStringLengths[1] { (int)glslSource.size() };
+			shader.setStringsWithLengths(shaderStrings, shaderStringLengths, dimof(shaderStrings));
+		}
 		if (!shader.parse(&builtInLimits, 100, false, messages)) {
 			AppendErrors(errors, shader);
 			return false;
@@ -487,6 +520,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	protected:
 		VulkanCompilerConfiguration _cfg;
+
+		bool DoLowLevelCompileInternal(
+			/*out*/ Payload& payload,
+			/*out*/ Payload& errors,
+			/*out*/ std::vector<::Assets::DependentFileState>& dependencies,
+			const void* sourceCode, size_t sourceCodeLength,
+			const ResId& shaderPath,
+			StringSection<::Assets::ResChar> identifier,
+			StringSection<::Assets::ResChar> definesTable,
+			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 	};
 
 	void GLSLToSPIRVCompiler::AdaptShaderModel(
@@ -507,16 +550,28 @@ namespace RenderCore { namespace Metal_Vulkan
 		StringSection<::Assets::ResChar> definesTable,
 		IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
 	{
-#if defined(HAS_SPIRV_HEADERS)
 		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
-		identifier << shaderPath._filename << "-" << shaderPath._entryPoint;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "[" << definesTable << "]";
+		return DoLowLevelCompileInternal(payload, errors, dependencies, sourceCode, sourceCodeLength, shaderPath, identifier.AsStringSection(), definesTable, sourceLineMarkers);
+	}
 		
+	bool GLSLToSPIRVCompiler::DoLowLevelCompileInternal(
+		/*out*/ ::Assets::Blob& payload,
+		/*out*/ ::Assets::Blob& errors,
+		/*out*/ std::vector<::Assets::DependentFileState>& dependencies,
+		const void* sourceCode, size_t sourceCodeLength,
+		const ILowLevelCompiler::ResId& shaderPath,
+		StringSection<::Assets::ResChar> identifier,
+		StringSection<::Assets::ResChar> definesTable,
+		IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
+	{
+#if defined(HAS_SPIRV_HEADERS)
 		return GLSLtoSPV(
 			payload, errors, 
 			EShLanguageFromShaderModel(shaderPath._shaderModel),
 			MakeStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength)),
 			definesTable,
-			identifier.AsStringSection(), shaderPath._shaderModel);
+			identifier, shaderPath._shaderModel);
 #else
 		return false;
 #endif
@@ -660,11 +715,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	
 		// Third, GLSL source -> glslang::TShader -> SPIR-V bytecode
 		assert(GLSLShaderTypeToEShLanguage(glslShader.shaderType) == EShLanguageFromShaderModel(shaderPath._shaderModel));
-		return GLSLToSPIRVCompiler::DoLowLevelCompile(
+		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "[" << definesTable << "]";
+		return GLSLToSPIRVCompiler::DoLowLevelCompileInternal(
 			payload, errors, 
 			dependencies,
 			glslShader.sourceCode, std::strlen(glslShader.sourceCode),
-			shaderPath, {}, sourceLineMarkers);
+			shaderPath, identifier.AsStringSection(), {}, sourceLineMarkers);
 #else
 		return false;
 #endif

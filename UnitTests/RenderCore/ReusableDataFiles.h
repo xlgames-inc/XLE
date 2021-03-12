@@ -118,3 +118,15 @@ static const char* s_basicTechniqueFile = R"--(
 		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
 )--";
+
+static const char* s_basicFrameworkEntryPixel = R"--(
+	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/Nodes/Templates.sh"
+
+	float4 frameworkEntry(VSOUT geo) : SV_Target0
+	{
+		GBufferValues sample = PerPixel(geo);
+		return float4(sample.diffuseAlbedo, sample.blendingAlpha);
+	}
+)--";
+

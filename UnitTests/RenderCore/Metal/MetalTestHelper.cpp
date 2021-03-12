@@ -137,22 +137,10 @@ namespace UnitTests
 		if (glesDevice)
 			glesDevice->InitializeRootContextHeadless();
 
-		std::shared_ptr<RenderCore::ILowLevelCompiler> shaderCompiler;
-		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)_device->QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
-		if (vulkanDevice) {
-			// Vulkan allows for multiple ways for compiling shaders. The tests currently use a HLSL to GLSL to SPIRV 
-			// cross compilation approach
-			RenderCore::VulkanCompilerConfiguration cfg;
-			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
-			cfg._legacyBindings = CreateDefaultLegacyRegisterBindingDesc();
-			_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(cfg._legacyBindings);
-		 	shaderCompiler = vulkanDevice->CreateShaderCompiler(cfg);
-		} else {
-			shaderCompiler = _device->CreateShaderCompiler();
-		}
-
+		_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(CreateDefaultLegacyRegisterBindingDesc());
 		_pipelineLayout = CreateDefaultPipelineLayout(*_device);
 
+		auto shaderCompiler = CreateDefaultShaderCompiler(*_device);
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
 		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
 		_shaderService->SetShaderSource(_shaderSource);
@@ -192,6 +180,21 @@ namespace UnitTests
 		#else
 			#error GFX-API not handled in MakeTestHelper()
 		#endif
+	}
+
+	std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device)
+	{
+		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)device.QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
+		if (vulkanDevice) {
+			// Vulkan allows for multiple ways for compiling shaders. The tests currently use a HLSL to GLSL to SPIRV 
+			// cross compilation approach
+			RenderCore::VulkanCompilerConfiguration cfg;
+			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
+			cfg._legacyBindings = CreateDefaultLegacyRegisterBindingDesc();
+		 	return vulkanDevice->CreateShaderCompiler(cfg);
+		} else {
+			return device.CreateShaderCompiler();
+		}
 	}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

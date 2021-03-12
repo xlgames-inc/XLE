@@ -41,14 +41,15 @@ namespace UnitTests
 		SECTION("file1")
 		{
 			const char* techniqueFile = R"--(
-				~Shared
-					~Selectors
+				Shared=~
+					Selectors=~
 						CLASSIFY_NORMAL_MAP
-						~SKIP_MATERIAL_DIFFUSE; relevance=value!=0
+						SKIP_MATERIAL_DIFFUSE=~; relevance=<:(value!=0):>
+						SELECTOR_0=~; relevance=1
 
-				~Config
-					~Inherit; Shared
-					~Selectors
+				Config=~
+					Inherit=~; Shared
+					Selectors=~
 						SELECTOR_0=1
 			)--";
 
@@ -84,16 +85,16 @@ namespace UnitTests
 		SECTION("file2")
 		{
 			const char* techniqueFile = R"--(
-				~Shared
-					~Selectors
-						~SELECTOR_0; relevance=value!=0
-						SELECTOR_1=2
-						~SELECTOR_2; relevance=value!=5
+				Shared=~
+					Selectors=~
+						SELECTOR_0=~; relevance=<:(value!=0):>
+						SELECTOR_1=~; set=2; relevance=1
+						SELECTOR_2=~; relevance=<:(value!=5):>
 
-				~Config
-					~Inherit; Shared
-					~Selectors
-						~SELECTOR_0; relevance=value!=1
+				Config=~
+					Inherit=~; Shared
+					Selectors=~
+						SELECTOR_0=~; relevance=<:(value!=1):>
 						SELECTOR_1=3
 						SELECTOR_2=4
 			)--";

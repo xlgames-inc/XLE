@@ -123,8 +123,8 @@ namespace UnitTests
 				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
 				#include "xleres/TechniqueLibrary/Utility/Colour.hlsl"
 
-				Texture2D       Texture0		BIND_MAT_T0;		// Diffuse
-				Texture2D       Texture1		BIND_MAT_T1;		// Normal/Gloss
+				Texture2D       TextureDif		BIND_MAT_T0;
+				Texture2D       TextureNorm		BIND_MAT_T1;
 
 				PerPixelMaterialParam DefaultMaterialValues()
 				{
@@ -135,20 +135,20 @@ namespace UnitTests
 					return result;
 				}
 
-				GBufferValues PerPixel(VSOUT geo)
+				GBufferValues PerPixelWithSelectors(VSOUT geo)
 				{
 					GBufferValues result = GBufferValues_Default();
 					result.material = DefaultMaterialValues();
 
 					float4 diffuseTextureSample = 1.0.xxxx;
-					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Texture0!=0)
-						diffuseTextureSample = Texture0.Sample(MaybeAnisotropicSampler, geo.texCoord);
+					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_TextureDif!=0)
+						diffuseTextureSample = TextureDif.Sample(MaybeAnisotropicSampler, geo.texCoord);
 						result.diffuseAlbedo = diffuseTextureSample.rgb;
 						result.blendingAlpha = diffuseTextureSample.a;
 					#endif
 
-					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_Texture1!=0)
-						float3 normalMapSample = SampleNormalMap(Texture1, DefaultSampler, true, geo.texCoord);
+					#if (VSOUT_HAS_TEXCOORD>=1) && (RES_HAS_TextureNorm!=0)
+						float3 normalMapSample = SampleNormalMap(TextureNorm, DefaultSampler, true, geo.texCoord);
 						result.worldSpaceNormal = normalMapSample; // TransformNormalMapToWorld(normalMapSample, geo);
 					#elif (VSOUT_HAS_NORMAL==1)
 						result.worldSpaceNormal = normalize(geo.normal);
@@ -168,7 +168,7 @@ namespace UnitTests
 
 				GBufferValues Default_PerPixel(VSOUT geo) implements templates::PerPixel
 				{
-					return shader::PerPixel(geo:geo).result;
+					return shader::PerPixelWithSelectors(geo:geo).result;
 				}
 			)--")),
 
@@ -176,7 +176,8 @@ namespace UnitTests
 		std::make_pair("example.graph", ::Assets::AsBlob(s_exampleGraphFile)),
 		std::make_pair("complicated.graph", ::Assets::AsBlob(s_complicatedGraphFile)),
 		std::make_pair("internalShaderFile.pixel.hlsl", ::Assets::AsBlob(s_internalShaderFile)),
-		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph))
+		std::make_pair("internalComplicatedGraph.graph", ::Assets::AsBlob(s_internalComplicatedGraph)),
+		std::make_pair("frameworkEntry.pixel.hlsl", ::Assets::AsBlob(s_basicFrameworkEntryPixel)),
 	};
 
 	static void FakeChange(StringSection<> fn)
@@ -198,11 +199,11 @@ namespace UnitTests
 
 	TEST_CASE( "ShaderPatchCollection", "[rendercore_techniques]" )
 	{
-		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
-		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 
 		SECTION( "DeserializeShaderPatchCollection" )
 		{
@@ -260,11 +261,9 @@ namespace UnitTests
 			// mechanisms
 			auto testHelper = MakeTestHelper();
 			auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-				testHelper->_device->CreateShaderCompiler(),
+				CreateDefaultShaderCompiler(*testHelper->_device),
 				std::make_shared<ExpandIncludesPreprocessor>());
-			auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(customShaderSource, compilers);
-			auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 
 			const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 			
@@ -274,7 +273,7 @@ namespace UnitTests
 			std::vector<uint64_t> instantiations { Hash64("PerPixel") };
 
 			::Assets::InitializerPack initializers {
-				"ut-data/example-perpixel.pixel.hlsl:main:ps_*", 
+				"ut-data/frameworkEntry.pixel.hlsl:frameworkEntry:ps_*", 
 				"SOME_DEFINE=1",
 				compiledCollection,
 				instantiations
@@ -290,7 +289,6 @@ namespace UnitTests
 			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
 
-			compilers.DeregisterCompiler(filteringRegistration._registrationId);
 			compilers.DeregisterCompiler(compilerRegistration._registrationId);
 		}
 
@@ -326,11 +324,11 @@ namespace UnitTests
 			CompiledShaderPatchCollection compiledCollection(patchCollection);
 
 			// Check for some of the recognized properties, in particular look for shader selectors
-			// We're expecting the selectors "RES_HAS_Texture0" and "RES_HAS_Texture1"
+			// We're expecting the selectors "RES_HAS_TextureDif" and "RES_HAS_TextureNorm"
 			ParameterBox testBox { std::make_pair("VSOUT_HAS_TEXCOORD", "1") };
 			const ParameterBox* env[] = { &testBox };
-			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_Texture0", {}, MakeIteratorRange(env)));
-			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_Texture1", {}, MakeIteratorRange(env)));
+			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_TextureDif", {}, MakeIteratorRange(env)));
+			REQUIRE(compiledCollection.GetInterface().GetSelectorFilteringRules().IsRelevant("RES_HAS_TextureNorm", {}, MakeIteratorRange(env)));
 		}
 
 		SECTION( "TestCompiledShaderDependencyChecking" )
@@ -412,6 +410,7 @@ namespace UnitTests
 			}
 		}
 
+		compilers.DeregisterCompiler(filteringRegistration._registrationId);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt1);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
 	}

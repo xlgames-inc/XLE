@@ -45,6 +45,8 @@ namespace UnitTests
         const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
         StringSection<> vs, StringSection<> ps);
 
+    std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device);
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    U N I T   T E S T   F B    H E L P E R
 

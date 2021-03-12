@@ -68,7 +68,7 @@ namespace UnitTests
 		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 
 		auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-			testHelper->_device->CreateShaderCompiler(),
+			CreateDefaultShaderCompiler(*testHelper->_device),
 			std::make_shared<ExpandIncludesPreprocessor>());
 
 		auto compilerRegistration = RenderCore::RegisterShaderCompiler(
@@ -100,7 +100,7 @@ namespace UnitTests
 			REQUIRE(blob->size() >= sizeof(ShaderService::ShaderHeader));
 			const auto& hdr = *(const ShaderService::ShaderHeader*)blob->data();
 			REQUIRE(hdr._version == ShaderService::ShaderHeader::Version);
-			REQUIRE(XlEqString(hdr._identifier, "ut-data/IncludeDirective.hlsl[SOME_DEFINE=1]"));
+			REQUIRE(hdr._identifier == std::string{"ut-data/IncludeDirective.hlsl-main[SOME_DEFINE=1]"});
 		}
 
 		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().DeregisterCompiler(compilerRegistration._registrationId);

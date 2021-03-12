@@ -298,7 +298,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             });
         OutputBlob& output = *(OutputBlob*)payload->data();
         StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
-        identifier << shaderPath._filename << "[" << definesTable << "]";
+        identifier << shaderPath._filename << "-" shaderPath._entryPoint << "[" << definesTable << "]";
         output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
         output._hashCode = hashCode;
         return true;

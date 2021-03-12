@@ -448,6 +448,7 @@ namespace Assets
 		std::vector<std::pair<uint64_t, IteratorRange<const void*>>> _staticFilesAndContents;
 		Threading::Mutex _attachedMonitorsLock;
 		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _attachedMonitors;
+		std::vector<std::pair<unsigned, std::weak_ptr<IFileMonitor>>> _staticAttachedMonitors;
 		FilenameRules _filenameRules;
 		FileSystemMemoryFlags::BitField _flags;
 
@@ -581,23 +582,36 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx & 1)
-			return IOReason::WriteProtect;
-
 		auto idx = m._fileIdx >> size_t(1);
-		if (idx >= _filesAndContents.size())
-			return IOReason::FileNotFound;
+		if (m._fileIdx & 1) {
+			if (idx >= _staticFilesAndContents.size())
+				return IOReason::FileNotFound;
 
-		ScopedLock(_attachedMonitorsLock);
-		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
-		for (auto r=range.first; r!=range.second; ++r)
-			// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
-			// compares the control block, rather than the object pointer itself
-			if (!r->second.owner_before(evnt) && !evnt.owner_before(r->second))
-				return IOReason::Invalid;
+			ScopedLock(_attachedMonitorsLock);
+			auto range = EqualRange(_staticAttachedMonitors, (unsigned)idx);
+			for (auto r=range.first; r!=range.second; ++r)
+				// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
+				// compares the control block, rather than the object pointer itself
+				if (!r->second.owner_before(evnt) && !evnt.owner_before(r->second))
+					return IOReason::Invalid;
 
-		_attachedMonitors.insert(range.second, std::make_pair(idx, evnt));
-		return IOReason::Success;
+			_staticAttachedMonitors.insert(range.second, std::make_pair(idx, evnt));
+			return IOReason::Success;
+		} else {
+			if (idx >= _filesAndContents.size())
+				return IOReason::FileNotFound;
+
+			ScopedLock(_attachedMonitorsLock);
+			auto range = EqualRange(_attachedMonitors, (unsigned)idx);
+			for (auto r=range.first; r!=range.second; ++r)
+				// weak_ptr to shared_ptr comparison without lock -- https://stackoverflow.com/questions/12301916/equality-compare-stdweak-ptr
+				// compares the control block, rather than the object pointer itself
+				if (!r->second.owner_before(evnt) && !evnt.owner_before(r->second))
+					return IOReason::Invalid;
+
+			_attachedMonitors.insert(range.second, std::make_pair(idx, evnt));
+			return IOReason::Success;
+		}
 	}
 
 	auto FileSystem_Memory::TryFakeFileChange(const Marker& marker) -> IOReason
@@ -608,21 +622,32 @@ namespace Assets
 		if (marker.size() < sizeof(MarkerStruct)) return IOReason::FileNotFound;
 
 		const auto& m = *(const MarkerStruct*)AsPointer(marker.begin());
-		if (m._fileIdx & 1)
-			return IOReason::WriteProtect;
-
 		auto idx = m._fileIdx >> size_t(1);
-		if (idx >= _filesAndContents.size())
-			return IOReason::FileNotFound;
+		if (m._fileIdx & 1) {
+			if (idx >= _staticFilesAndContents.size())
+				return IOReason::FileNotFound;
 
-		ScopedLock(_attachedMonitorsLock);
-		auto range = EqualRange(_attachedMonitors, (unsigned)idx);
-		for (auto r=range.first; r!=range.second; ++r) {
-			auto m = r->second.lock();
-			if (m)
-				m->OnChange();
+			ScopedLock(_attachedMonitorsLock);
+			auto range = EqualRange(_staticAttachedMonitors, (unsigned)idx);
+			for (auto r=range.first; r!=range.second; ++r) {
+				auto m = r->second.lock();
+				if (m)
+					m->OnChange();
+			}
+			return IOReason::Success;
+		} else {
+			if (idx >= _filesAndContents.size())
+				return IOReason::FileNotFound;
+
+			ScopedLock(_attachedMonitorsLock);
+			auto range = EqualRange(_attachedMonitors, (unsigned)idx);
+			for (auto r=range.first; r!=range.second; ++r) {
+				auto m = r->second.lock();
+				if (m)
+					m->OnChange();
+			}
+			return IOReason::Success;
 		}
-		return IOReason::Success;
 	}
 
 	FileDesc FileSystem_Memory::TryGetDesc(const Marker& marker)
@@ -703,7 +728,6 @@ namespace Assets
 		const FilenameRules& filenameRules,
 		FileSystemMemoryFlags::BitField flags)
 	{
-		assert(!(flags & FileSystemMemoryFlags::EnableChangeMonitoring));		// change monitoring doesn't make sense in this case, because files in this form are write protected
 		return std::make_shared<FileSystem_Memory>(std::unordered_map<std::string, Blob>{}, filesAndContents, filenameRules, flags);
 	}
 }

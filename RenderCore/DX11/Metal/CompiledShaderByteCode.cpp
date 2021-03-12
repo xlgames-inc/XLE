@@ -1216,7 +1216,7 @@ namespace RenderCore { namespace Metal_DX11
         AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
 
 		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
-		identifier << shaderPath._filename << "-" << shaderPath._entryPoint;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "[" << definesTable << "]";
 
             // If this is a compound text document, look for a chunk that contains a 
             // function linking graph with the right name. We can embedded different
