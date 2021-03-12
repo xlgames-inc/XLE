@@ -131,13 +131,13 @@ namespace preprocessor_operations
 			||  XlEqString(op, "!=")) {
 			return op;
 		} else if (XlEqString(op, "<")) {
-			return ">=";
-		} else if (XlEqString(op, ">")) {
-			return "<=";
-		} else if (XlEqString(op, "<=")) {
 			return ">";
-		} else if (XlEqString(op, ">=")) {
+		} else if (XlEqString(op, ">")) {
 			return "<";
+		} else if (XlEqString(op, "<=")) {
+			return ">=";
+		} else if (XlEqString(op, ">=")) {
+			return "<=";
 		} else {
 			return {};
 		}
