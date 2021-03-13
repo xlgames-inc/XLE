@@ -19,13 +19,14 @@ namespace RenderCore
 }
 
 namespace RenderCore { namespace Assets { class RenderStateSet; class ShaderPatchCollection; } }
-namespace RenderCore { class IDevice; class ICompiledPipelineLayout; }
+namespace RenderCore { class IDevice; class ICompiledPipelineLayout; class IDescriptorSet; }
 
 namespace RenderCore { namespace Techniques
 {
 	class PipelineAccelerator;
-	class ITechniqueDelegate;
+	class DescriptorSetAccelerator;
 	class SequencerConfig;
+	class ITechniqueDelegate;
 	class MaterialDescriptorSetLayout;
 
 	// Switching this to a virtual interface style class in order to better support multiple DLLs/modules
@@ -43,6 +44,12 @@ namespace RenderCore { namespace Techniques
 			RenderCore::Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet) = 0;
 
+		virtual std::shared_ptr<DescriptorSetAccelerator> CreateDescriptorSetAccelerator(
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+			const ParameterBox& materialSelectors,
+			const Utility::ParameterBox& constantBindings,
+			const Utility::ParameterBox& resourceBindings) = 0;
+
 		virtual std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
@@ -51,6 +58,9 @@ namespace RenderCore { namespace Techniques
 
 		virtual const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
 		virtual const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
+
+		virtual const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const = 0;
+		virtual const IDescriptorSet* TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const = 0;
 
 		virtual void	SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type) = 0;
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);

@@ -123,8 +123,8 @@ namespace UnitTests
 				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
 				#include "xleres/TechniqueLibrary/Utility/Colour.hlsl"
 
-				Texture2D       TextureDif		BIND_MAT_T0;
-				Texture2D       TextureNorm		BIND_MAT_T1;
+				Texture2D       TextureDif		BIND_MAT_T3;
+				Texture2D       TextureNorm		BIND_MAT_T4;
 
 				PerPixelMaterialParam DefaultMaterialValues()
 				{
@@ -277,7 +277,8 @@ namespace UnitTests
 				instantiations.push_back(p.second);
 
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
-			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), generateOptions, RenderCore::ShaderLanguage::HLSL);
+			generateOptions._shaderLanguage = RenderCore::ShaderLanguage::HLSL;
+			auto instantiation = ShaderSourceParser::InstantiateShader(MakeIteratorRange(instantiations), generateOptions);
 			REQUIRE(instantiation._sourceFragments.size() != (size_t)0);
 		}
 
@@ -414,9 +415,10 @@ namespace UnitTests
 					using namespace ShaderSourceParser;
 					InstantiationRequest instRequest { "ut-data/complicated.graph" };
 					GenerateFunctionOptions options;
+					options._shaderLanguage = RenderCore::ShaderLanguage::HLSL;
 					auto inst = ShaderSourceParser::InstantiateShader(
 						MakeIteratorRange(&instRequest, &instRequest+1),
-						options, RenderCore::ShaderLanguage::HLSL);
+						options);
 
 					// Create one dep val that references all of the children
 					auto depVal = std::make_shared<::Assets::DependencyValidation>();

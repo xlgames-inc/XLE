@@ -490,7 +490,7 @@ namespace ShaderSourceParser
 		std::stringstream result;
 
 		for (auto i=descriptorSet._slots.begin(); i!=descriptorSet._slots.end(); ++i) {
-            if (i->_type != RenderCore::DescriptorType::Texture)
+            if (i->_type != RenderCore::DescriptorType::Texture || i->_name.empty())
                 continue;
 			auto descriptorIdx = std::distance(descriptorSet._slots.begin(), i);
 			std::string type = "<<unknown type>>";
@@ -512,7 +512,7 @@ namespace ShaderSourceParser
 		}
 
 		for (auto i=descriptorSet._slots.begin(); i!=descriptorSet._slots.end(); ++i) {
-            if (i->_type != RenderCore::DescriptorType::Sampler)
+            if (i->_type != RenderCore::DescriptorType::Sampler || i->_name.empty())
                 continue;
 
 			auto descriptorIdx = std::distance(descriptorSet._slots.begin(), i);
@@ -535,7 +535,7 @@ namespace ShaderSourceParser
 		}
 
 		for (auto cb=descriptorSet._slots.begin(); cb!=descriptorSet._slots.end(); ++cb) {
-            if (cb->_type != RenderCore::DescriptorType::ConstantBuffer)
+            if (cb->_type != RenderCore::DescriptorType::ConstantBuffer || cb->_name.empty())
                 continue;
 
 			result << "cbuffer " << cb->_name << " BIND_MAT_B" << std::distance(descriptorSet._slots.begin(), cb) << std::endl;

@@ -190,7 +190,7 @@ namespace UnitTests
 					);
 					return texture::SampleWithSampler(
 						inputTexture:MaterialUniforms.InputTexture, 
-						sampler:MaterialUniforms.InputSampler,
+						inputSampler:MaterialUniforms.InputSampler,
 						texCoord:coord).result;
 				}
 			)--")),
@@ -340,6 +340,7 @@ namespace UnitTests
 		const RenderCore::Techniques::GlobalTransformConstants& globalTransform,
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelinePool,
 		const std::shared_ptr<RenderCore::Techniques::PipelineAccelerator>& pipelineAccelerator,
+		const std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator>& descriptorSetAccelerator,
 		const std::shared_ptr<RenderCore::Techniques::SequencerConfig>& cfg,		
 		const RenderCore::IResource& vb, size_t vertexCount)
 	{
@@ -347,14 +348,28 @@ namespace UnitTests
 		REQUIRE(pipelineFuture != nullptr);
 		pipelineFuture->StallWhilePending();
 		if (pipelineFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
-			Log(Error) << ::Assets::AsString(pipelineFuture->GetActualizationLog()) << std::endl;
+			INFO(::Assets::AsString(pipelineFuture->GetActualizationLog()));
 		}
 		auto pipeline = pipelineFuture->Actualize();
 		REQUIRE(pipeline != nullptr);
 
+		std::shared_ptr<RenderCore::IDescriptorSet> descriptorSet;
+		if (descriptorSetAccelerator) {
+			auto descSetFuture = pipelinePool->GetDescriptorSet(*descriptorSetAccelerator);
+			REQUIRE(descSetFuture != nullptr);
+			descSetFuture->StallWhilePending();
+			if (descSetFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				INFO(::Assets::AsString(descSetFuture->GetActualizationLog()));
+			}
+			descriptorSet = descSetFuture->Actualize();
+			REQUIRE(descriptorSet != nullptr);
+		}
+
 		using namespace RenderCore;
 		UniformsStreamInterface usi;
 		usi.BindImmediateData(0, Hash64("GlobalTransform"));
+		if (descriptorSet)
+			usi.BindFixedDescriptorSet(0, Hash64("Material"));
 		Metal::BoundUniforms uniforms { *pipeline, usi };
 
 		{
@@ -366,6 +381,9 @@ namespace UnitTests
 			UniformsStream uniformsStream;
 			uniformsStream._immediateData = { MakeOpaqueIteratorRange(globalTransform) };
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+			IDescriptorSet* descSets[] = { descriptorSet.get() };
+			uniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(descSets));
 
 			VertexBufferView vbvs[] = { &vb };
 			encoder.Bind(MakeIteratorRange(vbvs), {});
@@ -548,7 +566,7 @@ namespace UnitTests
 
 					DrawViaPipelineAccelerator(
 						threadContext, fbHelper, globalTransform, pipelinePool,
-						pipelineAccelerator, cfg, 
+						pipelineAccelerator, nullptr, cfg, 
 						*sphereVb, sphereGeo.size());
 				}
 
@@ -561,7 +579,7 @@ namespace UnitTests
 
 					DrawViaPipelineAccelerator(
 						threadContext, fbHelper, globalTransform, pipelinePool,
-						pipelineAccelerator, cfg, 
+						pipelineAccelerator, nullptr, cfg, 
 						*sphereVb, sphereGeo.size());
 				}
 
@@ -574,13 +592,13 @@ namespace UnitTests
 
 					DrawViaPipelineAccelerator(
 						threadContext, fbHelper, globalTransform, pipelinePool,
-						pipelineAccelerator, cfg, 
+						pipelineAccelerator, nullptr, cfg, 
 						*sphereVb, sphereGeo.size());
 
 					// once again; except with the "OUTPUT_RED" configuration set
 					DrawViaPipelineAccelerator(
 						threadContext, fbHelper, globalTransform, pipelinePool,
-						pipelineAccelerator, cfgOutputRed, 
+						pipelineAccelerator, nullptr, cfgOutputRed, 
 						*sphereVb, sphereGeo.size());
 				}
 			}
@@ -607,9 +625,18 @@ namespace UnitTests
 					simplifiedVertex3D, Topology::TriangleList,
 					RenderCore::Assets::RenderStateSet{});
 
+				ParameterBox constantBindings;
+				ParameterBox resourceBindings;
+				resourceBindings.SetParameter("InputTexture", "xleres/DefaultResources/waternoise.png");
+				auto descriptorSetAccelerator = pipelinePool->CreateDescriptorSetAccelerator(
+					patchCollection,
+					ParameterBox{},
+					constantBindings,
+					resourceBindings);
+
 				DrawViaPipelineAccelerator(
 					threadContext, fbHelper, globalTransform, pipelinePool,
-					pipelineAccelerator, cfg, 
+					pipelineAccelerator, descriptorSetAccelerator, cfg, 
 					*sphereVb, sphereGeo.size());
 			}
 

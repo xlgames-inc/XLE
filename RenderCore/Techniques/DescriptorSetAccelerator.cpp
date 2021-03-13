@@ -20,7 +20,7 @@
 namespace RenderCore { namespace Techniques 
 {
 
-	void DescriptorSetAccelerator::Apply(
+	void LegacyDescriptorSetAccelerator::Apply(
 		Metal::DeviceContext& devContext,
 		Metal::GraphicsEncoder& encoder,
 		Metal::BoundUniforms& boundUniforms) const
@@ -40,7 +40,8 @@ namespace RenderCore { namespace Techniques
 		boundUniforms.ApplyLooseUniforms(devContext, encoder, result);
 	}
 
-	::Assets::FuturePtr<RenderCore::IDescriptorSet> MakeDescriptorSetFuture(
+	void ConstructDescriptorSet(
+		::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
 		const std::shared_ptr<IDevice>& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
@@ -103,8 +104,7 @@ namespace RenderCore { namespace Techniques
 				Throw(std::runtime_error("No binding provided for descriptor slot " + s._name));
 		}
 
-		auto result = std::make_shared<::Assets::AssetFuture<RenderCore::IDescriptorSet>>("descriptor-set");
-		result->SetPollingFunction(
+		future.SetPollingFunction(
 			[working, device](::Assets::AssetFuture<RenderCore::IDescriptorSet>& thatFuture) -> bool {
 
 				std::vector<::Assets::DepValPtr> subDepVals;
@@ -163,8 +163,6 @@ namespace RenderCore { namespace Techniques
 				thatFuture.SetAsset(std::move(finalDescriptorSet), {});
 				return false;
 			});
-
-		return result;
 	}
 
 

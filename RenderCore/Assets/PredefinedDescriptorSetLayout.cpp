@@ -10,6 +10,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/FastParseValue.h"
 #include "../../Utility/BitUtils.h"
+#include "../../Utility/MemoryUtils.h"
 #include "../../Utility/Streams/PreprocessorInterpreter.h"
 #include "../../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 
@@ -122,6 +123,20 @@ namespace RenderCore { namespace Assets
 				Throw(FormatException(StringMeld<256>() << "Expecting 'struct' keyword, but got " << token._value, token._start));
 			}
 		}
+	}
+
+	uint64_t PredefinedDescriptorSetLayout::CalculateHash() const
+	{
+		uint64_t result = DefaultSeed64;
+		for (const auto& slot:_slots) {
+			result = Hash64(slot._name, result);
+			if (!slot._conditions.empty())
+				result = Hash64(slot._conditions, result);
+			result = HashCombine(uint64_t(slot._type) | (uint64_t(slot._arrayElementCount) << 16ull), result);
+			if (slot._cbIdx != ~0u)
+				result = HashCombine(_constantBuffers[slot._cbIdx]->CalculateHash(), result);
+		}
+		return result;
 	}
 
 	PredefinedDescriptorSetLayout::PredefinedDescriptorSetLayout() {}

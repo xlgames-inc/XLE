@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PipelineAccelerator.h"
+#include "DescriptorSetAccelerator.h"
 #include "CompiledShaderPatchCollection.h"
 #include "../FrameBufferDesc.h"
 #include "../Metal/DeviceContext.h"
@@ -181,7 +182,6 @@ namespace RenderCore { namespace Techniques
 		}
 		return result;
 	}
-		
 
 	auto PipelineAccelerator::CreatePipelineForSequencerState(
 		const SequencerConfig& cfg,
@@ -335,6 +335,16 @@ namespace RenderCore { namespace Techniques
 	{}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//		D E S C R I P T O R S E T
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class DescriptorSetAccelerator
+	{
+	public:
+		::Assets::FuturePtr<RenderCore::IDescriptorSet> _descriptorSet;
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//		P   O   O   L
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -348,6 +358,12 @@ namespace RenderCore { namespace Techniques
 			Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet) override;
 
+		virtual std::shared_ptr<DescriptorSetAccelerator> CreateDescriptorSetAccelerator(
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+			const ParameterBox& materialSelectors,
+			const Utility::ParameterBox& constantBindings,
+			const Utility::ParameterBox& resourceBindings) override;
+
 		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
 			const ParameterBox& sequencerSelectors,
@@ -356,6 +372,9 @@ namespace RenderCore { namespace Techniques
 
 		const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const override;
 		const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const override;
+
+		const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const override;
+		const IDescriptorSet* TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const override;
 
 		void			SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type) override;
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
@@ -421,6 +440,16 @@ namespace RenderCore { namespace Techniques
 		#endif
 		
 		return pipelineAccelerator._finalPipelines[sequencerIdx]._future->TryActualize().get();
+	}
+
+	const ::Assets::FuturePtr<IDescriptorSet>& PipelineAcceleratorPool::GetDescriptorSet(DescriptorSetAccelerator& accelerator) const
+	{
+		return accelerator._descriptorSet;
+	}
+
+	const IDescriptorSet* PipelineAcceleratorPool::TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const
+	{
+		return accelerator._descriptorSet->TryActualize().get();
 	}
 
 	SequencerConfig PipelineAcceleratorPool::MakeSequencerConfig(
@@ -516,6 +545,52 @@ namespace RenderCore { namespace Techniques
 		RebuildAllPipelines(_guid, *newAccelerator);
 
 		return newAccelerator;
+	}
+
+	std::shared_ptr<DescriptorSetAccelerator> PipelineAcceleratorPool::CreateDescriptorSetAccelerator(
+		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+		const ParameterBox& materialSelectors,
+		const Utility::ParameterBox& constantBindings,
+		const Utility::ParameterBox& resourceBindings)
+	{
+		auto result = std::make_shared<DescriptorSetAccelerator>();
+		result->_descriptorSet = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>("descriptorset-accelerator");
+
+		auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*shaderPatches, _matDescSetLayout);
+
+		// Most of the time, it will be ready immediately, and we can avoid some of the overhead of the
+		// future continuation functions
+		if (auto* patchCollection = patchCollectionFuture->TryActualize().get()) {
+			ConstructDescriptorSet(
+				*result->_descriptorSet,
+				_device,
+				constantBindings,
+				resourceBindings,
+				patchCollection->GetInterface().GetMaterialDescriptorSet());
+		} else {
+			Utility::ParameterBox constantBindingsCopy = constantBindings;
+			Utility::ParameterBox resourceBindingsCopy = resourceBindings;
+			std::weak_ptr<IDevice> weakDevice = _device;
+			::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<RenderCore::IDescriptorSet>(
+				*result->_descriptorSet,
+				[constantBindingsCopy, resourceBindingsCopy, weakDevice](
+					::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
+					const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection) {
+
+					auto d = weakDevice.lock();
+					if (!d)
+						Throw(std::runtime_error("Device has been destroyed"));
+					
+					ConstructDescriptorSet(
+						future,
+						d,
+						constantBindingsCopy,
+						resourceBindingsCopy,
+						patchCollection->GetInterface().GetMaterialDescriptorSet());
+				});
+		}
+
+		return result;
 	}
 
 	auto PipelineAcceleratorPool::CreateSequencerConfig(

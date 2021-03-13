@@ -25,8 +25,6 @@ namespace RenderCore { namespace Assets
 				i->second = p.second;
 			}
 		}
-		if (!_descriptorSet.empty())
-			dest._descriptorSet = _descriptorSet;
 
 		dest.SortAndCalculateHash();
 	}
@@ -72,10 +70,6 @@ namespace RenderCore { namespace Assets
 			_hash = Hash64(p.second._archiveName, _hash);
 			_hash = HashCombine(p.second.CalculateInstanceHash(), _hash);
 		}
-
-		if (!_descriptorSet.empty()) {
-			_hash = Hash64(_descriptorSet, _hash);
-		}
 	}
 
 	bool operator<(const ShaderPatchCollection& lhs, const ShaderPatchCollection& rhs) { return lhs.GetHash() < rhs.GetHash(); }
@@ -105,8 +99,6 @@ namespace RenderCore { namespace Assets
 			SerializeInstantiationRequest(formatter, p.second);
 			formatter.EndElement(pele);
 		}
-		if (!_descriptorSet.empty())
-			formatter.WriteKeyedValue("DescriptorSet", _descriptorSet);
 	}
 
 	static ShaderSourceParser::InstantiationRequest DeserializeInstantiationRequest(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
@@ -151,18 +143,12 @@ namespace RenderCore { namespace Assets
 		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
 			auto name = RequireKeyedItem(formatter);
 			
-			if (XlEqString(name, "DescriptorSet")) {
-				if (!_descriptorSet.empty())
-					Throw(FormatException("Descriptor set specified multiple times", formatter.GetLocation()));
-				_descriptorSet = RequireValue(formatter).AsString();
-			} else {
-				if (formatter.PeekNext() != FormatterBlob::BeginElement)
-					Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name << ") in ShaderPatchCollection", formatter.GetLocation()));
+			if (formatter.PeekNext() != FormatterBlob::BeginElement)
+				Throw(FormatException(StringMeld<256>() << "Unexpected attribute (" << name << ") in ShaderPatchCollection", formatter.GetLocation()));
 
-				RequireBeginElement(formatter);
-				_patches.emplace_back(std::make_pair(name.AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
-				RequireEndElement(formatter);
-			}
+			RequireBeginElement(formatter);
+			_patches.emplace_back(std::make_pair(name.AsString(), DeserializeInstantiationRequest(formatter, searchRules)));
+			RequireEndElement(formatter);
 		}
 
 		if (formatter.PeekNext() != FormatterBlob::EndElement && formatter.PeekNext() != FormatterBlob::None)

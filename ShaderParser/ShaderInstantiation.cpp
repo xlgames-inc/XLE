@@ -141,8 +141,7 @@ namespace ShaderSourceParser
 
 	static InstantiatedShader InstantiateShader(
 		Internal::PendingInstantiationsHelper& pendingInst,
-		const GenerateFunctionOptions& generateOptions,
-		RenderCore::ShaderLanguage shaderLanguage)
+		const GenerateFunctionOptions& generateOptions)
 	{
 		std::vector<GraphLanguage::NodeGraphSignature::Parameter> mergedCaptures;
         InstantiatedShader result;
@@ -240,8 +239,14 @@ namespace ShaderSourceParser
 			std::stringstream warningMessages;
 			result._descriptorSet = MakeMaterialDescriptorSet(
 				MakeIteratorRange(mergedCaptures),
-				shaderLanguage,
+				generateOptions._shaderLanguage,
 				warningMessages);
+
+			// Link to a fixed pipeline layout descriptor set, if that's provided
+			if (generateOptions._pipelineLayoutMaterialDescriptorSet)
+				result._descriptorSet = LinkToFixedLayout(
+					*result._descriptorSet, 
+					*generateOptions._pipelineLayoutMaterialDescriptorSet);
 
 			auto fragment = GenerateDescriptorVariables(*result._descriptorSet, MakeIteratorRange(mergedCaptures));
 			if (!fragment.empty())
@@ -280,20 +285,18 @@ namespace ShaderSourceParser
         const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
 		const InstantiationRequest& instantiationParameters,
-		const GenerateFunctionOptions& generateOptions,
-		RenderCore::ShaderLanguage shaderLanguage)
+		const GenerateFunctionOptions& generateOptions)
 	{
 		// Note that we end up with a few extra copies of initialGraph, because PendingInstantiation
 		// contains a complete copy of the node graph
 		Internal::PendingInstantiationsHelper pendingInst;
 		pendingInst._instantiations.push(Internal::PendingInstantiation { initialGraph, useScaffoldFunction, true, instantiationParameters });
-		return InstantiateShader(pendingInst, generateOptions, shaderLanguage);
+		return InstantiateShader(pendingInst, generateOptions);
 	}
 
 	InstantiatedShader InstantiateShader(
 		IteratorRange<const InstantiationRequest*> request,
-		const GenerateFunctionOptions& generateOptions,
-		RenderCore::ShaderLanguage shaderLanguage)
+		const GenerateFunctionOptions& generateOptions)
 	{
 		GraphLanguage::BasicNodeGraphProvider defaultProvider(::Assets::DirectorySearchRules{});
 
@@ -343,7 +346,7 @@ namespace ShaderSourceParser
 
 		Internal::PendingInstantiationsHelper pendingInstHelper;
 		pendingInstHelper.QueueUp(MakeIteratorRange(pendingInst), defaultProvider, true);
-		return InstantiateShader(pendingInstHelper, generateOptions, shaderLanguage);
+		return InstantiateShader(pendingInstHelper, generateOptions);
 	}
 
 	static uint64_t CalculateDepHash(const InstantiationRequest& dep, uint64_t seed = DefaultSeed64)

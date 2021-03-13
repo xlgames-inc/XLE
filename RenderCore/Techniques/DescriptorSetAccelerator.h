@@ -19,7 +19,7 @@ namespace RenderCore { namespace Techniques
 {
 	class DeferredShaderResource;
 
-	class DescriptorSetAccelerator
+	class LegacyDescriptorSetAccelerator
 	{
 	public:
 		UniformsStreamInterface _usi;
@@ -38,7 +38,8 @@ namespace RenderCore { namespace Techniques
 			Metal::BoundUniforms& boundUniforms) const;
 	};
 
-	::Assets::FuturePtr<RenderCore::IDescriptorSet> MakeDescriptorSetFuture(
+	void ConstructDescriptorSet(
+		::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
 		const std::shared_ptr<IDevice>& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,

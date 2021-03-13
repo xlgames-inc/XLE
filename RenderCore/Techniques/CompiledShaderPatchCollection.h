@@ -22,7 +22,26 @@ namespace ShaderSourceParser { class InstantiationRequest; class GenerateFunctio
 
 namespace RenderCore { namespace Techniques
 {
-	class MaterialDescriptorSetLayout;
+	class MaterialDescriptorSetLayout
+	{
+	public:
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetLayout() const { return _layout; }
+		unsigned GetSlotIndex() const { return _slotIdx; }
+
+		uint64_t GetHash() const { return _hash; }
+		::Assets::DepValPtr GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : nullptr; }
+
+		MaterialDescriptorSetLayout(
+			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
+			unsigned slotIdx);
+		MaterialDescriptorSetLayout();
+		~MaterialDescriptorSetLayout();
+
+	private:
+		std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _layout;
+		unsigned _slotIdx;
+		uint64_t _hash;
+	};
 
 	/// <summary>Compiled and optimized version of RenderCore::Assets::ShaderPatchCollection</summary>
 	/// A RenderCore::Assets::ShaderPatchCollection contains references to shader patches used by a material,
@@ -50,7 +69,7 @@ namespace RenderCore { namespace Techniques
 				std::shared_ptr<GraphLanguage::NodeGraphSignature> _signature;
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
-			const RenderCore::Assets::PredefinedDescriptorSetLayout& GetMaterialDescriptorSet() const { return _descriptorSet; }
+			const RenderCore::Assets::PredefinedDescriptorSetLayout& GetMaterialDescriptorSet() const { return *_descriptorSet; }
 			unsigned GetMaterialDescriptorSetSlotIndex() const { return _materialDescriptorSetSlotIndex; }
 			const ShaderSourceParser::SelectorFilteringRules& GetSelectorFilteringRules() const { return _filteringRules; }
 
@@ -58,7 +77,7 @@ namespace RenderCore { namespace Techniques
 
 		private:
 			std::vector<Patch> _patches;
-			RenderCore::Assets::PredefinedDescriptorSetLayout _descriptorSet;
+			std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _descriptorSet;
 			unsigned _materialDescriptorSetSlotIndex;
 			ShaderSourceParser::SelectorFilteringRules _filteringRules;
 
@@ -88,31 +107,11 @@ namespace RenderCore { namespace Techniques
 		Interface _interface;
 		RenderCore::Assets::ShaderPatchCollection _src;
 		std::string _savedInstantiation;
+		MaterialDescriptorSetLayout _pipelineLayout;
 
 		void BuildFromInstantiatedShader(
 			const ShaderSourceParser::InstantiatedShader& inst,
 			const MaterialDescriptorSetLayout& pipelineLayout);
-	};
-
-	class MaterialDescriptorSetLayout
-	{
-	public:
-		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetLayout() const { return _layout; }
-		unsigned GetSlotIndex() const { return _slotIdx; }
-
-		uint64_t GetHash() const { return _hash; }
-		::Assets::DepValPtr GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : nullptr; }
-
-		MaterialDescriptorSetLayout(
-			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
-			unsigned slotIdx);
-		MaterialDescriptorSetLayout();
-		~MaterialDescriptorSetLayout();
-
-	private:
-		std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _layout;
-		unsigned _slotIdx;
-		uint64_t _hash;
 	};
 
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const

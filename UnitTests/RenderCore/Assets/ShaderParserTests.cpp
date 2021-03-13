@@ -291,7 +291,8 @@ static const int NonPreprocessorLine0 = 0;
 		
 		using namespace ShaderSourceParser;
 		ShaderSourceParser::GenerateFunctionOptions generateOptions;
-		auto inst = InstantiateShader(MakeIteratorRange(instRequests), generateOptions, RenderCore::ShaderLanguage::GLSL);
+		generateOptions._shaderLanguage = RenderCore::ShaderLanguage::GLSL;
+		auto inst = InstantiateShader(MakeIteratorRange(instRequests), generateOptions);
 
 		auto i = std::find_if(
 			inst._entryPoints.begin(), inst._entryPoints.end(),

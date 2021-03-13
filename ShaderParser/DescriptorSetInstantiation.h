@@ -21,5 +21,9 @@ namespace ShaderSourceParser
 		RenderCore::ShaderLanguage shaderLanguage,
 		std::ostream& warningStream);
 
+	std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> LinkToFixedLayout(
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& input,
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& pipelineLayoutVersion);
+
 	RenderCore::DescriptorType CalculateDescriptorType(StringSection<> type);
 }

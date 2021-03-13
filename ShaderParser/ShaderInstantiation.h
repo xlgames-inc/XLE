@@ -99,24 +99,23 @@ namespace ShaderSourceParser
 		ParameterBox _selectors;
 		bool _filterWithSelectors = false;
 
+		RenderCore::ShaderLanguage _shaderLanguage = RenderCore::ShaderLanguage::HLSL; // Note -- we pass the shader language here to control how the CB layouts are optimized
+		RenderCore::Assets::PredefinedDescriptorSetLayout* _pipelineLayoutMaterialDescriptorSet = nullptr;
+		unsigned _materialDescriptorSetIndex = ~0u;
+
 		bool _generateDanglingInputs = false;
 		GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
 	};
-
-	// Note -- we pass the shader language here to control how the CB layouts
-	// are optimized
 
 	InstantiatedShader InstantiateShader(
 		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
 		const InstantiationRequest& instantiationParameters,
-		const GenerateFunctionOptions& generateOptions,
-		RenderCore::ShaderLanguage shaderLanguage);
+		const GenerateFunctionOptions& generateOptions);
 
 	InstantiatedShader InstantiateShader(
 		IteratorRange<const InstantiationRequest*> request,
-		const GenerateFunctionOptions& generateOptions,
-		RenderCore::ShaderLanguage shaderLanguage);
+		const GenerateFunctionOptions& generateOptions);
 
         ///////////////////////////////////////////////////////////////
 

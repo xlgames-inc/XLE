@@ -145,10 +145,10 @@ namespace UnitTests
 				};
 
 				ShaderSourceParser::GenerateFunctionOptions generateOptions;
+				generateOptions._shaderLanguage = RenderCore::ShaderLanguage::GLSL;
 				auto inst = ShaderSourceParser::InstantiateShader(
 					MakeIteratorRange(instRequests), 
-					generateOptions,
-					RenderCore::ShaderLanguage::GLSL);
+					generateOptions);
 
 				REQUIRE(inst._sourceFragments.size() != (size_t)0);		// ensure that we at least got some output
 				REQUIRE(inst._entryPoints.size() == (size_t)1);
@@ -165,11 +165,11 @@ namespace UnitTests
 				ShaderSourceParser::GenerateFunctionOptions generateOptions;
 				generateOptions._selectors.SetParameter("SIMPLE_BIND", 1);
 				generateOptions._filterWithSelectors = true;
+				generateOptions._shaderLanguage = RenderCore::ShaderLanguage::GLSL;
 				
 				auto inst = ShaderSourceParser::InstantiateShader(
 					MakeIteratorRange(instRequests), 
-					generateOptions,
-					RenderCore::ShaderLanguage::GLSL);
+					generateOptions);
 
 				REQUIRE(inst._sourceFragments.size() != (size_t)0);		// ensure that we at least got some output
 				REQUIRE(inst._entryPoints.size() == (size_t)3);
@@ -233,10 +233,10 @@ namespace UnitTests
 			};
 
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
+			generateOptions._shaderLanguage = RenderCore::ShaderLanguage::GLSL;
 			auto inst = ShaderSourceParser::InstantiateShader(
 				MakeIteratorRange(instRequests), 
-				generateOptions,
-				RenderCore::ShaderLanguage::GLSL);
+				generateOptions);
 
 			// We're existing 2 entry points
 			// The "name" and "implementsName" should be the same in both cases, since
@@ -283,9 +283,10 @@ namespace UnitTests
 			using namespace ShaderSourceParser;
 			InstantiationRequest instRequest { "ut-data/complicated.graph" };
 			GenerateFunctionOptions options;
+			options._shaderLanguage = RenderCore::ShaderLanguage::HLSL;
 			auto inst = ShaderSourceParser::InstantiateShader(
 				MakeIteratorRange(&instRequest, &instRequest+1),
-				options, RenderCore::ShaderLanguage::HLSL);
+				options);
 			ShaderSourceParser::SelectorFilteringRules relevanceViaInstantiateShader = inst._selectorRelevance;
 			for (const auto& rawShader:inst._rawShaderFileIncludes)
 				relevanceViaInstantiateShader.MergeIn(GetSelectorRulesFromFile(rawShader));
@@ -318,9 +319,10 @@ namespace UnitTests
 			using namespace ShaderSourceParser;
 			InstantiationRequest instRequest { "ut-data/complicated.graph" };
 			GenerateFunctionOptions options;
+			options._shaderLanguage = RenderCore::ShaderLanguage::HLSL;
 			auto inst = ShaderSourceParser::InstantiateShader(
 				MakeIteratorRange(&instRequest, &instRequest+1),
-				options, RenderCore::ShaderLanguage::HLSL);
+				options);
 
 			//
 			// We need these things for the pre-technique binding
