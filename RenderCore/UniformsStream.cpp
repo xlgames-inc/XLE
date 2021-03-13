@@ -150,6 +150,13 @@ namespace RenderCore
 		_pushConstants.push_back(std::move(binding));
 	}
 
+	PipelineLayoutInitializer::PipelineLayoutInitializer(
+		IteratorRange<const DescriptorSetBinding*> descriptorSets,
+		IteratorRange<const PushConstantsBinding*> pushConstants)
+	: _descriptorSets(descriptorSets.begin(), descriptorSets.end())
+	, _pushConstants(pushConstants.begin(), pushConstants.end())
+	{}
+
 	PipelineLayoutInitializer::PipelineLayoutInitializer() {}
 	PipelineLayoutInitializer::~PipelineLayoutInitializer() {}
 

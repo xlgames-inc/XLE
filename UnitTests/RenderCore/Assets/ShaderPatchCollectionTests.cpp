@@ -197,6 +197,31 @@ namespace UnitTests
 		}
 	};
 
+	static RenderCore::Techniques::MaterialDescriptorSetLayout MakeMaterialDescriptorSetLayout()
+	{
+		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
+		layout->_slots = {
+
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UnorderedAccessBuffer }
+
+		};
+
+		return RenderCore::Techniques::MaterialDescriptorSetLayout { layout, 1 };
+	}
+
 	TEST_CASE( "ShaderPatchCollection", "[rendercore_techniques]" )
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
@@ -204,6 +229,7 @@ namespace UnitTests
 		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
+		RenderCore::Techniques::MaterialDescriptorSetLayout matDescSetLayout = MakeMaterialDescriptorSetLayout();
 
 		SECTION( "DeserializeShaderPatchCollection" )
 		{
@@ -259,9 +285,9 @@ namespace UnitTests
 		{
 			// Ensure that we can compile a shader graph via the intermediate compilers
 			// mechanisms
-			auto testHelper = MakeTestHelper();
+			auto metalTestHelper = MakeTestHelper();
 			auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-				CreateDefaultShaderCompiler(*testHelper->_device),
+				CreateDefaultShaderCompiler(*metalTestHelper->_device),
 				std::make_shared<ExpandIncludesPreprocessor>());
 			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(customShaderSource, compilers);
 
@@ -269,7 +295,7 @@ namespace UnitTests
 			
 			InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
-			auto compiledCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
+			auto compiledCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection, matDescSetLayout);
 			std::vector<uint64_t> instantiations { Hash64("PerPixel") };
 
 			::Assets::InitializerPack initializers {
@@ -298,12 +324,12 @@ namespace UnitTests
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
-			CompiledShaderPatchCollection compiledCollection(patchCollection);
+			CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
 
 			// Check for some of the expected interface elements
 			REQUIRE(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
-			auto& descSet = *compiledCollection.GetInterface().GetMaterialDescriptorSet();
-			auto& slots = descSet._slots;
+			const auto& descSet = compiledCollection.GetInterface().GetMaterialDescriptorSet();
+			const auto& slots = descSet._slots;
 			REQUIRE(slots.size() == (size_t)5);
 			auto material = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "MaterialUniforms"; });
 			auto second = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "SecondUnifomBuffer"; });
@@ -321,7 +347,7 @@ namespace UnitTests
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
-			CompiledShaderPatchCollection compiledCollection(patchCollection);
+			CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
 
 			// Check for some of the recognized properties, in particular look for shader selectors
 			// We're expecting the selectors "RES_HAS_TextureDif" and "RES_HAS_TextureNorm"
@@ -354,7 +380,7 @@ namespace UnitTests
 				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
 
 				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {
-					RenderCore::Techniques::CompiledShaderPatchCollection compiledCollection(patchCollection);
+					RenderCore::Techniques::CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
 					REQUIRE(compiledCollection._depVal->GetValidationIndex() == 0u);
 					
 					if (c < dimof(nonDependencies)) {

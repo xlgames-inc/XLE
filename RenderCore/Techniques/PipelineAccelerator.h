@@ -18,15 +18,15 @@ namespace RenderCore
 	class InputElementDesc;
 }
 
-namespace RenderCore { namespace Assets { class RenderStateSet; } }
+namespace RenderCore { namespace Assets { class RenderStateSet; class ShaderPatchCollection; } }
 namespace RenderCore { class IDevice; class ICompiledPipelineLayout; }
 
 namespace RenderCore { namespace Techniques
 {
-	class CompiledShaderPatchCollection;
 	class PipelineAccelerator;
 	class ITechniqueDelegate;
 	class SequencerConfig;
+	class MaterialDescriptorSetLayout;
 
 	// Switching this to a virtual interface style class in order to better support multiple DLLs/modules
 	// For many objects like the SimpleModelRenderer, the pipeline accelerator pools is one of the main
@@ -37,7 +37,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		virtual std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
@@ -77,8 +77,11 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, MakeOpaqueIteratorRange(value), insertType);
 	}
 
+	namespace Internal { const MaterialDescriptorSetLayout& GetDefaultMaterialDescriptorSetLayout(); }
+
 	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
 		const std::shared_ptr<IDevice>&,
-		const std::shared_ptr<ICompiledPipelineLayout>&);
+		const std::shared_ptr<ICompiledPipelineLayout>&,
+		const MaterialDescriptorSetLayout& = Internal::GetDefaultMaterialDescriptorSetLayout());
 }}
 

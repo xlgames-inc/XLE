@@ -13,7 +13,7 @@
 #include <utility>
 
 namespace RenderCore { class IResource; class IDevice; class CompiledShaderByteCode; class StreamOutputInitializers; class ICompiledPipelineLayout; }
-namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class PredefinedDescriptorSetLayout; }}
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class PredefinedDescriptorSetLayout; class ShaderPatchCollection; }}
 
 namespace RenderCore { namespace Techniques {
 
@@ -37,11 +37,10 @@ namespace RenderCore { namespace Techniques {
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
 	class IPipelineAcceleratorPool;
-	class CompiledShaderPatchCollection;
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>> 
 		CreatePipelineAccelerator(
 			IPipelineAcceleratorPool& pool,
-			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& patchCollection,
 			const RenderCore::Assets::MaterialScaffoldMaterial& material,
 			IteratorRange<const InputElementDesc*> inputLayout,
 			Topology topology = Topology::TriangleList);

@@ -690,17 +690,5 @@ namespace RenderCore { namespace Techniques
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}
 
-	std::shared_ptr<DrawableMaterial> MakeDrawableMaterial(
-		const RenderCore::Assets::MaterialScaffoldMaterial& mat,
-		const RenderCore::Assets::ShaderPatchCollection& patchCollection)
-	{
-		auto result = std::make_shared<DrawableMaterial>();
-		auto future = ::Assets::MakeAsset<CompiledShaderPatchCollection>(patchCollection);
-		future->StallWhilePending();
-		result->_patchCollection = future->Actualize();
-		result->_material = mat;
-		return result;
-	}
-
 }}
 

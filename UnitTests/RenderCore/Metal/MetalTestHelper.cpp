@@ -497,7 +497,9 @@ namespace UnitTests
 			{DescriptorType::Texture},
 			{DescriptorType::Texture},
 
-			{DescriptorType::UnorderedAccessBuffer}
+			{DescriptorType::UnorderedAccessBuffer},
+
+			{DescriptorType::Sampler}
 		};
 
 		RenderCore::DescriptorSetSignature drawSet {

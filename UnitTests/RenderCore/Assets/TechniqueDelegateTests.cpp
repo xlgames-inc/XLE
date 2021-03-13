@@ -174,6 +174,27 @@ namespace UnitTests
 				}
 			)--")),
 
+		// ---------------------------- spherical_generators_resources.graph ----------------------------
+		std::make_pair(
+			"spherical_generators_resources.graph",
+			::Assets::AsBlob(R"--(
+				import basic = "xleres/Nodes/Basic.sh"
+				import texture = "xleres/Nodes/Texture.sh"
+				import spherical_prefix = "spherical_prefix.hlsl"
+
+				float4 SphericalToColorTexture0(float2 coord, float time) implements spherical_prefix::SphericalToColor
+				{
+					captures MaterialUniforms = (
+						Texture2D InputTexture,
+						SamplerState InputSampler
+					);
+					return texture::SampleWithSampler(
+						inputTexture:MaterialUniforms.InputTexture, 
+						sampler:MaterialUniforms.InputSampler,
+						texCoord:coord).result;
+				}
+			)--")),
+
 		// ---------------------------- framework-entry.vertex.hlsl ----------------------------
 		std::make_pair(
 			"framework-entry.vertex.hlsl",
@@ -351,7 +372,6 @@ namespace UnitTests
 			encoder.Draw(*pipeline, (unsigned)vertexCount);
 		}
 
-
 		static unsigned counter = 0;
 		fbHelper.SaveImage(
 			*threadContext,
@@ -374,6 +394,30 @@ namespace UnitTests
 		return result;
 	}
 
+	static RenderCore::Techniques::MaterialDescriptorSetLayout MakeMaterialDescriptorSetLayout()
+	{
+		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
+		layout->_slots = {
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::ConstantBuffer },
+			
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Texture },
+
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UnorderedAccessBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler }
+		};
+
+		return RenderCore::Techniques::MaterialDescriptorSetLayout { layout, 1 };
+	}
+
 	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[rendercore_techniques]" )
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
@@ -383,6 +427,8 @@ namespace UnitTests
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 
+		auto testHelper = MakeTestHelper();
+
 		SECTION("Retrieve minimal legacy technique")
 		{
 			static const char simplePatchCollectionFragments[] = R"--(
@@ -391,7 +437,7 @@ namespace UnitTests
 			)--";
 			InputStreamFormatter<utf8> formattr { MakeStringSection(simplePatchCollectionFragments) };
 			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
-			auto compiledPatchCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
+			auto compiledPatchCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection, MakeMaterialDescriptorSetLayout());
 
 			{
 				auto delegate = RenderCore::Techniques::CreateTechniqueDelegateLegacy(
@@ -418,40 +464,7 @@ namespace UnitTests
 
 		SECTION("Retrieve graph based technique")
 		{
-			std::shared_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> compiledPatchCollectionNoDeform, compiledPatchCollectionWithDeform;
-
-			{
-				static const char sphericalCollectionFragmentsNoDeform[] = R"--(
-				main=~
-					ut-data/spherical.graph::PerPixelImplementation
-					colorGenerator=~
-						ut-data/spherical_generators.hlsl::MainSphericalToColor
-					normalGenerator=~
-						ut-data/spherical_generators.hlsl::MainSphericalToNormal
-				)--";
-				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsNoDeform) };
-				RenderCore::Assets::ShaderPatchCollection patchCollectionNoDeform(formattr, ::Assets::DirectorySearchRules{}, nullptr);
-				compiledPatchCollectionNoDeform = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollectionNoDeform);
-			}
-
-			{
-				static const char sphericalCollectionFragmentsWithDeform[] = R"--(
-				main=~
-					ut-data/spherical.graph::PerPixelImplementation
-					colorGenerator=~
-						ut-data/spherical_generators.hlsl::MainSphericalToColor
-					normalGenerator=~
-						ut-data/spherical_generators.hlsl::MainSphericalToNormal
-				deform=~
-					ut-data/spherical.graph::DeformPositionImplementation
-				)--";
-				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsWithDeform) };
-				RenderCore::Assets::ShaderPatchCollection patchCollectionWithDeform(formattr, ::Assets::DirectorySearchRules{}, nullptr);
-				compiledPatchCollectionWithDeform = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollectionWithDeform);
-			}
-
 			using namespace RenderCore;
-			auto testHelper = MakeTestHelper();
 			auto threadContext = testHelper->_device->GetImmediateContext();
 			auto targetDesc = CreateDesc(
 				BindFlag::RenderTarget | BindFlag::TransferSrc | BindFlag::TransferDst, 0, GPUAccess::Write,
@@ -472,45 +485,124 @@ namespace UnitTests
 
 			auto globalTransform = MakeGlobalTransformConstants(targetDesc);
 
-			threadContext->GetAnnotator().BeginFrameCapture();
-
-			// The final pipeline we want will be determined by two main things:
-			//		Properties related to how and when we're rendering the object (ie, render pass, technique delegate)
-			//		Properties realted to the object itself (ie, material settings, geometry input)
-			// We abstract this into two configuration objects:
-			//		SequencerConfig
-			//		PipelineAccelerator
-			// For each pair, we can generate a pipeline
-			// The two change independantly, and we need to mix and match them frequently (eg, rendering the same
-			// object in multiple different ways). The PipelineAcceleratorPool takes care of managing that -- including
-			// try to maintain in memory only those pipelines that are required
-			auto techniqueDelegate = std::make_shared<UnitTestTechniqueDelegate>();
-			auto cfg = pipelinePool->CreateSequencerConfig(
-				techniqueDelegate,
-				ParameterBox{}, 
-				fbHelper.GetDesc(), 0);
-
-			auto cfgOutputRed = pipelinePool->CreateSequencerConfig(
-				techniqueDelegate,
-				ParameterBox{ std::make_pair("OUTPUT_RED", "1") }, 
-				fbHelper.GetDesc(), 0);
-
+			// SECTION("2x2 combinations")
+			if (false)
 			{
-				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
-					compiledPatchCollectionNoDeform,
-					ParameterBox{},
-					ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
-					RenderCore::Assets::RenderStateSet{});
+				std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> patchCollectionNoDeform, patchCollectionWithDeform;
 
-				DrawViaPipelineAccelerator(
-					threadContext, fbHelper, globalTransform, pipelinePool,
-					pipelineAccelerator, cfg, 
-					*sphereVb, sphereGeo.size());
+				{
+					static const char sphericalCollectionFragmentsNoDeform[] = R"--(
+					main=~
+						ut-data/spherical.graph::PerPixelImplementation
+						colorGenerator=~
+							ut-data/spherical_generators.hlsl::MainSphericalToColor
+						normalGenerator=~
+							ut-data/spherical_generators.hlsl::MainSphericalToNormal
+					)--";
+					InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsNoDeform) };
+					patchCollectionNoDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				}
+
+				{
+					static const char sphericalCollectionFragmentsWithDeform[] = R"--(
+					main=~
+						ut-data/spherical.graph::PerPixelImplementation
+						colorGenerator=~
+							ut-data/spherical_generators.hlsl::MainSphericalToColor
+						normalGenerator=~
+							ut-data/spherical_generators.hlsl::MainSphericalToNormal
+					deform=~
+						ut-data/spherical.graph::DeformPositionImplementation
+					)--";
+					InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsWithDeform) };
+					patchCollectionWithDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				}
+
+				// The final pipeline we want will be determined by two main things:
+				//		Properties related to how and when we're rendering the object (ie, render pass, technique delegate)
+				//		Properties realted to the object itself (ie, material settings, geometry input)
+				// We abstract this into two configuration objects:
+				//		SequencerConfig
+				//		PipelineAccelerator
+				// For each pair, we can generate a pipeline
+				// The two change independantly, and we need to mix and match them frequently (eg, rendering the same
+				// object in multiple different ways). The PipelineAcceleratorPool takes care of managing that -- including
+				// try to maintain in memory only those pipelines that are required
+				auto techniqueDelegate = std::make_shared<UnitTestTechniqueDelegate>();
+				auto cfg = pipelinePool->CreateSequencerConfig(
+					techniqueDelegate,
+					ParameterBox{}, 
+					fbHelper.GetDesc(), 0);
+
+				auto cfgOutputRed = pipelinePool->CreateSequencerConfig(
+					techniqueDelegate,
+					ParameterBox{ std::make_pair("OUTPUT_RED", "1") }, 
+					fbHelper.GetDesc(), 0);
+
+				{
+					auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+						patchCollectionNoDeform,
+						ParameterBox{},
+						ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
+						RenderCore::Assets::RenderStateSet{});
+
+					DrawViaPipelineAccelerator(
+						threadContext, fbHelper, globalTransform, pipelinePool,
+						pipelineAccelerator, cfg, 
+						*sphereVb, sphereGeo.size());
+				}
+
+				{
+					auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+						patchCollectionNoDeform,
+						ParameterBox{},
+						simplifiedVertex3D, Topology::TriangleList,
+						RenderCore::Assets::RenderStateSet{});
+
+					DrawViaPipelineAccelerator(
+						threadContext, fbHelper, globalTransform, pipelinePool,
+						pipelineAccelerator, cfg, 
+						*sphereVb, sphereGeo.size());
+				}
+
+				{
+					auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
+						patchCollectionWithDeform,
+						ParameterBox{},
+						ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
+						RenderCore::Assets::RenderStateSet{});
+
+					DrawViaPipelineAccelerator(
+						threadContext, fbHelper, globalTransform, pipelinePool,
+						pipelineAccelerator, cfg, 
+						*sphereVb, sphereGeo.size());
+
+					// once again; except with the "OUTPUT_RED" configuration set
+					DrawViaPipelineAccelerator(
+						threadContext, fbHelper, globalTransform, pipelinePool,
+						pipelineAccelerator, cfgOutputRed, 
+						*sphereVb, sphereGeo.size());
+				}
 			}
 
+			SECTION("Graph based technique with resources")
 			{
+				static const char sphericalCollectionFragments[] = R"--(
+				main=~
+					ut-data/spherical.graph::PerPixelImplementation
+					colorGenerator=~
+						ut-data/spherical_generators_resources.graph::SphericalToColorTexture0
+					normalGenerator=~
+						ut-data/spherical_generators.hlsl::MainSphericalToNormal
+				)--";
+				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragments) };
+				auto patchCollection = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				
+				auto techniqueDelegate = std::make_shared<UnitTestTechniqueDelegate>();
+				auto cfg = pipelinePool->CreateSequencerConfig(techniqueDelegate, ParameterBox{}, fbHelper.GetDesc(), 0);
+
 				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
-					compiledPatchCollectionNoDeform,
+					patchCollection,
 					ParameterBox{},
 					simplifiedVertex3D, Topology::TriangleList,
 					RenderCore::Assets::RenderStateSet{});
@@ -520,27 +612,6 @@ namespace UnitTests
 					pipelineAccelerator, cfg, 
 					*sphereVb, sphereGeo.size());
 			}
-
-			{
-				auto pipelineAccelerator = pipelinePool->CreatePipelineAccelerator(
-					compiledPatchCollectionWithDeform,
-					ParameterBox{},
-					ToolsRig::Vertex3D_InputLayout, Topology::TriangleList,
-					RenderCore::Assets::RenderStateSet{});
-
-				DrawViaPipelineAccelerator(
-					threadContext, fbHelper, globalTransform, pipelinePool,
-					pipelineAccelerator, cfg, 
-					*sphereVb, sphereGeo.size());
-
-				// once again; except with the "OUTPUT_RED" configuration set
-				DrawViaPipelineAccelerator(
-					threadContext, fbHelper, globalTransform, pipelinePool,
-					pipelineAccelerator, cfgOutputRed, 
-					*sphereVb, sphereGeo.size());
-			}
-
-			threadContext->GetAnnotator().EndFrameCapture();
 
 			compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
 			compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);

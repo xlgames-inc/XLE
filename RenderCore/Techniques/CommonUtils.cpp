@@ -103,7 +103,7 @@ namespace RenderCore { namespace Techniques
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>>
 		CreatePipelineAccelerator(
 			IPipelineAcceleratorPool& pool,
-			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& patchCollection,
 			const RenderCore::Assets::MaterialScaffoldMaterial& material,
 			IteratorRange<const RenderCore::InputElementDesc*> inputLayout,
 			Topology topology)

@@ -47,7 +47,7 @@ namespace RenderCore { namespace Techniques
 	public:
 		PipelineAccelerator(
 			unsigned ownerPoolId,
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			Topology topology,
@@ -64,11 +64,12 @@ namespace RenderCore { namespace Techniques
 			const SequencerConfig& cfg,
 			const ParameterBox& globalSelectors,
 			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+			const MaterialDescriptorSetLayout& matDescSetLayout,
 			const std::shared_ptr<SharedPools>& sharedPools);
 
 		Pipeline& PipelineForCfgId(SequencerConfigId cfgId);
 
-		std::shared_ptr<CompiledShaderPatchCollection> _shaderPatches;
+		std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _shaderPatches;
 		ParameterBox _materialSelectors;
 		ParameterBox _geoSelectors;
 
@@ -186,60 +187,78 @@ namespace RenderCore { namespace Techniques
 		const SequencerConfig& cfg,
 		const ParameterBox& globalSelectors,
 		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		const MaterialDescriptorSetLayout& matDescSetLayout,
 		const std::shared_ptr<SharedPools>& sharedPools) -> Pipeline
 	{
 		Pipeline result;
 		result._future = std::make_shared<::Assets::AssetFuture<Metal::GraphicsPipeline>>("PipelineAccelerator Pipeline");
-
 		ParameterBox copyGlobalSelectors = globalSelectors;
-
-		auto resolvedTechnique = cfg._delegate->Resolve(_shaderPatches->GetInterface(), _stateSet);
 		std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
-		::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<Metal::GraphicsPipeline>(
+
+		auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*_shaderPatches, matDescSetLayout);
+
+		// Queue massive chain of future continuation functions (it's not as scary as it looks)
+		//
+		//    CompiledShaderPatchCollection -> GraphicsPipelineDesc -> Metal::GraphicsPipeline
+		//
+		::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<Metal::GraphicsPipeline>(
 			*result._future,
 			[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis](
 				::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
-				const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
-
-				UniqueShaderVariationSet::FilteredSelectorSet filteredSelectors[dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders)];
+				const std::shared_ptr<CompiledShaderPatchCollection>& compiledPatchCollection) {
 
 				auto containingPipelineAccelerator = weakThis.lock();
 				if (!containingPipelineAccelerator)
 					Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
-				
-				{
-					// The list here defines the override order. Note that the global settings are last
-					// because they can actually override everything
-					const ParameterBox* paramBoxes[] = {
-						&cfg._sequencerSelectors,
-						&containingPipelineAccelerator->_geoSelectors,
-						&containingPipelineAccelerator->_materialSelectors,
-						&copyGlobalSelectors
-					};
-					
-					ScopedLock(sharedPools->_lock);
-					for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
-						if (!pipelineDesc->_shaders[c]._initializer.empty())
-							filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
-								MakeIteratorRange(paramBoxes),
-								pipelineDesc->_manualSelectorFiltering,
-								*pipelineDesc->_shaders[c]._automaticFiltering);
-				}
 
-				auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, containingPipelineAccelerator->_shaderPatches, MakeIteratorRange(filteredSelectors));
-				::Assets::WhenAll(shaderProgram).ThenConstructToFuture<Metal::GraphicsPipeline>(
+				auto resolvedTechnique = cfg._delegate->Resolve(compiledPatchCollection->GetInterface(), containingPipelineAccelerator->_stateSet);
+				
+				::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<Metal::GraphicsPipeline>(
 					resultFuture,
-					[cfg, pipelineDesc, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
+					[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis, compiledPatchCollection](
+						::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
+						const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
+
+						UniqueShaderVariationSet::FilteredSelectorSet filteredSelectors[dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders)];
+
 						auto containingPipelineAccelerator = weakThis.lock();
 						if (!containingPipelineAccelerator)
 							Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
+						
+						{
+							// The list here defines the override order. Note that the global settings are last
+							// because they can actually override everything
+							const ParameterBox* paramBoxes[] = {
+								&cfg._sequencerSelectors,
+								&containingPipelineAccelerator->_geoSelectors,
+								&containingPipelineAccelerator->_materialSelectors,
+								&copyGlobalSelectors
+							};
+							
+							ScopedLock(sharedPools->_lock);
+							for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
+								if (!pipelineDesc->_shaders[c]._initializer.empty())
+									filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
+										MakeIteratorRange(paramBoxes),
+										pipelineDesc->_manualSelectorFiltering,
+										*pipelineDesc->_shaders[c]._automaticFiltering);
+						}
 
-						return containingPipelineAccelerator->InternalCreatePipeline(
-							*shaderProgram, 
-							pipelineDesc->_depthStencil, 
-							pipelineDesc->_blend[0], 
-							pipelineDesc->_rasterization, 
-							cfg);
+						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
+						::Assets::WhenAll(shaderProgram).ThenConstructToFuture<Metal::GraphicsPipeline>(
+							resultFuture,
+							[cfg, pipelineDesc, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
+								auto containingPipelineAccelerator = weakThis.lock();
+								if (!containingPipelineAccelerator)
+									Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
+
+								return containingPipelineAccelerator->InternalCreatePipeline(
+									*shaderProgram, 
+									pipelineDesc->_depthStencil, 
+									pipelineDesc->_blend[0], 
+									pipelineDesc->_rasterization, 
+									cfg);
+							});
 					});
 			});
 
@@ -260,7 +279,7 @@ namespace RenderCore { namespace Techniques
 
 	PipelineAccelerator::PipelineAccelerator(
 		unsigned ownerPoolId,
-		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
 		Topology topology,
@@ -323,7 +342,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			Topology topology,
@@ -347,7 +366,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IDevice>& GetDevice() const override;
 		const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() const override;
 
-		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
+		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, const MaterialDescriptorSetLayout& matDescSetLayout);
 		~PipelineAcceleratorPool();
 		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
 		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
@@ -368,6 +387,7 @@ namespace RenderCore { namespace Techniques
 		void RebuildAllPipelines(unsigned poolGuid, PipelineAccelerator& pipeline);
 
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
+		MaterialDescriptorSetLayout _matDescSetLayout;
 		std::shared_ptr<SharedPools> _sharedPools;
 	};
 
@@ -461,7 +481,7 @@ namespace RenderCore { namespace Techniques
 	}
 
 	std::shared_ptr<PipelineAccelerator> PipelineAcceleratorPool::CreatePipelineAccelerator(
-		const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
+		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
 		IteratorRange<const InputElementDesc*> inputAssembly,
 		Topology topology,
@@ -471,6 +491,7 @@ namespace RenderCore { namespace Techniques
 		hash = HashCombine(Hash(inputAssembly), hash);
 		hash = HashCombine((unsigned)topology, hash);
 		hash = HashCombine(stateSet.GetHash(), hash);
+		hash = HashCombine(shaderPatches->GetHash(), hash);
 
 		// If it already exists in the cache, just return it now
 		auto i = LowerBound(_pipelineAccelerators, hash);
@@ -531,7 +552,7 @@ namespace RenderCore { namespace Techniques
 					if (a) {
 						auto& pipeline = a->PipelineForCfgId(cfgId);
 						if (!pipeline._future)
-							pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _sharedPools);
+							pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 					}
 				}
 				
@@ -549,7 +570,7 @@ namespace RenderCore { namespace Techniques
 		for (auto& accelerator:_pipelineAccelerators) {
 			auto a = accelerator.second.lock();
 			if (a)
-				a->PipelineForCfgId(cfgId) = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _sharedPools);
+				a->PipelineForCfgId(cfgId) = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 		}
 
 		return result;
@@ -561,7 +582,7 @@ namespace RenderCore { namespace Techniques
 			auto cfgId = SequencerConfigId(c) | (SequencerConfigId(poolGuid) << 32ull);
 			auto l = _sequencerConfigById[c].second.lock();
 			if (l) 
-				pipeline.PipelineForCfgId(cfgId) = pipeline.CreatePipelineForSequencerState(*l, _globalSelectors, _pipelineLayout, _sharedPools);
+				pipeline.PipelineForCfgId(cfgId) = pipeline.CreatePipelineForSequencerState(*l, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 		}
 	}
 
@@ -596,7 +617,7 @@ namespace RenderCore { namespace Techniques
 					auto& p = a->_finalPipelines[c];
 					if (p._future->GetAssetState() != ::Assets::AssetState::Pending && p._future->GetDependencyValidation()->GetValidationIndex() != 0) {
 						// It's out of date -- let's rebuild and reassign it
-						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _globalSelectors, _pipelineLayout, _sharedPools);
+						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 					}
 				}
 			}
@@ -620,12 +641,49 @@ namespace RenderCore { namespace Techniques
 
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 
-	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, const MaterialDescriptorSetLayout& matDescSetLayout)
+	: _matDescSetLayout(matDescSetLayout)
 	{
 		_guid = s_nextPipelineAcceleratorPoolGUID++;
 		_device = device;
 		_pipelineLayout = pipelineLayout;
 		_sharedPools = std::make_shared<SharedPools>();
+
+		// The _matDescSetLayout must agree with what we find the pipeline layout
+		auto pipelineLayoutDesc = _pipelineLayout->GetInitializer();
+		if (_matDescSetLayout.GetLayout()) {
+			if (_matDescSetLayout.GetSlotIndex() >= pipelineLayoutDesc.GetDescriptorSets().size())
+				Throw(std::runtime_error("Invalid slot index (" + std::to_string(_matDescSetLayout.GetSlotIndex()) + " for material descriptor set during pipeline accelerator pool construction"));
+
+			const auto& matchingDesc = pipelineLayoutDesc.GetDescriptorSets()[_matDescSetLayout.GetSlotIndex()]._signature;
+			const auto& layout = *_matDescSetLayout.GetLayout();
+			// It's ok if the pipeline layout has more slots than the _matDescSetLayout version; just not the other way around
+			// we just have the verify that the types match up for the slots that are there
+			if (matchingDesc._slots.size() < layout._slots.size())
+				Throw(std::runtime_error("Pipeline layout does not match the provided material descriptor set layout. There are too few slots in the pipeline layout"));
+
+			for (unsigned s=0; s<layout._slots.size(); ++s) {
+				auto expectedCount = layout._slots[s]._arrayElementCount ?: 1;
+				if (matchingDesc._slots[s]._type != layout._slots[s]._type || matchingDesc._slots[s]._count != expectedCount)
+					Throw(std::runtime_error("Pipeline layout does not match the provided material descriptor set layout. Slot type does not match for slot (" + std::to_string(s) + ")"));
+			}
+		} else {
+			// Even when there's no explicitly provided material desc layout, we can extract what we need from the pipeline layout
+			auto i = std::find_if(
+				pipelineLayoutDesc.GetDescriptorSets().begin(), pipelineLayoutDesc.GetDescriptorSets().end(),
+				[](const auto& c) { return c._name == "Material"; });
+			if (i != pipelineLayoutDesc.GetDescriptorSets().end()) {
+				auto extractedLayout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
+				extractedLayout->_slots.reserve(i->_signature._slots.size());
+				for (const auto& slot:i->_signature._slots)
+					extractedLayout->_slots.push_back(
+						RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot{
+							std::string{},
+							slot._type,
+							(slot._count == 1) ? 0u : slot._count});
+				_matDescSetLayout = MaterialDescriptorSetLayout { extractedLayout, (unsigned)std::distance(pipelineLayoutDesc.GetDescriptorSets().begin(), i) };
+			}
+		}
 	}
 
 	PipelineAcceleratorPool::~PipelineAcceleratorPool() {}
@@ -633,9 +691,21 @@ namespace RenderCore { namespace Techniques
 
 	IPipelineAcceleratorPool::~IPipelineAcceleratorPool() {}
 
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
+		const std::shared_ptr<IDevice>& device, 
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, 
+		const MaterialDescriptorSetLayout& matDescSetLayout)
 	{
-		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout);
+		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout, matDescSetLayout);
+	}
+
+	namespace Internal
+	{
+		const MaterialDescriptorSetLayout& GetDefaultMaterialDescriptorSetLayout()
+		{
+			static MaterialDescriptorSetLayout s_result;
+			return s_result;
+		}
 	}
 
 }}

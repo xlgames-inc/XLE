@@ -872,7 +872,8 @@ namespace RenderCore { namespace ImplVulkan
 		return std::make_shared<Metal_Vulkan::CompiledPipelineLayout>(
 			_objectFactory,
 			MakeIteratorRange(descSetBindings, &descSetBindings[desc.GetDescriptorSets().size()]),
-			MakeIteratorRange(pushConstantBinding, &pushConstantBinding[desc.GetPushConstants().size()]));
+			MakeIteratorRange(pushConstantBinding, &pushConstantBinding[desc.GetPushConstants().size()]),
+			desc);
 	}
 
 	std::shared_ptr<IDescriptorSet> Device::CreateDescriptorSet(const DescriptorSetInitializer& desc)

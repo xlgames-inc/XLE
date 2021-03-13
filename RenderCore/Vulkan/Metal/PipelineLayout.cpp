@@ -150,12 +150,15 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	static uint64_t s_nextCompiledPipelineLayoutGUID = 1;
 	uint64_t CompiledPipelineLayout::GetGUID() const { return _guid; }
+	PipelineLayoutInitializer CompiledPipelineLayout::GetInitializer() const { return _initializer; }
 
 	CompiledPipelineLayout::CompiledPipelineLayout(
 		ObjectFactory& factory,
 		IteratorRange<const DescriptorSetBinding*> descriptorSets,
-		IteratorRange<const PushConstantsBinding*> pushConstants)
+		IteratorRange<const PushConstantsBinding*> pushConstants,
+		const PipelineLayoutInitializer& desc)
 	: _guid(s_nextCompiledPipelineLayoutGUID++)
+	, _initializer(desc)
 	{
 		for (auto&c:_descriptorSetBindingNames) c = 0;
 		for (auto&c:_pushConstantBufferBindingNames) c = 0;

@@ -148,6 +148,9 @@ namespace RenderCore
 		IteratorRange<const PushConstantsBinding*> GetPushConstants() const { return MakeIteratorRange(_pushConstants); }
 
 		PipelineLayoutInitializer();
+		PipelineLayoutInitializer(
+			IteratorRange<const DescriptorSetBinding*> descriptorSets,
+			IteratorRange<const PushConstantsBinding*> pushConstants);
 		~PipelineLayoutInitializer();
 	private:
 		std::vector<DescriptorSetBinding> _descriptorSets;

@@ -6,6 +6,7 @@
 
 #include "../ShaderService.h"
 #include "../Assets/ShaderPatchCollection.h"
+#include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
@@ -14,12 +15,15 @@
 #include <vector>
 #include <unordered_map>
 
+namespace RenderCore { class ICompiledPipelineLayout; }
 namespace RenderCore { namespace Assets { class ShaderPatchCollection; class PredefinedCBLayout; class PredefinedDescriptorSetLayout; }}
 namespace Utility { class ParameterBox; }
 namespace ShaderSourceParser { class InstantiationRequest; class GenerateFunctionOptions; class NodeGraphSignature; }
 
 namespace RenderCore { namespace Techniques
 {
+	class MaterialDescriptorSetLayout;
+
 	/// <summary>Compiled and optimized version of RenderCore::Assets::ShaderPatchCollection</summary>
 	/// A RenderCore::Assets::ShaderPatchCollection contains references to shader patches used by a material,
 	/// however in that form it's not directly usable. We must expand the shader graphs and calculate the inputs
@@ -46,14 +50,16 @@ namespace RenderCore { namespace Techniques
 				std::shared_ptr<GraphLanguage::NodeGraphSignature> _signature;
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
-			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetMaterialDescriptorSet() const { return _descriptorSet; }
+			const RenderCore::Assets::PredefinedDescriptorSetLayout& GetMaterialDescriptorSet() const { return _descriptorSet; }
+			unsigned GetMaterialDescriptorSetSlotIndex() const { return _materialDescriptorSetSlotIndex; }
 			const ShaderSourceParser::SelectorFilteringRules& GetSelectorFilteringRules() const { return _filteringRules; }
 
 			bool HasPatchType(uint64_t implementing) const;
 
 		private:
 			std::vector<Patch> _patches;
-			std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _descriptorSet;
+			RenderCore::Assets::PredefinedDescriptorSetLayout _descriptorSet;
+			unsigned _materialDescriptorSetSlotIndex;
 			ShaderSourceParser::SelectorFilteringRules _filteringRules;
 
 			friend class CompiledShaderPatchCollection;
@@ -69,8 +75,12 @@ namespace RenderCore { namespace Techniques
 
 		uint64_t GetGUID() const { return _guid; }
 
-		CompiledShaderPatchCollection(const RenderCore::Assets::ShaderPatchCollection& src);
-		CompiledShaderPatchCollection(const ShaderSourceParser::InstantiatedShader& instantiatedShader);
+		CompiledShaderPatchCollection(
+			const RenderCore::Assets::ShaderPatchCollection& src,
+			const MaterialDescriptorSetLayout& pipelineLayout);
+		CompiledShaderPatchCollection(
+			const ShaderSourceParser::InstantiatedShader& instantiatedShader,
+			const MaterialDescriptorSetLayout& pipelineLayout);
 		CompiledShaderPatchCollection();
 		~CompiledShaderPatchCollection();
 	private:
@@ -79,7 +89,30 @@ namespace RenderCore { namespace Techniques
 		RenderCore::Assets::ShaderPatchCollection _src;
 		std::string _savedInstantiation;
 
-		void BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst);
+		void BuildFromInstantiatedShader(
+			const ShaderSourceParser::InstantiatedShader& inst,
+			const MaterialDescriptorSetLayout& pipelineLayout);
+	};
+
+	class MaterialDescriptorSetLayout
+	{
+	public:
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetLayout() const { return _layout; }
+		unsigned GetSlotIndex() const { return _slotIdx; }
+
+		uint64_t GetHash() const { return _hash; }
+		::Assets::DepValPtr GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : nullptr; }
+
+		MaterialDescriptorSetLayout(
+			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
+			unsigned slotIdx);
+		MaterialDescriptorSetLayout();
+		~MaterialDescriptorSetLayout();
+
+	private:
+		std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _layout;
+		unsigned _slotIdx;
+		uint64_t _hash;
 	};
 
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const
