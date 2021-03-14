@@ -21,7 +21,7 @@ namespace BufferUploads { namespace PlatformInterface
 	using UnderlyingResource = RenderCore::IResource;
 	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
-	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, DataPacket* initialisationData = nullptr);
+	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, IDataPacket* initialisationData = nullptr);
     ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
 
     int64_t           QueryPerformanceCounter();
@@ -74,7 +74,7 @@ namespace BufferUploads { namespace PlatformInterface
         void                                            BeginCommandList();
 
             ////////   R E A D   B A C K   ////////
-        intrusive_ptr<DataPacket> Readback(const ResourceLocator& locator);
+        // intrusive_ptr<DataPacket> Readback(const ResourceLocator& locator);
 
             ////////   C O N S T R U C T I O N   ////////
         UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);
@@ -96,7 +96,7 @@ namespace BufferUploads { namespace PlatformInterface
         // std::shared_ptr<RenderCore::Metal::DeviceContext>      _devContext;
     };
 
-    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(DataPacket& pkt);
+    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(IDataPacket& pkt);
 
         /////////////////////////////////////////////////////////////////////
 #if 0

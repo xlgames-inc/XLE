@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -317,9 +315,9 @@ namespace BufferUploads
         }
     }
 
-    static TextureDesc BuildTextureDesc(const DirectX::TexMetadata& metadata)
+    static RenderCore::TextureDesc BuildTextureDesc(const DirectX::TexMetadata& metadata)
     {
-        TextureDesc desc = TextureDesc::Empty();
+        RenderCore::TextureDesc desc = RenderCore::TextureDesc::Empty();
         
         desc._width = uint32_t(metadata.width);
         desc._height = uint32_t(metadata.height);
@@ -360,7 +358,7 @@ namespace BufferUploads
     }
 
     DirectXTextureLibraryDataPacket::DirectXTextureLibraryDataPacket(
-        StringSection<::Assets::ResChar> inputFilename,
+        StringSection<> inputFilename,
         TextureLoadFlags::BitField flags)
     {
         using namespace DirectX;
@@ -571,7 +569,7 @@ namespace BufferUploads
         return make_intrusive<StreamingTexture>(plugins, filename, flags);
     }
 
-    TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)
+    RenderCore::TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)
     {
         auto fmt = GetTexFmt(filename);
                 
@@ -596,7 +594,7 @@ namespace BufferUploads
             return BuildTextureDesc(metadata);
         }
 
-        return TextureDesc::Empty();
+        return RenderCore::TextureDesc::Empty();
     }
 
 }

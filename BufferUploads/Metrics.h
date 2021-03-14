@@ -24,7 +24,7 @@ namespace BufferUploads
         unsigned _transactionCount, _temporaryTransactionsAllocated, _longTermTransactionsAllocated;
         unsigned _queuedCreates, _queuedUploads, _queuedStagingCreates, _queuedPrepares;
         unsigned _queuedPeakCreates, _queuedPeakUploads, _queuedPeakStagingCreates, _queuedPeakPrepares;
-        unsigned _queuedBytes[UploadDataType::Max];
+        unsigned _queuedBytes[(unsigned)UploadDataType::Max];
         AssemblyLineMetrics();
     };
 
@@ -36,13 +36,13 @@ namespace BufferUploads
 
     struct CommandListMetrics
     {
-        unsigned _bytesUploaded[UploadDataType::Max];
-        unsigned _bytesCreated[UploadDataType::Max];
-        unsigned _bytesUploadedDuringCreation[UploadDataType::Max];
+        unsigned _bytesUploaded[(unsigned)UploadDataType::Max];
+        unsigned _bytesCreated[(unsigned)UploadDataType::Max];
+        unsigned _bytesUploadedDuringCreation[(unsigned)UploadDataType::Max];
         unsigned _bytesUploadTotal;
-        unsigned _countCreations[UploadDataType::Max];
-        unsigned _countDeviceCreations[UploadDataType::Max];
-        unsigned _countUploaded[UploadDataType::Max];
+        unsigned _countCreations[(unsigned)UploadDataType::Max];
+        unsigned _countDeviceCreations[(unsigned)UploadDataType::Max];
+        unsigned _countUploaded[(unsigned)UploadDataType::Max];
         unsigned _contextOperations, _nonContextOperations, _deviceCreateOperations;
         AssemblyLineMetrics _assemblyLineMetrics;
         AssemblyLineRetirement _retirements[16];

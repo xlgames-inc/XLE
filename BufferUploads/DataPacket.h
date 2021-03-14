@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../RenderCore/Types.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"                 // for StringSection
 #include <functional>
@@ -43,11 +44,11 @@ namespace BufferUploads
 
         /////////////////////////////////////////////////
 
-    std::shared_ptr<DataPacket> CreateBasicPacket(
+    std::shared_ptr<IDataPacket> CreateBasicPacket(
         IteratorRange<const void*> data = {}, 
         TexturePitches pitches = TexturePitches());
 
-    std::shared_ptr<DataPacket> CreateEmptyPacket(
+    std::shared_ptr<IDataPacket> CreateEmptyPacket(
         const ResourceDesc& desc);
 
     namespace TextureHandlers
@@ -60,13 +61,13 @@ namespace BufferUploads
         struct TexturePlugin
         {
             std::regex _filenameMatcher;
-            std::function<intrusive_ptr<DataPacket>(StringSection<::Assets::ResChar>, TextureLoadFlags::BitField flags)> _loader;
+            std::function<std::shared_ptr<IDataPacket>(StringSection<>, TextureLoadFlags::BitField)> _loader;
         };
 
-        buffer_upload_dll_export intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+        std::shared_ptr<IDataPacket> CreateStreamingTextureSource(
             IteratorRange<const TexturePlugin*> plugins,
-            StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags = 0);
+            StringSection<> filename, TextureLoadFlags::BitField flags = 0);
 
-        buffer_upload_dll_export TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename);
+        RenderCore::TextureDesc LoadTextureFormat(StringSection<> filename);
     }
 }

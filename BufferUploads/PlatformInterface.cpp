@@ -24,10 +24,12 @@ namespace BufferUploads { namespace PlatformInterface
 
     int64_t QueryPerformanceCounter()
     {
-        return Utility::GetPerformanceCounter();
+        // return Utility::GetPerformanceCounter();
+        assert(0);
+        return 0;
     }
 
-    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(DataPacket& pkt)
+    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(IDataPacket& pkt)
     {
         return [&pkt](SubResourceId sr) -> RenderCore::SubResourceInitData
             {

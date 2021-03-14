@@ -13,7 +13,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         BufferUploads_Manager.h
         DataPacket.h
         Documentation.h
-        IBufferUploads_Forward.h
         IBufferUploads.h
         MemoryManagement.h
         Metrics.h

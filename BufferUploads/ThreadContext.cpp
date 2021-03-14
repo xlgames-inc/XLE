@@ -12,10 +12,6 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
 
-#if defined(WIN32) || defined(WIN64)
-	#include "../OSServices/WinAPI/IncludeWindows.h"
-#endif
-
 #pragma warning(disable:4127) // conditional expression is constant
 
 namespace BufferUploads
@@ -321,8 +317,8 @@ namespace BufferUploads
         _size = 0;
     }
 
-    CommitStep::DeferredCopy::DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<DataPacket> pkt)
-    : _destination(std::move(destination)), _size(size), _temporaryBuffer(std::move(pkt))
+    CommitStep::DeferredCopy::DeferredCopy(const ResourceLocator& destination, unsigned size, std::shared_ptr<IDataPacket> pkt)
+    : _destination(destination), _size(size), _temporaryBuffer(std::move(pkt))
     {
     }
 
@@ -346,7 +342,7 @@ namespace BufferUploads
     }
 
     CommitStep::DeferredDefragCopy::DeferredDefragCopy(
-		UnderlyingResourcePtr destination, UnderlyingResourcePtr source, const std::vector<DefragStep>& steps)
+		std::shared_ptr<IResource> destination, std::shared_ptr<IResource> source, const std::vector<DefragStep>& steps)
     : _destination(std::move(destination)), _source(std::move(source)), _steps(steps)
     {}
 

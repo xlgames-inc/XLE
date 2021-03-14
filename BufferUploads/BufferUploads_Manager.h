@@ -24,29 +24,29 @@ namespace BufferUploads
         TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags) override;
         TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags) override;
         TransactionMarker       Transaction_Begin(intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) override;
-        void                    Transaction_Cancel(TransactionID id);
-        void                    Transaction_Validate(TransactionID id);
+        void                    Transaction_Cancel(TransactionID id) override;
+        void                    Transaction_Validate(TransactionID id) override;
 
         ResourceLocator         Transaction_Immediate(
-                                    std::shared_ptr<IThreadContext>& threadContext,
-                                    const ResourceDesc& desc, DataPacket& data,
-                                    const PartialResource&);
+                                    RenderCore::IThreadContext& threadContext,
+                                    const ResourceDesc& desc, IDataPacket& data,
+                                    const PartialResource&) override;
         
         ResourceLocator         GetResource(TransactionID id);
-        void                    Resource_Validate(const ResourceLocator& locator);
-        bool                    IsCompleted(TransactionID id);
+        void                    Resource_Validate(const ResourceLocator& locator) override;
+        bool                    IsCompleted(TransactionID id) override;
 
-        CommandListMetrics      PopMetrics();
-        PoolSystemMetrics       CalculatePoolMetrics() const;
-        size_t                  ByteCount(const ResourceDesc& desc) const;
+        CommandListMetrics      PopMetrics() override;
+        PoolSystemMetrics       CalculatePoolMetrics() const override;
+        size_t                  ByteCount(const ResourceDesc& desc) const override;
 
-        void                    Update(RenderCore::IThreadContext&, bool preserveRenderState);
-        void                    Flush();
-        void                    FramePriority_Barrier();
+        void                    Update(RenderCore::IThreadContext&, bool preserveRenderState) override;
+        void                    Flush() override;
+        void                    FramePriority_Barrier() override;
 
-        EventListID             EventList_GetLatestID();
-        void                    EventList_Get(EventListID id, Event_ResourceReposition*&begin, Event_ResourceReposition*&end);
-        void                    EventList_Release(EventListID id);
+        EventListID             EventList_GetLatestID() override;
+        void                    EventList_Get(EventListID id, Event_ResourceReposition*&begin, Event_ResourceReposition*&end) override;
+        void                    EventList_Release(EventListID id) override;
 
         void                    OnLostDevice();
         void                    OnResetDevice();

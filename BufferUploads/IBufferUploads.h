@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "IBufferUploads_Forward.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/ResourceDesc.h"
+#include "../RenderCore/ResourceUtils.h"
 #include <memory>
 #include <future>
 
@@ -122,8 +122,8 @@ namespace BufferUploads
             /// execute in the current thread, and a new resource will be returned from
             /// the call. Use these methods when uploads can't be delayed.
         virtual ResourceLocator
-            Transaction_Immediate(  std::shared_ptr<IThreadContext>& threadContext,
-                                    const ResourceDesc& desc, DataPacket& data,
+            Transaction_Immediate(  RenderCore::IThreadContext& threadContext,
+                                    const ResourceDesc& desc, IDataPacket& data,
                                     const PartialResource& = PartialResource()) = 0;
             /// @}
 

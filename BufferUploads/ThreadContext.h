@@ -17,8 +17,7 @@
 
 namespace BufferUploads
 {
-	using UnderlyingResource = RenderCore::IResource;
-	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
+	using IResource = RenderCore::IResource;
 
         //////   C O M M I T   S T E P   //////
 
@@ -28,12 +27,12 @@ namespace BufferUploads
         class DeferredCopy
         {
         public:
-            intrusive_ptr<DataPacket> _temporaryBuffer;
-            intrusive_ptr<ResourceLocator> _destination;
+            std::shared_ptr<IDataPacket> _temporaryBuffer;
+            ResourceLocator _destination;
             unsigned _size;
 
             DeferredCopy();
-            DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<DataPacket> pkt);
+            DeferredCopy(const ResourceLocator& destination, unsigned size, std::shared_ptr<IDataPacket> pkt);
             DeferredCopy(DeferredCopy&& moveFrom);
             const DeferredCopy& operator=(DeferredCopy&& moveFrom);
             ~DeferredCopy();
@@ -46,10 +45,10 @@ namespace BufferUploads
         class DeferredDefragCopy
         {
         public:
-            UnderlyingResourcePtr _destination;
-            UnderlyingResourcePtr _source;
+            std::shared_ptr<IResource> _destination;
+            std::shared_ptr<IResource> _source;
             std::vector<DefragStep> _steps;
-            DeferredDefragCopy(UnderlyingResourcePtr destination, UnderlyingResourcePtr source, const std::vector<DefragStep>& steps);
+            DeferredDefragCopy(std::shared_ptr<IResource> destination, std::shared_ptr<IResource> source, const std::vector<DefragStep>& steps);
             ~DeferredDefragCopy();
         };
 
