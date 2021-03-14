@@ -7,21 +7,17 @@
 #pragma once
 
 #include "IBufferUploads.h"
-#include "../Core/Types.h"
 #include <vector>
 
 namespace BufferUploads
 {
-    typedef int64 TimeMarker;
+    typedef int64_t TimeMarker;
 
-    namespace UploadDataType
+    enum class UploadDataType
     {
-        enum Enum
-        {
-            Texture, Vertex, Index,
-            Max
-        };
-    }
+        Texture, Vertex, Index,
+        Max
+    };
 
     struct AssemblyLineMetrics
     {
@@ -34,7 +30,7 @@ namespace BufferUploads
 
     struct AssemblyLineRetirement
     {
-        BufferDesc _desc;
+        ResourceDesc _desc;
         TimeMarker _requestTime, _retirementTime;
     };
 
@@ -70,7 +66,7 @@ namespace BufferUploads
 
     struct PoolMetrics
     {
-        BufferDesc _desc;
+        ResourceDesc _desc;
         unsigned _currentSize, _peakSize;
         unsigned _topMostAge;
         unsigned _recentDeviceCreateCount;

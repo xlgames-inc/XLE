@@ -40,15 +40,13 @@ namespace RenderCore { namespace Metal_AppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class CommandList : public RefCountedObject
+    class CommandList
     {
     public:
         CommandList() {}
         CommandList(const CommandList&) = delete;
         CommandList& operator=(const CommandList&) = delete;
     };
-
-    using CommandListPtr = intrusive_ptr<CommandList>;
 
     class CapturedStates
     {
@@ -190,7 +188,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         //      C M D L I S T
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         void            BeginCommandList();
-        CommandListPtr  ResolveCommandList();
+        std::shared_ptr<CommandList>  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

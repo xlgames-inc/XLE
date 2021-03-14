@@ -40,8 +40,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         CommandList& operator=(const CommandList&) = delete;
     };
 
-    using CommandListPtr = intrusive_ptr<CommandList>;
-
     class CapturedStates
     {
     public:
@@ -159,7 +157,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void    EndSubpass();
 
         void            BeginCommandList();
-        CommandListPtr  ResolveCommandList();
+        std::shared_ptr<CommandList>  ResolveCommandList();
         void            ExecuteCommandList(CommandList& commandList);
 
         std::shared_ptr<IDevice> GetDevice();

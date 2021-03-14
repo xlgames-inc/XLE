@@ -55,8 +55,6 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::CommandList> _underlying;
     };
 
-    using CommandListPtr = intrusive_ptr<CommandList>;
-
 	class GraphicsPipeline
     {
     public:
@@ -170,7 +168,7 @@ namespace RenderCore { namespace Metal_DX11
 		bool		InRenderPass();
 
         void        BeginCommandList();
-        auto        ResolveCommandList() -> CommandListPtr;
+        auto        ResolveCommandList() -> std::shared_ptr<CommandList>;
         void        ExecuteCommandList(CommandList& commandList, bool preserveRenderState);
 
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);

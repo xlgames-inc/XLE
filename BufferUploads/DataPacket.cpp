@@ -30,12 +30,31 @@
 namespace BufferUploads
 {
 
+    class BasicRawDataPacket : public DataPacket
+    {
+    public:
+        virtual void* GetData(SubResourceId subRes = {});
+        virtual size_t GetDataSize(SubResourceId subRes = {}) const;
+        virtual TexturePitches GetPitches(SubResourceId subRes = {}) const;
+        virtual std::shared_ptr<Marker> BeginBackgroundLoad();
+
+        BasicRawDataPacket(size_t dataSize, const void* data = nullptr, TexturePitches pitches = TexturePitches());
+        virtual ~BasicRawDataPacket();
+    protected:
+        std::unique_ptr<uint8_t, PODAlignedDeletor> _data; 
+        size_t _dataSize;
+        TexturePitches _pitches;
+
+        BasicRawDataPacket(const BasicRawDataPacket&);
+        BasicRawDataPacket& operator=(const BasicRawDataPacket&);
+    };
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     BasicRawDataPacket::BasicRawDataPacket(size_t dataSize, const void* data, TexturePitches pitches)
     : _dataSize(dataSize), _pitches(pitches)    
     {
-        _data.reset((uint8*)XlMemAlign(dataSize, 16));
+        _data.reset((uint8_t*)XlMemAlign(dataSize, 16));
 
             // note --  prefer sending aligned data as input! Just makes it
             //          more convenient for copying
@@ -77,14 +96,14 @@ namespace BufferUploads
         return make_intrusive<BasicRawDataPacket>(dataSize, data, rowAndSlicePitch);
     }
 
-    intrusive_ptr<DataPacket> CreateEmptyPacket(const BufferDesc& desc)
+    intrusive_ptr<DataPacket> CreateEmptyPacket(const ResourceDesc& desc)
     {
             // Create an empty packet of the appropriate size for the given desc
             // Linear buffers are simple, but textures need a little more detail...
-        if (desc._type == BufferDesc::Type::LinearBuffer) {
+        if (desc._type == ResourceDesc::Type::LinearBuffer) {
             auto size = RenderCore::ByteCount(desc);
             return make_intrusive<BasicRawDataPacket>(size, nullptr, TexturePitches{size, size});
-        } else if (desc._type == BufferDesc::Type::Texture) {
+        } else if (desc._type == ResourceDesc::Type::Texture) {
                 //  currently not supporting textures with multiple mip-maps
                 //  or multiple array slices
             assert(desc._textureDesc._mipCount <= 1);
@@ -237,7 +256,7 @@ namespace BufferUploads
         void*           GetData         (SubResourceId subRes) override;
         size_t          GetDataSize     (SubResourceId subRes) const override;
         TexturePitches  GetPitches      (SubResourceId subRes) const override;
-		virtual BufferDesc		GetDesc			() const override;
+		virtual ResourceDesc		GetDesc			() const override;
 
         std::shared_ptr<Marker>     BeginBackgroundLoad() override;
 
@@ -248,7 +267,7 @@ namespace BufferUploads
     private:
         DirectX::ScratchImage _image;
         DirectX::TexMetadata _texMetadata;
-		BufferDesc _desc;
+		ResourceDesc _desc;
     };
 
     void* DirectXTextureLibraryDataPacket::GetData(SubResourceId subRes)
@@ -272,7 +291,7 @@ namespace BufferUploads
         return TexturePitches{};
     }
 
-	BufferDesc		DirectXTextureLibraryDataPacket::GetDesc			() const
+	ResourceDesc		DirectXTextureLibraryDataPacket::GetDesc			() const
 	{
 		return _desc;
 	}
@@ -302,11 +321,11 @@ namespace BufferUploads
     {
         TextureDesc desc = TextureDesc::Empty();
         
-        desc._width = uint32(metadata.width);
-        desc._height = uint32(metadata.height);
-        desc._depth = uint32(metadata.depth);
-        desc._arrayCount = uint8(metadata.arraySize);
-        desc._mipCount = uint8(metadata.mipLevels);
+        desc._width = uint32_t(metadata.width);
+        desc._height = uint32_t(metadata.height);
+        desc._depth = uint32_t(metadata.depth);
+        desc._arrayCount = uint8_t(metadata.arraySize);
+        desc._mipCount = uint8_t(metadata.mipLevels);
         desc._samples = TextureSamples::Create();
 
             // we need to use a "typeless" format for any pixel formats that can
@@ -363,7 +382,7 @@ namespace BufferUploads
         const bool loadViaMainFileSystem = true;
         if (loadViaMainFileSystem) {
             if (fmt == TexFmt::DDS || fmt == TexFmt::TGA || fmt == TexFmt::WIC) {
-                MemoryMappedFile srcFile;
+                OSServices::MemoryMappedFile srcFile;
                 auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, inputFilename, 0ull, "r");
                 if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
                     if (fmt == TexFmt::DDS) {
@@ -395,7 +414,7 @@ namespace BufferUploads
         if (SUCCEEDED(hresult)) {
 			auto loadedDDSFormat = fmt == TexFmt::DDS; 
 
-            _desc._type = BufferDesc::Type::Texture;
+            _desc._type = ResourceDesc::Type::Texture;
             _desc._textureDesc = BuildTextureDesc(_texMetadata);
 
             // note --	When loading from a .dds file, never generate the mipmaps. Typically we want mipmaps to be
@@ -409,13 +428,13 @@ namespace BufferUploads
                 auto mipmapHresult = GenerateMipMaps(*_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
                 if (SUCCEEDED(mipmapHresult)) {
                     _image = std::move(newImage);
-                    _desc._textureDesc._mipCount = uint8(_image.GetMetadata().mipLevels);
+                    _desc._textureDesc._mipCount = uint8_t(_image.GetMetadata().mipLevels);
                 } else {
                     Log(Warning) << "Failed while building mip-maps for texture: " << inputFilename.AsString() << std::endl;
                 }
             }
         } else {
-			_desc._type = BufferDesc::Type::Unknown;
+			_desc._type = ResourceDesc::Type::Unknown;
 		}
     }
 
@@ -429,7 +448,7 @@ namespace BufferUploads
         virtual void*           GetData         (SubResourceId subRes) override;
         virtual size_t          GetDataSize     (SubResourceId subRes) const override;
         virtual TexturePitches  GetPitches      (SubResourceId subRes) const override;
-		virtual BufferDesc		GetDesc			() const override;
+		virtual ResourceDesc		GetDesc			() const override;
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad() override;
 
@@ -469,7 +488,7 @@ namespace BufferUploads
         return {};
     }
 
-	BufferDesc		StreamingTexture::GetDesc		() const
+	ResourceDesc		StreamingTexture::GetDesc		() const
 	{
 		if (_realPacket)
             return _realPacket->GetDesc();

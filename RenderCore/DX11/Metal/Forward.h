@@ -33,6 +33,7 @@ namespace RenderCore { namespace Metal_DX11
 
     class DeviceContext;
     class ObjectFactory;
+    class CommandList;
 
     class FrameBuffer;
     class FrameBufferPool;

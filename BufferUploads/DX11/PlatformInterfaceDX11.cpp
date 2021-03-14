@@ -32,16 +32,16 @@
         static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::AsID3DResource(resource); }
 
         unsigned UnderlyingDeviceContext::PushToTexture(
-            UnderlyingResource& resource, const BufferDesc& desc,
+            UnderlyingResource& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
         {
-            assert(desc._type == BufferDesc::Type::Texture);
+            assert(desc._type == ResourceDesc::Type::Texture);
 
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             const bool isFullUpdate = box == Box2D();
 
-            #if defined(XL_DEBUG)
+            #if defined(_DEBUG)
                 if (isFullUpdate) {
                     intrusive_ptr<ID3D::Texture2D> texture = Metal::QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
                     if (texture) {
@@ -58,7 +58,7 @@
                     auto srd = data({mip, arrayLayer});
                     if (!srd._data.size()) continue;
 
-                    uint32 subResource = D3D11CalcSubresource(mip, arrayLayer, desc._textureDesc._mipCount);
+                    uint32_t subResource = D3D11CalcSubresource(mip, arrayLayer, desc._textureDesc._mipCount);
                     if (isFullUpdate) {
 
 				        metalContext->GetUnderlying()->UpdateSubresource(
@@ -139,10 +139,10 @@
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(
-            UnderlyingResource& resource, const BufferDesc& desc, unsigned offset,
+            UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize)
         {
-            assert(desc._type == BufferDesc::Type::LinearBuffer);
+            assert(desc._type == ResourceDesc::Type::LinearBuffer);
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
 
             unsigned copiedBytes = 0;
@@ -159,7 +159,7 @@
                 if (_useUpdateSubresourceWorkaround) {  // see documentation for ID3D11DeviceContext::UpdateSubresource for the description for this workaround
                     data = (const void*)(size_t(data)-offset);
                 }
-                #if defined(XL_DEBUG)
+                #if defined(_DEBUG)
                     {
                         intrusive_ptr<ID3D::Buffer> buffer = Metal::QueryInterfaceCast<ID3D::Buffer>(ResPtr(resource));
                         if (buffer) {
@@ -190,7 +190,7 @@
         }
 
         unsigned UnderlyingDeviceContext::PushToStagingTexture(
-            UnderlyingResource& resource, const BufferDesc&desc,
+            UnderlyingResource& resource, const ResourceDesc&desc,
             const Box2D& box,
             const ResourceInitializer& data)
         {
@@ -202,7 +202,7 @@
                     auto subResData = data({m, a});
                     if (!subResData._data.size()) continue;
 
-                    uint32 subResource = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
+                    uint32_t subResource = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
                     D3D11_MAPPED_SUBRESOURCE mappedSubresource;
                     XlZeroMemory(mappedSubresource);
                     HRESULT hresult = metalContext->GetUnderlying()->Map(
@@ -223,7 +223,7 @@
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
             UnderlyingResource& finalResource, UnderlyingResource& staging, 
-            const BufferDesc& destinationDesc, 
+            const ResourceDesc& destinationDesc, 
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
             VectorPattern<unsigned, 2> stagingXYOffset,
             const RenderCore::Box2D& srcBox)
@@ -233,7 +233,7 @@
                 (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
                 && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
 
-            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
+            if (allLods && destinationDesc._type == ResourceDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
                 Metal::Copy(
                     *metalContext, 
 					Metal::AsResource(finalResource), Metal::AsResource(staging),
@@ -281,7 +281,7 @@
 
         static MappedBuffer Map(Metal::DeviceContext& context, const UnderlyingResourcePtr& resource, MapType::Enum mapType, unsigned subResource=0)
         {
-            // uint32 subResource = 0;
+            // uint32_t subResource = 0;
             // intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
             // if (tex2D && arrayIndex > 0) {
             //     D3D11_TEXTURE2D_DESC desc;
@@ -495,9 +495,9 @@
         return _mappedBuffer[subResIndex].GetPitches();
     }
 
-    static BufferDesc AsStagingDesc(const BufferDesc& desc)
+    static ResourceDesc AsStagingDesc(const ResourceDesc& desc)
     {
-        BufferDesc result = desc;
+        ResourceDesc result = desc;
         result._cpuAccess = CPUAccess::Write|CPUAccess::Read;
         result._gpuAccess = 0;
         result._bindFlags = BindFlag::TransferSrc;
@@ -517,7 +517,7 @@
         auto desc = PlatformInterface::ExtractDesc(*resource);
         auto subResCount = 1u;
         _mipCount = _arrayCount = 1u;
-        if (desc._type == BufferDesc::Type::Texture) {
+        if (desc._type == ResourceDesc::Type::Texture) {
             subResCount = 
                   std::max(1u, unsigned(desc._textureDesc._mipCount))
                 * std::max(1u, unsigned(desc._textureDesc._arrayCount));
@@ -531,7 +531,7 @@
             //
         using namespace PlatformInterface;
         if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
-            BufferDesc stagingDesc = AsStagingDesc(desc);
+            ResourceDesc stagingDesc = AsStagingDesc(desc);
             stagingResource = CreateResource(*context.GetObjectFactory(), stagingDesc);
             if (stagingResource.get()) {
                 context.ResourceCopy(*stagingResource.get(), *resource);
@@ -573,7 +573,7 @@
 
         bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query)
         {
-            uint32 queryValue = 0;
+            uint32_t queryValue = 0;
             HRESULT result = context->GetData(
                 query, &queryValue, sizeof(queryValue), D3D11_ASYNC_GETDATA_DONOTFLUSH);
             return SUCCEEDED(result) && queryValue;
@@ -587,7 +587,7 @@
             return objFactory.CreateQuery(&queryDesc);
         }
 
-        IResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
+        IResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, DataPacket* initialisationData)
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,
@@ -605,7 +605,7 @@
 			}
         }
 
-		BufferDesc ExtractDesc(UnderlyingResource& resource)
+		ResourceDesc ExtractDesc(UnderlyingResource& resource)
 		{
 			return resource.GetDesc();
 		}

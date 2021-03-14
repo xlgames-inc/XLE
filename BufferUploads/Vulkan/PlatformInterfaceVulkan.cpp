@@ -21,7 +21,7 @@
         using namespace RenderCore;
 
         unsigned UnderlyingDeviceContext::PushToTexture(
-            IResource& resource, const BufferDesc& desc,
+            IResource& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
         {
@@ -31,7 +31,7 @@
 
             // In Vulkan, the only way we have to send data to a resource is by using
             // a memory map and CPU assisted copy. 
-            assert(desc._type == BufferDesc::Type::Texture);
+            assert(desc._type == ResourceDesc::Type::Texture);
             if (box == Box2D())
                 return Metal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *metalResource, data);
 
@@ -57,7 +57,7 @@
         }
 
         unsigned UnderlyingDeviceContext::PushToStagingTexture(
-			UnderlyingResource& resource, const BufferDesc&desc, 
+			UnderlyingResource& resource, const ResourceDesc&desc, 
             const Box2D& box,
             const ResourceInitializer& data)
         {
@@ -71,7 +71,7 @@
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
 			IResource& finalResource, IResource& staging, 
-			const BufferDesc& destinationDesc, 
+			const ResourceDesc& destinationDesc, 
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
             VectorPattern<unsigned, 2> stagingXYOffset,
             const Box2D& srcBox)
@@ -100,7 +100,7 @@
 				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
 			}
 
-            if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
+            if (allLods && destinationDesc._type == ResourceDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
                 Metal::Copy(
                     *metalContext, 
                     *metalFinal, *metalStaging,
@@ -137,7 +137,7 @@
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(
-            IResource& resource, const BufferDesc& desc, unsigned offset,
+            IResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize)
         {
 			auto* metalResource = (Metal::Resource*)resource.QueryInterface(typeid(Metal::Resource).hash_code());
@@ -145,7 +145,7 @@
 				Throw(::Exceptions::BasicLabel("Incorrect resource type passed to buffer uploads platform layer"));
 
             // note -- this is a direct, immediate map... There must be no contention while we map.
-            assert(desc._type == BufferDesc::Type::LinearBuffer);
+            assert(desc._type == ResourceDesc::Type::LinearBuffer);
 			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
             Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, offset);
             auto copyAmount = std::min(map.GetData().size(), dataSize);
@@ -266,7 +266,7 @@
         {
         }
 
-        IResourcePtr CreateResource(IDevice& device, const BufferDesc& desc, DataPacket* initialisationData)
+        IResourcePtr CreateResource(IDevice& device, const ResourceDesc& desc, DataPacket* initialisationData)
         {
 			if (initialisationData) {
 				return device.CreateResource(desc,
@@ -286,7 +286,7 @@
 			}
         }
 
-		BufferDesc ExtractDesc(RenderCore::IResource& resource)
+		ResourceDesc ExtractDesc(RenderCore::IResource& resource)
         {
             return resource.GetDesc();
         }

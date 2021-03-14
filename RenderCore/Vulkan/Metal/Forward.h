@@ -16,6 +16,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class ObjectFactory;
     class GraphicsEncoder;
     class GraphicsPipeline;
+    class CommandList;
 
 	class ShaderProgram;
     class ComputeShader;

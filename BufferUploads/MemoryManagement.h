@@ -15,7 +15,7 @@ namespace BufferUploads
 {
             //////   R E F E R E N C E   C O U N T I N G   L A Y E R   //////
 
-    class ReferenceCountingLayer : public MarkerHeap<uint16>
+    class ReferenceCountingLayer : public MarkerHeap<uint16_t>
     {
     public:
         std::pair<signed,signed> AddRef(unsigned start, unsigned size, const char name[] = NULL);
@@ -25,7 +25,7 @@ namespace BufferUploads
         unsigned    CalculatedReferencedSpace() const;
         unsigned    GetEntryCount() const                               { return (unsigned)_entries.size(); }
         std::pair<unsigned,unsigned> GetEntry(unsigned index) const     { const Entry& entry = _entries[index]; return std::make_pair(ToExternalSize(entry._start), ToExternalSize(entry._end-entry._start)); }
-        #if defined(XL_DEBUG)
+        #if defined(_DEBUG)
             std::string      GetEntryName(unsigned index) const         { const Entry& entry = _entries[index]; return entry._name; }
         #endif
         bool        ValidateBlock(unsigned start, unsigned size) const;
@@ -36,13 +36,13 @@ namespace BufferUploads
         ReferenceCountingLayer(const ReferenceCountingLayer& cloneFrom);
     protected:
 
-        typedef uint16 Marker;
+        typedef uint16_t Marker;
         class Entry
         {
         public:
             Marker _start, _end;    // _end is stl style -- one past the end of the allocation
             signed _refCount;
-            #if defined(XL_DEBUG)
+            #if defined(_DEBUG)
                 std::string _name;
             #endif
         };

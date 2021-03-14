@@ -46,7 +46,7 @@ namespace BufferUploads
 
     void ThreadContext::ResolveCommandList()
     {
-        int64 currentTime = PlatformInterface::QueryPerformanceCounter();
+        int64_t currentTime = PlatformInterface::QueryPerformanceCounter();
         CommandList newCommandList;
         newCommandList._metrics = _commandListUnderConstruction;
         newCommandList._metrics._resolveTime = currentTime;
@@ -376,7 +376,7 @@ namespace BufferUploads
 						XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
 					} else {
 						immediateContext.PushToResource(
-							*i->_destination->GetUnderlying(), BufferDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
+							*i->_destination->GetUnderlying(), ResourceDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
 					}
 				}
 			#endif

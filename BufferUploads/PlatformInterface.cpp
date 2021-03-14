@@ -9,7 +9,6 @@
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../OSServices/Log.h"
 #include "../Utility/StringFormat.h"
-#include "../Utility/TimeUtils.h"
 #include <assert.h>
 
 #if GFXAPI_TARGET == GFXAPI_DX11
@@ -23,7 +22,7 @@ namespace BufferUploads { namespace PlatformInterface
 {
 	using namespace RenderCore;
 
-    int64 QueryPerformanceCounter()
+    int64_t QueryPerformanceCounter()
     {
         return Utility::GetPerformanceCounter();
     }
@@ -197,16 +196,16 @@ namespace BufferUploads { namespace PlatformInterface
         }
     }
 
-    static std::string BuildDescription(const BufferDesc& desc)
+    static std::string BuildDescription(const ResourceDesc& desc)
     {
         using namespace BufferUploads;
         char buffer[2048];
-        if (desc._type == BufferDesc::Type::Texture) {
+        if (desc._type == ResourceDesc::Type::Texture) {
             const TextureDesc& tDesc = desc._textureDesc;
             xl_snprintf(buffer, dimof(buffer), "[%s] Tex(%4s) (%4ix%4i) mips:(%2i)", 
                 desc._name, AsString(tDesc._dimensionality),
                 tDesc._width, tDesc._height, tDesc._mipCount);
-        } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+        } else if (desc._type == ResourceDesc::Type::LinearBuffer) {
             if (desc._bindFlags & BindFlag::VertexBuffer) {
                 xl_snprintf(buffer, dimof(buffer), "[%s] VB (%6.1fkb)", 
                     desc._name, desc._linearBufferDesc._sizeInBytes/1024.f);
@@ -233,7 +232,7 @@ namespace BufferUploads { namespace PlatformInterface
 
             ID3D::Resource* GetResource() const { return _resource; }
             const std::string & GetName() const      { return _name; }
-            const BufferDesc& GetDesc() const   { return _desc; }
+            const ResourceDesc& GetDesc() const   { return _desc; }
 
             virtual HRESULT STDMETHODCALLTYPE   QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject);
             virtual ULONG STDMETHODCALLTYPE     AddRef();
@@ -242,9 +241,9 @@ namespace BufferUploads { namespace PlatformInterface
             Interlocked::Value  _referenceCount;
             ID3D::Resource* _resource;
             std::string _name;
-            Interlocked::Value _allocatedMemory[BufferDesc::Type_Max];
-            Interlocked::Value _volatileAllocatedMemory[BufferDesc::Type_Max];
-            BufferDesc _desc;
+            Interlocked::Value _allocatedMemory[ResourceDesc::Type_Max];
+            Interlocked::Value _volatileAllocatedMemory[ResourceDesc::Type_Max];
+            ResourceDesc _desc;
         };
 
         // {7D2F715A-5C04-450A-8C2C-8931136581F9}
@@ -252,8 +251,8 @@ namespace BufferUploads { namespace PlatformInterface
 
         std::vector<ResourceTracker*>   g_Resources;
         CryCriticalSection              g_Resources_Lock;
-        Interlocked::Value              g_AllocatedMemory[BufferDesc::Type_Max]          = { 0, 0, 0 };
-        Interlocked::Value              g_VolatileAllocatedMemory[BufferDesc::Type_Max]  = { 0, 0, 0 };
+        Interlocked::Value              g_AllocatedMemory[ResourceDesc::Type_Max]          = { 0, 0, 0 };
+        Interlocked::Value              g_VolatileAllocatedMemory[ResourceDesc::Type_Max]  = { 0, 0, 0 };
 
         struct CompareResource
         {
@@ -262,7 +261,7 @@ namespace BufferUploads { namespace PlatformInterface
             bool operator()( const ResourceTracker* lhs,    const ResourceTracker* rhs ) const  { return lhs < rhs; }
         };
 
-        static unsigned CalculateVideoMemory(const BufferDesc& desc)
+        static unsigned CalculateVideoMemory(const ResourceDesc& desc)
         {
             if (desc._allocationRules != AllocationRules::Staging && desc._gpuAccess) {
                 return ByteCount(desc);
@@ -286,7 +285,7 @@ namespace BufferUploads { namespace PlatformInterface
 
         ResourceTracker::~ResourceTracker()
         {
-            for (unsigned c=0; c<BufferDesc::Type_Max; ++c) {
+            for (unsigned c=0; c<ResourceDesc::Type_Max; ++c) {
                 if (_allocatedMemory[c]) {
                     Interlocked::Add(&g_AllocatedMemory[c], -_allocatedMemory[c]);
                 }
@@ -353,17 +352,17 @@ namespace BufferUploads { namespace PlatformInterface
         void    Resource_Report(bool justVolatiles)
         {
             LogString("D3D allocated resources report:\n");
-            LogString(XlDynFormatString("Total for non-volatile texture objects: %8.6fMB\n", g_AllocatedMemory         [BufferDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for non-volatile buffer objects : %8.6fMB\n", g_AllocatedMemory         [BufferDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for volatile texture objects : %8.6fMB\n",    g_VolatileAllocatedMemory [BufferDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for volatile buffer objects : %8.6fMB\n",     g_VolatileAllocatedMemory [BufferDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for non-volatile texture objects: %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for non-volatile buffer objects : %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for volatile texture objects : %8.6fMB\n",    g_VolatileAllocatedMemory [ResourceDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for volatile buffer objects : %8.6fMB\n",     g_VolatileAllocatedMemory [ResourceDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
 
             ScopedLock(g_Resources_Lock);
             for (std::vector<ResourceTracker*>::iterator i=g_Resources.begin(); i!=g_Resources.end(); ++i) {
                 std::string name = (*i)->GetName();
                 intrusive_ptr<ID3D::Resource> resource = QueryInterfaceCast<ID3D::Resource>((*i)->GetResource());
 
-                const BufferDesc& desc = (*i)->GetDesc();
+                const ResourceDesc& desc = (*i)->GetDesc();
                 if (!justVolatiles || !(desc._allocationRules&AllocationRules::NonVolatile)) {
                     char buffer[2048];
                     strcpy(buffer, BuildDescription(desc).c_str());
@@ -394,7 +393,7 @@ namespace BufferUploads { namespace PlatformInterface
                 metrics._systemMemorySize = ByteCount(metrics);
             }
 
-            if (metrics._type == BufferDesc::Type::Texture) {
+            if (metrics._type == ResourceDesc::Type::Texture) {
                 ETEX_Format format = CTexture::TexFormatFromDeviceFormat((NativeFormat::Enum)metrics._textureDesc._nativePixelFormat);
                 metrics._pixelFormatName = CTexture::NameForTextureFormat(format);
             } else {
@@ -402,10 +401,10 @@ namespace BufferUploads { namespace PlatformInterface
             }
         }
 
-        static BufferMetrics ExtractMetrics(const BufferDesc& desc, const std::string& name)
+        static BufferMetrics ExtractMetrics(const ResourceDesc& desc, const std::string& name)
         {
             BufferMetrics result;
-            static_cast<BufferDesc&>(result) = desc;
+            static_cast<ResourceDesc&>(result) = desc;
             strncpy(result._name, name.c_str(), dimof(result._name)-1);
             result._name[dimof(result._name)-1] = '\0';
             CalculateExtraFields(result);
@@ -415,7 +414,7 @@ namespace BufferUploads { namespace PlatformInterface
         static BufferMetrics ExtractMetrics(ID3D::Resource* resource)
         {
             BufferMetrics result;
-            static_cast<BufferDesc&>(result) = ExtractDesc(resource);
+            static_cast<ResourceDesc&>(result) = ExtractDesc(resource);
             Resource_GetName(resource, result._name, dimof(result._name));
             CalculateExtraFields(result);
             return result;
@@ -454,7 +453,7 @@ namespace BufferUploads { namespace PlatformInterface
             #if defined(DIRECT3D9)
                 HRESULT hresult = resource->GetPrivateData(WKPDID_D3DDebugObjectName, nameBuffer, &finalSize);
             #else
-                HRESULT hresult = resource->GetPrivateData(WKPDID_D3DDebugObjectName, (uint32*)&finalSize, nameBuffer);
+                HRESULT hresult = resource->GetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t*)&finalSize, nameBuffer);
             #endif
             if (SUCCEEDED(hresult) && finalSize) {
                 nameBuffer[std::min(size_t(finalSize),size_t(nameBufferSize-1))] = '\0';
@@ -483,8 +482,8 @@ namespace BufferUploads { namespace PlatformInterface
                     //      Calculate how much video memory we can allocate by making many
                     //      allocations until they fail.
                     //
-                BufferDesc desc;
-                desc._type = BufferDesc::Type::Texture;
+                ResourceDesc desc;
+                desc._type = ResourceDesc::Type::Texture;
                 desc._bindFlags = BindFlag::ShaderResource;
                 desc._cpuAccess = 0;
                 desc._gpuAccess = GPUAccess::Read;

@@ -23,7 +23,7 @@ namespace BufferUploads
 
     // ~~~~~~~~~~~~ // ~~~~~~<   >~~~~~~ // ~~~~~~~~~~~~ //
 
-//    #if !defined(XL_RELEASE)    // perhaps just XL_DEBUG? Adds a thread local storage variable
+//    #if !defined(XL_RELEASE)    // perhaps just _DEBUG? Adds a thread local storage variable
 //        #define REUSABLE_RESOURCE_DEBUGGING
 //    #endif
 
@@ -36,21 +36,21 @@ namespace BufferUploads
         class ReusableResourceDestructionHelper : public IUnknown
         {
         public:
-            ReusableResourceDestructionHelper(const BufferDesc& desc);
+            ReusableResourceDestructionHelper(const ResourceDesc& desc);
             virtual ~ReusableResourceDestructionHelper();
 
             virtual HRESULT STDMETHODCALLTYPE   QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject);
             virtual ULONG STDMETHODCALLTYPE     AddRef();
             virtual ULONG STDMETHODCALLTYPE     Release();
         private:
-            BufferDesc          _desc;
+            ResourceDesc          _desc;
             Interlocked::Value  _referenceCount;
         };
 
         // {2FB89B77-3946-48DE-8C78-09CF3DCE8651}
         EXTERN_C const GUID DECLSPEC_SELECTANY GUID_ReusableResourceDestructionHelper = { 0x2fb89b77, 0x3946, 0x48de, { 0x8c, 0x78, 0x9, 0xcf, 0x3d, 0xce, 0x86, 0x51 } };
 
-        ReusableResourceDestructionHelper::ReusableResourceDestructionHelper(const BufferDesc& desc) : _desc(desc), _referenceCount(0) {}
+        ReusableResourceDestructionHelper::ReusableResourceDestructionHelper(const ResourceDesc& desc) : _desc(desc), _referenceCount(0) {}
         ReusableResourceDestructionHelper::~ReusableResourceDestructionHelper()
         {
             if (!Interlocked::Load(&g_oldToDeleteReusableResources)) {
@@ -96,7 +96,7 @@ namespace BufferUploads
             result |= DescHash(desc._format) << 24;
             result ^= DescHash(desc._mipCount) << 50;   // (gets interleaved with the pixel format -- could be trouble?)
         } else {
-            uint32 temp = Hash32(&desc, PtrAdd(&desc, sizeof(desc)));
+            uint32_t temp = Hash32(&desc, PtrAdd(&desc, sizeof(desc)));
             result = DescHash(temp)<<8;
             result &= ~0x1; // clear the bottom "type" bit
         }
@@ -120,16 +120,16 @@ namespace BufferUploads
         return 1<<(log2+1);
     }
 
-    static DescHash Hash(const BufferDesc& desc)
+    static DescHash Hash(const ResourceDesc& desc)
     {
         DescHash result = 0;
         result |= desc._type&0x1;
         result |= (desc._cpuAccess&0x7)<<1;
         result |= (desc._gpuAccess&0x3)<<4;
         result |= (desc._bindFlags&0x3)<<6;     // "Shader Resource" gets ignored here. We need more room for more advanced bind flags
-        if (desc._type == BufferDesc::Type::Texture) {
+        if (desc._type == ResourceDesc::Type::Texture) {
             result |= Hash(desc._textureDesc) << 8;
-        } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+        } else if (desc._type == ResourceDesc::Type::LinearBuffer) {
             result |= desc._linearBufferDesc._sizeInBytes << 8;
         }
         return result;
@@ -259,7 +259,7 @@ namespace BufferUploads
                 HashTable& hashTable = _hashTables[hashTableIndex];
                 auto entry = std::lower_bound(hashTable.begin(), hashTable.end(), hashValue, CompareFirst());
                 if (entry != hashTable.end() && entry->first == hashValue) {
-                    if (desc._type == BufferDesc::Type::Texture) {
+                    if (desc._type == ResourceDesc::Type::Texture) {
                         assert(desc._textureDesc._width == entry->second->GetDesc()._textureDesc._width);
                         assert(desc._textureDesc._height == entry->second->GetDesc()._textureDesc._height);
                         assert(desc._textureDesc._mipCount == entry->second->GetDesc()._textureDesc._mipCount);
@@ -318,14 +318,14 @@ namespace BufferUploads
         }
 
     tdesc void        ResourcesPool<Desc>::AddRef(
-            uint64 resourceMarker, UnderlyingResource* resource, 
+            uint64_t resourceMarker, UnderlyingResource* resource, 
             unsigned offset, unsigned size)
         {
             // we don't have to do anything in this case
         }
     
     tdesc void        ResourcesPool<Desc>::ReturnToPool(
-            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
+            uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size)
         {
             unsigned hashTableIndex = _hashTableIndex;
@@ -446,7 +446,7 @@ namespace BufferUploads
     }
     
     void BatchedResources::AddRef(
-        uint64 resourceMarker, UnderlyingResource* resource, 
+        uint64_t resourceMarker, UnderlyingResource* resource, 
         unsigned offset, unsigned size)
     {
         if (!resource) return;
@@ -472,7 +472,7 @@ namespace BufferUploads
     }
 
     void BatchedResources::ReturnToPool(
-        uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
+        uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
         unsigned offset, unsigned size)
     {
         if (!resource) return;
@@ -499,7 +499,7 @@ namespace BufferUploads
                 } else {
                     heap->Deallocate(offset, size);
                 }
-                #if defined(XL_DEBUG)
+                #if defined(_DEBUG)
                     heap->ValidateRefsAndHeap();
                 #endif
             }
@@ -632,7 +632,7 @@ namespace BufferUploads
                     _temporaryCopyBufferCountDown = 10;
                 }
 
-                #if defined(XL_DEBUG)
+                #if defined(_DEBUG)
                     unsigned blockCount = bestHeap->_refCounts.GetEntryCount();
                     for (unsigned b=0; b<blockCount; ++b) {
                         std::pair<unsigned,unsigned> block = bestHeap->_refCounts.GetEntry(b);
@@ -733,13 +733,13 @@ namespace BufferUploads
         _sourcePool->OnLostDevice();
     }
 
-    BatchedResources::BatchedResources(const BufferDesc& prototype, std::shared_ptr<ResourcesPool<BufferDesc>> sourcePool)
+    BatchedResources::BatchedResources(const ResourceDesc& prototype, std::shared_ptr<ResourcesPool<ResourceDesc>> sourcePool)
     :       _prototype(prototype)
     ,       _sourcePool(std::move(sourcePool))
     ,       _activeDefrag(nullptr)
     ,       _activeDefragHeap(NULL)
     {
-        BufferDesc copyBufferDesc = prototype;
+        ResourceDesc copyBufferDesc = prototype;
         copyBufferDesc._cpuAccess = CPUAccess::Read;
         copyBufferDesc._gpuAccess = 0;
         copyBufferDesc._allocationRules = AllocationRules::Staging;
@@ -845,7 +845,7 @@ namespace BufferUploads
     : _size(0), _defragCount(0), _heap(0), _refCounts(0), _hashLastDefrag(0)
     {}
 
-    BatchedResources::HeapedResource::HeapedResource(const BufferDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource)
+    BatchedResources::HeapedResource::HeapedResource(const ResourceDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource)
     : _heapResource(heapResource)
     , _heap(RenderCore::ByteCount(desc))
     , _refCounts(RenderCore::ByteCount(desc))
@@ -856,7 +856,7 @@ namespace BufferUploads
 
     BatchedResources::HeapedResource::~HeapedResource()
     {
-        #if defined(XL_DEBUG)
+        #if defined(_DEBUG)
             ValidateRefsAndHeap();
             if (_refCounts.GetEntryCount()) {
                 assert(0);  // something leaked!
@@ -992,12 +992,12 @@ namespace BufferUploads
 
     bool BatchedResources::ActiveDefrag::SortByPosition(const PendingOperation& lhs, const PendingOperation& rhs) { return lhs._start < rhs._start; }
 
-    // static string Description(const BufferDesc& desc)
+    // static string Description(const ResourceDesc& desc)
     // {
     //     char buffer[2048];
-    //     if (desc._type == BufferDesc::Type::Texture) {
+    //     if (desc._type == ResourceDesc::Type::Texture) {
     //         _snprintf_s(buffer, _TRUNCATE, "Tex (%ix%i) [%s]", desc._textureDesc._width, desc._textureDesc._height, desc._name);
-    //     } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+    //     } else if (desc._type == ResourceDesc::Type::LinearBuffer) {
     //         _snprintf_s(buffer, _TRUNCATE, "Buffer (%.3fKB)", desc._linearBufferDesc._sizeInBytes/1024.f);
     //     }
     //     return string(buffer);
@@ -1005,10 +1005,10 @@ namespace BufferUploads
 
         /////   R E S O U R C E   S O U R C E   /////
 
-    ResourceSource::ResourceConstruction        ResourceSource::Create(const BufferDesc& desc, DataPacket* initialisationData, CreationOptions::BitField options)
+    ResourceSource::ResourceConstruction        ResourceSource::Create(const ResourceDesc& desc, DataPacket* initialisationData, CreationOptions::BitField options)
     {
         bool deviceCreation          = !!(options & CreationOptions::AllowDeviceCreation);
-        // const UploadDataType::Enum uploadDataType = AsUploadDataType(desc);
+        // auto uploadDataType = AsUploadDataType(desc);
         const bool usePooling        = UsePooling(desc);
         const bool useBatching       = usePooling && UseBatching(desc) && initialisationData;
         const bool useStaging        = !!(desc._allocationRules & AllocationRules::Staging);
@@ -1023,7 +1023,7 @@ namespace BufferUploads
                 result._flags |= deviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
             } else if (deviceCreation) {
 				auto supportInit = 
-					(desc._type == BufferDesc::Type::Texture)
+					(desc._type == ResourceDesc::Type::Texture)
 					? PlatformInterface::SupportsResourceInitialisation_Texture
 					: PlatformInterface::SupportsResourceInitialisation_Buffer;
 				auto initPkt = supportInit ? initialisationData : nullptr;
@@ -1043,12 +1043,12 @@ namespace BufferUploads
         return result;
     }
 
-    bool                ResourceSource::WillBeBatched(const BufferDesc& desc)
+    bool                ResourceSource::WillBeBatched(const ResourceDesc& desc)
     {
         return UsePooling(desc) && UseBatching(desc);
     }
 
-    BatchedResources::ResultFlags::BitField ResourceSource::IsBatchedResource(const ResourceLocator& locator, const BufferDesc& desc)
+    BatchedResources::ResultFlags::BitField ResourceSource::IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc)
     {
         const bool mightBeBatched = UsePooling(desc) && UseBatching(desc);
         if (mightBeBatched) {
@@ -1059,9 +1059,9 @@ namespace BufferUploads
 
     void ResourceSource::Validate(const ResourceLocator& locator)
     {
-        #if defined(XL_DEBUG)
+        #if defined(_DEBUG)
             if (_batchedIndexBuffers->Validate(locator)==0) {
-                BufferDesc desc = PlatformInterface::ExtractDesc(*locator.GetUnderlying());
+                ResourceDesc desc = PlatformInterface::ExtractDesc(*locator.GetUnderlying());
                 assert(!(UsePooling(desc) && UseBatching(desc)));
             }
         #endif
@@ -1121,10 +1121,10 @@ namespace BufferUploads
         #endif
     }
 
-    BufferDesc ResourceSource::AdjustDescForReusableResource(const BufferDesc& input)
+    ResourceDesc ResourceSource::AdjustDescForReusableResource(const ResourceDesc& input)
     {
-        BufferDesc result = input;
-        if (result._type == BufferDesc::Type::LinearBuffer) {
+        ResourceDesc result = input;
+        if (result._type == ResourceDesc::Type::LinearBuffer) {
             result._linearBufferDesc._sizeInBytes = RoundUpBufferSize(result._linearBufferDesc._sizeInBytes);
             if (false) { // CRenderer::CV_r_BufferUpload_WriteMode == WriteMode::Map) {
                 result._cpuAccess = CPUAccess::Write;
@@ -1147,11 +1147,11 @@ namespace BufferUploads
     {
         _frameID = 0;
 
-        auto stagingBufferPool = std::make_shared<ResourcesPool<BufferDesc>>(device, 5*60);
-        auto pooledGeometryBuffers = std::make_shared<ResourcesPool<BufferDesc>>(device);
+        auto stagingBufferPool = std::make_shared<ResourcesPool<ResourceDesc>>(device, 5*60);
+        auto pooledGeometryBuffers = std::make_shared<ResourcesPool<ResourceDesc>>(device);
 
-        BufferDesc batchableIndexBuffers;
-        batchableIndexBuffers._type = BufferDesc::Type::LinearBuffer;
+        ResourceDesc batchableIndexBuffers;
+        batchableIndexBuffers._type = ResourceDesc::Type::LinearBuffer;
         batchableIndexBuffers._cpuAccess = CPUAccess::Write|CPUAccess::WriteDynamic;
         batchableIndexBuffers._gpuAccess = GPUAccess::Read;
         batchableIndexBuffers._bindFlags = BindFlag::IndexBuffer;

@@ -20,7 +20,7 @@ namespace BufferUploads
             //////   R E F E R E N C E   C O U N T I N G   L A Y E R   //////
         /////////////////////////////////////////////////////////////////////////////////
 
-    #if defined(XL_DEBUG)
+    #if defined(_DEBUG)
         #define DEBUG_ONLY(x)       x
     #else
         #define DEBUG_ONLY(x)       
@@ -236,7 +236,7 @@ namespace BufferUploads
             }
             assert(i>=_entries.begin() && i<_entries.end());
 
-            #if defined(XL_DEBUG)
+            #if defined(_DEBUG)
                 if (i->_start == currentStart) {
                     assert(internalEnd >= i->_end);
                 } else {
@@ -366,7 +366,7 @@ namespace BufferUploads
     : _entries(cloneFrom._entries)
     {}
 
-    #if 0 // defined(XL_DEBUG)
+    #if 0 // defined(_DEBUG)
         struct HeapTest_Allocation 
         {
             unsigned _start, _size;

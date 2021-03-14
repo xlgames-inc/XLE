@@ -19,7 +19,6 @@ namespace BufferUploads
 {
 	using UnderlyingResource = RenderCore::IResource;
 	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
-	using CommandListPtr = RenderCore::Metal::CommandListPtr;
 
         //////   C O M M I T   S T E P   //////
 
@@ -81,7 +80,7 @@ namespace BufferUploads
     public:
         typedef Interlocked::Value ID;
 
-		CommandListPtr					_deviceCommandList;
+		std::shared_ptr<RenderCore::Metal::CommandList>        _deviceCommandList;
         mutable CommandListMetrics      _metrics;
         CommitStep                      _commitStep;
         ID                              _id;

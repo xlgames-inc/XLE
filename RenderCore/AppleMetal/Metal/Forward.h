@@ -23,5 +23,6 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class ObjectFactory;
     class GraphicsPipeline;
     class GraphicsPipelineBuilder;
+    class CommandList;
 
 }}

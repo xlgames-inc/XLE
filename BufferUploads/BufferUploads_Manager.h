@@ -1,16 +1,10 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#define FLEX_CONTEXT_Manager             FLEX_CONTEXT_CONCRETE
-
 #include "IBufferUploads.h"
-#include "../Core/Prefix.h"
-
 #include <utility>
 #include <thread>
 
@@ -25,26 +19,26 @@ namespace BufferUploads
     class Manager : public IManager
     {
     public:
-        void                    UpdateData(TransactionID id, DataPacket* rawData, const PartialResource&);
+        void                    UpdateData(TransactionID id, const std::shared_ptr<IDataPacket>& data, const PartialResource&) override;
 
-        TransactionID           Transaction_Begin(const BufferDesc& desc, DataPacket* initialisationData = NULL, TransactionOptions::BitField flags=0);
-        TransactionID           Transaction_Begin(intrusive_ptr<ResourceLocator>& locator, TransactionOptions::BitField flags=0);
-        void                    Transaction_End(TransactionID id);
+        TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags) override;
+        TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags) override;
+        TransactionMarker       Transaction_Begin(intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) override;
+        void                    Transaction_Cancel(TransactionID id);
         void                    Transaction_Validate(TransactionID id);
 
-        intrusive_ptr<ResourceLocator>         Transaction_Immediate(
-                                        const BufferDesc& desc, DataPacket* initialisationData, 
-                                        const PartialResource&);
+        ResourceLocator         Transaction_Immediate(
+                                    std::shared_ptr<IThreadContext>& threadContext,
+                                    const ResourceDesc& desc, DataPacket& data,
+                                    const PartialResource&);
         
-        intrusive_ptr<ResourceLocator>         GetResource(TransactionID id);
+        ResourceLocator         GetResource(TransactionID id);
         void                    Resource_Validate(const ResourceLocator& locator);
-        intrusive_ptr<DataPacket>  Resource_ReadBack(const ResourceLocator& locator);
-        void                    AddRef(TransactionID id);
         bool                    IsCompleted(TransactionID id);
 
         CommandListMetrics      PopMetrics();
         PoolSystemMetrics       CalculatePoolMetrics() const;
-        size_t                  ByteCount(const BufferDesc& desc) const;
+        size_t                  ByteCount(const ResourceDesc& desc) const;
 
         void                    Update(RenderCore::IThreadContext&, bool preserveRenderState);
         void                    Flush();
@@ -73,7 +67,7 @@ namespace BufferUploads
         XlHandle _assemblyLineWakeUpEvent, _waitingForDeviceResetEvent;
         bool _handlingLostDevice;
 
-        uint32 DoBackgroundThread();
+        uint32_t DoBackgroundThread();
 
         ThreadContext* MainContext();
         const ThreadContext* MainContext() const;

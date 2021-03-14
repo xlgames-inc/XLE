@@ -339,7 +339,7 @@ namespace RenderCore { namespace Metal_DX11
             // (nothing required in D3D11)
     }
 
-    intrusive_ptr<CommandList>     DeviceContext::ResolveCommandList()
+    std::shared_ptr<CommandList>     DeviceContext::ResolveCommandList()
     {
         ID3D::CommandList* commandListTemp = nullptr;
         HRESULT hresult = _underlying->FinishCommandList(FALSE, &commandListTemp);
@@ -347,7 +347,7 @@ namespace RenderCore { namespace Metal_DX11
             intrusive_ptr<ID3D::CommandList> underlyingCommandList = moveptr(commandListTemp);
             return make_intrusive<CommandList>(underlyingCommandList.get());
         }
-        return intrusive_ptr<CommandList>();
+        return std::shared_ptr<CommandList>();
     }
 
     bool    DeviceContext::IsImmediate() const

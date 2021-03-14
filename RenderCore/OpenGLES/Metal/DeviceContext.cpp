@@ -504,9 +504,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     {   
     }
 
-    intrusive_ptr<CommandList>         DeviceContext::ResolveCommandList()
+    std::shared_ptr<CommandList>         DeviceContext::ResolveCommandList()
     {
-        return intrusive_ptr<CommandList>();
+        return std::shared_ptr<CommandList>();
     }
 
     void                            DeviceContext::ExecuteCommandList(CommandList& commandList)

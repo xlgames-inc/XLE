@@ -22,7 +22,7 @@ namespace BufferUploads
 {
         /////   R E S O U R C E S   P O O L   /////
 
-    typedef uint64 DescHash;
+    typedef uint64_t DescHash;
 
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
@@ -30,14 +30,14 @@ namespace BufferUploads
         using UnderlyingResource = RenderCore::IResource;
 		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
-        intrusive_ptr<ResourceLocator>     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
+        ResourceLocator     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
 
         virtual void AddRef(
-            uint64 resourceMarker, UnderlyingResource* resource, 
+            uint64_t resourceMarker, UnderlyingResource* resource, 
             unsigned offset, unsigned size);
 
         virtual void ReturnToPool(
-            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
+            uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size);
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
@@ -107,11 +107,11 @@ namespace BufferUploads
         intrusive_ptr<ResourceLocator> Allocate(unsigned size, bool& deviceCreation, const char name[]);
 
         virtual void AddRef(
-            uint64 resourceMarker, UnderlyingResource* resource, 
+            uint64_t resourceMarker, UnderlyingResource* resource, 
             unsigned offset, unsigned size);
 
         virtual void ReturnToPool(
-            uint64 resourceMarker, UnderlyingResourcePtr&& resource, 
+            uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
             unsigned offset, unsigned size);
 
             //
@@ -123,12 +123,12 @@ namespace BufferUploads
         ResultFlags::BitField   IsBatchedResource(UnderlyingResource* resource) const;
         ResultFlags::BitField   Validate(const ResourceLocator& locator) const;
         BatchingSystemMetrics   CalculateMetrics() const;
-        const BufferDesc&       GetPrototype() const { return _prototype; }
+        const ResourceDesc&       GetPrototype() const { return _prototype; }
 
         void                    TickDefrag(ThreadContext& deviceContext, IManager::EventListID processedEventList, bool& deviceCreation);
         void                    OnLostDevice();
 
-        BatchedResources(const BufferDesc& prototype, std::shared_ptr<ResourcesPool<BufferDesc>> sourcePool);
+        BatchedResources(const ResourceDesc& prototype, std::shared_ptr<ResourcesPool<ResourceDesc>> sourcePool);
         ~BatchedResources();
     private:
         class HeapedResource
@@ -146,7 +146,7 @@ namespace BufferUploads
             void                ValidateRefsAndHeap();
 
             HeapedResource();
-            HeapedResource(const BufferDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource);
+            HeapedResource(const ResourceDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource);
             ~HeapedResource();
 
             intrusive_ptr<ResourceLocator> _heapResource;
@@ -154,7 +154,7 @@ namespace BufferUploads
             ReferenceCountingLayer _refCounts;
             unsigned _size;
             unsigned _defragCount;
-            uint64 _hashLastDefrag;
+            uint64_t _hashLastDefrag;
         };
 
         class ActiveDefrag
@@ -192,8 +192,8 @@ namespace BufferUploads
         };
 
         std::vector<std::unique_ptr<HeapedResource>> _heaps;
-        BufferDesc _prototype;
-        std::shared_ptr<ResourcesPool<BufferDesc>> _sourcePool;
+        ResourceDesc _prototype;
+        std::shared_ptr<ResourcesPool<ResourceDesc>> _sourcePool;
         mutable Threading::ReadWriteMutex _lock;
 
             //  Active defrag stuff...
@@ -222,11 +222,10 @@ namespace BufferUploads
                     DelayForBatching             = 1<<1,
                     DeviceConstructionInvoked    = 1<<2
                 };
-                typedef unsigned BitField;
+                using BitField = unsigned;
             };
-            intrusive_ptr<ResourceLocator> _identifier;
-            Flags::BitField _flags;
-            ResourceConstruction() : _flags(0) {}
+            ResourceLocator _locator;
+            Flags::BitField _flags = 0;
         };
 
         struct CreationOptions
@@ -237,15 +236,15 @@ namespace BufferUploads
             typedef unsigned BitField;
         };
 
-        ResourceConstruction    Create(const BufferDesc& desc, DataPacket* initialisationData=NULL, CreationOptions::BitField options=CreationOptions::AllowDeviceCreation);
+        ResourceConstruction    Create(const ResourceDesc& desc, DataPacket* initialisationData=NULL, CreationOptions::BitField options=CreationOptions::AllowDeviceCreation);
         void                    Validate(const ResourceLocator& locator);
 
         BatchedResources&       GetBatchedResources()             { return *_batchedIndexBuffers; }
         PoolSystemMetrics       CalculatePoolMetrics() const;
         void                    Tick(ThreadContext& context, IManager::EventListID processedEventList, bool& deviceCreation);
 
-        bool                    WillBeBatched(const BufferDesc& desc);
-        BatchedResources::ResultFlags::BitField     IsBatchedResource(const ResourceLocator& locator, const BufferDesc& desc);
+        bool                    WillBeBatched(const ResourceDesc& desc);
+        BatchedResources::ResultFlags::BitField     IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc);
 
         void                    GetQueueEvents(XlHandle waitEvents[], unsigned& waitEventsCount);
 
@@ -258,8 +257,8 @@ namespace BufferUploads
         ~ResourceSource();
 
     protected:
-        std::shared_ptr<ResourcesPool<BufferDesc>>      _stagingBufferPool;
-        std::shared_ptr<ResourcesPool<BufferDesc>>      _pooledGeometryBuffers;
+        std::shared_ptr<ResourcesPool<ResourceDesc>>      _stagingBufferPool;
+        std::shared_ptr<ResourcesPool<ResourceDesc>>      _pooledGeometryBuffers;
         std::shared_ptr<BatchedResources>   _batchedIndexBuffers;
 		std::optional<Threading::ThreadId>	_flushThread;
         unsigned                            _frameID;
@@ -272,9 +271,9 @@ namespace BufferUploads
             LockFreeFixedSizeQueue<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
         #endif
 
-        inline bool UsePooling(const BufferDesc& input)     { return (input._type == BufferDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }
-        inline bool UseBatching(const BufferDesc& input)    { return !!(input._allocationRules & AllocationRules::Batched); }
-        BufferDesc AdjustDescForReusableResource(const BufferDesc& input);
+        inline bool UsePooling(const ResourceDesc& input)     { return (input._type == ResourceDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }
+        inline bool UseBatching(const ResourceDesc& input)    { return !!(input._allocationRules & AllocationRules::Batched); }
+        ResourceDesc AdjustDescForReusableResource(const ResourceDesc& input);
     };
 
 }

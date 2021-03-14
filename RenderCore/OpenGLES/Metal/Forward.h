@@ -19,7 +19,8 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class ObjectFactory;
     class GraphicsPipeline;
     class GraphicsPipelineBuilder;
-
+    class CommandList;
+    
 }}
 
 typedef unsigned int GLenum;

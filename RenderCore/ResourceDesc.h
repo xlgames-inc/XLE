@@ -366,13 +366,4 @@ namespace RenderCore
 		SubResourceInitData(IteratorRange<const void*> data) : _data(data) {}
 		SubResourceInitData(IteratorRange<const void*> data, TexturePitches pitches) : _data(data), _pitches(pitches) {}
 	};
-
-    class Box2D
-    {
-    public:
-        signed _left = 0, _top = 0;
-		signed _right = 0, _bottom = 0;
-    };
-
-    bool operator==(const Box2D& lhs, const Box2D& rhs);
 }

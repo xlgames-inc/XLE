@@ -290,11 +290,11 @@
 
             ///////////////////////////////////////
 
-        intrusive_ptr<Underlying::Resource>    CreateResource( ObjectFactory&, const BufferDesc& bufferDesc, 
+        intrusive_ptr<Underlying::Resource>    CreateResource( ObjectFactory&, const ResourceDesc& bufferDesc, 
                                                             DataPacket* initialisationData)
         {
             switch (bufferDesc._type) {
-            case BufferDesc::Type::Texture:
+            case ResourceDesc::Type::Texture:
                 {
                         //
                         //      Create either a "texture" or a "render buffer" object
@@ -329,7 +329,7 @@
                 break;
 
 
-            case BufferDesc::Type::LinearBuffer:
+            case ResourceDesc::Type::LinearBuffer:
                 {
                     auto buffer = CreateBuffer();
                     // assert((bufferDesc._bindFlags & (BindFlag::VertexBuffer|BindFlag::IndexBuffer)) != (BindFlag::VertexBuffer|BindFlag::IndexBuffer));
@@ -347,16 +347,16 @@
             return intrusive_ptr<Underlying::Resource>();
         }
 
-        BufferDesc                      ExtractDesc(const Underlying::Resource& resource)
+        ResourceDesc                      ExtractDesc(const Underlying::Resource& resource)
         {
                 //
-                //      Get the "BufferDesc" description based on the underlying
+                //      Get the "ResourceDesc" description based on the underlying
                 //      object in "resource"
                 //
             const OpenGL::Buffer* buffer = resource.As<GlObject_Type::Buffer>();
             if (buffer != RawGLHandle_Invalid) {
-                BufferDesc result;
-                result._type            = BufferDesc::Type::LinearBuffer;
+                ResourceDesc result;
+                result._type            = ResourceDesc::Type::LinearBuffer;
                 result._bindFlags       = BindFlag::VertexBuffer | BindFlag::IndexBuffer;  // (the buffer itself doesn't know if it's vertices or indices)
 
                 auto binding            = MakeDeviceBinding(buffer);
@@ -369,8 +369,8 @@
             } else {
                 const OpenGL::Texture* texture = resource.As<GlObject_Type::Texture>();
                 if (texture != RawGLHandle_Invalid) {
-                    BufferDesc result;
-                    result._type        = BufferDesc::Type::Texture;
+                    ResourceDesc result;
+                    result._type        = ResourceDesc::Type::Texture;
                     result._bindFlags   = BindFlag::ShaderResource;
                     
                     auto binding                = MakeDeviceBinding(texture);
@@ -387,14 +387,14 @@
                 }
             }
 
-            BufferDesc desc;
+            ResourceDesc desc;
             XlZeroMemory(desc);
-            desc._type = BufferDesc::Type::Unknown;
+            desc._type = ResourceDesc::Type::Unknown;
             return desc;
         }
 
         void UnderlyingDeviceContext::PushToResource(
-                                            const Underlying::Resource& resource, const BufferDesc& bufferDesc, unsigned resourceOffsetValue,
+                                            const Underlying::Resource& resource, const ResourceDesc& bufferDesc, unsigned resourceOffsetValue,
                                             const void* data, size_t dataSize,
                                             std::pair<unsigned,unsigned> rowAndSlicePitch,
                                             const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -404,7 +404,7 @@
             }
 
             switch (bufferDesc._type) {
-            case BufferDesc::Type::Texture:
+            case ResourceDesc::Type::Texture:
                 {
                         // (can't push to a render buffer object, it seems. Maybe copy from staging texture
                         //  would be ok?)
@@ -472,7 +472,7 @@
                 }
                 break;
 
-            case BufferDesc::Type::LinearBuffer:
+            case ResourceDesc::Type::LinearBuffer:
                 {
                     auto buffer = resource.As<GlObject_Type::Buffer>();
                     auto binding = MakeDeviceBinding(buffer);
@@ -489,7 +489,7 @@
         }
 
         void UnderlyingDeviceContext::PushToStagingResource(
-                                            const Underlying::Resource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
+                                            const Underlying::Resource& resource, const ResourceDesc& desc, unsigned resourceOffsetValue,
                                             const void* data, size_t dataSize, std::pair<unsigned,unsigned> rowAndSlicePitch,
                                             const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
@@ -498,7 +498,7 @@
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
                                             const Underlying::Resource& finalResource, const Underlying::Resource& staging, 
-                                            const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
+                                            const ResourceDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
             assert(0);  // unimplemented currently
         }
@@ -525,10 +525,10 @@
             return MappedBuffer();
         }
 
-        intrusive_ptr<CommandList> UnderlyingDeviceContext::ResolveCommandList()
+        std::shared_ptr<CommandList> UnderlyingDeviceContext::ResolveCommandList()
         {
             // assert(0);  // unimplemented currently
-            return intrusive_ptr<CommandList>();
+            return std::shared_ptr<CommandList>();
         }
 
         void                        UnderlyingDeviceContext::BeginCommandList()

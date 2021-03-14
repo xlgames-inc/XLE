@@ -10,8 +10,7 @@
 #include "DataPacket.h"     // (actually just for TexturePitches)
 #include "../RenderCore/IDevice_Forward.h"
 #include "../Utility/IntrusivePtr.h"
-#include "../RenderCore/Metal/Types.h"              // (for RenderCore::Metal::UnderlyingQuery)
-#include "../RenderCore/Metal/DeviceContext.h"      // (for RenderCore::Metal::CommandListPtr)
+#include "../RenderCore/Metal/Forward.h"
 
 namespace Utility { class DefragStep; }
 
@@ -19,14 +18,13 @@ namespace BufferUploads { namespace PlatformInterface
 {
         /////////////////////////////////////////////////////////////////////
 
-	using UnderlyingQuery = RenderCore::Metal::UnderlyingQuery;
 	using UnderlyingResource = RenderCore::IResource;
 	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
-	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData = nullptr);
-    BufferDesc      ExtractDesc(RenderCore::IResource& resource);
+	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, DataPacket* initialisationData = nullptr);
+    ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
 
-    int64           QueryPerformanceCounter();
+    int64_t           QueryPerformanceCounter();
 
     void            Resource_Register(UnderlyingResource& resource, const char name[]);
     void            Resource_Report(bool justVolatiles);
@@ -45,24 +43,24 @@ namespace BufferUploads { namespace PlatformInterface
     public:
             ////////   P U S H   T O   R E S O U R C E   ////////
         unsigned PushToBuffer(
-            UnderlyingResource& resource, const BufferDesc& desc, unsigned offset,
+            UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize);
         
         using ResourceInitializer = std::function<RenderCore::SubResourceInitData(RenderCore::SubResourceId)>;
         
         unsigned PushToTexture(
-            UnderlyingResource& resource, const BufferDesc& desc,
+            UnderlyingResource& resource, const ResourceDesc& desc,
             const RenderCore::Box2D& box, 
             const ResourceInitializer& data);
 
         unsigned PushToStagingTexture(
-            UnderlyingResource& resource, const BufferDesc& desc,
+            UnderlyingResource& resource, const ResourceDesc& desc,
             const RenderCore::Box2D& box, 
             const ResourceInitializer& data);
 
         void UpdateFinalResourceFromStaging(
             UnderlyingResource& finalResource, UnderlyingResource& staging,
-            const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), 
+            const ResourceDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), 
             unsigned stagingLODOffset=0,
             VectorPattern<unsigned, 2> destXYOffset = {0,0},
             const RenderCore::Box2D& srcBox = RenderCore::Box2D());
@@ -72,8 +70,8 @@ namespace BufferUploads { namespace PlatformInterface
         void ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source);
 
             ////////   C O M M A N D   L I S T S   ////////
-        RenderCore::Metal::CommandListPtr       ResolveCommandList();
-        void                                    BeginCommandList();
+        std::shared_ptr<RenderCore::Metal::CommandList> ResolveCommandList();
+        void                                            BeginCommandList();
 
             ////////   R E A D   B A C K   ////////
         intrusive_ptr<DataPacket> Readback(const ResourceLocator& locator);

@@ -18,7 +18,6 @@ namespace RenderCore
     class TextureDesc;
     class TexturePitches;
     class SubResourceInitData;
-    class Box2D;
 	class IResource;
     class IResourceView;
 
@@ -26,6 +25,15 @@ namespace RenderCore
         //      C O P Y I N G       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class Box2D
+    {
+    public:
+        signed _left = 0, _top = 0;
+		signed _right = 0, _bottom = 0;
+
+        friend bool operator==(const Box2D& lhs, const Box2D& rhs);
+    };
+    
     unsigned CopyMipLevel(
         void* destination, size_t destinationDataSize, TexturePitches dstPitches,
         const TextureDesc& dstDesc,

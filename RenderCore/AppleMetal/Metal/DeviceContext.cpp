@@ -1160,9 +1160,9 @@ namespace RenderCore { namespace Metal_AppleMetal
     {   
     }
 
-    intrusive_ptr<CommandList>         DeviceContext::ResolveCommandList()
+    std::shared_ptr<CommandList>         DeviceContext::ResolveCommandList()
     {
-        return intrusive_ptr<CommandList>();
+        return std::shared_ptr<CommandList>();
     }
 
     void                            DeviceContext::CommitCommandList(CommandList& commandList)
