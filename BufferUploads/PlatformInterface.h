@@ -21,10 +21,8 @@ namespace BufferUploads { namespace PlatformInterface
 	using UnderlyingResource = RenderCore::IResource;
 	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
-	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, IDataPacket* initialisationData = nullptr);
-    ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
-
-    int64_t           QueryPerformanceCounter();
+	// UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, IDataPacket* initialisationData = nullptr);
+    // ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
 
     void            Resource_Register(UnderlyingResource& resource, const char name[]);
     void            Resource_Report(bool justVolatiles);

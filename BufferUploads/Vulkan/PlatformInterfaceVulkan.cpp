@@ -1,10 +1,7 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../Core/Prefix.h"
 #include "../../RenderCore/Metal/Metal.h"
 
 #if GFXAPI_TARGET == GFXAPI_VULKAN
@@ -14,6 +11,7 @@
     #include "../DataPacket.h"
 	#include "../../RenderCore/IThreadContext.h"
     #include "../../RenderCore/Metal/Resource.h"
+    #include "../../RenderCore/Metal/DeviceContext.h"
     #include "../../RenderCore/ResourceUtils.h"
 
     namespace BufferUploads { namespace PlatformInterface
@@ -33,7 +31,7 @@
             // a memory map and CPU assisted copy. 
             assert(desc._type == ResourceDesc::Type::Texture);
             if (box == Box2D())
-                return Metal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *metalResource, data);
+                return Metal::Internal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *metalResource, data);
 
 			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
 
@@ -70,70 +68,40 @@
         }
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
-			IResource& finalResource, IResource& staging, 
+			IResource& finalResource, IResource& stagingResource, 
 			const ResourceDesc& destinationDesc, 
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
             VectorPattern<unsigned, 2> stagingXYOffset,
             const Box2D& srcBox)
         {
-            auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
+            auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
             auto allLods = 
                 (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
                 && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
 
-			auto* metalFinal = (Metal::Resource*)finalResource.QueryInterface(typeid(Metal::Resource).hash_code());
-			auto* metalStaging = (Metal::Resource*)staging.QueryInterface(typeid(Metal::Resource).hash_code());
-			if (!metalFinal || !metalStaging)
-				Throw(::Exceptions::BasicLabel("Incorrect resource type passed to buffer uploads platform layer"));
-
-            // We don't have a way to know for sure what the current layout is for the given image on the given context. 
-			// Let's just assume the previous states are as they would be in the most common cases
-			//		-- normally, this is called immediately after creation, when filling in an OPTIMAL texture with
-			//			data from a staging texture. When that happens, the src will be in layout "Preinitialized" and
-			//			the dst will be in layout "Undefined"
 			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
 			// So, we must change the layout immediate before and after the transfer.
-			{
-				Metal::LayoutTransition layoutTransitions[] = {
-					{metalStaging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
-					{metalFinal, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}};
-				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
-			}
+            Metal::Internal::CaptureForBind(metalContext, finalResource, BindFlag::TransferDst);
+            Metal::Internal::CaptureForBind(metalContext, stagingResource, BindFlag::TransferSrc);
+            auto blitEncoder = metalContext.BeginBlitEncoder();
 
             if (allLods && destinationDesc._type == ResourceDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
-                Metal::Copy(
-                    *metalContext, 
-                    *metalFinal, *metalStaging,
-                    Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
+                blitEncoder.Copy(finalResource, stagingResource);
             } else {
                 for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
-                        Metal::CopyPartial(
-                            *metalContext,
-                            Metal::CopyPartial_Dest(
-                                *metalFinal, 
-                                SubResourceId{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}),
-                            Metal::CopyPartial_Src(
-                                *metalStaging, 
+                        blitEncoder.Copy(
+                            Metal::BlitEncoder::CopyPartial_Dest{
+                                &finalResource, 
+                                SubResourceId{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}},
+                            Metal::BlitEncoder::CopyPartial_Src{
+                                &stagingResource, 
                                 SubResourceId{c-stagingLODOffset, a},
                                 {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
-                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
-                            Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
+                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}});
                     }
                 }
             }
-
-            // Switch the layout to the final layout. Here, we're assuming all of the transfers are finished, and the
-			// image will soon be used by a shader.
-			{
-				Metal::LayoutTransition layoutTransitions[] = {
-					{metalFinal, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}};
-				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
-			}
-
-            // Is it reasonable to go back to preinitialised? If we don't do this, the texture can be reused and the next time we attempt to
-            // switch it to TransferSrcOptimal, we will get a warning.
-            // Metal::SetImageLayouts(*metalContext, {{&staging, Metal_Vulkan::ImageLayout::TransferSrcOptimal, Metal_Vulkan::ImageLayout::General}});
         }
 
         unsigned UnderlyingDeviceContext::PushToBuffer(
@@ -158,20 +126,15 @@
 			const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, 
 			const std::vector<DefragStep>& steps)
         {
+            assert(0);
         }
 
         void UnderlyingDeviceContext::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
         {
-            auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
-            assert(metalContext);
-			auto* metalDestination = (Metal::Resource*)destination.QueryInterface(typeid(Metal::Resource).hash_code());
-			auto* metalSource = (Metal::Resource*)source.QueryInterface(typeid(Metal::Resource).hash_code());
-			if (!metalDestination || !metalSource)
-				Throw(::Exceptions::BasicLabel("Incorrect resource type passed to buffer uploads platform layer"));
-            Metal::Copy(*metalContext, *metalDestination, *metalSource);
+            assert(0);
         }
 
-        Metal::CommandListPtr UnderlyingDeviceContext::ResolveCommandList()
+        std::shared_ptr<Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             assert(metalContext);
@@ -184,17 +147,17 @@
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             assert(metalContext);
-            metalContext->BeginCommandList();
+            if (!metalContext->HasActiveCommandList())
+                metalContext->BeginCommandList();
         }
 
-		class RawDataPacket_ReadBack : public DataPacket
+#if 0
+		class RawDataPacket_ReadBack : public IDataPacket
 		{
 		public:
 			void*           GetData(SubResourceId subRes);
 			size_t          GetDataSize(SubResourceId subRes) const;
 			TexturePitches  GetPitches(SubResourceId subRes) const;
-
-			std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
 
 			RawDataPacket_ReadBack(
 				Metal::DeviceContext& context,
@@ -241,6 +204,7 @@
 			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
 			return make_intrusive<RawDataPacket_ReadBack>(std::ref(metalContext), std::ref(*res), SubResourceId{0,0});
         }
+#endif
 
         // UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
         // {
@@ -266,6 +230,7 @@
         {
         }
 
+#if 0
         IResourcePtr CreateResource(IDevice& device, const ResourceDesc& desc, DataPacket* initialisationData)
         {
 			if (initialisationData) {
@@ -290,6 +255,7 @@
         {
             return resource.GetDesc();
         }
+#endif
 
     }}
 

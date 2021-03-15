@@ -152,7 +152,7 @@ namespace BufferUploads
                 if (deviceCreation) {
                     Interlocked::Increment(&_recentDeviceCreateCount);
                     deviceCreation = true;
-                    auto result = PlatformInterface::CreateResource(*_underlyingDevice, _desc, NULL);
+                    auto result = _underlyingDevice->CreateResource(_desc);
                     if (result) {
                         #if defined(REUSABLE_RESOURCE_DEBUGGING)
                             PlatformInterface::AttachObject(
@@ -743,7 +743,7 @@ namespace BufferUploads
         _temporaryCopyBufferCountDown = 0;
         if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
             _temporaryCopyBuffer = ResourceLocator{
-                PlatformInterface::CreateResource(*sourcePool->GetUnderlyingDevice(), copyBufferDesc)};
+                sourcePool->GetUnderlyingDevice()->CreateResource(copyBufferDesc)};
         }
     }
 
@@ -1020,10 +1020,13 @@ namespace BufferUploads
 					? PlatformInterface::SupportsResourceInitialisation_Texture
 					: PlatformInterface::SupportsResourceInitialisation_Buffer;
 				auto initPkt = supportInit ? initialisationData : nullptr;
-
-                result._locator = ResourceLocator{
-                    PlatformInterface::CreateResource(*_underlyingDevice, desc, initPkt),
-                    0, objectSize};
+                std::shared_ptr<RenderCore::IResource> renderCoreResource;
+                if (initPkt) {
+                    renderCoreResource = _underlyingDevice->CreateResource(desc, PlatformInterface::AsResourceInitializer(*initPkt));
+                } else {
+                    renderCoreResource = _underlyingDevice->CreateResource(desc);
+                }
+                result._locator = ResourceLocator{std::move(renderCoreResource), 0, objectSize};
                 result._flags |= initPkt ? ResourceConstruction::Flags::InitialisationSuccessful : 0;
                 result._flags |= ResourceConstruction::Flags::DeviceConstructionInvoked;
             }
@@ -1051,7 +1054,7 @@ namespace BufferUploads
     {
         #if defined(_DEBUG)
             if (_batchedIndexBuffers->Validate(locator)==0) {
-                ResourceDesc desc = PlatformInterface::ExtractDesc(*locator._resource);
+                ResourceDesc desc = locator._resource->GetDesc();
                 assert(!(UsePooling(desc) && UseBatching(desc)));
             }
         #endif

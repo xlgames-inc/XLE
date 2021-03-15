@@ -246,6 +246,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 
 		void SetupInitialLayout(DeviceContext&, IResource&);
+
+		unsigned CopyViaMemoryMap(
+			IDevice& dev, Resource& resource,
+			const std::function<SubResourceInitData(SubResourceId)>& initData);
 	}
 
 	VkSampleCountFlagBits_	AsSampleCountFlagBits(TextureSamples samples);

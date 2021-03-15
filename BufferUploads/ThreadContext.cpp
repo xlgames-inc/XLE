@@ -1,18 +1,15 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ThreadContext.h"
 #include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../OSServices/WinAPI/System_WinAPI.h"
+#include "../OSServices/TimeUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
-
-#pragma warning(disable:4127) // conditional expression is constant
 
 namespace BufferUploads
 {
@@ -42,7 +39,7 @@ namespace BufferUploads
 
     void ThreadContext::ResolveCommandList()
     {
-        int64_t currentTime = PlatformInterface::QueryPerformanceCounter();
+        int64_t currentTime = OSServices::GetPerformanceCounter();
         CommandList newCommandList;
         newCommandList._metrics = _commandListUnderConstruction;
         newCommandList._metrics._resolveTime = currentTime;
@@ -80,10 +77,7 @@ namespace BufferUploads
     {
         auto immContext = RenderCore::Metal::DeviceContext::Get(commitTo);
         if (_requiresResolves) {
-            // FUNCTION_PROFILER_RENDER_FLAT
-
-            TimeMarker stallStart = PlatformInterface::QueryPerformanceCounter();
-
+            TimeMarker stallStart = OSServices::GetPerformanceCounter();
             bool gotStart = false;
             for (;;) {
 
@@ -97,23 +91,21 @@ namespace BufferUploads
 
                 CommandList* commandList = 0;
                 while (_queuedCommandLists.try_front(commandList)) {
-                    TimeMarker stallEnd = PlatformInterface::QueryPerformanceCounter();
+                    TimeMarker stallEnd = OSServices::GetPerformanceCounter();
                     if (!gotStart) {
-                        // PROFILE_LABEL_PUSH("GPU_UPLOAD");
-                        // GPU_TIMER_START("GPU_UPLOAD");
+                        commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerBegin);
                         gotStart = true;
                     }
 
                     commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
-                    if (commandList->_deviceCommandList) {
+                    if (commandList->_deviceCommandList)
                         immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
-                    }
                     commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);
                     gpuEventStack.TriggerEvent(immContext.get(), commandList->_id);
                 
                     commandList->_metrics._frameId                  = commitTo.GetStateDesc()._frameId;
-                    commandList->_metrics._commitTime               = PlatformInterface::QueryPerformanceCounter();
+                    commandList->_metrics._commitTime               = OSServices::GetPerformanceCounter();
                     commandList->_metrics._framePriorityStallTime   = stallEnd - stallStart;    // this should give us very small numbers, when we're not actually stalling for frame priority commits
                     #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
                         while (!_recentRetirements.push(commandList->_metrics)) {
@@ -122,7 +114,7 @@ namespace BufferUploads
                     #endif
                     _queuedCommandLists.pop();
 
-                    stallStart = PlatformInterface::QueryPerformanceCounter();                
+                    stallStart = OSServices::GetPerformanceCounter();                
                 }
                     
                 if (!currentlyUncommitedFramePriorityCommandLists) {
@@ -135,8 +127,7 @@ namespace BufferUploads
             }
 
             if (gotStart) {
-                // GPU_TIMER_STOP("GPU_UPLOAD");
-                // PROFILE_LABEL_POP("GPU_UPLOAD");
+                commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerEnd);
             }
         } else {
             if (_commandListIDCommittedToImmediate) {
@@ -152,7 +143,6 @@ namespace BufferUploads
         ++_commitCountCurrent;
         gpuEventStack.Update(immContext.get());
         _commandListIDCompletedByGPU = gpuEventStack.GetLastCompletedEvent();
-        XlSetEvent(_wakeupEvent);   // wake up the background thread -- it might be time for a resolve
     }
 
     CommandListMetrics ThreadContext::PopMetrics()
@@ -189,14 +179,14 @@ namespace BufferUploads
         if (!id) return;
         for (unsigned c=0; c<dimof(_eventBuffers); ++c) {
             if (_eventBuffers[c]._id == id) {
-                Interlocked::Increment(&_eventBuffers[c]._clientReferences);
+                ++_eventBuffers[c]._clientReferences;
                     //  have to check again after the increment... because the client references value acts
                     //  as a lock.
                 if (_eventBuffers[c]._id == id) {
                     begin = &_eventBuffers[c]._evnt;
                     end = begin+1;
                 } else {
-                    Interlocked::Decrement(&_eventBuffers[c]._clientReferences);
+                    --_eventBuffers[c]._clientReferences;
                         // in this case, the event has just be freshly overwritten
                 }
                 return;
@@ -212,17 +202,15 @@ namespace BufferUploads
         if (!id) return;
         for (unsigned c=0; c<dimof(_eventBuffers); ++c) {
             if (_eventBuffers[c]._id == id) {
-                assert(_eventBuffers[c]._clientReferences);
-                Interlocked::Decrement(&_eventBuffers[c]._clientReferences);
+                auto newValue = --_eventBuffers[c]._clientReferences;
+                assert(signed(newValue) >= 0);
                     
                 if (!silent) {
                     for (;;) {      // lock-free max...
-                        Interlocked::Value originalProcessedId = _currentEventListProcessedId;
-                        Interlocked::Value newProcessedId = std::max(originalProcessedId, Interlocked::Value(_eventBuffers[c]._id));
-                        Interlocked::Value beforeExchange = Interlocked::CompareExchange(&_currentEventListProcessedId, newProcessedId, originalProcessedId);
-                        if (beforeExchange == originalProcessedId) {
+                        auto originalProcessedId = _currentEventListProcessedId.load();
+                        auto newProcessedId = std::max(originalProcessedId, (IManager::EventListID)_eventBuffers[c]._id);
+                        if (_currentEventListProcessedId.compare_exchange_strong(originalProcessedId, newProcessedId))
                             break;
-                        }
                     }
                 }
                 return;
@@ -237,7 +225,7 @@ namespace BufferUploads
             //      try to push this event into the small queue... but don't overwrite anything that
             //      currently has a client reference on it.
             //
-        if (!_eventBuffers[_eventListWritingIndex]._clientReferences) {
+        if (!_eventBuffers[_eventListWritingIndex]._clientReferences.load()) {
             IManager::EventListID id = ++_currentEventListId;
             _eventBuffers[_eventListWritingIndex]._id = id;
             _eventBuffers[_eventListWritingIndex]._evnt = evnt;
@@ -258,11 +246,11 @@ namespace BufferUploads
             //      Since we're only double buffering, we can't continue until the  
             //      we finish with the previous priority steps...
         // unsigned commandListId = CommandList_GetUnderConstruction();
-        while (!_pendingFramePriority_CommandLists.push(queueSetId)) {
+        /*while (!_pendingFramePriority_CommandLists.push(queueSetId)) {
             XlSetEvent(_wakeupEvent);
             Threading::YieldTimeSlice(); 
         }
-        XlSetEvent(_wakeupEvent);
+        XlSetEvent(_wakeupEvent);*/
     }
     
     void ThreadContext::OnLostDevice()
@@ -283,12 +271,9 @@ namespace BufferUploads
     , _currentEventListPublishedId(0)
     {
         _underlyingContext = std::move(underlyingContext);
-        _lastResolve = _tickFrequency = 0;
+        _lastResolve = 0;
         _commitCountCurrent = _commitCountLastResolve = 0;
         // XlZeroMemory(_eventBuffers);
-        #if defined(WIN32) || defined(WIN64)
-            QueryPerformanceFrequency((LARGE_INTEGER*)&_tickFrequency);
-        #endif
 
         if (_underlyingContext->IsImmediate()) {
             _requiresResolves = false;  // immediate context requires no resolves
@@ -302,12 +287,12 @@ namespace BufferUploads
         _commandListIDCompletedByGPU = 0;
         _commandListIDCommittedToImmediate = 0;
 
-        _wakeupEvent = XlCreateEvent(false);
+        // _wakeupEvent = XlCreateEvent(false);
     }
 
     ThreadContext::~ThreadContext()
     {
-        XlCloseSyncObject(_wakeupEvent);
+        // XlCloseSyncObject(_wakeupEvent);
     }
 
         //////////////////////////////////////////////////////////////////////////////////////////////

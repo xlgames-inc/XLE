@@ -1041,15 +1041,18 @@ namespace RenderCore { namespace Metal_Vulkan
         return bytesUploaded;
     }
 
-    static unsigned CopyViaMemoryMap(
-        IDevice& dev, Resource& resource,
-        const std::function<SubResourceInitData(SubResourceId)>& initData)
-    {
-        assert(resource.GetDesc()._type == ResourceDesc::Type::Texture);
-        return CopyViaMemoryMap(
-            ExtractUnderlyingDevice(dev), resource.GetImage(), resource.GetMemory(),
-            resource.GetDesc()._textureDesc, initData);
-    }
+    namespace Internal
+	{
+		unsigned CopyViaMemoryMap(
+			IDevice& dev, Resource& resource,
+			const std::function<SubResourceInitData(SubResourceId)>& initData)
+		{
+			assert(resource.GetDesc()._type == ResourceDesc::Type::Texture);
+			return Metal_Vulkan::CopyViaMemoryMap(
+				ExtractUnderlyingDevice(dev), resource.GetImage(), resource.GetMemory(),
+				resource.GetDesc()._textureDesc, initData);
+		}
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -19,7 +19,14 @@
 #include <queue>
 #include <thread>
 
-#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+// #define ENABLE_DXTEX 1
+#if ENABLE_DXTEX
+    #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+#endif
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../OSServices/WinAPI/IncludeWindows.h"
+#endif
 
 // Important character set note!
 // We're using some "wchar_t" conversions in this file. This is because we're using some Windows API functions that take WCHAR strings
@@ -252,6 +259,7 @@ namespace BufferUploads
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if ENABLE_DXTEX
     class DirectXTextureLibraryDataPacket : public IDataPacket
     {
     public:
@@ -602,4 +610,8 @@ namespace BufferUploads
         return RenderCore::TextureDesc::Empty();
     }
 
+#endif
+
+    IDataPacket::~IDataPacket() {}
+    
 }

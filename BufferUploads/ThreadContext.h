@@ -14,6 +14,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/DeviceContext.h"		// for command list ptr
 #include "../Utility/Threading/LockFree.h"
+#include <atomic>
 
 namespace BufferUploads
 {
@@ -77,7 +78,7 @@ namespace BufferUploads
     class CommandList
     {
     public:
-        typedef Interlocked::Value ID;
+        using ID = uint32_t;
 
 		std::shared_ptr<RenderCore::Metal::CommandList>        _deviceCommandList;
         mutable CommandListMetrics      _metrics;
@@ -95,7 +96,7 @@ namespace BufferUploads
 
         //////   T H R E A D   C O N T E X T   //////
 
-    #if !defined(XL_RELEASE)
+    #if !defined(NDEBUG)
         #define XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS
     #endif
 
@@ -131,7 +132,7 @@ namespace BufferUploads
         unsigned                CommitCount_Current()                           { return _commitCountCurrent; }
         unsigned&               CommitCount_LastResolve()                       { return _commitCountLastResolve; }
 
-        XlHandle                GetWakeupEvent()                                { return _wakeupEvent; }
+        // XlHandle                GetWakeupEvent()                                { return _wakeupEvent; }
         void                    FramePriority_Barrier(unsigned queueSetId);
 
         void                    OnLostDevice();
@@ -151,11 +152,10 @@ namespace BufferUploads
         PlatformInterface::UnderlyingDeviceContext _deviceContext;
 
         TimeMarker  _lastResolve;
-        TimeMarker  _tickFrequency;
         unsigned    _commitCountCurrent, _commitCountLastResolve;
         bool        _requiresResolves;
 
-        XlHandle    _wakeupEvent;
+        // XlHandle    _wakeupEvent;
 
         CommandList::ID _commandListIDUnderConstruction, _commandListIDCompletedByGPU, _commandListIDCommittedToImmediate;
 
@@ -164,12 +164,12 @@ namespace BufferUploads
         public:
             volatile IManager::EventListID _id;
             Event_ResourceReposition _evnt;
-            Interlocked::Value _clientReferences;
+            std::atomic<unsigned> _clientReferences;
             EventList() : _id(~IManager::EventListID(0x0)), _clientReferences(0) {}
         };
         IManager::EventListID   _currentEventListId;
         IManager::EventListID   _currentEventListPublishedId;
-        Interlocked::Value      _currentEventListProcessedId;
+        std::atomic<IManager::EventListID>   _currentEventListProcessedId;
         EventList               _eventBuffers[4];
         unsigned                _eventListWritingIndex;
     };

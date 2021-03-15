@@ -48,9 +48,6 @@ namespace BufferUploads
         void                    EventList_Get(EventListID id, Event_ResourceReposition*&begin, Event_ResourceReposition*&end) override;
         void                    EventList_Release(EventListID id) override;
 
-        void                    OnLostDevice();
-        void                    OnResetDevice();
-
         Manager(RenderCore::IDevice& renderDevice);
         ~Manager();
 
@@ -63,9 +60,7 @@ namespace BufferUploads
         std::unique_ptr<ThreadContext> _foregroundContext;
         std::unique_ptr<PlatformInterface::GPUEventStack> _gpuEventStack;
 
-        bool _shutdownBackgroundThread;
-        XlHandle _assemblyLineWakeUpEvent, _waitingForDeviceResetEvent;
-        bool _handlingLostDevice;
+        volatile bool _shutdownBackgroundThread;
 
         uint32_t DoBackgroundThread();
 
