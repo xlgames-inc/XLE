@@ -51,23 +51,23 @@ namespace BufferUploads
     std::shared_ptr<IDataPacket> CreateEmptyPacket(
         const ResourceDesc& desc);
 
-    namespace TextureHandlers
-    {
-        namespace TextureLoadFlags { 
-            enum Enum { GenerateMipmaps = 1<<0 };
-            typedef unsigned BitField;
-        }
-
-        struct TexturePlugin
-        {
-            std::regex _filenameMatcher;
-            std::function<std::shared_ptr<IDataPacket>(StringSection<>, TextureLoadFlags::BitField)> _loader;
-        };
-
-        std::shared_ptr<IDataPacket> CreateStreamingTextureSource(
-            IteratorRange<const TexturePlugin*> plugins,
-            StringSection<> filename, TextureLoadFlags::BitField flags = 0);
-
-        RenderCore::TextureDesc LoadTextureFormat(StringSection<> filename);
+    //////////////////////////////////////////////
+        // Legacy texture loaders //
+    //////////////////////////////////////////////
+    namespace TextureLoadFlags { 
+        enum Enum { GenerateMipmaps = 1<<0 };
+        typedef unsigned BitField;
     }
+
+    struct TexturePlugin
+    {
+        std::regex _filenameMatcher;
+        std::function<std::shared_ptr<IDataPacket>(StringSection<>, TextureLoadFlags::BitField)> _loader;
+    };
+
+    std::shared_ptr<IDataPacket> CreateStreamingTextureSource(
+        IteratorRange<const TexturePlugin*> plugins,
+        StringSection<> filename, TextureLoadFlags::BitField flags = 0);
+
+    RenderCore::TextureDesc LoadTextureFormat(StringSection<> filename);
 }

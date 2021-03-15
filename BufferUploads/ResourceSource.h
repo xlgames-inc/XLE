@@ -16,7 +16,8 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Optional.h"
 
-#define D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES
+// #define D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES
+using XlHandle = void*;
 
 namespace BufferUploads
 {
@@ -27,18 +28,15 @@ namespace BufferUploads
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
     public:
-        using UnderlyingResource = RenderCore::IResource;
-		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
-
         ResourceLocator     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
 
         virtual void AddRef(
-            uint64_t resourceMarker, UnderlyingResource* resource, 
-            unsigned offset, unsigned size);
+            uint64_t resourceMarker, IResource& resource, 
+            unsigned offset, unsigned size) override;
 
         virtual void ReturnToPool(
-            uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
-            unsigned offset, unsigned size);
+            uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
+            unsigned offset, unsigned size) override;
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
 		RenderCore::IDevice*        GetUnderlyingDevice() { return _underlyingDevice; }
@@ -51,18 +49,18 @@ namespace BufferUploads
         class PoolOfLikeResources
         {
         public:
-            auto        AllocateResource(unsigned realSize, bool& deviceCreation) -> UnderlyingResourcePtr;
+            auto        AllocateResource(unsigned realSize, bool& deviceCreation) -> std::shared_ptr<IResource>;
             const Desc& GetDesc() const { return _desc; }
             PoolMetrics CalculateMetrics() const;
             void        Update(unsigned newFrameID);
-            void        ReturnToPool(UnderlyingResourcePtr&& resource);
+            void        ReturnToPool(std::shared_ptr<IResource>&& resource);
 
             PoolOfLikeResources(RenderCore::IDevice& underlyingDevice, const Desc&, unsigned retainFrames = ~unsigned(0x0));
             ~PoolOfLikeResources();
         private:
             struct Entry
             {
-                UnderlyingResourcePtr  _underlying;
+                std::shared_ptr<IResource>  _underlying;
                 unsigned            _returnFrameID;
             };
             LockFreeFixedSizeQueue<Entry, 512> _allocableResources;
@@ -104,15 +102,15 @@ namespace BufferUploads
         using UnderlyingResource = RenderCore::IResource;
 		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
-        intrusive_ptr<ResourceLocator> Allocate(unsigned size, bool& deviceCreation, const char name[]);
+        ResourceLocator Allocate(unsigned size, bool& deviceCreation, const char name[]);
 
         virtual void AddRef(
-            uint64_t resourceMarker, UnderlyingResource* resource, 
-            unsigned offset, unsigned size);
+            uint64_t resourceMarker, IResource& resource, 
+            unsigned offset, unsigned size) override;
 
         virtual void ReturnToPool(
-            uint64_t resourceMarker, UnderlyingResourcePtr&& resource, 
-            unsigned offset, unsigned size);
+            uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
+            unsigned offset, unsigned size) override;
 
             //
             //      Two step destruction process... Deref to remove the reference first. But if Deref returns
@@ -146,10 +144,10 @@ namespace BufferUploads
             void                ValidateRefsAndHeap();
 
             HeapedResource();
-            HeapedResource(const ResourceDesc& desc, const intrusive_ptr<ResourceLocator>& heapResource);
+            HeapedResource(const ResourceDesc& desc, const ResourceLocator& heapResource);
             ~HeapedResource();
 
-            intrusive_ptr<ResourceLocator> _heapResource;
+            ResourceLocator _heapResource;
             SimpleSpanningHeap  _heap;
             ReferenceCountingLayer _refCounts;
             unsigned _size;
@@ -201,7 +199,7 @@ namespace BufferUploads
         Threading::Mutex _activeDefrag_Lock;
         HeapedResource* _activeDefragHeap;
 
-        intrusive_ptr<ResourceLocator> _temporaryCopyBuffer;
+        ResourceLocator _temporaryCopyBuffer;
         unsigned _temporaryCopyBufferCountDown;
 
         BatchedResources(const BatchedResources&);
@@ -266,9 +264,9 @@ namespace BufferUploads
 		RenderCore::IDevice*                _underlyingDevice;
 
         #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
-            LockFreeFixedSizeQueue_Waitable<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
+            LockFreeFixedSizeQueue_Waitable<ResourceLocator,256> _delayedReleases;
         #else
-            LockFreeFixedSizeQueue<intrusive_ptr<ResourceLocator>,256> _delayedReleases;
+            LockFreeFixedSizeQueue<ResourceLocator,256> _delayedReleases;
         #endif
 
         inline bool UsePooling(const ResourceDesc& input)     { return (input._type == ResourceDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }

@@ -104,7 +104,7 @@ namespace BufferUploads
             /// to an existing resource.
         virtual TransactionMarker   Transaction_Begin    (const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags=0) = 0;
         virtual TransactionMarker   Transaction_Begin    (const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags=0) = 0;
-        virtual TransactionMarker   Transaction_Begin    (intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) = 0;
+        virtual TransactionMarker   Transaction_Begin    (const ResourceLocator& locator, TransactionOptions::BitField flags=0) = 0;
 
         virtual void            Transaction_Cancel      (TransactionID id) = 0;
 

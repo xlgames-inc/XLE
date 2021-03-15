@@ -2333,12 +2333,12 @@ namespace BufferUploads
         return _assemblyLine->Transaction_Begin(desc, initialisationData, flags);
     }
 
-    TransactionID           Manager::Transaction_Begin(intrusive_ptr<ResourceLocator>& locator, TransactionOptions::BitField flags)
+    TransactionID           Manager::Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags)
     {
         return _assemblyLine->Transaction_Begin(locator, flags);
     }
 
-    intrusive_ptr<ResourceLocator>         Manager::GetResource(TransactionID id)
+    ResourceLocator         Manager::GetResource(TransactionID id)
     {
         return _assemblyLine->GetResource(id);
     }
@@ -2350,11 +2350,6 @@ namespace BufferUploads
 
         /////////////////////////////////////////////
 
-    intrusive_ptr<DataPacket> Manager::Resource_ReadBack(const ResourceLocator& locator)
-    {
-        return _foregroundContext->GetDeviceContext().Readback(locator);
-    }
-
     void                    Manager::Transaction_End(TransactionID id)
     {
         _assemblyLine->Transaction_End(id);
@@ -2365,7 +2360,7 @@ namespace BufferUploads
         _assemblyLine->Transaction_Validate(id);
     }
 
-    intrusive_ptr<ResourceLocator>         Manager::Transaction_Immediate(RenderCore::IThreadContext& threadContext, const ResourceDesc& desc, DataPacket* initialisationData, const PartialResource& part)
+    ResourceLocator         Manager::Transaction_Immediate(RenderCore::IThreadContext& threadContext, const ResourceDesc& desc, DataPacket* initialisationData, const PartialResource& part)
     {
         return _assemblyLine->Transaction_Immediate(threadContext, desc, initialisationData, part);
     }

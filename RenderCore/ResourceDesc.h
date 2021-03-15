@@ -10,7 +10,6 @@
 #include "../Core/Types.h"
 #include "../Core/Prefix.h"
 #include "../Utility/StringUtils.h"
-#include "../Utility/IntrusivePtr.h"
 #include "../Utility/IteratorUtils.h"   // for VectorPattern
 
 namespace RenderCore

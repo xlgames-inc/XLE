@@ -9,7 +9,6 @@
 #include "IDevice_Forward.h"
 #include "ResourceDesc.h"       // (required just for SubResourceId)
 #include "../Core/Prefix.h"
-#include "../Utility/IntrusivePtr.h"
 #include <memory>
 #include <functional>
 

@@ -23,7 +23,7 @@ namespace BufferUploads
 
         TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags) override;
         TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags) override;
-        TransactionMarker       Transaction_Begin(intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) override;
+        TransactionMarker       Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags=0) override;
         void                    Transaction_Cancel(TransactionID id) override;
         void                    Transaction_Validate(TransactionID id) override;
 

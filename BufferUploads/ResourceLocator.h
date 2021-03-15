@@ -21,7 +21,7 @@ namespace BufferUploads
             uint64_t resourceMarker, IResource& resource, 
             unsigned offset, unsigned size) = 0;
         virtual void ReturnToPool(
-            uint64_t resourceMarker, IResource& resource, 
+            uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
             unsigned offset, unsigned size) = 0;
         virtual ~IResourcePool() {}
     };

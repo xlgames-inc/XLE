@@ -7,6 +7,8 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/IAsyncMarker.h"
+#include "../Assets/AssetsCore.h"
 #include "../OSServices/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
@@ -28,15 +30,14 @@
 namespace BufferUploads
 {
 
-    class BasicRawDataPacket : public DataPacket
+    class BasicRawDataPacket : public IDataPacket
     {
     public:
-        virtual void* GetData(SubResourceId subRes = {});
-        virtual size_t GetDataSize(SubResourceId subRes = {}) const;
-        virtual TexturePitches GetPitches(SubResourceId subRes = {}) const;
-        virtual std::shared_ptr<Marker> BeginBackgroundLoad();
+        virtual void* GetData(SubResourceId subRes = {}) override;
+        virtual size_t GetDataSize(SubResourceId subRes = {}) const override;
+        virtual TexturePitches GetPitches(SubResourceId subRes = {}) const override;
 
-        BasicRawDataPacket(size_t dataSize, const void* data = nullptr, TexturePitches pitches = TexturePitches());
+        BasicRawDataPacket(size_t size, IteratorRange<const void*> data = {}, TexturePitches pitches = TexturePitches());
         virtual ~BasicRawDataPacket();
     protected:
         std::unique_ptr<uint8_t, PODAlignedDeletor> _data; 
@@ -49,18 +50,18 @@ namespace BufferUploads
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BasicRawDataPacket::BasicRawDataPacket(size_t dataSize, const void* data, TexturePitches pitches)
-    : _dataSize(dataSize), _pitches(pitches)    
+    BasicRawDataPacket::BasicRawDataPacket(size_t size, IteratorRange<const void*> data, TexturePitches pitches)
+    : _dataSize(size), _pitches(pitches)    
     {
-        _data.reset((uint8_t*)XlMemAlign(dataSize, 16));
-
             // note --  prefer sending aligned data as input! Just makes it
             //          more convenient for copying
-        if (data) {
-            if ((size_t(data) & 0xf)==0x0 && (_dataSize & 0xf)==0x0) {
-                XlCopyMemoryAlign16(_data.get(), data, _dataSize);
+        if (!data.empty()) {
+            assert(data.size() == size);
+            _data.reset((uint8_t*)XlMemAlign(data.size(), 16));
+            if ((size_t(data.begin()) & 0xf)==0x0 && (_dataSize & 0xf)==0x0) {
+                XlCopyMemoryAlign16(_data.get(), data.begin(), _dataSize);
             } else {
-                XlCopyMemory(_data.get(), data, _dataSize);
+                XlCopyMemory(_data.get(), data.begin(), _dataSize);
             }
         }
     }
@@ -86,21 +87,19 @@ namespace BufferUploads
         return _pitches; 
     }
 
-    auto BasicRawDataPacket::BeginBackgroundLoad() -> std::shared_ptr<Marker> { return nullptr; }
-
-    intrusive_ptr<DataPacket> CreateBasicPacket(
-        size_t dataSize, const void* data, TexturePitches rowAndSlicePitch)
+    std::shared_ptr<IDataPacket> CreateBasicPacket(
+        IteratorRange<const void*> data, TexturePitches rowAndSlicePitch)
     {
-        return make_intrusive<BasicRawDataPacket>(dataSize, data, rowAndSlicePitch);
+        return std::make_shared<BasicRawDataPacket>(data.size(), data, rowAndSlicePitch);
     }
 
-    intrusive_ptr<DataPacket> CreateEmptyPacket(const ResourceDesc& desc)
+    std::shared_ptr<IDataPacket> CreateEmptyPacket(const ResourceDesc& desc)
     {
             // Create an empty packet of the appropriate size for the given desc
             // Linear buffers are simple, but textures need a little more detail...
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
             auto size = RenderCore::ByteCount(desc);
-            return make_intrusive<BasicRawDataPacket>(size, nullptr, TexturePitches{size, size});
+            return std::make_shared<BasicRawDataPacket>(size, IteratorRange<const void*>{}, TexturePitches{size, size});
         } else if (desc._type == ResourceDesc::Type::Texture) {
                 //  currently not supporting textures with multiple mip-maps
                 //  or multiple array slices
@@ -108,7 +107,7 @@ namespace BufferUploads
             assert(desc._textureDesc._arrayCount <= 1);
 
             auto pitches = RenderCore::MakeTexturePitches(desc._textureDesc);
-            return make_intrusive<BasicRawDataPacket>(pitches._slicePitch, nullptr, pitches);
+            return std::make_shared<BasicRawDataPacket>(pitches._slicePitch, IteratorRange<const void*>{}, pitches);
         }
 
         return nullptr;
@@ -117,7 +116,9 @@ namespace BufferUploads
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //      S T R E A M I N G   P A C K E T
 
-    class FileDataSource : public DataPacket
+    using Marker = ::Assets::GenericFuture;
+
+    class FileDataSource : public IDataPacket, public std::enable_shared_from_this<FileDataSource>
     {
     public:
         virtual void*           GetData         (SubResourceId subRes);
@@ -137,7 +138,7 @@ namespace BufferUploads
         struct SpecialOverlapped
         {
             OVERLAPPED                      _internal;
-            intrusive_ptr<FileDataSource>   _returnPointer;
+            std::weak_ptr<FileDataSource>   _returnPointer;
         };
         SpecialOverlapped _overlappedStatus;
         std::unique_ptr<byte[], PODAlignedDeletor> _pkt;
@@ -164,17 +165,20 @@ namespace BufferUploads
         LPOVERLAPPED lpOverlapped)
     {
         auto* o = (SpecialOverlapped*)lpOverlapped;
-        assert(o && o->_returnPointer && o->_returnPointer->_marker);
-        assert(o->_returnPointer->_marker->GetAssetState() == Assets::AssetState::Pending);
+        assert(o);
+        auto returnPointer = o->_returnPointer.lock();
+        if (!returnPointer) return;
+        assert(returnPointer->_marker);
+        assert(returnPointer->_marker->GetAssetState() == ::Assets::AssetState::Pending);
 
             // We don't have to do any extra processing right now. Just mark the asset as ready
             // or invalid, based on the result...
-        o->_returnPointer->_marker->SetState(
-            (dwErrorCode == ERROR_SUCCESS) ? Assets::AssetState::Ready : Assets::AssetState::Invalid);
+        returnPointer->_marker->SetState(
+            (dwErrorCode == ERROR_SUCCESS) ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
 
             // we can reset the "_returnPointer", which will also decrease the reference
             // count on the FileDataSource object
-        o->_returnPointer.reset();
+        returnPointer.reset();
     }
 
     auto FileDataSource::BeginBackgroundLoad() -> std::shared_ptr < Marker >
@@ -188,7 +192,7 @@ namespace BufferUploads
         
         XlSetMemory(&_overlappedStatus._internal, 0, sizeof(_overlappedStatus._internal));
         _overlappedStatus._internal.Pointer = (void*)_offset;
-        _overlappedStatus._returnPointer = this;
+        _overlappedStatus._returnPointer = weak_from_this();
 
         auto* o = &_overlappedStatus;
             // this should be a very quick operation -- it might be best to put it in a
@@ -196,8 +200,8 @@ namespace BufferUploads
         ConsoleRig::GlobalServices::GetInstance().GetShortTaskThreadPool().Enqueue(
             [o]()
             {
-                auto* pkt = o->_returnPointer.get();
-                assert(pkt);
+                auto pkt = o->_returnPointer.lock();
+                if (!pkt) Throw(std::runtime_error("FileDataSource has expired"));
 
                     // We allocate the buffer here, to remove malloc costs from the caller thread
                 pkt->_pkt.reset((byte*)XlMemAlign(pkt->_dataSize, 16));
@@ -241,22 +245,22 @@ namespace BufferUploads
         }
     }
 
-    intrusive_ptr<DataPacket> CreateFileDataSource(const void* fileHandle, size_t offset, size_t dataSize, TexturePitches pitches)
+    std::shared_ptr<IDataPacket> CreateFileDataSource(const void* fileHandle, size_t offset, size_t dataSize, TexturePitches pitches)
     {
-        return make_intrusive<FileDataSource>(fileHandle, offset, dataSize, pitches);
+        return std::make_shared<FileDataSource>(fileHandle, offset, dataSize, pitches);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DirectXTextureLibraryDataPacket : public DataPacket
+    class DirectXTextureLibraryDataPacket : public IDataPacket
     {
     public:
         void*           GetData         (SubResourceId subRes) override;
         size_t          GetDataSize     (SubResourceId subRes) const override;
         TexturePitches  GetPitches      (SubResourceId subRes) const override;
-		virtual ResourceDesc		GetDesc			() const override;
+		virtual ResourceDesc		GetDesc			() const;
 
-        std::shared_ptr<Marker>     BeginBackgroundLoad() override;
+        std::shared_ptr<Marker>     BeginBackgroundLoad();
 
         DirectXTextureLibraryDataPacket(
             StringSection<::Assets::ResChar> filename,
@@ -440,15 +444,15 @@ namespace BufferUploads
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class StreamingTexture : public DataPacket
+    class StreamingTexture : public IDataPacket, public std::enable_shared_from_this<StreamingTexture>
     {
     public:
         virtual void*           GetData         (SubResourceId subRes) override;
         virtual size_t          GetDataSize     (SubResourceId subRes) const override;
         virtual TexturePitches  GetPitches      (SubResourceId subRes) const override;
-		virtual ResourceDesc		GetDesc			() const override;
+		virtual ResourceDesc		GetDesc			() const;
 
-        virtual std::shared_ptr<Marker>     BeginBackgroundLoad() override;
+        virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
         StreamingTexture(
 			IteratorRange<const TexturePlugin*> plugins,
@@ -457,7 +461,7 @@ namespace BufferUploads
         virtual ~StreamingTexture();
 
     protected:
-        intrusive_ptr<DataPacket> _realPacket;
+        std::shared_ptr<IDataPacket> _realPacket;
         std::shared_ptr<Marker> _marker;
 
         std::basic_string<::Assets::ResChar> _filename;
@@ -488,8 +492,9 @@ namespace BufferUploads
 
 	ResourceDesc		StreamingTexture::GetDesc		() const
 	{
-		if (_realPacket)
-            return _realPacket->GetDesc();
+        assert(0);
+		/*if (_realPacket)
+            return _realPacket->GetDesc();*/
         return {};
 	}
 
@@ -498,7 +503,7 @@ namespace BufferUploads
         assert(!_marker);
 
         _marker = std::make_shared<Marker>();
-        intrusive_ptr<StreamingTexture> strongThis = this;      // hold a reference while the background operation is occurring
+        std::shared_ptr<StreamingTexture> strongThis = shared_from_this();      // hold a reference while the background operation is occurring
 
 		// Managing the async operations here is a little bit awkward; but it works...
         ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().Enqueue(
@@ -531,7 +536,7 @@ namespace BufferUploads
 						strongThis->_realPacket = plugin->_loader(MakeStringSection(fIterator, partEnd), strongThis->_flags);
 					} else {
 						// drop back to default loading method
-						strongThis->_realPacket = make_intrusive<DirectXTextureLibraryDataPacket>(MakeStringSection(fIterator, partEnd), strongThis->_flags);
+						strongThis->_realPacket = std::make_shared<DirectXTextureLibraryDataPacket>(MakeStringSection(fIterator, partEnd), strongThis->_flags);
 					}
 
 					if (strongThis->_realPacket->GetDataSize() != 0)
@@ -562,11 +567,11 @@ namespace BufferUploads
     StreamingTexture::~StreamingTexture()
     {}
 
-    intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+    std::shared_ptr<IDataPacket> CreateStreamingTextureSource(
 		IteratorRange<const TexturePlugin*> plugins,
         StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags)
     {
-        return make_intrusive<StreamingTexture>(plugins, filename, flags);
+        return std::make_shared<StreamingTexture>(plugins, filename, flags);
     }
 
     RenderCore::TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)
