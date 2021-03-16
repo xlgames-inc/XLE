@@ -7,6 +7,7 @@
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/ResourceUtils.h"
+#include "../RenderCore/BufferView.h"
 #include <memory>
 #include <future>
 
@@ -26,6 +27,7 @@ namespace BufferUploads
 	using TextureSamples = RenderCore::TextureSamples;
 	using TextureDesc = RenderCore::TextureDesc;
     using ResourceDesc = RenderCore::ResourceDesc;
+    using IResource = RenderCore::IResource;
 
         /////////////////////////////////////////////////
 
@@ -64,6 +66,48 @@ namespace BufferUploads
         RenderCore::Box2D _box;
         unsigned _lodLevelMin = 0, _lodLevelMax = ~0u;
         unsigned _arrayIndexMin = 0, _arrayIndexMax = ~0u;
+    };
+
+    class IResourcePool;
+
+    class ResourceLocator
+    {
+    public:
+        std::shared_ptr<IResource> AsIndependentResource() const;
+        RenderCore::VertexBufferView AsVertexBufferView() const;
+        RenderCore::IndexBufferView AsIndexBufferView(RenderCore::Format indexFormat) const;
+        RenderCore::ConstantBufferView AsConstantBufferView() const;
+
+        const std::shared_ptr<IResource>& GetContainingResource() const { return _resource; }
+        std::pair<size_t, size_t> GetRangeInContainingResource() const { return std::make_pair(_interiorOffset, _interiorOffset+_interiorSize); }
+
+        ResourceLocator MakeSubLocator(size_t offset, size_t size);
+
+        bool IsEmpty() const { return _resource == nullptr; }
+        bool IsWholeResource() const;
+
+        ResourceLocator(
+            std::shared_ptr<IResource> independentResource);
+        ResourceLocator(
+            std::shared_ptr<IResource> containingResource,
+            size_t interiorOffset, size_t interiorSize,
+            std::weak_ptr<IResourcePool> pool, uint64_t poolMarker);
+        ResourceLocator(
+            std::shared_ptr<IResource> containingResource,
+            size_t interiorOffset, size_t interiorSize);
+        ResourceLocator();
+        ~ResourceLocator();
+
+        ResourceLocator(ResourceLocator&&) never_throws;
+        ResourceLocator& operator=(ResourceLocator&&) never_throws;
+        ResourceLocator(const ResourceLocator&);
+        ResourceLocator& operator=(const ResourceLocator&);
+    private:
+        std::shared_ptr<IResource> _resource;
+        size_t _interiorOffset = ~size_t(0), _interiorSize = ~size_t(0);
+        std::weak_ptr<IResourcePool> _pool;
+        uint64_t _poolMarker = ~0ull;
+        bool _managedByPool = false;
     };
 
     class TransactionMarker
@@ -151,9 +195,6 @@ namespace BufferUploads
             /// \name Utilities, profiling & debugging
             /// @{
 
-            /// <summary>Stalls until all work queues are empty</summary>
-            /// Normally should only be used during shutdown and loading.
-        virtual void                    Flush                   () = 0;
             /// <summary>Gets performance metrics</summary>
             /// Gets the latest performance metrics. Internally the system
             /// maintains a queue of performance metrics. Every frame, a new

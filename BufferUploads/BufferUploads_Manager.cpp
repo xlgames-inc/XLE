@@ -4,7 +4,6 @@
 
 #include "BufferUploads_Manager.h"
 #include "Metrics.h"
-#include "ResourceLocator.h"
 #include "PlatformInterface.h"
 #include "ResourceSource.h"
 #include "DataPacket.h"
@@ -17,6 +16,7 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Threading/LockFree.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/BitUtils.h"
@@ -107,8 +107,7 @@ namespace BufferUploads
             Step_TransferStagingToFinal = (1<<1),
             Step_CreateFromDataPacket   = (1<<2),
             Step_BatchingUpload         = (1<<3),
-            Step_DelayedReleases        = (1<<4),
-            Step_BatchedDefrag          = (1<<5)
+            Step_BatchedDefrag          = (1<<4)
         };
         
         // void                UpdateData(TransactionID id, IDataPacket& rawData, const PartialResource& part);
@@ -138,7 +137,6 @@ namespace BufferUploads
         PoolSystemMetrics   CalculatePoolMetrics() const;
         void                Wait(unsigned stepMask, ThreadContext& context);
         void                TriggerWakeupEvent();
-        bool                QueuedWork() const;
 
         unsigned            FlipWritingQueueSet();
         void                OnLostDevice();
@@ -154,21 +152,17 @@ namespace BufferUploads
             uint32_t _idTopPart;
             std::atomic<unsigned> _referenceCount;
             ResourceLocator _finalResource;
-            // ResourceLocator _stagingResource;
             ResourceDesc _desc;
             TimeMarker _requestTime;
             std::promise<ResourceLocator> _promise;
             std::future<void> _waitingFuture;
 
             std::atomic<bool> _statusLock;
-            // bool _creationQueued, _stagingQueued;
-            // unsigned _requestedStagingLODOffset, _actualisedStagingLODOffset;
             unsigned _retirementCommandList;
             TransactionOptions::BitField _creationOptions;
             #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
                 unsigned _heapIndex;
             #endif
-            // int _creationFrameID;
 
             Transaction(unsigned idTopPart, unsigned heapIndex);
             Transaction();
@@ -205,7 +199,6 @@ namespace BufferUploads
         std::atomic<unsigned>   _currentQueuedBytes[(unsigned)UploadDataType::Max];
         unsigned                _nextTransactionIdTopPart;
         unsigned                _peakPrepareStaging, _peakTransferStagingToFinal, _peakCreateFromDataPacket;
-        bool                    _queuedWorkFlag;
         int64_t                 _waitTime;
 
         #if defined(_DEBUG)
@@ -240,10 +233,9 @@ namespace BufferUploads
         class QueueSet
         {
         public:
-            std::queue<PrepareStagingStep> _prepareStagingSteps;
-            std::queue<TransferStagingToFinalStep> _transferStagingToFinalSteps;
-            std::queue<CreateFromDataPacketStep> _createFromDataPacketSteps;
-            std::mutex _lock;
+            LockFreeFixedSizeQueue<PrepareStagingStep, 256> _prepareStagingSteps;
+            LockFreeFixedSizeQueue<TransferStagingToFinalStep, 256> _transferStagingToFinalSteps;
+            LockFreeFixedSizeQueue<CreateFromDataPacketStep, 256> _createFromDataPacketSteps;
         };
 
         QueueSet _queueSet_Main;
@@ -253,16 +245,13 @@ namespace BufferUploads
         std::queue<std::function<void(AssemblyLine&, ThreadContext&)>> _queuedFunctions;
         SimpleWakeupEvent _wakeupEvent;
 
-#if BU_BATCHING
         class BatchPreparation
         {
         public:
-            std::vector<ResourceCreateStep> _batchedSteps;
-            unsigned                        _batchedAllocationSize;
-            BatchPreparation();
+            std::vector<CreateFromDataPacketStep> _batchedSteps;
+            unsigned _batchedAllocationSize = 0;
         };
         BatchPreparation _batchPreparation_Main;
-#endif
 
         class CommandListBudget
         {
@@ -271,11 +260,7 @@ namespace BufferUploads
             CommandListBudget(bool isLoading);
         };
 
-        // void    UpdateData_PostBackground(QueueSet&, Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part);
-
-#if BU_BATCHING
         void    ResolveBatchOperation(BatchPreparation& batchOperation, ThreadContext& context, unsigned stepMask);
-#endif
         void    ReleaseTransaction(Transaction* transaction, ThreadContext& context, bool abort = false);
         void    ClientReleaseTransaction(Transaction* transaction);
 
@@ -283,14 +268,12 @@ namespace BufferUploads
         bool    Process(const PrepareStagingStep& prepareStagingStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    Process(const TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
 
-        auto    ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction) -> std::pair<bool,bool>;
+        bool    ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    DrainPriorityQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context);
 
-#if BU_BATCHING
-        void            CopyIntoBatchedBuffer(void* destination, ResourceCreateStep* start, ResourceCreateStep* end, UnderlyingResource* resource, unsigned startOffset, unsigned offsetList[], CommandListMetrics& metricsUnderConstruction);
-        static bool     SortSize_LargestToSmallest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs);
-        static bool     SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs);
-#endif
+        void            CopyIntoBatchedBuffer(IteratorRange<void*> destination, IteratorRange<const CreateFromDataPacketStep*> steps, IteratorRange<unsigned*> offsetList, CommandListMetrics& metricsUnderConstruction);
+        static bool     SortSize_LargestToSmallest(const CreateFromDataPacketStep& lhs, const CreateFromDataPacketStep& rhs);
+        static bool     SortSize_SmallestToLargest(const CreateFromDataPacketStep& lhs, const CreateFromDataPacketStep& rhs);
 
         auto    GetQueueSet(TransactionOptions::BitField transactionOptions) -> QueueSet &;
         void    PushStep(QueueSet&, Transaction& transaction, PrepareStagingStep&& step);
@@ -398,7 +381,7 @@ namespace BufferUploads
 
     TransactionMarker   AssemblyLine::Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags)
     {
-        ResourceDesc desc = locator._resource->GetDesc();
+        ResourceDesc desc = locator.GetContainingResource()->GetDesc();
         if (desc._type == ResourceDesc::Type::Texture) {
             assert(desc._textureDesc._mipCount <= (IntegerLog2(std::max(desc._textureDesc._width, desc._textureDesc._height))+1));
         }
@@ -630,9 +613,8 @@ namespace BufferUploads
             requestedStagingLODOffset = std::min(part._lodLevelMin, maxLodOffset);
         }
     
-        auto finalResourceConstruction = _resourceSource.Create(
-            desc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
-        if (!finalResourceConstruction._locator._resource)
+        auto finalResourceConstruction = _resourceSource.Create(desc, &initialisationData);
+        if (finalResourceConstruction._locator.IsEmpty())
             return {};
     
         if (!(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
@@ -641,15 +623,14 @@ namespace BufferUploads
             PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
             std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(desc, part);
 
-            auto stagingConstruction = _resourceSource.Create(
-                stagingDesc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
-            assert(stagingConstruction._locator._resource);
-            if (!stagingConstruction._locator._resource)
+            auto stagingConstruction = _resourceSource.Create(stagingDesc, &initialisationData);
+            assert(!stagingConstruction._locator.IsEmpty());
+            if (stagingConstruction._locator.IsEmpty())
                 return {};
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(threadContext);
             deviceContext.WriteToTextureViaMap(
-                *stagingConstruction._locator._resource,
+                stagingConstruction._locator,
                 stagingDesc, Box2D(),
                 [&part, &initialisationData](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
@@ -663,8 +644,8 @@ namespace BufferUploads
                 });
     
             deviceContext.UpdateFinalResourceFromStaging(
-                *finalResourceConstruction._locator._resource, 
-                *stagingConstruction._locator._resource, desc, 
+                finalResourceConstruction._locator, 
+                stagingConstruction._locator, desc, 
                 stagingToFinalMapping);
         }
     
@@ -679,7 +660,7 @@ namespace BufferUploads
             if (transaction) {
                     //  make sure this transaction will be complete in time to use 
                     //  for the the next render frame
-                if (!transaction->_finalResource._resource) {
+                if (transaction->_finalResource.IsEmpty()) {
                     assert(transaction->_creationOptions & TransactionOptions::FramePriority);
                 }
                 ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
@@ -705,11 +686,6 @@ namespace BufferUploads
             auto referenceCount = transaction->_referenceCount.load();
                 // note --  This must return the frame index for the current thread (if there are threads working on
                 //          different frames). 
-            // const int currentRenderThreadFrameId = PlatformInterface::GetFrameID(); 
-            // return  ((referenceCount & 0x00ffffff) == 0)
-            //     &&  (transaction->_retirementCommandList <= lastCommandList_CommittedToImmediate)
-            //     &&  (transaction->_creationFrameID <= currentRenderThreadFrameId)       // prevent the transaction from completing on a frame earlier than it's creation
-            //     ;
             const bool isCompleted = 
                 ((referenceCount & 0x00ffffff) == 0)
                 &&  (transaction->_retirementCommandList <= lastCommandList_CommittedToImmediate)
@@ -720,24 +696,15 @@ namespace BufferUploads
         }
     }
 
-    bool AssemblyLine::QueuedWork() const
-    {
-        return _queuedWorkFlag;
-    }
-
         //////////////////////////////////////////////////////////////////////////////////////////////
 
     AssemblyLine::Transaction::Transaction(unsigned idTopPart, unsigned heapIndex)
     {
         _idTopPart = idTopPart;
         _statusLock = 0;
-        // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        // _requestedStagingLODOffset = 0;
-        // _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
-        // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = heapIndex;
         #endif
@@ -747,13 +714,9 @@ namespace BufferUploads
     {
         _idTopPart = 0;
         _statusLock = 0;
-        // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        // _requestedStagingLODOffset = 0;
-        // _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
-        // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = ~unsigned(0x0);
         #endif
@@ -766,28 +729,20 @@ namespace BufferUploads
 
         _idTopPart = moveFrom._idTopPart;
         _finalResource = std::move(moveFrom._finalResource);
-        // _stagingResource = std::move(moveFrom._stagingResource);
         _desc = moveFrom._desc;
         _requestTime = moveFrom._requestTime;
         _promise = std::move(moveFrom._promise);
         _waitingFuture = std::move(moveFrom._waitingFuture);
 
-        // _creationQueued = moveFrom._creationQueued;
-        // _stagingQueued = moveFrom._stagingQueued;
-        // _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
-        // _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
         _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
         #endif
-        // _creationFrameID = moveFrom._creationFrameID;
 
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        // moveFrom._requestedStagingLODOffset = 0;
-        // moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
         moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -805,28 +760,20 @@ namespace BufferUploads
 
         _idTopPart = moveFrom._idTopPart;
         _finalResource = std::move(moveFrom._finalResource);
-        // _stagingResource = std::move(moveFrom._stagingResource);
         _desc = moveFrom._desc;
         _requestTime = moveFrom._requestTime;
         _promise = std::move(moveFrom._promise);
         _waitingFuture = std::move(moveFrom._waitingFuture);
 
-        // _creationQueued = moveFrom._creationQueued;
-        // _stagingQueued = moveFrom._stagingQueued;
-        // _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
-        // _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
         _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
         #endif
-        // _creationFrameID = moveFrom._creationFrameID;
 
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        // moveFrom._requestedStagingLODOffset = 0;
-        // moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
         moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -866,7 +813,6 @@ namespace BufferUploads
         #endif
         _peakPrepareStaging = _peakTransferStagingToFinal =_peakCreateFromDataPacket = 0;
         _allocatedTransactionCount = 0;
-        _queuedWorkFlag = false;
         XlZeroMemory(_currentQueuedBytes);
         _transactions_resolvedEventID = _transactions_postPublishResolvedEventID = 0;
         _framePriority_WritingQueueSet = 0;
@@ -1078,28 +1024,30 @@ namespace BufferUploads
         _wakeupEvent.Increment();
     }
 
-#if BU_BATCHING
-    bool AssemblyLine::SortSize_LargestToSmallest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) > RenderCore::ByteCount(rhs._creationDesc); }
-    bool AssemblyLine::SortSize_SmallestToLargest(const AssemblyLine::ResourceCreateStep& lhs, const AssemblyLine::ResourceCreateStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) < RenderCore::ByteCount(rhs._creationDesc); }
+    bool AssemblyLine::SortSize_LargestToSmallest(const CreateFromDataPacketStep& lhs, const CreateFromDataPacketStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) > RenderCore::ByteCount(rhs._creationDesc); }
+    bool AssemblyLine::SortSize_SmallestToLargest(const CreateFromDataPacketStep& lhs, const CreateFromDataPacketStep& rhs)     { return RenderCore::ByteCount(lhs._creationDesc) < RenderCore::ByteCount(rhs._creationDesc); }
 
     void AssemblyLine::CopyIntoBatchedBuffer(   
-        void* destination, ResourceCreateStep* start, ResourceCreateStep* end,
-        UnderlyingResource* resource, unsigned startOffset, unsigned offsetList[], 
+        IteratorRange<void*> destination, 
+        IteratorRange<const CreateFromDataPacketStep*> steps,
+        IteratorRange<unsigned*> offsetList, 
         CommandListMetrics& metricsUnderConstruction)
     {
+        assert(offsetList.size() == steps.size());
         unsigned queuedBytesAdjustment[dimof(_currentQueuedBytes)];
         XlZeroMemory(queuedBytesAdjustment);
 
-        unsigned offset = startOffset;
-        unsigned* offsetWriteIterator=offsetList;
-        for (ResourceCreateStep* i=start; i!=end; ++i, ++offsetWriteIterator) {
+        unsigned offset = 0;
+        unsigned* offsetWriteIterator=offsetList.begin();
+        for (const CreateFromDataPacketStep* i=steps.begin(); i!=steps.end(); ++i, ++offsetWriteIterator) {
             Transaction* transaction = GetTransaction(i->_id);
             assert(transaction);
             unsigned size = RenderCore::ByteCount(transaction->_desc);
-            const void* sourceData = i->_initialisationData?i->_initialisationData->GetData():NULL;
-            if (sourceData && destination) {
+            const void* sourceData = i->_initialisationData?i->_initialisationData->GetData():nullptr;
+            if (sourceData && !destination.empty()) {
                 assert(size == i->_initialisationData->GetDataSize());
-                XlCopyMemoryAlign16(PtrAdd(destination, offset), sourceData, size);
+                assert(offset+size <= destination.size());
+                XlCopyMemoryAlign16(PtrAdd(destination.begin(), offset), sourceData, size);
             }
             (*offsetWriteIterator) = offset;
             queuedBytesAdjustment[(unsigned)AsUploadDataType(transaction->_desc)] -= size;
@@ -1150,16 +1098,16 @@ namespace BufferUploads
                 // ... check temporary transactions ...
             for (unsigned c=0; c<temporaryCount; ++c) {
                 Transaction& transaction = _transactions[c];
-                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
+                if (transaction._finalResource.GetContainingResource().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
-                    intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
-                    unsigned oldOffset = oldLocator->Offset();
-                    Resource_Validate(*oldLocator);
+                    ResourceLocator oldLocator = std::move(transaction._finalResource);
+                    unsigned oldOffset = oldLocator.GetRangeInContainingResource().first;
+                    Resource_Validate(oldLocator);
 
                     unsigned newOffsetValue = ResolveOffsetValue(oldOffset, RenderCore::ByteCount(transaction._desc), e->_defragSteps);
-                    transaction._finalResource = make_intrusive<ResourceLocator>(
-                        e->_newResource, newOffsetValue, unsigned(size), e->_pool, e->_poolMarker);
+                    transaction._finalResource = ResourceLocator{
+                        e->_newResource, newOffsetValue, size, e->_pool, e->_poolMarker};
                 }
             }
 
@@ -1170,16 +1118,16 @@ namespace BufferUploads
                 #else
                     Transaction& transaction = _transactions[_transactions.size()-c-1];
                 #endif
-                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
+                if (transaction._finalResource.GetContainingResource().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
-                    intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
-                    unsigned oldOffset = oldLocator->Offset();
-                    Resource_Validate(*oldLocator);
+                    ResourceLocator oldLocator = std::move(transaction._finalResource);
+                    unsigned oldOffset = oldLocator.GetRangeInContainingResource().first;
+                    Resource_Validate(oldLocator);
 
                     unsigned newOffsetValue = ResolveOffsetValue(oldOffset, RenderCore::ByteCount(transaction._desc), e->_defragSteps);
-                    transaction._finalResource = make_intrusive<ResourceLocator>(
-                        e->_newResource, newOffsetValue, unsigned(size), e->_pool, e->_poolMarker);
+                    transaction._finalResource = ResourceLocator{
+                        e->_newResource, newOffsetValue, size, e->_pool, e->_poolMarker};
                 }
             }
         }
@@ -1190,10 +1138,6 @@ namespace BufferUploads
     {
         IManager::EventListID processedEventList     = context.EventList_GetProcessedID();
         IManager::EventListID publishableEventList   = context.EventList_GetWrittenID();
-
-        if (stepMask & Step_DelayedReleases) {
-            _resourceSource.FlushDelayedReleases(context.CommandList_GetCompletedByGPU());
-        }
 
         if ((stepMask & Step_BatchedDefrag) && !isLoading) {        // don't do the defrag while we're loading
 
@@ -1209,13 +1153,7 @@ namespace BufferUploads
 
             static bool doDefrag = true;
             if (doDefrag) {
-                bool deviceCreation = true;
-                _resourceSource.Tick(context, processedEventList, deviceCreation);
-                if (deviceCreation) {
-                    CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-                    ++metricsUnderConstruction._countDeviceCreations[UploadDataType::Index];
-                    ++metricsUnderConstruction._deviceCreateOperations;
-                }
+                _resourceSource.Tick(context, processedEventList);
             }
 
             publishableEventList = context.EventList_GetWrittenID();
@@ -1240,8 +1178,6 @@ namespace BufferUploads
 
         return publishableEventList;
     }
-
-    AssemblyLine::BatchPreparation::BatchPreparation() { _batchedAllocationSize=0; }
 
     void AssemblyLine::ResolveBatchOperation(BatchPreparation& batchOperation, ThreadContext& context, unsigned stepMask)
     {
@@ -1278,15 +1214,13 @@ namespace BufferUploads
                         ++batchingI;        // if a single object is larger than the batching size, we allocate it in one go
                     }
 
-                    intrusive_ptr<ResourceLocator> batchedResource;
-                    bool deviceAllocation = true;
+                    ResourceLocator batchedResource;
                     for (;;) {
-                        deviceAllocation = true;
-                        batchedResource = _resourceSource.GetBatchedResources().Allocate(currentBatchSize, deviceAllocation, "SuperBlock");
-                        if (batchedResource && !batchedResource->IsEmpty()) {
+                        batchedResource = _resourceSource.GetBatchedResources().Allocate(currentBatchSize, "SuperBlock");
+                        if (!batchedResource.IsEmpty()) {
                             break;
                         }
-                        Log(Warning) << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again" << std::endl;
+                        Log(Warning) << "Resource creation failed in BatchedResources::Allocate(). Sleeping and attempting again" << std::endl;
                         Threading::Sleep(16);
                     }
 
@@ -1314,17 +1248,17 @@ namespace BufferUploads
 
                         } else {
 
-                            BasicRawDataPacket midwayBuffer(currentBatchSize);
+                            std::vector<uint8_t> midwayBuffer(currentBatchSize);
                             CopyIntoBatchedBuffer(
-                                PtrAdd(midwayBuffer.GetData(),-ptrdiff_t(batchedResource->Offset())), 
-                                AsPointer(batchingStart), AsPointer(batchingI), 
-                                batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
-                                AsPointer(offsets.begin()), metricsUnderConstruction);
+                                MakeIteratorRange(midwayBuffer),
+                                MakeIteratorRange(batchingStart, batchingI),
+                                MakeIteratorRange(offsets), 
+                                metricsUnderConstruction);
 
                             assert(_resourceSource.GetBatchedResources().GetPrototype()._type == ResourceDesc::Type::LinearBuffer);
                             context.GetDeviceContext().WriteToBufferViaMap(
-                                *batchedResource->GetUnderlying(), _resourceSource.GetBatchedResources().GetPrototype(), 
-                                batchedResource->Offset(), midwayBuffer.GetData(), currentBatchSize);
+                                batchedResource, _resourceSource.GetBatchedResources().GetPrototype(), 
+                                0, MakeIteratorRange(midwayBuffer));
 
                         }
                     } else {
@@ -1335,34 +1269,30 @@ namespace BufferUploads
                             //      the minimum number of copies
                             //
 
-                        auto midwayBuffer = make_intrusive<BasicRawDataPacket>(currentBatchSize);
+                        std::vector<uint8_t> midwayBuffer(currentBatchSize);
                         CopyIntoBatchedBuffer(
-                            PtrAdd(midwayBuffer->GetData(),-ptrdiff_t(batchedResource->Offset())), 
-                            AsPointer(batchingStart), AsPointer(batchingI), 
-                            batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
-                            AsPointer(offsets.begin()), metricsUnderConstruction);
+                            MakeIteratorRange(midwayBuffer),
+                            MakeIteratorRange(batchingStart, batchingI),
+                            MakeIteratorRange(offsets), 
+                            metricsUnderConstruction);
                         context.GetCommitStepUnderConstruction().Add(
-                            CommitStep::DeferredCopy(batchedResource, currentBatchSize, std::move(midwayBuffer)));
+                            CommitStep::DeferredCopy{batchedResource, std::move(midwayBuffer)});
 
                     }
 
                     metricsUnderConstruction._batchedCopyBytes += currentBatchSize;
                     metricsUnderConstruction._bytesUploadTotal += currentBatchSize;
                     metricsUnderConstruction._batchedCopyCount ++;
+                    ++metricsUnderConstruction._countDeviceCreations[
+                        (unsigned)AsUploadDataType(_resourceSource.GetBatchedResources().GetPrototype())];
 
                         // now apply the result to the transactions, and release them...
                     auto o=offsets.begin();
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
                         Transaction* transaction = GetTransaction(i->_id);
-                        transaction->_finalResource = make_intrusive<ResourceLocator>(
-                            batchedResource->GetUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
-                            batchedResource->Pool(), batchedResource->PoolMarker());
+                        transaction->_finalResource = batchedResource.MakeSubLocator(*o, RenderCore::ByteCount(i->_creationDesc));
+                        transaction->_promise.set_value(transaction->_finalResource);
                         ReleaseTransaction(transaction, context);
-                    }
-
-                    if (deviceAllocation) {
-                        ++metricsUnderConstruction._countDeviceCreations[
-                            (unsigned)AsUploadDataType(_resourceSource.GetBatchedResources().GetPrototype())];
                     }
 
                     if (batchingI == batchOperation._batchedSteps.end()) {
@@ -1377,22 +1307,6 @@ namespace BufferUploads
             }
         }
     }
-
-#else
-
-    IManager::EventListID AssemblyLine::TickResourceSource(unsigned stepMask, ThreadContext& context, bool isLoading)
-    {
-        IManager::EventListID processedEventList     = context.EventList_GetProcessedID();
-        IManager::EventListID publishableEventList   = context.EventList_GetWrittenID();
-
-        if (stepMask & Step_DelayedReleases) {
-            _resourceSource.FlushDelayedReleases(context.CommandList_GetCompletedByGPU());
-        }
-
-        return publishableEventList;
-    }
-
-#endif
 
     AssemblyLine::CommandListBudget::CommandListBudget(bool isLoading)
     {
@@ -1425,26 +1339,16 @@ namespace BufferUploads
             //      So the client must cancel all pending operations as well!
             //
 
-        for (unsigned c=0; c<_transactions.size(); ++c) {
-            if (!(_transactions[c]._desc._allocationRules & BufferUploads::AllocationRules::NonVolatile)) {
-                _transactions[c]._finalResource = {};
-                // _transactions[c]._stagingResource = {};
-            }
-        }
+        for (unsigned c=0; c<_transactions.size(); ++c)
+            _transactions[c]._finalResource = {};
 
         #if defined(DEQUE_BASED_TRANSACTIONS)
-            for (unsigned c=0; c<_transactions_LongTerm.size(); ++c) {
-                if (!(_transactions_LongTerm[c]._desc._allocationRules & BufferUploads::AllocationRules::NonVolatile)) {
-                    _transactions_LongTerm[c]._finalResource = {};
-                    // _transactions_LongTerm[c]._stagingResource = {};
-                }
-            }
+            for (unsigned c=0; c<_transactions_LongTerm.size(); ++c)
+                _transactions_LongTerm[c]._finalResource = {};
         #endif
 
         _resourceSource.OnLostDevice();
-#if BU_BATCHING
         _batchPreparation_Main = BatchPreparation();        // cancel whatever was happening here
-#endif
     }
 
     bool AssemblyLine::Process(const CreateFromDataPacketStep& resourceCreateStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
@@ -1454,7 +1358,7 @@ namespace BufferUploads
             return false;
 
         auto* transaction = GetTransaction(resourceCreateStep._id);
-        assert(transaction && !transaction->_finalResource._resource);
+        assert(transaction && transaction->_finalResource.IsEmpty());
 
         unsigned uploadRequestSize = 0;
         const unsigned objectSize = RenderCore::ByteCount(transaction->_desc);
@@ -1473,24 +1377,20 @@ namespace BufferUploads
         if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
             return false;
 
-        auto finalConstruction = _resourceSource.Create(
-            transaction->_desc, resourceCreateStep._initialisationData.get(), 
-            ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?ResourceSource::CreationOptions::AllowDeviceCreation:0);
-
-        if (finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DelayForBatching) {
+        if (transaction->_desc._type == ResourceDesc::Type::LinearBuffer && transaction->_desc._allocationRules & RenderCore::AllocationRules::Batched) {
                 //      In the batched path, we pop now, and perform all of the batched operations as once when we resolve the 
                 //      command list. But don't release the transaction -- that will happen after the batching operation is 
                 //      performed.
-            #if BU_BATCHING
-                _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
-                _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
-            #else  
-                assert(0);
-            #endif
+            _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
+            _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
             return true;
         }
 
-        if (!finalConstruction._locator._resource)
+        auto finalConstruction = _resourceSource.Create(
+            transaction->_desc, resourceCreateStep._initialisationData.get(), 
+            ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?0:ResourceSource::CreationOptions::PreventDeviceCreation);
+
+        if (finalConstruction._locator.IsEmpty())
             return false;
 
         if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
@@ -1498,15 +1398,14 @@ namespace BufferUploads
             PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
             std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(transaction->_desc, resourceCreateStep._part);
 
-            auto stagingConstruction = _resourceSource.Create(
-                stagingDesc, resourceCreateStep._initialisationData.get(), ResourceSource::CreationOptions::AllowDeviceCreation);
-            assert(stagingConstruction._locator._resource);
-            if (!stagingConstruction._locator._resource)
+            auto stagingConstruction = _resourceSource.Create(stagingDesc, resourceCreateStep._initialisationData.get());
+            assert(!stagingConstruction._locator.IsEmpty());
+            if (stagingConstruction._locator.IsEmpty())
                 return false;
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
             deviceContext.WriteToTextureViaMap(
-                *stagingConstruction._locator._resource,
+                stagingConstruction._locator,
                 stagingDesc, Box2D(),
                 [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
@@ -1520,8 +1419,8 @@ namespace BufferUploads
                 });
     
             deviceContext.UpdateFinalResourceFromStaging(
-                *finalConstruction._locator._resource, 
-                *stagingConstruction._locator._resource, transaction->_desc, 
+                finalConstruction._locator, 
+                stagingConstruction._locator, transaction->_desc, 
                 stagingToFinalMapping);
                 
             ++metricsUnderConstruction._contextOperations;
@@ -1568,10 +1467,9 @@ namespace BufferUploads
             PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
             std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(desc, prepareStagingStep._part);
 
-            auto stagingConstruction = _resourceSource.Create(
-                stagingDesc, nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
-            assert(stagingConstruction._locator._resource);
-            if (!stagingConstruction._locator._resource)
+            auto stagingConstruction = _resourceSource.Create(stagingDesc);
+            assert(!stagingConstruction._locator.IsEmpty());
+            if (stagingConstruction._locator.IsEmpty())
                 return false;
 
             using namespace RenderCore;
@@ -1591,6 +1489,7 @@ namespace BufferUploads
             std::vector<Metal::ResourceMap> maps;
             maps.resize(mipCount*arrayCount);
 
+            assert(stagingConstruction._locator.IsWholeResource());
             for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
                 for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
                     SubResourceId subRes { mip - stagingToFinalMapping._stagingLODOffset, a - stagingToFinalMapping._stagingArrayOffset };
@@ -1598,7 +1497,7 @@ namespace BufferUploads
                     
                     maps[idx] = Metal::ResourceMap(
                         *Metal::DeviceContext::Get(context.GetDeviceContext().GetUnderlying()),
-                        *stagingConstruction._locator._resource,
+                        *stagingConstruction._locator.GetContainingResource(),
                         Metal::ResourceMap::Mode::WriteDiscardPrevious,
                         subRes);
 
@@ -1720,10 +1619,9 @@ namespace BufferUploads
         if ((metricsUnderConstruction._bytesUploadTotal+transferStagingToFinalStep._stagingByteCount) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
             return false;
 
-        if (!transaction->_finalResource._resource) {
-            auto finalConstruction = _resourceSource.Create(
-                transaction->_desc, nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
-            if (!finalConstruction._locator._resource)
+        if (transaction->_finalResource.IsEmpty()) {
+            auto finalConstruction = _resourceSource.Create(transaction->_desc);
+            if (finalConstruction._locator.IsEmpty())
                 return false;                   // failed to allocate the resource. Return false and We'll try again later...
 
             transaction->_finalResource = finalConstruction._locator;
@@ -1736,8 +1634,8 @@ namespace BufferUploads
         // Do the actual data copy step here
         PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
         deviceContext.UpdateFinalResourceFromStaging(
-            *transaction->_finalResource._resource, 
-            *transferStagingToFinalStep._stagingResource._resource, transaction->_desc, 
+            transaction->_finalResource, 
+            transferStagingToFinalStep._stagingResource, transaction->_desc, 
             transferStagingToFinalStep._stagingToFinalMapping);
 
         metricsUnderConstruction._bytesUploadTotal += transferStagingToFinalStep._stagingByteCount;
@@ -1751,254 +1649,50 @@ namespace BufferUploads
         return true;
     }
 
-#if 0
-    bool AssemblyLine::Process(const DataUploadStep& uploadStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
-    {
-        CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) < budgetUnderConstruction._limit_Operations) {
-            Transaction* transaction = GetTransaction(uploadStep._id);
-            assert(transaction);
-
-            unsigned uploadRequestSize = 0;
-            for (unsigned l=uploadStep._lodLevelMin; l<=uploadStep._lodLevelMax; ++l) {
-                uploadRequestSize += (unsigned)uploadStep._rawData->GetDataSize(SubR(l, uploadStep._arrayIndex));
-            }
-                
-            if (!(transaction->_referenceCount & 0xff000000) && (!transaction->_finalResource.get() || transaction->_finalResource->IsEmpty())) {
-                ReleaseTransaction(transaction, context, true);
-                _currentQueuedBytes[(unsigned)AsUploadDataType(transaction->_desc)] -= uploadRequestSize;
-                return true;
-            }
-
-            const bool readyToUpload = transaction->_finalResource && !transaction->_finalResource->IsEmpty()
-                && ((transaction->_stagingResource&&uploadStep._lodLevelMin>=transaction->_actualisedStagingLODOffset)||!transaction->_stagingQueued);
-            if (readyToUpload) {
-
-                if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) <= budgetUnderConstruction._limit_BytesUploaded || !metricsUnderConstruction._bytesUploadTotal) {
-
-                        //
-                        //      If we're writing to a batching buffer, there must be a special path. This is because
-                        //      we're writing to only a part of the entire buffer -- and we can't necessarily do a UpdateSubresource
-                        //      to modify only part.
-                        //
-                            
-                    unsigned bytesUploaded = 0, uploadCount = 0;
-                    bool doDeferredBatchingLoad = false;
-                    auto locator = transaction->_finalResource;
-                    if (!(stepMask & Step_BatchingUpload)) {
-                        doDeferredBatchingLoad = !!_resourceSource.IsBatchedResource(*locator, transaction->_desc);
-                        assert(_resourceSource.IsBatchedResource(*locator, transaction->_desc) != BatchedResources::ResultFlags::IsCurrentlyDefragging);
-                    }
-                    if (!doDeferredBatchingLoad) {
-                        if (transaction->_stagingQueued) {          //~~//////////////////////~~//
-
-                                //
-                                //      Push via the staging result. Empty the raw data pointer
-                                //      into the staging object, and then submit to the final result.
-                                //
-
-                            Box2D stagingBox;
-                            const bool stageInTopLeftCorner = false;
-                            if (constant_expression<stageInTopLeftCorner>::result()) {
-                                stagingBox = Box2D{
-                                    0, 0, 
-                                    uploadStep._destinationBox._right - uploadStep._destinationBox._left,
-                                    uploadStep._destinationBox._bottom - uploadStep._destinationBox._top};
-                            } else {
-                                stagingBox = uploadStep._destinationBox;
-                            }
-
-                            auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
-                            auto mipOffset = transaction->_actualisedStagingLODOffset;
-                            bytesUploaded += context.GetDeviceContext().WriteToTextureViaMap(
-                                *transaction->_stagingResource->GetUnderlying(), 
-                                finalDesc, stagingBox,
-                                [&uploadStep, mipOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
-                                {
-                                    RenderCore::SubResourceInitData result = {};
-                                    if (sr._arrayLayer != uploadStep._arrayIndex) return result;
-                                    if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
-
-                                    auto dataMip = sr._mip + mipOffset;
-                                    auto size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
-                                    const void* data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
-									result._data = MakeIteratorRange(data, PtrAdd(data, size));
-                                    result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
-                                    return result;
-                                });
-                            ++uploadCount;
-
-                            assert(transaction->_finalResource->Offset()==0||transaction->_finalResource->Offset()==~unsigned(0x0));       // resource offsets not correctly implemented
-                            context.GetDeviceContext().UpdateFinalResourceFromStaging(
-                                *transaction->_finalResource->GetUnderlying(), *transaction->_stagingResource->GetUnderlying(), transaction->_desc, 
-                                uploadStep._lodLevelMin, uploadStep._lodLevelMax, transaction->_actualisedStagingLODOffset,
-                                {(unsigned)uploadStep._destinationBox._left, (unsigned)uploadStep._destinationBox._top},
-                                stagingBox);
-
-                        } else {                                    //~~//////////////////////~~//
-
-                                //
-                                //      Update directly to the resource, without going through the staging resource.
-                                //      This is the only way that works with when building resources in a background
-                                //      thread in D3D11 (since we can't lock and fill in a staging resource).
-                                //
-
-                            ResourceDesc stagingDesc = transaction->_desc;
-                            stagingDesc._cpuAccess = CPUAccess::Read|CPUAccess::Write;  // the CPUAccess::WriteDynamic flag was being sent to PushToResource(), which confused the logic below
-
-                            if (stagingDesc._type == ResourceDesc::Type::LinearBuffer) {
-                                bytesUploaded += context.GetDeviceContext().WriteToBufferViaMap(
-                                    *transaction->_finalResource->GetUnderlying(), stagingDesc, transaction->_finalResource->Offset(),
-                                    uploadStep._rawData->GetData(), uploadStep._rawData->GetDataSize());
-                            } else {
-                                bytesUploaded += context.GetDeviceContext().WriteToTextureViaMap(
-                                    *transaction->_finalResource->GetUnderlying(), stagingDesc, 
-                                    uploadStep._destinationBox,
-                                    [&uploadStep](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
-                                    {
-                                        RenderCore::SubResourceInitData result = {};
-                                        if (sr._arrayLayer != uploadStep._arrayIndex) return result;
-                                        if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
-
-                                        auto dataMip = sr._mip;
-                                        auto size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
-                                        const void* data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
-										result._data = MakeIteratorRange(data, PtrAdd(data, size));
-                                        result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
-                                        return result;
-                                    });
-                            }
-                            ++uploadCount;
-                        }                                           //~~//////////////////////~~//
-                    } else {
-                        assert(uploadStep._lodLevelMin == 0 && uploadStep._lodLevelMax == 0 && uploadStep._arrayIndex <= 1);
-                        bytesUploaded = (unsigned)uploadStep._rawData->GetDataSize();
-                        context.GetCommitStepUnderConstruction().Add(
-                            CommitStep::DeferredCopy(transaction->_finalResource, bytesUploaded, uploadStep._rawData));
-                    }
-
-                    auto dataType = AsUploadDataType(transaction->_desc);
-                    metricsUnderConstruction._bytesUploaded[(unsigned)dataType] += bytesUploaded;
-                    metricsUnderConstruction._countUploaded[(unsigned)dataType] += uploadCount;
-                    metricsUnderConstruction._bytesUploadTotal += bytesUploaded;
-                    _currentQueuedBytes[(unsigned)dataType] -= bytesUploaded;
-                    ++metricsUnderConstruction._contextOperations;
-
-                    assert(_resourceSource.IsBatchedResource(*locator, transaction->_desc) != BatchedResources::ResultFlags::IsCurrentlyDefragging);
-
-                        //
-                        //      Pop our "step" -- there's no more to do here
-                        //
-
-                    ReleaseTransaction(transaction, context);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    bool        AssemblyLine::Process(
-        QueueSet& queueSet,
-        const PrepareDataStep& step, unsigned stepMask, ThreadContext& context, 
-        const CommandListBudget& budgetUnderConstruction, bool stallOnPending)
-    {
-        CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) < budgetUnderConstruction._limit_Operations) {
-            Transaction* transaction = GetTransaction(step._id);
-            assert(transaction);
-
-            if (!(transaction->_referenceCount & 0xff000000) || !step._marker) {
-                    // Cancelling because the client dropped the last transaction reference
-                    // We should ideally also cancel the bkground operation here... If we don't
-                    // cancel it, it should complete as normally, but the result will go unused
-                ReleaseTransaction(transaction, context, true);
-                return true;
-            }
-
-            auto currentState = step._marker->GetAssetState();
-            if (currentState == Assets::AssetState::Pending) {
-                if (!stallOnPending)
-                    return false; // still waiting
-
-                auto res = step._marker->StallWhilePending();
-				if (!res.has_value()) {
-					ReleaseTransaction(transaction, context, true);
-					return false;
-				}
-				currentState = res.value();
-            }
-
-            if (currentState == Assets::AssetState::Ready) {
-                // Asset is ready. We should now have a full buffer desc for this
-                // object. That means we can create the resource creation and 
-                // upload operations.
-
-                auto part = step._part;
-				auto desc = step._packet->GetDesc();
-                if (desc._type == ResourceDesc::Type::Texture) {
-                    transaction->_desc._type = desc._type;
-                    transaction->_desc._textureDesc = desc._textureDesc;
-
-                    part = DefaultPartialResource(transaction->_desc, *step._packet);
-                } else if (desc._type == ResourceDesc::Type::LinearBuffer) {
-                    transaction->_desc._type = desc._type;
-                    transaction->_desc._linearBufferDesc = desc._linearBufferDesc;
-                } // else if step._marker->_desc._type == ResourceDesc::Type::Unknown, do nothing
-                UpdateData_PostBackground(queueSet, *transaction, step._id, step._packet.get(), part);
-            } else {
-                assert(currentState == Assets::AssetState::Invalid);
-
-                // Asset is invalid (eg, a missing file)
-                // this should complete the transaction -- but leave it in an invalid state
-            }
-
-            ReleaseTransaction(transaction, context, true);
-            return true;
-        }
-
-        return false;
-    }
-#endif
-
     bool        AssemblyLine::DrainPriorityQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context)
     {
         bool didSomething = false;
         CommandListBudget budgetUnderConstruction(true);
 
             /////////////// ~~~~ /////////////// ~~~~ ///////////////
-        if (stepMask & Step_PrepareStaging) {
-            while (!queueSet._prepareStagingSteps.empty()) {
-                if (Process(queueSet._prepareStagingSteps.front(), context, budgetUnderConstruction)) {
-                    didSomething = true;
-                } else {
-                    _queueSet_Main._prepareStagingSteps.push(std::move(queueSet._prepareStagingSteps.front()));
+        for (;;) {
+            bool continueLooping = false;
+            if (stepMask & Step_PrepareStaging) {
+                PrepareStagingStep* step = nullptr;
+                if (queueSet._prepareStagingSteps.try_front(step)) {
+                    if (Process(*step, context, budgetUnderConstruction)) {
+                        didSomething = true;
+                    } else {
+                        _queueSet_Main._prepareStagingSteps.push(std::move(*step));
+                    }
+                    continueLooping = true;
+                    queueSet._prepareStagingSteps.pop();
                 }
-                queueSet._prepareStagingSteps.pop();
             }
-        }
 
-            /////////////// ~~~~ /////////////// ~~~~ ///////////////
-        if (stepMask & Step_TransferStagingToFinal) {
-            TransferStagingToFinalStep* step = 0;
-            while (!queueSet._transferStagingToFinalSteps.empty()) {
-                if (Process(queueSet._transferStagingToFinalSteps.front(), context, budgetUnderConstruction)) {
-                    didSomething = true;
-                } else {
-                    _queueSet_Main._transferStagingToFinalSteps.push(std::move(queueSet._transferStagingToFinalSteps.front()));
+            if (stepMask & Step_TransferStagingToFinal) {
+                TransferStagingToFinalStep* step = 0;
+                if (queueSet._transferStagingToFinalSteps.try_front(step)) {
+                    if (Process(*step, context, budgetUnderConstruction)) {
+                        didSomething = true;
+                    } else {
+                        _queueSet_Main._transferStagingToFinalSteps.push(std::move(*step));
+                    }
+                    continueLooping = true;
+                    queueSet._transferStagingToFinalSteps.pop();
                 }
-                queueSet._transferStagingToFinalSteps.pop();
             }
+            if (!continueLooping) break;
         }
 
             /////////////// ~~~~ /////////////// ~~~~ ///////////////
         if (stepMask & Step_CreateFromDataPacket) {
             CreateFromDataPacketStep* step = 0;
-            while (!queueSet._createFromDataPacketSteps.empty()) {
-                if (Process(queueSet._createFromDataPacketSteps.front(), context, budgetUnderConstruction)) {
+            while (queueSet._createFromDataPacketSteps.try_front(step)) {
+                if (Process(*step, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._createFromDataPacketSteps.push(std::move(queueSet._createFromDataPacketSteps.front()));
+                    _queueSet_Main._createFromDataPacketSteps.push(std::move(*step));
                 }
                 queueSet._createFromDataPacketSteps.pop();
             }
@@ -2007,48 +1701,49 @@ namespace BufferUploads
         return didSomething;
     }
 
-    std::pair<bool,bool> AssemblyLine::ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
+    bool AssemblyLine::ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
-        bool nothingFoundInQueues = true;
-        bool atLeastOneRealAction = false;
+        bool didSomething = false;
 
             /////////////// ~~~~ /////////////// ~~~~ ///////////////
-        if (stepMask & Step_PrepareStaging) {
-            PrepareStagingStep* step = 0;
-            if (!queueSet._prepareStagingSteps.empty()) {
-                if (Process(queueSet._prepareStagingSteps.front(), context, budgetUnderConstruction)) {
-                    atLeastOneRealAction = true;
-                    queueSet._prepareStagingSteps.pop();
+        for (;;) {
+            bool continueLooping = false;
+            if (stepMask & Step_PrepareStaging) {
+                PrepareStagingStep* step = 0;
+                if (queueSet._prepareStagingSteps.try_front(step)) {
+                    if (Process(*step, context, budgetUnderConstruction)) {
+                        didSomething = true;
+                        queueSet._prepareStagingSteps.pop();
+                    }
+                    continueLooping = true;
                 }
-                nothingFoundInQueues = false;
             }
-        }
 
-            /////////////// ~~~~ /////////////// ~~~~ ///////////////
-        if (stepMask & Step_TransferStagingToFinal) {
-            TransferStagingToFinalStep* step = 0;
-            if (!queueSet._transferStagingToFinalSteps.empty()) {
-                if (Process(queueSet._transferStagingToFinalSteps.front(), context, budgetUnderConstruction)) {
-                    atLeastOneRealAction = true;
-                    queueSet._transferStagingToFinalSteps.pop();
+            if (stepMask & Step_TransferStagingToFinal) {
+                TransferStagingToFinalStep* step = 0;
+                if (queueSet._transferStagingToFinalSteps.try_front(step)) {
+                    if (Process(*step, context, budgetUnderConstruction)) {
+                        didSomething = true;
+                        queueSet._transferStagingToFinalSteps.pop();
+                    }
+                    continueLooping = true;
                 }
-                nothingFoundInQueues = false;
             }
+            if (!continueLooping) break;
         }
 
             /////////////// ~~~~ /////////////// ~~~~ ///////////////
         if (stepMask & Step_CreateFromDataPacket) {
             CreateFromDataPacketStep* step = 0;
-            if (!queueSet._createFromDataPacketSteps.empty()) {
-                if (Process(queueSet._createFromDataPacketSteps.front(), context, budgetUnderConstruction)) {
-                    atLeastOneRealAction = true;
+            if (queueSet._createFromDataPacketSteps.try_front(step)) {
+                if (Process(*step, context, budgetUnderConstruction)) {
+                    didSomething = true;
                     queueSet._createFromDataPacketSteps.pop();
                 }
-                nothingFoundInQueues = false;
             }
         }
 
-        return std::make_pair(nothingFoundInQueues, atLeastOneRealAction);
+        return didSomething;
     }
 
     void AssemblyLine::Process(unsigned stepMask, ThreadContext& context)
@@ -2057,147 +1752,117 @@ namespace BufferUploads
         CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
         CommandListBudget   budgetUnderConstruction(isLoading);
 
-        _queuedWorkFlag = true;
-        for (;;) {
-            bool nothingFoundInQueues = true, atLeastOneRealAction = false;
+        bool atLeastOneRealAction = false;
 
-                /////////////// ~~~~ /////////////// ~~~~ ///////////////
-            IManager::EventListID publishableEventList = TickResourceSource(stepMask, context, isLoading);
+            /////////////// ~~~~ /////////////// ~~~~ ///////////////
+        IManager::EventListID publishableEventList = TickResourceSource(stepMask, context, isLoading);
 
-            while (!_queuedFunctions.empty()) {
-                _queuedFunctions.front().operator()(*this, context);
-                _queuedFunctions.pop();
-            }
+        while (!_queuedFunctions.empty()) {
+            _queuedFunctions.front().operator()(*this, context);
+            _queuedFunctions.pop();
+        }
 
-            bool framePriorityResolve = false;
-            unsigned *qs = NULL;
+        bool framePriorityResolve = false;
+        unsigned *qs = NULL;
 
-            unsigned fromFramePriorityQueueSet = ~unsigned(0x0);
+        unsigned fromFramePriorityQueueSet = ~unsigned(0x0);
 
-            if (context._pendingFramePriority_CommandLists.try_front(qs)) {
+        if (context._pendingFramePriority_CommandLists.try_front(qs)) {
 
-                    //      --~<   Drain all frame priority steps   >~--      //
-                if (DrainPriorityQueueSet(_queueSet_FramePriority[*qs], stepMask, context)) {
-                    nothingFoundInQueues = false;
-                    atLeastOneRealAction = true;
-                }
-                framePriorityResolve = true;
-                fromFramePriorityQueueSet = *qs;
-
-            } else {
-
-                    //
-                    //      Process the queue set, but do everything in the "frame priority" queue set that we're writing 
-                    //      to first. This may sometimes do things out of order, but it means the higher priority
-                    //      things will complete first
-                    //
-
-                std::pair<bool,bool> t2 = ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
-                nothingFoundInQueues  &= t2.first;
-                atLeastOneRealAction  |= t2.second;
-                if (atLeastOneRealAction) {
-                    fromFramePriorityQueueSet = _framePriority_WritingQueueSet;
-                }
-
-                if (nothingFoundInQueues) {
-                    std::pair<bool,bool> t = ProcessQueueSet(_queueSet_Main, stepMask, context, budgetUnderConstruction);
-                    nothingFoundInQueues  &= t.first;
-                    atLeastOneRealAction  |= t.second;
-                }
-
-                //      this can happen when we're pending a file load now
-                // if (!nothingFoundInQueues && !atLeastOneRealAction) {
-                //     LogWarning << "Suspected allocation failure; sleeping";
-                //     Sleep(5);
-                // }
-            }
-
-            CommandList::ID commandListIdCommitted = ~unsigned(0x0);
-
-                /////////////// ~~~~ /////////////// ~~~~ ///////////////
-            const bool somethingToResolve = 
-                    (metricsUnderConstruction._contextOperations!=0)
-#if BU_BATCHING
-                ||  _batchPreparation_Main._batchedAllocationSize  || !context.GetCommitStepUnderConstruction().IsEmpty()
-#endif
-                ||  publishableEventList > context.EventList_GetPublishedID();
-            const unsigned commitCountCurrent = context.CommitCount_Current();
-            const bool normalPriorityResolve = commitCountCurrent > context.CommitCount_LastResolve();
-            if ((framePriorityResolve||normalPriorityResolve) && somethingToResolve) {
-                commandListIdCommitted = context.CommandList_GetUnderConstruction();
-
-                // OutputDebugString(FormatString("Resolving command list: (%i)\n", commandListIdCommitted).c_str());
-                // OutputDebugString(FormatString("   Context operations: (%i)\n", metricsUnderConstruction._contextOperations).c_str());
-                // OutputDebugString(FormatString("   Non context operations: (%i)\n", metricsUnderConstruction._nonContextOperations).c_str());
-                // OutputDebugString(FormatString("   Batched Allocation Size: (%i)\n", _batchPreparation_Main._batchedAllocationSize).c_str());
-                // OutputDebugString(FormatString("   Commit Step Empty: (%i)\n", context.GetCommitStepUnderConstruction().IsEmpty()).c_str());
-                // OutputDebugString(FormatString("   Publishable event list: (%i)\n", publishableEventList).c_str());
-                // OutputDebugString(FormatString("   Commit count current: (%i)\n", commitCountCurrent).c_str());
-                // OutputDebugString(FormatString("   Commit count last resolve: (%i)\n", context.CommitCount_LastResolve()).c_str());
-                // OutputDebugString(FormatString("   Frame priority: (%i)\n", framePriorityResolve).c_str());
-                // OutputDebugString(FormatString("   From frame priority: (%i)\n", fromFramePriorityQueueSet).c_str());
-
-                context.CommitCount_LastResolve() = commitCountCurrent;
-
-                    //
-                    //      Flush through the delayed releases again. Let's try to hit a low water mark before we allocate
-                    //      from the batched buffers
-                    //
-                publishableEventList = TickResourceSource(stepMask, context, isLoading);
-#if BU_BATCHING
-                ResolveBatchOperation(_batchPreparation_Main, context, stepMask);
-                _batchPreparation_Main = BatchPreparation();
-#endif
-                metricsUnderConstruction._assemblyLineMetrics = CalculateMetrics();
-
-                context.ResolveCommandList();
-                context.EventList_Publish(publishableEventList);
-
+                //      --~<   Drain all frame priority steps   >~--      //
+            if (DrainPriorityQueueSet(_queueSet_FramePriority[*qs], stepMask, context)) {
                 atLeastOneRealAction = true;
             }
+            framePriorityResolve = true;
+            fromFramePriorityQueueSet = *qs;
 
-            if (commandListIdCommitted != ~unsigned(0x0)) {
-                    //
-                    //      Don't cross this barrier until the next command list is finished
-                    //
-                while (!_resourceSource.MarkBarrier(commandListIdCommitted)) {
-                    _resourceSource.FlushDelayedReleases(context.CommandList_GetCompletedByGPU());
-                    Threading::YieldTimeSlice();
-                }
+        } else {
+
+                //
+                //      Process the queue set, but do everything in the "frame priority" queue set that we're writing 
+                //      to first. This may sometimes do things out of order, but it means the higher priority
+                //      things will complete first
+                //
+
+            atLeastOneRealAction  |= ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
+            if (atLeastOneRealAction) {
+                fromFramePriorityQueueSet = _framePriority_WritingQueueSet;
             }
 
-            #if defined(_DEBUG)
-                if (framePriorityResolve) {
-                    ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
-                    for (   auto i =_transactionsToBeCompletedNextFramePriorityCommit.begin(); 
-                                 i!=_transactionsToBeCompletedNextFramePriorityCommit.end(); ++i) {
-                        Transaction* transaction = GetTransaction(*i);
-                        if (transaction) {
-                            auto referenceCount = transaction->_referenceCount.load();
-                            const bool isCompleted = ((referenceCount & 0x00ffffff) == 0)
-                                &&  (transaction->_retirementCommandList <= commandListIdCommitted);
-                            assert(isCompleted);
-                        }
-                    }
-                    _transactionsToBeCompletedNextFramePriorityCommit.clear();
-                }
-            #endif
+            atLeastOneRealAction |= ProcessQueueSet(_queueSet_Main, stepMask, context, budgetUnderConstruction);
 
+        }
+
+        CommandList::ID commandListIdCommitted = ~unsigned(0x0);
+
+            /////////////// ~~~~ /////////////// ~~~~ ///////////////
+        const bool somethingToResolve = 
+                (metricsUnderConstruction._contextOperations!=0)
+            ||  _batchPreparation_Main._batchedAllocationSize
+            || !context.GetCommitStepUnderConstruction().IsEmpty()
+            ||  publishableEventList > context.EventList_GetPublishedID();
+        const unsigned commitCountCurrent = context.CommitCount_Current();
+        const bool normalPriorityResolve = commitCountCurrent > context.CommitCount_LastResolve();
+        if ((framePriorityResolve||normalPriorityResolve) && somethingToResolve) {
+            commandListIdCommitted = context.CommandList_GetUnderConstruction();
+
+            // OutputDebugString(FormatString("Resolving command list: (%i)\n", commandListIdCommitted).c_str());
+            // OutputDebugString(FormatString("   Context operations: (%i)\n", metricsUnderConstruction._contextOperations).c_str());
+            // OutputDebugString(FormatString("   Non context operations: (%i)\n", metricsUnderConstruction._nonContextOperations).c_str());
+            // OutputDebugString(FormatString("   Batched Allocation Size: (%i)\n", _batchPreparation_Main._batchedAllocationSize).c_str());
+            // OutputDebugString(FormatString("   Commit Step Empty: (%i)\n", context.GetCommitStepUnderConstruction().IsEmpty()).c_str());
+            // OutputDebugString(FormatString("   Publishable event list: (%i)\n", publishableEventList).c_str());
+            // OutputDebugString(FormatString("   Commit count current: (%i)\n", commitCountCurrent).c_str());
+            // OutputDebugString(FormatString("   Commit count last resolve: (%i)\n", context.CommitCount_LastResolve()).c_str());
+            // OutputDebugString(FormatString("   Frame priority: (%i)\n", framePriorityResolve).c_str());
+            // OutputDebugString(FormatString("   From frame priority: (%i)\n", fromFramePriorityQueueSet).c_str());
+
+            context.CommitCount_LastResolve() = commitCountCurrent;
+
+                //
+                //      Flush through the delayed releases again. Let's try to hit a low water mark before we allocate
+                //      from the batched buffers
+                //
+            publishableEventList = TickResourceSource(stepMask, context, isLoading);
+            ResolveBatchOperation(_batchPreparation_Main, context, stepMask);
+            _batchPreparation_Main = BatchPreparation();
+            metricsUnderConstruction._assemblyLineMetrics = CalculateMetrics();
+
+            context.ResolveCommandList();
+            context.EventList_Publish(publishableEventList);
+
+            atLeastOneRealAction = true;
+        }
+
+        if (commandListIdCommitted != ~unsigned(0x0)) {
+                //
+                //      Don't cross this barrier until the next command list is finished
+                //
+            while (!_resourceSource.MarkBarrier(commandListIdCommitted)) {
+                Threading::YieldTimeSlice();
+            }
+        }
+
+        #if defined(_DEBUG)
             if (framePriorityResolve) {
-                context._pendingFramePriority_CommandLists.pop();
-#if BU_BATCHING
-                assert(!_batchPreparation_Main._batchedAllocationSize);
-#endif
+                ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
+                for (   auto i =_transactionsToBeCompletedNextFramePriorityCommit.begin(); 
+                                i!=_transactionsToBeCompletedNextFramePriorityCommit.end(); ++i) {
+                    Transaction* transaction = GetTransaction(*i);
+                    if (transaction) {
+                        auto referenceCount = transaction->_referenceCount.load();
+                        const bool isCompleted = ((referenceCount & 0x00ffffff) == 0)
+                            &&  (transaction->_retirementCommandList <= commandListIdCommitted);
+                        assert(isCompleted);
+                    }
+                }
+                _transactionsToBeCompletedNextFramePriorityCommit.clear();
             }
+        #endif
 
-                /////////////// ~~~~ /////////////// ~~~~ ///////////////
-            if (!atLeastOneRealAction) {
-                // publishableEventList = TickResourceSource(stepMask, context, isLoading);
-                _queuedWorkFlag = !nothingFoundInQueues;
-                break;
-            }
-
-            Threading::YieldTimeSlice();
+        if (framePriorityResolve) {
+            context._pendingFramePriority_CommandLists.pop();
+            assert(!_batchPreparation_Main._batchedAllocationSize);
         }
     }
 
@@ -2287,114 +1952,6 @@ namespace BufferUploads
         // #endif
         return result;
     }
-
-#if 0
-    void AssemblyLine::UpdateData(TransactionID id, DataPacket* rawData, const PartialResource& part)
-    {
-        Transaction* transaction = GetTransaction(id);
-        assert(transaction);
-
-        #if defined(_DEBUG)&&defined(DIRECT3D9)
-            if (transaction->_desc._type == ResourceDesc::Type::Texture) {
-                assert(transaction->_desc._textureDesc._nativePixelFormat != 0);
-            }
-        #endif
-
-        if (rawData) {
-            auto bkgrndMarker = rawData->BeginBackgroundLoad();
-            if (bkgrndMarker) {
-                // this operation involves a background load. We need queue the background load first
-                // After the background load is completed, the rest of the operation will continue
-                PushStep(GetQueueSet(transaction->_creationOptions), *transaction, PrepareDataStep(id, rawData, std::move(bkgrndMarker), part));
-                return;
-            }
-        }
-
-        UpdateData_PostBackground(GetQueueSet(transaction->_creationOptions), *transaction, id, rawData, part);
-    }
-
-    void AssemblyLine::UpdateData_PostBackground(QueueSet& queueSet, Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part)
-    {
-            //  
-            //      1. Queue creation & staging creation steps. But only if these haven't been queued or completed before.
-            //      2. Queue an upload step
-            //
-            //      Because we might be running on multiple threads, it's difficult to know whether the creation
-            //      steps have been queued or completed in a way that is safe from race conditions. So lets just use
-            //      some boolean flags protected by a low-overhead lock.
-            //
-        unsigned requestedStagingLODOffset = 0;
-        if (transaction._desc._type == ResourceDesc::Type::Texture) {
-            unsigned maxLodOffset = IntegerLog2(std::min(transaction._desc._textureDesc._width, transaction._desc._textureDesc._height))-2;
-            requestedStagingLODOffset = std::min(part._lodLevelMin, maxLodOffset);
-        }
-
-        assert(transaction._desc._type != ResourceDesc::Type::Unknown);
-
-        bool mustQueueCreation = false, mustQueueStaging = false;
-        {
-                //  Simple busy loop lock for these few booleans
-            while (Interlocked::CompareExchange(&transaction._statusLock, 1, 0)!=0) {Threading::Pause();}
-
-            mustQueueCreation = transaction._creationQueued == false;
-            transaction._creationQueued = true;
-            const bool uploadViaStaging = PlatformInterface::RequiresStagingTextureUpload && (transaction._desc._type == ResourceDesc::Type::Texture) && (transaction._desc._allocationRules != AllocationRules::NonVolatile);
-            if (uploadViaStaging) {
-                mustQueueStaging = (transaction._stagingQueued == false) || (transaction._requestedStagingLODOffset!=requestedStagingLODOffset);
-                transaction._stagingQueued = true;
-            }
-
-            auto lockRelease = Interlocked::Exchange(&transaction._statusLock, 0);
-            assert(lockRelease==1); (void)lockRelease;
-        }
-
-        #if defined(_DEBUG)
-                //
-                //      Validate the size of information in the initialisation packet.
-                //
-            if (rawData && transaction._desc._type == ResourceDesc::Type::Texture 
-                && (!part._box._left && !part._box._top && !part._box._right && !part._box._bottom)) {
-                for (unsigned m=0; m<transaction._desc._textureDesc._mipCount; ++m) {
-                    const size_t dataSize = rawData->GetDataSize(SubR(m, 0));
-                    if (dataSize) {
-                        TextureDesc mipMapDesc     = RenderCore::CalculateMipMapDesc(transaction._desc._textureDesc, m);
-                        mipMapDesc._mipCount       = 1;
-                        mipMapDesc._arrayCount     = 1;
-                        const size_t expectedSize  = RenderCore::ByteCount(mipMapDesc);
-                        assert(std::max(size_t(16),dataSize) == std::max(size_t(16),expectedSize));
-                    }
-                }
-            }
-        #endif
-
-        const bool initializeOnCreation = mustQueueCreation && !mustQueueStaging && part._arrayIndexMax== 0 && part._arrayIndexMin==0;
-        if (initializeOnCreation) {
-            PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc, rawData));
-        } else {
-            if (mustQueueCreation)
-                PushStep(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
-            if (mustQueueStaging) {
-                transaction._requestedStagingLODOffset = requestedStagingLODOffset;
-                PushStep_StagingBuffer(queueSet, transaction, ResourceCreateStep(id, transaction._desc));
-            }
-
-                // there is a separate "step" for each array element
-            for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
-                PushStep(queueSet, transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
-        }
-
-        unsigned size = 0;
-		if (rawData)
-			for (unsigned l = part._lodLevelMin; l <= part._lodLevelMax; ++l)
-                for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
-				    size += (unsigned)rawData->GetDataSize(SubR(l, e));
-
-        if (transaction._desc._type == ResourceDesc::Type::LinearBuffer) {
-            assert(RenderCore::ByteCount(transaction._desc)==unsigned(size));
-        }
-        _currentQueuedBytes[(unsigned)AsUploadDataType(transaction._desc)] += size;
-    }
-#endif
 
     ResourceLocator     AssemblyLine::GetResource(TransactionID id)
     {
@@ -2579,14 +2136,6 @@ namespace BufferUploads
         PlatformInterface::Resource_RecalculateVideoMemoryHeadroom();
     }
 
-    void                    Manager::Flush()
-    {
-        while (_assemblyLine->QueuedWork()) {
-            // Update();
-            Threading::YieldTimeSlice();
-        }
-    }
-
     void Manager::FramePriority_Barrier()
     {
         unsigned oldQueueSetId = _assemblyLine->FlipWritingQueueSet();
@@ -2656,7 +2205,6 @@ namespace BufferUploads
                     AssemblyLine::Step_PrepareStaging
                 |   AssemblyLine::Step_TransferStagingToFinal
                 |   AssemblyLine::Step_CreateFromDataPacket
-                |   AssemblyLine::Step_DelayedReleases
                 |   AssemblyLine::Step_BatchedDefrag
                 |   ((!doBatchingUploadInForeground)?AssemblyLine::Step_BatchingUpload:0)
                 ;
@@ -2666,7 +2214,6 @@ namespace BufferUploads
                 |   AssemblyLine::Step_TransferStagingToFinal
                 |   AssemblyLine::Step_CreateFromDataPacket
                 |   AssemblyLine::Step_BatchingUpload
-                |   AssemblyLine::Step_DelayedReleases
                 |   AssemblyLine::Step_BatchedDefrag
                 ;
             _backgroundStepMask = 0;
@@ -2689,29 +2236,6 @@ namespace BufferUploads
     {
         return std::make_unique<Manager>(renderDevice);
     }
-
-    #if OUTPUT_DLL
-        static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_attachRef;
-        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
-        {
-			ConsoleRig::CrossModule::SetInstance(crossModule);
-            s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
-			auto versionDesc = ConsoleRig::GetLibVersionDesc();
-			Log(Verbose) << "Attached Buffer Uploads DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
-        }
-
-        void DetachLibrary()
-        {
-            s_attachRef.reset();
-			ConsoleRig::CrossModule::ReleaseInstance();
-        }
-    #else
-        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
-        {
-            assert(&globalServices == &ConsoleRig::CrossModule::GetInstance());
-        }
-        void DetachLibrary() {}
-    #endif
 
     IManager::~IManager() {}
 }

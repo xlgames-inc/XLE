@@ -237,7 +237,6 @@ namespace BufferUploads { namespace PlatformInterface
             ID3D::Resource* _resource;
             std::string _name;
             Interlocked::Value _allocatedMemory[ResourceDesc::Type_Max];
-            Interlocked::Value _volatileAllocatedMemory[ResourceDesc::Type_Max];
             ResourceDesc _desc;
         };
 
@@ -247,7 +246,6 @@ namespace BufferUploads { namespace PlatformInterface
         std::vector<ResourceTracker*>   g_Resources;
         CryCriticalSection              g_Resources_Lock;
         Interlocked::Value              g_AllocatedMemory[ResourceDesc::Type_Max]          = { 0, 0, 0 };
-        Interlocked::Value              g_VolatileAllocatedMemory[ResourceDesc::Type_Max]  = { 0, 0, 0 };
 
         struct CompareResource
         {
@@ -267,15 +265,9 @@ namespace BufferUploads { namespace PlatformInterface
         ResourceTracker::ResourceTracker(ID3D::Resource* resource, const char name[]) : _name(name), _resource(resource), _referenceCount(0)
         {
             XlZeroMemory(_allocatedMemory);
-            XlZeroMemory(_volatileAllocatedMemory);
             _desc = ExtractDesc(resource);
-            if (_desc._allocationRules&AllocationRules::NonVolatile) {
-                _allocatedMemory[_desc._type] = CalculateVideoMemory(_desc);
-                Interlocked::Add(&g_AllocatedMemory[_desc._type], _allocatedMemory[_desc._type]);
-            } else {
-                _volatileAllocatedMemory[_desc._type] = CalculateVideoMemory(_desc);
-                Interlocked::Add(&g_VolatileAllocatedMemory[_desc._type], _volatileAllocatedMemory[_desc._type]);
-            }
+            _allocatedMemory[_desc._type] = CalculateVideoMemory(_desc);
+            Interlocked::Add(&g_AllocatedMemory[_desc._type], _allocatedMemory[_desc._type]);
         }
 
         ResourceTracker::~ResourceTracker()
@@ -283,9 +275,6 @@ namespace BufferUploads { namespace PlatformInterface
             for (unsigned c=0; c<ResourceDesc::Type_Max; ++c) {
                 if (_allocatedMemory[c]) {
                     Interlocked::Add(&g_AllocatedMemory[c], -_allocatedMemory[c]);
-                }
-                if (_volatileAllocatedMemory[c]) {
-                    Interlocked::Add(&g_VolatileAllocatedMemory[c], -_volatileAllocatedMemory[c]);
                 }
             }
             ScopedLock(g_Resources_Lock);
@@ -344,13 +333,11 @@ namespace BufferUploads { namespace PlatformInterface
             #endif
         }
         
-        void    Resource_Report(bool justVolatiles)
+        void    Resource_Report()
         {
             LogString("D3D allocated resources report:\n");
-            LogString(XlDynFormatString("Total for non-volatile texture objects: %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for non-volatile buffer objects : %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for volatile texture objects : %8.6fMB\n",    g_VolatileAllocatedMemory [ResourceDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
-            LogString(XlDynFormatString("Total for volatile buffer objects : %8.6fMB\n",     g_VolatileAllocatedMemory [ResourceDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for texture objects: %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::Texture     ] / (1024.f*1024.f)).c_str());
+            LogString(XlDynFormatString("Total for buffer objects : %8.6fMB\n", g_AllocatedMemory         [ResourceDesc::Type::LinearBuffer] / (1024.f*1024.f)).c_str());
 
             ScopedLock(g_Resources_Lock);
             for (std::vector<ResourceTracker*>::iterator i=g_Resources.begin(); i!=g_Resources.end(); ++i) {
@@ -358,20 +345,18 @@ namespace BufferUploads { namespace PlatformInterface
                 intrusive_ptr<ID3D::Resource> resource = QueryInterfaceCast<ID3D::Resource>((*i)->GetResource());
 
                 const ResourceDesc& desc = (*i)->GetDesc();
-                if (!justVolatiles || !(desc._allocationRules&AllocationRules::NonVolatile)) {
-                    char buffer[2048];
-                    strcpy(buffer, BuildDescription(desc).c_str());
-                    char nameBuffer[256];
-                    Resource_GetName(resource, nameBuffer, dimof(nameBuffer));
-                    if (nameBuffer[0]) {
-                        strcat(buffer, "  Device name: ");
-                        strcat(buffer, nameBuffer);
-                    }
-                    resource->AddRef();
-                    DWORD refCount = resource->Release();
-                    sprintf(&buffer[strlen(buffer)], "  Ref count: %i\n", refCount);
-                    LogString(buffer);
+                char buffer[2048];
+                strcpy(buffer, BuildDescription(desc).c_str());
+                char nameBuffer[256];
+                Resource_GetName(resource, nameBuffer, dimof(nameBuffer));
+                if (nameBuffer[0]) {
+                    strcat(buffer, "  Device name: ");
+                    strcat(buffer, nameBuffer);
                 }
+                resource->AddRef();
+                DWORD refCount = resource->Release();
+                sprintf(&buffer[strlen(buffer)], "  Ref count: %i\n", refCount);
+                LogString(buffer);
             }
         }
 
@@ -380,9 +365,6 @@ namespace BufferUploads { namespace PlatformInterface
             if (metrics._allocationRules != AllocationRules::Staging && metrics._gpuAccess) {
                 metrics._videoMemorySize = ByteCount(metrics);
                 metrics._systemMemorySize = 0;
-                if (NonVolatileResourcesTakeSystemMemory && (metrics._allocationRules & AllocationRules::NonVolatile)) {
-                    metrics._systemMemorySize = metrics._videoMemorySize;
-                }
             } else {
                 metrics._videoMemorySize = 0;
                 metrics._systemMemorySize = ByteCount(metrics);

@@ -41,7 +41,6 @@ namespace BufferUploads
         size_t                  ByteCount(const ResourceDesc& desc) const override;
 
         void                    Update(RenderCore::IThreadContext&, bool preserveRenderState) override;
-        void                    Flush() override;
         void                    FramePriority_Barrier() override;
 
         EventListID             EventList_GetLatestID() override;

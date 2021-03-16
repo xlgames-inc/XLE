@@ -10,7 +10,6 @@
 
 #include "PlatformInterface.h"
 #include "Metrics.h"
-#include "ResourceLocator.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/DeviceContext.h"		// for command list ptr
 #include "../Utility/Threading/LockFree.h"
@@ -28,19 +27,8 @@ namespace BufferUploads
         class DeferredCopy
         {
         public:
-            std::shared_ptr<IDataPacket> _temporaryBuffer;
             ResourceLocator _destination;
-            unsigned _size;
-
-            DeferredCopy();
-            DeferredCopy(const ResourceLocator& destination, unsigned size, std::shared_ptr<IDataPacket> pkt);
-            DeferredCopy(DeferredCopy&& moveFrom);
-            const DeferredCopy& operator=(DeferredCopy&& moveFrom);
-            ~DeferredCopy();
-
-        private:
-            DeferredCopy(const DeferredCopy& cloneFrom);
-            const DeferredCopy& operator=(const DeferredCopy& cloneFrom);
+            std::vector<uint8_t> _temporaryBuffer;
         };
 
         class DeferredDefragCopy
@@ -95,6 +83,16 @@ namespace BufferUploads
     };
 
         //////   T H R E A D   C O N T E X T   //////
+
+    class Event_ResourceReposition
+    {
+    public:
+        std::shared_ptr<IResource> _originalResource;
+        std::shared_ptr<IResource> _newResource;
+        std::shared_ptr<IResourcePool> _pool;
+        uint64_t _poolMarker;
+        std::vector<Utility::DefragStep> _defragSteps;
+    };    
 
     #if !defined(NDEBUG)
         #define XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS

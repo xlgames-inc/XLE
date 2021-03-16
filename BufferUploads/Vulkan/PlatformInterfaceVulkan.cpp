@@ -7,7 +7,6 @@
 #if GFXAPI_TARGET == GFXAPI_VULKAN
 
     #include "../PlatformInterface.h"
-	#include "../ResourceLocator.h"
     #include "../DataPacket.h"
 	#include "../../RenderCore/IThreadContext.h"
     #include "../../RenderCore/Metal/Resource.h"
@@ -19,19 +18,21 @@
         using namespace RenderCore;
 
         unsigned UnderlyingDeviceContext::WriteToTextureViaMap(
-            IResource& resource, const ResourceDesc& desc,
+            const ResourceLocator& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
         {
-			auto* metalResource = (Metal::Resource*)resource.QueryInterface(typeid(Metal::Resource).hash_code());
-			if (!metalResource)
-				Throw(::Exceptions::BasicLabel("Incorrect resource type passed to buffer uploads platform layer"));
+            assert(resource.IsWholeResource());
+			auto* metalResource = resource.GetContainingResource().get();
 
             // In Vulkan, the only way we have to send data to a resource is by using
             // a memory map and CPU assisted copy. 
             assert(desc._type == ResourceDesc::Type::Texture);
-            if (box == Box2D())
-                return Metal::Internal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *metalResource, data);
+            if (box == Box2D()) {
+                auto* vulkanResource = (Metal::Resource*)metalResource->QueryInterface(typeid(Metal::Resource).hash_code());
+                assert(vulkanResource);
+                return Metal::Internal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *vulkanResource, data);
+            }
 
 			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
 
@@ -55,10 +56,13 @@
         }
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
-			IResource& finalResource, IResource& stagingResource, 
+			const ResourceLocator& finalResource, const ResourceLocator& stagingResource, 
 			const ResourceDesc& destinationDesc, 
             const StagingToFinalMapping& stagingToFinalMapping)
         {
+            assert(finalResource.IsWholeResource());
+            assert(stagingResource.IsWholeResource());
+
             assert(destinationDesc._type == ResourceDesc::Type::Texture);
             auto dstLodLevelMax = std::min(stagingToFinalMapping._dstLodLevelMax, (unsigned)destinationDesc._textureDesc._mipCount-1);
             auto dstArrayLayerMax = std::min(stagingToFinalMapping._dstArrayLayerMax, (unsigned)destinationDesc._textureDesc._arrayCount-1);
@@ -72,22 +76,22 @@
 
 			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
             auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
-            Metal::Internal::CaptureForBind(metalContext, finalResource, BindFlag::TransferDst);
-            Metal::Internal::CaptureForBind(metalContext, stagingResource, BindFlag::TransferSrc);
+            Metal::Internal::CaptureForBind(metalContext, *finalResource.GetContainingResource(), BindFlag::TransferDst);
+            Metal::Internal::CaptureForBind(metalContext, *stagingResource.GetContainingResource(), BindFlag::TransferSrc);
             auto blitEncoder = metalContext.BeginBlitEncoder();
 
             if (allLods && allArrayLayers && entire2DPlane) {
-                blitEncoder.Copy(finalResource, stagingResource);
+                blitEncoder.Copy(*finalResource.GetContainingResource().get(), *stagingResource.GetContainingResource().get());
             } else {
                 auto& dstBox = stagingToFinalMapping._dstBox;
                 for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
                     for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
                         blitEncoder.Copy(
                             Metal::BlitEncoder::CopyPartial_Dest{
-                                &finalResource, 
+                                finalResource.GetContainingResource().get(), 
                                 SubResourceId{mip, a}, {(unsigned)dstBox._left, (unsigned)dstBox._top, 0}},
                             Metal::BlitEncoder::CopyPartial_Src{
-                                &stagingResource, 
+                                stagingResource.GetContainingResource().get(), 
                                 SubResourceId{mip-stagingToFinalMapping._stagingLODOffset, a-stagingToFinalMapping._stagingArrayOffset},
                                 {(unsigned)dstBox._left - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._top - stagingToFinalMapping._stagingXYOffset[1], 0u},
                                 {(unsigned)dstBox._right - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._bottom - stagingToFinalMapping._stagingXYOffset[1], 1u}});
@@ -97,20 +101,19 @@
         }
 
         unsigned UnderlyingDeviceContext::WriteToBufferViaMap(
-            IResource& resource, const ResourceDesc& desc, unsigned offset,
-            const void* data, size_t dataSize)
+            const ResourceLocator& resource, const ResourceDesc& desc, unsigned offset,
+            IteratorRange<const void*> data)
         {
-			auto* metalResource = (Metal::Resource*)resource.QueryInterface(typeid(Metal::Resource).hash_code());
-			if (!metalResource)
-				Throw(::Exceptions::BasicLabel("Incorrect resource type passed to buffer uploads platform layer"));
+			assert(resource.IsWholeResource());
+			auto* metalResource = resource.GetContainingResource().get();
 
             // note -- this is a direct, immediate map... There must be no contention while we map.
             assert(desc._type == ResourceDesc::Type::LinearBuffer);
 			auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
             Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, offset);
-            auto copyAmount = std::min(map.GetData().size(), dataSize);
+            auto copyAmount = std::min(map.GetData().size(), data.size());
             if (copyAmount > 0)
-                XlCopyMemory(map.GetData().begin(), data, copyAmount);
+                XlCopyMemory(map.GetData().begin(), data.begin(), copyAmount);
             return (unsigned)copyAmount;
         }
 
@@ -211,11 +214,6 @@
         // void UnderlyingDeviceContext::Unmap(UnderlyingResource& resource, unsigned subResourceIndex)
         // {
         // }
-
-		std::shared_ptr<IDevice> UnderlyingDeviceContext::GetObjectFactory()
-		{
-			return _renderCoreContext->GetDevice();
-		}
 
         UnderlyingDeviceContext::UnderlyingDeviceContext(IThreadContext& renderCoreContext) 
         : _renderCoreContext(&renderCoreContext)

@@ -60,18 +60,18 @@ namespace BufferUploads { namespace PlatformInterface
     public:
             ////////   P U S H   T O   R E S O U R C E   ////////
         unsigned WriteToBufferViaMap(
-            UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
-            const void* data, size_t dataSize);
+            const ResourceLocator& resource, const ResourceDesc& desc, unsigned offset,
+            IteratorRange<const void*> data);
         
         using ResourceInitializer = std::function<RenderCore::SubResourceInitData(RenderCore::SubResourceId)>;
         
         unsigned WriteToTextureViaMap(
-            UnderlyingResource& resource, const ResourceDesc& desc,
+            const ResourceLocator& resource, const ResourceDesc& desc,
             const RenderCore::Box2D& box, 
             const ResourceInitializer& data);
 
         void UpdateFinalResourceFromStaging(
-            UnderlyingResource& finalResource, UnderlyingResource& staging,
+            const ResourceLocator& finalResource, const ResourceLocator& staging,
             const ResourceDesc& destinationDesc, 
             const StagingToFinalMapping& stagingToFinalMapping);
 
@@ -83,16 +83,11 @@ namespace BufferUploads { namespace PlatformInterface
         std::shared_ptr<RenderCore::Metal::CommandList> ResolveCommandList();
         void                                            BeginCommandList();
 
-            ////////   R E A D   B A C K   ////////
-        // intrusive_ptr<DataPacket> Readback(const ResourceLocator& locator);
-
             ////////   C O N S T R U C T I O N   ////////
         UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);
         ~UnderlyingDeviceContext();
 
-		std::shared_ptr<RenderCore::IDevice> GetObjectFactory();
         RenderCore::IThreadContext& GetUnderlying() { return *_renderCoreContext; }
-        // RenderCore::Metal::DeviceContext& GetUnderlying() { return *_devContext.get(); }
 
         #if GFXAPI_TARGET == GFXAPI_DX11
             private: 
@@ -100,10 +95,7 @@ namespace BufferUploads { namespace PlatformInterface
         #endif
 
     private:
-        // void Unmap(UnderlyingResource&, unsigned _subresourceIndex);
-        // friend class MappedBuffer;
         RenderCore::IThreadContext*         _renderCoreContext;
-        // std::shared_ptr<RenderCore::Metal::DeviceContext>      _devContext;
     };
 
     UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(IDataPacket& pkt);
@@ -175,7 +167,6 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool UseMapBasedDefrag = false;
         static const bool ContextBasedMultithreading = true;
         static const bool CanDoPartialMaps = false;
-        static const bool NonVolatileResourcesTakeSystemMemory = false;
     #elif GFXAPI_TARGET == GFXAPI_DX9
 		static const bool SupportsResourceInitialisation_Texture = false;
 		static const bool SupportsResourceInitialisation_Buffer = false;
@@ -185,7 +176,6 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool UseMapBasedDefrag = true;
         static const bool ContextBasedMultithreading = false;
         static const bool CanDoPartialMaps = true;
-        static const bool NonVolatileResourcesTakeSystemMemory = true;
     #elif GFXAPI_TARGET == GFXAPI_OPENGLES
         static const bool SupportsResourceInitialisation_Texture = true;
 		static const bool SupportsResourceInitialisation_Buffer = true;
@@ -195,7 +185,6 @@ namespace BufferUploads { namespace PlatformInterface
         static const bool UseMapBasedDefrag = false;
         static const bool ContextBasedMultithreading = true;
         static const bool CanDoPartialMaps = false;
-        static const bool NonVolatileResourcesTakeSystemMemory = false;
 	#elif GFXAPI_TARGET == GFXAPI_VULKAN
 		// Vulkan capabilities haven't been tested!
 		static const bool SupportsResourceInitialisation_Texture = false;
@@ -206,7 +195,6 @@ namespace BufferUploads { namespace PlatformInterface
 		static const bool UseMapBasedDefrag = false;
 		static const bool ContextBasedMultithreading = true;
 		static const bool CanDoPartialMaps = true;
-		static const bool NonVolatileResourcesTakeSystemMemory = false;
 	#else
         #error Unsupported platform!
     #endif

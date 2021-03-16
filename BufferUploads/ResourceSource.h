@@ -16,11 +16,20 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Optional.h"
 
-// #define D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES
-using XlHandle = void*;
-
 namespace BufferUploads
 {
+    class IResourcePool
+    {
+    public:
+        virtual void AddRef(
+            uint64_t resourceMarker, IResource& resource, 
+            size_t offset, size_t size) = 0;
+        virtual void ReturnToPool(
+            uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
+            size_t offset, size_t size) = 0;
+        virtual ~IResourcePool() {}
+    };
+
         /////   R E S O U R C E S   P O O L   /////
 
     typedef uint64_t DescHash;
@@ -28,15 +37,15 @@ namespace BufferUploads
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
     public:
-        ResourceLocator     CreateResource(const Desc&, unsigned realSize, bool&deviceCreation);
+        ResourceLocator     CreateResource(const Desc&, unsigned realSize, bool allowDeviceCreation);
 
         virtual void AddRef(
             uint64_t resourceMarker, IResource& resource, 
-            unsigned offset, unsigned size) override;
+            size_t offset, size_t size) override;
 
         virtual void ReturnToPool(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
-            unsigned offset, unsigned size) override;
+            size_t offset, size_t size) override;
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
 		RenderCore::IDevice*        GetUnderlyingDevice() { return _underlyingDevice; }
@@ -49,7 +58,7 @@ namespace BufferUploads
         class PoolOfLikeResources
         {
         public:
-            auto        AllocateResource(unsigned realSize, bool& deviceCreation) -> std::shared_ptr<IResource>;
+            auto        AllocateResource(unsigned realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>;
             const Desc& GetDesc() const { return _desc; }
             PoolMetrics CalculateMetrics() const;
             void        Update(unsigned newFrameID);
@@ -99,18 +108,15 @@ namespace BufferUploads
     class BatchedResources : public IResourcePool, public std::enable_shared_from_this<BatchedResources>
     {
     public:
-        using UnderlyingResource = RenderCore::IResource;
-		using UnderlyingResourcePtr = RenderCore::IResourcePtr;
-
-        ResourceLocator Allocate(unsigned size, bool& deviceCreation, const char name[]);
+        ResourceLocator Allocate(unsigned size, const char name[]);
 
         virtual void AddRef(
             uint64_t resourceMarker, IResource& resource, 
-            unsigned offset, unsigned size) override;
+            size_t offset, size_t size) override;
 
         virtual void ReturnToPool(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
-            unsigned offset, unsigned size) override;
+            size_t offset, size_t size) override;
 
             //
             //      Two step destruction process... Deref to remove the reference first. But if Deref returns
@@ -118,12 +124,12 @@ namespace BufferUploads
             //      want to do the deallocate immediately -- (eg, waiting for GPU, or shifting it into another thread)
             //
         struct ResultFlags { enum Enum { IsBatched = 1<<0, PerformDeallocate = 1<<1, IsCurrentlyDefragging = 1<<2 }; typedef unsigned BitField; };
-        ResultFlags::BitField   IsBatchedResource(UnderlyingResource* resource) const;
+        ResultFlags::BitField   IsBatchedResource(IResource* resource) const;
         ResultFlags::BitField   Validate(const ResourceLocator& locator) const;
         BatchingSystemMetrics   CalculateMetrics() const;
-        const ResourceDesc&       GetPrototype() const { return _prototype; }
+        const ResourceDesc&     GetPrototype() const { return _prototype; }
 
-        void                    TickDefrag(ThreadContext& deviceContext, IManager::EventListID processedEventList, bool& deviceCreation);
+        void                    TickDefrag(ThreadContext& deviceContext, IManager::EventListID processedEventList);
         void                    OnLostDevice();
 
         BatchedResources(const ResourceDesc& prototype, std::shared_ptr<ResourcesPool<ResourceDesc>> sourcePool);
@@ -144,10 +150,10 @@ namespace BufferUploads
             void                ValidateRefsAndHeap();
 
             HeapedResource();
-            HeapedResource(const ResourceDesc& desc, const ResourceLocator& heapResource);
+            HeapedResource(const ResourceDesc& desc, const std::shared_ptr<IResource>& heapResource);
             ~HeapedResource();
 
-            ResourceLocator _heapResource;
+            std::shared_ptr<IResource> _heapResource;
             SimpleSpanningHeap  _heap;
             ReferenceCountingLayer _refCounts;
             unsigned _size;
@@ -162,7 +168,7 @@ namespace BufferUploads
             void                QueueOperation(Operation::Enum operation, unsigned start, unsigned end);
             void                ApplyPendingOperations(HeapedResource& destination);
 
-            void                Tick(ThreadContext& context, const UnderlyingResourcePtr& sourceResource);
+            void                Tick(ThreadContext& context, const std::shared_ptr<IResource>& sourceResource);
             bool                IsCompleted(IManager::EventListID processedEventList, ThreadContext& context);
 
             void                SetSteps(const SimpleSpanningHeap& sourceHeap, const std::vector<DefragStep>& steps);
@@ -199,7 +205,7 @@ namespace BufferUploads
         Threading::Mutex _activeDefrag_Lock;
         HeapedResource* _activeDefragHeap;
 
-        ResourceLocator _temporaryCopyBuffer;
+        std::shared_ptr<IResource> _temporaryCopyBuffer;
         unsigned _temporaryCopyBufferCountDown;
 
         BatchedResources(const BatchedResources&);
@@ -217,8 +223,7 @@ namespace BufferUploads
             { 
                 enum Enum {
                     InitialisationSuccessful     = 1<<0,
-                    DelayForBatching             = 1<<1,
-                    DeviceConstructionInvoked    = 1<<2
+                    DeviceConstructionInvoked    = 1<<1
                 };
                 using BitField = unsigned;
             };
@@ -229,24 +234,20 @@ namespace BufferUploads
         struct CreationOptions
         {
             enum Enum {
-                AllowDeviceCreation = 1<<0
+                PreventDeviceCreation = 1<<0
             };
             typedef unsigned BitField;
         };
 
-        ResourceConstruction    Create(const ResourceDesc& desc, IDataPacket* initialisationData=nullptr, CreationOptions::BitField options=CreationOptions::AllowDeviceCreation);
+        ResourceConstruction    Create(const ResourceDesc& desc, IDataPacket* initialisationData=nullptr, CreationOptions::BitField options=0);
         void                    Validate(const ResourceLocator& locator);
 
         BatchedResources&       GetBatchedResources()             { return *_batchedIndexBuffers; }
         PoolSystemMetrics       CalculatePoolMetrics() const;
-        void                    Tick(ThreadContext& context, IManager::EventListID processedEventList, bool& deviceCreation);
+        void                    Tick(ThreadContext& context, IManager::EventListID processedEventList);
 
-        bool                    WillBeBatched(const ResourceDesc& desc);
         BatchedResources::ResultFlags::BitField     IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc);
 
-        void                    GetQueueEvents(XlHandle waitEvents[], unsigned& waitEventsCount);
-
-        void                    FlushDelayedReleases(unsigned gpuBarrierProgress=~unsigned(0x0), bool duringDestructor=false);
         bool                    MarkBarrier(unsigned barrierID);
 
         void                    OnLostDevice();
@@ -258,20 +259,8 @@ namespace BufferUploads
         std::shared_ptr<ResourcesPool<ResourceDesc>>      _stagingBufferPool;
         std::shared_ptr<ResourcesPool<ResourceDesc>>      _pooledGeometryBuffers;
         std::shared_ptr<BatchedResources>   _batchedIndexBuffers;
-		std::optional<Threading::ThreadId>	_flushThread;
         unsigned                            _frameID;
-        Threading::Mutex                    _flushDelayedReleasesLock;
 		RenderCore::IDevice*                _underlyingDevice;
-
-        #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
-            LockFreeFixedSizeQueue_Waitable<ResourceLocator,256> _delayedReleases;
-        #else
-            LockFreeFixedSizeQueue<ResourceLocator,256> _delayedReleases;
-        #endif
-
-        inline bool UsePooling(const ResourceDesc& input)     { return (input._type == ResourceDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }
-        inline bool UseBatching(const ResourceDesc& input)    { return !!(input._allocationRules & AllocationRules::Batched); }
-        ResourceDesc AdjustDescForReusableResource(const ResourceDesc& input);
     };
 
 }

@@ -297,35 +297,6 @@ namespace BufferUploads
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 
-    CommitStep::DeferredCopy::DeferredCopy()
-    {
-        _size = 0;
-    }
-
-    CommitStep::DeferredCopy::DeferredCopy(const ResourceLocator& destination, unsigned size, std::shared_ptr<IDataPacket> pkt)
-    : _destination(destination), _size(size), _temporaryBuffer(std::move(pkt))
-    {
-    }
-
-    CommitStep::DeferredCopy::DeferredCopy(DeferredCopy&& moveFrom)
-    : _destination(std::move(moveFrom._destination)), _size(moveFrom._size), _temporaryBuffer(moveFrom._temporaryBuffer)
-    {
-        moveFrom._temporaryBuffer = nullptr;
-    }
-
-    const CommitStep::DeferredCopy& CommitStep::DeferredCopy::operator=(DeferredCopy&& moveFrom)
-    {
-        _destination = std::move(moveFrom._destination);
-        _size = moveFrom._size;
-        _temporaryBuffer = std::move(moveFrom._temporaryBuffer);
-        moveFrom._temporaryBuffer = NULL;
-        return *this;
-    }
-
-    CommitStep::DeferredCopy::~DeferredCopy()
-    {
-    }
-
     CommitStep::DeferredDefragCopy::DeferredDefragCopy(
 		std::shared_ptr<IResource> destination, std::shared_ptr<IResource> source, const std::vector<DefragStep>& steps)
     : _destination(std::move(destination)), _source(std::move(source)), _steps(steps)

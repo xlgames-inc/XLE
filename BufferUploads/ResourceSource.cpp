@@ -139,34 +139,28 @@ namespace BufferUploads
 
     #define tdesc template<typename Desc>
 
-    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(unsigned realSize, bool& deviceCreation) -> std::shared_ptr<IResource>
+    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(unsigned realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>
         {
             Entry* front = NULL;
             if (_allocableResources.try_front(front)) {
                 Interlocked::Increment(&_recentPoolCreateCount);
-                deviceCreation = false;
                 std::shared_ptr<IResource> result = std::move(front->_underlying);
                 _allocableResources.pop();
                 return result;
-            } else {
-                if (deviceCreation) {
-                    Interlocked::Increment(&_recentDeviceCreateCount);
-                    deviceCreation = true;
-                    auto result = _underlyingDevice->CreateResource(_desc);
-                    if (result) {
-                        #if defined(REUSABLE_RESOURCE_DEBUGGING)
-                            PlatformInterface::AttachObject(
-                                result, GUID_ReusableResourceDestructionHelper, 
-                                new ReusableResourceDestructionHelper(_desc));
-                        #endif
-                    } else {
-                        Log(Warning) << "Warning -- failed when creating a resource in PoolOfLikeResources::AllocateResource" << std::endl;
-                    }
+            } else if (allowDeviceCreation) {
+                Interlocked::Increment(&_recentDeviceCreateCount);
+                auto result = _underlyingDevice->CreateResource(_desc);
+                if (result) {
+                    #if defined(REUSABLE_RESOURCE_DEBUGGING)
+                        PlatformInterface::AttachObject(
+                            result, GUID_ReusableResourceDestructionHelper, 
+                            new ReusableResourceDestructionHelper(_desc));
+                    #endif
                     Interlocked::Add(&_totalRealSize, realSize);
                     Interlocked::Add(&_totalCreateSize, RenderCore::ByteCount(_desc));
                     Interlocked::Increment(&_totalCreateCount);
-                    return std::move(result);
                 }
+                return result;
             }
             return nullptr;
         }
@@ -248,7 +242,7 @@ namespace BufferUploads
     tdesc ResourcesPool<Desc>::~ResourcesPool() {}
 
     tdesc ResourceLocator   ResourcesPool<Desc>::CreateResource(
-            const Desc& desc, unsigned realSize, bool& deviceCreation)
+            const Desc& desc, unsigned realSize, bool allowDeviceCreation)
         {
             DescHash hashValue = Hash(desc);
             {
@@ -263,18 +257,17 @@ namespace BufferUploads
                         assert(desc._textureDesc._mipCount == entry->second->GetDesc()._textureDesc._mipCount);
                         assert(desc._textureDesc._format == entry->second->GetDesc()._textureDesc._format);
                     }
-                    auto newResource = entry->second.get()->AllocateResource(realSize, deviceCreation);
+                    auto newResource = entry->second.get()->AllocateResource(realSize, allowDeviceCreation);
                     Interlocked::Decrement(&_readerCount[hashTableIndex]);
                     return ResourceLocator{
-                        std::move(newResource), ~unsigned(0x0), 0,
-                        std::enable_shared_from_this<ResourcesPool<Desc>>::shared_from_this(), hashValue};
+                        std::move(newResource), ~size_t(0x0), ~size_t(0x0),
+                        std::enable_shared_from_this<ResourcesPool<Desc>>::weak_from_this(), hashValue};
                 }
                 Interlocked::Decrement(&_readerCount[hashTableIndex]);
             }
 
-            if (!deviceCreation) {
+            if (!allowDeviceCreation)
                 return {};
-            }
 
                 //
                 //              -=*=- Insert a new hash table entry for this type of resource -=*=-
@@ -301,7 +294,7 @@ namespace BufferUploads
                 auto newIterator = newHashTable.insert(entry, newEntry);
                 _hashTableIndex = nextHashTableIndex;
 
-                auto newResource = newIterator->second->AllocateResource(realSize, deviceCreation);
+                auto newResource = newIterator->second->AllocateResource(realSize, true);
 
                     //  We should wait until there are no more readers on the old hash table before we give up the "_writerLock" mutex. This is because
                     //  Another thread could create a new entry immediately after, and start writing over the old hash table while readers are still
@@ -311,20 +304,20 @@ namespace BufferUploads
 
                 return ResourceLocator{
                     std::move(newResource), 
-                    0, ~unsigned(0x0), std::enable_shared_from_this<ResourcesPool<Desc>>::shared_from_this(), hashValue};
+                    ~size_t(0x0), ~size_t(0x0), std::enable_shared_from_this<ResourcesPool<Desc>>::weak_from_this(), hashValue};
             }
         }
 
     tdesc void        ResourcesPool<Desc>::AddRef(
             uint64_t resourceMarker, IResource& resource, 
-            unsigned offset, unsigned size)
+            size_t offset, size_t size)
         {
             // we don't have to do anything in this case
         }
     
     tdesc void        ResourcesPool<Desc>::ReturnToPool(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
-            unsigned offset, unsigned size)
+            size_t offset, size_t size)
         {
             unsigned hashTableIndex = _hashTableIndex;
             Interlocked::Increment(&_readerCount[hashTableIndex]);
@@ -374,10 +367,9 @@ namespace BufferUploads
         /////   B A T C H E D   R E S O U R C E S   /////
 
     ResourceLocator    BatchedResources::Allocate(
-        unsigned size, bool& deviceCreation, const char name[])
+        unsigned size, const char name[])
     {
         if (size > RenderCore::ByteCount(_prototype)) {
-            deviceCreation = false;
             return {};
         }
 
@@ -391,7 +383,6 @@ namespace BufferUploads
                 //         assert(!_activeDefrag.get() || _activeDefrag->GetHeap()!=*i);
                 //         unsigned allocation = (*i)->Allocate(size);
                 //         if (allocation != ~unsigned(0x0)) {
-                //             deviceCreation = false;
                 //             assert((allocation+size)<=PlatformInterface::ByteCount(_prototype));
                 //             return ResourceLocator((*i)->_heapResource, allocation, size);
                 //         }
@@ -414,46 +405,46 @@ namespace BufferUploads
                 if (bestHeap) {
                     unsigned allocation = bestHeap->Allocate(size, name);
                     if (allocation != ~unsigned(0x0)) {
-                        deviceCreation = false;
                         assert((allocation+size)<=RenderCore::ByteCount(_prototype));
                         return ResourceLocator{
-                            bestHeap->_heapResource._resource, 
+                            bestHeap->_heapResource, 
                             allocation, size, 
-                            shared_from_this()};
+                            weak_from_this(), 0ull};
                     }
                 }
             }
         }
 
         auto heapResource = _sourcePool->CreateResource(
-            _prototype, _prototype._linearBufferDesc._sizeInBytes, deviceCreation);
-        if (!heapResource._resource) {
-            deviceCreation = false;
+            _prototype, _prototype._linearBufferDesc._sizeInBytes, true).AsIndependentResource();
+        if (!heapResource) {
             return {};
         }
 
         auto newHeap = std::make_unique<HeapedResource>(_prototype, heapResource);
         unsigned allocation = newHeap->Allocate(size, name);
         assert(allocation != ~unsigned(0x0));
+        std::shared_ptr<IResource> res = newHeap->_heapResource;
 
-        ResourceLocator result{
-            newHeap->_heapResource._resource, allocation, size, shared_from_this()};
-        ScopedModifyLock(_lock);
-        _heaps.push_back(std::move(newHeap));
-        return result;
+        {
+            ScopedModifyLock(_lock);
+            _heaps.push_back(std::move(newHeap));
+        }
+
+        return ResourceLocator{std::move(res), allocation, size, weak_from_this(), 0ull};
     }
     
     void BatchedResources::AddRef(
         uint64_t resourceMarker, IResource& resource, 
-        unsigned offset, unsigned size)
+        size_t offset, size_t size)
     {
         ScopedReadLock(_lock);
         HeapedResource* heap = NULL;
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource._resource.get() == &resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource.get() == &resource) {
             heap = _activeDefrag->GetHeap();
         } else {
             for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-                if ((*i)->_heapResource._resource.get() == &resource) {
+                if ((*i)->_heapResource.get() == &resource) {
                     heap = i->get();
                     break;
                 }
@@ -469,15 +460,15 @@ namespace BufferUploads
 
     void BatchedResources::ReturnToPool(
         uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
-        unsigned offset, unsigned size)
+        size_t offset, size_t size)
     {
         ScopedReadLock(_lock);
         HeapedResource* heap = NULL;
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource._resource == resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource == resource) {
             heap = _activeDefrag->GetHeap();
         } else {
             for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-                if ((*i)->_heapResource._resource == resource) {
+                if ((*i)->_heapResource == resource) {
                     heap = i->get();
                     break;
                 }
@@ -504,14 +495,14 @@ namespace BufferUploads
     }
 
     BatchedResources::ResultFlags::BitField BatchedResources::IsBatchedResource(
-        UnderlyingResource* resource) const
+        IResource* resource) const
     {
         ScopedReadLock(_lock);
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource._resource.get() == resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource.get() == resource) {
             return ResultFlags::IsBatched;
         }
         for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-            if ((*i)->_heapResource._resource.get() == resource) {
+            if ((*i)->_heapResource.get() == resource) {
                 return ResultFlags::IsBatched|(i->get()==_activeDefragHeap?ResultFlags::IsCurrentlyDefragging:0);
             }
         }
@@ -525,17 +516,17 @@ namespace BufferUploads
             //      check to make sure the same resource isn't showing up twice
         for (auto i=_heaps.begin(); i!=_heaps.end(); ++i) {
             for (auto i2=i+1; i2!=_heaps.end(); ++i2) {
-                assert((*i2)->_heapResource._resource != (*i)->_heapResource._resource);
+                assert((*i2)->_heapResource != (*i)->_heapResource);
             }
         }
 
         BatchedResources::ResultFlags::BitField result = 0;
         const HeapedResource* heapResource = NULL;
-        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource._resource == locator._resource) {
+        if (_activeDefrag.get() && _activeDefrag->GetHeap()->_heapResource.get() == locator.GetContainingResource().get()) {
             heapResource = _activeDefrag->GetHeap();
         } else {
             for (auto i=_heaps.rbegin(); i!=_heaps.rend(); ++i) {
-                if ((*i)->_heapResource._resource == locator._resource) {
+                if ((*i)->_heapResource.get() == locator.GetContainingResource().get()) {
                     heapResource = i->get();
                     break;
                 }
@@ -543,7 +534,8 @@ namespace BufferUploads
         }
         if (heapResource) {
             result |= BatchedResources::ResultFlags::IsBatched;
-            assert(heapResource->_refCounts.ValidateBlock(locator._offset, locator._size));
+            auto range = locator.GetRangeInContainingResource();
+            assert(heapResource->_refCounts.ValidateBlock(range.first, range.second-range.first));
         }
         return result;
     }
@@ -559,11 +551,8 @@ namespace BufferUploads
         return result;
     }
 
-    void BatchedResources::TickDefrag(ThreadContext& context, IManager::EventListID processedEventList, bool& deviceCreation)
+    void BatchedResources::TickDefrag(ThreadContext& context, IManager::EventListID processedEventList)
     {
-        bool isDeviceCreationOk = deviceCreation;
-        deviceCreation = false;
-
         if (!_activeDefrag.get()) {
 
             assert(!_activeDefragHeap);
@@ -595,7 +584,7 @@ namespace BufferUploads
                 ScopedReadLock(_lock);
                 for (auto i=_heaps.begin(); i!=_heaps.end(); ++i) {
                     float weight = (*i)->CalculateFragmentationWeight();
-                    if (weight > bestWeight && (*i)->_heapResource._resource) {
+                    if (weight > bestWeight && (*i)->_heapResource) {
                             //      if the heap hasn't changed since the last time this heap was used as a defrag source, then there's no use in picking it again
                         if ((*i)->_hashLastDefrag != (*i)->_heap.CalculateHash()) {
                             bestHeap = i->get();
@@ -622,7 +611,7 @@ namespace BufferUploads
                     // Copy the resource into our copy buffer, and set the count down
                 if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
                     context.GetDeviceContext().ResourceCopy(
-                        *_temporaryCopyBuffer._resource, *bestHeap->_heapResource._resource);
+                        *_temporaryCopyBuffer, *bestHeap->_heapResource);
                     _temporaryCopyBufferCountDown = 10;
                 }
 
@@ -649,7 +638,7 @@ namespace BufferUploads
                 //      active resource as necessary
                 //
             ActiveDefrag* existingActiveDefrag = _activeDefrag.get();
-            if (!existingActiveDefrag->GetHeap()->_heapResource._resource) {
+            if (!existingActiveDefrag->GetHeap()->_heapResource) {
 
                     //////      Try to find a heap that is 100% free. We'll remove        //
                       //          this from the list, and use it as our new heap        //////
@@ -665,10 +654,9 @@ namespace BufferUploads
                     }
                 }
 
-                if (!existingActiveDefrag->GetHeap()->_heapResource._resource) {
+                if (!existingActiveDefrag->GetHeap()->_heapResource) {
                     existingActiveDefrag->GetHeap()->_heapResource = _sourcePool->CreateResource(
-                        _prototype, RenderCore::ByteCount(_prototype), isDeviceCreationOk);
-                    deviceCreation = isDeviceCreationOk;
+                        _prototype, RenderCore::ByteCount(_prototype), true).AsIndependentResource();
                 }
 
             } else {
@@ -677,7 +665,7 @@ namespace BufferUploads
                     --_temporaryCopyBufferCountDown;
                 } else {
                     const bool useTemporaryCopyBuffer = PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground;
-                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer._resource:_activeDefragHeap->_heapResource._resource);
+                    existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer:_activeDefragHeap->_heapResource);
                     if (existingActiveDefrag->IsCompleted(processedEventList, context)) {
 
                             //
@@ -742,8 +730,7 @@ namespace BufferUploads
         _temporaryCopyBuffer = {};
         _temporaryCopyBufferCountDown = 0;
         if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
-            _temporaryCopyBuffer = ResourceLocator{
-                sourcePool->GetUnderlyingDevice()->CreateResource(copyBufferDesc)};
+            _temporaryCopyBuffer = sourcePool->GetUnderlyingDevice()->CreateResource(copyBufferDesc);
         }
     }
 
@@ -752,12 +739,8 @@ namespace BufferUploads
 
     unsigned    BatchedResources::HeapedResource::Allocate(unsigned size, const char name[])
     {
-        unsigned allocation =_heap.Allocate(size);
-        if (allocation != ~unsigned(0x0)) {
-            // _heapResource->AddRef();
-            _refCounts.AddRef(allocation, size, name);
-        }
-        return allocation;
+        // note -- we start out with no ref count registered in _refCounts for this range. The first ref count will come when we create a ResourceLocator
+        return _heap.Allocate(size);
     }
 
     bool        BatchedResources::HeapedResource::AddRef(unsigned ptr, unsigned size, const char name[])
@@ -839,7 +822,7 @@ namespace BufferUploads
     : _size(0), _defragCount(0), _heap(0), _refCounts(0), _hashLastDefrag(0)
     {}
 
-    BatchedResources::HeapedResource::HeapedResource(const ResourceDesc& desc, const ResourceLocator& heapResource)
+    BatchedResources::HeapedResource::HeapedResource(const ResourceDesc& desc, const std::shared_ptr<IResource>& heapResource)
     : _heapResource(heapResource)
     , _heap(RenderCore::ByteCount(desc))
     , _refCounts(RenderCore::ByteCount(desc))
@@ -868,18 +851,18 @@ namespace BufferUploads
         _pendingOperations.push_back(op);
     }
 
-    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, const UnderlyingResourcePtr& sourceResource)
+    void BatchedResources::ActiveDefrag::Tick(ThreadContext& context, const std::shared_ptr<IResource>& sourceResource)
     {
         if (!_initialCommandListID) {
             _initialCommandListID = context.CommandList_GetUnderConstruction();
         }
-        if (!_steps.empty() && GetHeap()->_heapResource._resource && !_doneResourceCopy) {
+        if (!_steps.empty() && GetHeap()->_heapResource && !_doneResourceCopy) {
                 // -----<   Copy from the old resource into the new resource   >----- //
             if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
                 context.GetCommitStepUnderConstruction().Add(
-                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource._resource, sourceResource, _steps));
+                    CommitStep::DeferredDefragCopy(GetHeap()->_heapResource, sourceResource, _steps));
             } else {
-                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource._resource, sourceResource, _steps);
+                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource, sourceResource, _steps);
             }
             _doneResourceCopy = true;
         }
@@ -887,7 +870,7 @@ namespace BufferUploads
         if (_doneResourceCopy && !_eventId && context.CommandList_GetCommittedToImmediate() >= _initialCommandListID) {
             Event_ResourceReposition result;
             result._originalResource = sourceResource;
-            result._newResource      = GetHeap()->_heapResource._resource;
+            result._newResource      = GetHeap()->_heapResource;
             result._defragSteps      = _steps;
             _eventId = context.EventList_Push(result);
         }
@@ -923,6 +906,7 @@ namespace BufferUploads
             destination.Deallocate(deallocateIterator->_start, deallocateIterator->_end-deallocateIterator->_start);
         }
 
+        assert(0);
         #if 0
             std::sort(_pendingOperations.begin(), _pendingOperations.end(), SortByPosition);
             std::vector<ActiveDefrag::PendingOperation>::iterator deallocateIterator = _pendingOperations.begin();
@@ -962,7 +946,7 @@ namespace BufferUploads
 
     bool BatchedResources::ActiveDefrag::IsCompleted(IManager::EventListID processedEventList, ThreadContext& context)
     {
-        return  GetHeap()->_heapResource._resource && _doneResourceCopy && (processedEventList >= _eventId) 
+        return  GetHeap()->_heapResource && _doneResourceCopy && (processedEventList >= _eventId) 
             &&  (context.CommandList_GetCompletedByGPU() >= _initialCommandListID);
     }
 
@@ -998,54 +982,57 @@ namespace BufferUploads
 
         /////   R E S O U R C E   S O U R C E   /////
 
+    static bool UsePooling(const ResourceDesc& input)     { return (input._type == ResourceDesc::Type::LinearBuffer) && (input._linearBufferDesc._sizeInBytes < (32*1024)) && (input._allocationRules & AllocationRules::Pooled); }
+    static bool UseBatching(const ResourceDesc& input)    { return (input._type == ResourceDesc::Type::LinearBuffer) && !!(input._allocationRules & AllocationRules::Batched); }
+
+    static ResourceDesc AdjustDescForReusableResource(const ResourceDesc& input)
+    {
+        ResourceDesc result = input;
+        if (result._type == ResourceDesc::Type::LinearBuffer) {
+            result._linearBufferDesc._sizeInBytes = RoundUpBufferSize(result._linearBufferDesc._sizeInBytes);
+            result._cpuAccess = CPUAccess::Write;
+        }
+        return result;
+    }
+
     ResourceSource::ResourceConstruction        ResourceSource::Create(const ResourceDesc& desc, IDataPacket* initialisationData, CreationOptions::BitField options)
     {
-        bool deviceCreation          = !!(options & CreationOptions::AllowDeviceCreation);
-        // auto uploadDataType = AsUploadDataType(desc);
+        bool allowDeviceCreation     = (options & CreationOptions::PreventDeviceCreation) == 0;
         const bool usePooling        = UsePooling(desc);
-        const bool useBatching       = usePooling && UseBatching(desc) && initialisationData;
+        const bool useBatching       = UseBatching(desc) && initialisationData;
         const bool useStaging        = !!(desc._allocationRules & AllocationRules::Staging);
         const unsigned objectSize    = RenderCore::ByteCount(desc);
 
         ResourceConstruction result;
         if (useStaging) {
-            result._locator = _stagingBufferPool->CreateResource(AdjustDescForReusableResource(desc), objectSize, deviceCreation);
-        } else if (!useBatching) {
-            if (usePooling) {
-                result._locator = _pooledGeometryBuffers->CreateResource(AdjustDescForReusableResource(desc), objectSize, deviceCreation);
-                result._flags |= deviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
-            } else if (deviceCreation) {
-				auto supportInit = 
-					(desc._type == ResourceDesc::Type::Texture)
-					? PlatformInterface::SupportsResourceInitialisation_Texture
-					: PlatformInterface::SupportsResourceInitialisation_Buffer;
-				auto initPkt = supportInit ? initialisationData : nullptr;
-                std::shared_ptr<RenderCore::IResource> renderCoreResource;
-                if (initPkt) {
-                    renderCoreResource = _underlyingDevice->CreateResource(desc, PlatformInterface::AsResourceInitializer(*initPkt));
-                } else {
-                    renderCoreResource = _underlyingDevice->CreateResource(desc);
-                }
-                result._locator = ResourceLocator{std::move(renderCoreResource), 0, objectSize};
-                result._flags |= initPkt ? ResourceConstruction::Flags::InitialisationSuccessful : 0;
-                result._flags |= ResourceConstruction::Flags::DeviceConstructionInvoked;
+            result._locator = _stagingBufferPool->CreateResource(AdjustDescForReusableResource(desc), objectSize, allowDeviceCreation);
+        } else if (usePooling) {
+            result._locator = _pooledGeometryBuffers->CreateResource(AdjustDescForReusableResource(desc), objectSize, allowDeviceCreation);
+            result._flags |= allowDeviceCreation?ResourceConstruction::Flags::DeviceConstructionInvoked:0;
+        } else if (allowDeviceCreation) {
+            auto supportInit = 
+                (desc._type == ResourceDesc::Type::Texture)
+                ? PlatformInterface::SupportsResourceInitialisation_Texture
+                : PlatformInterface::SupportsResourceInitialisation_Buffer;
+            auto initPkt = supportInit ? initialisationData : nullptr;
+            std::shared_ptr<RenderCore::IResource> renderCoreResource;
+            if (initPkt) {
+                renderCoreResource = _underlyingDevice->CreateResource(desc, PlatformInterface::AsResourceInitializer(*initPkt));
+            } else {
+                renderCoreResource = _underlyingDevice->CreateResource(desc);
             }
-        } else {
-            result._flags |= ResourceConstruction::Flags::DelayForBatching;
+            result._locator = ResourceLocator{std::move(renderCoreResource)};
+            result._flags |= initPkt ? ResourceConstruction::Flags::InitialisationSuccessful : 0;
+            result._flags |= ResourceConstruction::Flags::DeviceConstructionInvoked;
         }
         return result;
-    }
-
-    bool                ResourceSource::WillBeBatched(const ResourceDesc& desc)
-    {
-        return UsePooling(desc) && UseBatching(desc);
     }
 
     BatchedResources::ResultFlags::BitField ResourceSource::IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc)
     {
         const bool mightBeBatched = UsePooling(desc) && UseBatching(desc);
         if (mightBeBatched) {
-            return _batchedIndexBuffers->IsBatchedResource(locator._resource.get());
+            return _batchedIndexBuffers->IsBatchedResource(locator.GetContainingResource().get());
         }
         return 0;
     }
@@ -1054,7 +1041,7 @@ namespace BufferUploads
     {
         #if defined(_DEBUG)
             if (_batchedIndexBuffers->Validate(locator)==0) {
-                ResourceDesc desc = locator._resource->GetDesc();
+                ResourceDesc desc = locator.GetContainingResource()->GetDesc();
                 assert(!(UsePooling(desc) && UseBatching(desc)));
             }
         #endif
@@ -1065,36 +1052,14 @@ namespace BufferUploads
         return true;
     }
 
-    void ResourceSource::FlushDelayedReleases(unsigned gpuBarrierProgress, bool duringDestructor)
-    {
-        ScopedLock(_flushDelayedReleasesLock);
-
-        const auto currentThread = Threading::CurrentThreadId();
-        if (!duringDestructor) {
-            assert(!_flushThread.has_value() || _flushThread.value() == currentThread);         // we should only be flushing from one thread
-            _flushThread = currentThread;
-        }
-
-        ResourceLocator* delayedRelease = nullptr;
-        while (_delayedReleases.try_front(delayedRelease)) {
-            _delayedReleases.pop();
-        }
-
-        static unsigned callCount = 0;
-        if ((callCount%30)==0) {
-            _delayedReleases.compress_overflow();
-            ++callCount;
-        }
-    }
-
-    void ResourceSource::Tick(ThreadContext& threadContext, IManager::EventListID processedEventList, bool& deviceCreation)
+    void ResourceSource::Tick(ThreadContext& threadContext, IManager::EventListID processedEventList)
     {
         _stagingBufferPool->Update(threadContext.CommandList_GetUnderConstruction());
 
             // ------ Defrag ------ //
 
         if (_batchedIndexBuffers.get()) {
-            _batchedIndexBuffers->TickDefrag(threadContext, processedEventList, deviceCreation);
+            _batchedIndexBuffers->TickDefrag(threadContext, processedEventList);
         }
     }
 
@@ -1107,27 +1072,8 @@ namespace BufferUploads
         return result;
     }
 
-    void                ResourceSource::GetQueueEvents(XlHandle waitEvents[], unsigned& waitEventsCount)
-    {
-        #if defined(D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES)
-            waitEvents[waitEventsCount++] = _delayedReleases.get_event();
-        #endif
-    }
-
-    ResourceDesc ResourceSource::AdjustDescForReusableResource(const ResourceDesc& input)
-    {
-        ResourceDesc result = input;
-        if (result._type == ResourceDesc::Type::LinearBuffer) {
-            result._linearBufferDesc._sizeInBytes = RoundUpBufferSize(result._linearBufferDesc._sizeInBytes);
-            result._cpuAccess = CPUAccess::Write;
-        }
-        return result;
-    }
-
     void ResourceSource::OnLostDevice()
     {
-        FlushDelayedReleases();                  // flush all remaining delayed releases, with no limit
-        
         _batchedIndexBuffers->OnLostDevice();       // (prefer calling OnLostDevice() on the batched index buffers first, because of links back to pooledGeometryBuffers)
         _pooledGeometryBuffers->OnLostDevice();
         _stagingBufferPool->OnLostDevice();
@@ -1143,26 +1089,11 @@ namespace BufferUploads
 
         ResourceDesc batchableIndexBuffers;
         batchableIndexBuffers._type = ResourceDesc::Type::LinearBuffer;
-        batchableIndexBuffers._cpuAccess = CPUAccess::Write|CPUAccess::WriteDynamic;
+        batchableIndexBuffers._cpuAccess = CPUAccess::Write;
         batchableIndexBuffers._gpuAccess = GPUAccess::Read;
         batchableIndexBuffers._bindFlags = BindFlag::IndexBuffer;
-        batchableIndexBuffers._allocationRules = AllocationRules::Pooled; // -- note that if it's pooled, there's a higher likelyhood that a resource will be turned around and reused immediately, confusing some defrag cases
-
         if (PlatformInterface::UseMapBasedDefrag) {
-                //
-                //      When using the map based defrag, we must have a non-default pool resource
-                //      with read and write access specified. 
-                //
-                //      Without the NonVolatile flag, the 
-                //      resource will end up in the Default pool on D3D9 -- which is inefficient
-                //      for reading from via map. But with the NonVolatile flag, we can't set WriteDynamic,
-                //      which means we can't do no-overwrite maps.
-                //
-                //      So we have to choose between reading back efficiently, and using no overwrite
-                //      maps. The best solution would be to use WriteDynamic, but keep our own
-                //      system memory mirror of these buffers (which could be used for reading from).
-                //
-            batchableIndexBuffers._cpuAccess = CPUAccess::Write|CPUAccess::Read|CPUAccess::WriteDynamic;
+            batchableIndexBuffers._cpuAccess = CPUAccess::Write|CPUAccess::Read;
         }
 
         batchableIndexBuffers._linearBufferDesc._sizeInBytes = 256 * 1024;
@@ -1179,7 +1110,181 @@ namespace BufferUploads
 
     ResourceSource::~ResourceSource()
     {
-        FlushDelayedReleases(~unsigned(0x0), true);     // flush all remaining delayed releases, with no limit
+    }
+
+
+    std::shared_ptr<IResource> ResourceLocator::AsIndependentResource() const
+    {
+        return (!_managedByPool && IsWholeResource()) ? nullptr : _resource;
+    }
+
+    RenderCore::VertexBufferView ResourceLocator::AsVertexBufferView() const
+    {
+        return RenderCore::VertexBufferView {
+            _resource,
+            (_interiorOffset != ~size_t(0)) ? unsigned(_interiorOffset) : 0u
+        };
+    }
+
+    RenderCore::IndexBufferView ResourceLocator::AsIndexBufferView(RenderCore::Format indexFormat) const
+    {
+        return RenderCore::IndexBufferView { _resource, indexFormat, (_interiorOffset != ~size_t(0)) ? unsigned(_interiorOffset) : 0u };
+    }
+
+    RenderCore::ConstantBufferView ResourceLocator::AsConstantBufferView() const
+    {
+        if (_interiorOffset != ~size_t(0)) {
+            return RenderCore::ConstantBufferView { _resource, unsigned(_interiorOffset), unsigned(_interiorOffset + _interiorSize) };
+        } else {
+            return RenderCore::ConstantBufferView { _resource };
+        }
+    }
+
+    bool ResourceLocator::IsWholeResource() const
+    {
+        return _interiorOffset == ~size_t(0) && _interiorSize == ~size_t(0);
+    }
+
+    ResourceLocator::ResourceLocator(
+        std::shared_ptr<IResource> independentResource)
+    : _resource(std::move(independentResource))
+    {
+        _interiorOffset = _interiorSize = ~size_t(0);
+        _poolMarker = ~0ull;
+        _managedByPool = false;
+    }
+    ResourceLocator::ResourceLocator(
+        std::shared_ptr<IResource> containingResource,
+        size_t interiorOffset, size_t interiorSize,
+        std::weak_ptr<IResourcePool> pool, uint64_t poolMarker)
+    : _resource(std::move(containingResource))
+    , _pool(std::move(pool))
+    {
+        _interiorOffset = interiorOffset;
+        _interiorSize = interiorSize;
+        _poolMarker = poolMarker;
+        _managedByPool = true;
+
+        auto strongPool = _pool.lock();
+        if (strongPool && _resource)
+            strongPool->AddRef(_poolMarker, *_resource, _interiorOffset, _interiorSize);
+    }
+
+    ResourceLocator::ResourceLocator(
+        std::shared_ptr<IResource> containingResource,
+        size_t interiorOffset, size_t interiorSize)
+    : _resource(std::move(containingResource))
+    {
+        _interiorOffset = interiorOffset;
+        _interiorSize = interiorSize;
+        _poolMarker = ~0ull;
+        _managedByPool = false;
+    }
+
+    ResourceLocator::ResourceLocator() {}
+    ResourceLocator::~ResourceLocator() 
+    {
+        auto pool = _pool.lock();
+        if (pool)
+            pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+    }
+
+    ResourceLocator::ResourceLocator(ResourceLocator&& moveFrom) never_throws
+    : _resource(std::move(moveFrom._resource))
+    , _interiorOffset(moveFrom._interiorOffset)
+    , _interiorSize(moveFrom._interiorSize)
+    , _pool(std::move(moveFrom._pool))
+    , _poolMarker(moveFrom._poolMarker)
+    , _managedByPool(moveFrom._managedByPool)
+    {
+        moveFrom._interiorOffset = moveFrom._interiorSize = ~size_t(0);
+        moveFrom._poolMarker = ~0ull;
+        moveFrom._managedByPool = false;
+    }
+
+    ResourceLocator& ResourceLocator::operator=(ResourceLocator&& moveFrom) never_throws
+    {
+        if (_managedByPool) {
+            auto pool = _pool.lock();
+            if (pool && _resource)
+                pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+        }
+
+        _resource = std::move(moveFrom._resource);
+        _interiorOffset = moveFrom._interiorOffset;
+        _interiorSize = moveFrom._interiorSize;
+        _pool = std::move(moveFrom._pool);
+        _poolMarker = moveFrom._poolMarker;
+        _managedByPool = moveFrom._managedByPool;
+        moveFrom._interiorOffset = moveFrom._interiorSize = ~size_t(0);
+        moveFrom._poolMarker = ~0ull;
+        moveFrom._managedByPool = false;
+        return *this;
+    }
+
+    ResourceLocator::ResourceLocator(const ResourceLocator& copyFrom)
+    : _resource(copyFrom._resource)
+    , _interiorOffset(copyFrom._interiorOffset)
+    , _interiorSize(copyFrom._interiorSize)
+    , _pool(copyFrom._pool)
+    , _poolMarker(copyFrom._poolMarker)
+    , _managedByPool(copyFrom._managedByPool)
+    {
+        if (_managedByPool) {
+            auto pool = _pool.lock();
+            if (pool && _resource)
+                pool->AddRef(_poolMarker, *_resource, _interiorOffset, _interiorSize);
+        }
+    }
+
+    ResourceLocator& ResourceLocator::operator=(const ResourceLocator& copyFrom)
+    {
+        if (_managedByPool) {
+            auto pool = _pool.lock();
+            if (pool && _resource)
+                pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+        }
+
+        _resource = copyFrom._resource;
+        _interiorOffset = copyFrom._interiorOffset;
+        _interiorSize = copyFrom._interiorSize;
+        _pool = copyFrom._pool;
+        _poolMarker = copyFrom._poolMarker;
+        _managedByPool = copyFrom._managedByPool;
+
+        if (_managedByPool) {
+            auto pool = _pool.lock();
+            if (pool && _resource)
+                pool->AddRef(_poolMarker, *_resource, _interiorOffset, _interiorSize);
+        }
+        return *this;
+    }
+
+    ResourceLocator ResourceLocator::MakeSubLocator(size_t offset, size_t size)
+    {
+        if (_managedByPool) {
+            if (IsWholeResource()) {
+                return ResourceLocator {
+                    _resource,
+                    offset, size,
+                    _pool, _poolMarker };
+            } else {
+                return ResourceLocator {
+                    _resource,
+                    _interiorOffset + offset, size,
+                    _pool, _poolMarker };
+            }
+        } else {
+            if (IsWholeResource()) {
+                return ResourceLocator {
+                    _resource,
+                    offset, size };
+            } else {
+                return ResourceLocator {
+                    _resource,
+                    _interiorOffset + offset, size };
+            }
+        }
     }
 
 }

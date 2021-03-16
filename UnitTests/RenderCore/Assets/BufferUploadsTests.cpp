@@ -5,7 +5,6 @@
 #include "../Metal/MetalTestHelper.h"
 #include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../BufferUploads/DataPacket.h"
-#include "../../../BufferUploads/ResourceLocator.h"
 #include "../../../BufferUploads/MemoryManagement.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../RenderCore/Format.h"
@@ -92,9 +91,9 @@ namespace UnitTests
             bu->Update(*metalHelper->_device->GetImmediateContext(), false);
 
             REQUIRE(bu->IsCompleted(transaction._transactionID));
-            auto locator = transaction._future.get();
-            REQUIRE(locator._resource != nullptr);
-            auto finalResourceDesc = locator._resource->GetDesc();
+            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(finalResource != nullptr);
+            auto finalResourceDesc = finalResource->GetDesc();
             REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
             REQUIRE(finalResourceDesc._textureDesc._width == desc._textureDesc._width);
             REQUIRE(finalResourceDesc._textureDesc._height == desc._textureDesc._height);
@@ -124,9 +123,9 @@ namespace UnitTests
             bu->Update(*metalHelper->_device->GetImmediateContext(), false);
 
             REQUIRE(bu->IsCompleted(transaction._transactionID));
-            auto locator = transaction._future.get();
-            REQUIRE(locator._resource != nullptr);
-            auto finalResourceDesc = locator._resource->GetDesc();
+            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(finalResource != nullptr);
+            auto finalResourceDesc = finalResource->GetDesc();
             REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
             REQUIRE(finalResourceDesc._textureDesc._width == desc._textureDesc._width);
             REQUIRE(finalResourceDesc._textureDesc._height == desc._textureDesc._height);

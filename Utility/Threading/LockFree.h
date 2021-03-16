@@ -304,68 +304,6 @@ namespace Utility
             _overflowQueue_needsCompression = false;
         }
     }
-
-#if 0
-
-    template<typename Type, int Count>
-        class FixedSizeQueue_Waitable : public LockFreeFixedSizeQueue<Type,Count>
-    {
-    public:
-        bool push(const Type&);
-        void push_stall(const Type&);
-        XlHandle get_event();
-        FixedSizeQueue_Waitable();
-        ~FixedSizeQueue_Waitable();
-    private:
-        XlHandle _event;
-    };
-
-    template<typename Type, int Count>
-        bool FixedSizeQueue_Waitable<Type,Count>::push(const Type&newItem)
-        {
-            bool result = LockFreeFixedSizeQueue<Type,Count>::push(newItem);
-            if (result) {
-                XlSetEvent(_event);
-            }
-            return result;
-        }
-
-    template<typename Type, int Count>
-        void FixedSizeQueue_Waitable<Type,Count>::push_stall(const Type&newItem)
-        {
-            while (!push(newItem)) {
-                // HPC startTime = GetHPC();
-                while (!push(newItem)) {
-                    // HPC currentTime = GetHPC();
-                    // if (hpc2sec(currentTime - startTime) > 1) {
-                    //     LogAlwaysWarning("Warning -- exceeded queue limit in fixed size queue. Stalling!");
-                    //     startTime = currentTime;
-                    // }
-                    XlSetEvent(_event); // raise the event, just to make sure the other thread is processing
-                    Threading::YieldTimeSlice();
-                }
-            }
-        }
-
-    template<typename Type, int Count>
-        FixedSizeQueue_Waitable<Type,Count>::FixedSizeQueue_Waitable()
-        {
-            _event = XlCreateEvent(false);
-        }
-
-    template<typename Type, int Count>
-        FixedSizeQueue_Waitable<Type,Count>::~FixedSizeQueue_Waitable()
-        {
-            XlCloseSyncObject(_event);
-        }
-
-    template<typename Type, int Count>
-        XlHandle FixedSizeQueue_Waitable<Type,Count>::get_event()
-        {
-            return _event;
-        }
-#endif
-
 }
 
 using namespace Utility;

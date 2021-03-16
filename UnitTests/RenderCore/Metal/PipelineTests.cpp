@@ -173,6 +173,7 @@ namespace UnitTests
 		stagingDesc._bindFlags = RenderCore::BindFlag::TransferSrc;
 		stagingDesc._cpuAccess = RenderCore::CPUAccess::Write;
 		stagingDesc._gpuAccess = 0;
+		stagingDesc._allocationRules |= RenderCore::AllocationRules::Staging;
 		return stagingDesc;
 	}
 

@@ -11,7 +11,6 @@
 
     #include "../PlatformInterface.h"
     #include "../DataPacket.h"
-    #include "../ResourceLocator.h"
     #include "../../RenderCore/DX11/IDeviceDX11.h"
     #include "../../RenderCore/DX11/Metal/DX11Utils.h"
     #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
