@@ -21,7 +21,7 @@ namespace BufferUploads
         XlZeroMemory(_countCreations);
         XlZeroMemory(_countDeviceCreations);
         XlZeroMemory(_countUploaded);
-        _bytesUploadTotal = _contextOperations = _nonContextOperations = _deviceCreateOperations = 0;
+        _bytesUploadTotal = _contextOperations = _deviceCreateOperations = 0;
         _resolveTime = _commitTime = 0;
         _waitTime = _processingStart = _processingEnd = 0;
         _framePriorityStallTime = 0;
@@ -46,7 +46,6 @@ namespace BufferUploads
         std::copy(cloneFrom._countDeviceCreations, &cloneFrom._countDeviceCreations[dimof(cloneFrom._countDeviceCreations)], _countDeviceCreations);
         std::copy(cloneFrom._countUploaded, &cloneFrom._countUploaded[dimof(cloneFrom._bytesUploaded)], _countUploaded);
         _contextOperations = cloneFrom._contextOperations;
-        _nonContextOperations = cloneFrom._nonContextOperations;
         _deviceCreateOperations = cloneFrom._deviceCreateOperations;
         _assemblyLineMetrics = cloneFrom._assemblyLineMetrics;
         _retirementCount = cloneFrom._retirementCount;

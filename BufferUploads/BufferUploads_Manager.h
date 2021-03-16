@@ -52,7 +52,7 @@ namespace BufferUploads
         ~Manager();
 
     private:
-        std::unique_ptr<AssemblyLine> _assemblyLine;
+        std::shared_ptr<AssemblyLine> _assemblyLine;
         unsigned _foregroundStepMask, _backgroundStepMask;
 
         std::unique_ptr<std::thread> _backgroundThread;

@@ -30,7 +30,7 @@ namespace BufferUploads
     class IAsyncDataSource
     {
     public:
-        virtual std::future<ResourceDesc> GetDesc () const = 0;
+        virtual std::future<ResourceDesc> GetDesc () = 0;
 
         struct SubResource
         {
@@ -39,7 +39,7 @@ namespace BufferUploads
             TexturePitches _pitches;
         };
 
-        virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources);
+        virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
     };
 
         /////////////////////////////////////////////////

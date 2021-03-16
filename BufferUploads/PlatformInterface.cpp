@@ -522,7 +522,7 @@ namespace BufferUploads { namespace PlatformInterface
         {
         }
 
-        size_t      Resource_GetAll(BufferUploads::BufferMetrics** bufferDescs)
+        size_t      Resource_GetAll(BufferMetrics** bufferDescs)
         {
             *bufferDescs = NULL;
             return 0;

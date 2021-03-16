@@ -46,7 +46,7 @@ namespace BufferUploads
         unsigned _countDeviceCreations[(unsigned)UploadDataType::Max];
         unsigned _countUploaded[(unsigned)UploadDataType::Max];
 
-        unsigned _contextOperations, _nonContextOperations, _deviceCreateOperations;
+        unsigned _contextOperations, _deviceCreateOperations;
         AssemblyLineMetrics _assemblyLineMetrics;
         AssemblyLineRetirement _retirements[16];
         unsigned _retirementCount;

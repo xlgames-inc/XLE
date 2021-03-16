@@ -18,7 +18,7 @@
     {
         using namespace RenderCore;
 
-        unsigned UnderlyingDeviceContext::PushToTexture(
+        unsigned UnderlyingDeviceContext::WriteToTextureViaMap(
             IResource& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
@@ -54,57 +54,49 @@
             return copiedBytes;
         }
 
-        unsigned UnderlyingDeviceContext::PushToStagingTexture(
-			UnderlyingResource& resource, const ResourceDesc&desc, 
-            const Box2D& box,
-            const ResourceInitializer& data)
-        {
-            // Because this is a "staging" resource, we can assume it's not being
-            // used currently. So, it's fine to just map the member and use a CPU assisted copy
-            // Note that in Vulkan, we can map the entire resource once and just copy each
-            // subresource as we go through.
-            // The process is the same as PushToTexture...
-            return PushToTexture(resource, desc, box, data);
-        }
-
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
 			IResource& finalResource, IResource& stagingResource, 
 			const ResourceDesc& destinationDesc, 
-            unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
-            VectorPattern<unsigned, 2> stagingXYOffset,
-            const Box2D& srcBox)
+            const StagingToFinalMapping& stagingToFinalMapping)
         {
-            auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
-            auto allLods = 
-                (lodLevelMin == ~unsigned(0x0) || lodLevelMin == 0u)
-                && (lodLevelMax == ~unsigned(0x0) || lodLevelMax == (std::max(1u, (unsigned)destinationDesc._textureDesc._mipCount)-1));
+            assert(destinationDesc._type == ResourceDesc::Type::Texture);
+            auto dstLodLevelMax = std::min(stagingToFinalMapping._dstLodLevelMax, (unsigned)destinationDesc._textureDesc._mipCount-1);
+            auto dstArrayLayerMax = std::min(stagingToFinalMapping._dstArrayLayerMax, (unsigned)destinationDesc._textureDesc._arrayCount-1);
+            auto allLods = stagingToFinalMapping._dstLodLevelMin == 0 && dstLodLevelMax == ((unsigned)destinationDesc._textureDesc._mipCount-1);
+            auto allArrayLayers = stagingToFinalMapping._dstArrayLayerMin == 0 && dstArrayLayerMax == ((unsigned)destinationDesc._textureDesc._arrayCount-1);
+            if (destinationDesc._textureDesc._arrayCount == 0) {
+                dstArrayLayerMax = 0;
+                allArrayLayers = true;
+            }
+            auto entire2DPlane = stagingToFinalMapping._stagingXYOffset[0] == 0 && stagingToFinalMapping._stagingXYOffset[1] == 0;
 
 			// During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
-			// So, we must change the layout immediate before and after the transfer.
+            auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
             Metal::Internal::CaptureForBind(metalContext, finalResource, BindFlag::TransferDst);
             Metal::Internal::CaptureForBind(metalContext, stagingResource, BindFlag::TransferSrc);
             auto blitEncoder = metalContext.BeginBlitEncoder();
 
-            if (allLods && destinationDesc._type == ResourceDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
+            if (allLods && allArrayLayers && entire2DPlane) {
                 blitEncoder.Copy(finalResource, stagingResource);
             } else {
-                for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
-                    for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
+                auto& dstBox = stagingToFinalMapping._dstBox;
+                for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
+                    for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
                         blitEncoder.Copy(
                             Metal::BlitEncoder::CopyPartial_Dest{
                                 &finalResource, 
-                                SubResourceId{c, a}, {stagingXYOffset[0], stagingXYOffset[1], 0}},
+                                SubResourceId{mip, a}, {(unsigned)dstBox._left, (unsigned)dstBox._top, 0}},
                             Metal::BlitEncoder::CopyPartial_Src{
                                 &stagingResource, 
-                                SubResourceId{c-stagingLODOffset, a},
-                                {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
-                                {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}});
+                                SubResourceId{mip-stagingToFinalMapping._stagingLODOffset, a-stagingToFinalMapping._stagingArrayOffset},
+                                {(unsigned)dstBox._left - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._top - stagingToFinalMapping._stagingXYOffset[1], 0u},
+                                {(unsigned)dstBox._right - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._bottom - stagingToFinalMapping._stagingXYOffset[1], 1u}});
                     }
                 }
             }
         }
 
-        unsigned UnderlyingDeviceContext::PushToBuffer(
+        unsigned UnderlyingDeviceContext::WriteToBufferViaMap(
             IResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize)
         {

@@ -154,7 +154,7 @@ namespace BufferUploads
             uint32_t _idTopPart;
             std::atomic<unsigned> _referenceCount;
             ResourceLocator _finalResource;
-            ResourceLocator _stagingResource;
+            // ResourceLocator _stagingResource;
             ResourceDesc _desc;
             TimeMarker _requestTime;
             std::promise<ResourceLocator> _promise;
@@ -162,7 +162,7 @@ namespace BufferUploads
 
             std::atomic<bool> _statusLock;
             // bool _creationQueued, _stagingQueued;
-            unsigned _requestedStagingLODOffset, _actualisedStagingLODOffset;
+            // unsigned _requestedStagingLODOffset, _actualisedStagingLODOffset;
             unsigned _retirementCommandList;
             TransactionOptions::BitField _creationOptions;
             #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -224,7 +224,9 @@ namespace BufferUploads
         struct TransferStagingToFinalStep
         {
             TransactionID _id = ~TransactionID(0);
-            PartialResource _part;
+            ResourceLocator _stagingResource;
+            PlatformInterface::StagingToFinalMapping _stagingToFinalMapping;
+            unsigned _stagingByteCount;
         };
 
         struct CreateFromDataPacketStep
@@ -296,7 +298,7 @@ namespace BufferUploads
         void    PushStep(QueueSet&, Transaction& transaction, CreateFromDataPacketStep&& step);
 
         void    CompleteWaitForDescFuture(TransactionID transactionID, std::future<ResourceDesc> descFuture, const std::shared_ptr<IAsyncDataSource>& data, PartialResource part);
-        void    CompleteWaitForDataFuture(TransactionID transactionID, std::future<void> prepareFuture, PartialResource part);
+        void    CompleteWaitForDataFuture(TransactionID transactionID, std::future<void> prepareFuture, const ResourceLocator& stagingResource, const PlatformInterface::StagingToFinalMapping& stagingToFinalMapping, unsigned stagingByteCount);
     };
 
     static PartialResource PartialResource_All()
@@ -543,6 +545,77 @@ namespace BufferUploads
         }
     }
 
+    static bool IsFull2DPlane(const ResourceDesc& resDesc, const RenderCore::Box2D& box)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        if (box == Box2D{}) return true;
+        return 
+            box._left == 0 && box._top == 0
+            && box._right == resDesc._textureDesc._width
+            && box._left == resDesc._textureDesc._height;
+    }
+
+    static bool IsAllLodLevels(const ResourceDesc& resDesc, unsigned lodLevelMin, unsigned lodLevelMax)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        assert(lodLevelMin != lodLevelMax);
+        auto max = std::min(lodLevelMax, (unsigned)resDesc._textureDesc._mipCount-1);
+        return (lodLevelMin == 0 && max == resDesc._textureDesc._mipCount-1);
+    }
+
+    static bool IsAllArrayLayers(const ResourceDesc& resDesc, unsigned arrayLayerMin, unsigned arrayLayerMax)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        assert(arrayLayerMin != arrayLayerMax);
+        if (resDesc._textureDesc._arrayCount == 0) return true;
+
+        auto max = std::min(arrayLayerMax, (unsigned)resDesc._textureDesc._arrayCount-1);
+        return (arrayLayerMin == 0 && max == resDesc._textureDesc._arrayCount-1);
+    }
+
+    static std::pair<ResourceDesc, PlatformInterface::StagingToFinalMapping> CalculatePartialStagingDesc(
+        const ResourceDesc& dstDesc,
+        const PartialResource& part)
+    {
+        assert(dstDesc._type == ResourceDesc::Type::Texture);
+        ResourceDesc stagingDesc = AsStagingDesc(dstDesc);
+        PlatformInterface::StagingToFinalMapping mapping;
+        mapping._dstBox = part._box;
+        if (IsFull2DPlane(dstDesc, mapping._dstBox)) {
+            // When writing to the full 2d plane, we can selectively update only some lod levels
+            if (!IsAllLodLevels(dstDesc, part._lodLevelMin, part._lodLevelMax)) {
+                mapping._stagingLODOffset = part._lodLevelMin;
+                mapping._dstLodLevelMin = part._lodLevelMin;
+                mapping._dstLodLevelMax = std::min(part._lodLevelMax, (unsigned)dstDesc._textureDesc._mipCount-1);
+                stagingDesc = ApplyLODOffset(stagingDesc, mapping._stagingLODOffset);
+            }
+        } else {
+            // We need this restriction because otherwise (assuming the mip chain goes to 1x1) we
+            // would have to recalculate all mips
+            if (!IsAllLodLevels(dstDesc, part._lodLevelMin, part._lodLevelMax))
+                Throw(std::runtime_error("When updating texture data for only part of the 2d plane, you must update all lod levels"));
+
+            // Shrink the size of the staging texture to just the parts we want
+            assert(mapping._dstBox._right > mapping._dstBox._left);
+            assert(mapping._dstBox._bottom > mapping._dstBox._top);
+            mapping._stagingXYOffset = { (unsigned)mapping._dstBox._left, (unsigned)mapping._dstBox._top };
+            stagingDesc._textureDesc._width = mapping._dstBox._right - mapping._dstBox._left;
+            stagingDesc._textureDesc._height = mapping._dstBox._bottom - mapping._dstBox._top;
+        }
+
+        if (!IsAllArrayLayers(dstDesc, part._arrayIndexMin, part._arrayIndexMax)) {
+            assert(part._arrayIndexMax > part._arrayIndexMin);
+            mapping._stagingArrayOffset = part._arrayIndexMin;
+            mapping._dstArrayLayerMin = part._arrayIndexMin;
+            mapping._dstArrayLayerMax = std::min(part._arrayIndexMax, (unsigned)dstDesc._textureDesc._arrayCount-1);
+            stagingDesc._textureDesc._arrayCount = mapping._dstArrayLayerMax + 1 - mapping._dstArrayLayerMin;
+            if (stagingDesc._textureDesc._arrayCount == 1)
+                stagingDesc._textureDesc._arrayCount = 0;
+        }
+
+        return std::make_pair(stagingDesc, mapping);
+    }
+
     ResourceLocator AssemblyLine::Transaction_Immediate(
         RenderCore::IThreadContext& threadContext,
         const ResourceDesc& descInit, IDataPacket& initialisationData,
@@ -559,43 +632,40 @@ namespace BufferUploads
     
         auto finalResourceConstruction = _resourceSource.Create(
             desc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
-        if (!finalResourceConstruction._locator._resource) {
+        if (!finalResourceConstruction._locator._resource)
             return {};
-        }
     
         if (!(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
-            unsigned lodOffset = requestedStagingLODOffset;
-            unsigned actualisedStagingLODOffset = requestedStagingLODOffset;
-            ResourceDesc stagingBufferDesc = ApplyLODOffset(AsStagingDesc(desc), lodOffset);
+            
+            ResourceDesc stagingDesc;
+            PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
+            std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(desc, part);
+
             auto stagingConstruction = _resourceSource.Create(
-                stagingBufferDesc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
+                stagingDesc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
             assert(stagingConstruction._locator._resource);
-            if (!stagingConstruction._locator._resource) {
-                return {};                   // failed to allocate the resource. Return false and We'll try again later...
-            }
+            if (!stagingConstruction._locator._resource)
+                return {};
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(threadContext);
-            deviceContext.PushToStagingTexture(
+            deviceContext.WriteToTextureViaMap(
                 *stagingConstruction._locator._resource,
-                stagingBufferDesc, Box2D(),
-                [&part, &initialisationData, actualisedStagingLODOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
+                stagingDesc, Box2D(),
+                [&part, &initialisationData](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
                     RenderCore::SubResourceInitData result = {};
-                    if (sr._mip<part._lodLevelMin || sr._mip>part._lodLevelMax) return result;
-                    if (sr._arrayLayer<part._arrayIndexMin || sr._arrayLayer>part._arrayIndexMax) return result;
-
-                    auto dataMip = sr._mip + actualisedStagingLODOffset;
-                    auto size = initialisationData.GetDataSize(SubResourceId{dataMip, sr._arrayLayer});
-                    const void* data = initialisationData.GetData(SubResourceId{dataMip, sr._arrayLayer});
+                    auto size = initialisationData.GetDataSize(SubResourceId{sr._mip, sr._arrayLayer});
+                    const void* data = initialisationData.GetData(SubResourceId{sr._mip, sr._arrayLayer});
+                    assert(data);
 					result._data = MakeIteratorRange(data, PtrAdd(data, size));
-                    result._pitches = initialisationData.GetPitches(SubResourceId{dataMip, sr._arrayLayer});
+                    result._pitches = initialisationData.GetPitches(SubResourceId{sr._mip, sr._arrayLayer});
                     return result;
                 });
     
             deviceContext.UpdateFinalResourceFromStaging(
                 *finalResourceConstruction._locator._resource, 
                 *stagingConstruction._locator._resource, desc, 
-                part._lodLevelMin, part._lodLevelMax, actualisedStagingLODOffset);
+                stagingToFinalMapping);
         }
     
         return finalResourceConstruction._locator;
@@ -663,8 +733,8 @@ namespace BufferUploads
         _statusLock = 0;
         // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        _requestedStagingLODOffset = 0;
-        _actualisedStagingLODOffset = ~unsigned(0x0);
+        // _requestedStagingLODOffset = 0;
+        // _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
@@ -679,8 +749,8 @@ namespace BufferUploads
         _statusLock = 0;
         // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        _requestedStagingLODOffset = 0;
-        _actualisedStagingLODOffset = ~unsigned(0x0);
+        // _requestedStagingLODOffset = 0;
+        // _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
@@ -696,7 +766,7 @@ namespace BufferUploads
 
         _idTopPart = moveFrom._idTopPart;
         _finalResource = std::move(moveFrom._finalResource);
-        _stagingResource = std::move(moveFrom._stagingResource);
+        // _stagingResource = std::move(moveFrom._stagingResource);
         _desc = moveFrom._desc;
         _requestTime = moveFrom._requestTime;
         _promise = std::move(moveFrom._promise);
@@ -704,8 +774,8 @@ namespace BufferUploads
 
         // _creationQueued = moveFrom._creationQueued;
         // _stagingQueued = moveFrom._stagingQueued;
-        _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
-        _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
+        // _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
+        // _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
         _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -716,8 +786,8 @@ namespace BufferUploads
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        moveFrom._requestedStagingLODOffset = 0;
-        moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
+        // moveFrom._requestedStagingLODOffset = 0;
+        // moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
         moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -735,7 +805,7 @@ namespace BufferUploads
 
         _idTopPart = moveFrom._idTopPart;
         _finalResource = std::move(moveFrom._finalResource);
-        _stagingResource = std::move(moveFrom._stagingResource);
+        // _stagingResource = std::move(moveFrom._stagingResource);
         _desc = moveFrom._desc;
         _requestTime = moveFrom._requestTime;
         _promise = std::move(moveFrom._promise);
@@ -743,8 +813,8 @@ namespace BufferUploads
 
         // _creationQueued = moveFrom._creationQueued;
         // _stagingQueued = moveFrom._stagingQueued;
-        _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
-        _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
+        // _requestedStagingLODOffset = moveFrom._requestedStagingLODOffset;
+        // _actualisedStagingLODOffset = moveFrom._actualisedStagingLODOffset;
         _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -755,8 +825,8 @@ namespace BufferUploads
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        moveFrom._requestedStagingLODOffset = 0;
-        moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
+        // moveFrom._requestedStagingLODOffset = 0;
+        // moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
         moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
@@ -1252,7 +1322,7 @@ namespace BufferUploads
                                 AsPointer(offsets.begin()), metricsUnderConstruction);
 
                             assert(_resourceSource.GetBatchedResources().GetPrototype()._type == ResourceDesc::Type::LinearBuffer);
-                            context.GetDeviceContext().PushToBuffer(
+                            context.GetDeviceContext().WriteToBufferViaMap(
                                 *batchedResource->GetUnderlying(), _resourceSource.GetBatchedResources().GetPrototype(), 
                                 batchedResource->Offset(), midwayBuffer.GetData(), currentBatchSize);
 
@@ -1358,7 +1428,7 @@ namespace BufferUploads
         for (unsigned c=0; c<_transactions.size(); ++c) {
             if (!(_transactions[c]._desc._allocationRules & BufferUploads::AllocationRules::NonVolatile)) {
                 _transactions[c]._finalResource = {};
-                _transactions[c]._stagingResource = {};
+                // _transactions[c]._stagingResource = {};
             }
         }
 
@@ -1366,7 +1436,7 @@ namespace BufferUploads
             for (unsigned c=0; c<_transactions_LongTerm.size(); ++c) {
                 if (!(_transactions_LongTerm[c]._desc._allocationRules & BufferUploads::AllocationRules::NonVolatile)) {
                     _transactions_LongTerm[c]._finalResource = {};
-                    _transactions_LongTerm[c]._stagingResource = {};
+                    // _transactions_LongTerm[c]._stagingResource = {};
                 }
             }
         #endif
@@ -1380,7 +1450,7 @@ namespace BufferUploads
     bool AssemblyLine::Process(const CreateFromDataPacketStep& resourceCreateStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
         auto& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) >= budgetUnderConstruction._limit_Operations)
+        if ((metricsUnderConstruction._contextOperations+1) >= budgetUnderConstruction._limit_Operations)
             return false;
 
         auto* transaction = GetTransaction(resourceCreateStep._id);
@@ -1407,88 +1477,78 @@ namespace BufferUploads
             transaction->_desc, resourceCreateStep._initialisationData.get(), 
             ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?ResourceSource::CreationOptions::AllowDeviceCreation:0);
 
-        if (!(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DelayForBatching)) {
-            if (finalConstruction._locator._resource) {
-                if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
-
-                    unsigned lodOffset = transaction->_requestedStagingLODOffset;
-                    unsigned actualisedStagingLODOffset = transaction->_requestedStagingLODOffset;
-                    ResourceDesc stagingBufferDesc = ApplyLODOffset(AsStagingDesc(transaction->_desc), lodOffset);
-                    auto stagingConstruction = _resourceSource.Create(
-                        stagingBufferDesc, resourceCreateStep._initialisationData.get(), ResourceSource::CreationOptions::AllowDeviceCreation);
-                    assert(stagingConstruction._locator._resource);
-                    if (!stagingConstruction._locator._resource) {
-                        return false;                   // failed to allocate the resource. Return false and We'll try again later...
-                    }
-            
-                    PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
-                    deviceContext.PushToStagingTexture(
-                        *stagingConstruction._locator._resource,
-                        stagingBufferDesc, Box2D(),
-                        [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}, actualisedStagingLODOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
-                        {
-                            RenderCore::SubResourceInitData result = {};
-                            if (sr._mip<part._lodLevelMin || sr._mip>part._lodLevelMax) return result;
-                            if (sr._arrayLayer<part._arrayIndexMin || sr._arrayLayer>part._arrayIndexMax) return result;
-
-                            auto dataMip = sr._mip + actualisedStagingLODOffset;
-                            auto size = initialisationData->GetDataSize(SubResourceId{dataMip, sr._arrayLayer});
-                            const void* data = initialisationData->GetData(SubResourceId{dataMip, sr._arrayLayer});
-                            result._data = MakeIteratorRange(data, PtrAdd(data, size));
-                            result._pitches = initialisationData->GetPitches(SubResourceId{dataMip, sr._arrayLayer});
-                            return result;
-                        });
-            
-                    deviceContext.UpdateFinalResourceFromStaging(
-                        *finalConstruction._locator._resource, 
-                        *stagingConstruction._locator._resource, transaction->_desc, 
-                        resourceCreateStep._part._lodLevelMin, resourceCreateStep._part._lodLevelMax, actualisedStagingLODOffset);
-                        
-                    ++metricsUnderConstruction._contextOperations;
-                    metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
-                }
-
-                metricsUnderConstruction._bytesUploaded[uploadDataType] += uploadRequestSize;
-                metricsUnderConstruction._bytesUploadTotal += uploadRequestSize;
-                _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
-                metricsUnderConstruction._bytesCreated[uploadDataType] += objectSize;
-                metricsUnderConstruction._countCreations[uploadDataType] += 1;
-                ++metricsUnderConstruction._nonContextOperations;
-                if (finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked) {
-                    ++metricsUnderConstruction._countDeviceCreations[uploadDataType];
-                    ++metricsUnderConstruction._deviceCreateOperations;
-                }
-
-                transaction->_finalResource = std::move(finalConstruction._locator);
-                transaction->_promise.set_value(transaction->_finalResource);
-
-                ReleaseTransaction(transaction, context);
-                return true;
-            }
-        } else {
-
-                //
+        if (finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DelayForBatching) {
                 //      In the batched path, we pop now, and perform all of the batched operations as once when we resolve the 
                 //      command list. But don't release the transaction -- that will happen after the batching operation is 
                 //      performed.
-                //
-
-#if BU_BATCHING
-            _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
-            _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
-#else  
-            assert(0);
-#endif
+            #if BU_BATCHING
+                _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
+                _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
+            #else  
+                assert(0);
+            #endif
             return true;
         }
 
-        return false;
+        if (!finalConstruction._locator._resource)
+            return false;
+
+        if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+            ResourceDesc stagingDesc;
+            PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
+            std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(transaction->_desc, resourceCreateStep._part);
+
+            auto stagingConstruction = _resourceSource.Create(
+                stagingDesc, resourceCreateStep._initialisationData.get(), ResourceSource::CreationOptions::AllowDeviceCreation);
+            assert(stagingConstruction._locator._resource);
+            if (!stagingConstruction._locator._resource)
+                return false;
+    
+            PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
+            deviceContext.WriteToTextureViaMap(
+                *stagingConstruction._locator._resource,
+                stagingDesc, Box2D(),
+                [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
+                {
+                    RenderCore::SubResourceInitData result = {};
+                    auto size = initialisationData->GetDataSize(SubResourceId{sr._mip, sr._arrayLayer});
+                    const void* data = initialisationData->GetData(SubResourceId{sr._mip, sr._arrayLayer});
+                    assert(data);
+                    result._data = MakeIteratorRange(data, PtrAdd(data, size));
+                    result._pitches = initialisationData->GetPitches(SubResourceId{sr._mip, sr._arrayLayer});
+                    return result;
+                });
+    
+            deviceContext.UpdateFinalResourceFromStaging(
+                *finalConstruction._locator._resource, 
+                *stagingConstruction._locator._resource, transaction->_desc, 
+                stagingToFinalMapping);
+                
+            ++metricsUnderConstruction._contextOperations;
+            metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
+        }
+
+        metricsUnderConstruction._bytesUploaded[uploadDataType] += uploadRequestSize;
+        metricsUnderConstruction._bytesUploadTotal += uploadRequestSize;
+        _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
+        metricsUnderConstruction._bytesCreated[uploadDataType] += objectSize;
+        metricsUnderConstruction._countCreations[uploadDataType] += 1;
+        if (finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked) {
+            ++metricsUnderConstruction._countDeviceCreations[uploadDataType];
+            ++metricsUnderConstruction._deviceCreateOperations;
+        }
+
+        transaction->_finalResource = std::move(finalConstruction._locator);
+        transaction->_promise.set_value(transaction->_finalResource);
+
+        ReleaseTransaction(transaction, context);
+        return true;
     }
 
     bool AssemblyLine::Process(const PrepareStagingStep& prepareStagingStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
         auto& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) >= budgetUnderConstruction._limit_Operations)
+        if ((metricsUnderConstruction._contextOperations+1) >= budgetUnderConstruction._limit_Operations)
             return false;
 
         // todo -- should we limit this based on the number of items in the WaitForDataFutureStep
@@ -1504,52 +1564,54 @@ namespace BufferUploads
 
         try {
             const auto& desc = prepareStagingStep._desc;
-            unsigned lodOffset = transaction->_requestedStagingLODOffset;
-            ResourceDesc stagingDesc = ApplyLODOffset(AsStagingDesc(desc), lodOffset);
-            ResourceSource::ResourceConstruction stagingConstruction;
-            if (transaction->_actualisedStagingLODOffset != lodOffset) {
-                stagingConstruction = _resourceSource.Create(
-                    stagingDesc, nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
-                if (!stagingConstruction._locator._resource)
-                    return false;                   // failed to allocate the resource. Return false and We'll try again later...
+            ResourceDesc stagingDesc;
+            PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
+            std::tie(stagingDesc, stagingToFinalMapping) = CalculatePartialStagingDesc(desc, prepareStagingStep._part);
 
-                // Note that we are updating these metrics before calling
-                // IAsyncDataSource::PrepareData. That can potentially throw, in which case we
-                // will release the staging resource we allocated, without using it
-                ++metricsUnderConstruction._nonContextOperations;
-            }
+            auto stagingConstruction = _resourceSource.Create(
+                stagingDesc, nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
+            assert(stagingConstruction._locator._resource);
+            if (!stagingConstruction._locator._resource)
+                return false;
 
             using namespace RenderCore;
 
-            auto mipCount = std::max(1u, unsigned(desc._textureDesc._mipCount));
-            auto arrayCount = std::max(1u, unsigned(desc._textureDesc._arrayCount));
+            auto dstLodLevelMax = std::min(stagingToFinalMapping._dstLodLevelMax, (unsigned)desc._textureDesc._mipCount-1);
+            auto dstArrayLayerMax = std::min(stagingToFinalMapping._dstArrayLayerMax, (unsigned)desc._textureDesc._arrayCount-1);
+            auto mipCount = dstLodLevelMax - stagingToFinalMapping._dstLodLevelMin + 1;
+            auto arrayCount = dstArrayLayerMax - stagingToFinalMapping._dstArrayLayerMin + 1;
+            if (desc._textureDesc._arrayCount == 0) {
+                dstArrayLayerMax = 0;
+                arrayCount = 1;
+            }
+            assert(mipCount >= 1);
+            assert(arrayCount >= 1);
 
             IAsyncDataSource::SubResource uploadList[mipCount*arrayCount];
             std::vector<Metal::ResourceMap> maps;
             maps.resize(mipCount*arrayCount);
 
-            for (unsigned a=0; a<arrayCount; ++a) {
-                for (unsigned mip=0; mip<mipCount; ++mip) {
-                    SubResourceId subRes { mip, a };
+            for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
+                for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
+                    SubResourceId subRes { mip - stagingToFinalMapping._stagingLODOffset, a - stagingToFinalMapping._stagingArrayOffset };
+                    auto idx = subRes._arrayLayer*mipCount+subRes._mip;
                     
-                    maps[a*mipCount+mip] = Metal::ResourceMap(
+                    maps[idx] = Metal::ResourceMap(
                         *Metal::DeviceContext::Get(context.GetDeviceContext().GetUnderlying()),
-                        *transaction->_stagingResource._resource,
+                        *stagingConstruction._locator._resource,
                         Metal::ResourceMap::Mode::WriteDiscardPrevious,
                         subRes);
 
-                    auto& upload = uploadList[a*mipCount+mip];
+                    auto& upload = uploadList[idx];
                     upload._id = subRes;
-                    upload._destination = maps[a*mipCount+mip].GetData();
-                    upload._pitches = maps[a*mipCount+mip].GetPitches();
+                    upload._destination = maps[idx].GetData();
+                    upload._pitches = maps[idx].GetPitches();
                 }
             }
 
             auto future = prepareStagingStep._packet->PrepareData(MakeIteratorRange(uploadList, &uploadList[mipCount*arrayCount]));
 
             transaction->_desc = desc;
-            transaction->_actualisedStagingLODOffset = lodOffset;
-            transaction->_stagingResource = std::move(stagingConstruction._locator);
             auto byteCount = RenderCore::ByteCount(stagingDesc);
             _currentQueuedBytes[(unsigned)AsUploadDataType(desc)] += byteCount;
             metricsUnderConstruction._stagingBytesUsed[(unsigned)AsUploadDataType(desc)] += byteCount;
@@ -1561,14 +1623,19 @@ namespace BufferUploads
             assert(!transaction->_waitingFuture.valid());
             transaction->_waitingFuture = thousandeyes::futures::then(
                 std::move(future),
-                [captureMaps{std::move(maps)}, weakThis, transactionID{prepareStagingStep._id}, part{prepareStagingStep._part}](std::future<void> prepareFuture) mutable {
+                [   captureMaps{std::move(maps)}, 
+                    weakThis, 
+                    transactionID{prepareStagingStep._id}, 
+                    locator{stagingConstruction._locator},
+                    stagingToFinalMapping, byteCount]
+                (std::future<void> prepareFuture) mutable {
                     captureMaps.clear();
 
                     auto t = weakThis.lock();
                     if (!t)
                         Throw(std::runtime_error("Assembly line was destroyed before future completed"));
 
-                    t->CompleteWaitForDataFuture(transactionID, std::move(prepareFuture), part);
+                    t->CompleteWaitForDataFuture(transactionID, std::move(prepareFuture), locator, stagingToFinalMapping, byteCount);
                 });
 
         } catch (...) {
@@ -1606,7 +1673,7 @@ namespace BufferUploads
         _wakeupEvent.Increment();
     }
 
-    void AssemblyLine::CompleteWaitForDataFuture(TransactionID transactionID, std::future<void> prepareFuture, PartialResource part)
+    void AssemblyLine::CompleteWaitForDataFuture(TransactionID transactionID, std::future<void> prepareFuture, const ResourceLocator& stagingResource, const PlatformInterface::StagingToFinalMapping& stagingToFinalMapping, unsigned stagingByteCount)
     {
         auto* transaction = GetTransaction(transactionID);
         assert(transaction);
@@ -1620,7 +1687,7 @@ namespace BufferUploads
             PushStep(
                 GetQueueSet(transaction->_creationOptions),
                 *transaction,
-                TransferStagingToFinalStep { transactionID, part });
+                TransferStagingToFinalStep { transactionID, stagingResource, stagingToFinalMapping, stagingByteCount });
         } catch(...) {
             transaction->_promise.set_exception(std::current_exception());
         }
@@ -1637,22 +1704,20 @@ namespace BufferUploads
     bool AssemblyLine::Process(const TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
         CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) >= budgetUnderConstruction._limit_Operations)
+        if ((metricsUnderConstruction._contextOperations+1) >= budgetUnderConstruction._limit_Operations)
             return false;
 
         Transaction* transaction = GetTransaction(transferStagingToFinalStep._id);
         assert(transaction);
-
-        ResourceDesc stagingDesc = ApplyLODOffset(AsStagingDesc(transaction->_desc), transaction->_actualisedStagingLODOffset);
-        unsigned uploadRequestSize = RenderCore::ByteCount(stagingDesc);
+        auto dataType = (unsigned)AsUploadDataType(transaction->_desc);
 
         if (!(transaction->_referenceCount & 0xff000000)) {
             ReleaseTransaction(transaction, context, true);
-            _currentQueuedBytes[(unsigned)AsUploadDataType(stagingDesc)] -= uploadRequestSize;
+            _currentQueuedBytes[dataType] -= transferStagingToFinalStep._stagingByteCount;
             return true;
         }
 
-        if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
+        if ((metricsUnderConstruction._bytesUploadTotal+transferStagingToFinalStep._stagingByteCount) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
             return false;
 
         if (!transaction->_finalResource._resource) {
@@ -1663,23 +1728,24 @@ namespace BufferUploads
 
             transaction->_finalResource = finalConstruction._locator;
 
-            metricsUnderConstruction._bytesCreated[(unsigned)AsUploadDataType(transaction->_desc)] += RenderCore::ByteCount(transaction->_desc);
-            metricsUnderConstruction._countCreations[(unsigned)AsUploadDataType(transaction->_desc)] += 1;
-            metricsUnderConstruction._countDeviceCreations[(unsigned)AsUploadDataType(transaction->_desc)] += (finalConstruction._flags&ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked)?1:0;
+            metricsUnderConstruction._bytesCreated[dataType] += RenderCore::ByteCount(transaction->_desc);
+            metricsUnderConstruction._countCreations[dataType] += 1;
+            metricsUnderConstruction._countDeviceCreations[dataType] += (finalConstruction._flags&ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked)?1:0;
         }
 
-        // todo -- do the actual data copy step here
-        assert(0);
-        unsigned bytesUploaded = 0;
-        unsigned uploadCount = 0;
-        
-        assert(uploadRequestSize == bytesUploaded);
-        auto dataType = AsUploadDataType(transaction->_desc);
-        metricsUnderConstruction._bytesUploaded[(unsigned)dataType] += bytesUploaded;
-        metricsUnderConstruction._countUploaded[(unsigned)dataType] += uploadCount;
-        metricsUnderConstruction._bytesUploadTotal += bytesUploaded;
-        _currentQueuedBytes[(unsigned)dataType] -= bytesUploaded;
+        // Do the actual data copy step here
+        PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
+        deviceContext.UpdateFinalResourceFromStaging(
+            *transaction->_finalResource._resource, 
+            *transferStagingToFinalStep._stagingResource._resource, transaction->_desc, 
+            transferStagingToFinalStep._stagingToFinalMapping);
+
+        metricsUnderConstruction._bytesUploadTotal += transferStagingToFinalStep._stagingByteCount;
+        metricsUnderConstruction._bytesUploaded[dataType] += transferStagingToFinalStep._stagingByteCount;
+        metricsUnderConstruction._countUploaded[dataType] += 1;
+        _currentQueuedBytes[dataType] -= transferStagingToFinalStep._stagingByteCount;
         ++metricsUnderConstruction._contextOperations;
+        transaction->_promise.set_value(transaction->_finalResource);
 
         ReleaseTransaction(transaction, context);
         return true;
@@ -1744,7 +1810,7 @@ namespace BufferUploads
 
                             auto finalDesc = ApplyLODOffset(transaction->_desc, transaction->_actualisedStagingLODOffset);
                             auto mipOffset = transaction->_actualisedStagingLODOffset;
-                            bytesUploaded += context.GetDeviceContext().PushToStagingTexture(
+                            bytesUploaded += context.GetDeviceContext().WriteToTextureViaMap(
                                 *transaction->_stagingResource->GetUnderlying(), 
                                 finalDesc, stagingBox,
                                 [&uploadStep, mipOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
@@ -1781,11 +1847,11 @@ namespace BufferUploads
                             stagingDesc._cpuAccess = CPUAccess::Read|CPUAccess::Write;  // the CPUAccess::WriteDynamic flag was being sent to PushToResource(), which confused the logic below
 
                             if (stagingDesc._type == ResourceDesc::Type::LinearBuffer) {
-                                bytesUploaded += context.GetDeviceContext().PushToBuffer(
+                                bytesUploaded += context.GetDeviceContext().WriteToBufferViaMap(
                                     *transaction->_finalResource->GetUnderlying(), stagingDesc, transaction->_finalResource->Offset(),
                                     uploadStep._rawData->GetData(), uploadStep._rawData->GetDataSize());
                             } else {
-                                bytesUploaded += context.GetDeviceContext().PushToTexture(
+                                bytesUploaded += context.GetDeviceContext().WriteToTextureViaMap(
                                     *transaction->_finalResource->GetUnderlying(), stagingDesc, 
                                     uploadStep._destinationBox,
                                     [&uploadStep](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
@@ -2050,7 +2116,7 @@ namespace BufferUploads
 
                 /////////////// ~~~~ /////////////// ~~~~ ///////////////
             const bool somethingToResolve = 
-                    (metricsUnderConstruction._contextOperations!=0) || (metricsUnderConstruction._nonContextOperations!=0)
+                    (metricsUnderConstruction._contextOperations!=0)
 #if BU_BATCHING
                 ||  _batchPreparation_Main._batchedAllocationSize  || !context.GetCommitStepUnderConstruction().IsEmpty()
 #endif
@@ -2546,7 +2612,7 @@ namespace BufferUploads
         return 0;
     }
 
-    Manager::Manager(RenderCore::IDevice& renderDevice) : _assemblyLine(std::make_unique<AssemblyLine>(renderDevice))
+    Manager::Manager(RenderCore::IDevice& renderDevice) : _assemblyLine(std::make_shared<AssemblyLine>(renderDevice))
     {
         _shutdownBackgroundThread = false;
 

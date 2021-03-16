@@ -31,7 +31,7 @@
         static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
         static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::AsID3DResource(resource); }
 
-        unsigned UnderlyingDeviceContext::PushToTexture(
+        unsigned UnderlyingDeviceContext::WriteToTextureViaUpdateSubresource(
             UnderlyingResource& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
@@ -138,7 +138,7 @@
             return copiedBytes;
         }
 
-        unsigned UnderlyingDeviceContext::PushToBuffer(
+        unsigned UnderlyingDeviceContext::WriteToBufferViaMap(
             UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize)
         {
@@ -189,7 +189,7 @@
             return copiedBytes;
         }
 
-        unsigned UnderlyingDeviceContext::PushToStagingTexture(
+        unsigned UnderlyingDeviceContext::WriteToTextureViaMap(
             UnderlyingResource& resource, const ResourceDesc&desc,
             const Box2D& box,
             const ResourceInitializer& data)

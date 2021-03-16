@@ -27,14 +27,6 @@ namespace BufferUploads
 	using TextureDesc = RenderCore::TextureDesc;
     using ResourceDesc = RenderCore::ResourceDesc;
 
-    struct BufferMetrics : public RenderCore::ResourceDesc
-    {
-    public:
-        unsigned        _systemMemorySize;
-        unsigned        _videoMemorySize;
-        const char*     _pixelFormatName;
-    };
-
         /////////////////////////////////////////////////
 
     class IDataPacket;
@@ -70,8 +62,8 @@ namespace BufferUploads
     {
     public:
         RenderCore::Box2D _box;
-        unsigned _lodLevelMin = 0, _lodLevelMax = 0;
-        unsigned _arrayIndexMin = 0, _arrayIndexMax = 0;
+        unsigned _lodLevelMin = 0, _lodLevelMax = ~0u;
+        unsigned _arrayIndexMin = 0, _arrayIndexMax = ~0u;
     };
 
     class TransactionMarker

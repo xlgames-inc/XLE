@@ -24,11 +24,19 @@ namespace BufferUploads { namespace PlatformInterface
 	// UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, IDataPacket* initialisationData = nullptr);
     // ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
 
+    struct BufferMetrics : public RenderCore::ResourceDesc
+    {
+    public:
+        unsigned        _systemMemorySize;
+        unsigned        _videoMemorySize;
+        const char*     _pixelFormatName;
+    };
+
     void            Resource_Register(UnderlyingResource& resource, const char name[]);
     void            Resource_Report(bool justVolatiles);
     void            Resource_SetName(UnderlyingResource& resource, const char name[]);
     void            Resource_GetName(UnderlyingResource& resource, char buffer[], int bufferSize);
-    size_t          Resource_GetAll(BufferUploads::BufferMetrics** bufferDescs);
+    size_t          Resource_GetAll(BufferMetrics** bufferDescs);
 
     size_t          Resource_GetVideoMemoryHeadroom();
     void            Resource_RecalculateVideoMemoryHeadroom();
@@ -36,32 +44,36 @@ namespace BufferUploads { namespace PlatformInterface
 
         /////////////////////////////////////////////////////////////////////
 
+    struct StagingToFinalMapping
+    {
+        RenderCore::Box2D _dstBox;
+        unsigned _dstLodLevelMin=0, _dstLodLevelMax=~unsigned(0x0);
+        unsigned _dstArrayLayerMin=0, _dstArrayLayerMax=~unsigned(0x0);
+        
+        unsigned _stagingLODOffset = 0;
+        unsigned _stagingArrayOffset = 0;
+        VectorPattern<unsigned, 2> _stagingXYOffset = {0,0};
+    };
+
     class UnderlyingDeviceContext
     {
     public:
             ////////   P U S H   T O   R E S O U R C E   ////////
-        unsigned PushToBuffer(
+        unsigned WriteToBufferViaMap(
             UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize);
         
         using ResourceInitializer = std::function<RenderCore::SubResourceInitData(RenderCore::SubResourceId)>;
         
-        unsigned PushToTexture(
-            UnderlyingResource& resource, const ResourceDesc& desc,
-            const RenderCore::Box2D& box, 
-            const ResourceInitializer& data);
-
-        unsigned PushToStagingTexture(
+        unsigned WriteToTextureViaMap(
             UnderlyingResource& resource, const ResourceDesc& desc,
             const RenderCore::Box2D& box, 
             const ResourceInitializer& data);
 
         void UpdateFinalResourceFromStaging(
             UnderlyingResource& finalResource, UnderlyingResource& staging,
-            const ResourceDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), 
-            unsigned stagingLODOffset=0,
-            VectorPattern<unsigned, 2> destXYOffset = {0,0},
-            const RenderCore::Box2D& srcBox = RenderCore::Box2D());
+            const ResourceDesc& destinationDesc, 
+            const StagingToFinalMapping& stagingToFinalMapping);
 
             ////////   R E S O U R C E   C O P Y   ////////
         void ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<Utility::DefragStep>& steps);
